@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = SignupSchema.safeParse({ email, source })
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/?error=invalid', req.url))
+return NextResponse.redirect(new URL('/?error=invalid', req.url), { status: 303 })
   }
 
   const supa = createAdminClient()
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   if (dbError) {
     console.error('Subscribe DB error:', dbError)
-    return NextResponse.redirect(new URL('/?error=server', req.url))
+return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
 
   // Send welcome email — only for genuinely new signups
@@ -71,5 +71,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL('/?subscribed=1', req.url))
+  return NextResponse.redirect(new URL('/?subscribed=1', req.url), { status: 303 })
 }
