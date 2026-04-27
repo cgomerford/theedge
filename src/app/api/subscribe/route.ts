@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { welcomeEmail } from '@/lib/emails'
+import { Resend } from 'resend'
 import { z } from 'zod'
 
 const SignupSchema = z.object({
@@ -29,14 +31,44 @@ export async function POST(req: NextRequest) {
   }
 
   const supa = createAdminClient()
-  const { error } = await supa.from('subscribers').upsert(
+
+  // Check if already subscribed (avoid duplicate welcome emails)
+  const { data: existing } = await supa
+    .from('subscribers')
+    .select('id, created_at')
+    .eq('email', parsed.data.email)
+    .single()
+
+  const isNewSignup = !existing
+
+  // Save to Supabase
+  const { error: dbError } = await supa.from('subscribers').upsert(
     { email: parsed.data.email, source: parsed.data.source ?? 'web' },
     { onConflict: 'email' }
   )
 
-  if (error) {
-    console.error('Subscribe error:', error)
+  if (dbError) {
+    console.error('Subscribe DB error:', dbError)
     return NextResponse.redirect(new URL('/?error=server', req.url))
+  }
+
+  // Send welcome email — only for genuinely new signups
+  if (isNewSignup && process.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const email_content = welcomeEmail(parsed.data.email)
+
+      await resend.emails.send({
+        from: 'The Edge <hello@edgereportdaily.com>',
+        to: parsed.data.email,
+        subject: email_content.subject,
+        html: email_content.html,
+        text: email_content.text,
+      })
+    } catch (emailError) {
+      // Don't fail the signup if email fails — log it and move on
+      console.error('Welcome email failed:', emailError)
+    }
   }
 
   return NextResponse.redirect(new URL('/?subscribed=1', req.url))
