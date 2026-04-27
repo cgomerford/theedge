@@ -90,8 +90,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="px-6 py-12 border-t border-stone-800 text-xs text-stone-500 font-mono">
+<footer className="px-6 py-12 border-t border-stone-800 text-xs text-stone-500 font-mono">
         <div className="max-w-5xl mx-auto">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-6">
+            <a href="/about" className="hover:text-stone-100">About</a>
+            <a href="/how-it-works" className="hover:text-stone-100">How it works</a>
+            <a href="/privacy" className="hover:text-stone-100">Privacy</a>
+            <a href="/terms" className="hover:text-stone-100">Terms</a>
+            <a href="mailto:hello@edgereportdaily.com" className="hover:text-stone-100">Contact</a>
+          </div>
           <div className="mb-4">
             © 2026 The Edge · Game data via official MLB Stats API
           </div>
