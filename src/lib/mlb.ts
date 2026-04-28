@@ -1,4 +1,6 @@
 // MLB Stats API — official, free, no API key needed
+import { createAdminClient } from '@/lib/supabase'
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 export type MLBGame = {
@@ -43,7 +45,6 @@ function teamSlug(name: string): string {
 }
 
 // Build the URL slug for a game's preview page
-// e.g. "new-york-yankees-vs-boston-red-sox-2026-04-28"
 export function slugifyGame(game: MLBGame): string {
   const date = game.gameDate.split('T')[0]
   const away = teamSlug(game.teams.away.team.name)
@@ -64,13 +65,13 @@ export function shortName(name: string): string {
 export type PitcherGameLog = {
   date: string
   opponent: string
-  ip: string          // innings pitched, e.g. "6.1"
+  ip: string
   h: number
   er: number
   bb: number
   so: number
-  era: string         // game ERA
-  result: string      // "W", "L", or "ND"
+  era: string
+  result: string
 }
 
 export type PitcherSeasonStats = {
@@ -86,7 +87,6 @@ export type PitcherSeasonStats = {
   losses: number
 }
 
-// Get a pitcher's last N starts
 export async function getPitcherRecentStarts(
   playerId: number,
   limit: number = 5
@@ -117,7 +117,6 @@ export async function getPitcherRecentStarts(
   }
 }
 
-// Get a pitcher's season stats
 export async function getPitcherSeasonStats(
   playerId: number
 ): Promise<PitcherSeasonStats | null> {
@@ -149,20 +148,6 @@ export async function getPitcherSeasonStats(
   }
 }
 
-
-// =====================================================
-// STATCAST — pitch mix from Baseball Savant
-// =====================================================
-
-export type PitchType = {
-  pitch_name: string       // "4-Seam Fastball", "Slider", "Curveball", etc.
-  pitch_code: string       // "FF", "SL", "CU", etc.
-  count: number
-  percentage: number       // 0-100
-  avg_velocity: number     // mph
-}
-
-
 // =====================================================
 // WEATHER — Open-Meteo (free, no API key needed)
 // =====================================================
@@ -171,11 +156,11 @@ export type GameWeather = {
   temp_f: number
   feels_like_f: number
   wind_mph: number
-  wind_direction: number  // degrees (0=N, 90=E, 180=S, 270=W)
+  wind_direction: number
   wind_direction_text: string
-  precipitation_chance: number  // 0-100
-  cloud_cover: number  // 0-100
-  conditions: string  // "Clear", "Partly cloudy", "Rain", etc.
+  precipitation_chance: number
+  cloud_cover: number
+  conditions: string
 }
 
 function describeWindDirection(deg: number): string {
@@ -184,7 +169,6 @@ function describeWindDirection(deg: number): string {
 }
 
 function describeConditions(weatherCode: number): string {
-  // WMO weather codes — abridged
   if (weatherCode === 0) return 'Clear'
   if (weatherCode <= 3) return 'Partly cloudy'
   if (weatherCode <= 48) return 'Foggy'
@@ -202,11 +186,10 @@ export async function getGameWeather(
   lon: number,
   gameTimeUTC: string
 ): Promise<GameWeather | null> {
-  // Open-Meteo gives hourly forecasts. We pick the hour closest to game time.
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability,cloud_cover,wind_speed_10m,wind_direction_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=3&timezone=auto`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })  // cache 1 hour
+    const res = await fetch(url, { next: { revalidate: 3600 } })
     if (!res.ok) {
       console.error('Open-Meteo fetch failed:', res.status)
       return null
@@ -216,7 +199,6 @@ export async function getGameWeather(
     const hourly = data.hourly
     if (!hourly || !hourly.time) return null
 
-    // Find the hour closest to game time
     const gameTime = new Date(gameTimeUTC).getTime()
     let closestIndex = 0
     let smallestDiff = Infinity
@@ -251,8 +233,6 @@ export async function getGameWeather(
 // PITCH MIX — read from Supabase (populated daily by Python cron)
 // =====================================================
 
-import { createAdminClient } from '@/lib/supabase'
-
 export type PitchType = {
   pitch_name: string
   pitch_code: string
@@ -286,7 +266,6 @@ export async function getPitchMix(playerId: number): Promise<PitchType[]> {
   }))
 }
 
-// Color for each pitch type — used in the bar chart
 export function pitchColor(pitchCode: string): string {
   const colors: Record<string, string> = {
     'FF': '#dc2626', 'SI': '#ea580c', 'FC': '#d97706',
