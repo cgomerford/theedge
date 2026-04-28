@@ -276,3 +276,136 @@ export function pitchColor(pitchCode: string): string {
   }
   return colors[pitchCode] ?? '#525252'
 }
+
+// =====================================================
+// TEAM FORM — last 10 games, streak, run differential
+// =====================================================
+
+export type TeamForm = {
+  last_10_wins: number
+  last_10_losses: number
+  streak: string              // e.g., "W4", "L2"
+  streak_type: 'W' | 'L' | null
+  streak_count: number
+  runs_per_game_l10: number
+  runs_allowed_per_game_l10: number
+  run_diff_l10: number
+  // For narrative
+  trend: 'hot' | 'cold' | 'mixed'
+}
+
+export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
+  const today = new Date().toISOString().split('T')[0]
+  const tenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const season = new Date().getFullYear()
+
+  // Fetch this team's last 14 days of games (covers the typical 10-game window)
+  const scheduleUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=team,linescore`
+
+  // Also grab their season standings record for streak data
+  const standingsUrl = `${MLB_API}/standings?leagueId=103,104&season=${season}&date=${today}`
+
+  try {
+    const [schedRes, standRes] = await Promise.all([
+      fetch(scheduleUrl, { next: { revalidate: 1800 } }),
+      fetch(standingsUrl, { next: { revalidate: 1800 } }),
+    ])
+
+    if (!schedRes.ok) return null
+    const schedData = await schedRes.json()
+
+    // Flatten the games from each date and only keep finished ones
+    const finishedGames: any[] = []
+    for (const dateBlock of schedData.dates ?? []) {
+      for (const g of dateBlock.games ?? []) {
+        if (g.status?.abstractGameState === 'Final') finishedGames.push(g)
+      }
+    }
+
+    // Take the last 10
+    const last10 = finishedGames.slice(-10)
+    if (last10.length === 0) return null
+
+    let wins = 0
+    let losses = 0
+    let runsScored = 0
+    let runsAllowed = 0
+
+    for (const g of last10) {
+      const isHome = g.teams.home.team.id === teamId
+      const us = isHome ? g.teams.home : g.teams.away
+      const them = isHome ? g.teams.away : g.teams.home
+      const ourScore = us.score ?? us.linescore?.runs ?? 0
+      const theirScore = them.score ?? them.linescore?.runs ?? 0
+      runsScored += ourScore
+      runsAllowed += theirScore
+      if (ourScore > theirScore) wins++
+      else if (ourScore < theirScore) losses++
+    }
+
+    // Get streak from standings
+    let streak = ''
+    let streakType: 'W' | 'L' | null = null
+    let streakCount = 0
+    if (standRes.ok) {
+      const standData = await standRes.json()
+      for (const record of standData.records ?? []) {
+        for (const t of record.teamRecords ?? []) {
+          if (t.team?.id === teamId) {
+            streak = t.streak?.streakCode ?? ''
+            const m = streak.match(/^([WL])(\d+)$/)
+            if (m) {
+              streakType = m[1] as 'W' | 'L'
+              streakCount = parseInt(m[2])
+            }
+            break
+          }
+        }
+      }
+    }
+
+    const rpg = last10.length > 0 ? runsScored / last10.length : 0
+    const ragp = last10.length > 0 ? runsAllowed / last10.length : 0
+    const diff = rpg - ragp
+
+    let trend: 'hot' | 'cold' | 'mixed' = 'mixed'
+    if (wins >= 7 || (streakType === 'W' && streakCount >= 4)) trend = 'hot'
+    else if (losses >= 7 || (streakType === 'L' && streakCount >= 4)) trend = 'cold'
+
+    return {
+      last_10_wins: wins,
+      last_10_losses: losses,
+      streak,
+      streak_type: streakType,
+      streak_count: streakCount,
+      runs_per_game_l10: Math.round(rpg * 10) / 10,
+      runs_allowed_per_game_l10: Math.round(ragp * 10) / 10,
+      run_diff_l10: Math.round(diff * 10) / 10,
+      trend,
+    }
+  } catch (err) {
+    console.error('Team form fetch error:', err)
+    return null
+  }
+}
+
+// Generate a one-sentence narrative about a team's form
+export function describeTeamForm(form: TeamForm, shortName: string): string {
+  const { last_10_wins, last_10_losses, streak_type, streak_count, run_diff_l10, trend } = form
+
+  const record = `${last_10_wins}-${last_10_losses} L10`
+
+  if (trend === 'hot' && streak_type === 'W' && streak_count >= 4) {
+    return `${shortName} are ${record}, winners of ${streak_count} straight, outscoring opponents by ${Math.abs(run_diff_l10)} runs per game.`
+  }
+  if (trend === 'cold' && streak_type === 'L' && streak_count >= 4) {
+    return `${shortName} are scuffling — ${record} with ${streak_count} straight losses, getting outscored by ${Math.abs(run_diff_l10)} runs per game.`
+  }
+  if (run_diff_l10 >= 2) {
+    return `${shortName} are playing well, ${record}, outscoring opponents by ${run_diff_l10} per game.`
+  }
+  if (run_diff_l10 <= -2) {
+    return `${shortName} have struggled, ${record}, getting outscored by ${Math.abs(run_diff_l10)} per game.`
+  }
+  return `${shortName} are ${record}, run differential ${run_diff_l10 >= 0 ? '+' : ''}${run_diff_l10} per game over the last ten.`
+}

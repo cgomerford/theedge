@@ -17,11 +17,11 @@ export const maxDuration = 300  // 5 min max execution
 
 export async function GET(req: NextRequest) {
 // Verify request comes from Vercel Cron (or you, manually with the secret)
-  // const authHeader = req.headers.get('authorization')
-  // const expected = `Bearer ${process.env.CRON_SECRET}`
-  // if (process.env.CRON_SECRET && authHeader !== expected) {
-  //   return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  // }
+  const authHeader = req.headers.get('authorization')
+  const expected = `Bearer ${process.env.CRON_SECRET}`
+  if (process.env.CRON_SECRET && authHeader !== expected) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
   const supa = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
 

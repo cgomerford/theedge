@@ -7,6 +7,8 @@ import {
   getGameWeather,
   getPitchMix,
   pitchColor,
+  getTeamForm,
+  describeTeamForm,
   type MLBGame
 } from '@/lib/mlb'
 import { getVenueInfo, describeWindImpact } from '@/lib/venues'
@@ -73,7 +75,7 @@ export default async function GamePreview({ params }: Props) {
   const homePitcherId = game.teams.home.probablePitcher?.id
   const venue = getVenueInfo(game.venue?.name)
 
-  const [
+const [
     awayRecentStarts,
     homeRecentStarts,
     awaySeasonStats,
@@ -81,6 +83,8 @@ export default async function GamePreview({ params }: Props) {
     weather,
     awayPitchMix,
     homePitchMix,
+    awayForm,
+    homeForm,
   ] = await Promise.all([
     awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
     homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
@@ -91,6 +95,8 @@ export default async function GamePreview({ params }: Props) {
       : Promise.resolve(null),
     awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
     homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
+    getTeamForm(game.teams.away.team.id),
+    getTeamForm(game.teams.home.team.id),
   ])
 
   const gameTime = new Date(game.gameDate).toLocaleTimeString('en-US', {
@@ -153,7 +159,107 @@ export default async function GamePreview({ params }: Props) {
         <p className="text-lg text-stone-700 mb-12">
           First pitch: <strong>{gameTime}</strong>. Status: <strong>{game.status?.detailedState}</strong>.
         </p>
+{/* FORM GUIDE */}
+        {(awayForm || homeForm) && (
+          <section className="my-16 border-t border-b border-stone-300 py-12">
+            <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
+              § Form Guide
+            </div>
+            <h2 className="text-3xl font-serif font-light tracking-tight mb-8">
+              How they&apos;re trending.
+            </h2>
 
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* AWAY FORM */}
+              {awayForm && (
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
+                    {shortName(game.teams.away.team.name)}
+                    {awayForm.streak && (
+                      <span className={`ml-2 font-mono font-bold ${
+                        awayForm.streak_type === 'W' ? 'text-green-700' :
+                        awayForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
+                      }`}>
+                        {awayForm.streak}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
+                    {describeTeamForm(awayForm, shortName(game.teams.away.team.name))}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-4 pb-4">
+                    <div>
+                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                        {awayForm.last_10_wins}–{awayForm.last_10_losses}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">L10</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                        {awayForm.runs_per_game_l10}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Runs / G</div>
+                    </div>
+                    <div>
+                      <div className={`text-3xl font-serif font-semibold tracking-tight ${
+                        awayForm.run_diff_l10 > 0 ? 'text-green-700' :
+                        awayForm.run_diff_l10 < 0 ? 'text-red-700' : ''
+                      }`}>
+                        {awayForm.run_diff_l10 > 0 ? '+' : ''}{awayForm.run_diff_l10}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Run Diff</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* HOME FORM */}
+              {homeForm && (
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
+                    {shortName(game.teams.home.team.name)}
+                    {homeForm.streak && (
+                      <span className={`ml-2 font-mono font-bold ${
+                        homeForm.streak_type === 'W' ? 'text-green-700' :
+                        homeForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
+                      }`}>
+                        {homeForm.streak}
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
+                    {describeTeamForm(homeForm, shortName(game.teams.home.team.name))}
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-4 pb-4">
+                    <div>
+                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                        {homeForm.last_10_wins}–{homeForm.last_10_losses}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">L10</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                        {homeForm.runs_per_game_l10}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Runs / G</div>
+                    </div>
+                    <div>
+                      <div className={`text-3xl font-serif font-semibold tracking-tight ${
+                        homeForm.run_diff_l10 > 0 ? 'text-green-700' :
+                        homeForm.run_diff_l10 < 0 ? 'text-red-700' : ''
+                      }`}>
+                        {homeForm.run_diff_l10 > 0 ? '+' : ''}{homeForm.run_diff_l10}
+                      </div>
+                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Run Diff</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
         {/* PITCHING MATCHUP */}
         {(awayPitcherId || homePitcherId) && (
           <section className="my-16 border-t border-b border-stone-300 py-12">
