@@ -1,6 +1,10 @@
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
 import Link from 'next/link'
 
+import SiteHeader from '@/components/SiteHeader'
+// ... at the top of the JSX, right after the opening main tag:
+<SiteHeader variant="home" />
+
 export const revalidate = 1800
 
 export default async function HomePage() {

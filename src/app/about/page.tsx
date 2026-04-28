@@ -3,10 +3,13 @@ export const metadata = {
   description: "Why The Edge exists, who's behind it, and what we believe about sports analytics.",
 }
 
+import SiteHeader from '@/components/SiteHeader'
+
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-900">
-      <div className="max-w-2xl mx-auto px-6 py-20">
+ <main className="min-h-screen bg-stone-50 text-stone-900">
+      <SiteHeader variant="page" />
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <a href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
           ← Back to home
         </a>

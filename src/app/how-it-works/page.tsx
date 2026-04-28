@@ -1,3 +1,5 @@
+import SiteHeader from '@/components/SiteHeader'
+
 export const metadata = {
   title: "How it works · The Edge",
   description: "Three steps. Five minutes. Three hours before first pitch.",
@@ -5,8 +7,9 @@ export const metadata = {
 
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-900">
-      <div className="max-w-3xl mx-auto px-6 py-20">
+   <main className="min-h-screen bg-stone-50 text-stone-900">
+      <SiteHeader variant="page" />
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <a href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
           ← Back to home
         </a>

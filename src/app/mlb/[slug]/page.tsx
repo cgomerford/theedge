@@ -18,6 +18,7 @@ import WeatherIcon from '@/components/WeatherIcon'
 import WindArrow from '@/components/WindArrow'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
+import SiteHeader from '@/components/SiteHeader'
 
 export const revalidate = 1800
 
@@ -109,8 +110,9 @@ const [
   })
 
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-900">
-      <div className="max-w-3xl mx-auto px-6 py-16">
+<main className="min-h-screen bg-stone-50 text-stone-900">
+      <SiteHeader variant="page" />
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
           MLB · {gameDate} · {game.venue?.name}
         </div>

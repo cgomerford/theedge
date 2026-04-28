@@ -187,24 +187,31 @@ export function dailyBriefEmail(
     const awayPitcher = game.teams.away.probablePitcher
     const homePitcher = game.teams.home.probablePitcher
 
-    return `
+  return `
       <tr><td style="padding:32px 40px 8px;border-top:2px solid #1a1a1a;">
-        <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:8px;">
+        <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:12px;">
           ${gameTime} · ${ctx.venueName}
         </div>
-        <h2 style="font-family:Georgia,serif;font-size:32px;line-height:1.05;letter-spacing:-1px;margin:0 0 6px 0;color:#1a1a1a;font-weight:300;">
-          ${awayShort} <em style="color:#999;font-weight:300;">at</em> ${homeShort}
-        </h2>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="padding-right:12px;vertical-align:middle;"><img src="https://www.mlbstatic.com/team-logos/${game.teams.away.team.id}.svg" alt="" width="40" height="40" style="display:block;"></td>
+          <td style="vertical-align:middle;padding-right:12px;"><div style="font-family:Georgia,serif;font-size:30px;line-height:1;letter-spacing:-1px;color:#1a1a1a;font-weight:600;">${awayShort}</div></td>
+          <td style="vertical-align:middle;padding-right:12px;"><div style="font-family:Georgia,serif;font-style:italic;font-size:18px;color:#999;font-weight:300;">at</div></td>
+          <td style="padding-right:12px;vertical-align:middle;"><img src="https://www.mlbstatic.com/team-logos/${game.teams.home.team.id}.svg" alt="" width="40" height="40" style="display:block;"></td>
+          <td style="vertical-align:middle;"><div style="font-family:Georgia,serif;font-size:30px;line-height:1;letter-spacing:-1px;color:#1a1a1a;font-weight:600;">${homeShort}</div></td>
+        </tr></table>
       </td></tr>
 
       ${(awayPitcher || homePitcher) ? `
       <tr><td style="padding:16px 40px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            ${awayPitcher && awaySeasonStats ? `
+    ${awayPitcher && awaySeasonStats ? `
             <td width="50%" style="padding-right:16px;vertical-align:top;">
-              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:4px;">${awayShort}</div>
-              <div style="font-family:Georgia,serif;font-size:18px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">${awayPitcher.fullName}</div>
+              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">${awayShort}</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>
+                <td style="padding-right:10px;vertical-align:middle;"><img src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_120,q_auto:best/v1/people/${awayPitcher.id}/headshot/67/current" alt="${awayPitcher.fullName}" width="48" height="48" style="display:block;border-radius:50%;background:#eee;"></td>
+                <td style="vertical-align:middle;"><div style="font-family:Georgia,serif;font-size:17px;font-weight:600;color:#1a1a1a;line-height:1.2;">${awayPitcher.fullName}</div></td>
+              </tr></table>
               <div style="font-family:'Courier New',monospace;font-size:13px;color:#666;">
                 ERA <strong style="color:#1a1a1a;">${awaySeasonStats.era}</strong> ·
                 WHIP <strong style="color:#1a1a1a;">${awaySeasonStats.whip}</strong> ·
@@ -214,8 +221,11 @@ export function dailyBriefEmail(
             ` : `<td width="50%" style="vertical-align:top;color:#999;font-style:italic;font-family:Georgia,serif;">SP TBD</td>`}
             ${homePitcher && homeSeasonStats ? `
             <td width="50%" style="padding-left:16px;border-left:1px solid #ddd;vertical-align:top;">
-              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:4px;">${homeShort}</div>
-              <div style="font-family:Georgia,serif;font-size:18px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">${homePitcher.fullName}</div>
+              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:6px;">${homeShort}</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;"><tr>
+                <td style="padding-right:10px;vertical-align:middle;"><img src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_120,q_auto:best/v1/people/${homePitcher.id}/headshot/67/current" alt="${homePitcher.fullName}" width="48" height="48" style="display:block;border-radius:50%;background:#eee;"></td>
+                <td style="vertical-align:middle;"><div style="font-family:Georgia,serif;font-size:17px;font-weight:600;color:#1a1a1a;line-height:1.2;">${homePitcher.fullName}</div></td>
+              </tr></table>
               <div style="font-family:'Courier New',monospace;font-size:13px;color:#666;">
                 ERA <strong style="color:#1a1a1a;">${homeSeasonStats.era}</strong> ·
                 WHIP <strong style="color:#1a1a1a;">${homeSeasonStats.whip}</strong> ·
