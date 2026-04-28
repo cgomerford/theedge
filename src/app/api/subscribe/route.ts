@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = SignupSchema.safeParse({ email, source })
   if (!parsed.success) {
-return NextResponse.redirect(new URL('/?error=invalid', req.url), { status: 303 })
+    return NextResponse.redirect(new URL('/?error=invalid', req.url), { status: 303 })
   }
 
   const supa = createAdminClient()
@@ -41,7 +41,7 @@ return NextResponse.redirect(new URL('/?error=invalid', req.url), { status: 303 
 
   const isNewSignup = !existing
 
-  // Save to Supabase
+  // Save to Supabase (insert or update)
   const { error: dbError } = await supa.from('subscribers').upsert(
     { email: parsed.data.email, source: parsed.data.source ?? 'web' },
     { onConflict: 'email' }
@@ -49,14 +49,23 @@ return NextResponse.redirect(new URL('/?error=invalid', req.url), { status: 303 
 
   if (dbError) {
     console.error('Subscribe DB error:', dbError)
-return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
+    return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
+
+  // Fetch the subscriber's preferences token (used for welcome email + redirect)
+  const { data: subscriber } = await supa
+    .from('subscribers')
+    .select('preferences_token')
+    .eq('email', parsed.data.email)
+    .single()
+
+  const token = subscriber?.preferences_token ?? ''
 
   // Send welcome email — only for genuinely new signups
   if (isNewSignup && process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
-      const email_content = welcomeEmail(parsed.data.email)
+      const email_content = welcomeEmail(parsed.data.email, token)
 
       await resend.emails.send({
         from: 'The Edge <hello@edgereportdaily.com>',
@@ -66,10 +75,18 @@ return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 }
         text: email_content.text,
       })
     } catch (emailError) {
-      // Don't fail the signup if email fails — log it and move on
       console.error('Welcome email failed:', emailError)
     }
   }
 
+  // Redirect new signups straight to their preferences page (catch them in the moment)
+  if (isNewSignup && token) {
+    return NextResponse.redirect(
+      new URL(`/preferences/${token}?welcome=1`, req.url),
+      { status: 303 }
+    )
+  }
+
+  // Existing subscribers (or token missing): just go home
   return NextResponse.redirect(new URL('/?subscribed=1', req.url), { status: 303 })
 }

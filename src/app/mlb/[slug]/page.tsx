@@ -7,7 +7,9 @@ import {
   getGameWeather,
   type MLBGame
 } from '@/lib/mlb'
-import { getVenueInfo } from '@/lib/venues'
+import { getVenueInfo, describeWindImpact } from '@/lib/venues'
+import WeatherIcon from '@/components/WeatherIcon'
+import WindArrow from '@/components/WindArrow'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 
@@ -200,7 +202,7 @@ const venue = getVenueInfo(game.venue?.name)
                         </thead>
                         <tbody>
                           {awayRecentStarts.map((g, i) => (
-                            <tr key={i} className="border-t border-stone-200">
+                            <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
                               <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
                               <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
                               <td className="py-2 text-right">{g.ip}</td>
@@ -288,9 +290,17 @@ const venue = getVenueInfo(game.venue?.name)
             <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
               § Conditions
             </div>
-            <h2 className="text-3xl font-serif font-light tracking-tight mb-8">
-              {venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}
-            </h2>
+            <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
+              <h2 className="text-3xl font-serif font-light tracking-tight">
+                {venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}
+              </h2>
+              {weather && !venue?.indoor && (
+                <div className="flex items-center gap-3">
+                  <WeatherIcon conditions={weather.conditions} size={48} />
+                  <div className="font-serif text-stone-600 italic">{weather.conditions}</div>
+                </div>
+              )}
+            </div>
 
             {venue?.indoor ? (
               <p className="text-lg text-stone-600 font-serif leading-relaxed">
@@ -300,7 +310,11 @@ const venue = getVenueInfo(game.venue?.name)
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                   <div>
-                    <div className="text-4xl font-serif font-semibold tracking-tight">
+                    <div className={`text-4xl font-serif font-semibold tracking-tight ${
+                      weather.temp_f >= 85 ? 'text-orange-700' :
+                      weather.temp_f <= 50 ? 'text-blue-700' :
+                      'text-stone-900'
+                    }`}>
                       {weather.temp_f}°
                       <span className="text-stone-400 text-2xl font-light">F</span>
                     </div>
@@ -313,6 +327,11 @@ const venue = getVenueInfo(game.venue?.name)
                     <div className="text-4xl font-serif font-semibold tracking-tight flex items-baseline gap-2">
                       {weather.wind_mph}
                       <span className="text-stone-400 text-base font-mono">mph</span>
+                      <WindArrow
+                        direction={weather.wind_direction}
+                        size={20}
+                        className="text-stone-700 self-center"
+                      />
                     </div>
                     <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">
                       Wind · from {weather.wind_direction_text}
@@ -320,7 +339,9 @@ const venue = getVenueInfo(game.venue?.name)
                   </div>
 
                   <div>
-                    <div className="text-4xl font-serif font-semibold tracking-tight">
+                    <div className={`text-4xl font-serif font-semibold tracking-tight ${
+                      weather.precipitation_chance >= 50 ? 'text-blue-700' : 'text-stone-900'
+                    }`}>
                       {weather.precipitation_chance}
                       <span className="text-stone-400 text-2xl font-light">%</span>
                     </div>
@@ -340,10 +361,26 @@ const venue = getVenueInfo(game.venue?.name)
                   </div>
                 </div>
 
-                <p className="text-stone-600 font-serif italic">
-                  {weather.conditions}
-                  {venue?.city && ` in ${venue.city}`} at first pitch.
-                </p>
+                {(() => {
+                  const impact = describeWindImpact(
+                    game.venue?.name ?? '',
+                    weather.wind_direction,
+                    weather.wind_mph
+                  )
+                  return (
+                    <div className="border-t border-stone-200 pt-4 space-y-1">
+                      <p className="text-stone-600 font-serif italic">
+                        {weather.conditions}
+                        {venue?.city && ` in ${venue.city}`} at first pitch.
+                      </p>
+                      {impact && (
+                        <p className="text-sm font-mono uppercase tracking-wider text-orange-600">
+                          → {impact}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
               </>
             ) : null}
           </section>

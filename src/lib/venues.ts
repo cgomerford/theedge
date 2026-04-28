@@ -60,3 +60,69 @@ export function getVenueInfo(venueName: string | undefined): VenueInfo | null {
   if (!venueName) return null
   return MLB_VENUES[venueName] ?? null
 }
+
+// Stadium orientation — which compass direction does the field point?
+// Used to translate raw wind direction into "blowing in/out/across"
+// (For each stadium, "homeplate_to_cf_bearing" is the compass bearing
+//  from home plate to center field — wind from this direction is "blowing in")
+export const STADIUM_ORIENTATION: Record<string, number> = {
+  "Yankee Stadium": 75,        // CF roughly to ENE
+  "Fenway Park": 45,           // CF to NE
+  "Dodger Stadium": 65,
+  "Wrigley Field": 30,         // famous "winds blowing out to LF" days
+  "Coors Field": 0,            // CF straight north
+  "Citi Field": 60,
+  "Citizens Bank Park": 60,
+  "Truist Park": 60,
+  "Oracle Park": 90,           // CF to east, marine layer from west
+  "Petco Park": 60,
+  "Great American Ball Park": 30,
+  "PNC Park": 90,
+  "Busch Stadium": 60,
+  "Kauffman Stadium": 0,
+  "Target Field": 0,
+  "Comerica Park": 30,
+  "Progressive Field": 0,
+  "Guaranteed Rate Field": 30,
+  "Rate Field": 30,
+  "Camden Yards": 60,
+  "Oriole Park at Camden Yards": 60,
+  "Steinbrenner Field": 60,
+  "Sutter Health Park": 30,
+  "Oakland Coliseum": 60,
+  "Angel Stadium": 30,
+  "T-Mobile Park": 0,
+  "Nationals Park": 60,
+}
+
+// Returns a short baseball-relevant description of wind impact
+export function describeWindImpact(
+  venueName: string,
+  windFromDirection: number,
+  windMph: number
+): string | null {
+  if (windMph < 5) return null  // negligible
+
+  const cfBearing = STADIUM_ORIENTATION[venueName]
+  if (cfBearing === undefined) return null
+
+  // Wind direction is "from", so wind goes TO (cfBearing + 180)
+  const windToDir = (windFromDirection + 180) % 360
+
+  // Difference between where wind is going and where CF is
+  let diff = Math.abs(windToDir - cfBearing)
+  if (diff > 180) diff = 360 - diff
+
+  if (diff <= 30) return `Blowing out to center — favors hitters`
+  if (diff <= 60) {
+    // figure out left or right
+    const isLeft = ((windToDir - cfBearing + 360) % 360) > 180
+    return `Blowing out to ${isLeft ? 'left' : 'right'} field`
+  }
+  if (diff >= 150) return `Blowing in from center — suppresses scoring`
+  if (diff >= 120) {
+    const isLeft = ((windToDir - cfBearing + 360) % 360) > 180
+    return `Blowing in from ${isLeft ? 'left' : 'right'} field`
+  }
+  return `Crosswind across the diamond`
+}
