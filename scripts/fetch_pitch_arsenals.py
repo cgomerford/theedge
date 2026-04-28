@@ -20,7 +20,17 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     sys.exit(1)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
+def format_name(raw):
+    """Convert 'Pérez, Eury' to 'Eury Pérez'"""
+    if not raw:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if ',' in s:
+        last, first = s.split(',', 1)
+        return f'{first.strip()} {last.strip()}'
+    return s
 # Pitch type code -> friendly name
 PITCH_NAMES = {
     'FF': '4-Seam Fastball',
@@ -60,7 +70,7 @@ def main():
         return None
 
     pid_col = first_col('pitcher_id', 'player_id', 'pitcher', 'mlbam_id')
-    name_col = first_col('name', 'player_name', 'first_last_name', 'last_first_name')
+    name_col = first_col('last_name, first_name', 'name', 'player_name', 'first_last_name', 'last_first_name')
     ptype_col = first_col('pitch_type', 'pitchType', 'pitch')
     pitches_col = first_col('pitches', 'n', 'count')
     usage_col = first_col('pitch_usage', 'pitch_pct', 'pct', 'percentage')
@@ -99,7 +109,7 @@ def main():
 
         rows.append({
             'player_id': player_id_int,
-            'player_name': (str(r.get(name_col, '')).strip() or None) if name_col else None,
+            'player_name': format_name(r.get(name_col)) if name_col else None,
             'season': season,
             'pitch_type': pitch_type,
             'pitch_name': PITCH_NAMES.get(pitch_type, pitch_type),

@@ -135,3 +135,221 @@ Unsubscribe: ${unsubscribeUrl}
 Privacy: https://edgereportdaily.com/privacy · Terms: https://edgereportdaily.com/terms`,
   }
 }
+// =====================================================
+// DAILY BRIEF — sent each morning to subscribers
+// =====================================================
+
+import type { MLBGame } from '@/lib/mlb'
+
+export type BriefGameContext = {
+  game: MLBGame
+  awaySeasonStats: { era: string; whip: string; k_per_9: string; wins: number; losses: number } | null
+  homeSeasonStats: { era: string; whip: string; k_per_9: string; wins: number; losses: number } | null
+  weather: { temp_f: number; wind_mph: number; wind_direction_text: string; conditions: string; precipitation_chance: number } | null
+  windImpact: string | null
+  venueName: string
+  isIndoor: boolean
+  slug: string
+}
+
+export function dailyBriefEmail(
+  email: string,
+  preferencesToken: string,
+  games: BriefGameContext[],
+  teamShortNames: string[]
+) {
+  const preferencesUrl = `https://edgereportdaily.com/preferences/${preferencesToken}`
+  const unsubscribeUrl = `https://edgereportdaily.com/api/unsubscribe?email=${encodeURIComponent(email)}`
+
+  const dateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  })
+
+  const teamLabel = teamShortNames.length === 0
+    ? 'your teams'
+    : teamShortNames.length <= 2
+      ? teamShortNames.join(' & ')
+      : `${teamShortNames.slice(0, 2).join(', ')} +${teamShortNames.length - 2}`
+
+  const gameSections = games.map((ctx) => {
+    const { game, awaySeasonStats, homeSeasonStats, weather, windImpact, isIndoor, slug } = ctx
+    const awayTeam = game.teams.away.team.name
+    const homeTeam = game.teams.home.team.name
+    const awayShort = awayTeam.split(' ').pop()
+    const homeShort = homeTeam.split(' ').pop()
+    const gameTime = new Date(game.gameDate).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+    })
+    const previewUrl = `https://edgereportdaily.com/mlb/${slug}`
+
+    const awayPitcher = game.teams.away.probablePitcher
+    const homePitcher = game.teams.home.probablePitcher
+
+    return `
+      <tr><td style="padding:32px 40px 8px;border-top:2px solid #1a1a1a;">
+        <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:8px;">
+          ${gameTime} · ${ctx.venueName}
+        </div>
+        <h2 style="font-family:Georgia,serif;font-size:32px;line-height:1.05;letter-spacing:-1px;margin:0 0 6px 0;color:#1a1a1a;font-weight:300;">
+          ${awayShort} <em style="color:#999;font-weight:300;">at</em> ${homeShort}
+        </h2>
+      </td></tr>
+
+      ${(awayPitcher || homePitcher) ? `
+      <tr><td style="padding:16px 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            ${awayPitcher && awaySeasonStats ? `
+            <td width="50%" style="padding-right:16px;vertical-align:top;">
+              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:4px;">${awayShort}</div>
+              <div style="font-family:Georgia,serif;font-size:18px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">${awayPitcher.fullName}</div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;color:#666;">
+                ERA <strong style="color:#1a1a1a;">${awaySeasonStats.era}</strong> ·
+                WHIP <strong style="color:#1a1a1a;">${awaySeasonStats.whip}</strong> ·
+                K/9 <strong style="color:#1a1a1a;">${awaySeasonStats.k_per_9}</strong>
+              </div>
+            </td>
+            ` : `<td width="50%" style="vertical-align:top;color:#999;font-style:italic;font-family:Georgia,serif;">SP TBD</td>`}
+            ${homePitcher && homeSeasonStats ? `
+            <td width="50%" style="padding-left:16px;border-left:1px solid #ddd;vertical-align:top;">
+              <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:4px;">${homeShort}</div>
+              <div style="font-family:Georgia,serif;font-size:18px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">${homePitcher.fullName}</div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;color:#666;">
+                ERA <strong style="color:#1a1a1a;">${homeSeasonStats.era}</strong> ·
+                WHIP <strong style="color:#1a1a1a;">${homeSeasonStats.whip}</strong> ·
+                K/9 <strong style="color:#1a1a1a;">${homeSeasonStats.k_per_9}</strong>
+              </div>
+            </td>
+            ` : `<td width="50%" style="padding-left:16px;border-left:1px solid #ddd;vertical-align:top;color:#999;font-style:italic;font-family:Georgia,serif;">SP TBD</td>`}
+          </tr>
+        </table>
+      </td></tr>
+      ` : ''}
+
+      ${(weather || isIndoor) ? `
+      <tr><td style="padding:16px 40px;">
+        <div style="background:#fafaf5;padding:14px 16px;border-left:3px solid #ff5722;">
+          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#ff5722;margin-bottom:4px;">Conditions</div>
+          ${isIndoor ? `
+            <div style="font-family:Georgia,serif;font-size:14px;color:#333;">Indoors. Climate-controlled.</div>
+          ` : weather ? `
+            <div style="font-family:Georgia,serif;font-size:14px;color:#333;line-height:1.5;">
+              <strong>${weather.temp_f}°F</strong> · ${weather.conditions} · wind ${weather.wind_mph} mph from ${weather.wind_direction_text} · ${weather.precipitation_chance}% precip
+            </div>
+            ${windImpact ? `
+              <div style="font-family:'Courier New',monospace;font-size:11px;text-transform:uppercase;color:#ff5722;margin-top:6px;">→ ${windImpact}</div>
+            ` : ''}
+          ` : ''}
+        </div>
+      </td></tr>
+      ` : ''}
+
+      <tr><td style="padding:8px 40px 24px;">
+        <a href="${previewUrl}" style="display:inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#ff5722;text-decoration:none;font-weight:600;letter-spacing:0.5px;">
+          Read the full preview →
+        </a>
+      </td></tr>
+    `
+  }).join('')
+
+  return {
+    subject: `${teamLabel} tonight · The Edge`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Edge Daily — ${dateStr}</title>
+</head>
+<body style="margin:0;padding:0;background:#1a1a1a;font-family:Georgia,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="background:#f4f1ea;max-width:640px;width:100%;">
+
+        <tr><td style="padding:32px 40px 24px;border-bottom:2px solid #1a1a1a;">
+          <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;color:#666;text-transform:uppercase;margin-bottom:16px;">
+            The Edge Daily · ${dateStr}
+          </div>
+          <div style="font-family:Georgia,serif;font-size:36px;font-weight:900;letter-spacing:-1px;color:#1a1a1a;line-height:1;">
+            The Edge<span style="color:#ff5722;">.</span>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:36px 40px 16px;">
+          <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:12px;">
+            ${games.length === 1 ? '1 game tonight' : `${games.length} games tonight`}
+          </div>
+          <h1 style="font-family:Georgia,serif;font-size:30px;line-height:1.15;color:#1a1a1a;margin:0 0 12px 0;font-weight:600;letter-spacing:-1px;">
+            Five-minute brief for ${teamLabel}.
+          </h1>
+          <p style="font-family:Georgia,serif;font-size:15px;line-height:1.55;color:#555;margin:0;">
+            Statcast, advanced metrics, the matchups that actually matter. Information only — no advice.
+          </p>
+        </td></tr>
+
+        ${gameSections}
+
+        <tr><td style="padding:32px 40px;background:#1a1a1a;color:#f4f1ea;">
+          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#dcfa3c;text-transform:uppercase;margin-bottom:12px;">
+            Want different teams?
+          </div>
+          <p style="font-family:Georgia,serif;font-size:15px;line-height:1.55;color:#ddd;margin:0 0 16px 0;">
+            Update your team picks anytime — we'll send briefs only for games you care about.
+          </p>
+          <a href="${preferencesUrl}" style="display:inline-block;background:#dcfa3c;color:#1a1a1a;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;font-size:13px;padding:12px 22px;text-decoration:none;letter-spacing:0.5px;">
+            Manage preferences →
+          </a>
+        </td></tr>
+
+        <tr><td style="padding:24px 40px;background:#0a0a0a;color:#666;">
+          <p style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;color:#999;margin:0 0 12px 0;">
+            THE EDGE · EDGEREPORTDAILY.COM
+          </p>
+          <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;line-height:1.6;color:#666;margin:0;">
+            The Edge provides statistical information and analysis only. We do not provide gambling advice, picks, or recommendations. <a href="https://edgereportdaily.com/privacy" style="color:#888;">Privacy</a> · <a href="https://edgereportdaily.com/terms" style="color:#888;">Terms</a> · <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+    text: `THE EDGE DAILY — ${dateStr}
+
+${games.length === 1 ? '1 game tonight' : `${games.length} games tonight`} for ${teamLabel}.
+
+${games.map(ctx => {
+  const awayShort = ctx.game.teams.away.team.name.split(' ').pop()
+  const homeShort = ctx.game.teams.home.team.name.split(' ').pop()
+  const gameTime = new Date(ctx.game.gameDate).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+  })
+  const aw = ctx.game.teams.away.probablePitcher?.fullName ?? 'TBD'
+  const hw = ctx.game.teams.home.probablePitcher?.fullName ?? 'TBD'
+  const aera = ctx.awaySeasonStats?.era ?? '–'
+  const hera = ctx.homeSeasonStats?.era ?? '–'
+  const weatherLine = ctx.isIndoor
+    ? 'Indoors'
+    : ctx.weather
+      ? `${ctx.weather.temp_f}°F, ${ctx.weather.conditions}, wind ${ctx.weather.wind_mph}mph${ctx.windImpact ? ' — ' + ctx.windImpact : ''}`
+      : ''
+  return `
+${awayShort} at ${homeShort}
+${gameTime} · ${ctx.venueName}
+
+${aw} (${aera} ERA) vs ${hw} (${hera} ERA)
+${weatherLine ? weatherLine + '\n' : ''}
+Full preview: https://edgereportdaily.com/mlb/${ctx.slug}
+`
+}).join('\n---\n')}
+
+Manage preferences: ${preferencesUrl}
+Unsubscribe: ${unsubscribeUrl}
+`,
+  }
+}
