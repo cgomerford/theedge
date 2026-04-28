@@ -5,6 +5,8 @@ import {
   getPitcherRecentStarts,
   getPitcherSeasonStats,
   getGameWeather,
+  getPitchMix,
+  pitchColor,
   type MLBGame
 } from '@/lib/mlb'
 import { getVenueInfo, describeWindImpact } from '@/lib/venues'
@@ -65,10 +67,11 @@ export default async function GamePreview({ params }: Props) {
       raw_data: game,
     }, { onConflict: 'slug' })
   }
-// Fetch pitcher data in parallel (faster than sequential)
+
+  // Fetch pitcher data in parallel (faster than sequential)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
-const venue = getVenueInfo(game.venue?.name)
+  const venue = getVenueInfo(game.venue?.name)
 
   const [
     awayRecentStarts,
@@ -76,6 +79,8 @@ const venue = getVenueInfo(game.venue?.name)
     awaySeasonStats,
     homeSeasonStats,
     weather,
+    awayPitchMix,
+    homePitchMix,
   ] = await Promise.all([
     awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
     homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
@@ -84,7 +89,10 @@ const venue = getVenueInfo(game.venue?.name)
     venue && !venue.indoor
       ? getGameWeather(venue.lat, venue.lon, game.gameDate)
       : Promise.resolve(null),
+    awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
+    homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
   ])
+
   const gameTime = new Date(game.gameDate).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
   })
@@ -184,6 +192,34 @@ const venue = getVenueInfo(game.venue?.name)
                     </div>
                   )}
 
+                  {awayPitchMix.length > 0 && (
+                    <div className="mb-6 pb-6 border-b border-stone-200">
+                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                        Pitch Arsenal · {new Date().getFullYear()}
+                      </div>
+                      <div className="space-y-2">
+                        {awayPitchMix.slice(0, 5).map((p, i) => (
+                          <div key={i} className="flex items-center gap-3 text-sm">
+                            <div className="w-32 text-stone-700 truncate">{p.pitch_name}</div>
+                            <div className="flex-1 h-5 bg-stone-100 relative">
+                              <div
+                                className="h-full transition-all"
+                                style={{
+                                  width: `${p.percentage}%`,
+                                  backgroundColor: pitchColor(p.pitch_code)
+                                }}
+                              />
+                            </div>
+                            <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                            {p.avg_velocity > 0 && (
+                              <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {awayRecentStarts.length > 0 && (
                     <div>
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
@@ -246,6 +282,35 @@ const venue = getVenueInfo(game.venue?.name)
                       </div>
                     </div>
                   )}
+
+                  {homePitchMix.length > 0 && (
+                    <div className="mb-6 pb-6 border-b border-stone-200">
+                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                        Pitch Arsenal · {new Date().getFullYear()}
+                      </div>
+                      <div className="space-y-2">
+                        {homePitchMix.slice(0, 5).map((p, i) => (
+                          <div key={i} className="flex items-center gap-3 text-sm">
+                            <div className="w-32 text-stone-700 truncate">{p.pitch_name}</div>
+                            <div className="flex-1 h-5 bg-stone-100 relative">
+                              <div
+                                className="h-full transition-all"
+                                style={{
+                                  width: `${p.percentage}%`,
+                                  backgroundColor: pitchColor(p.pitch_code)
+                                }}
+                              />
+                            </div>
+                            <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                            {p.avg_velocity > 0 && (
+                              <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {homeRecentStarts.length > 0 && (
                     <div>
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
@@ -264,7 +329,7 @@ const venue = getVenueInfo(game.venue?.name)
                         </thead>
                         <tbody>
                           {homeRecentStarts.map((g, i) => (
-                            <tr key={i} className="border-t border-stone-200">
+                            <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
                               <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
                               <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
                               <td className="py-2 text-right">{g.ip}</td>
@@ -284,7 +349,8 @@ const venue = getVenueInfo(game.venue?.name)
             </div>
           </section>
         )}
-{/* CONDITIONS */}
+
+        {/* CONDITIONS */}
         {(weather || venue?.indoor) && (
           <section className="my-16 border-t border-b border-stone-300 py-12">
             <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
@@ -385,6 +451,7 @@ const venue = getVenueInfo(game.venue?.name)
             ) : null}
           </section>
         )}
+
         <div className="bg-stone-900 text-stone-100 p-8 my-12">
           <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-3">
             Get the full pre-game brief

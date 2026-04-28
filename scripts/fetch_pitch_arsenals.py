@@ -69,7 +69,10 @@ def main():
     if not pid_col or not ptype_col:
         print(f'ERROR: Required columns not found. Available: {list(df.columns)}')
         sys.exit(1)
-
+# Print first row sample so we can debug values
+    if not df.empty:
+        first_row = df.iloc[0].to_dict()
+        print(f'Sample row: {first_row}')
     print(f'Using columns: id={pid_col}, name={name_col}, type={ptype_col}, count={pitches_col}, usage={usage_col}, speed={speed_col}')
 
     rows = []
@@ -79,8 +82,8 @@ def main():
             continue
 
         pitches = int(r.get(pitches_col, 0) or 0) if pitches_col else 0
-        if pitches < 5:
-            continue
+        if pitches < 1:
+            continue  # only filter rows with literally zero
 
         pitch_usage = float(r.get(usage_col, 0) or 0) if usage_col else 0
         avg_speed = r.get(speed_col) if speed_col else None

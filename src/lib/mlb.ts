@@ -246,3 +246,54 @@ export async function getGameWeather(
     return null
   }
 }
+
+// =====================================================
+// PITCH MIX — read from Supabase (populated daily by Python cron)
+// =====================================================
+
+import { createAdminClient } from '@/lib/supabase'
+
+export type PitchType = {
+  pitch_name: string
+  pitch_code: string
+  count: number
+  percentage: number
+  avg_velocity: number
+}
+
+export async function getPitchMix(playerId: number): Promise<PitchType[]> {
+  const season = new Date().getFullYear()
+  const supa = createAdminClient()
+
+  const { data, error } = await supa
+    .from('pitch_arsenals')
+    .select('*')
+    .eq('player_id', playerId)
+    .eq('season', season)
+    .order('percentage', { ascending: false })
+
+  if (error || !data) {
+    console.error('getPitchMix DB error:', error)
+    return []
+  }
+
+  return data.map(r => ({
+    pitch_name: r.pitch_name,
+    pitch_code: r.pitch_type,
+    count: r.count,
+    percentage: Number(r.percentage),
+    avg_velocity: Number(r.avg_velocity ?? 0),
+  }))
+}
+
+// Color for each pitch type — used in the bar chart
+export function pitchColor(pitchCode: string): string {
+  const colors: Record<string, string> = {
+    'FF': '#dc2626', 'SI': '#ea580c', 'FC': '#d97706',
+    'SL': '#7c3aed', 'ST': '#9333ea', 'SV': '#1d4ed8',
+    'CU': '#2563eb', 'KC': '#0891b2',
+    'CH': '#059669', 'FS': '#65a30d', 'FO': '#65a30d', 'SC': '#16a34a',
+    'KN': '#a16207', 'EP': '#92400e',
+  }
+  return colors[pitchCode] ?? '#525252'
+}
