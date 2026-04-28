@@ -409,3 +409,24 @@ export function describeTeamForm(form: TeamForm, shortName: string): string {
   }
   return `${shortName} are ${record}, run differential ${run_diff_l10 >= 0 ? '+' : ''}${run_diff_l10} per game over the last ten.`
 }
+
+// =====================================================
+// IMAGES — official MLB CDN URLs (free, no key required)
+// =====================================================
+
+// Get team logo URL by team ID (the same MLB team IDs we already use everywhere)
+// Returns SVG when possible — crisp at any size
+export function teamLogoUrl(teamId: number): string {
+  return `https://www.mlbstatic.com/team-logos/team-cap-on-light/${teamId}.svg`
+}
+
+// Fallback PNG if SVG fails — useful for email or older browsers
+export function teamLogoUrlPng(teamId: number, size: number = 240): string {
+  return `https://www.mlbstatic.com/team-logos/${teamId}.svg`
+}
+
+// Get player headshot URL by MLB player ID
+// Sizes: 60, 120, 240 most common
+export function playerHeadshotUrl(playerId: number, size: number = 240): string {
+  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_${size},q_auto:best/v1/people/${playerId}/headshot/67/current`
+}

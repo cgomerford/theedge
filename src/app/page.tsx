@@ -1,4 +1,4 @@
-import { getScheduleForDate, slugifyGame, shortName } from '@/lib/mlb'
+import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
 import Link from 'next/link'
 
 export const revalidate = 1800
@@ -68,10 +68,22 @@ export default async function HomePage() {
                     {new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                     {' · '}{game.venue?.name}
                   </div>
-                  <div className="text-2xl font-serif font-medium mb-1">
-                    {shortName(game.teams.away.team.name)}
-                    <span className="text-stone-600 italic font-light"> at </span>
-                    {shortName(game.teams.home.team.name)}
+                 <div className="flex items-center gap-3 mb-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={teamLogoUrl(game.teams.away.team.id)}
+                      alt=""
+                      className="w-8 h-8 object-contain"
+                    />
+                    <span className="text-xl font-serif font-medium">{shortName(game.teams.away.team.name)}</span>
+                    <span className="text-stone-600 italic font-light text-base">at</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={teamLogoUrl(game.teams.home.team.id)}
+                      alt=""
+                      className="w-8 h-8 object-contain"
+                    />
+                    <span className="text-xl font-serif font-medium">{shortName(game.teams.home.team.name)}</span>
                   </div>
                   {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
                     <div className="text-sm text-stone-500 mt-2 font-mono">

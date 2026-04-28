@@ -9,6 +9,8 @@ import {
   pitchColor,
   getTeamForm,
   describeTeamForm,
+  teamLogoUrl,
+  playerHeadshotUrl,
   type MLBGame
 } from '@/lib/mlb'
 import { getVenueInfo, describeWindImpact } from '@/lib/venues'
@@ -122,11 +124,18 @@ const [
         <h1 className="text-5xl md:text-7xl font-serif font-light leading-none tracking-tight mb-12">
           {shortName(game.teams.home.team.name)}
         </h1>
-
-        <div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
+<div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
           <div>
-            <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">Away</div>
-            <div className="text-2xl font-serif font-bold mb-1">{game.teams.away.team.name}</div>
+            <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Away</div>
+            <div className="flex items-center gap-3 mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={teamLogoUrl(game.teams.away.team.id)}
+                alt={`${game.teams.away.team.name} logo`}
+                className="w-12 h-12 object-contain"
+              />
+              <div className="text-2xl font-serif font-bold leading-tight">{game.teams.away.team.name}</div>
+            </div>
             {game.teams.away.leagueRecord && (
               <div className="text-sm font-mono text-stone-500">
                 {game.teams.away.leagueRecord.wins}–{game.teams.away.leagueRecord.losses}
@@ -140,8 +149,16 @@ const [
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">Home</div>
-            <div className="text-2xl font-serif font-bold mb-1">{game.teams.home.team.name}</div>
+            <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Home</div>
+            <div className="flex items-center gap-3 mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={teamLogoUrl(game.teams.home.team.id)}
+                alt={`${game.teams.home.team.name} logo`}
+                className="w-12 h-12 object-contain"
+              />
+              <div className="text-2xl font-serif font-bold leading-tight">{game.teams.home.team.name}</div>
+            </div>
             {game.teams.home.leagueRecord && (
               <div className="text-sm font-mono text-stone-500">
                 {game.teams.home.leagueRecord.wins}–{game.teams.home.leagueRecord.losses}
@@ -170,10 +187,16 @@ const [
             </h2>
 
             <div className="grid md:grid-cols-2 gap-8">
-              {/* AWAY FORM */}
+       {/* AWAY FORM */}
               {awayForm && (
                 <div>
-                  <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={teamLogoUrl(game.teams.away.team.id)}
+                      alt=""
+                      className="w-5 h-5 object-contain"
+                    />
                     {shortName(game.teams.away.team.name)}
                     {awayForm.streak && (
                       <span className={`ml-2 font-mono font-bold ${
@@ -214,10 +237,17 @@ const [
                 </div>
               )}
 
-              {/* HOME FORM */}
+          
+            {/* HOME FORM */}
               {homeForm && (
                 <div>
-                  <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={teamLogoUrl(game.teams.home.team.id)}
+                      alt=""
+                      className="w-5 h-5 object-contain"
+                    />
                     {shortName(game.teams.home.team.name)}
                     {homeForm.streak && (
                       <span className={`ml-2 font-mono font-bold ${
@@ -272,14 +302,22 @@ const [
 
             <div className="grid md:grid-cols-2 gap-8">
               {/* AWAY PITCHER */}
-              {game.teams.away.probablePitcher && (
+        {game.teams.away.probablePitcher && (
                 <div>
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.away.team.name)} · {awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'}
                   </div>
-                  <h3 className="text-2xl font-serif font-semibold mb-6">
-                    {game.teams.away.probablePitcher.fullName}
-                  </h3>
+                  <div className="flex items-center gap-4 mb-6">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={playerHeadshotUrl(game.teams.away.probablePitcher.id, 120)}
+                      alt={game.teams.away.probablePitcher.fullName}
+                      className="w-16 h-16 rounded-full object-cover bg-stone-100"
+                    />
+                    <h3 className="text-2xl font-serif font-semibold leading-tight">
+                      {game.teams.away.probablePitcher.fullName}
+                    </h3>
+                  </div>
 
                   {awaySeasonStats && (
                     <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
@@ -363,14 +401,22 @@ const [
               )}
 
               {/* HOME PITCHER */}
-              {game.teams.home.probablePitcher && (
+     {game.teams.home.probablePitcher && (
                 <div>
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.home.team.name)} · {homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'}
                   </div>
-                  <h3 className="text-2xl font-serif font-semibold mb-6">
-                    {game.teams.home.probablePitcher.fullName}
-                  </h3>
+                  <div className="flex items-center gap-4 mb-6">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={playerHeadshotUrl(game.teams.home.probablePitcher.id, 120)}
+                      alt={game.teams.home.probablePitcher.fullName}
+                      className="w-16 h-16 rounded-full object-cover bg-stone-100"
+                    />
+                    <h3 className="text-2xl font-serif font-semibold leading-tight">
+                      {game.teams.home.probablePitcher.fullName}
+                    </h3>
+                  </div>
 
                   {homeSeasonStats && (
                     <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
