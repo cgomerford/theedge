@@ -43,7 +43,6 @@ def main():
     season = datetime.now().year
     print(f'Fetching pitch arsenal stats for {season}...')
 
-    # Get arsenal stats for every pitcher with at least 50 pitches thrown
     df = statcast_pitcher_arsenal_stats(year=season, minPA=50)
 
     if df is None or df.empty:
@@ -51,29 +50,53 @@ def main():
         sys.exit(0)
 
     print(f'Got {len(df)} pitcher-pitch rows from Statcast')
+    print(f'DataFrame columns: {list(df.columns)}')
 
-    # The dataframe has one row per (pitcher, pitch_type) combo
-    # Columns include: pitcher_id, name, pitch_type, pitches, pitch_usage, avg_speed, etc.
+    # Helper to find the right column name (pybaseball varies by version)
+    def first_col(*names):
+        for n in names:
+            if n in df.columns:
+                return n
+        return None
+
+    pid_col = first_col('pitcher_id', 'player_id', 'pitcher', 'mlbam_id')
+    name_col = first_col('name', 'player_name', 'first_last_name', 'last_first_name')
+    ptype_col = first_col('pitch_type', 'pitchType', 'pitch')
+    pitches_col = first_col('pitches', 'n', 'count')
+    usage_col = first_col('pitch_usage', 'pitch_pct', 'pct', 'percentage')
+    speed_col = first_col('avg_speed', 'velocity', 'release_speed')
+
+    if not pid_col or not ptype_col:
+        print(f'ERROR: Required columns not found. Available: {list(df.columns)}')
+        sys.exit(1)
+
+    print(f'Using columns: id={pid_col}, name={name_col}, type={ptype_col}, count={pitches_col}, usage={usage_col}, speed={speed_col}')
+
     rows = []
     for _, r in df.iterrows():
-        pitch_type = str(r.get('pitch_type', '')).strip()
+        pitch_type = str(r.get(ptype_col, '')).strip()
         if not pitch_type:
             continue
 
-        pitches = int(r.get('pitches', 0))
+        pitches = int(r.get(pitches_col, 0) or 0) if pitches_col else 0
         if pitches < 5:
-            continue  # skip noise
+            continue
 
-        pitch_usage = float(r.get('pitch_usage', 0) or 0)
-        avg_speed = r.get('avg_speed')
+        pitch_usage = float(r.get(usage_col, 0) or 0) if usage_col else 0
+        avg_speed = r.get(speed_col) if speed_col else None
         try:
-            avg_speed = float(avg_speed) if avg_speed else None
+            avg_speed = float(avg_speed) if avg_speed not in (None, '') else None
         except (ValueError, TypeError):
             avg_speed = None
 
+        try:
+            player_id_int = int(r[pid_col])
+        except (ValueError, TypeError):
+            continue
+
         rows.append({
-            'player_id': int(r['pitcher_id']),
-            'player_name': str(r.get('name', '')).strip() or None,
+            'player_id': player_id_int,
+            'player_name': (str(r.get(name_col, '')).strip() or None) if name_col else None,
             'season': season,
             'pitch_type': pitch_type,
             'pitch_name': PITCH_NAMES.get(pitch_type, pitch_type),
@@ -84,11 +107,14 @@ def main():
 
     print(f'Prepared {len(rows)} rows to upsert')
 
-    # Wipe season's data and re-insert (simpler than upserts on composite keys)
+    if not rows:
+        print('No rows to insert — exiting cleanly')
+        return
+
+    # Wipe season's data and re-insert
     supabase.table('pitch_arsenals').delete().eq('season', season).execute()
     print(f'Cleared existing {season} rows')
 
-    # Insert in batches of 500
     BATCH = 500
     for i in range(0, len(rows), BATCH):
         batch = rows[i:i+BATCH]
