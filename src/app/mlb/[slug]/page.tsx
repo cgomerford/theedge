@@ -22,7 +22,7 @@ import SiteHeader from '@/components/SiteHeader'
 import PreviewSection from '@/components/PreviewSection'
 export const revalidate = 1800
 import { generateGameline, calculateEdge } from '@/lib/narrative'
-
+import LiveTicker from '@/components/LiveTicker'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -151,6 +151,7 @@ const [
   return (
 <main className="min-h-screen bg-stone-50 text-stone-900">
       <SiteHeader variant="page" />
+      <LiveTicker />
       <div className="max-w-3xl mx-auto px-6 py-12">
         <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
           MLB · {gameDate} · {game.venue?.name}

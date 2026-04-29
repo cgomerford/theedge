@@ -1,9 +1,7 @@
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
 import Link from 'next/link'
-
 import SiteHeader from '@/components/SiteHeader'
-// ... at the top of the JSX, right after the opening main tag:
-<SiteHeader variant="home" />
+import LiveTicker from '@/components/LiveTicker'
 
 export const revalidate = 1800
 
@@ -13,14 +11,8 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-stone-950 text-stone-100">
-      <nav className="border-b border-stone-800 px-6 py-5 flex justify-between items-center">
-        <div className="font-serif font-black text-2xl tracking-tight flex items-center gap-2">
-          The Edge<span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
-        </div>
-        <a href="#signup" className="bg-stone-100 text-stone-900 px-4 py-2 text-sm font-semibold">
-          Get tonight&apos;s brief
-        </a>
-      </nav>
+      <SiteHeader variant="home" />
+      <LiveTicker />
 
       <section className="px-6 py-24 max-w-5xl mx-auto">
         <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-6">
@@ -72,7 +64,7 @@ export default async function HomePage() {
                     {new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                     {' · '}{game.venue?.name}
                   </div>
-                 <div className="flex items-center gap-3 mb-1">
+                  <div className="flex items-center gap-3 mb-1">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={teamLogoUrl(game.teams.away.team.id)}
@@ -106,7 +98,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-<footer className="px-6 py-12 border-t border-stone-800 text-xs text-stone-500 font-mono">
+      <footer className="px-6 py-12 border-t border-stone-800 text-xs text-stone-500 font-mono">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-wrap gap-x-6 gap-y-2 mb-6">
             <a href="/about" className="hover:text-stone-100">About</a>

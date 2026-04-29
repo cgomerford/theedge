@@ -22,6 +22,22 @@ export type MLBGame = {
   venue: { name: string }
 }
 
+export type TickerGame = {
+  slug: string
+  awayName: string
+  awayShort: string
+  awayId: number
+  homeName: string
+  homeShort: string
+  homeId: number
+  awayScore: number | null
+  homeScore: number | null
+  status: 'scheduled' | 'live' | 'final' | 'postponed'
+  statusText: string
+  inning: string | null
+  gameTime: string
+}
+
 // Get the MLB schedule for a specific date (format: 'YYYY-MM-DD')
 export async function getScheduleForDate(date: string): Promise<MLBGame[]> {
   const url = `${MLB_API}/schedule?sportId=1&date=${date}&hydrate=team,probablePitcher,linescore`
@@ -37,6 +53,51 @@ export async function getScheduleForDate(date: string): Promise<MLBGame[]> {
     console.error('MLB fetch error:', err)
     return []
   }
+}
+
+export async function getTodayTickerGames(): Promise<TickerGame[]> {
+  const today = new Date().toISOString().split('T')[0]
+  const games = await getScheduleForDate(today)
+
+  return games.map((g) => {
+    const slug = slugifyGame(g)
+    const awayName = g.teams.away.team.name
+    const homeName = g.teams.home.team.name
+    const awayShort = shortName(awayName)
+    const homeShort = shortName(homeName)
+
+    // Score may not be present in the schedule response — needs hydration
+    const awayScore = (g.teams.away as { score?: number }).score ?? null
+    const homeScore = (g.teams.home as { score?: number }).score ?? null
+
+    const abstractState = g.status?.abstractGameState ?? ''
+    const detailedState = g.status?.detailedState ?? ''
+
+    let status: TickerGame['status'] = 'scheduled'
+    if (abstractState === 'Live') status = 'live'
+    else if (abstractState === 'Final') status = 'final'
+    else if (detailedState.toLowerCase().includes('postpone')) status = 'postponed'
+
+    const gameTime = new Date(g.gameDate).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+    })
+
+    return {
+      slug,
+      awayName,
+      awayShort,
+      awayId: g.teams.away.team.id,
+      homeName,
+      homeShort,
+      homeId: g.teams.home.team.id,
+      awayScore,
+      homeScore,
+      status,
+      statusText: detailedState || gameTime,
+      inning: null, // We'll skip live inning detail for now — keeps fetch simple
+      gameTime,
+    }
+  })
 }
 
 // Convert "New York Yankees" -> "new-york-yankees"
