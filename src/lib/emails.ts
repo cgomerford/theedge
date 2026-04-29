@@ -222,7 +222,7 @@ export function dailyBriefEmail(
   ${awayPitcher && awaySeasonStats ? `
             <td width="50%" style="padding-right:12px;vertical-align:top;">
               <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:8px;">${awayShort}</div>
-              <img src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_120,q_auto:best/v1/people/${awayPitcher.id}/headshot/67/current" alt="${awayPitcher.fullName}" width="56" height="56" style="display:block;border-radius:50%;background:#eee;margin-bottom:8px;">
+              <img src="https://img.mlbstatic.com/mlb-photos/image/upload/c_fill,g_auto,w_180,h_180,q_auto:best/v1/people/${awayPitcher.id}/headshot/67/current" alt="${awayPitcher.fullName}" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:50%;background:#eee;margin-bottom:8px;object-fit:cover;-ms-interpolation-mode:bicubic;">
               <div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:#1a1a1a;line-height:1.25;margin-bottom:8px;">${awayPitcher.fullName}</div>
               <div style="font-family:'Courier New',monospace;font-size:12px;color:#666;line-height:1.6;">
                 ERA <strong style="color:#1a1a1a;">${awaySeasonStats.era}</strong><br>
@@ -234,7 +234,7 @@ export function dailyBriefEmail(
           ${homePitcher && homeSeasonStats ? `
             <td width="50%" style="padding-right:12px;vertical-align:top;">
               <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:8px;">${homeShort}</div>
-              <img src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_120,q_auto:best/v1/people/${homePitcher.id}/headshot/67/current" alt="${homePitcher.fullName}" width="56" height="56" style="display:block;border-radius:50%;background:#eee;margin-bottom:8px;">
+              <img src="https://img.mlbstatic.com/mlb-photos/image/upload/c_fill,g_auto,w_180,h_180,q_auto:best/v1/people/${homePitcher.id}/headshot/67/current" alt="${homePitcher.fullName}" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:50%;background:#eee;margin-bottom:8px;object-fit:cover;-ms-interpolation-mode:bicubic;">
               <div style="font-family:Georgia,serif;font-size:16px;font-weight:600;color:#1a1a1a;line-height:1.25;margin-bottom:8px;">${homePitcher.fullName}</div>
               <div style="font-family:'Courier New',monospace;font-size:12px;color:#666;line-height:1.6;">
                 ERA <strong style="color:#1a1a1a;">${homeSeasonStats.era}</strong><br>
