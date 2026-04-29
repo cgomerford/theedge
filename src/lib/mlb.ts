@@ -239,6 +239,10 @@ export type PitchType = {
   count: number
   percentage: number
   avg_velocity: number
+  whiff_percent: number | null
+  k_percent: number | null
+  ba_against: number | null
+  est_woba: number | null
 }
 
 export async function getPitchMix(playerId: number): Promise<PitchType[]> {
@@ -263,6 +267,10 @@ export async function getPitchMix(playerId: number): Promise<PitchType[]> {
     count: r.count,
     percentage: Number(r.percentage),
     avg_velocity: Number(r.avg_velocity ?? 0),
+    whiff_percent: r.whiff_percent !== null ? Number(r.whiff_percent) : null,
+    k_percent: r.k_percent !== null ? Number(r.k_percent) : null,
+    ba_against: r.ba_against !== null ? Number(r.ba_against) : null,
+    est_woba: r.est_woba !== null ? Number(r.est_woba) : null,
   }))
 }
 

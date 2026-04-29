@@ -75,6 +75,11 @@ def main():
     pitches_col = first_col('pitches', 'n', 'count')
     usage_col = first_col('pitch_usage', 'pitch_pct', 'pct', 'percentage')
     speed_col = first_col('avg_speed', 'velocity', 'release_speed')
+    whiff_col = first_col('whiff_percent', 'whiff_pct')
+    k_col = first_col('k_percent', 'k_pct')
+    ba_col = first_col('ba', 'opponent_ba', 'avg_against')
+    xwoba_col = first_col('est_woba', 'xwoba', 'expected_woba')
+    hardhit_col = first_col('hard_hit_percent', 'hard_hit_pct')
 
     if not pid_col or not ptype_col:
         print(f'ERROR: Required columns not found. Available: {list(df.columns)}')
@@ -107,6 +112,24 @@ def main():
         except (ValueError, TypeError):
             continue
 
+        def safe_pct(col):
+            if not col:
+                return None
+            v = r.get(col)
+            try:
+                return round(float(v), 2) if v not in (None, '') else None
+            except (ValueError, TypeError):
+                return None
+
+        def safe_avg(col):
+            if not col:
+                return None
+            v = r.get(col)
+            try:
+                return round(float(v), 3) if v not in (None, '') else None
+            except (ValueError, TypeError):
+                return None
+
         rows.append({
             'player_id': player_id_int,
             'player_name': format_name(r.get(name_col)) if name_col else None,
@@ -116,6 +139,11 @@ def main():
             'count': pitches,
             'percentage': round(pitch_usage, 2),
             'avg_velocity': round(avg_speed, 1) if avg_speed else None,
+            'whiff_percent': safe_pct(whiff_col),
+            'k_percent': safe_pct(k_col),
+            'ba_against': safe_avg(ba_col),
+            'est_woba': safe_avg(xwoba_col),
+            'hard_hit_percent': safe_pct(hardhit_col),
         })
 
     print(f'Prepared {len(rows)} rows to upsert')

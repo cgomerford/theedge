@@ -338,27 +338,48 @@ const [
                     </div>
                   )}
 
-                  {awayPitchMix.length > 0 && (
+                 {awayPitchMix.length > 0 && (
                     <div className="mb-6 pb-6 border-b border-stone-200">
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
                         Pitch Arsenal · {new Date().getFullYear()}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {awayPitchMix.slice(0, 5).map((p, i) => (
-                          <div key={i} className="flex items-center gap-3 text-sm">
-                            <div className="w-32 text-stone-700 truncate">{p.pitch_name}</div>
-                            <div className="flex-1 h-5 bg-stone-100 relative">
-                              <div
-                                className="h-full transition-all"
-                                style={{
-                                  width: `${p.percentage}%`,
-                                  backgroundColor: pitchColor(p.pitch_code)
-                                }}
-                              />
+                          <div key={i}>
+                            <div className="flex items-center gap-3 text-sm mb-1">
+                              <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                              <div className="flex-1 h-5 bg-stone-100 relative">
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${p.percentage}%`,
+                                    backgroundColor: pitchColor(p.pitch_code)
+                                  }}
+                                />
+                              </div>
+                              <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                              {p.avg_velocity > 0 && (
+                                <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                              )}
                             </div>
-                            <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                            {p.avg_velocity > 0 && (
-                              <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                            {(p.whiff_percent !== null || p.ba_against !== null) && (
+                              <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                {p.whiff_percent !== null && (
+                                  <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                    p.whiff_percent >= 30 ? 'text-green-700' :
+                                    p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                  }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                )}
+                                {p.ba_against !== null && (
+                                  <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                    p.ba_against <= 0.220 ? 'text-green-700' :
+                                    p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                  }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                )}
+                                {p.k_percent !== null && p.k_percent >= 25 && (
+                                  <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                )}
+                              </div>
                             )}
                           </div>
                         ))}
@@ -442,22 +463,43 @@ const [
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
                         Pitch Arsenal · {new Date().getFullYear()}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {homePitchMix.slice(0, 5).map((p, i) => (
-                          <div key={i} className="flex items-center gap-3 text-sm">
-                            <div className="w-32 text-stone-700 truncate">{p.pitch_name}</div>
-                            <div className="flex-1 h-5 bg-stone-100 relative">
-                              <div
-                                className="h-full transition-all"
-                                style={{
-                                  width: `${p.percentage}%`,
-                                  backgroundColor: pitchColor(p.pitch_code)
-                                }}
-                              />
+                          <div key={i}>
+                            <div className="flex items-center gap-3 text-sm mb-1">
+                              <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                              <div className="flex-1 h-5 bg-stone-100 relative">
+                                <div
+                                  className="h-full"
+                                  style={{
+                                    width: `${p.percentage}%`,
+                                    backgroundColor: pitchColor(p.pitch_code)
+                                  }}
+                                />
+                              </div>
+                              <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                              {p.avg_velocity > 0 && (
+                                <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                              )}
                             </div>
-                            <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                            {p.avg_velocity > 0 && (
-                              <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                            {(p.whiff_percent !== null || p.ba_against !== null) && (
+                              <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                {p.whiff_percent !== null && (
+                                  <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                    p.whiff_percent >= 30 ? 'text-green-700' :
+                                    p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                  }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                )}
+                                {p.ba_against !== null && (
+                                  <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                    p.ba_against <= 0.220 ? 'text-green-700' :
+                                    p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                  }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                )}
+                                {p.k_percent !== null && p.k_percent >= 25 && (
+                                  <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                )}
+                              </div>
                             )}
                           </div>
                         ))}
