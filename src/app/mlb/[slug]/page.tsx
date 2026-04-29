@@ -19,7 +19,7 @@ import WindArrow from '@/components/WindArrow'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
-
+import PreviewSection from '@/components/PreviewSection'
 export const revalidate = 1800
 
 type Props = { params: Promise<{ slug: string }> }
@@ -180,14 +180,12 @@ const [
         </p>
 {/* FORM GUIDE */}
         {(awayForm || homeForm) && (
-          <section className="my-16 border-t border-b border-stone-300 py-12">
-            <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
-              § Form Guide
-            </div>
-            <h2 className="text-3xl font-serif font-light tracking-tight mb-8">
-              How they&apos;re trending.
-            </h2>
-
+          <PreviewSection
+            eyebrow="Form Guide"
+            title="How they're trending."
+            meta="Last 10 games"
+            variant="highlight"
+          >
             <div className="grid md:grid-cols-2 gap-8">
        {/* AWAY FORM */}
               {awayForm && (
@@ -288,20 +286,18 @@ const [
                     </div>
                   </div>
                 </div>
-              )}
+             )}
             </div>
-          </section>
+          </PreviewSection>
         )}
-        {/* PITCHING MATCHUP */}
+     {/* PITCHING MATCHUP */}
         {(awayPitcherId || homePitcherId) && (
-          <section className="my-16 border-t border-b border-stone-300 py-12">
-            <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
-              § Pitching Matchup
-            </div>
-            <h2 className="text-3xl font-serif font-light tracking-tight mb-8">
-              The arms tonight.
-            </h2>
-
+          <PreviewSection
+            eyebrow="Pitching Matchup"
+            title="The arms tonight."
+            meta={`${new Date().getFullYear()} · Statcast`}
+            variant="highlight"
+          >
             <div className="grid md:grid-cols-2 gap-8">
               {/* AWAY PITCHER */}
         {game.teams.away.probablePitcher && (
@@ -543,23 +539,21 @@ const [
                 </div>
               )}
             </div>
-          </section>
+          </PreviewSection>
         )}
 
-        {/* CONDITIONS */}
+{/* CONDITIONS */}
         {(weather || venue?.indoor) && (
-          <section className="my-16 border-t border-b border-stone-300 py-12">
-            <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-2">
-              § Conditions
-            </div>
-            <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
-              <h2 className="text-3xl font-serif font-light tracking-tight">
-                {venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}
-              </h2>
+          <PreviewSection
+            eyebrow="Conditions"
+            title={venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}
+            meta={weather && !venue?.indoor ? weather.conditions : undefined}
+          >
+            <div className="mb-2">
               {weather && !venue?.indoor && (
-                <div className="flex items-center gap-3">
-                  <WeatherIcon conditions={weather.conditions} size={48} />
-                  <div className="font-serif text-stone-600 italic">{weather.conditions}</div>
+                <div className="flex items-center gap-3 mb-6">
+                  <WeatherIcon conditions={weather.conditions} size={40} />
+                  <div className="font-serif text-stone-600 italic text-sm">Game-time conditions</div>
                 </div>
               )}
             </div>
@@ -644,10 +638,9 @@ const [
                   )
                 })()}
               </>
-            ) : null}
-          </section>
+        ) : null}
+          </PreviewSection>
         )}
-
         <div className="bg-stone-900 text-stone-100 p-8 my-12">
           <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-3">
             Get the full pre-game brief
