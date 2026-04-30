@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { verificationEmail } from '@/lib/emails'
 import { Resend } from 'resend'
 import { z } from 'zod'
+import { signupLimit, getClientIp } from '@/lib/ratelimit'
 
 const SignupSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -10,6 +11,13 @@ const SignupSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // Rate limit
+  const ip = getClientIp(req)
+  const { success } = await signupLimit.limit(ip)
+  if (!success) {
+    return NextResponse.redirect(new URL('/?error=rate-limit', req.url), { status: 303 })
+  }
+
   let email: string | null = null
   let source: string | null = null
 
