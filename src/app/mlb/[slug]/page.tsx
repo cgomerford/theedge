@@ -305,27 +305,27 @@ const [
                     {describeTeamForm(awayForm, shortName(game.teams.away.team.name))}
                   </p>
 
-                  <div className="grid grid-cols-3 gap-4 pb-4">
+                 <div className="grid grid-cols-3 gap-4 pb-4">
                     <div>
-                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                      <div className="text-5xl font-display leading-none text-stone-900">
                         {awayForm.last_10_wins}–{awayForm.last_10_losses}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">L10</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
                     </div>
                     <div>
-                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                      <div className="text-5xl font-display leading-none text-stone-900">
                         {awayForm.runs_per_game_l10}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Runs / G</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
                     </div>
                     <div>
-                      <div className={`text-3xl font-serif font-semibold tracking-tight ${
+                      <div className={`text-5xl font-display leading-none ${
                         awayForm.run_diff_l10 > 0 ? 'text-green-700' :
-                        awayForm.run_diff_l10 < 0 ? 'text-red-700' : ''
+                        awayForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
                       }`}>
                         {awayForm.run_diff_l10 > 0 ? '+' : ''}{awayForm.run_diff_l10}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Run Diff</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
                     </div>
                   </div>
                 </div>
@@ -358,25 +358,25 @@ const [
 
                   <div className="grid grid-cols-3 gap-4 pb-4">
                     <div>
-                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                      <div className="text-5xl font-display leading-none text-stone-900">
                         {homeForm.last_10_wins}–{homeForm.last_10_losses}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">L10</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
                     </div>
                     <div>
-                      <div className="text-3xl font-serif font-semibold tracking-tight">
+                      <div className="text-5xl font-display leading-none text-stone-900">
                         {homeForm.runs_per_game_l10}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Runs / G</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
                     </div>
                     <div>
-                      <div className={`text-3xl font-serif font-semibold tracking-tight ${
+                      <div className={`text-5xl font-display leading-none ${
                         homeForm.run_diff_l10 > 0 ? 'text-green-700' :
-                        homeForm.run_diff_l10 < 0 ? 'text-red-700' : ''
+                        homeForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
                       }`}>
                         {homeForm.run_diff_l10 > 0 ? '+' : ''}{homeForm.run_diff_l10}
                       </div>
-                      <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">Run Diff</div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
                     </div>
                   </div>
                 </div>
@@ -413,19 +413,19 @@ const [
                     </h3>
                   </div>
 
-                  {awaySeasonStats && (
+                {awaySeasonStats && (
                     <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{awaySeasonStats.era}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">ERA</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.era}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">ERA</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{awaySeasonStats.whip}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">WHIP</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.whip}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">WHIP</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{awaySeasonStats.k_per_9}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">K/9</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.k_per_9}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">K/9</div>
                       </div>
                     </div>
                   )}
@@ -535,19 +535,19 @@ const [
                     </h3>
                   </div>
 
-                  {homeSeasonStats && (
+                 {homeSeasonStats && (
                     <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{homeSeasonStats.era}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">ERA</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.era}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">ERA</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{homeSeasonStats.whip}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">WHIP</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.whip}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">WHIP</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-serif font-semibold tracking-tight">{homeSeasonStats.k_per_9}</div>
-                        <div className="text-xs uppercase tracking-wider text-stone-500 mt-1">K/9</div>
+                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.k_per_9}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">K/9</div>
                       </div>
                     </div>
                   )}
@@ -664,21 +664,20 @@ const [
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                   <div>
-                    <div className={`text-4xl font-serif font-semibold tracking-tight ${
+                    <div className={`text-5xl font-display leading-none ${
                       weather.temp_f >= 85 ? 'text-orange-700' :
                       weather.temp_f <= 50 ? 'text-blue-700' :
                       'text-stone-900'
                     }`}>
-                      {weather.temp_f}°
-                      <span className="text-stone-400 text-2xl font-light">F</span>
+                      {weather.temp_f}°<span className="text-stone-400 text-3xl">F</span>
                     </div>
-                    <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
                       Temp · feels {weather.feels_like_f}°
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-4xl font-serif font-semibold tracking-tight flex items-baseline gap-2">
+                    <div className="text-5xl font-display leading-none flex items-baseline gap-2 text-stone-900">
                       {weather.wind_mph}
                       <span className="text-stone-400 text-base font-mono">mph</span>
                       <WindArrow
@@ -687,29 +686,27 @@ const [
                         className="text-stone-700 self-center"
                       />
                     </div>
-                    <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
                       Wind · from {weather.wind_direction_text}
                     </div>
                   </div>
 
                   <div>
-                    <div className={`text-4xl font-serif font-semibold tracking-tight ${
+                    <div className={`text-5xl font-display leading-none ${
                       weather.precipitation_chance >= 50 ? 'text-blue-700' : 'text-stone-900'
                     }`}>
-                      {weather.precipitation_chance}
-                      <span className="text-stone-400 text-2xl font-light">%</span>
+                      {weather.precipitation_chance}<span className="text-stone-400 text-3xl">%</span>
                     </div>
-                    <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
                       Precipitation
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-4xl font-serif font-semibold tracking-tight">
-                      {weather.cloud_cover}
-                      <span className="text-stone-400 text-2xl font-light">%</span>
+                    <div className="text-5xl font-display leading-none text-stone-900">
+                      {weather.cloud_cover}<span className="text-stone-400 text-3xl">%</span>
                     </div>
-                    <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
                       Cloud cover
                     </div>
                   </div>
