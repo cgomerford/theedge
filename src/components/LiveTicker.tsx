@@ -8,7 +8,7 @@ const ANIMATION_STYLES = `
   100% { transform: translateX(-50%); }
 }
 .ticker-track {
-  animation: tickerScroll 90s linear infinite;
+  animation: tickerScroll 30s linear infinite;
   will-change: transform;
 }
 .ticker-track:hover {

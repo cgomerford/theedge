@@ -373,3 +373,70 @@ Unsubscribe: ${unsubscribeUrl}
 `,
   }
 }
+
+
+// =====================================================
+// VERIFICATION EMAIL — sent on first signup, before welcome
+// =====================================================
+
+export function verificationEmail(email: string, token: string) {
+  const verifyUrl = `https://edgereportdaily.com/api/verify?token=${token}`
+
+  return {
+    subject: "Confirm your email · The Edge",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Confirm your email</title>
+</head>
+<body style="margin:0;padding:0;background:#1a1a1a;font-family:Georgia,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#f4f1ea;max-width:600px;width:100%;">
+
+        <tr><td style="padding:32px 40px 24px;border-bottom:2px solid #1a1a1a;">
+          <div style="font-family:Georgia,serif;font-size:32px;font-weight:900;letter-spacing:-1px;color:#1a1a1a;">
+            The Edge<span style="color:#ff5722;">.</span>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:36px 40px 24px;">
+          <h1 style="font-family:Georgia,serif;font-size:28px;line-height:1.2;color:#1a1a1a;margin:0 0 16px 0;font-weight:600;letter-spacing:-1px;">
+            Confirm your email.
+          </h1>
+          <p style="font-family:Georgia,serif;font-size:16px;line-height:1.55;color:#444;margin:0 0 24px 0;">
+            One quick click and you're set up. We won't send anything else until you do — that's how we keep this list clean.
+          </p>
+          <a href="${verifyUrl}" style="display:inline-block;background:#1a1a1a;color:#dcfa3c;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;font-size:14px;padding:14px 28px;text-decoration:none;letter-spacing:0.5px;">
+            Confirm email →
+          </a>
+          <p style="font-family:Georgia,serif;font-size:13px;line-height:1.5;color:#888;margin:24px 0 0 0;">
+            Didn't sign up? You can safely ignore this email — without confirmation, you won't receive anything.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:24px 40px;background:#0a0a0a;color:#666;">
+          <p style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;color:#999;margin:0;">
+            THE EDGE · EDGEREPORTDAILY.COM
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+    text: `Confirm your email — The Edge
+
+One click and you're set up:
+${verifyUrl}
+
+Didn't sign up? Ignore this email and nothing happens.
+
+— The Edge`,
+  }
+}

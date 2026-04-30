@@ -68,10 +68,11 @@ export async function GET(req: NextRequest) {
   )
 
   // 3. Get all subscribers with at least one team picked
-  const { data: subscribers, error: subError } = await supa
+const { data: subscribers, error: subError } = await supa
     .from('subscribers')
-    .select('email, teams, preferences_token, unsubscribed_at')
+    .select('email, teams, preferences_token, unsubscribed_at, email_verified')
     .is('unsubscribed_at', null)
+    .eq('email_verified', true)
     .not('teams', 'is', null)
 
   if (subError) {

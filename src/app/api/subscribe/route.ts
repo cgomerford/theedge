@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { welcomeEmail } from '@/lib/emails'
+import { verificationEmail } from '@/lib/emails'
 import { Resend } from 'resend'
 import { z } from 'zod'
 
@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
   let email: string | null = null
   let source: string | null = null
 
-  // Accept both form posts and JSON
   const contentType = req.headers.get('content-type') ?? ''
   if (contentType.includes('application/json')) {
     const body = await req.json()
@@ -32,18 +31,26 @@ export async function POST(req: NextRequest) {
 
   const supa = createAdminClient()
 
-  // Check if already subscribed (avoid duplicate welcome emails)
+  // Check if already exists
   const { data: existing } = await supa
     .from('subscribers')
-    .select('id, created_at')
+    .select('id, email_verified')
     .eq('email', parsed.data.email)
     .single()
 
-  const isNewSignup = !existing
+  // If already verified, redirect to confirmation
+  if (existing?.email_verified) {
+    return NextResponse.redirect(new URL('/?already-subscribed=1', req.url), { status: 303 })
+  }
 
-  // Save to Supabase (insert or update)
+  // Insert or update — set unverified, generate fresh token
   const { error: dbError } = await supa.from('subscribers').upsert(
-    { email: parsed.data.email, source: parsed.data.source ?? 'web' },
+    {
+      email: parsed.data.email,
+      source: parsed.data.source ?? 'web',
+      email_verified: false,
+      verification_sent_at: new Date().toISOString(),
+    },
     { onConflict: 'email' }
   )
 
@@ -52,41 +59,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
 
-  // Fetch the subscriber's preferences token (used for welcome email + redirect)
-  const { data: subscriber } = await supa
+  // Fetch the verification token (auto-generated)
+  // Need to set it manually first since the default isn't auto-generating on upsert
+  const newToken = crypto.randomUUID().replace(/-/g, '')
+  await supa
     .from('subscribers')
-    .select('preferences_token')
+    .update({ verification_token: newToken })
     .eq('email', parsed.data.email)
-    .single()
+    .is('email_verified', false)
 
-  const token = subscriber?.preferences_token ?? ''
-
-  // Send welcome email — only for genuinely new signups
-  if (isNewSignup && process.env.RESEND_API_KEY) {
+  // Send verification email
+  if (process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
-      const email_content = welcomeEmail(parsed.data.email, token)
+      const content = verificationEmail(parsed.data.email, newToken)
 
       await resend.emails.send({
         from: 'The Edge <hello@edgereportdaily.com>',
         to: parsed.data.email,
-        subject: email_content.subject,
-        html: email_content.html,
-        text: email_content.text,
+        subject: content.subject,
+        html: content.html,
+        text: content.text,
       })
     } catch (emailError) {
-      console.error('Welcome email failed:', emailError)
+      console.error('Verification email failed:', emailError)
     }
   }
 
-  // Redirect new signups straight to their preferences page (catch them in the moment)
-  if (isNewSignup && token) {
-    return NextResponse.redirect(
-      new URL(`/preferences/${token}?welcome=1`, req.url),
-      { status: 303 }
-    )
-  }
-
-  // Existing subscribers (or token missing): just go home
-  return NextResponse.redirect(new URL('/?subscribed=1', req.url), { status: 303 })
+  return NextResponse.redirect(new URL('/?check-email=1', req.url), { status: 303 })
 }
