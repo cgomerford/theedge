@@ -71,12 +71,14 @@ function TickerItem({ game }: { game: TickerGame }) {
     >
       {/* Away */}
       <span className="inline-flex items-center gap-1.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={teamLogoUrl(game.awayId)}
-          alt=""
-          className="w-5 h-5 object-contain"
-        />
+        <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={teamLogoUrl(game.awayId)}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
         <span className="font-mono text-sm font-semibold">{game.awayShort.slice(0, 3).toUpperCase()}</span>
         {hasScore && (
           <span className={`font-mono text-sm font-bold ml-1 ${
@@ -99,12 +101,14 @@ function TickerItem({ game }: { game: TickerGame }) {
           </span>
         )}
         <span className="font-mono text-sm font-semibold">{game.homeShort.slice(0, 3).toUpperCase()}</span>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={teamLogoUrl(game.homeId)}
-          alt=""
-          className="w-5 h-5 object-contain"
-        />
+       <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={teamLogoUrl(game.homeId)}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
       </span>
 
       {/* Status */}

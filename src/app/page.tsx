@@ -65,20 +65,24 @@ export default async function HomePage() {
                     {' · '}{game.venue?.name}
                   </div>
                   <div className="flex items-center gap-3 mb-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={teamLogoUrl(game.teams.away.team.id)}
-                      alt=""
-                      className="w-8 h-8 object-contain"
-                    />
+                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={teamLogoUrl(game.teams.away.team.id)}
+                        alt=""
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                     <span className="text-xl font-serif font-medium">{shortName(game.teams.away.team.name)}</span>
                     <span className="text-stone-600 italic font-light text-base">at</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={teamLogoUrl(game.teams.home.team.id)}
-                      alt=""
-                      className="w-8 h-8 object-contain"
-                    />
+                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={teamLogoUrl(game.teams.home.team.id)}
+                        alt=""
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                     <span className="text-xl font-serif font-medium">{shortName(game.teams.home.team.name)}</span>
                   </div>
                   {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (

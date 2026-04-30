@@ -486,16 +486,18 @@ export function describeTeamForm(form: TeamForm, shortName: string): string {
 // Get team logo URL by team ID (the same MLB team IDs we already use everywhere)
 // Returns SVG when possible — crisp at any size
 export function teamLogoUrl(teamId: number): string {
-  return `https://www.mlbstatic.com/team-logos/team-cap-on-light/${teamId}.svg`
+  // Use the standard team logo PNG at consistent size
+  return `https://www.mlbstatic.com/team-logos/${teamId}.svg`
 }
 
-// Fallback PNG if SVG fails — useful for email or older browsers
+// Alternative PNG version for emails (better cross-client compat)
 export function teamLogoUrlPng(teamId: number, size: number = 240): string {
-  return `https://www.mlbstatic.com/team-logos/${teamId}.svg`
+  return `https://midfield.mlbstatic.com/v1/team/${teamId}/spots/${size}`
 }
 
 // Get player headshot URL by MLB player ID
 // Sizes: 60, 120, 240 most common
 export function playerHeadshotUrl(playerId: number, size: number = 240): string {
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_${size},q_auto:best/v1/people/${playerId}/headshot/67/current`
+  // Use Cloudinary's c_fill,g_face — face-detect crop guarantees a square image with the face centered
+  return `https://img.mlbstatic.com/mlb-photos/image/upload/c_fill,g_face,w_${size},h_${size},q_auto:best/v1/people/${playerId}/headshot/67/current`
 }

@@ -169,13 +169,15 @@ const [
 <div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
           <div>
             <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Away</div>
-            <div className="flex items-center gap-3 mb-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={teamLogoUrl(game.teams.away.team.id)}
-                alt={`${game.teams.away.team.name} logo`}
-                className="w-12 h-12 object-contain"
-              />
+           <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={teamLogoUrl(game.teams.away.team.id)}
+                  alt={`${game.teams.away.team.name} logo`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
               <div className="text-2xl font-serif font-bold leading-tight">{game.teams.away.team.name}</div>
             </div>
             {game.teams.away.leagueRecord && (
@@ -192,13 +194,15 @@ const [
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Home</div>
-            <div className="flex items-center gap-3 mb-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={teamLogoUrl(game.teams.home.team.id)}
-                alt={`${game.teams.home.team.name} logo`}
-                className="w-12 h-12 object-contain"
-              />
+          <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={teamLogoUrl(game.teams.home.team.id)}
+                  alt={`${game.teams.home.team.name} logo`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
               <div className="text-2xl font-serif font-bold leading-tight">{game.teams.home.team.name}</div>
             </div>
             {game.teams.home.leagueRecord && (
@@ -395,13 +399,15 @@ const [
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.away.team.name)} · {awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'}
                   </div>
-                  <div className="flex items-center gap-4 mb-6">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={playerHeadshotUrl(game.teams.away.probablePitcher.id, 120)}
-                      alt={game.teams.away.probablePitcher.fullName}
-                      className="w-16 h-16 rounded-full object-cover bg-stone-100"
-                    />
+              <div className="flex items-center gap-4 mb-6">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden bg-stone-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={playerHeadshotUrl(game.teams.away.probablePitcher.id, 200)}
+                        alt={game.teams.away.probablePitcher.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <h3 className="text-2xl font-serif font-semibold leading-tight">
                       {game.teams.away.probablePitcher.fullName}
                     </h3>
@@ -515,13 +521,15 @@ const [
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.home.team.name)} · {homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'}
                   </div>
-                  <div className="flex items-center gap-4 mb-6">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={playerHeadshotUrl(game.teams.home.probablePitcher.id, 120)}
-                      alt={game.teams.home.probablePitcher.fullName}
-                      className="w-16 h-16 rounded-full object-cover bg-stone-100"
-                    />
+               <div className="flex items-center gap-4 mb-6">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden bg-stone-200">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={playerHeadshotUrl(game.teams.home.probablePitcher.id, 200)}
+                        alt={game.teams.home.probablePitcher.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <h3 className="text-2xl font-serif font-semibold leading-tight">
                       {game.teams.home.probablePitcher.fullName}
                     </h3>
