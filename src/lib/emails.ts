@@ -194,7 +194,7 @@ export function dailyBriefEmail(
         </div>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
           <td style="padding-right:14px;vertical-align:middle;width:48px;">
-            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;">
+            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
               <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.away.team.id}/spots/72" alt="" width="36" height="36" style="vertical-align:middle;display:inline-block;">
             </div>
           </td>
@@ -205,8 +205,8 @@ export function dailyBriefEmail(
             <div style="font-family:Georgia,serif;font-style:italic;font-size:16px;color:#999;font-weight:300;">at</div>
           </td>
           <td style="padding-right:14px;vertical-align:middle;width:48px;">
-            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;">
-              <img src="https://www.mlbstatic.com/team-logos/team-cap-on-light/${game.teams.home.team.id}.svg" alt="" width="36" height="36" style="vertical-align:middle;display:inline-block;">
+            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
+              <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.home.team.id}/spots/72" alt="" width="36" height="36" style="vertical-align:middle;display:inline-block;">
             </div>
           </td>
           <td style="vertical-align:middle;">
@@ -438,5 +438,59 @@ ${verifyUrl}
 Didn't sign up? Ignore this email and nothing happens.
 
 — The Edge`,
+  }
+}
+
+// =====================================================
+// LOGIN LINK EMAIL — magic link sign-in
+// =====================================================
+
+export function loginLinkEmail(email: string, token: string) {
+  const loginUrl = `https://edgereportdaily.com/api/auth/callback?token=${token}`
+
+  return {
+    subject: "Your sign-in link · The Edge",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#1a1a1a;font-family:Georgia,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="background:#f4f1ea;max-width:600px;width:100%;">
+        <tr><td style="padding:32px 40px 24px;border-bottom:2px solid #1a1a1a;">
+          <div style="font-family:Georgia,serif;font-size:32px;font-weight:900;letter-spacing:-1px;color:#1a1a1a;">
+            The Edge<span style="color:#ff5722;">.</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding:36px 40px 24px;">
+          <h1 style="font-family:Georgia,serif;font-size:26px;line-height:1.2;color:#1a1a1a;margin:0 0 16px 0;font-weight:600;">
+            Click to sign in.
+          </h1>
+          <p style="font-family:Georgia,serif;font-size:16px;line-height:1.55;color:#444;margin:0 0 24px 0;">
+            Tap the button below to sign in to your account. This link works once and expires in 30 minutes.
+          </p>
+          <a href="${loginUrl}" style="display:inline-block;background:#1a1a1a;color:#dcfa3c;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:600;font-size:14px;padding:14px 28px;text-decoration:none;letter-spacing:0.5px;">
+            Sign in to The Edge →
+          </a>
+          <p style="font-family:Georgia,serif;font-size:13px;line-height:1.5;color:#888;margin:24px 0 0 0;">
+            Didn't request this? Ignore this email — your account is safe.
+          </p>
+        </td></tr>
+        <tr><td style="padding:24px 40px;background:#0a0a0a;color:#666;">
+          <p style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;color:#999;margin:0;">
+            THE EDGE · EDGEREPORTDAILY.COM
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `.trim(),
+    text: `Click to sign in: ${loginUrl}\n\nThis link works once and expires in 30 minutes.\n\nDidn't request this? Ignore this email.`,
   }
 }

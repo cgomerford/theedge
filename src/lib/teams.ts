@@ -62,3 +62,41 @@ export function findTeamByName(name: string): Team | undefined {
 export function findTeamBySlug(slug: string): Team | undefined {
   return MLB_TEAMS.find(t => t.slug === slug)
 }
+
+// MLB team ID lookup — for fetching team logos and stats
+const TEAM_ID_BY_SLUG: Record<string, number> = {
+  'yankees': 147,
+  'red-sox': 111,
+  'blue-jays': 141,
+  'orioles': 110,
+  'rays': 139,
+  'guardians': 114,
+  'tigers': 116,
+  'royals': 118,
+  'twins': 142,
+  'white-sox': 145,
+  'astros': 117,
+  'angels': 108,
+  'athletics': 133,
+  'mariners': 136,
+  'rangers': 140,
+  'braves': 144,
+  'marlins': 146,
+  'mets': 121,
+  'phillies': 143,
+  'nationals': 120,
+  'cubs': 112,
+  'reds': 113,
+  'brewers': 158,
+  'pirates': 134,
+  'cardinals': 138,
+  'diamondbacks': 109,
+  'rockies': 115,
+  'dodgers': 119,
+  'padres': 135,
+  'giants': 137,
+}
+
+export function teamIdBySlug(slug: string): number | null {
+  return TEAM_ID_BY_SLUG[slug] ?? null
+}
