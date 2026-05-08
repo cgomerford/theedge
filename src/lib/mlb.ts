@@ -365,13 +365,11 @@ export type TeamForm = {
 
 export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
   const today = new Date().toISOString().split('T')[0]
-  const tenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  // 21-day window guarantees ~18 scheduled games — enough buffer for postponements + off-days
+  const windowStart = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   const season = new Date().getFullYear()
 
-  // Fetch this team's last 14 days of games (covers the typical 10-game window)
-  const scheduleUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today}&hydrate=team,linescore`
-
-  // Also grab their season standings record for streak data
+  const scheduleUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${windowStart}&endDate=${today}&hydrate=team,linescore`
   const standingsUrl = `${MLB_API}/standings?leagueId=103,104&season=${season}&date=${today}`
 
   try {
@@ -383,15 +381,30 @@ export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
     if (!schedRes.ok) return null
     const schedData = await schedRes.json()
 
-    // Flatten the games from each date and only keep finished ones
+    // Flatten and filter — score-based check is more robust than status field alone
     const finishedGames: any[] = []
     for (const dateBlock of schedData.dates ?? []) {
       for (const g of dateBlock.games ?? []) {
-        if (g.status?.abstractGameState === 'Final') finishedGames.push(g)
+        const homeScore = g.teams?.home?.score ?? g.teams?.home?.linescore?.runs
+        const awayScore = g.teams?.away?.score ?? g.teams?.away?.linescore?.runs
+        const detailedState: string = g.status?.detailedState ?? ''
+
+        // Both teams must have scores recorded AND game must not be a postponement/cancellation/suspension
+        const bothScored =
+          homeScore !== null && homeScore !== undefined &&
+          awayScore !== null && awayScore !== undefined
+
+        const notPostponed = !['Postponed', 'Cancelled', 'Suspended'].some(
+          s => detailedState.includes(s)
+        )
+
+        if (bothScored && notPostponed) {
+          finishedGames.push(g)
+        }
       }
     }
 
-    // Take the last 10
+    // Take the last 10 actually-finished games
     const last10 = finishedGames.slice(-10)
     if (last10.length === 0) return null
 
@@ -404,8 +417,12 @@ export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
       const isHome = g.teams.home.team.id === teamId
       const us = isHome ? g.teams.home : g.teams.away
       const them = isHome ? g.teams.away : g.teams.home
-      const ourScore = us.score ?? us.linescore?.runs ?? 0
-      const theirScore = them.score ?? them.linescore?.runs ?? 0
+      const ourScore = us.score ?? us.linescore?.runs
+      const theirScore = them.score ?? them.linescore?.runs
+
+      // Skip games with missing scores rather than silently counting as a tie
+      if (ourScore == null || theirScore == null) continue
+
       runsScored += ourScore
       runsAllowed += theirScore
       if (ourScore > theirScore) wins++
@@ -433,8 +450,9 @@ export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
       }
     }
 
-    const rpg = last10.length > 0 ? runsScored / last10.length : 0
-    const ragp = last10.length > 0 ? runsAllowed / last10.length : 0
+    const gameCount = last10.length
+    const rpg = gameCount > 0 ? runsScored / gameCount : 0
+    const ragp = gameCount > 0 ? runsAllowed / gameCount : 0
     const diff = rpg - ragp
 
     let trend: 'hot' | 'cold' | 'mixed' = 'mixed'
