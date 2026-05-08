@@ -6,6 +6,8 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 export type MLBGame = {
   gamePk: number
   gameDate: string
+  doubleHeader?: string  // 'N' | 'Y' (traditional) | 'S' (split)
+  gameNumber?: number
   status: { detailedState: string; abstractGameState: string }
   teams: {
     home: {
@@ -104,13 +106,22 @@ export async function getTodayTickerGames(): Promise<TickerGame[]> {
 function teamSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
-
 // Build the URL slug for a game's preview page
 export function slugifyGame(game: MLBGame): string {
   const date = game.gameDate.split('T')[0]
   const away = teamSlug(game.teams.away.team.name)
   const home = teamSlug(game.teams.home.team.name)
-  return `${away}-vs-${home}-${date}`
+  const base = `${away}-vs-${home}-${date}`
+
+  // Doubleheader handling: game 2+ gets a suffix to keep slugs unique.
+  // Game 1 keeps the existing format for backwards compatibility (no broken links).
+  // doubleHeader values from MLB API: 'N' = none, 'Y' = traditional, 'S' = split
+  const isDoubleheader = game.doubleHeader && game.doubleHeader !== 'N'
+  const gameNum = game.gameNumber ?? 1
+
+  return (isDoubleheader && gameNum > 1)
+    ? `${base}-game${gameNum}`
+    : base
 }
 
 // "New York Yankees" -> "Yankees"
