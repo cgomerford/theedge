@@ -3,6 +3,22 @@
     {
       "path": "/api/cron/send-daily-brief",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-pitcher-stats",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-team-stats",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/log-predictions",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/grade-predictions",
+      "schedule": "0 15 * * *"
     }
   ]
 }

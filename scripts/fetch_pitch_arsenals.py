@@ -100,10 +100,20 @@ def main():
         if pitches < 1:
             continue  # only filter rows with literally zero
 
-        pitch_usage = float(r.get(usage_col, 0) or 0) if usage_col else 0
+        # Handle pitch_usage NaN
+        try:
+            pitch_usage = float(r.get(usage_col, 0) or 0) if usage_col else 0
+            if pd.isna(pitch_usage):
+                pitch_usage = 0
+        except (ValueError, TypeError):
+            pitch_usage = 0
+
+        # Handle avg_speed NaN
         avg_speed = r.get(speed_col) if speed_col else None
         try:
             avg_speed = float(avg_speed) if avg_speed not in (None, '') else None
+            if avg_speed is not None and pd.isna(avg_speed):
+                avg_speed = None
         except (ValueError, TypeError):
             avg_speed = None
 
@@ -117,7 +127,10 @@ def main():
                 return None
             v = r.get(col)
             try:
-                return round(float(v), 2) if v not in (None, '') else None
+                f = float(v) if v not in (None, '') else None
+                if f is None or pd.isna(f):
+                    return None
+                return round(f, 2)
             except (ValueError, TypeError):
                 return None
 
@@ -126,7 +139,10 @@ def main():
                 return None
             v = r.get(col)
             try:
-                return round(float(v), 3) if v not in (None, '') else None
+                f = float(v) if v not in (None, '') else None
+                if f is None or pd.isna(f):
+                    return None
+                return round(f, 3)
             except (ValueError, TypeError):
                 return None
 
@@ -145,7 +161,7 @@ def main():
             'est_woba': safe_avg(xwoba_col),
             'hard_hit_percent': safe_pct(hardhit_col),
         })
-
+  
     print(f'Prepared {len(rows)} rows to upsert')
 
     if not rows:

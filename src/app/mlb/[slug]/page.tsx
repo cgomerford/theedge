@@ -28,9 +28,13 @@ type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})$/)
+  const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   const date = dateMatch ? dateMatch[1] : ''
-  const title = slug.replace(/-/g, ' ').replace(date, '').trim()
+  const title = slug
+  .replace(/-game(\d+)$/, ' (Game $1)')  // "...mets-2026-05-09-game2" → "...mets-2026-05-09 (Game 2)"
+  .replace(/(\d{4}-\d{2}-\d{2})/, '')
+  .replace(/-/g, ' ')
+  .trim()
 
   return {
     title: `${title} preview · The Edge`,
@@ -54,7 +58,7 @@ export default async function GamePreview({ params }: Props) {
   if (cached?.raw_data) {
     game = cached.raw_data as MLBGame
   } else {
-    const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})$/)
+    const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
     if (!dateMatch) notFound()
     const games = await getScheduleForDate(dateMatch[1])
     game = games.find(g => slugifyGame(g) === slug) ?? null
