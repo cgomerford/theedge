@@ -53,7 +53,7 @@ def main():
     season = datetime.now().year
     print(f'Fetching pitch arsenal stats for {season}...')
 
-    df = statcast_pitcher_arsenal_stats(year=season, minPA=1)
+    df = statcast_pitcher_arsenal_stats(year=season, minPA=5)
 
     if df is None or df.empty:
         print('No data returned from Statcast — exiting cleanly')
