@@ -99,23 +99,33 @@ export async function GET(request: Request) {
 
       predictions_graded++
     }
+// Update each prediction individually (more reliable than batch upsert)
+let actually_updated = 0
+const updateErrors: string[] = []
 
-    // Batch update
-    if (updates.length > 0) {
-      // Upsert in batches of 100 (Supabase limit)
-      const BATCH = 100
-      for (let i = 0; i < updates.length; i += BATCH) {
-        const batch = updates.slice(i, i + BATCH)
-        const { error: updateError } = await supa
-          .from('edge_predictions')
-          .upsert(batch, { onConflict: 'id' })
-        
-        if (updateError) {
-          console.error('Update batch failed:', updateError)
-        }
-      }
-    }
+for (const update of updates) {
+  const { error: updateError } = await supa
+    .from('edge_predictions')
+    .update({
+      actual_winner: update.actual_winner,
+      home_score: update.home_score,
+      away_score: update.away_score,
+      was_correct: update.was_correct,
+      graded_at: update.graded_at,
+    })
+    .eq('id', update.id)
+  
+  if (updateError) {
+    updateErrors.push(`Game ${update.id}: ${updateError.message}`)
+  } else {
+    actually_updated++
+  }
+}
 
+console.log(`Successfully updated ${actually_updated} of ${updates.length} predictions`)
+if (updateErrors.length > 0) {
+  console.error('Update errors:', updateErrors)
+}
     // Compute quick accuracy stats
     const accuracy = predictions_graded > 0
       ? updates.filter(u => u.was_correct === true).length /
@@ -123,11 +133,12 @@ export async function GET(request: Request) {
       : null
 
     return NextResponse.json({
-      success: true,
-      predictions_found: predictions.length,
-      predictions_graded,
-      accuracy_so_far: accuracy ? `${(accuracy * 100).toFixed(1)}%` : null,
-    })
+  success: true,
+  predictions_found: predictions.length,
+  predictions_graded: actually_updated,  // changed from predictions_graded
+  accuracy_so_far: accuracy ? `${(accuracy * 100).toFixed(1)}%` : null,
+  errors: updateErrors.length > 0 ? updateErrors : undefined,
+})
   } catch (err) {
     console.error('Grading failed:', err)
     return NextResponse.json(

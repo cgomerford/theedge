@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { calculateEdgeScore, logPrediction } from '@/lib/edge'
 import { generateNarrative } from '@/lib/narrative'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+
+const supa = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+const NARRATIVE_REGEN_THRESHOLD = 5  // regenerate narrative if score swings >5
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -14,9 +22,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Fetch tonight's games (or today if it's morning)
     const today = new Date().toISOString().split('T')[0]
-    const url = `${MLB_API}/schedule?sportId=1&date=${today}&hydrate=team,probablePitcher,venue`
+    const url = `${MLB_API}/schedule?sportId=1&date=${today}&hydrate=team,probablePitcher,venue,lineups`
     
     const res = await fetch(url)
     const data = await res.json()
@@ -26,22 +33,24 @@ export async function GET(request: Request) {
 
     let predictions_logged = 0
     let predictions_skipped = 0
+    let narratives_regenerated = 0
+    let narratives_kept = 0
     const errors: string[] = []
 
     for (const game of games) {
       try {
-        // Skip games that aren't preview-able
         if (!game.teams?.home?.team?.id || !game.teams?.away?.team?.id) {
           predictions_skipped++
           continue
         }
 
-        // Skip already-finished games
+        // Skip already-finished games (don't waste resources)
         if (game.status?.abstractGameState === 'Final') {
           predictions_skipped++
           continue
         }
 
+        // Calculate Edge Score with current data
         const result = await calculateEdgeScore({
           home_team_id: game.teams.home.team.id,
           away_team_id: game.teams.away.team.id,
@@ -52,30 +61,66 @@ export async function GET(request: Request) {
 
         const gameDate = game.officialDate ?? game.gameDate?.split('T')[0] ?? today
 
+        // Detect lineup status
+        const homeLineup = game.lineups?.homePlayers
+        const awayLineup = game.lineups?.awayPlayers
+        const lineupsConfirmed = 
+          Array.isArray(homeLineup) && homeLineup.length >= 9 &&
+          Array.isArray(awayLineup) && awayLineup.length >= 9
 
-// Generate narrative (best effort — don't block prediction if LLM fails)
-const narrative = await generateNarrative({
-  home_team: game.teams.home.team.name,
-  away_team: game.teams.away.team.name,
-  edge_score: result.edge_score,
-  predicted_winner: result.predicted_winner,
-  confidence_tier: result.confidence_tier,
-  components: result.components,
-  components_raw: result.components_raw,
-  venue_name: game.venue?.name ?? '',
-})
-await logPrediction(
-  game.gamePk,
-  gameDate,
-  game.teams.home.team.id,
-  game.teams.home.team.name,
-  game.teams.away.team.id,
-  game.teams.away.team.name,
-  result,
-  false,
-  narrative?.summary ?? null,
-  narrative?.narrative ?? null
-)
+        // Check if we should regenerate narrative
+        // Skip if existing prediction has narrative AND score didn't swing significantly
+        const { data: existing } = await supa
+          .from('edge_predictions')
+          .select('edge_score, summary, narrative')
+          .eq('game_pk', game.gamePk)
+          .single()
+
+        const hasExistingNarrative = existing?.summary && existing?.narrative
+        const scoreSwing = existing 
+          ? Math.abs(existing.edge_score - result.edge_score)
+          : 999  // force regen if no existing record
+
+        const shouldRegenerateNarrative = 
+          !hasExistingNarrative || 
+          scoreSwing >= NARRATIVE_REGEN_THRESHOLD
+
+        let summary: string | null = existing?.summary ?? null
+        let narrative: string | null = existing?.narrative ?? null
+
+        if (shouldRegenerateNarrative) {
+          const generated = await generateNarrative({
+            home_team: game.teams.home.team.name,
+            away_team: game.teams.away.team.name,
+            edge_score: result.edge_score,
+            predicted_winner: result.predicted_winner,
+            confidence_tier: result.confidence_tier,
+            components: result.components,
+            components_raw: result.components_raw,
+            venue_name: game.venue?.name ?? '',
+          })
+
+          if (generated) {
+            summary = generated.summary
+            narrative = generated.narrative
+            narratives_regenerated++
+          }
+        } else {
+          narratives_kept++
+        }
+
+        await logPrediction(
+          game.gamePk,
+          gameDate,
+          game.teams.home.team.id,
+          game.teams.home.team.name,
+          game.teams.away.team.id,
+          game.teams.away.team.name,
+          result,
+          lineupsConfirmed,
+          summary,
+          narrative
+        )
 
         predictions_logged++
       } catch (err) {
@@ -89,6 +134,8 @@ await logPrediction(
       games_found: games.length,
       predictions_logged,
       predictions_skipped,
+      narratives_regenerated,
+      narratives_kept,
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {
