@@ -1,5 +1,11 @@
-import type { PitcherSeasonStats, PitchType, GameWeather } from '@/lib/mlb'
-import type { TeamForm } from '@/lib/mlb'
+import Anthropic from '@anthropic-ai/sdk'
+import type { PitcherSeasonStats, PitchType, GameWeather, TeamForm } from '@/lib/mlb'
+import type { EdgeScoreResult } from './edge'
+
+// ============================================================
+// V1: RULE-BASED GAMELINE + EDGE INDICATOR
+// Used by src/app/mlb/[slug]/page.tsx
+// ============================================================
 
 type GameContext = {
   awayShort: string
@@ -19,14 +25,13 @@ type GameContext = {
 
 type Fact = {
   text: string
-  weight: number  // higher = more interesting
+  weight: number
 }
 
 // Build a list of candidate facts, then pick the top 1-2
 export function generateGameline(ctx: GameContext): string {
   const facts: Fact[] = []
 
-  // PITCHING facts
   const allPitchers = [
     { name: ctx.awayPitcherName, stats: ctx.awaySeasonStats, mix: ctx.awayPitchMix },
     { name: ctx.homePitcherName, stats: ctx.homeSeasonStats, mix: ctx.homePitchMix },
@@ -38,21 +43,18 @@ export function generateGameline(ctx: GameContext): string {
     const era = parseFloat(p.stats.era)
     const k9 = parseFloat(p.stats.k_per_9)
 
-    // Elite ERA
     if (!isNaN(era) && era < 2.5 && parseFloat(p.stats.innings) > 20) {
       facts.push({
         text: `${p.name} carries a sub-2.50 ERA into tonight`,
         weight: 9,
       })
     }
-    // High K rate
     if (!isNaN(k9) && k9 >= 11) {
       facts.push({
         text: `${p.name} is striking out ${k9.toFixed(1)} per nine this season`,
         weight: 8,
       })
     }
-    // Best pitch standout (high whiff rate on top usage)
     if (p.mix.length > 0) {
       const top = p.mix[0]
       if (top.whiff_percent !== null && top.whiff_percent >= 35) {
@@ -61,7 +63,6 @@ export function generateGameline(ctx: GameContext): string {
           weight: 9,
         })
       }
-      // Heavy reliance on one pitch
       if (top.percentage >= 45) {
         facts.push({
           text: `${p.name} leans heavily on the ${top.pitch_name.toLowerCase()} (${top.percentage.toFixed(0)}% usage)`,
@@ -71,7 +72,6 @@ export function generateGameline(ctx: GameContext): string {
     }
   }
 
-  // FORM facts
   for (const { form, name } of [
     { form: ctx.awayForm, name: ctx.awayShort },
     { form: ctx.homeForm, name: ctx.homeShort },
@@ -104,7 +104,6 @@ export function generateGameline(ctx: GameContext): string {
     }
   }
 
-  // WEATHER facts
   if (!ctx.isIndoor && ctx.weather) {
     if (ctx.weather.precipitation_chance >= 60) {
       facts.push({
@@ -132,11 +131,9 @@ export function generateGameline(ctx: GameContext): string {
     }
   }
 
-  // Pick top 2 by weight, blend into a sentence
   facts.sort((a, b) => b.weight - a.weight)
 
   if (facts.length === 0) {
-    // Generic fallback
     return `${ctx.awayShort} face ${ctx.homeShort} tonight. Full data below.`
   }
 
@@ -144,7 +141,6 @@ export function generateGameline(ctx: GameContext): string {
     return capitalize(facts[0].text) + '.'
   }
 
-  // Combine top 2
   const a = facts[0].text
   const b = facts[1].text
   return `${capitalize(a)}. ${capitalize(b)}.`
@@ -155,13 +151,13 @@ function capitalize(s: string): string {
 }
 
 // =====================================================
-// EDGE INDICATOR — minimal MVP, refine May 8
+// V1 EDGE INDICATOR — minimal MVP (kept for page.tsx)
 // =====================================================
 
 export type EdgeCategory = {
   label: string
-  awayScore: number  // 0-100
-  homeScore: number  // 0-100
+  awayScore: number
+  homeScore: number
   winner: 'away' | 'home' | 'even'
   detail: string
 }
@@ -183,7 +179,6 @@ function pitchingEdge(ctx: GameContext): EdgeCategory | null {
   const hm = ctx.homeSeasonStats
   if (!aw || !hm) return null
 
-  // Score = 100 - (era*10) capped 0-100
   const score = (era: string) => {
     const e = parseFloat(era)
     if (isNaN(e)) return 50
@@ -209,7 +204,6 @@ function pitchingEdge(ctx: GameContext): EdgeCategory | null {
 function formEdge(ctx: GameContext): EdgeCategory | null {
   if (!ctx.awayForm || !ctx.homeForm) return null
 
-  // Score from L10 wins (0-100)
   const score = (wins: number, diff: number) => {
     const winsScore = (wins / 10) * 70
     const diffScore = Math.max(-15, Math.min(30, diff * 5))
@@ -230,4 +224,189 @@ function formEdge(ctx: GameContext): EdgeCategory | null {
     winner,
     detail: `${ctx.awayForm.last_10_wins}-${ctx.awayForm.last_10_losses} vs ${ctx.homeForm.last_10_wins}-${ctx.homeForm.last_10_losses} L10`,
   }
+}
+
+// ============================================================
+// V2: LLM NARRATIVE GENERATOR
+// Used by src/app/api/cron/log-predictions/route.ts
+// ============================================================
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+const MODEL = 'claude-haiku-4-5-20251001'
+
+export type NarrativeInputs = {
+  home_team: string
+  away_team: string
+  edge_score: number
+  predicted_winner: 'home' | 'away'
+  confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup'
+  components: EdgeScoreResult['components']
+  components_raw: EdgeScoreResult['components_raw']
+  venue_name: string
+  game_time?: string
+}
+
+export type NarrativeResult = {
+  summary: string
+  narrative: string
+  cost_usd: number
+}
+
+const SYSTEM_PROMPT = `You are a writer for The Edge, a daily 5-minute pre-game brief for analytically-minded MLB fans.
+
+VOICE:
+- Smart friend, not a robot. Conversational but informed.
+- Use specific numbers. Real stats over abstract claims.
+- Confident but never preachy. Surface insight, don't lecture.
+- Never use betting language or recommend wagers. Information only.
+- Never use these phrases: "lock", "play", "value", "edge to bet", "smash", "hammer", "fade".
+
+FORMAT RULES:
+- Output exactly two parts: a one-sentence summary AND a four-sentence narrative paragraph.
+- Use this exact structure: <summary>your summary</summary><narrative>your narrative</narrative>
+- Summary: max 110 characters. Identifies the 1-2 biggest factors driving the edge.
+- Narrative: EXACTLY 4 sentences. STRICT max 450 characters total. Be concise — cut filler. Walks through:
+  Sentence 1: Headline matchup or biggest factor with a specific stat.
+  Sentence 2: Supporting factor with a specific number.
+  Sentence 3: A counter-factor or secondary insight.
+  Sentence 4: Concise close naming the favored team or toss-up status.
+- If your narrative exceeds 450 characters, you must shorten it.
+- Use team names naturally. Don't start every sentence with team names.
+- If a stat is null, missing, or unavailable, do not invent it. Work with what's provided.
+- For toss-up confidence: be honest about it being close. Don't manufacture an edge.
+
+EXAMPLES:
+
+Good summary:
+"Peralta's 2.41 FIP and a tired Cardinals bullpen tilt this Brewers' way."
+
+Good narrative (412 chars, 4 sentences):
+"Peralta has been the best version of himself: 2.41 FIP, 11.2 K/9 over four starts. Cardinals counter with Mikolas (4.18 FIP) and a bullpen burned for 6 innings across the last two days. Wrigley's tailwind helps both lineups, but the pitching gap is too wide to ignore. Slight edge to Milwaukee."
+
+Bad (avoid):
+- "Take the Brewers tonight, this is a lock!" (advice + betting language)
+- "The advanced metrics suggest a probabilistic advantage." (robotic)
+- "Brewers will win because they're better." (no specifics)
+- "An exciting matchup awaits." (filler)`
+
+export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
+  try {
+    const userPrompt = buildUserPrompt(inputs)
+
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 600,
+      system: [
+        {
+          type: 'text',
+          text: SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+    })
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const parsed = parseOutput(text)
+
+    if (!parsed) {
+      console.error('Failed to parse LLM output:', text)
+      return null
+    }
+
+    const inputCost = (message.usage.input_tokens * 0.0000008)
+    const cachedCost = ((message.usage.cache_read_input_tokens ?? 0) * 0.00000008)
+    const outputCost = (message.usage.output_tokens * 0.000004)
+    const totalCost = inputCost + cachedCost + outputCost
+
+    return {
+      summary: parsed.summary,
+      narrative: parsed.narrative,
+      cost_usd: totalCost,
+    }
+  } catch (err) {
+    console.error('LLM narrative generation failed:', err)
+    return null
+  }
+}
+
+function buildUserPrompt(inputs: NarrativeInputs): string {
+  const { components_raw } = inputs
+  const homeP = components_raw.home_pitcher
+  const awayP = components_raw.away_pitcher
+  const homeT = components_raw.home_team
+  const awayT = components_raw.away_team
+  const park = components_raw.park
+
+  const sortedComponents = Object.entries(inputs.components)
+    .map(([key, value]) => ({ key, value, abs: Math.abs(value) }))
+    .sort((a, b) => b.abs - a.abs)
+    .slice(0, 4)
+
+  const winner = inputs.predicted_winner === 'home' ? inputs.home_team : inputs.away_team
+
+  return `Generate a summary and narrative for tonight's MLB game.
+
+GAME: ${inputs.away_team} @ ${inputs.home_team}
+VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
+
+EDGE SCORE: ${inputs.edge_score >= 0 ? '+' : ''}${inputs.edge_score} (${inputs.confidence_tier} edge${inputs.confidence_tier !== 'tossup' ? ` to ${winner}` : ''})
+
+TOP CONTRIBUTING FACTORS (sorted by impact):
+${sortedComponents.map((c, i) => `${i + 1}. ${formatComponentName(c.key)}: ${c.value >= 0 ? '+' : ''}${c.value.toFixed(1)} ${c.value >= 0 ? `(favors ${inputs.home_team})` : `(favors ${inputs.away_team})`}`).join('\n')}
+
+PITCHING:
+${awayP ? `- ${inputs.away_team} (away): ${awayP.player_name} — ERA ${awayP.era ?? 'N/A'}, FIP ${awayP.fip ?? 'N/A'}, K/9 ${awayP.k_per_9 ?? 'N/A'}, ${awayP.innings_pitched ?? 0} IP this season` : `- ${inputs.away_team} (away): pitcher data unavailable`}
+${homeP ? `- ${inputs.home_team} (home): ${homeP.player_name} — ERA ${homeP.era ?? 'N/A'}, FIP ${homeP.fip ?? 'N/A'}, K/9 ${homeP.k_per_9 ?? 'N/A'}, ${homeP.innings_pitched ?? 0} IP this season` : `- ${inputs.home_team} (home): pitcher data unavailable`}
+
+OFFENSE (last 30 days):
+${awayT ? `- ${inputs.away_team}: ${awayT.runs_per_game_l30?.toFixed(2) ?? 'N/A'} R/G, OPS ${awayT.ops_l30 ?? 'N/A'}` : ''}
+${homeT ? `- ${inputs.home_team}: ${homeT.runs_per_game_l30?.toFixed(2) ?? 'N/A'} R/G, OPS ${homeT.ops_l30 ?? 'N/A'}` : ''}
+
+BULLPEN:
+${awayT ? `- ${inputs.away_team}: ERA ${awayT.bullpen_era?.toFixed(2) ?? 'N/A'}, ${awayT.bullpen_innings_yesterday ?? 0} IP yesterday` : ''}
+${homeT ? `- ${inputs.home_team}: ERA ${homeT.bullpen_era?.toFixed(2) ?? 'N/A'}, ${homeT.bullpen_innings_yesterday ?? 0} IP yesterday` : ''}
+
+PARK FACTORS:
+- ${park?.venue_name ?? inputs.venue_name}: HR factor ${park?.hr_factor ?? 1.0}, Run factor ${park?.run_factor ?? 1.0}${park?.is_dome ? ', dome' : ''}
+
+Write the summary and narrative now using the format <summary>...</summary><narrative>...</narrative>.`
+}
+
+function parseOutput(text: string): { summary: string; narrative: string } | null {
+  const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
+  const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
+
+  if (!summaryMatch || !narrativeMatch) return null
+
+  const summary = summaryMatch[1].trim()
+  const narrative = narrativeMatch[1].trim()
+
+  if (!summary || !narrative) return null
+  if (summary.length > 100) return null
+  if (narrative.length > 650) return null
+
+  return { summary, narrative }
+}
+
+function formatComponentName(key: string): string {
+  const map: Record<string, string> = {
+    starting_pitcher: 'Starting Pitcher',
+    bullpen: 'Bullpen',
+    offense: 'Offense',
+    defense: 'Defense',
+    matchup: 'Matchup',
+    park: 'Park',
+    weather: 'Weather',
+    rest: 'Rest & Travel',
+  }
+  return map[key] ?? key
 }

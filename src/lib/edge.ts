@@ -334,9 +334,11 @@ export async function logPrediction(
   awayTeamId: number,
   awayTeamName: string,
   result: EdgeScoreResult,
-  lineupsConfirmed: boolean = false
+  lineupsConfirmed: boolean = false,
+  summary: string | null = null,
+  narrative: string | null = null
 ) {
-  await supa.from('edge_predictions').upsert({
+  const row: any = {
     game_pk: gamePk,
     game_date: gameDate,
     home_team_id: homeTeamId,
@@ -349,5 +351,14 @@ export async function logPrediction(
     components: result.components,
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'game_pk' })
+  }
+
+  // Only include narrative fields if generated this run
+  if (summary !== null) {
+    row.summary = summary
+    row.narrative = narrative
+    row.narrative_generated_at = new Date().toISOString()
+  }
+
+  await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })
 }

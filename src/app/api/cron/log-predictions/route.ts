@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { calculateEdgeScore, logPrediction } from '@/lib/edge'
+import { generateNarrative } from '@/lib/narrative'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -51,16 +52,30 @@ export async function GET(request: Request) {
 
         const gameDate = game.officialDate ?? game.gameDate?.split('T')[0] ?? today
 
-        await logPrediction(
-          game.gamePk,
-          gameDate,
-          game.teams.home.team.id,
-          game.teams.home.team.name,
-          game.teams.away.team.id,
-          game.teams.away.team.name,
-          result,
-          false  // lineups not yet confirmed at morning prediction time
-        )
+
+// Generate narrative (best effort — don't block prediction if LLM fails)
+const narrative = await generateNarrative({
+  home_team: game.teams.home.team.name,
+  away_team: game.teams.away.team.name,
+  edge_score: result.edge_score,
+  predicted_winner: result.predicted_winner,
+  confidence_tier: result.confidence_tier,
+  components: result.components,
+  components_raw: result.components_raw,
+  venue_name: game.venue?.name ?? '',
+})
+await logPrediction(
+  game.gamePk,
+  gameDate,
+  game.teams.home.team.id,
+  game.teams.home.team.name,
+  game.teams.away.team.id,
+  game.teams.away.team.name,
+  result,
+  false,
+  narrative?.summary ?? null,
+  narrative?.narrative ?? null
+)
 
         predictions_logged++
       } catch (err) {

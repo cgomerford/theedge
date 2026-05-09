@@ -23,8 +23,11 @@ import PreviewSection from '@/components/PreviewSection'
 export const revalidate = 1800
 import { generateGameline, calculateEdge } from '@/lib/narrative'
 import LiveTicker from '@/components/LiveTicker'
+import EdgeIndicator from '@/components/EdgeIndicator'
+import { getEdgePrediction } from '@/lib/edge-fetch'
 
 type Props = { params: Promise<{ slug: string }> }
+
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
@@ -78,7 +81,7 @@ export default async function GamePreview({ params }: Props) {
       raw_data: game,
     }, { onConflict: 'slug' })
   }
-
+const prediction = await getEdgePrediction(game.gamePk)
   // Fetch pitcher data in parallel (faster than sequential)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
@@ -107,6 +110,8 @@ const [
     getTeamForm(game.teams.away.team.id),
     getTeamForm(game.teams.home.team.id),
   ])
+
+
 // Generate the gameline narrative
   const windImpact = weather && game.venue?.name
     ? describeWindImpact(game.venue.name, weather.wind_direction, weather.wind_mph)
@@ -170,6 +175,8 @@ const [
         <h1 className="text-5xl md:text-7xl font-serif font-light leading-none tracking-tight mb-12">
           {shortName(game.teams.home.team.name)}
         </h1>
+
+    
 <div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
           <div>
             <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Away</div>
@@ -222,60 +229,26 @@ const [
             )}
           </div>
         </div>
-{/* GAMELINE NARRATIVE */}
-        <div className="my-10 py-6 border-l-4 border-orange-600 pl-6 bg-stone-100/40">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-orange-600 mb-3">
-            — The Edge
-          </div>
-          <p className="font-serif italic text-xl md:text-2xl leading-snug text-stone-800">
-            {gameline}
-          </p>
-        </div>
-        <p className="text-lg text-stone-700 mb-12">
-          First pitch: <strong>{gameTime}</strong>. Status: <strong>{game.status?.detailedState}</strong>.
-        </p>
 
-        {/* EDGE INDICATOR */}
-        {edgeCategories.length > 0 && (
-          <div className="my-8 bg-stone-900 text-stone-100 p-6 md:p-8">
-            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-yellow-300 mb-4">
-              ⊕ The Edge Indicator
-            </div>
-            <div className="space-y-5">
-              {edgeCategories.map((cat, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-baseline mb-2">
-                    <div className="font-serif font-semibold text-base">{cat.label}</div>
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
-                      {cat.detail}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <div className={`w-12 text-right ${cat.winner === 'away' ? 'text-yellow-300 font-bold' : 'text-stone-400'}`}>
-                      {shortName(game.teams.away.team.name)}
-                    </div>
-                    <div className="flex-1 flex h-2 bg-stone-800 rounded-full overflow-hidden">
-                      <div
-                        className={`${cat.winner === 'away' ? 'bg-yellow-300' : 'bg-stone-600'}`}
-                        style={{ width: `${cat.awayScore / (cat.awayScore + cat.homeScore) * 100}%` }}
-                      />
-                      <div
-                        className={`${cat.winner === 'home' ? 'bg-yellow-300' : 'bg-stone-600'}`}
-                        style={{ width: `${cat.homeScore / (cat.awayScore + cat.homeScore) * 100}%` }}
-                      />
-                    </div>
-                    <div className={`w-12 ${cat.winner === 'home' ? 'text-yellow-300 font-bold' : 'text-stone-400'}`}>
-                      {shortName(game.teams.home.team.name)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500 mt-5 pt-4 border-t border-stone-800">
-              Bullpen + Environment edges coming soon
-            </div>
-          </div>
-        )}
+
+        {/* ADD THE INDICATOR HERE */}
+{prediction && (
+  <EdgeIndicator
+    edge_score={prediction.edge_score}
+    predicted_winner={prediction.predicted_winner}
+    confidence_tier={prediction.confidence_tier}
+    components={prediction.components}
+    home_team={game.teams.home.team.name}
+    away_team={game.teams.away.team.name}
+    home_team_abbr={game.teams.home.team.abbreviation}
+    away_team_abbr={game.teams.away.team.abbreviation}
+    updated_at={prediction.updated_at}
+    lineups_confirmed={prediction.lineups_confirmed}
+    is_pro={false}
+    llm_summary={prediction.summary}
+    llm_narrative={prediction.narrative}
+  />
+)}
 {/* FORM GUIDE */}
         {(awayForm || homeForm) && (
           <PreviewSection
