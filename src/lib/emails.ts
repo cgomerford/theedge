@@ -406,6 +406,8 @@ const strongestGame = games
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <title>The Edge Daily — ${dateStr}</title>
 </head>
 <body style="margin:0;padding:0;background:#1a1a1a;font-family:Georgia,serif;">
