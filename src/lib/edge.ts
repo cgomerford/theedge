@@ -325,7 +325,6 @@ async function fetchTeam(teamId: number) {
 
 // ============================================================
 // PREDICTION LOGGING
-// ============================================================
 export async function logPrediction(
   gamePk: number,
   gameDate: string,
@@ -336,7 +335,8 @@ export async function logPrediction(
   result: EdgeScoreResult,
   lineupsConfirmed: boolean = false,
   summary: string | null = null,
-  narrative: string | null = null
+  narrative: string | null = null,
+  streakData: any | null = null,
 ) {
   const row: any = {
     game_pk: gamePk,
@@ -353,11 +353,14 @@ export async function logPrediction(
     updated_at: new Date().toISOString(),
   }
 
-  // Only include narrative fields if generated this run
   if (summary !== null) {
     row.summary = summary
     row.narrative = narrative
     row.narrative_generated_at = new Date().toISOString()
+  }
+
+  if (streakData !== null) {
+    row.streak_data = streakData
   }
 
   await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })

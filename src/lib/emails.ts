@@ -135,6 +135,118 @@ Unsubscribe: ${unsubscribeUrl}
 Privacy: https://edgereportdaily.com/privacy · Terms: https://edgereportdaily.com/terms`,
   }
 }
+
+// =====================================================
+// V2 EMAIL BLOCKS — Edge Indicator + Narrative
+// =====================================================
+
+function buildEdgeIndicatorBlock(ctx: BriefGameContext): string {
+  // No prediction data = render nothing (graceful fallback)
+  if (ctx.edge_score === null || ctx.predicted_winner === null) {
+    return ''
+  }
+
+  const edgeScore = ctx.edge_score
+  const tier = ctx.confidence_tier ?? 'tossup'
+  
+  // Predicted winner team info
+  const winnerTeam = ctx.predicted_winner === 'home' 
+    ? ctx.game.teams.home.team.name
+    : ctx.game.teams.away.team.name
+  const winnerShort = winnerTeam.split(' ').pop()?.toUpperCase() ?? ''
+  
+  // Tier styling
+  const tierLabel = tier === 'strong' ? 'STRONG EDGE' 
+    : tier === 'moderate' ? 'MODERATE EDGE'
+    : tier === 'slight' ? 'SLIGHT EDGE'
+    : 'TOSS-UP'
+  
+  const tierColor = tier === 'strong' ? '#FF5722'
+    : tier === 'moderate' ? '#dcfa3c'
+    : tier === 'slight' ? '#dcfa3c'
+    : '#999'
+  
+  // Sign for display
+  const sign = edgeScore >= 0 ? '+' : ''
+  const displayScore = `${sign}${Math.round(edgeScore)}`
+
+  // Tossup edge case — show neutrally
+  if (tier === 'tossup') {
+    return `
+      <tr><td style="padding:0 40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;">
+          <tr>
+            <td style="padding:20px 24px;">
+              <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#dcfa3c;text-transform:uppercase;margin-bottom:8px;">
+                ⊕ The Edge Indicator
+              </div>
+              <div style="font-family:Georgia,serif;font-size:28px;line-height:1.1;color:#fff;font-weight:700;letter-spacing:-1px;margin-bottom:6px;">
+                Toss-up
+              </div>
+              <div style="font-family:Georgia,serif;font-size:14px;color:#999;line-height:1.5;">
+                Edge Score ${displayScore} — too close to call.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    `
+  }
+
+  return `
+    <tr><td style="padding:0 40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;">
+        <tr>
+          <td style="padding:24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:top;padding-right:20px;">
+                  <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#dcfa3c;text-transform:uppercase;margin-bottom:6px;">
+                    ⊕ Edge Indicator
+                  </div>
+                  <div style="font-family:Georgia,serif;font-size:48px;line-height:1;color:#dcfa3c;font-weight:900;letter-spacing:-2px;">
+                    ${displayScore}
+                  </div>
+                </td>
+                <td style="vertical-align:top;">
+                  <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:${tierColor};text-transform:uppercase;margin-bottom:8px;">
+                    — ${tierLabel}
+                  </div>
+                 <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:1px;color:#999;text-transform:uppercase;margin-bottom:4px;">
+  Edge favors
+</div>
+<div style="font-family:Georgia,serif;font-size:28px;line-height:1.05;color:#fff;font-weight:700;letter-spacing:-1px;margin-bottom:8px;">
+  ${winnerShort}
+</div>
+                  ${ctx.llm_summary ? `
+                    <div style="font-family:Georgia,serif;font-style:italic;font-size:13px;line-height:1.5;color:#ccc;margin-top:8px;">
+                      "${ctx.llm_summary}"
+                    </div>
+                  ` : ''}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  `
+}
+
+function buildNarrativeBlock(ctx: BriefGameContext): string {
+  if (!ctx.llm_narrative) return ''
+  
+  return `
+  <tr><td style="padding:20px 40px 24px;">
+      <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:10px;">
+        — The Read
+      </div>
+      <p style="font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#1a1a1a;margin:0 0 8px 0;">
+        ${ctx.llm_narrative}
+      </p>
+    </td></tr>
+  `
+}
 // =====================================================
 // DAILY BRIEF — sent each morning to subscribers
 // =====================================================
@@ -150,6 +262,11 @@ export type BriefGameContext = {
   venueName: string
   isIndoor: boolean
   slug: string
+   edge_score: number | null
+  predicted_winner: 'home' | 'away' | null
+  confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup' | null
+  llm_summary: string | null
+  llm_narrative: string | null
 }
 
 export function dailyBriefEmail(
@@ -194,8 +311,8 @@ export function dailyBriefEmail(
         </div>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;"><tr>
           <td style="padding-right:14px;vertical-align:middle;width:48px;">
-            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
-              <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.away.team.id}/spots/72" alt="" width="36" height="36" style="vertical-align:middle;display:inline-block;">
+            <div style="width:44px;height:48px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
+              <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.away.team.id}/spots/72" alt="" width="48" height="48" style="vertical-align:middle;display:inline-block;">
             </div>
           </td>
           <td style="vertical-align:middle;padding-right:10px;">
@@ -205,16 +322,17 @@ export function dailyBriefEmail(
             <div style="font-family:Georgia,serif;font-style:italic;font-size:16px;color:#999;font-weight:300;">at</div>
           </td>
           <td style="padding-right:14px;vertical-align:middle;width:48px;">
-            <div style="width:44px;height:44px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
-              <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.home.team.id}/spots/72" alt="" width="36" height="36" style="vertical-align:middle;display:inline-block;">
+            <div style="width:44px;height:48px;background:#fff;border-radius:50%;display:inline-block;text-align:center;line-height:44px;padding:0;border:1px solid #eee;">
+              <img src="https://midfield.mlbstatic.com/v1/team/${game.teams.home.team.id}/spots/72" alt="" width="48" height="48" style="vertical-align:middle;display:inline-block;">
             </div>
           </td>
           <td style="vertical-align:middle;">
             <div style="font-family:Georgia,serif;font-size:28px;line-height:1;letter-spacing:-1px;color:#1a1a1a;font-weight:700;">${homeShort}</div>
           </td>
         </tr></table>
-      </td></tr>
-
+      </td> </tr>
+     ${buildEdgeIndicatorBlock(ctx)}
+      ${buildNarrativeBlock(ctx)}
       ${(awayPitcher || homePitcher) ? `
       <tr><td style="padding:16px 40px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -273,9 +391,15 @@ export function dailyBriefEmail(
       </td></tr>
     `
   }).join('')
+const strongestGame = games
+    .filter(g => g.edge_score !== null && g.confidence_tier !== 'tossup')
+    .sort((a, b) => Math.abs(b.edge_score ?? 0) - Math.abs(a.edge_score ?? 0))[0]
 
+  const subjectExtra = strongestGame
+    ? ` · ${strongestGame.confidence_tier === 'strong' ? 'Strong' : strongestGame.confidence_tier === 'moderate' ? 'Moderate' : 'Slight'} edge to ${(strongestGame.predicted_winner === 'home' ? strongestGame.game.teams.home.team.name : strongestGame.game.teams.away.team.name).split(' ').pop()}`
+    : ''
   return {
-    subject: `${teamLabel} tonight · The Edge`,
+   subject: `${teamLabel} tonight${subjectExtra} · The Edge`,
     html: `
 <!DOCTYPE html>
 <html>

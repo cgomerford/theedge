@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { calculateEdgeScore, logPrediction } from '@/lib/edge'
 import { generateNarrative } from '@/lib/narrative'
+import { aggregateGameStreaks } from '@/lib/streaks'
+import type { GameStreaks } from '@/lib/streaks'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -59,6 +61,21 @@ export async function GET(request: Request) {
           venue_name: game.venue?.name ?? '',
         })
 
+        // Fetch streak data (best effort — don't block on failure)
+let streaks: GameStreaks | null = null
+try {
+  streaks = await aggregateGameStreaks(
+    game.teams.home.team.id,
+    game.teams.away.team.id,
+    game.teams.home.probablePitcher?.id ?? null,
+    game.teams.home.probablePitcher?.fullName ?? null,
+    game.teams.away.probablePitcher?.id ?? null,
+    game.teams.away.probablePitcher?.fullName ?? null,
+  )
+} catch (err) {
+  console.error(`Streak fetch failed for game ${game.gamePk}:`, err)
+}
+
         const gameDate = game.officialDate ?? game.gameDate?.split('T')[0] ?? today
 
         // Detect lineup status
@@ -89,16 +106,17 @@ export async function GET(request: Request) {
         let narrative: string | null = existing?.narrative ?? null
 
         if (shouldRegenerateNarrative) {
-          const generated = await generateNarrative({
-            home_team: game.teams.home.team.name,
-            away_team: game.teams.away.team.name,
-            edge_score: result.edge_score,
-            predicted_winner: result.predicted_winner,
-            confidence_tier: result.confidence_tier,
-            components: result.components,
-            components_raw: result.components_raw,
-            venue_name: game.venue?.name ?? '',
-          })
+        const generated = await generateNarrative({
+  home_team: game.teams.home.team.name,
+  away_team: game.teams.away.team.name,
+  edge_score: result.edge_score,
+  predicted_winner: result.predicted_winner,
+  confidence_tier: result.confidence_tier,
+  components: result.components,
+  components_raw: result.components_raw,
+  venue_name: game.venue?.name ?? '',
+  streaks: streaks,  // NEW
+})
 
           if (generated) {
             summary = generated.summary
@@ -109,18 +127,19 @@ export async function GET(request: Request) {
           narratives_kept++
         }
 
-        await logPrediction(
-          game.gamePk,
-          gameDate,
-          game.teams.home.team.id,
-          game.teams.home.team.name,
-          game.teams.away.team.id,
-          game.teams.away.team.name,
-          result,
-          lineupsConfirmed,
-          summary,
-          narrative
-        )
+      await logPrediction(
+  game.gamePk,
+  gameDate,
+  game.teams.home.team.id,
+  game.teams.home.team.name,
+  game.teams.away.team.id,
+  game.teams.away.team.name,
+  result,
+  lineupsConfirmed,
+  summary,
+  narrative,
+  streaks,  // NEW
+)
 
         predictions_logged++
       } catch (err) {

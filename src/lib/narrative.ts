@@ -237,6 +237,8 @@ const client = new Anthropic({
 
 const MODEL = 'claude-haiku-4-5-20251001'
 
+import type { GameStreaks } from './streaks'
+
 export type NarrativeInputs = {
   home_team: string
   away_team: string
@@ -247,6 +249,7 @@ export type NarrativeInputs = {
   components_raw: EdgeScoreResult['components_raw']
   venue_name: string
   game_time?: string
+  streaks?: GameStreaks | null  // NEW
 }
 
 export type NarrativeResult = {
@@ -268,7 +271,7 @@ FORMAT RULES:
 - Output exactly two parts: a one-sentence summary AND a four-sentence narrative paragraph.
 - Use this exact structure: <summary>your summary</summary><narrative>your narrative</narrative>
 - Summary: max 110 characters. Identifies the 1-2 biggest factors driving the edge.
-- Narrative: EXACTLY 4 sentences. STRICT max 450 characters total. Be concise — cut filler. Walks through:
+- Narrative: EXACTLY 4 sentences. Target 450 characters, MAX 600 characters. Be concise — every word must earn its place.. Be concise — cut filler. Walks through:
   Sentence 1: Headline matchup or biggest factor with a specific stat.
   Sentence 2: Supporting factor with a specific number.
   Sentence 3: A counter-factor or secondary insight.
@@ -279,6 +282,13 @@ FORMAT RULES:
 - For toss-up confidence: be honest about it being close. Don't manufacture an edge.
 
 EXAMPLES:
+ADDITIONAL DATA - STREAKS:
+When the user prompt includes "RECENT FORM & STREAKS" data, use it to make the narrative feel current and specific. Reference at most 1-2 streak details — don't list everything. Examples of good streak references:
+- "Yesavage is rolling with a 0.99 ERA over his last 3 starts"
+- "Schanuel rides a 7-game hit streak in"
+- "Bohm's 0-for-24 stretch puts pressure on the rest of the lineup"
+
+Don't reference streaks that don't exist. If no streaks are notable, focus on season stats.
 
 Good summary:
 "Peralta's 2.41 FIP and a tired Cardinals bullpen tilt this Brewers' way."
@@ -352,8 +362,9 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     .slice(0, 4)
 
   const winner = inputs.predicted_winner === 'home' ? inputs.home_team : inputs.away_team
+const streakSection = inputs.streaks ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team) : ''
 
-  return `Generate a summary and narrative for tonight's MLB game.
+return `Generate a summary and narrative for tonight's MLB game.
 
 GAME: ${inputs.away_team} @ ${inputs.home_team}
 VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
@@ -377,7 +388,7 @@ ${homeT ? `- ${inputs.home_team}: ERA ${homeT.bullpen_era?.toFixed(2) ?? 'N/A'},
 
 PARK FACTORS:
 - ${park?.venue_name ?? inputs.venue_name}: HR factor ${park?.hr_factor ?? 1.0}, Run factor ${park?.run_factor ?? 1.0}${park?.is_dome ? ', dome' : ''}
-
+${streakSection}
 Write the summary and narrative now using the format <summary>...</summary><narrative>...</narrative>.`
 }
 
@@ -385,16 +396,84 @@ function parseOutput(text: string): { summary: string; narrative: string } | nul
   const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
   const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
 
-  if (!summaryMatch || !narrativeMatch) return null
+  if (!summaryMatch || !narrativeMatch) {
+    console.error('Failed to parse LLM output (missing tags):', text.substring(0, 200))
+    return null
+  }
 
   const summary = summaryMatch[1].trim()
   const narrative = narrativeMatch[1].trim()
 
-  if (!summary || !narrative) return null
-  if (summary.length > 100) return null
-  if (narrative.length > 650) return null
+  if (!summary || !narrative) {
+    console.error('Failed to parse: empty values')
+    return null
+  }
+  
+  if (summary.length > 250) {
+    console.error(`Failed to parse: summary too long (${summary.length} chars)`)
+    return null
+  }
+  
+  if (narrative.length > 900) {
+    console.error(`Failed to parse: narrative too long (${narrative.length} chars)`)
+    return null
+  }
 
   return { summary, narrative }
+}
+
+function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
+  const lines: string[] = ['', 'RECENT FORM & STREAKS:']
+
+  // Pitcher trends
+  if (streaks.home_pitcher) {
+    const p = streaks.home_pitcher
+    const trendBits = []
+    if (p.last_3_era !== null) trendBits.push(`${p.last_3_era} ERA L3 starts`)
+    if (p.last_3_k_per_9 !== null) trendBits.push(`${p.last_3_k_per_9} K/9 L3`)
+    if (p.current_scoreless_innings >= 6) trendBits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
+    if (p.trend_label) trendBits.push(`(${p.trend_label})`)
+    if (trendBits.length > 0) {
+      lines.push(`- ${homeTeam} starter ${p.player_name}: ${trendBits.join(', ')}`)
+    }
+  }
+  if (streaks.away_pitcher) {
+    const p = streaks.away_pitcher
+    const trendBits = []
+    if (p.last_3_era !== null) trendBits.push(`${p.last_3_era} ERA L3 starts`)
+    if (p.last_3_k_per_9 !== null) trendBits.push(`${p.last_3_k_per_9} K/9 L3`)
+    if (p.current_scoreless_innings >= 6) trendBits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
+    if (p.trend_label) trendBits.push(`(${p.trend_label})`)
+    if (trendBits.length > 0) {
+      lines.push(`- ${awayTeam} starter ${p.player_name}: ${trendBits.join(', ')}`)
+    }
+  }
+
+  // Hot batters
+  if (streaks.home_hot_batters.length > 0) {
+    lines.push(`- ${homeTeam} hot bats:`)
+    streaks.home_hot_batters.slice(0, 2).forEach(b => {
+      lines.push(`    * ${b.player_name}${b.streak_label ? ` — ${b.streak_label}` : ''}`)
+    })
+  }
+  if (streaks.away_hot_batters.length > 0) {
+    lines.push(`- ${awayTeam} hot bats:`)
+    streaks.away_hot_batters.slice(0, 2).forEach(b => {
+      lines.push(`    * ${b.player_name}${b.streak_label ? ` — ${b.streak_label}` : ''}`)
+    })
+  }
+
+  // Cold batters (only most extreme)
+  if (streaks.home_cold_batters.length > 0) {
+    const worst = streaks.home_cold_batters[0]
+    lines.push(`- ${homeTeam} cold: ${worst.player_name}${worst.streak_label ? ` — ${worst.streak_label}` : ''}`)
+  }
+  if (streaks.away_cold_batters.length > 0) {
+    const worst = streaks.away_cold_batters[0]
+    lines.push(`- ${awayTeam} cold: ${worst.player_name}${worst.streak_label ? ` — ${worst.streak_label}` : ''}`)
+  }
+
+  return lines.length > 1 ? lines.join('\n') : ''
 }
 
 function formatComponentName(key: string): string {

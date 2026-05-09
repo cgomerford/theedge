@@ -11,17 +11,19 @@ import { getVenueInfo, describeWindImpact } from '@/lib/venues'
 import { findTeamByName } from '@/lib/teams'
 import { dailyBriefEmail, type BriefGameContext } from '@/lib/emails'
 import { Resend } from 'resend'
+import { getPredictionsForDate } from '@/lib/edge-fetch'
 
 // Vercel cron will hit this — we secure it with a shared secret
 export const maxDuration = 300  // 5 min max execution
 
 export async function GET(req: NextRequest) {
-// TEMP: auth disabled for email rendering test — RE-ENABLE BEFORE BED
-   const authHeader = req.headers.get('authorization')
-   const expected = `Bearer ${process.env.CRON_SECRET}`
+  // TEMP: auth disabled for email rendering test — RE-ENABLE BEFORE BED
+  const authHeader = req.headers.get('authorization')
+  const expected = `Bearer ${process.env.CRON_SECRET}`
   if (process.env.CRON_SECRET && authHeader !== expected) {
-  return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
+
   const supa = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
 
@@ -35,7 +37,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'No games today, nothing to send' })
   }
 
-  // 2. Pre-compute context (pitcher stats + weather) for every game
+  // 2. Fetch all V2 predictions for today in one batch
+  const predictions = await getPredictionsForDate(today)
+  console.log(`[daily-brief] Loaded ${predictions.size} V2 predictions`)
+
+  // 3. Pre-compute context (pitcher stats + weather + V2 prediction) for every game
   const gameContexts = await Promise.all(
     allGames.map(async (game): Promise<BriefGameContext> => {
       const venue = getVenueInfo(game.venue?.name)
@@ -54,6 +60,8 @@ export async function GET(req: NextRequest) {
         ? describeWindImpact(game.venue.name, weather.wind_direction, weather.wind_mph)
         : null
 
+      const prediction = predictions.get(game.gamePk)
+
       return {
         game,
         awaySeasonStats,
@@ -63,12 +71,18 @@ export async function GET(req: NextRequest) {
         venueName: game.venue?.name ?? '',
         isIndoor: venue?.indoor ?? false,
         slug: slugifyGame(game),
+        // V2 prediction fields
+        edge_score: prediction?.edge_score ?? null,
+        predicted_winner: prediction?.predicted_winner ?? null,
+        confidence_tier: prediction?.confidence_tier ?? null,
+        llm_summary: prediction?.summary ?? null,
+        llm_narrative: prediction?.narrative ?? null,
       }
     })
   )
 
-  // 3. Get all subscribers with at least one team picked
-const { data: subscribers, error: subError } = await supa
+  // 4. Get all subscribers with at least one team picked
+  const { data: subscribers, error: subError } = await supa
     .from('subscribers')
     .select('email, teams, preferences_token, unsubscribed_at, email_verified')
     .is('unsubscribed_at', null)
@@ -92,7 +106,7 @@ const { data: subscribers, error: subError } = await supa
   let skippedCount = 0
   const errors: string[] = []
 
-  // 4. Loop through subscribers, send each their personalized brief
+  // 5. Loop through subscribers, send each their personalized brief
   for (const sub of activeSubs) {
     try {
       const subTeams: string[] = sub.teams as string[]

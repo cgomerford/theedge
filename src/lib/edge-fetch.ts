@@ -25,6 +25,22 @@ export type EdgePrediction = {
   narrative: string | null
 }
 
+
+// Fetch all today's predictions in one query (for email cron)
+export async function getPredictionsForDate(date: string): Promise<Map<number, EdgePrediction>> {
+  const { data, error } = await supa
+    .from('edge_predictions')
+    .select('game_pk, edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, summary, narrative, streak_data')
+    .eq('game_date', date)
+  
+  if (error || !data) return new Map()
+  
+  const map = new Map<number, EdgePrediction>()
+  for (const row of data) {
+    map.set(row.game_pk, row as EdgePrediction)
+  }
+  return map
+}
 /**
  * Get the Edge prediction for a specific game by gamePk.
  * Returns null if no prediction has been logged yet.
