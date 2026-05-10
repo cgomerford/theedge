@@ -25,6 +25,8 @@ import { generateGameline, calculateEdge } from '@/lib/narrative'
 import LiveTicker from '@/components/LiveTicker'
 import EdgeIndicator from '@/components/EdgeIndicator'
 import { getEdgePrediction } from '@/lib/edge-fetch'
+import LineupCard from '@/components/LineupCard'
+import { getProjectedLineup } from '@/lib/lineups'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -66,6 +68,7 @@ export default async function GamePreview({ params }: Props) {
     const games = await getScheduleForDate(dateMatch[1])
     game = games.find(g => slugifyGame(g) === slug) ?? null
     if (!game) notFound()
+      
 
     await supa.from('game_previews').upsert({
       slug,
@@ -86,30 +89,35 @@ const prediction = await getEdgePrediction(game.gamePk)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const venue = getVenueInfo(game.venue?.name)
+const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
 
 const [
-    awayRecentStarts,
-    homeRecentStarts,
-    awaySeasonStats,
-    homeSeasonStats,
-    weather,
-    awayPitchMix,
-    homePitchMix,
-    awayForm,
-    homeForm,
-  ] = await Promise.all([
-    awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
-    homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
-    awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
-    homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
-    venue && !venue.indoor
-      ? getGameWeather(venue.lat, venue.lon, game.gameDate)
-      : Promise.resolve(null),
-    awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
-    homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
-    getTeamForm(game.teams.away.team.id),
-    getTeamForm(game.teams.home.team.id),
-  ])
+  awayRecentStarts,
+  homeRecentStarts,
+  awaySeasonStats,
+  homeSeasonStats,
+  weather,
+  awayPitchMix,
+  homePitchMix,
+  awayForm,
+  homeForm,
+  awayLineup,
+  homeLineup,
+] = await Promise.all([
+  awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
+  homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
+  awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
+  homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
+  venue && !venue.indoor
+    ? getGameWeather(venue.lat, venue.lon, game.gameDate)
+    : Promise.resolve(null),
+  awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
+  homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
+  getTeamForm(game.teams.away.team.id),
+  getTeamForm(game.teams.home.team.id),
+getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
+  getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
+])
 
 
 // Generate the gameline narrative
@@ -249,6 +257,27 @@ const [
     llm_narrative={prediction.narrative}
   />
 )}
+
+<section className="mt-12">
+  <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
+    § Projected Lineups
+  </div>
+  <div className="grid md:grid-cols-2 gap-4">
+    <LineupCard 
+      lineup={awayLineup} 
+      teamName={game.teams.away.team.name}
+      teamShort={shortName(game.teams.away.team.name)}
+      teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
+    />
+    <LineupCard 
+      lineup={homeLineup} 
+      teamName={game.teams.home.team.name}
+      teamShort={shortName(game.teams.home.team.name)}
+      teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
+    />
+  </div>
+</section>
+
 {/* FORM GUIDE */}
         {(awayForm || homeForm) && (
           <PreviewSection
