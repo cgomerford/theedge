@@ -254,6 +254,7 @@ export type NarrativeInputs = {
 
 export type NarrativeResult = {
   summary: string
+  story_lead: string
   narrative: string
   cost_usd: number
 }
@@ -268,38 +269,62 @@ VOICE:
 - Never use these phrases: "lock", "play", "value", "edge to bet", "smash", "hammer", "fade".
 
 FORMAT RULES:
-- Output exactly two parts: a one-sentence summary AND a four-sentence narrative paragraph.
-- Use this exact structure: <summary>your summary</summary><narrative>your narrative</narrative>
-- Summary: max 110 characters. Identifies the 1-2 biggest factors driving the edge.
-- Narrative: EXACTLY 4 sentences. Target 450 characters, MAX 600 characters. Be concise — every word must earn its place.. Be concise — cut filler. Walks through:
-  Sentence 1: Headline matchup or biggest factor with a specific stat.
-  Sentence 2: Supporting factor with a specific number.
-  Sentence 3: A counter-factor or secondary insight.
-  Sentence 4: Concise close naming the favored team or toss-up status.
-- If your narrative exceeds 450 characters, you must shorten it.
-- Use team names naturally. Don't start every sentence with team names.
-- If a stat is null, missing, or unavailable, do not invent it. Work with what's provided.
-- For toss-up confidence: be honest about it being close. Don't manufacture an edge.
+Output exactly THREE parts using these XML tags:
+<summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>
 
-EXAMPLES:
-ADDITIONAL DATA - STREAKS:
-When the user prompt includes "RECENT FORM & STREAKS" data, use it to make the narrative feel current and specific. Reference at most 1-2 streak details — don't list everything. Examples of good streak references:
+SUMMARY (max 110 characters):
+One sentence identifying the 1-2 biggest factors driving the edge.
+
+STORY_LEAD (max 350 characters, 2-3 sentences):
+This is the most important writing on the page. It's the FIRST thing a reader sees.
+Write like you're texting a curious friend before the game starts.
+- LEAD with one specific, compelling fact (a number, a name, a streak)
+- Use real names of players when possible — not "the starting pitcher"
+- Use em-dashes (—) and contractions naturally
+- NO jargon, NO "matchup analytics," NO "favorable conditions"
+- Confident but not pushy
+- 2-3 sentences MAX
+
+GOOD STORY_LEAD examples:
+✓ "Wheeler's been ridiculous lately — three straight under 2 ERA. The Mets bullpen is gassed after last night's marathon. Real edge here."
+✓ "Two pitchers having career years collide tonight. Skenes leads MLB in K/9, but Holton's been just as nasty in his last five. Toss-up."
+✓ "The Yankees' bats are quiet — just 3.2 runs per game over the last week. Glasnow's velocity is back to 99 mph. Rangers have a sneaky edge."
+
+BAD STORY_LEAD examples (do not write like these):
+✗ "The Phillies face the Mets tonight in a matchup that favors the home team." (no voice, no facts)
+✗ "Several factors point to a Phillies edge including pitching, bullpen, and recent form." (list-form, anonymous)
+✗ "Wheeler is good, the Mets pen is tired." (too short, no specifics)
+
+NARRATIVE (max 600 characters, EXACTLY 4 sentences):
+The analytical deep-read for engaged fans. Target 450 chars, hard max 600.
+Be concise — every word must earn its place.
+- Sentence 1: Headline matchup or biggest factor with a specific stat.
+- Sentence 2: Supporting factor with a specific number.
+- Sentence 3: A counter-factor or secondary insight.
+- Sentence 4: Concise close naming the favored team or toss-up status.
+
+If your narrative exceeds 450 characters, you must shorten it.
+Use team names naturally. Don't start every sentence with team names.
+If a stat is null, missing, or unavailable, do not invent it. Work with what's provided.
+For toss-up confidence: be honest about it being close. Don't manufacture an edge.
+
+ADDITIONAL DATA — STREAKS:
+When the user prompt includes "RECENT FORM & STREAKS" data, use it to make the writing feel current and specific. Reference at most 1-2 streak details. Examples:
 - "Yesavage is rolling with a 0.99 ERA over his last 3 starts"
 - "Schanuel rides a 7-game hit streak in"
 - "Bohm's 0-for-24 stretch puts pressure on the rest of the lineup"
 
 Don't reference streaks that don't exist. If no streaks are notable, focus on season stats.
 
-Good summary:
-"Peralta's 2.41 FIP and a tired Cardinals bullpen tilt this Brewers' way."
+EXAMPLE OUTPUT FORMAT:
 
-Good narrative (412 chars, 4 sentences):
-"Peralta has been the best version of himself: 2.41 FIP, 11.2 K/9 over four starts. Cardinals counter with Mikolas (4.18 FIP) and a bullpen burned for 6 innings across the last two days. Wrigley's tailwind helps both lineups, but the pitching gap is too wide to ignore. Slight edge to Milwaukee."
+<summary>Peralta's 2.41 FIP and a tired Cardinals bullpen tilt this Brewers' way.</summary>
+<story_lead>Peralta's been the best version of himself — 2.41 FIP, 11.2 K/9 over four starts. The Cardinals pen is burned out after 6 innings the last two nights. Brewers have a real edge tonight.</story_lead>
+<narrative>Peralta has been the best version of himself: 2.41 FIP, 11.2 K/9 over four starts. Cardinals counter with Mikolas (4.18 FIP) and a bullpen burned for 6 innings across the last two days. Wrigley's tailwind helps both lineups, but the pitching gap is too wide to ignore. Slight edge to Milwaukee.</narrative>
 
-Bad (avoid):
+Bad output to avoid:
 - "Take the Brewers tonight, this is a lock!" (advice + betting language)
 - "The advanced metrics suggest a probabilistic advantage." (robotic)
-- "Brewers will win because they're better." (no specifics)
 - "An exciting matchup awaits." (filler)`
 
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
@@ -308,7 +333,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
 
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 600,
+      max_tokens: 900,
       system: [
         {
           type: 'text',
@@ -338,10 +363,11 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     const totalCost = inputCost + cachedCost + outputCost
 
     return {
-      summary: parsed.summary,
-      narrative: parsed.narrative,
-      cost_usd: totalCost,
-    }
+  summary: parsed.summary,
+  story_lead: parsed.story_lead,
+  narrative: parsed.narrative,
+  cost_usd: totalCost,
+}
   } catch (err) {
     console.error('LLM narrative generation failed:', err)
     return null
@@ -392,19 +418,21 @@ ${streakSection}
 Write the summary and narrative now using the format <summary>...</summary><narrative>...</narrative>.`
 }
 
-function parseOutput(text: string): { summary: string; narrative: string } | null {
+function parseOutput(text: string): { summary: string; story_lead: string; narrative: string } | null {
   const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
+  const storyLeadMatch = text.match(/<story_lead>([\s\S]*?)<\/story_lead>/i)
   const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
 
-  if (!summaryMatch || !narrativeMatch) {
-    console.error('Failed to parse LLM output (missing tags):', text.substring(0, 200))
+  if (!summaryMatch || !storyLeadMatch || !narrativeMatch) {
+    console.error('Failed to parse LLM output (missing tags):', text.substring(0, 300))
     return null
   }
 
   const summary = summaryMatch[1].trim()
+  const story_lead = storyLeadMatch[1].trim()
   const narrative = narrativeMatch[1].trim()
 
-  if (!summary || !narrative) {
+  if (!summary || !story_lead || !narrative) {
     console.error('Failed to parse: empty values')
     return null
   }
@@ -414,12 +442,17 @@ function parseOutput(text: string): { summary: string; narrative: string } | nul
     return null
   }
   
+  if (story_lead.length > 400) {
+    console.error(`Failed to parse: story_lead too long (${story_lead.length} chars)`)
+    return null
+  }
+  
   if (narrative.length > 900) {
     console.error(`Failed to parse: narrative too long (${narrative.length} chars)`)
     return null
   }
 
-  return { summary, narrative }
+  return { summary, story_lead, narrative }
 }
 
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {

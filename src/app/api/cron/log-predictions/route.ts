@@ -87,11 +87,11 @@ try {
 
         // Check if we should regenerate narrative
         // Skip if existing prediction has narrative AND score didn't swing significantly
-        const { data: existing } = await supa
-          .from('edge_predictions')
-          .select('edge_score, summary, narrative')
-          .eq('game_pk', game.gamePk)
-          .single()
+       const { data: existing } = await supa
+  .from('edge_predictions')
+  .select('edge_score, summary, story_lead, narrative')
+  .eq('game_pk', game.gamePk)
+  .single()
 
         const hasExistingNarrative = existing?.summary && existing?.narrative
         const scoreSwing = existing 
@@ -102,32 +102,34 @@ try {
           !hasExistingNarrative || 
           scoreSwing >= NARRATIVE_REGEN_THRESHOLD
 
-        let summary: string | null = existing?.summary ?? null
-        let narrative: string | null = existing?.narrative ?? null
+    let summary: string | null = existing?.summary ?? null
+let story_lead: string | null = existing?.story_lead ?? null
+let narrative: string | null = existing?.narrative ?? null
 
-        if (shouldRegenerateNarrative) {
-        const generated = await generateNarrative({
-  home_team: game.teams.home.team.name,
-  away_team: game.teams.away.team.name,
-  edge_score: result.edge_score,
-  predicted_winner: result.predicted_winner,
-  confidence_tier: result.confidence_tier,
-  components: result.components,
-  components_raw: result.components_raw,
-  venue_name: game.venue?.name ?? '',
-  streaks: streaks,  // NEW
-})
+if (shouldRegenerateNarrative) {
+  const generated = await generateNarrative({
+    home_team: game.teams.home.team.name,
+    away_team: game.teams.away.team.name,
+    edge_score: result.edge_score,
+    predicted_winner: result.predicted_winner,
+    confidence_tier: result.confidence_tier,
+    components: result.components,
+    components_raw: result.components_raw,
+    venue_name: game.venue?.name ?? '',
+    streaks: streaks,
+  })
 
-          if (generated) {
-            summary = generated.summary
-            narrative = generated.narrative
-            narratives_regenerated++
-          }
-        } else {
-          narratives_kept++
-        }
+  if (generated) {
+    summary = generated.summary
+    story_lead = generated.story_lead
+    narrative = generated.narrative
+    narratives_regenerated++
+  }
+} else {
+  narratives_kept++
+}
 
-      await logPrediction(
+ await logPrediction(
   game.gamePk,
   gameDate,
   game.teams.home.team.id,
@@ -137,8 +139,9 @@ try {
   result,
   lineupsConfirmed,
   summary,
+  story_lead,
   narrative,
-  streaks,  // NEW
+  streaks,
 )
 
         predictions_logged++

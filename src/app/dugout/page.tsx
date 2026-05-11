@@ -6,6 +6,8 @@ import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl, getTeamForm } 
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { findTeamByName, findTeamBySlug, getTeamTheme, teamIdBySlug } from '@/lib/teams'
 import SiteHeader from '@/components/SiteHeader'
+import AnalyticsTrigger from '@/components/AnalyticsTrigger'
+
 
 export const revalidate = 600
 
@@ -124,7 +126,7 @@ export default async function DugoutPage() {
                   )}
                 </div>
               </div>
-
+<AnalyticsTrigger event="dugout_viewed" />
               {/* Form strip */}
               {primaryTeamForm && (
                 <div className="flex flex-wrap gap-6 mt-6 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>

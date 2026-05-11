@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS, findTeamBySlug } from '@/lib/teams'
 import { notFound } from 'next/navigation'
+import AnalyticsTrigger from '@/components/AnalyticsTrigger'
 
 type Props = {
   params: Promise<{ token: string }>
@@ -37,6 +38,9 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
     .map(slug => findTeamBySlug(slug))
     .filter((t): t is NonNullable<typeof t> => t !== undefined)
 
+
+    
+
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
       <div className="max-w-4xl mx-auto px-6 py-12 md:py-20">
@@ -56,6 +60,32 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
           </div>
         )}
 
+{isWelcome && (
+  <>
+    <AnalyticsTrigger event="signup_verified" />
+    {/* existing welcome banner */}
+  </>
+)}
+
+{isSaved && (
+  <>
+    <AnalyticsTrigger 
+      event="preferences_teams_saved" 
+      data={{ team_count: followedTeams.length }} 
+    />
+    {/* existing saved banner */}
+  </>
+)}
+
+{isPrimarySaved && primaryTeam && (
+  <>
+    <AnalyticsTrigger 
+      event="preferences_primary_saved" 
+      data={{ team: primaryTeam }} 
+    />
+    {/* existing primary saved banner */}
+  </>
+)}
         {isSaved && (
           <div className="mt-8 p-4 bg-green-50 border-l-4 border-green-700 text-green-900">
             <div className="text-xs font-mono uppercase tracking-widest text-green-700 mb-1">

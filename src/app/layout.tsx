@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter, JetBrains_Mono, Bebas_Neue } from 'next/font/google';
 import "./globals.css";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import CookieConsent from "@/components/CookieConsent";
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -36,7 +38,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable} ${jetbrains.variable} ${bebas.variable}`}>
       <body className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable} antialiased`}>
+        <GoogleAnalytics />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

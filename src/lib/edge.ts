@@ -325,6 +325,8 @@ async function fetchTeam(teamId: number) {
 
 // ============================================================
 // PREDICTION LOGGING
+// ============================================================
+// PREDICTION LOGGING
 export async function logPrediction(
   gamePk: number,
   gameDate: string,
@@ -335,6 +337,7 @@ export async function logPrediction(
   result: EdgeScoreResult,
   lineupsConfirmed: boolean = false,
   summary: string | null = null,
+  story_lead: string | null = null,
   narrative: string | null = null,
   streakData: any | null = null,
 ) {
@@ -355,6 +358,7 @@ export async function logPrediction(
 
   if (summary !== null) {
     row.summary = summary
+    row.story_lead = story_lead
     row.narrative = narrative
     row.narrative_generated_at = new Date().toISOString()
   }

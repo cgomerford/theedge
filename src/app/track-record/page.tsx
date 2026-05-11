@@ -7,6 +7,7 @@ import {
   getRecentPredictions,
 } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
+import AnalyticsTrigger from '@/components/AnalyticsTrigger'
 
 export const revalidate = 1800 // 30 min cache
 
@@ -102,6 +103,7 @@ export default async function TrackRecordPage() {
           <p className="text-[#4A4A4A] mb-6 text-sm">
             How the model performs at different confidence levels.
           </p>
+          <AnalyticsTrigger event="track_record_viewed" />
           
           <div className="bg-white border-2 border-[#1A1A1A]/10 rounded-lg overflow-hidden">
             {tiers.map((tier, i) => (

@@ -30,6 +30,12 @@ const pitches = arsenal.filter(p =>
   p.whiff_percent !== null &&
   p.percentage > 0
 )
+console.log('Chart pitches with types:', pitches.map(p => ({
+  name: p.pitch_name,
+  type: p.pitch_type,
+  typeOf: typeof p.pitch_type,
+  length: p.pitch_type?.length
+})))
 console.log('Pitches passing filter:', pitches)
   if (pitches.length === 0) {
     return (
@@ -183,7 +189,7 @@ console.log('Pitches passing filter:', pitches)
               const cx = xScale(pitch.avg_velocity!)
               const cy = yScale(pitch.whiff_percent!)
               const r = bubbleRadius(pitch.percentage)
-              const color = PITCH_COLORS[pitch.pitch_type] ?? '#A3A3A3'
+              const color = PITCH_COLORS[pitch.pitch_type ?? (pitch as any).pitch_code] ?? '#A3A3A3'
               
               return (
                 <g key={`pitch-${i}`} className="hover:opacity-100 transition-opacity">
