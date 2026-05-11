@@ -415,7 +415,7 @@ ${homeT ? `- ${inputs.home_team}: ERA ${homeT.bullpen_era?.toFixed(2) ?? 'N/A'},
 PARK FACTORS:
 - ${park?.venue_name ?? inputs.venue_name}: HR factor ${park?.hr_factor ?? 1.0}, Run factor ${park?.run_factor ?? 1.0}${park?.is_dome ? ', dome' : ''}
 ${streakSection}
-Write the summary and narrative now using the format <summary>...</summary><narrative>...</narrative>.`
+Write the summary, story_lead, and narrative now using the format <summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>.`
 }
 
 function parseOutput(text: string): { summary: string; story_lead: string; narrative: string } | null {
