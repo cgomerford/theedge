@@ -28,6 +28,7 @@ import { getEdgePrediction } from '@/lib/edge-fetch'
 import LineupCard from '@/components/LineupCard'
 import { getProjectedLineup } from '@/lib/lineups'
 import PitchArsenalChart from '@/components/PitchArsenalChart'
+import StoryLead from '@/components/StoryLead'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -239,7 +240,10 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
           </div>
         </div>
 
-
+{/* THE STORY - leads with narrative voice */}
+{prediction?.story_lead && (
+  <StoryLead story_lead={prediction.story_lead} />
+)}
         {/* ADD THE INDICATOR HERE */}
 {prediction && (
   <EdgeIndicator

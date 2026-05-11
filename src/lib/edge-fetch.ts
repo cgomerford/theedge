@@ -22,6 +22,7 @@ export type EdgePrediction = {
   lineups_confirmed: boolean
   updated_at: string
   summary: string | null
+  story_lead: string | null
   narrative: string | null
 }
 
@@ -30,7 +31,7 @@ export type EdgePrediction = {
 export async function getPredictionsForDate(date: string): Promise<Map<number, EdgePrediction>> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('game_pk, edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, summary, narrative, streak_data')
+    .select('game_pk, edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, summary, story_lead, narrative, streak_data')
     .eq('game_date', date)
   
   if (error || !data) return new Map()
@@ -48,7 +49,7 @@ export async function getPredictionsForDate(date: string): Promise<Map<number, E
 export async function getEdgePrediction(gamePk: number): Promise<EdgePrediction | null> {
   const { data, error } = await supa
   .from('edge_predictions')
-  .select('edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, summary, narrative')
+  .select('edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, summary, story_lead, narrative')
   .eq('game_pk', gamePk)
   .single()
 
