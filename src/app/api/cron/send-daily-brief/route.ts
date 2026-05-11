@@ -19,8 +19,8 @@ export const maxDuration = 300  // 5 min max execution
 export async function GET(req: NextRequest) {
   // TEMP: auth disabled for email rendering test — RE-ENABLE BEFORE BED
  const authHeader = req.headers.get('authorization')
-if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-  return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 }
 
   const supa = createAdminClient()

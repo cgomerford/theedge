@@ -13,9 +13,9 @@ export const revalidate = 0
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+}
 
   try {
     const today = new Date().toISOString().split('T')[0]
