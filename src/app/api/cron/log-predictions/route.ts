@@ -109,11 +109,18 @@ let narrative: string | null = existing?.narrative ?? null
 console.log(`Game ${game.gamePk}: shouldRegenerate=${shouldRegenerateNarrative}, hasExisting=${hasExistingNarrative}, scoreSwing=${scoreSwing}`)
 
 if (shouldRegenerateNarrative) {
-  console.log(`Game ${game.gamePk}: calling generateNarrative...`)
-  const generated = await generateNarrative({...})
-  
-  console.log(`Game ${game.gamePk}: generateNarrative returned:`, generated ? 'success' : 'null')
-  
+  const generated = await generateNarrative({
+    home_team: game.teams.home.team.name,
+    away_team: game.teams.away.team.name,
+    edge_score: result.edge_score,
+    predicted_winner: result.predicted_winner,
+    confidence_tier: result.confidence_tier,
+    components: result.components,
+    components_raw: result.components_raw,
+    venue_name: game.venue?.name ?? '',
+    streaks: streaks,
+  })
+
   if (generated) {
     summary = generated.summary
     story_lead = generated.story_lead
