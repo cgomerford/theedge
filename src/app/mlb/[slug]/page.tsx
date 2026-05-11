@@ -27,6 +27,7 @@ import EdgeIndicator from '@/components/EdgeIndicator'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import LineupCard from '@/components/LineupCard'
 import { getProjectedLineup } from '@/lib/lineups'
+import PitchArsenalChart from '@/components/PitchArsenalChart'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -435,7 +436,14 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
                       </div>
                     </div>
                   )}
-
+{awayPitchMix.length > 0 && game.teams.away.probablePitcher && (
+  <div className="mb-6">
+    <PitchArsenalChart 
+      arsenal={awayPitchMix as any}
+      pitcherName={game.teams.away.probablePitcher.fullName}
+    />
+  </div>
+)}
                  {awayPitchMix.length > 0 && (
                     <div className="mb-6 pb-6 border-b border-stone-200">
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
@@ -557,7 +565,14 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
                       </div>
                     </div>
                   )}
-
+{homePitchMix.length > 0 && game.teams.home.probablePitcher && (
+  <div className="mb-6">
+    <PitchArsenalChart 
+      arsenal={homePitchMix as any}
+      pitcherName={game.teams.home.probablePitcher.fullName}
+    />
+  </div>
+)}
                   {homePitchMix.length > 0 && (
                     <div className="mb-6 pb-6 border-b border-stone-200">
                       <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">

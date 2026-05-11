@@ -9,13 +9,23 @@ import LiveTicker from '@/components/LiveTicker'
 
 export const revalidate = 1800
 
-export default async function HomePage() {
+type Props = {
+  searchParams: Promise<{
+    'check-email'?: string
+    'already-subscribed'?: string
+    error?: string
+  }>
+}
+
+export default async function HomePage({ searchParams }: Props) {
+  const sp = await searchParams
   // Auth check — logged-in users go to dugout
+  // TEMP DISABLED for testing signup flow
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get('edge_session')
   if (sessionCookie?.value) {
     redirect('/dugout')
-  }
+   }
 
   const today = new Date().toISOString().split('T')[0]
   const [games, overallStats, predictions] = await Promise.all([
@@ -38,7 +48,89 @@ export default async function HomePage() {
     <main className="min-h-screen bg-stone-950 text-stone-100">
       <SiteHeader variant="home" />
       <LiveTicker />
+{/* ============ STATUS BANNERS ============ */}
+{sp['check-email'] && (
+  <div className="bg-yellow-300 text-stone-900 px-6 py-4 border-b-2 border-yellow-400">
+    <div className="max-w-5xl mx-auto flex items-start gap-4">
+      <div className="text-2xl flex-shrink-0">✉</div>
+      <div className="flex-1">
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          Check your email
+        </div>
+        <p className="font-serif">
+          We just sent a verification link. Click it to confirm your address, then pick your teams.
+        </p>
+        <p className="text-xs font-mono text-stone-700 mt-2">
+          Didn&apos;t arrive in 2 min? Check spam, or <a href="#signup" className="underline">try again</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
 
+{sp['already-subscribed'] && (
+  <div className="bg-green-100 text-green-900 px-6 py-4 border-b-2 border-green-200">
+    <div className="max-w-5xl mx-auto flex items-start gap-4">
+      <div className="text-2xl flex-shrink-0">✓</div>
+      <div className="flex-1">
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          You&apos;re already in
+        </div>
+        <p className="font-serif">
+          This email is already subscribed. Check your inbox for your daily brief, or use the link in any email to manage your preferences.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+{sp.error === 'rate-limit' && (
+  <div className="bg-orange-100 text-orange-900 px-6 py-4 border-b-2 border-orange-200">
+    <div className="max-w-5xl mx-auto flex items-start gap-4">
+      <div className="text-2xl flex-shrink-0">⏱</div>
+      <div className="flex-1">
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          Slow down
+        </div>
+        <p className="font-serif">
+          Too many sign-up attempts. Please wait a minute and try again.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+{sp.error === 'invalid' && (
+  <div className="bg-red-100 text-red-900 px-6 py-4 border-b-2 border-red-200">
+    <div className="max-w-5xl mx-auto flex items-start gap-4">
+      <div className="text-2xl flex-shrink-0">⚠</div>
+      <div className="flex-1">
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          Invalid email
+        </div>
+        <p className="font-serif">
+          Please enter a valid email address.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+{sp.error === 'server' && (
+  <div className="bg-red-100 text-red-900 px-6 py-4 border-b-2 border-red-200">
+    <div className="max-w-5xl mx-auto flex items-start gap-4">
+      <div className="text-2xl flex-shrink-0">⚠</div>
+      <div className="flex-1">
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          Something went wrong
+        </div>
+        <p className="font-serif">
+          We hit a snag. Please try signing up again.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
       {/* ============ HERO ============ */}
       <section className="px-6 pt-24 pb-20 max-w-5xl mx-auto">
         <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-6">
