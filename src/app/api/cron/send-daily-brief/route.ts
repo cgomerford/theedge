@@ -14,21 +14,31 @@ import { Resend } from 'resend'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 
 // Vercel cron will hit this — we secure it with a shared secret
-export const maxDuration = 300  // 5 min max execution
+export const maxDuration = 300 // 5 min max execution
 
-export async function GET(req: NextRequest) {
-  // TEMP: auth disabled for email rendering test — RE-ENABLE BEFORE BED
- const authHeader = req.headers.get('authorization')
-if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-}
+export async function GET(request: NextRequest) {
+  // 1. Authorization
+  const authHeader = request.headers.get('authorization')
+  const validSecrets = [
+    process.env.CRON_SECRET,      // Vercel-injected for scheduled runs
+    process.env.EDGE_CRON_AUTH,   // Our manual auth for curl/testing
+  ].filter(Boolean)
+
+  const isValid = validSecrets.some(secret => 
+    authHeader === `Bearer ${secret}`
+  )
+
+  // Re-enable this check when done testing
+  if (!isValid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const supa = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
 
   console.log(`[daily-brief] Starting for ${today}`)
 
-  // 1. Fetch today's MLB schedule once
+  // 2. Fetch today's MLB schedule
   const allGames = await getScheduleForDate(today)
   console.log(`[daily-brief] Found ${allGames.length} games today`)
 
@@ -36,11 +46,11 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
     return NextResponse.json({ message: 'No games today, nothing to send' })
   }
 
-  // 2. Fetch all V2 predictions for today in one batch
+  // 3. Fetch all predictions for today in one batch
   const predictions = await getPredictionsForDate(today)
   console.log(`[daily-brief] Loaded ${predictions.size} V2 predictions`)
 
-  // 3. Pre-compute context (pitcher stats + weather + V2 prediction) for every game
+  // 4. Pre-compute context (pitcher stats + weather + prediction)
   const gameContexts = await Promise.all(
     allGames.map(async (game): Promise<BriefGameContext> => {
       const venue = getVenueInfo(game.venue?.name)
@@ -80,7 +90,7 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
     })
   )
 
-  // 4. Get all subscribers with at least one team picked
+  // 5. Get active subscribers
   const { data: subscribers, error: subError } = await supa
     .from('subscribers')
     .select('email, teams, preferences_token, unsubscribed_at, email_verified')
@@ -94,8 +104,7 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
   }
 
   const activeSubs = (subscribers ?? []).filter((s) => Array.isArray(s.teams) && s.teams.length > 0)
-  console.log(`[daily-brief] ${activeSubs.length} active subscribers with team prefs`)
-
+  
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'RESEND_API_KEY missing' }, { status: 500 })
   }
@@ -105,12 +114,11 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
   let skippedCount = 0
   const errors: string[] = []
 
-  // 5. Loop through subscribers, send each their personalized brief
+  // 6. Iterate and Send
   for (const sub of activeSubs) {
     try {
-      const subTeams: string[] = sub.teams as string[]
+      const subTeams = sub.teams as string[]
 
-      // Find games featuring any of their teams
       const matchingGames = gameContexts.filter((ctx) => {
         const awayTeam = findTeamByName(ctx.game.teams.away.team.name)
         const homeTeam = findTeamByName(ctx.game.teams.home.team.name)
@@ -125,7 +133,6 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
         continue
       }
 
-      // Get short names of teams they follow that play tonight
       const followedShortNames = matchingGames.flatMap((ctx) => {
         const aw = findTeamByName(ctx.game.teams.away.team.name)
         const hm = findTeamByName(ctx.game.teams.home.team.name)
@@ -134,6 +141,7 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
         if (hm && subTeams.includes(hm.slug)) out.push(hm.short)
         return out
       })
+      
       const uniqueShortNames = Array.from(new Set(followedShortNames))
 
       const emailContent = dailyBriefEmail(
@@ -153,15 +161,13 @@ if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
 
       sentCount++
 
-      // Be polite to Resend rate limits (10/sec on free tier)
+      // Throttle for Resend Rate Limits (10/sec on free tier)
       await new Promise((r) => setTimeout(r, 150))
     } catch (err) {
-      console.error('[daily-brief] error for', sub.email, err)
+      console.error(`[daily-brief] error for ${sub.email}:`, err)
       errors.push(`${sub.email}: ${err instanceof Error ? err.message : 'unknown'}`)
     }
   }
-
-  console.log(`[daily-brief] Done. Sent: ${sentCount}, Skipped (no matches): ${skippedCount}, Errors: ${errors.length}`)
 
   return NextResponse.json({
     sent: sentCount,

@@ -18,8 +18,17 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization')
- if (authHeader !== `Bearer ${process.env.EDGE_CRON_AUTH}`) {
+const authHeader = request.headers.get('authorization')
+const validSecrets = [
+  process.env.CRON_SECRET,         // Vercel-injected for scheduled runs
+  process.env.EDGE_CRON_AUTH,      // Our manual auth for curl/testing
+].filter(Boolean)
+
+const isValid = validSecrets.some(secret => 
+  authHeader === `Bearer ${secret}`
+)
+
+if (!isValid) {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 }
 
