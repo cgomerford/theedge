@@ -43,16 +43,47 @@ const COMPONENT_ORDER: (keyof EdgeComponents)[] = [
   'weather',
   'rest',
 ]
-
-const COMPONENT_META: Record<keyof EdgeComponents, { label: string; subtitle: string }> = {
-  starting_pitcher: { label: 'Starting Pitcher', subtitle: 'XFIP- ADJUSTED' },
-  bullpen: { label: 'Bullpen', subtitle: 'WPA/LI + AVAILABILITY' },
-  offense: { label: 'Offense', subtitle: 'WRC+ LAST 30 DAYS' },
-  defense: { label: 'Defense', subtitle: 'OAA + DRS COMBINED' },
-  matchup: { label: 'Matchup', subtitle: 'PITCHER ARSENAL VS LINEUP' },
-  park: { label: 'Park Factor', subtitle: '3-YR HR + RUN FACTOR' },
-  weather: { label: 'Weather', subtitle: 'WIND + TEMP IMPACT' },
-  rest: { label: 'Rest & Travel', subtitle: 'BULLPEN USAGE + DAYS' },
+const COMPONENT_META: Record<keyof EdgeComponents, { label: string; subtitle: string; pro_teaser: string }> = {
+  starting_pitcher: { 
+    label: 'Starting Pitcher', 
+    subtitle: 'XFIP- ADJUSTED',
+    pro_teaser: 'Pitch arsenal · last 5 starts · hot zone alignment',
+  },
+  bullpen: { 
+    label: 'Bullpen', 
+    subtitle: 'WPA/LI + AVAILABILITY',
+    pro_teaser: 'Availability tracker · pitch counts L3 · leverage rankings',
+  },
+  offense: { 
+    label: 'Offense', 
+    subtitle: 'WRC+ LAST 30 DAYS',
+    pro_teaser: 'L30 OPS deltas · hot/cold batters · vs LHP/RHP splits',
+  },
+  defense: { 
+    label: 'Defense', 
+    subtitle: 'OAA + DRS COMBINED',
+    pro_teaser: 'DRS leaders · OAA by position · error trends',
+  },
+  matchup: { 
+    label: 'Matchup', 
+    subtitle: 'PITCHER ARSENAL VS LINEUP',
+    pro_teaser: 'BvP records · vulnerability zones · lineup hot zones',
+  },
+  park: { 
+    label: 'Park Factor', 
+    subtitle: '3-YR HR + RUN FACTOR',
+    pro_teaser: '30-day trends · wind impact · HR factor by handedness',
+  },
+  weather: { 
+    label: 'Weather', 
+    subtitle: 'WIND + TEMP IMPACT',
+    pro_teaser: 'Hour-by-hour · wind direction · dome adjustments',
+  },
+  rest: { 
+    label: 'Rest & Travel', 
+    subtitle: 'BULLPEN USAGE + DAYS',
+    pro_teaser: 'Travel miles · time zones crossed · L7 days game log',
+  },
 }
 
 // First two components are free, rest are Pro
@@ -250,15 +281,16 @@ const summary = props.llm_summary
                   </div>
                 )}
 
-                <ComponentRow
-            number={index + 1}
-            label={meta.label}
-            subtitle={meta.subtitle}
-            value={value}
-            homeAbbr={homeAbbr}
-            awayAbbr={awayAbbr}
-            contextTag={contextTag}
-            locked={showLocked}
+               <ComponentRow
+  number={index + 1}
+  label={meta.label}
+  subtitle={meta.subtitle}
+  value={value}
+  homeAbbr={homeAbbr}
+  awayAbbr={awayAbbr}
+  contextTag={contextTag}
+  locked={showLocked}
+  proTeaser={meta.pro_teaser}
 />
               </div>
             )
@@ -282,14 +314,36 @@ const summary = props.llm_summary
 
         {/* Footer */}
        
-          {!isPro && (
-            <div className="mt-8 pt-4 border-t border-[#1A1A1A]/10 flex justify-between items-center">
-          <div className="text-[10px] font-mono uppercase text-[#4A4A4A]">
-            Updated {formatTimeAgo(props.updated_at)} &middot; Information only
-          </div>
-          {!isPro && <a href="/pricing" className="text-xs font-mono uppercase tracking-wider text-[#FF5722] hover:underline">Unlock all 8 components &rarr;</a>}
-        </div>
-          )}
+       {!isPro ? (
+  <div className="mt-8 pt-6 border-t border-[#1A1A1A]/10">
+    <div className="bg-[#1A1A1A] text-[#FAF8F3] rounded p-5 mb-4">
+      <div className="text-[#FDE047] text-xs font-mono uppercase tracking-wider mb-2">
+        ⊕ Pro Tier · £6/mo · £60/yr
+      </div>
+      <h4 className="text-xl font-bold mb-2" style={{ fontFamily: 'Fraunces, serif' }}>
+        Unlock all 8 components.
+      </h4>
+      <p className="text-sm text-[#FAF8F3]/80 mb-4">
+        Full smart-friend narrative. Pitch arsenal charts. Batter hot zones. Bullpen fatigue tracker. The Streamer Pick for fantasy.
+      </p>
+      <a 
+        href="/pricing" 
+        className="inline-block bg-[#FDE047] text-[#1A1A1A] font-bold px-5 py-2.5 text-sm uppercase tracking-wider hover:bg-[#FAF8F3] transition"
+      >
+        Get notified when Pro launches June 1 →
+      </a>
+    </div>
+    <div className="text-[10px] font-mono uppercase text-[#4A4A4A] text-center">
+      Updated {formatTimeAgo(props.updated_at)} &middot; Information only · No betting advice
+    </div>
+  </div>
+) : (
+  <div className="mt-8 pt-4 border-t border-[#1A1A1A]/10">
+    <div className="text-[10px] font-mono uppercase text-[#4A4A4A] text-center">
+      Updated {formatTimeAgo(props.updated_at)} &middot; Information only · No betting advice
+    </div>
+  </div>
+)}
         </div>
       </div>
     
@@ -310,6 +364,7 @@ type ComponentRowProps = {
   awayAbbr: string
   contextTag?: string
   locked: boolean
+  proTeaser?: string
 }
 
 function ComponentRow({
@@ -321,6 +376,7 @@ function ComponentRow({
   awayAbbr,
   contextTag,
   locked,
+  proTeaser,
 }: ComponentRowProps) {
   const absValue = Math.abs(value)
   const isHomeFavored = value >= 0
@@ -340,8 +396,12 @@ function ComponentRow({
   const valueColor = absValue >= 5 ? '#FF5722' : '#A3A3A3'
   const displayValue = absValue < 0.5 ? '±0' : `+${Math.round(absValue)}`
 
+  // ===== LOCKED STATE: replace bar + value with Pro teaser =====
+
+
+  // ===== UNLOCKED STATE: normal bar + value =====
   return (
-    <div className={`grid grid-cols-12 gap-3 items-center ${locked ? 'opacity-60' : ''}`}>
+    <div className="grid grid-cols-12 gap-3 items-center">
       {/* Number */}
       <div className="col-span-1 text-[#FF5722] font-mono text-sm">
         {number}
@@ -382,16 +442,9 @@ function ComponentRow({
         {displayValue}
       </div>
 
-      {/* Right: context tag OR Pro lock */}
+      {/* Right: context tag */}
       <div className="col-span-2 text-right">
-        {locked ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-[#4A4A4A] border border-[#FF5722]/40 rounded px-2 py-1">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            Pro
-          </span>
-        ) : contextTag ? (
+        {contextTag ? (
           <span className="text-[10px] font-mono uppercase text-[#4A4A4A] tracking-wider leading-tight block">
             {contextTag}
           </span>

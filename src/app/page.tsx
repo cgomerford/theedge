@@ -288,7 +288,237 @@ export default async function HomePage({ searchParams }: Props) {
           </div>
         </div>
       </section>
+{/* ============ FREE VS PRO ============ */}
+<section className="px-6 py-24 border-t border-stone-800">
+  <div className="max-w-6xl mx-auto">
+    <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-4 text-center">
+      § What you see
+    </div>
+    <h2 className="text-4xl md:text-5xl font-serif font-light text-center mb-4">
+      Same game.<br className="md:hidden" /> Different depth.
+    </h2>
+    <p className="text-stone-400 text-center mb-16 max-w-xl mx-auto">
+      Free gives you the verdict. Pro gives you the playbook.
+    </p>
 
+    <div className="grid md:grid-cols-2 gap-px bg-stone-800 mb-12">
+
+      {/* ============ FREE TIER COLUMN ============ */}
+      <div className="bg-stone-950 p-8">
+        <div className="flex items-baseline justify-between mb-2">
+          <div className="text-xs font-mono uppercase tracking-widest text-stone-400">
+            ◯ Free
+          </div>
+          <div className="text-xs font-mono uppercase tracking-widest text-stone-500">
+            Always
+          </div>
+        </div>
+        <h3 className="text-2xl font-serif font-medium mb-2">For the fan.</h3>
+        <p className="text-sm text-stone-400 mb-8">
+          Enough to get smart. Five-minute reads. Daily email.
+        </p>
+
+        {/* Mini Edge Indicator mockup — Free version */}
+        <div className="bg-black border border-stone-800 p-5 mb-6">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mb-3">
+            ⊕ The Edge Indicator
+          </div>
+          <div className="flex items-baseline gap-3 mb-3">
+            <div className="text-5xl font-serif text-yellow-300 leading-none font-black">+24</div>
+            <div className="flex-1">
+              <div className="text-[10px] font-mono uppercase text-stone-500 mb-1">Edge favors</div>
+              <div className="text-lg font-serif font-bold leading-none">PHILLIES</div>
+            </div>
+          </div>
+          <div className="text-[11px] text-orange-500 font-mono uppercase tracking-wider mb-3">
+            — Moderate Edge
+          </div>
+          <p className="text-xs text-stone-400 font-serif italic mb-4">
+            &ldquo;Wheeler&apos;s rolling, Mets bullpen taxed. Phillies edge.&rdquo;
+          </p>
+          
+          {/* Show top 2 components */}
+          <div className="space-y-2 pt-3 border-t border-stone-800">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-stone-500 font-mono uppercase">Starting Pitcher</span>
+              <span className="text-stone-300 font-mono">+15</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-stone-500 font-mono uppercase">Bullpen</span>
+              <span className="text-stone-300 font-mono">+8</span>
+            </div>
+            {/* Locked components */}
+            <div className="space-y-1 pt-2 mt-2 border-t border-stone-800/50 opacity-50">
+              {['Offense', 'Defense', 'Matchup', 'Park', 'Weather', 'Rest'].map(c => (
+                <div key={c} className="flex items-center justify-between text-[10px]">
+                  <span className="text-stone-600 font-mono uppercase flex items-center gap-1.5">
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                    {c}
+                  </span>
+                  <span className="text-stone-700 font-mono">— —</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Feature list — Free */}
+        <div className="space-y-3 text-sm">
+          {[
+            { label: 'Edge Score + winner', included: true },
+            { label: '1-sentence summary', included: true },
+            { label: 'Top 2 components', included: true },
+            { label: 'Projected lineups (basic stats)', included: true },
+            { label: 'Daily email brief', included: true },
+            { label: 'Up to 3 followed teams', included: true },
+            { label: 'Public Track Record', included: true },
+          ].map(f => (
+            <div key={f.label} className="flex items-start gap-2 text-stone-300">
+              <span className="text-green-500 mt-0.5">✓</span>
+              <span>{f.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ============ PRO TIER COLUMN ============ */}
+      <div className="bg-stone-950 p-8 relative">
+        {/* "Best value" sticker */}
+        <div className="absolute -top-3 right-6 bg-yellow-300 text-stone-900 text-[10px] font-mono uppercase tracking-widest px-2 py-1 font-semibold">
+          Pro tier
+        </div>
+        
+        <div className="flex items-baseline justify-between mb-2">
+          <div className="text-xs font-mono uppercase tracking-widest text-yellow-300">
+            ⊕ Pro
+          </div>
+          <div className="text-xs font-mono uppercase tracking-widest text-stone-500">
+            £6/mo · £60/yr
+          </div>
+        </div>
+        <h3 className="text-2xl font-serif font-medium mb-2">For the analyst.</h3>
+        <p className="text-sm text-stone-400 mb-8">
+          Enough to win your fantasy league. Full data. Every angle.
+        </p>
+
+        {/* Mini Edge Indicator mockup — Pro version */}
+        <div className="bg-black border border-yellow-300/30 p-5 mb-6">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-yellow-300 mb-3">
+            ⊕ The Edge Indicator · Pro
+          </div>
+          <div className="flex items-baseline gap-3 mb-3">
+            <div className="text-5xl font-serif text-yellow-300 leading-none font-black">+24</div>
+            <div className="flex-1">
+              <div className="text-[10px] font-mono uppercase text-stone-500 mb-1">Edge favors</div>
+              <div className="text-lg font-serif font-bold leading-none">PHILLIES</div>
+            </div>
+          </div>
+          <div className="text-[11px] text-orange-500 font-mono uppercase tracking-wider mb-3">
+            — Moderate Edge
+          </div>
+          
+          {/* Full narrative */}
+          <p className="text-xs text-stone-300 font-serif italic mb-4 leading-relaxed">
+            &ldquo;Wheeler&apos;s been ridiculous lately — three straight under 2 ERA. The Mets bullpen is gassed after last night&apos;s marathon. Real edge here.&rdquo;
+          </p>
+          
+          {/* All 8 components visible */}
+          <div className="space-y-2 pt-3 border-t border-stone-800">
+            {[
+              { c: 'Starting Pitcher', v: '+15', strong: true },
+              { c: 'Bullpen', v: '+8', strong: true },
+              { c: 'Offense', v: '+4', strong: false },
+              { c: 'Defense', v: '+2', strong: false },
+              { c: 'Matchup', v: '−1', strong: false },
+              { c: 'Park', v: '−3', strong: false },
+              { c: 'Weather', v: '+1', strong: false },
+              { c: 'Rest', v: '−2', strong: false },
+            ].map(item => (
+              <div key={item.c} className="flex items-center justify-between text-[10px]">
+                <span className={`font-mono uppercase ${item.strong ? 'text-stone-300' : 'text-stone-500'}`}>{item.c}</span>
+                <span className={`font-mono ${item.strong ? 'text-orange-500 font-bold' : 'text-stone-400'}`}>{item.v}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Pro feature teases */}
+          <div className="mt-4 pt-3 border-t border-stone-800 space-y-1">
+            <div className="text-[10px] font-mono uppercase text-yellow-300">
+              + Pitcher arsenal chart
+            </div>
+            <div className="text-[10px] font-mono uppercase text-yellow-300">
+              + Batter hot zones · L5 splits
+            </div>
+            <div className="text-[10px] font-mono uppercase text-yellow-300">
+              + Bullpen fatigue tracker
+            </div>
+          </div>
+        </div>
+
+        {/* Feature list — Pro */}
+        <div className="space-y-3 text-sm">
+          {[
+            { label: 'Everything in Free', included: true },
+            { label: 'All 8 components with drill-downs', included: true, highlight: true },
+            { label: 'Full smart-friend narrative', included: true, highlight: true },
+            { label: 'Pitch arsenal effectiveness chart', included: true, highlight: true },
+            { label: 'Batter hot zones · L5 splits · vs LHP/RHP', included: true, highlight: true, fantasy: true },
+            { label: 'Bullpen fatigue tracker', included: true, highlight: true, fantasy: true },
+            { label: 'The Streamer Pick (DFS/Fantasy)', included: true, highlight: true, fantasy: true },
+            { label: '"Why we might be wrong" counter-take', included: true, highlight: true },
+            { label: 'All sports (MLB · NBA · NHL · NFL)', included: true, highlight: true },
+            { label: 'Unlimited team follows', included: true, highlight: true },
+          ].map(f => (
+            <div key={f.label} className="flex items-start gap-2">
+              <span className={`mt-0.5 ${f.highlight ? 'text-yellow-300' : 'text-green-500'}`}>✓</span>
+              <span className={f.highlight ? 'text-stone-100' : 'text-stone-300'}>
+                {f.label}
+                {f.fantasy && (
+                  <span className="ml-2 text-[10px] font-mono uppercase tracking-wider text-orange-500 bg-orange-500/10 px-1.5 py-0.5">
+                    Fantasy
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+
+    {/* Bottom CTAs */}
+    <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+      <a 
+        href="#signup"
+        className="block bg-stone-900 border border-stone-700 hover:border-stone-500 transition px-6 py-4 text-center"
+      >
+        <div className="text-xs font-mono uppercase tracking-widest text-stone-400 mb-1">
+          Start with free
+        </div>
+        <div className="text-base font-serif">
+          Get tomorrow&apos;s brief →
+        </div>
+      </a>
+      <a 
+        href="#signup"
+        className="block bg-yellow-300 text-stone-900 hover:bg-yellow-200 transition px-6 py-4 text-center"
+      >
+        <div className="text-xs font-mono uppercase tracking-widest mb-1">
+          ⊕ Pro coming June 1
+        </div>
+        <div className="text-base font-serif font-semibold">
+          Get notified when Pro launches →
+        </div>
+      </a>
+    </div>
+
+    <p className="text-xs font-mono uppercase tracking-widest text-stone-500 text-center mt-8">
+      All Pro features ship June 1 · Founding member pricing for first 100
+    </p>
+  </div>
+</section>
       {/* ============ HOW IT WORKS ============ */}
       <section className="px-6 py-24 border-t border-stone-800 bg-stone-900/30">
         <div className="max-w-5xl mx-auto">

@@ -1,35 +1,34 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createAdminClient } from '@/lib/supabase'
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl, getTeamForm } from '@/lib/mlb'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { findTeamByName, findTeamBySlug, getTeamTheme, teamIdBySlug } from '@/lib/teams'
 import SiteHeader from '@/components/SiteHeader'
 import AnalyticsTrigger from '@/components/AnalyticsTrigger'
-
+import { createAdminClient } from '@/lib/supabase'
 
 export const revalidate = 600
 
 export default async function DugoutPage() {
-  // TEMP: hard-coded subscriber for development
-  // TODO: replace with real auth check using actual cookie name
+  // Real auth check
+  const cookieStore = await cookies()
+  const sessionToken = cookieStore.get('edge_session')?.value
+
+  if (!sessionToken) {
+    redirect('/')
+  }
+
   const supa = createAdminClient()
+  
   const { data: subscriber } = await supa
     .from('subscribers')
     .select('email, teams, primary_team, preferences_token')
-    .eq('email', 'cgomerford@gmail.com') // ← replace with your email
+    .eq('preferences_token', sessionToken)
     .single()
 
   if (!subscriber) {
-    return (
-      <main className="min-h-screen bg-stone-50 p-12">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-serif text-stone-900 mb-4">No subscriber found</h1>
-          <p className="text-stone-600">Update the dev email in dugout/page.tsx to test.</p>
-        </div>
-      </main>
-    )
+    redirect('/')
   }
 
   // Resolve primary team for theming
@@ -78,7 +77,6 @@ export default async function DugoutPage() {
       <SiteHeader variant="page" />
 
       {/* ============ TEAM-THEMED HERO PANEL ============ */}
-  {/* ============ TEAM-THEMED HERO PANEL ============ */}
       <section
         className="px-6 py-12 md:py-16"
         style={{ backgroundColor: theme.primary, color: theme.text }}
@@ -126,7 +124,9 @@ export default async function DugoutPage() {
                   )}
                 </div>
               </div>
-<AnalyticsTrigger event="dugout_viewed" />
+
+              <AnalyticsTrigger event="dugout_viewed" />
+              
               {/* Form strip */}
               {primaryTeamForm && (
                 <div className="flex flex-wrap gap-6 mt-6 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
@@ -164,7 +164,7 @@ export default async function DugoutPage() {
                   className="block bg-black/30 border border-white/10 rounded-lg p-6 hover:bg-black/40 transition group"
                 >
                   <div className="text-xs font-mono uppercase tracking-widest mb-3 opacity-60">
-                    ⊕ Tonight's Edge
+                    ⊕ Tonight&apos;s Edge
                   </div>
 
                   <div className="flex items-baseline gap-3 mb-3">
@@ -190,7 +190,7 @@ export default async function DugoutPage() {
 
                   {primaryGamePrediction.summary && (
                     <p className="text-sm font-serif italic leading-relaxed opacity-90 mt-4">
-                      "{primaryGamePrediction.summary}"
+                      &ldquo;{primaryGamePrediction.summary}&rdquo;
                     </p>
                   )}
 
@@ -201,7 +201,7 @@ export default async function DugoutPage() {
               ) : primaryTeamGame ? (
                 <div className="bg-black/30 border border-white/10 rounded-lg p-6">
                   <div className="text-xs font-mono uppercase tracking-widest mb-3 opacity-60">
-                    ⊕ Tonight's Edge
+                    ⊕ Tonight&apos;s Edge
                   </div>
                   <p className="text-base opacity-80">
                     Edge analysis updating shortly.<br/>Refresh in a few minutes.
@@ -213,7 +213,7 @@ export default async function DugoutPage() {
                     ⊕ No Game Tonight
                   </div>
                   <p className="text-base opacity-80">
-                    Catch up on tonight's full slate or check the track record.
+                    Catch up on tonight&apos;s full slate or check the track record.
                   </p>
                 </div>
               )}
@@ -232,7 +232,7 @@ export default async function DugoutPage() {
       {/* ============ MY GAMES ============ */}
       <section className="px-6 py-12 max-w-5xl mx-auto">
         <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
-          § Tonight's slate · Your teams
+          § Tonight&apos;s slate · Your teams
         </div>
 
         {myGames.length === 0 ? (
@@ -245,7 +245,7 @@ export default async function DugoutPage() {
               href="/tonight"
               className="inline-block bg-stone-900 text-white px-6 py-3 font-semibold hover:bg-stone-700 transition"
             >
-              See tonight's full slate →
+              See tonight&apos;s full slate →
             </Link>
           </div>
         ) : (
@@ -310,7 +310,7 @@ export default async function DugoutPage() {
                           </div>
                           {pred.summary && (
                             <p className="text-sm text-stone-700 font-serif italic leading-relaxed">
-                              "{pred.summary}"
+                              &ldquo;{pred.summary}&rdquo;
                             </p>
                           )}
                         </div>

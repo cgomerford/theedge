@@ -172,9 +172,12 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
       <SiteHeader variant="page" />
       <LiveTicker />
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
-          MLB · {gameDate} · {game.venue?.name}
-        </div>
+        <div 
+  className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4"
+  suppressHydrationWarning
+>
+  MLB · {gameDate} · {game.venue?.name}
+</div>
 
         <h1 className="text-5xl md:text-7xl font-serif font-light leading-none tracking-tight mb-2">
           {shortName(game.teams.away.team.name)}
@@ -268,18 +271,20 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     § Projected Lineups
   </div>
   <div className="grid md:grid-cols-2 gap-4">
-    <LineupCard 
-      lineup={awayLineup} 
-      teamName={game.teams.away.team.name}
-      teamShort={shortName(game.teams.away.team.name)}
-      teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
-    />
-    <LineupCard 
-      lineup={homeLineup} 
-      teamName={game.teams.home.team.name}
-      teamShort={shortName(game.teams.home.team.name)}
-      teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
-    />
+ <LineupCard 
+  lineup={awayLineup} 
+  teamName={game.teams.away.team.name}
+  teamShort={shortName(game.teams.away.team.name)}
+  teamAbbr={game.teams.away.team.abbreviation}
+  teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
+/>
+<LineupCard 
+  lineup={homeLineup} 
+  teamName={game.teams.home.team.name}
+  teamShort={shortName(game.teams.home.team.name)}
+  teamAbbr={game.teams.home.team.abbreviation}
+  teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
+/>
   </div>
 </section>
 

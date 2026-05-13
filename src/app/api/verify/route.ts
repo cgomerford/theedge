@@ -52,9 +52,18 @@ export async function GET(req: NextRequest) {
       console.error('Welcome email failed:', e)
     }
   }
+const response = NextResponse.redirect(
+  new URL(`/preferences/${sub.preferences_token}?verified=1`, req.url),
+  { status: 303 }
+)
 
-  return NextResponse.redirect(
-    new URL(`/preferences/${sub.preferences_token}?verified=1`, req.url),
-    { status: 303 }
-  )
+response.cookies.set('edge_session', sub.preferences_token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 24 * 90,
+  path: '/',
+})
+
+return response
 }

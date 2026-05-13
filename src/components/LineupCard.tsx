@@ -4,10 +4,11 @@ type Props = {
   lineup: ProjectedLineup
   teamName: string
   teamShort: string
+  teamAbbr?: string
   teamLogoUrl?: string | null
 }
 
-export default function LineupCard({ lineup, teamName, teamShort, teamLogoUrl }: Props) {
+export default function LineupCard({ lineup, teamName, teamShort, teamAbbr, teamLogoUrl }: Props)  {
   // Empty state
   if (lineup.source === 'unavailable' || lineup.batters.length === 0) {
     return (
@@ -50,12 +51,13 @@ export default function LineupCard({ lineup, teamName, teamShort, teamLogoUrl }:
               </div>
             )}
             <div className="min-w-0">
-              <h3 className="text-base md:text-lg font-serif font-bold text-stone-900 truncate">
-                {teamShort} Lineup
-              </h3>
-              <div className="text-xs font-mono uppercase tracking-wider text-stone-500">
-                Projected · 9 batters
-              </div>
+             <h3 className="text-base md:text-lg font-serif font-bold text-stone-900">
+  <span className="md:hidden">{teamAbbr ?? teamShort}</span>
+  <span className="hidden md:inline">{teamShort}</span>
+</h3>
+<div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">
+  Lineup · 9 batters
+</div>
             </div>
           </div>
           <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 border rounded whitespace-nowrap ${statusColor}`}>
