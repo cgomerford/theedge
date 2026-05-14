@@ -159,7 +159,9 @@ async function fetchTeamStats(teamId: number, teamName: string) {
   try {
     const today_str = new Date().toISOString().split('T')[0]
     const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  // Check both yesterday and 2 days ago to catch late West Coast finishes
+const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     // Fetch L30 hitting stats
     const hittingUrl = `${MLB_API}/teams/${teamId}/stats?stats=byDateRange&group=hitting&season=${SEASON}&startDate=${thirty_days_ago}&endDate=${today_str}`
@@ -172,7 +174,7 @@ async function fetchTeamStats(teamId: number, teamName: string) {
     const pitchingData = pitchingRes.ok ? await pitchingRes.json() : null
 
     // Fetch yesterday's game schedule to get gamePk
-    const yesterdayUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&date=${yesterday}&hydrate=team`
+    const yesterdayUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${twoDaysAgo}&endDate=${yesterday}&hydrate=team`
     const yesterdayRes = await fetch(yesterdayUrl)
     const yesterdayData = yesterdayRes.ok ? await yesterdayRes.json() : null
 
