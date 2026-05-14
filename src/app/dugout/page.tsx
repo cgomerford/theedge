@@ -1,35 +1,33 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl, getTeamForm } from '@/lib/mlb'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { findTeamByName, findTeamBySlug, getTeamTheme, teamIdBySlug } from '@/lib/teams'
 import SiteHeader from '@/components/SiteHeader'
 import AnalyticsTrigger from '@/components/AnalyticsTrigger'
 import { createAdminClient } from '@/lib/supabase'
+import { getCurrentSubscriber } from '@/lib/auth'
 
 export const revalidate = 600
 
 export default async function DugoutPage() {
   // Real auth check
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get('edge_session')?.value
+const sub = await getCurrentSubscriber()
 
-  if (!sessionToken) {
-    redirect('/')
-  }
+if (!sub) {
+  redirect('/')
+}
 
-  const supa = createAdminClient()
-  
-  const { data: subscriber } = await supa
-    .from('subscribers')
-    .select('email, teams, primary_team, preferences_token')
-    .eq('preferences_token', sessionToken)
-    .single()
+const supa = createAdminClient()
+const { data: subscriber } = await supa
+  .from('subscribers')
+  .select('email, teams, primary_team, preferences_token')
+  .eq('id', sub.id)
+  .single()
 
-  if (!subscriber) {
-    redirect('/')
-  }
+if (!subscriber) {
+  redirect('/')
+}
 
   // Resolve primary team for theming
   const primaryTeamSlug = subscriber.primary_team

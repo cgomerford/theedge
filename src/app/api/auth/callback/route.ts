@@ -16,5 +16,5 @@ export async function GET(req: NextRequest) {
 
   await createSession(subscriber.id)
 
-  return NextResponse.redirect(new URL('/dashboard', req.url), { status: 303 })
+  return NextResponse.redirect(new URL('/dugout', req.url), { status: 303 })
 }
