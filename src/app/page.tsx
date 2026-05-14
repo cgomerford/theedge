@@ -562,7 +562,120 @@ export default async function HomePage({ searchParams }: Props) {
           </div>
         </div>
       </section>
+<section className="px-6 py-24 border-t border-stone-800">
+  <div className="max-w-5xl mx-auto">
+    <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-4">
+      § What&apos;s next
+    </div>
+    <h2 className="text-4xl md:text-5xl font-serif font-light mb-4">
+      MLB is just<br className="md:hidden" /> the start.
+    </h2>
+    <p className="text-stone-400 mb-12 max-w-xl leading-relaxed">
+      The same eight-component model. The same GM briefing. Every sport, every night.
+      Pro subscribers get every league on day one.
+    </p>
 
+    <div className="grid md:grid-cols-3 gap-px bg-stone-800 border border-stone-800 mb-8">
+
+      {/* NFL */}
+      <div className="bg-stone-950 p-8 relative overflow-hidden group">
+        <div className="absolute top-4 right-4 text-[10px] font-mono uppercase tracking-widest bg-stone-800 text-stone-400 px-2 py-1">
+          Sept 2026
+        </div>
+        <div className="text-3xl mb-4">🏈</div>
+        <div className="text-xs font-mono uppercase tracking-widest text-stone-500 mb-2">
+          NFL · Next Gen Stats
+        </div>
+        <h3 className="text-xl font-serif font-medium text-stone-100 mb-3">
+          National Football League
+        </h3>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          DVOA-adjusted matchups. Next Gen target separation. QB pressure rates. O-line vs pass rush edges.
+        </p>
+        <div className="space-y-1.5">
+          {['QB pressure rate vs D-line', 'Target separation by receiver', 'Red zone efficiency L4', 'Weather impact on pass game'].map(f => (
+            <div key={f} className="flex items-center gap-2 text-xs text-stone-500 font-mono">
+              <span className="text-stone-700">—</span>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 pt-4 border-t border-stone-800">
+          <span className="text-xs font-mono uppercase tracking-widest text-stone-600">
+            ⊕ Pro tier · Coming Sept 2026
+          </span>
+        </div>
+      </div>
+
+      {/* NHL */}
+      <div className="bg-stone-950 p-8 relative overflow-hidden group">
+        <div className="absolute top-4 right-4 text-[10px] font-mono uppercase tracking-widest bg-yellow-300/10 text-yellow-300 px-2 py-1">
+          Oct 2026
+        </div>
+        <div className="text-3xl mb-4">🏒</div>
+        <div className="text-xs font-mono uppercase tracking-widest text-stone-500 mb-2">
+          NHL · Stathletes / Natural Stat Trick
+        </div>
+        <h3 className="text-xl font-serif font-medium text-stone-100 mb-3">
+          National Hockey League
+        </h3>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          Expected goals model. Corsi + Fenwick adjusted. Goalie GSAx. Power play efficiency edges.
+        </p>
+        <div className="space-y-1.5">
+          {['xG for/against at 5v5', 'Goalie GSAx last 10 starts', 'PP vs PK efficiency matchup', 'Back-to-back fatigue scoring'].map(f => (
+            <div key={f} className="flex items-center gap-2 text-xs text-stone-500 font-mono">
+              <span className="text-stone-700">—</span>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 pt-4 border-t border-stone-800">
+          <span className="text-xs font-mono uppercase tracking-widest text-stone-600">
+            ⊕ Pro tier · Coming Oct 2026
+          </span>
+        </div>
+      </div>
+
+      {/* NBA */}
+      <div className="bg-stone-950 p-8 relative overflow-hidden group">
+        <div className="absolute top-4 right-4 text-[10px] font-mono uppercase tracking-widest bg-stone-800 text-stone-400 px-2 py-1">
+          Oct 2026
+        </div>
+        <div className="text-3xl mb-4">🏀</div>
+        <div className="text-xs font-mono uppercase tracking-widest text-stone-500 mb-2">
+          NBA · Second Spectrum
+        </div>
+        <h3 className="text-xl font-serif font-medium text-stone-100 mb-3">
+          National Basketball Assoc.
+        </h3>
+        <p className="text-sm text-stone-500 leading-relaxed mb-6">
+          RAPTOR + EPM adjusted lineups. Rest-days edge. Pace + ortg/drtg matchup deltas. Injury impact scoring.
+        </p>
+        <div className="space-y-1.5">
+          {['Net rating vs opponent DRTG', 'Rest days + travel edge', 'Pace mismatch scoring', 'Injury-adjusted lineup EPM'].map(f => (
+            <div key={f} className="flex items-center gap-2 text-xs text-stone-500 font-mono">
+              <span className="text-stone-700">—</span>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 pt-4 border-t border-stone-800">
+          <span className="text-xs font-mono uppercase tracking-widest text-stone-600">
+            ⊕ Pro tier · Coming Oct 2026
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <div className="text-center">
+      <p className="text-xs font-mono uppercase tracking-widest text-stone-600">
+        Pro subscribers get every sport on launch day · No extra charge
+      </p>
+    </div>
+  </div>
+</section>
       {/* ============ TONIGHT'S TOP EDGES ============ */}
       {topEdges.length > 0 && (
         <section className="px-6 py-24 border-t border-stone-800">

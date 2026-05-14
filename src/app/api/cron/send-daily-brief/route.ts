@@ -13,22 +13,19 @@ import { dailyBriefEmail, type BriefGameContext } from '@/lib/emails'
 import { Resend } from 'resend'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 
-// Vercel cron will hit this — we secure it with a shared secret
-export const maxDuration = 300 // 5 min max execution
+export const maxDuration = 300
 
 export async function GET(request: NextRequest) {
-  // 1. Authorization
   const authHeader = request.headers.get('authorization')
   const validSecrets = [
-    process.env.CRON_SECRET,      // Vercel-injected for scheduled runs
-    process.env.EDGE_CRON_AUTH,   // Our manual auth for curl/testing
+    process.env.CRON_SECRET,
+    process.env.EDGE_CRON_AUTH,
   ].filter(Boolean)
 
-  const isValid = validSecrets.some(secret => 
+  const isValid = validSecrets.some(secret =>
     authHeader === `Bearer ${secret}`
   )
 
-  // Re-enable this check when done testing
   if (!isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -38,7 +35,6 @@ export async function GET(request: NextRequest) {
 
   console.log(`[daily-brief] Starting for ${today}`)
 
-  // 2. Fetch today's MLB schedule
   const allGames = await getScheduleForDate(today)
   console.log(`[daily-brief] Found ${allGames.length} games today`)
 
@@ -46,11 +42,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'No games today, nothing to send' })
   }
 
-  // 3. Fetch all predictions for today in one batch
   const predictions = await getPredictionsForDate(today)
   console.log(`[daily-brief] Loaded ${predictions.size} V2 predictions`)
 
-  // 4. Pre-compute context (pitcher stats + weather + prediction)
   const gameContexts = await Promise.all(
     allGames.map(async (game): Promise<BriefGameContext> => {
       const venue = getVenueInfo(game.venue?.name)
@@ -80,20 +74,20 @@ export async function GET(request: NextRequest) {
         venueName: game.venue?.name ?? '',
         isIndoor: venue?.indoor ?? false,
         slug: slugifyGame(game),
-        // V2 prediction fields
         edge_score: prediction?.edge_score ?? null,
         predicted_winner: prediction?.predicted_winner ?? null,
         confidence_tier: prediction?.confidence_tier ?? null,
         llm_summary: prediction?.summary ?? null,
         llm_narrative: prediction?.narrative ?? null,
+        llm_narrative_pro: prediction?.narrative_pro ?? null,  // CHANGE 1: added
       }
     })
   )
 
-  // 5. Get active subscribers
+  // CHANGE 2: added is_pro to subscriber select
   const { data: subscribers, error: subError } = await supa
     .from('subscribers')
-    .select('email, teams, preferences_token, unsubscribed_at, email_verified')
+    .select('email, teams, preferences_token, unsubscribed_at, email_verified, is_pro')
     .is('unsubscribed_at', null)
     .eq('email_verified', true)
     .not('teams', 'is', null)
@@ -104,7 +98,7 @@ export async function GET(request: NextRequest) {
   }
 
   const activeSubs = (subscribers ?? []).filter((s) => Array.isArray(s.teams) && s.teams.length > 0)
-  
+
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'RESEND_API_KEY missing' }, { status: 500 })
   }
@@ -114,10 +108,10 @@ export async function GET(request: NextRequest) {
   let skippedCount = 0
   const errors: string[] = []
 
-  // 6. Iterate and Send
   for (const sub of activeSubs) {
     try {
       const subTeams = sub.teams as string[]
+      const isPro = (sub as any).is_pro === true  // CHANGE 3: detect Pro status
 
       const matchingGames = gameContexts.filter((ctx) => {
         const awayTeam = findTeamByName(ctx.game.teams.away.team.name)
@@ -141,14 +135,23 @@ export async function GET(request: NextRequest) {
         if (hm && subTeams.includes(hm.slug)) out.push(hm.short)
         return out
       })
-      
+
       const uniqueShortNames = Array.from(new Set(followedShortNames))
+
+      // CHANGE 3 cont: swap narrative for Pro subscribers before passing to template
+      const gamesForEmail = isPro
+        ? matchingGames.map(ctx => ({
+            ...ctx,
+            llm_narrative: ctx.llm_narrative_pro ?? ctx.llm_narrative,
+          }))
+        : matchingGames
 
       const emailContent = dailyBriefEmail(
         sub.email,
         sub.preferences_token ?? '',
-        matchingGames,
-        uniqueShortNames
+        gamesForEmail,
+        uniqueShortNames,
+        isPro,
       )
 
       await resend.emails.send({
@@ -161,7 +164,6 @@ export async function GET(request: NextRequest) {
 
       sentCount++
 
-      // Throttle for Resend Rate Limits (10/sec on free tier)
       await new Promise((r) => setTimeout(r, 150))
     } catch (err) {
       console.error(`[daily-brief] error for ${sub.email}:`, err)

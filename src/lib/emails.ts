@@ -232,14 +232,15 @@ function buildEdgeIndicatorBlock(ctx: BriefGameContext): string {
     </td></tr>
   `
 }
-
-function buildNarrativeBlock(ctx: BriefGameContext): string {
+function buildNarrativeBlock(ctx: BriefGameContext, isPro: boolean = false): string {
   if (!ctx.llm_narrative) return ''
-  
+ 
+  const label = isPro ? '— The GM Briefing' : '— The Read'
+ 
   return `
   <tr><td style="padding:20px 40px 24px;">
       <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:10px;">
-        — The Read
+        ${label}
       </div>
       <p style="font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#1a1a1a;margin:0 0 8px 0;">
         ${ctx.llm_narrative}
@@ -247,12 +248,12 @@ function buildNarrativeBlock(ctx: BriefGameContext): string {
     </td></tr>
   `
 }
+ 
 // =====================================================
 // DAILY BRIEF — sent each morning to subscribers
 // =====================================================
 
 import type { MLBGame } from '@/lib/mlb'
-
 export type BriefGameContext = {
   game: MLBGame
   awaySeasonStats: { era: string; whip: string; k_per_9: string; wins: number; losses: number } | null
@@ -262,18 +263,20 @@ export type BriefGameContext = {
   venueName: string
   isIndoor: boolean
   slug: string
-   edge_score: number | null
+  edge_score: number | null
   predicted_winner: 'home' | 'away' | null
   confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup' | null
   llm_summary: string | null
   llm_narrative: string | null
+  llm_narrative_pro: string | null   // NEW: Pro GM briefing narrative
 }
-
+ 
 export function dailyBriefEmail(
   email: string,
   preferencesToken: string,
   games: BriefGameContext[],
-  teamShortNames: string[]
+  teamShortNames: string[],
+  isPro: boolean = false,   // NEW: Pro flag for narrative label
 ) {
   const preferencesUrl = `https://edgereportdaily.com/preferences/${preferencesToken}`
   const unsubscribeUrl = `https://edgereportdaily.com/api/unsubscribe?email=${encodeURIComponent(email)}`
@@ -332,7 +335,7 @@ export function dailyBriefEmail(
         </tr></table>
       </td> </tr>
      ${buildEdgeIndicatorBlock(ctx)}
-      ${buildNarrativeBlock(ctx)}
+     ${buildNarrativeBlock(ctx, isPro)}
       ${(awayPitcher || homePitcher) ? `
       <tr><td style="padding:16px 40px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">

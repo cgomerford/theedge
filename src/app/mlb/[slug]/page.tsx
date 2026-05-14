@@ -266,32 +266,39 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     is_pro={false}
     llm_summary={prediction.summary}
     llm_narrative={prediction.narrative}
-     drilldown={{
-    away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
-      name: game.teams.away.probablePitcher.fullName,
-      era: awaySeasonStats.era,
-      whip: awaySeasonStats.whip,
-      k_per_9: awaySeasonStats.k_per_9,
-    } : null,
-    home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
-      name: game.teams.home.probablePitcher.fullName,
-      era: homeSeasonStats.era,
-      whip: homeSeasonStats.whip,
-      k_per_9: homeSeasonStats.k_per_9,
-    } : null,
-    away_form: awayForm ? {
-      last_10_wins: awayForm.last_10_wins,
-      last_10_losses: awayForm.last_10_losses,
-      bullpen_era: null, // we don't have this currently
-      bullpen_ip_yesterday: null,
-    } : null,
-    home_form: homeForm ? {
-      last_10_wins: homeForm.last_10_wins,
-      last_10_losses: homeForm.last_10_losses,
-      bullpen_era: null,
-      bullpen_ip_yesterday: null,
-    } : null,
-  }}
+   drilldown={{
+  away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
+    name: game.teams.away.probablePitcher.fullName,
+    era: awaySeasonStats.era,
+    whip: awaySeasonStats.whip,
+    k_per_9: awaySeasonStats.k_per_9,
+  } : null,
+  home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
+    name: game.teams.home.probablePitcher.fullName,
+    era: homeSeasonStats.era,
+    whip: homeSeasonStats.whip,
+    k_per_9: homeSeasonStats.k_per_9,
+  } : null,
+  away_form: awayForm ? {
+    last_10_wins: awayForm.last_10_wins,
+    last_10_losses: awayForm.last_10_losses,
+    bullpen_era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
+    bullpen_ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
+    closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
+    setup1_available: prediction?.components_raw?.away_team?.setup1_available ?? null,
+    setup2_available: prediction?.components_raw?.away_team?.setup2_available ?? null,
+  } : null,
+  home_form: homeForm ? {
+    last_10_wins: homeForm.last_10_wins,
+    last_10_losses: homeForm.last_10_losses,
+    bullpen_era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
+    bullpen_ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
+    closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
+    setup1_available: prediction?.components_raw?.home_team?.setup1_available ?? null,
+    setup2_available: prediction?.components_raw?.home_team?.setup2_available ?? null,
+  } : null,
+}}
+
   />
 )}
 

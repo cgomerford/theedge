@@ -375,7 +375,6 @@ GOOD SUMMARY (under 110 chars):
  
 BAD SUMMARY (too long):
 ✗ "Michael McGreevy's dominant L3 stretch creates a -70.7 pitcher edge — target McGreevy for strikeouts and fade Saggese's ice-cold bat while monitoring Oakland's Nick Kurtz." (172 chars — WAY too long, rewrite)`
- 
 
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
   try {
@@ -473,7 +472,6 @@ PARK FACTORS:
 ${streakSection}
 Write the summary, story_lead, and narrative now using the format <summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>.`
 }
-
 function parseOutput(
   text: string,
   narrativeLimit: number = 750,

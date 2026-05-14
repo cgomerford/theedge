@@ -16,6 +16,7 @@ type EdgeComponents = {
   rest: number
 }
 
+
 export type EdgeIndicatorProps = {
   edge_score: number
   predicted_winner: 'home' | 'away'
@@ -31,11 +32,29 @@ export type EdgeIndicatorProps = {
   context_tags?: Partial<Record<keyof EdgeComponents, string>>
   llm_summary?: string | null
   llm_narrative?: string | null
-    drilldown?: {
+  drilldown?: {
     away_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
     home_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
-    away_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
-    home_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
+    away_form?: {
+      last_10_wins: number
+      last_10_losses: number
+      bullpen_era: number | null
+      bullpen_ip_yesterday: number | null
+      bullpen_wpa_li?: number | null       // NEW
+      closer_available?: boolean | null    // NEW
+      setup1_available?: boolean | null    // NEW
+      setup2_available?: boolean | null    // NEW
+    } | null
+    home_form?: {
+      last_10_wins: number
+      last_10_losses: number
+      bullpen_era: number | null
+      bullpen_ip_yesterday: number | null
+      bullpen_wpa_li?: number | null       // NEW
+      closer_available?: boolean | null    // NEW
+      setup1_available?: boolean | null    // NEW
+      setup2_available?: boolean | null    // NEW
+    } | null
   }
 }
 
@@ -323,15 +342,95 @@ const summary = props.llm_summary
     )
   }
   
-  if (key === 'bullpen' && props.drilldown?.away_form && props.drilldown?.home_form) {
-    drilldownContent = (
-      <div className="space-y-2">
-        <p className="text-xs text-stone-600 italic">
-          Detailed bullpen breakdown including ERA, fatigue, and leverage available with Pro tier.
-        </p>
-      </div>
-    )
+if (key === 'bullpen' && props.drilldown?.away_form && props.drilldown?.home_form) {
+  const af = props.drilldown.away_form
+  const hf = props.drilldown.home_form
+
+  const availabilityDot = (available: boolean | null | undefined) => {
+    if (available === null || available === undefined) return '–'
+    return available ? '●' : '○'
   }
+
+  const fatigueLabel = (ip: number | null | undefined) => {
+    if (ip === null || ip === undefined) return '–'
+    if (ip >= 5) return 'Gassed'
+    if (ip >= 3) return 'Taxed'
+    if (ip >= 1) return 'Used'
+    return 'Fresh'
+  }
+
+  const fatigueColor = (ip: number | null | undefined) => {
+    if (ip === null || ip === undefined) return 'text-stone-400'
+    if (ip >= 5) return 'text-red-600 font-bold'
+    if (ip >= 3) return 'text-orange-500'
+    return 'text-green-700'
+  }
+
+  drilldownContent = (
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="grid grid-cols-3 gap-3 text-[10px] font-mono uppercase text-stone-400 border-b border-stone-300/40 pb-2">
+        <div></div>
+        <div className="text-center">{props.away_team_abbr ?? props.away_team.slice(0,3).toUpperCase()}</div>
+        <div className="text-center">{props.home_team_abbr ?? props.home_team.slice(0,3).toUpperCase()}</div>
+      </div>
+
+      {/* ERA row */}
+      <div className="grid grid-cols-3 gap-3 text-sm items-center">
+        <div className="text-[10px] font-mono uppercase text-stone-500">ERA</div>
+        <div className="text-center font-mono font-bold text-stone-900">
+          {af.bullpen_era?.toFixed(2) ?? '–'}
+        </div>
+        <div className="text-center font-mono font-bold text-stone-900">
+          {hf.bullpen_era?.toFixed(2) ?? '–'}
+        </div>
+      </div>
+
+      {/* Yesterday row */}
+      <div className="grid grid-cols-3 gap-3 text-sm items-center">
+        <div className="text-[10px] font-mono uppercase text-stone-500">Yesterday</div>
+        <div className={`text-center font-mono text-sm ${fatigueColor(af.bullpen_ip_yesterday)}`}>
+          {af.bullpen_ip_yesterday !== null && af.bullpen_ip_yesterday !== undefined
+            ? `${af.bullpen_ip_yesterday} IP · ${fatigueLabel(af.bullpen_ip_yesterday)}`
+            : '–'
+          }
+        </div>
+        <div className={`text-center font-mono text-sm ${fatigueColor(hf.bullpen_ip_yesterday)}`}>
+          {hf.bullpen_ip_yesterday !== null && hf.bullpen_ip_yesterday !== undefined
+            ? `${hf.bullpen_ip_yesterday} IP · ${fatigueLabel(hf.bullpen_ip_yesterday)}`
+            : '–'
+          }
+        </div>
+      </div>
+
+      {/* Availability row */}
+      {(af.closer_available !== undefined || hf.closer_available !== undefined) && (
+        <div className="border-t border-stone-300/40 pt-3 space-y-2">
+          <div className="text-[10px] font-mono uppercase text-stone-400 mb-2">Key Arms Available</div>
+          {[
+            { label: 'Closer', away: af.closer_available, home: hf.closer_available },
+            { label: 'Setup 1', away: af.setup1_available, home: hf.setup1_available },
+            { label: 'Setup 2', away: af.setup2_available, home: hf.setup2_available },
+          ].map(row => (
+            <div key={row.label} className="grid grid-cols-3 gap-3 text-sm items-center">
+              <div className="text-[10px] font-mono uppercase text-stone-500">{row.label}</div>
+              <div className={`text-center font-mono text-base ${row.away ? 'text-green-700' : 'text-red-500'}`}>
+                {availabilityDot(row.away)}
+              </div>
+              <div className={`text-center font-mono text-base ${row.home ? 'text-green-700' : 'text-red-500'}`}>
+                {availabilityDot(row.home)}
+              </div>
+            </div>
+          ))}
+          <div className="text-[10px] font-mono text-stone-400 pt-1">
+            ● Available · ○ Unavailable
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 
   return (
     <div key={key}>
