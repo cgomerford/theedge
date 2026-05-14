@@ -357,8 +357,8 @@ export async function logPrediction(
     edge_score: result.edge_score,
     predicted_winner: result.predicted_winner,
     confidence_tier: result.confidence_tier,
-    components: result.components,
-    components_raw: result.components_raw,  // ADD THIS
+   components: result.components,
+   components_raw: result.components_raw,
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
   }

@@ -24,6 +24,7 @@ export type EdgeIndicatorProps = {
   components: EdgeComponents
   home_team: string
   away_team: string
+  components_raw?: any
   home_team_abbr?: string
   away_team_abbr?: string
   updated_at: string

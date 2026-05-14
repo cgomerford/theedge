@@ -257,6 +257,7 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     predicted_winner={prediction.predicted_winner}
     confidence_tier={prediction.confidence_tier}
     components={prediction.components}
+    components_raw={prediction.components_raw}
     home_team={game.teams.home.team.name}
     away_team={game.teams.away.team.name}
     home_team_abbr={game.teams.home.team.abbreviation}
