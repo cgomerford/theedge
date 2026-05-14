@@ -268,7 +268,7 @@ export type BriefGameContext = {
   confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup' | null
   llm_summary: string | null
   llm_narrative: string | null
-  llm_narrative_pro: string | null   // NEW: Pro GM briefing narrative
+  llm_narrative_pro?: string | null   // NEW: Pro GM briefing narrative
 }
  
 export function dailyBriefEmail(

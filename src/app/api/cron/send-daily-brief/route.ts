@@ -16,6 +16,7 @@ import { getPredictionsForDate } from '@/lib/edge-fetch'
 export const maxDuration = 300
 
 export async function GET(request: NextRequest) {
+  // 1. Authorization
   const authHeader = request.headers.get('authorization')
   const validSecrets = [
     process.env.CRON_SECRET,
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
 
   console.log(`[daily-brief] Starting for ${today}`)
 
+  // 2. Fetch today's schedule
   const allGames = await getScheduleForDate(today)
   console.log(`[daily-brief] Found ${allGames.length} games today`)
 
@@ -42,9 +44,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'No games today, nothing to send' })
   }
 
+  // 3. Fetch predictions
   const predictions = await getPredictionsForDate(today)
   console.log(`[daily-brief] Loaded ${predictions.size} V2 predictions`)
 
+  // 4. Pre-compute game context (pitcher stats + weather + prediction)
   const gameContexts = await Promise.all(
     allGames.map(async (game): Promise<BriefGameContext> => {
       const venue = getVenueInfo(game.venue?.name)
@@ -79,15 +83,14 @@ export async function GET(request: NextRequest) {
         confidence_tier: prediction?.confidence_tier ?? null,
         llm_summary: prediction?.summary ?? null,
         llm_narrative: prediction?.narrative ?? null,
-        llm_narrative_pro: prediction?.narrative_pro ?? null,  // CHANGE 1: added
       }
     })
   )
 
-  // CHANGE 2: added is_pro to subscriber select
+  // 5. Fetch active subscribers — no is_pro column yet, that's Phase 2
   const { data: subscribers, error: subError } = await supa
     .from('subscribers')
-    .select('email, teams, preferences_token, unsubscribed_at, email_verified, is_pro')
+    .select('email, teams, preferences_token, unsubscribed_at, email_verified')
     .is('unsubscribed_at', null)
     .eq('email_verified', true)
     .not('teams', 'is', null)
@@ -97,21 +100,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: subError.message }, { status: 500 })
   }
 
-  const activeSubs = (subscribers ?? []).filter((s) => Array.isArray(s.teams) && s.teams.length > 0)
-
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'RESEND_API_KEY missing' }, { status: 500 })
   }
+
+  const activeSubs = (subscribers ?? []).filter(
+    (s) => Array.isArray(s.teams) && s.teams.length > 0
+  )
+
+  // TEST_EMAIL override — set in Vercel env to send to one address only
+  // Remove or blank this env var to send to all subscribers
+  const subsToProcess = process.env.TEST_EMAIL
+    ? activeSubs.filter((s) => s.email === process.env.TEST_EMAIL)
+    : activeSubs
+
+  console.log(
+    `[daily-brief] Sending to ${subsToProcess.length} subscriber(s)` +
+    (process.env.TEST_EMAIL ? ` [TEST MODE: ${process.env.TEST_EMAIL}]` : '')
+  )
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   let sentCount = 0
   let skippedCount = 0
   const errors: string[] = []
 
-  for (const sub of activeSubs) {
+  // 6. Send to each subscriber
+  for (const sub of subsToProcess) {
     try {
       const subTeams = sub.teams as string[]
-      const isPro = (sub as any).is_pro === true  // CHANGE 3: detect Pro status
 
       const matchingGames = gameContexts.filter((ctx) => {
         const awayTeam = findTeamByName(ctx.game.teams.away.team.name)
@@ -138,20 +154,11 @@ export async function GET(request: NextRequest) {
 
       const uniqueShortNames = Array.from(new Set(followedShortNames))
 
-      // CHANGE 3 cont: swap narrative for Pro subscribers before passing to template
-      const gamesForEmail = isPro
-        ? matchingGames.map(ctx => ({
-            ...ctx,
-            llm_narrative: ctx.llm_narrative_pro ?? ctx.llm_narrative,
-          }))
-        : matchingGames
-
       const emailContent = dailyBriefEmail(
         sub.email,
         sub.preferences_token ?? '',
-        gamesForEmail,
+        matchingGames,
         uniqueShortNames,
-        isPro,
       )
 
       await resend.emails.send({
@@ -164,6 +171,7 @@ export async function GET(request: NextRequest) {
 
       sentCount++
 
+      // Throttle — Resend free tier is 10 req/sec
       await new Promise((r) => setTimeout(r, 150))
     } catch (err) {
       console.error(`[daily-brief] error for ${sub.email}:`, err)
@@ -177,5 +185,6 @@ export async function GET(request: NextRequest) {
     errors,
     games_today: allGames.length,
     active_subscribers: activeSubs.length,
+    test_mode: !!process.env.TEST_EMAIL,
   })
 }
