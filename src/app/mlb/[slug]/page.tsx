@@ -38,6 +38,9 @@ export async function generateMetadata({ params }: Props) {
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   const date = dateMatch ? dateMatch[1] : ''
   const title = slug
+  const { cookies } = await import('next/headers')
+  const cookieStore = await cookies()
+  const isPro = cookieStore.get('edge_session')?.value === 'pro' // adjust value check to match your session logic
   .replace(/-game(\d+)$/, ' (Game $1)')  // "...mets-2026-05-09-game2" → "...mets-2026-05-09 (Game 2)"
   .replace(/(\d{4}-\d{2}-\d{2})/, '')
   .replace(/-/g, ' ')
@@ -52,7 +55,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
-
+const isPro = false
   // Try cache first
   const { data: cached } = await supa
     .from('game_previews')
@@ -263,6 +266,32 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     is_pro={false}
     llm_summary={prediction.summary}
     llm_narrative={prediction.narrative}
+     drilldown={{
+    away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
+      name: game.teams.away.probablePitcher.fullName,
+      era: awaySeasonStats.era,
+      whip: awaySeasonStats.whip,
+      k_per_9: awaySeasonStats.k_per_9,
+    } : null,
+    home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
+      name: game.teams.home.probablePitcher.fullName,
+      era: homeSeasonStats.era,
+      whip: homeSeasonStats.whip,
+      k_per_9: homeSeasonStats.k_per_9,
+    } : null,
+    away_form: awayForm ? {
+      last_10_wins: awayForm.last_10_wins,
+      last_10_losses: awayForm.last_10_losses,
+      bullpen_era: null, // we don't have this currently
+      bullpen_ip_yesterday: null,
+    } : null,
+    home_form: homeForm ? {
+      last_10_wins: homeForm.last_10_wins,
+      last_10_losses: homeForm.last_10_losses,
+      bullpen_era: null,
+      bullpen_ip_yesterday: null,
+    } : null,
+  }}
   />
 )}
 

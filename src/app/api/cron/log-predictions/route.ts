@@ -128,6 +128,7 @@ if (shouldRegenerateNarrative) {
     components_raw: result.components_raw,
     venue_name: game.venue?.name ?? '',
     streaks: streaks,
+    
   })
 
   if (generated) {

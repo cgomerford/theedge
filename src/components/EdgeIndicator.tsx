@@ -31,6 +31,12 @@ export type EdgeIndicatorProps = {
   context_tags?: Partial<Record<keyof EdgeComponents, string>>
   llm_summary?: string | null
   llm_narrative?: string | null
+    drilldown?: {
+    away_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
+    home_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
+    away_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
+    home_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
+  }
 }
 
 const COMPONENT_ORDER: (keyof EdgeComponents)[] = [
@@ -260,48 +266,109 @@ const summary = props.llm_summary
 
         {/* Component list */}
         <div className="space-y-4">
-          {COMPONENT_ORDER.map((key, index) => {
-            const value = props.components[key]
-            const meta = COMPONENT_META[key]
-            const contextTag = props.context_tags?.[key]
-            const isFree = FREE_COMPONENTS.includes(key)
-            const showLocked = !isFree && !isPro
-            const isFirstLocked = key === COMPONENT_ORDER[FREE_COMPONENTS.length]
+    {COMPONENT_ORDER.map((key, index) => {
+  const value = props.components[key]
+  const meta = COMPONENT_META[key]
+  const contextTag = props.context_tags?.[key]
+  const isFree = FREE_COMPONENTS.includes(key)
+  const showLocked = !isFree && !isPro
+  const isFirstLocked = key === COMPONENT_ORDER[FREE_COMPONENTS.length]
 
-            return (
-              <div key={key}>
-                {/* Free tier divider */}
-                {isFirstLocked && (
-                  <div className="flex items-center gap-3 my-6">
-                    <div className="flex-1 h-px bg-[#1A1A1A]/20" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#FF5722]">
-                      ⊕ Free Tier Ends Here
-                    </span>
-                    <div className="flex-1 h-px bg-[#1A1A1A]/20" />
-                  </div>
-                )}
+  // Build drilldown content for this component
+  let drilldownContent: React.ReactNode = null
+  
+  if (key === 'starting_pitcher' && props.drilldown?.away_pitcher && props.drilldown?.home_pitcher) {
+    const ap = props.drilldown.away_pitcher
+    const hp = props.drilldown.home_pitcher
+    drilldownContent = (
+      <div className="space-y-3">
+        <div>
+          <div className="text-xs font-mono uppercase text-stone-500 mb-1">Away · {ap.name}</div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">ERA</div>
+              <div className="font-mono font-bold text-stone-900">{ap.era}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">WHIP</div>
+              <div className="font-mono font-bold text-stone-900">{ap.whip}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">K/9</div>
+              <div className="font-mono font-bold text-stone-900">{ap.k_per_9}</div>
+            </div>
+          </div>
+        </div>
+        <div className="pt-3 border-t border-stone-300/40">
+          <div className="text-xs font-mono uppercase text-stone-500 mb-1">Home · {hp.name}</div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">ERA</div>
+              <div className="font-mono font-bold text-stone-900">{hp.era}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">WHIP</div>
+              <div className="font-mono font-bold text-stone-900">{hp.whip}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-mono uppercase text-stone-500">K/9</div>
+              <div className="font-mono font-bold text-stone-900">{hp.k_per_9}</div>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-stone-600 italic pt-2 border-t border-stone-300/40">
+          Click pitcher names to see arsenal · last 5 starts · hot zones (Pro)
+        </p>
+      </div>
+    )
+  }
+  
+  if (key === 'bullpen' && props.drilldown?.away_form && props.drilldown?.home_form) {
+    drilldownContent = (
+      <div className="space-y-2">
+        <p className="text-xs text-stone-600 italic">
+          Detailed bullpen breakdown including ERA, fatigue, and leverage available with Pro tier.
+        </p>
+      </div>
+    )
+  }
 
-               <ComponentRow
-  number={index + 1}
-  label={meta.label}
-  subtitle={meta.subtitle}
-  value={value}
-  homeAbbr={homeAbbr}
-  awayAbbr={awayAbbr}
-  contextTag={contextTag}
-  locked={showLocked}
-  proTeaser={meta.pro_teaser}
-/>
-              </div>
-            )
-          })}
+  return (
+    <div key={key}>
+      {/* Free tier divider */}
+      {isFirstLocked && (
+        <div className="flex items-center gap-3 my-6">
+          <div className="flex-1 h-px bg-[#1A1A1A]/20" />
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#FF5722]">
+            ⊕ Free Tier Ends Here
+          </span>
+          <div className="flex-1 h-px bg-[#1A1A1A]/20" />
+        </div>
+      )}
+
+      <ComponentRow
+        number={index + 1}
+        label={meta.label}
+        subtitle={meta.subtitle}
+        value={value}
+        homeAbbr={homeAbbr}
+        awayAbbr={awayAbbr}
+        contextTag={contextTag}
+        locked={showLocked}
+
+        proTeaser={meta.pro_teaser}
+        drilldownData={drilldownContent}
+      />
+    </div>
+  )
+})}
 
    {/* ========== THE READ (LLM Narrative) ========== */}
         {props.llm_narrative && (
           <div className="mt-8 pt-6 border-t border-[#1A1A1A]/10">
-            <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-3">
-              — The Read
-            </div>
+           <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-3">
+  {isPro ? '— The GM Briefing' : '— The Read'}
+</div>
             <p className="text-base text-[#1A1A1A] leading-relaxed" style={{ fontFamily: 'Fraunces, serif' }}>
               {props.llm_narrative}
             </p>
@@ -365,6 +432,7 @@ type ComponentRowProps = {
   contextTag?: string
   locked: boolean
   proTeaser?: string
+  drilldownData?: React.ReactNode  // NEW
 }
 
 function ComponentRow({
@@ -377,10 +445,15 @@ function ComponentRow({
   contextTag,
   locked,
   proTeaser,
+  drilldownData,
 }: ComponentRowProps) {
+  const [expanded, setExpanded] = useState(false)
+  
   const absValue = Math.abs(value)
+  // ... rest of function
   const isHomeFavored = value >= 0
   const labelToShow = isHomeFavored ? homeAbbr : awayAbbr
+  
 
   // Bar color based on magnitude
   const barColor = absValue >= 15
@@ -400,8 +473,15 @@ function ComponentRow({
 
 
   // ===== UNLOCKED STATE: normal bar + value =====
-  return (
-    <div className="grid grid-cols-12 gap-3 items-center">
+// ===== UNLOCKED STATE: normal bar + value + optional drill-down =====
+const hasDrilldown = drilldownData !== undefined && drilldownData !== null
+
+return (
+  <div>
+    <div 
+      className={`grid grid-cols-12 gap-3 items-center ${hasDrilldown ? 'cursor-pointer hover:bg-stone-100 rounded transition' : ''}`}
+      onClick={hasDrilldown ? () => setExpanded(!expanded) : undefined}
+    >
       {/* Number */}
       <div className="col-span-1 text-[#FF5722] font-mono text-sm">
         {number}
@@ -409,13 +489,24 @@ function ComponentRow({
 
       {/* Label + subtitle */}
       <div className="col-span-3">
-        <div className="font-bold text-[#1A1A1A] text-sm">{label}</div>
+        <div className="font-bold text-[#1A1A1A] text-sm flex items-center gap-1">
+          {label}
+          {hasDrilldown && (
+            <svg 
+              className={`w-3 h-3 text-stone-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="currentColor" 
+              viewBox="0 0 20 20"
+            >
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          )}
+        </div>
         <div className="text-[10px] font-mono uppercase text-[#4A4A4A] tracking-wider">
           {subtitle}
         </div>
       </div>
 
-      {/* Bar (centered, extends left for negative, right for positive) */}
+      {/* Bar */}
       <div className="col-span-5 relative h-7 bg-[#E5E5E5] rounded">
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[#A3A3A3]/40" />
         {absValue >= 0.5 && (
@@ -451,7 +542,15 @@ function ComponentRow({
         ) : null}
       </div>
     </div>
-  )
+
+    {/* Drill-down content */}
+    {hasDrilldown && expanded && drilldownData && (
+      <div className="ml-12 mt-3 mb-2 bg-[#F5F1E8] border border-[#FF5722]/20 rounded p-4">
+        {drilldownData}
+      </div>
+    )}
+  </div>
+)
 }
 
 // ============================================================

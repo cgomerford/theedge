@@ -41,7 +41,13 @@ export type EdgeScoreResult = {
   predicted_winner: 'home' | 'away'
   confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup'
   components: EdgeComponents
-  components_raw: any             // Raw inputs for transparency
+  components_raw: any       
+  drilldown?: {
+    away_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
+    home_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
+    away_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
+    home_form?: { last_10_wins: number; last_10_losses: number; bullpen_era: number | null; bullpen_ip_yesterday: number | null } | null
+  }      // Raw inputs for transparency
 }
 
 export type GameInputs = {

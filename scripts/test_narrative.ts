@@ -47,6 +47,7 @@ async function main() {
       components: edgeResult.components,
       components_raw: edgeResult.components_raw,
       venue_name: game.venue.name,
+      
     })
 
     if (!narrative) {
