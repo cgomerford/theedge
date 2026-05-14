@@ -1,0 +1,43 @@
+name: Daily Pitch Arsenal Refresh
+
+on:
+  schedule:
+    # Runs at 04:00 UTC daily — before the 05:00 Vercel cron chain
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions UI (useful for testing)
+
+jobs:
+  refresh-pitch-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # pybaseball can be slow — give it room
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pybaseball pandas supabase python-dotenv
+
+      - name: Run fetch_pitch_arsenals.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          cd scripts
+          python fetch_pitch_arsenals.py
+
+      - name: Run fetch_pitch_velocity.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          cd scripts
+          python fetch_pitch_velocity.py
