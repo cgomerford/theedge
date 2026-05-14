@@ -347,7 +347,7 @@ export async function logPrediction(
   streakData: any | null = null,
   narrative_pro: string | null = null,   // NEW: Pro tier narrative
 ) {
-  const row: any = {
+ const row: any = {
     game_pk: gamePk,
     game_date: gameDate,
     home_team_id: homeTeamId,
@@ -358,10 +358,10 @@ export async function logPrediction(
     predicted_winner: result.predicted_winner,
     confidence_tier: result.confidence_tier,
     components: result.components,
+    components_raw: result.components_raw,  // ADD THIS
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
   }
- 
   if (summary !== null) {
     row.summary = summary
     row.story_lead = story_lead
