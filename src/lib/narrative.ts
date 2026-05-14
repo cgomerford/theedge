@@ -398,7 +398,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
  
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 900,
+      max_tokens: 1200,
       system: [
         {
           type: 'text',
@@ -417,7 +417,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
  
     // Pro narratives are longer by design — give them a higher ceiling
-    const narrativeLimit = inputs.is_pro ? 1200 : 900
+const narrativeLimit = inputs.is_pro ? 2000 : 900
     const parsed = parseOutput(text, narrativeLimit)
  
     if (!parsed) {
