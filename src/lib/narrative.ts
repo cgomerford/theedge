@@ -395,17 +395,17 @@ Respond in this exact XML format:
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
   try {
     const userPrompt = buildUserPrompt(inputs)
-
+ 
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 900,
-   system: [
-  {
-    type: 'text',
-    text: inputs.is_pro ? PRO_SYSTEM_PROMPT : FREE_SYSTEM_PROMPT,
-    cache_control: { type: 'ephemeral' },
-  },
-],
+      system: [
+        {
+          type: 'text',
+          text: inputs.is_pro ? PRO_SYSTEM_PROMPT : FREE_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       messages: [
         {
           role: 'user',
@@ -413,26 +413,29 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
         },
       ],
     })
-
+ 
     const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    const parsed = parseOutput(text)
-
+ 
+    // Pro narratives are longer by design — give them a higher ceiling
+    const narrativeLimit = inputs.is_pro ? 1200 : 900
+    const parsed = parseOutput(text, narrativeLimit)
+ 
     if (!parsed) {
-      console.error('Failed to parse LLM output:', text)
+      console.error(`Failed to parse ${inputs.is_pro ? 'PRO' : 'FREE'} LLM output:`, text)
       return null
     }
-
+ 
     const inputCost = (message.usage.input_tokens * 0.0000008)
     const cachedCost = ((message.usage.cache_read_input_tokens ?? 0) * 0.00000008)
     const outputCost = (message.usage.output_tokens * 0.000004)
     const totalCost = inputCost + cachedCost + outputCost
-
+ 
     return {
-  summary: parsed.summary,
-  story_lead: parsed.story_lead,
-  narrative: parsed.narrative,
-  cost_usd: totalCost,
-}
+      summary: parsed.summary,
+      story_lead: parsed.story_lead,
+      narrative: parsed.narrative,
+      cost_usd: totalCost,
+    }
   } catch (err) {
     console.error('LLM narrative generation failed:', err)
     return null
@@ -483,40 +486,43 @@ ${streakSection}
 Write the summary, story_lead, and narrative now using the format <summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>.`
 }
 
-function parseOutput(text: string): { summary: string; story_lead: string; narrative: string } | null {
+function parseOutput(
+  text: string,
+  narrativeLimit: number = 900
+): { summary: string; story_lead: string; narrative: string } | null {
   const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
   const storyLeadMatch = text.match(/<story_lead>([\s\S]*?)<\/story_lead>/i)
   const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
-
+ 
   if (!summaryMatch || !storyLeadMatch || !narrativeMatch) {
     console.error('Failed to parse LLM output (missing tags):', text.substring(0, 300))
     return null
   }
-
+ 
   const summary = summaryMatch[1].trim()
   const story_lead = storyLeadMatch[1].trim()
   const narrative = narrativeMatch[1].trim()
-
+ 
   if (!summary || !story_lead || !narrative) {
     console.error('Failed to parse: empty values')
     return null
   }
-  
+ 
   if (summary.length > 250) {
     console.error(`Failed to parse: summary too long (${summary.length} chars)`)
     return null
   }
-  
+ 
   if (story_lead.length > 400) {
     console.error(`Failed to parse: story_lead too long (${story_lead.length} chars)`)
     return null
   }
-  
-  if (narrative.length > 900) {
-    console.error(`Failed to parse: narrative too long (${narrative.length} chars)`)
+ 
+  if (narrative.length > narrativeLimit) {
+    console.error(`Failed to parse: narrative too long (${narrative.length} chars, limit ${narrativeLimit})`)
     return null
   }
-
+ 
   return { summary, story_lead, narrative }
 }
 

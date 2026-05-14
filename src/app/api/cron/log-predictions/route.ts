@@ -142,10 +142,17 @@ export async function GET(request: Request) {
             streaks,
           }
 
-          const [generatedFree, generatedPro] = await Promise.all([
-            generateNarrative({ ...narrativeInputsBase, is_pro: false }),
-            generateNarrative({ ...narrativeInputsBase, is_pro: true }),
-          ])
+        const [generatedFree, generatedPro] = await Promise.all([
+  generateNarrative({ ...narrativeInputsBase, is_pro: false }),
+  generateNarrative({ ...narrativeInputsBase, is_pro: true }),
+])
+
+console.log(`Game ${game.gamePk} narratives:`, {
+  free_ok: !!generatedFree,
+  pro_ok: !!generatedPro,
+  pro_narrative_length: generatedPro?.narrative?.length ?? 0,
+  narrative_pro_var: narrative_pro?.length ?? 'null',
+})
 
           if (generatedFree) {
             summary = generatedFree.summary
