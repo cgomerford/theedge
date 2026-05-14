@@ -26,7 +26,7 @@ jobs:
         run: |
           pip install pybaseball pandas supabase python-dotenv
 
-      - name: Run fetch_pitch_arsenals.py
+      - name: Run fetch_pitch_arsenals_movement.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
