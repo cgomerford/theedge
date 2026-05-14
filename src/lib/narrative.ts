@@ -413,12 +413,15 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
         },
       ],
     })
- 
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+const text = message.content[0].type === 'text' ? message.content[0].text : ''
+console.log(`RAW LLM OUTPUT (${inputs.is_pro ? 'PRO' : 'FREE'}):`, JSON.stringify(text))
  
     // Pro narratives are longer by design — give them a higher ceiling
-const narrativeLimit = inputs.is_pro ? 2000 : 900
+const narrativeLimit = = inputs.is_pro ? 750 : 750
     const parsed = parseOutput(text, narrativeLimit)
+    const summaryLimit = 150
+const storyLeadLimit = 420
+ 
  
     if (!parsed) {
       console.error(`Failed to parse ${inputs.is_pro ? 'PRO' : 'FREE'} LLM output:`, text)
@@ -488,14 +491,20 @@ Write the summary, story_lead, and narrative now using the format <summary>...</
 
 function parseOutput(
   text: string,
-  narrativeLimit: number = 900
+  narrativeLimit: number = 750,
+  summaryLimit: number = 150,
+  storyLeadLimit: number = 420,
 ): { summary: string; story_lead: string; narrative: string } | null {
-  const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
-  const storyLeadMatch = text.match(/<story_lead>([\s\S]*?)<\/story_lead>/i)
-  const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
+  
+  // Strip markdown code fences if model wraps output (common failure mode)
+  const cleaned = text.replace(/```xml\n?/gi, '').replace(/```\n?/gi, '').trim()
+ 
+  const summaryMatch = cleaned.match(/<summary>([\s\S]*?)<\/summary>/i)
+  const storyLeadMatch = cleaned.match(/<story_lead>([\s\S]*?)<\/story_lead>/i)
+  const narrativeMatch = cleaned.match(/<narrative>([\s\S]*?)<\/narrative>/i)
  
   if (!summaryMatch || !storyLeadMatch || !narrativeMatch) {
-    console.error('Failed to parse LLM output (missing tags):', text.substring(0, 300))
+    console.error('Failed to parse LLM output (missing tags):', cleaned.substring(0, 300))
     return null
   }
  
@@ -508,13 +517,13 @@ function parseOutput(
     return null
   }
  
-  if (summary.length > 250) {
-    console.error(`Failed to parse: summary too long (${summary.length} chars)`)
+  if (summary.length > summaryLimit) {
+    console.error(`Failed to parse: summary too long (${summary.length} chars, limit ${summaryLimit})`)
     return null
   }
  
-  if (story_lead.length > 400) {
-    console.error(`Failed to parse: story_lead too long (${story_lead.length} chars)`)
+  if (story_lead.length > storyLeadLimit) {
+    console.error(`Failed to parse: story_lead too long (${story_lead.length} chars, limit ${storyLeadLimit})`)
     return null
   }
  
@@ -525,6 +534,7 @@ function parseOutput(
  
   return { summary, story_lead, narrative }
 }
+ 
 
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
   const lines: string[] = ['', 'RECENT FORM & STREAKS:']
