@@ -328,11 +328,10 @@ async function fetchTeam(teamId: number) {
     .single()
   return error ? null : data
 }
-
-// ============================================================
 // PREDICTION LOGGING
+// Drop-in replacement for the logPrediction function in src/lib/edge.ts
+// Changes: added narrative_pro param + writes to edge_predictions.narrative_pro
 // ============================================================
-// PREDICTION LOGGING
 export async function logPrediction(
   gamePk: number,
   gameDate: string,
@@ -346,6 +345,7 @@ export async function logPrediction(
   story_lead: string | null = null,
   narrative: string | null = null,
   streakData: any | null = null,
+  narrative_pro: string | null = null,   // NEW: Pro tier narrative
 ) {
   const row: any = {
     game_pk: gamePk,
@@ -361,17 +361,22 @@ export async function logPrediction(
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
   }
-
+ 
   if (summary !== null) {
     row.summary = summary
     row.story_lead = story_lead
     row.narrative = narrative
     row.narrative_generated_at = new Date().toISOString()
   }
-
+ 
+  // Write Pro narrative when present — null means "keep existing" via upsert
+  if (narrative_pro !== null) {
+    row.narrative_pro = narrative_pro
+  }
+ 
   if (streakData !== null) {
     row.streak_data = streakData
   }
-
+ 
   await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })
 }

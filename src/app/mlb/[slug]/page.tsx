@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Props) {
 export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
-const isPro = false
+const isPro = true
   // Try cache first
   const { data: cached } = await supa
     .from('game_previews')
