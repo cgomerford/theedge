@@ -51,6 +51,7 @@ async function main() {
         confidence_tier: prediction?.confidence_tier ?? null,
         llm_summary: prediction?.summary ?? null,
         llm_narrative: prediction?.narrative ?? null,
+        llm_narrative_pro: null,
       }
     })
   )
