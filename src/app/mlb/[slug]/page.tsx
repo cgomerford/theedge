@@ -334,27 +334,44 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
 )}
 
 {/* PROJECTED LINEUPS */}
-<section className="mt-12">
-  <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
-    § Projected Lineups
-  </div>
-  <div className="grid md:grid-cols-2 gap-4">
-    <LineupCard 
-      lineup={awayLineup} 
-      teamName={game.teams.away.team.name}
-      teamShort={shortName(game.teams.away.team.name)}
-      teamAbbr={game.teams.away.team.abbreviation}
-      teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
-    />
-    <LineupCard 
-      lineup={homeLineup} 
-      teamName={game.teams.home.team.name}
-      teamShort={shortName(game.teams.home.team.name)}
-      teamAbbr={game.teams.home.team.abbreviation}
-      teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
-    />
-  </div>
-</section>
+{(awayLineup || homeLineup) && (
+  <section className="mt-12">
+    <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
+      § Projected Lineups
+    </div>
+    <div className="grid md:grid-cols-2 gap-4">
+      {/* Away Lineup Check */}
+      {awayLineup ? (
+        <LineupCard 
+          lineup={awayLineup} 
+          teamName={game.teams.away.team.name}
+          teamShort={shortName(game.teams.away.team.name)}
+          teamAbbr={game.teams.away.team.abbreviation}
+          teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
+        />
+      ) : (
+        <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
+          {shortName(game.teams.away.team.name)} lineup not yet available
+        </div>
+      )}
+
+      {/* Home Lineup Check */}
+      {homeLineup ? (
+        <LineupCard 
+          lineup={homeLineup} 
+          teamName={game.teams.home.team.name}
+          teamShort={shortName(game.teams.home.team.name)}
+          teamAbbr={game.teams.home.team.abbreviation}
+          teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
+        />
+      ) : (
+        <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
+          {shortName(game.teams.home.team.name)} lineup not yet available
+        </div>
+      )}
+    </div>
+  </section>
+)}
 
 
 {/* FORM GUIDE */}
