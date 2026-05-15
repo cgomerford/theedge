@@ -26,6 +26,10 @@ export type EdgePrediction = {
   story_lead: string | null
   narrative: string | null
   narrative_pro: string | null
+  home_stories: { stat: string; text: string }[] | null
+  away_stories: { stat: string; text: string }[] | null
+  contrarian: string | null
+  pro_takeaways: { stat: string; text: string; edge: 'home' | 'away' | 'neutral' }[] | null
 }
 
 // Fetch all today's predictions in one query (for email cron)
