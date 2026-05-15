@@ -252,81 +252,137 @@ export type NarrativeInputs = {
   streaks?: GameStreaks | null  // NEW
   is_pro?: boolean 
 }
-
 export type NarrativeResult = {
   summary: string
-  story_lead: string
+  story_lead: string        // keep for backwards compat — set to summary
   narrative: string
+  home_stories: StoryItem[]
+  away_stories: StoryItem[]
+  contrarian: string
+  pro_takeaways: ProTakeaway[]
   cost_usd: number
 }
 
+export type StoryItem = {
+  stat: string     // e.g. "5.14 ERA"
+  text: string     // e.g. "Nola's struggling, 5.63 over his last 3 starts"
+}
+ 
+export type ProTakeaway = {
+  stat: string     // e.g. "40% GB rate"
+  text: string     // e.g. "Luzardo's ground-ball rate meets Pittsburgh's 3rd-highest GB hit rate"
+  edge: 'home' | 'away' | 'neutral'
+}
 const SYSTEM_PROMPT = `You are a writer for The Edge, a daily 5-minute pre-game brief for analytically-minded MLB fans.
-
+ 
 VOICE:
 - Smart friend, not a robot. Conversational but informed.
 - Use specific numbers. Real stats over abstract claims.
 - Confident but never preachy. Surface insight, don't lecture.
 - Never use betting language or recommend wagers. Information only.
 - Never use these phrases: "lock", "play", "value", "edge to bet", "smash", "hammer", "fade".
-
+ 
 FORMAT RULES:
-Output exactly THREE parts using these XML tags:
-<summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>
-
+Output exactly SIX parts using these XML tags, in this order:
+ 
+<summary>...</summary>
+<narrative>...</narrative>
+<home_stories>...</home_stories>
+<away_stories>...</away_stories>
+<contrarian>...</contrarian>
+<pro_takeaways>...</pro_takeaways>
+ 
+---
+ 
 SUMMARY (max 110 characters):
-One sentence identifying the 1-2 biggest factors driving the edge.
-
-STORY_LEAD (max 350 characters, 2-3 sentences):
-This is the most important writing on the page. It's the FIRST thing a reader sees.
-Write like you're texting a curious friend before the game starts.
-- LEAD with one specific, compelling fact (a number, a name, a streak)
-- Use real names of players when possible — not "the starting pitcher"
-- Use em-dashes (—) and contractions naturally
-- NO jargon, NO "matchup analytics," NO "favorable conditions"
-- Confident but not pushy
-- 2-3 sentences MAX
-
-GOOD STORY_LEAD examples:
-✓ "Wheeler's been ridiculous lately — three straight under 2 ERA. The Mets bullpen is gassed after last night's marathon. Real edge here."
-✓ "Two pitchers having career years collide tonight. Skenes leads MLB in K/9, but Holton's been just as nasty in his last five. Toss-up."
-✓ "The Yankees' bats are quiet — just 3.2 runs per game over the last week. Glasnow's velocity is back to 99 mph. Rangers have a sneaky edge."
-
-BAD STORY_LEAD examples (do not write like these):
-✗ "The Phillies face the Mets tonight in a matchup that favors the home team." (no voice, no facts)
-✗ "Several factors point to a Phillies edge including pitching, bullpen, and recent form." (list-form, anonymous)
-✗ "Wheeler is good, the Mets pen is tired." (too short, no specifics)
-
+One sentence identifying the 1-2 biggest factors driving the edge. This appears as a quote inside the Edge Indicator hero panel.
+ 
+---
+ 
 NARRATIVE (max 600 characters, EXACTLY 4 sentences):
 The analytical deep-read for engaged fans. Target 450 chars, hard max 600.
-Be concise — every word must earn its place.
 - Sentence 1: Headline matchup or biggest factor with a specific stat.
 - Sentence 2: Supporting factor with a specific number.
 - Sentence 3: A counter-factor or secondary insight.
 - Sentence 4: Concise close naming the favored team or toss-up status.
-
-If your narrative exceeds 450 characters, you must shorten it.
 Use team names naturally. Don't start every sentence with team names.
-If a stat is null, missing, or unavailable, do not invent it. Work with what's provided.
-For toss-up confidence: be honest about it being close. Don't manufacture an edge.
-
+If a stat is null or unavailable, do not invent it. Work with what's provided.
+For toss-up confidence: be honest about it being close.
+ 
+---
+ 
+HOME_STORIES (JSON array of exactly 3 objects):
+Three key storylines for the HOME team tonight. Each object has:
+- "stat": a short stat label (max 12 chars, e.g. "2.77 ERA", ".348 L5", "22-18")
+- "text": one sentence of context (max 80 chars)
+ 
+RULES FOR HOME_STORIES:
+- Story 1 MUST be about the home team's record or recent form (e.g. "22-18 — On a 7-game home win streak, best in the NL")
+- Story 2: the most impactful player storyline (hot bat, pitcher form, slump)
+- Story 3: a tactical edge or concern (bullpen fatigue, lineup change, park factor)
+- Every story must include a real number from the data provided
+- Do NOT invent stats. If data is thin, use what's available.
+ 
+---
+ 
+AWAY_STORIES (JSON array of exactly 3 objects):
+Same format as home_stories but for the AWAY team.
+ 
+RULES FOR AWAY_STORIES:
+- Story 1 MUST be about the away team's record or recent form (e.g. "18-22 — Lost 4 of last 5 on the road")
+- Story 2: the most impactful player storyline
+- Story 3: a tactical edge or concern
+- Same rules as home_stories
+ 
+---
+ 
+CONTRARIAN (max 300 characters, 2-3 sentences):
+"Why we might be wrong" — a genuine counter-argument to the Edge prediction.
+- Identify the strongest case AGAINST the predicted winner
+- Use specific stats that cut the other way (e.g. FIP vs ERA gap, home/away splits, sample size)
+- Be honest, not dramatic. This builds trust.
+- For toss-ups: explain why one factor could tip it either way.
+ 
+---
+ 
+PRO_TAKEAWAYS (JSON array of exactly 3 objects):
+Three stat-driven matchup insights for fantasy/DFS players. Each object has:
+- "stat": a short stat label (max 15 chars, e.g. "40% GB rate", "32% whiff", ".412 xwOBA")
+- "text": one sentence explaining why this stat matters TONIGHT against THIS opponent (max 100 chars)
+- "edge": who this favors — "home", "away", or "neutral"
+ 
+RULES FOR PRO_TAKEAWAYS:
+- These must connect a pitcher's profile to the opposing lineup or vice versa
+- Think: "Pitcher X has trait Y, and tonight's opponent is ranked Z at exploiting/struggling against Y"
+- Examples of good takeaways:
+  * {"stat": "40% GB rate", "text": "Luzardo's ground-ball approach meets Pittsburgh's 3rd-highest GB rate — helps him", "edge": "home"}
+  * {"stat": ".189 vs SL", "text": "Cubs lineup hits .189 against sliders — Wheeler's slider has 35% whiff rate", "edge": "away"}
+  * {"stat": "4.2 R/G vs LHP", "text": "Cardinals average 4.2 R/G vs lefties this year — Mikolas being a righty neutralizes that", "edge": "neutral"}
+- Do NOT just restate stats from the summary. These must be UNIQUE matchup-specific insights.
+- If limited data is available, focus on the pitcher's strongest pitch vs the lineup's known weaknesses.
+ 
+---
+ 
+EXAMPLE OUTPUT:
+ 
+<summary>Ashcraft's 2.77 ERA and Pirates' hot bats overwhelm struggling Nola at PNC.</summary>
+<narrative>Ashcraft's elite run (2.77 ERA, 1.05 WHIP) is the primary driver — he's been Pittsburgh's most consistent arm across 8 starts. Nola's 5.14 ERA masks even worse recent form at 5.63 over his last three. Pirates' bats are scorching with Cruz (.348 L5) and Gonzales (.350 L5) anchoring the middle. Moderate edge to Pittsburgh at home.</narrative>
+<home_stories>[{"stat": "22-18", "text": "7-3 in last 10, riding a 4-game home win streak"},{"stat": "2.77 ERA", "text": "Ashcraft's been elite — 1.05 WHIP across 8 starts this season"},{"stat": ".348 L5", "text": "Oneil Cruz's bat is scorching, 3 HR in the last week"}]</home_stories>
+<away_stories>[{"stat": "18-22", "text": "Lost 4 of last 5 on the road, 3-7 in last 10 away"},{"stat": "5.14 ERA", "text": "Nola's struggling — 5.63 over his last 3 starts"},{"stat": "3 IP yesterday", "text": "Bullpen is rested, closer and both setup arms available"}]</away_stories>
+<contrarian>Nola's peripherals (3.42 FIP vs 5.14 ERA) suggest he's been deeply unlucky — his hard-hit rate is still elite. If the regression kicks in tonight, this edge evaporates fast.</contrarian>
+<pro_takeaways>[{"stat": "9.43 K/9", "text": "Nola's strikeout rate is still elite despite ERA — Pirates strike out 4th-most in NL", "edge": "away"},{"stat": "1.05 WHIP", "text": "Ashcraft's low walk rate limits free baserunners that Philly's power bats need", "edge": "home"},{"stat": ".720 OPS vs R", "text": "Phillies hit .720 OPS vs righties — Ashcraft being RHP is a slight vulnerability", "edge": "away"}]</pro_takeaways>
+ 
 ADDITIONAL DATA — STREAKS:
-When the user prompt includes "RECENT FORM & STREAKS" data, use it to make the writing feel current and specific. Reference at most 1-2 streak details. Examples:
-- "Yesavage is rolling with a 0.99 ERA over his last 3 starts"
-- "Schanuel rides a 7-game hit streak in"
-- "Bohm's 0-for-24 stretch puts pressure on the rest of the lineup"
-
+When the user prompt includes "RECENT FORM & STREAKS" data, use it to make the writing feel current and specific. Reference at most 1-2 streak details.
+ 
 Don't reference streaks that don't exist. If no streaks are notable, focus on season stats.
-
-EXAMPLE OUTPUT FORMAT:
-
-<summary>Peralta's 2.41 FIP and a tired Cardinals bullpen tilt this Brewers' way.</summary>
-<story_lead>Peralta's been the best version of himself — 2.41 FIP, 11.2 K/9 over four starts. The Cardinals pen is burned out after 6 innings the last two nights. Brewers have a real edge tonight.</story_lead>
-<narrative>Peralta has been the best version of himself: 2.41 FIP, 11.2 K/9 over four starts. Cardinals counter with Mikolas (4.18 FIP) and a bullpen burned for 6 innings across the last two days. Wrigley's tailwind helps both lineups, but the pitching gap is too wide to ignore. Slight edge to Milwaukee.</narrative>
-
+ 
 Bad output to avoid:
 - "Take the Brewers tonight, this is a lock!" (advice + betting language)
 - "The advanced metrics suggest a probabilistic advantage." (robotic)
-- "An exciting matchup awaits." (filler)`
+- "An exciting matchup awaits." (filler)
+- Inventing stats not present in the data
+- Generic statements without specific numbers`
 // ============================================================
 // REPLACE these two constants in src/lib/narrative.ts
 // ============================================================
@@ -382,7 +438,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
  
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 1200,
+      max_tokens: 1800,
       system: [
         {
           type: 'text',
@@ -399,15 +455,10 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     })
 const text = message.content[0].type === 'text' ? message.content[0].text : ''
 console.log(`RAW LLM OUTPUT (${inputs.is_pro ? 'PRO' : 'FREE'}):`, JSON.stringify(text))
- 
-    // Pro narratives are longer by design — give them a higher ceiling
-const narrativeLimit = inputs.is_pro ? 750 : 750
-    const parsed = parseOutput(text, narrativeLimit)
-    const summaryLimit = 150
-const storyLeadLimit = 420
- 
- 
-    if (!parsed) {
+
+const parsed = parseOutput(text)
+
+if (!parsed) {
       console.error(`Failed to parse ${inputs.is_pro ? 'PRO' : 'FREE'} LLM output:`, text)
       return null
     }
@@ -417,12 +468,16 @@ const storyLeadLimit = 420
     const outputCost = (message.usage.output_tokens * 0.000004)
     const totalCost = inputCost + cachedCost + outputCost
  
-    return {
-      summary: parsed.summary,
-      story_lead: parsed.story_lead,
-      narrative: parsed.narrative,
-      cost_usd: totalCost,
-    }
+     return {
+   summary: parsed.summary,
+   story_lead: parsed.summary,  // backwards compat — same as summary
+   narrative: parsed.narrative,
+   home_stories: parsed.home_stories,
+  away_stories: parsed.away_stories,
+     contrarian: parsed.contrarian,
+     pro_takeaways: parsed.pro_takeaways,
+   cost_usd: totalCost,
+   }
   } catch (err) {
     console.error('LLM narrative generation failed:', err)
     return null
@@ -469,54 +524,97 @@ ${homeT ? `- ${inputs.home_team}: ERA ${homeT.bullpen_era?.toFixed(2) ?? 'N/A'},
 
 PARK FACTORS:
 - ${park?.venue_name ?? inputs.venue_name}: HR factor ${park?.hr_factor ?? 1.0}, Run factor ${park?.run_factor ?? 1.0}${park?.is_dome ? ', dome' : ''}
+
+TEAM RECORDS:
+- ${inputs.home_team} (home): ${homeT?.wins ?? '?'}-${homeT?.losses ?? '?'} overall
+- ${inputs.away_team} (away): ${awayT?.wins ?? '?'}-${awayT?.losses ?? '?'} overall
+
+PITCHER ARSENAL (for pro_takeaways — connect these to the opposing lineup):
+${homeP ? `- ${homeP.player_name}: ${homeP.pitch_types ?? 'N/A'}` : '- Home pitcher arsenal: unavailable'}
+${awayP ? `- ${awayP.player_name}: ${awayP.pitch_types ?? 'N/A'}` : '- Away pitcher arsenal: unavailable'}
 ${streakSection}
-Write the summary, story_lead, and narrative now using the format <summary>...</summary><story_lead>...</story_lead><narrative>...</narrative>.`
+Write all six tags now: <summary>, <narrative>, <home_stories>, <away_stories>, <contrarian>, <pro_takeaways>.`
 }
-function parseOutput(
-  text: string,
-  narrativeLimit: number = 750,
-  summaryLimit: number = 150,
-  storyLeadLimit: number = 420,
-): { summary: string; story_lead: string; narrative: string } | null {
-  
-  // Strip markdown code fences if model wraps output (common failure mode)
-  const cleaned = text.replace(/```xml\n?/gi, '').replace(/```\n?/gi, '').trim()
+function parseOutput(text: string): {
+  summary: string
+  narrative: string
+  home_stories: StoryItem[]
+  away_stories: StoryItem[]
+  contrarian: string
+  pro_takeaways: ProTakeaway[]
+} | null {
+  // Required tags
+  const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/i)
+  const narrativeMatch = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
+  const homeStoriesMatch = text.match(/<home_stories>([\s\S]*?)<\/home_stories>/i)
+  const awayStoriesMatch = text.match(/<away_stories>([\s\S]*?)<\/away_stories>/i)
+  const contrarianMatch = text.match(/<contrarian>([\s\S]*?)<\/contrarian>/i)
+  const proTakeawaysMatch = text.match(/<pro_takeaways>([\s\S]*?)<\/pro_takeaways>/i)
  
-  const summaryMatch = cleaned.match(/<summary>([\s\S]*?)<\/summary>/i)
-  const storyLeadMatch = cleaned.match(/<story_lead>([\s\S]*?)<\/story_lead>/i)
-  const narrativeMatch = cleaned.match(/<narrative>([\s\S]*?)<\/narrative>/i)
- 
-  if (!summaryMatch || !storyLeadMatch || !narrativeMatch) {
-    console.error('Failed to parse LLM output (missing tags):', cleaned.substring(0, 300))
+  if (!summaryMatch || !narrativeMatch || !homeStoriesMatch || !awayStoriesMatch || !contrarianMatch || !proTakeawaysMatch) {
+    console.error('Failed to parse LLM output (missing tags):', text.substring(0, 500))
     return null
   }
  
   const summary = summaryMatch[1].trim()
-  const story_lead = storyLeadMatch[1].trim()
   const narrative = narrativeMatch[1].trim()
+  const contrarian = contrarianMatch[1].trim()
  
-  if (!summary || !story_lead || !narrative) {
-    console.error('Failed to parse: empty values')
+  // Validate lengths
+  if (!summary || summary.length > 250) {
+    console.error(`Failed: summary empty or too long (${summary?.length})`)
+    return null
+  }
+  if (!narrative || narrative.length > 900) {
+    console.error(`Failed: narrative empty or too long (${narrative?.length})`)
+    return null
+  }
+  if (!contrarian || contrarian.length > 500) {
+    console.error(`Failed: contrarian empty or too long (${contrarian?.length})`)
     return null
   }
  
-  if (summary.length > summaryLimit) {
-    console.error(`Failed to parse: summary too long (${summary.length} chars, limit ${summaryLimit})`)
+  // Parse JSON arrays — be lenient with LLM formatting
+  let home_stories: StoryItem[] = []
+  let away_stories: StoryItem[] = []
+  let pro_takeaways: ProTakeaway[] = []
+ 
+  try {
+    home_stories = JSON.parse(homeStoriesMatch[1].trim())
+    if (!Array.isArray(home_stories) || home_stories.length !== 3) {
+      console.error('home_stories not array of 3')
+      return null
+    }
+  } catch {
+    console.error('Failed to parse home_stories JSON:', homeStoriesMatch[1].substring(0, 200))
     return null
   }
  
-  if (story_lead.length > storyLeadLimit) {
-    console.error(`Failed to parse: story_lead too long (${story_lead.length} chars, limit ${storyLeadLimit})`)
+  try {
+    away_stories = JSON.parse(awayStoriesMatch[1].trim())
+    if (!Array.isArray(away_stories) || away_stories.length !== 3) {
+      console.error('away_stories not array of 3')
+      return null
+    }
+  } catch {
+    console.error('Failed to parse away_stories JSON:', awayStoriesMatch[1].substring(0, 200))
     return null
   }
  
-  if (narrative.length > narrativeLimit) {
-    console.error(`Failed to parse: narrative too long (${narrative.length} chars, limit ${narrativeLimit})`)
+  try {
+    pro_takeaways = JSON.parse(proTakeawaysMatch[1].trim())
+    if (!Array.isArray(pro_takeaways) || pro_takeaways.length !== 3) {
+      console.error('pro_takeaways not array of 3')
+      return null
+    }
+  } catch {
+    console.error('Failed to parse pro_takeaways JSON:', proTakeawaysMatch[1].substring(0, 200))
     return null
   }
  
-  return { summary, story_lead, narrative }
+  return { summary, narrative, home_stories, away_stories, contrarian, pro_takeaways }
 }
+ 
  
 
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {

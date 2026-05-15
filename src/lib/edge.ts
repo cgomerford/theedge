@@ -344,8 +344,11 @@ export async function logPrediction(
   summary: string | null = null,
   story_lead: string | null = null,
   narrative: string | null = null,
+  home_stories: any | null = null,
+  away_stories: any | null = null,
+  contrarian: string | null = null,
+  pro_takeaways: any | null = null,
   streakData: any | null = null,
-  narrative_pro: string | null = null,   // NEW: Pro tier narrative
 ) {
  const row: any = {
     game_pk: gamePk,
@@ -362,12 +365,16 @@ export async function logPrediction(
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
   }
-  if (summary !== null) {
-    row.summary = summary
-    row.story_lead = story_lead
-    row.narrative = narrative
-    row.narrative_generated_at = new Date().toISOString()
-  }
+    if (summary !== null) {
+     row.summary = summary
+     row.story_lead = story_lead
+     row.narrative = narrative
+     row.home_stories = home_stories        // NEW
+     row.away_stories = away_stories        // NEW
+     row.contrarian = contrarian            // NEW
+   row.pro_takeaways = pro_takeaways      // NEW
+  row.narrative_generated_at = new Date().toISOString()
+   }
  
   // Write Pro narrative when present — null means "keep existing" via upsert
   if (narrative_pro !== null) {
