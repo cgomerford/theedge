@@ -24,7 +24,12 @@ export default function Storylines({
   homeStories,
   awayStories,
 }: Props) {
-  if (!homeStories?.length && !awayStories?.length) return null
+  // 1. Defensively ensure we are ONLY working with arrays
+  const validHome = Array.isArray(homeStories) ? homeStories : []
+  const validAway = Array.isArray(awayStories) ? awayStories : []
+
+  // 2. Safely check lengths using our validated variables
+  if (validHome.length === 0 && validAway.length === 0) return null
 
   return (
     <section className="my-8">
@@ -32,8 +37,9 @@ export default function Storylines({
         — Tonight&apos;s Storylines
       </div>
       <div className="bg-[#F5F1E8] rounded-lg p-5 space-y-5">
+        
         {/* Home team stories */}
-        {homeStories && homeStories.length > 0 && (
+        {validHome.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div
@@ -45,11 +51,11 @@ export default function Storylines({
               </span>
             </div>
             <div className="space-y-0">
-              {homeStories.map((story, i) => (
+              {validHome.map((story, i) => (
                 <div
                   key={i}
                   className={`py-2 text-sm text-stone-800 leading-relaxed ${
-                    i < homeStories.length - 1
+                    i < validHome.length - 1
                       ? 'border-b border-stone-300/50'
                       : ''
                   }`}
@@ -65,12 +71,12 @@ export default function Storylines({
         )}
 
         {/* Divider */}
-        {homeStories?.length && awayStories?.length ? (
+        {validHome.length > 0 && validAway.length > 0 && (
           <div className="h-px bg-stone-400/30" />
-        ) : null}
+        )}
 
         {/* Away team stories */}
-        {awayStories && awayStories.length > 0 && (
+        {validAway.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div
@@ -82,11 +88,11 @@ export default function Storylines({
               </span>
             </div>
             <div className="space-y-0">
-              {awayStories.map((story, i) => (
+              {validAway.map((story, i) => (
                 <div
                   key={i}
                   className={`py-2 text-sm text-stone-800 leading-relaxed ${
-                    i < awayStories.length - 1
+                    i < validAway.length - 1
                       ? 'border-b border-stone-300/50'
                       : ''
                   }`}
