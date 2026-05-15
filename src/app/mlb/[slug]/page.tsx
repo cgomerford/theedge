@@ -40,14 +40,17 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   const date = dateMatch ? dateMatch[1] : ''
-  const title = slug
+  
   const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
-  const isPro = cookieStore.get('edge_session')?.value === 'pro' // adjust value check to match your session logic
-  .replace(/-game(\d+)$/, ' (Game $1)')  // "...mets-2026-05-09-game2" → "...mets-2026-05-09 (Game 2)"
-  .replace(/(\d{4}-\d{2}-\d{2})/, '')
-  .replace(/-/g, ' ')
-  .trim()
+  const isPro = cookieStore.get('edge_session')?.value === 'pro'
+  
+  // The string formatting belongs to the title, not the boolean
+  const title = slug
+    .replace(/-game(\d+)$/, ' (Game $1)')
+    .replace(/(\d{4}-\d{2}-\d{2})/, '')
+    .replace(/-/g, ' ')
+    .trim()
 
   return {
     title: `${title} preview · The Edge`,
@@ -302,12 +305,12 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
 )}
 
 {/* TONIGHT'S STORYLINES */}
-{prediction && (
+{prediction?.home_stories && prediction?.away_stories && (
   <Storylines
-   homeTeam={game.teams.home.team.name}
-  awayTeam={game.teams.away.team.name}
-  homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-  awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+    homeTeam={game.teams.home.team.name}
+    awayTeam={game.teams.away.team.name}
+    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
     homeColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
     awayColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
     homeStories={prediction.home_stories}
@@ -316,15 +319,16 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
 )}
 
 {/* WHY WE MIGHT BE WRONG */}
-{prediction && (
+{prediction?.contrarian && (
   <Contrarian text={prediction.contrarian} />
 )}
+
 {/* FANTASY MATCHUP INTEL (PRO) */}
-{prediction && (
+{prediction?.pro_takeaways && (
   <ProTakeaways
- takeaways={prediction.pro_takeaways}
-  homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-  awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+    takeaways={prediction.pro_takeaways}
+    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
     isPro={false}
   />
 )}
