@@ -249,12 +249,13 @@ export type NarrativeInputs = {
   components_raw: EdgeScoreResult['components_raw']
   venue_name: string
   game_time?: string
-  streaks?: GameStreaks | null  // NEW
+  streaks?: GameStreaks | null
   is_pro?: boolean 
 }
+
 export type NarrativeResult = {
   summary: string
-  story_lead: string        // keep for backwards compat — set to summary
+  story_lead: string
   narrative: string
   home_stories: StoryItem[]
   away_stories: StoryItem[]
@@ -264,16 +265,17 @@ export type NarrativeResult = {
 }
 
 export type StoryItem = {
-  stat: string     // e.g. "5.14 ERA"
-  text: string     // e.g. "Nola's struggling, 5.63 over his last 3 starts"
+  stat: string     
+  text: string     
 }
  
 export type ProTakeaway = {
-  stat: string     // e.g. "40% GB rate"
-  text: string     // e.g. "Luzardo's ground-ball rate meets Pittsburgh's 3rd-highest GB hit rate"
+  stat: string     
+  text: string     
   edge: 'home' | 'away' | 'neutral'
 }
-const SYSTEM_PROMPT = `You are a writer for The Edge, a daily 5-minute pre-game brief for analytically-minded MLB fans.
+
+const BASE_SYSTEM_PROMPT = `You are a writer for The Edge, a daily 5-minute pre-game brief for analytically-minded MLB fans.
  
 VOICE:
 - Smart friend, not a robot. Conversational but informed.
@@ -283,7 +285,8 @@ VOICE:
 - Never use these phrases: "lock", "play", "value", "edge to bet", "smash", "hammer", "fade".
  
 FORMAT RULES:
-Output exactly SIX parts using these XML tags, in this order:
+Output exactly SIX parts using these XML tags, in this order. 
+DO NOT output any other tags (e.g., no <story_lead> tags). Output ONLY the following:
  
 <summary>...</summary>
 <narrative>...</narrative>
@@ -383,59 +386,15 @@ Bad output to avoid:
 - "An exciting matchup awaits." (filler)
 - Inventing stats not present in the data
 - Generic statements without specific numbers`
-// ============================================================
-// REPLACE these two constants in src/lib/narrative.ts
-// ============================================================
- 
-const FREE_SYSTEM_PROMPT = `You are a writer for The Edge, a daily 5-minute pre-game brief for analytically-minded MLB fans.
- 
-VOICE:
-- Smart friend, not a robot. Conversational but informed.
-- Use specific numbers. Real stats over abstract claims.
-- Confident but never preachy. Never use betting language or recommend wagers.
-- Never use: "lock", "play", "value", "edge to bet", "smash", "hammer", "fade".
-- If a stat is null or unavailable, do not invent it. Omit it.
- 
-OUTPUT FORMAT — output exactly three XML tags, nothing else. No markdown, no backticks, no preamble.
- 
-<summary>ONE sentence. HARD LIMIT: 100 characters. Count before writing. If over 100 chars, rewrite shorter.</summary>
-<story_lead>2-3 sentences. HARD LIMIT: 320 characters total. Lead with one specific fact — a name, a number, a streak. Em-dashes and contractions welcome. No jargon.</story_lead>
-<narrative>EXACTLY 4 sentences. HARD LIMIT: 500 characters total. S1: biggest factor + stat. S2: supporting factor + number. S3: counter or secondary insight. S4: close naming favoured team or toss-up.</narrative>
- 
-CHARACTER LIMITS ARE HARD STOPS. Before outputting, count the characters in each field. If any field exceeds its limit, rewrite it shorter. Do not exceed the limits under any circumstances.
- 
-GOOD SUMMARY (under 100 chars):
-✓ "Cole's 1.44 ERA last 3 starts and a gassed Red Sox pen tilt this Yankees' way." (79 chars)
- 
-BAD SUMMARY (too long):
-✗ "Minnesota's offensive edge collides with Miami's dominant bullpen in a classic tossup, but Zebby Matthews' scoreless streak makes the Twins the lean." (150 chars — WAY too long)`
- 
-const PRO_SYSTEM_PROMPT = `You are The Edge Pro — a GM's pre-game briefing for serious analysts and fantasy players.
- 
-VOICE: Authoritative. Specific. Actionable. Front office analyst briefing the manager.
-Never use "utilize" or "leverage". No bullet points. Pure prose.
-Never use betting language. Never say "lock", "play", "value", "smash", "hammer", "fade".
-If a stat is null or unavailable, do not invent it. Omit it.
-Flag ERA/FIP divergence over 1.0 — name the pitcher.
- 
-OUTPUT FORMAT — output exactly three XML tags, nothing else. No markdown, no backticks, no preamble.
- 
-<summary>ONE sentence. HARD LIMIT: 110 characters. Name a specific player or edge. Count before writing. Rewrite if over 110 chars.</summary>
-<story_lead>2-3 sentences. HARD LIMIT: 350 characters total. The GM headline — name players, state the actionable angle. Count before writing. Rewrite if over 350 chars.</story_lead>
-<narrative>3-4 sentences. HARD LIMIT: 600 characters total. Structure: (1) key model driver + stat, (2) specific player to target or fade, (3) realistic underdog scenario, (4) one "watch for" — a specific in-game signal. Count before writing. Rewrite if over 600 chars.</narrative>
- 
-CHARACTER LIMITS ARE HARD STOPS. Count the characters in each field before outputting. If any field exceeds its limit, rewrite it shorter. This is non-negotiable.
- 
-GOOD SUMMARY (under 110 chars):
-✓ "Cole's regression risk is real — fade him if his first-inning velo sits below 95." (83 chars)
- 
-BAD SUMMARY (too long):
-✗ "Michael McGreevy's dominant L3 stretch creates a -70.7 pitcher edge — target McGreevy for strikeouts and fade Saggese's ice-cold bat while monitoring Oakland's Nick Kurtz." (172 chars — WAY too long, rewrite)`
+
+// Define prompts to prevent undefined errors in your ternary logic
+const PRO_SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
+const FREE_SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
 
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
   try {
     const userPrompt = buildUserPrompt(inputs)
- 
+
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 1800,
@@ -451,14 +410,24 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
           role: 'user',
           content: userPrompt,
         },
+        // Force the assistant to start the correct structure:
+        {
+          role: 'assistant',
+          content: '<summary>'
+        }
       ],
     })
-const text = message.content[0].type === 'text' ? message.content[0].text : ''
-console.log(`RAW LLM OUTPUT (${inputs.is_pro ? 'PRO' : 'FREE'}):`, JSON.stringify(text))
 
-const parsed = parseOutput(text)
+    const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
+    
+    // IMPORTANT: Re-attach the `<summary>` tag that the Assistant Prefill swallowed
+    const text = '<summary>' + rawText 
 
-if (!parsed) {
+    console.log(`RAW LLM OUTPUT (${inputs.is_pro ? 'PRO' : 'FREE'}):`, JSON.stringify(text))
+
+    const parsed = parseOutput(text)
+
+    if (!parsed) {
       console.error(`Failed to parse ${inputs.is_pro ? 'PRO' : 'FREE'} LLM output:`, text)
       return null
     }
@@ -468,16 +437,16 @@ if (!parsed) {
     const outputCost = (message.usage.output_tokens * 0.000004)
     const totalCost = inputCost + cachedCost + outputCost
  
-     return {
-   summary: parsed.summary,
-   story_lead: parsed.summary,  // backwards compat — same as summary
-   narrative: parsed.narrative,
-   home_stories: parsed.home_stories,
-  away_stories: parsed.away_stories,
-     contrarian: parsed.contrarian,
-     pro_takeaways: parsed.pro_takeaways,
-   cost_usd: totalCost,
-   }
+    return {
+      summary: parsed.summary,
+      story_lead: parsed.summary,  // backwards compat — same as summary
+      narrative: parsed.narrative,
+      home_stories: parsed.home_stories,
+      away_stories: parsed.away_stories,
+      contrarian: parsed.contrarian,
+      pro_takeaways: parsed.pro_takeaways,
+      cost_usd: totalCost,
+    }
   } catch (err) {
     console.error('LLM narrative generation failed:', err)
     return null
@@ -498,9 +467,9 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     .slice(0, 4)
 
   const winner = inputs.predicted_winner === 'home' ? inputs.home_team : inputs.away_team
-const streakSection = inputs.streaks ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team) : ''
+  const streakSection = inputs.streaks ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team) : ''
 
-return `Generate a summary and narrative for tonight's MLB game.
+  return `Generate a summary and narrative for tonight's MLB game.
 
 GAME: ${inputs.away_team} @ ${inputs.home_team}
 VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
@@ -535,6 +504,7 @@ ${awayP ? `- ${awayP.player_name}: ${awayP.pitch_types ?? 'N/A'}` : '- Away pitc
 ${streakSection}
 Write all six tags now: <summary>, <narrative>, <home_stories>, <away_stories>, <contrarian>, <pro_takeaways>.`
 }
+
 function parseOutput(text: string): {
   summary: string
   narrative: string
@@ -615,8 +585,6 @@ function parseOutput(text: string): {
   return { summary, narrative, home_stories, away_stories, contrarian, pro_takeaways }
 }
  
- 
-
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
   const lines: string[] = ['', 'RECENT FORM & STREAKS:']
 
