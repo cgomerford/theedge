@@ -252,6 +252,10 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
           </div>
         </div>
 
+<div className="bg-red-100 p-4 font-mono text-xs overflow-auto my-4 border border-red-500">
+  <strong>DEBUG: prediction.away_stories</strong>
+  <pre>{JSON.stringify(prediction?.away_stories, null, 2)}</pre>
+</div>
       {/* EDGE INDICATOR */}
 {prediction && (
   <EdgeIndicator

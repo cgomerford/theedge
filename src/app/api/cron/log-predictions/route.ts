@@ -93,10 +93,10 @@ export async function GET(request: Request) {
           Array.isArray(homeLineup) && homeLineup.length >= 9 &&
           Array.isArray(awayLineup) && awayLineup.length >= 9
 
-        // Fetch existing prediction (Free + Pro narratives)
+        // ADDED: Fetch the new structured columns so we don't overwrite them with null
         const { data: existing } = await supa
           .from('edge_predictions')
-          .select('edge_score, summary, story_lead, narrative, narrative_pro, lineups_confirmed')
+          .select('edge_score, summary, story_lead, narrative, narrative_pro, lineups_confirmed, home_stories, away_stories, contrarian, pro_takeaways')
           .eq('game_pk', game.gamePk)
           .single()
 
@@ -105,8 +105,6 @@ export async function GET(request: Request) {
           ? Math.abs(existing.edge_score - result.edge_score)
           : 999
 
-        // Lock narrative once lineups are confirmed — best data is in, stop regenerating.
-        // Only unlock again if score swings dramatically (starter scratched, etc.)
         const narrativeLocked =
           existing?.lineups_confirmed === true &&
           hasExistingNarrative &&
@@ -121,6 +119,12 @@ export async function GET(request: Request) {
         let story_lead: string | null = existing?.story_lead ?? null
         let narrative: string | null = existing?.narrative ?? null
         let narrative_pro: string | null = existing?.narrative_pro ?? null
+        
+        // ADDED: Initialize variables for new structures
+        let home_stories: any = existing?.home_stories ?? null
+        let away_stories: any = existing?.away_stories ?? null
+        let contrarian: string | null = existing?.contrarian ?? null
+        let pro_takeaways: any = existing?.pro_takeaways ?? null
 
         console.log(
           `Game ${game.gamePk}: shouldRegenerate=${shouldRegenerate}, ` +
@@ -129,7 +133,6 @@ export async function GET(request: Request) {
         )
 
         if (shouldRegenerate) {
-          // Generate Free and Pro narratives in parallel — saves ~50% vs sequential
           const narrativeInputsBase = {
             home_team: game.teams.home.team.name,
             away_team: game.teams.away.team.name,
@@ -151,6 +154,11 @@ export async function GET(request: Request) {
             summary = generatedFree.summary
             story_lead = generatedFree.story_lead
             narrative = generatedFree.narrative
+            // ADDED: Extract the structured tags from the LLM
+            home_stories = generatedFree.home_stories
+            away_stories = generatedFree.away_stories
+            contrarian = generatedFree.contrarian
+            pro_takeaways = generatedFree.pro_takeaways
           }
 
           if (generatedPro) {
@@ -168,6 +176,7 @@ export async function GET(request: Request) {
           narratives_kept++
         }
 
+        // ADDED: Pass the new variables into logPrediction
         await logPrediction(
           game.gamePk,
           gameDate,
@@ -181,7 +190,11 @@ export async function GET(request: Request) {
           story_lead,
           narrative,
           streaks,
-          narrative_pro,   // new param — see edge.ts logPrediction()
+          narrative_pro,
+          home_stories,
+          away_stories,
+          contrarian,
+          pro_takeaways
         )
 
         predictions_logged++

@@ -328,9 +328,10 @@ async function fetchTeam(teamId: number) {
     .single()
   return error ? null : data
 }
+
 // PREDICTION LOGGING
 // Drop-in replacement for the logPrediction function in src/lib/edge.ts
-// Changes: added narrative_pro param + writes to edge_predictions.narrative_pro
+// Changes: aligned parameter order with route.ts + added narrative_pro
 // ============================================================
 export async function logPrediction(
   gamePk: number,
@@ -344,13 +345,14 @@ export async function logPrediction(
   summary: string | null = null,
   story_lead: string | null = null,
   narrative: string | null = null,
-  home_stories: any | null = null,
-  away_stories: any | null = null,
-  contrarian: string | null = null,
-  pro_takeaways: any | null = null,
-  streakData: any | null = null,
+  streakData: any | null = null,        // Aligned: 12th arg (streaks)
+  narrative_pro: string | null = null,  // Aligned: 13th arg
+  home_stories: any = null,             // Aligned: 14th arg
+  away_stories: any = null,             // Aligned: 15th arg
+  contrarian: string | null = null,     // Aligned: 16th arg
+  pro_takeaways: any = null             // Aligned: 17th arg
 ) {
- const row: any = {
+  const row: any = {
     game_pk: gamePk,
     game_date: gameDate,
     home_team_id: homeTeamId,
@@ -360,26 +362,28 @@ export async function logPrediction(
     edge_score: result.edge_score,
     predicted_winner: result.predicted_winner,
     confidence_tier: result.confidence_tier,
-   components: result.components,
-   components_raw: result.components_raw,
+    components: result.components,
+    components_raw: result.components_raw,
     lineups_confirmed: lineupsConfirmed,
     updated_at: new Date().toISOString(),
   }
-    if (summary !== null) {
-     row.summary = summary
-     row.story_lead = story_lead
-     row.narrative = narrative
-     row.home_stories = home_stories        // NEW
-     row.away_stories = away_stories        // NEW
-     row.contrarian = contrarian            // NEW
-   row.pro_takeaways = pro_takeaways      // NEW
-  row.narrative_generated_at = new Date().toISOString()
-   }
 
- 
+  if (summary !== null) {
+    row.summary = summary
+    row.story_lead = story_lead
+    row.narrative = narrative
+    row.narrative_pro = narrative_pro     // Don't forget to attach this!
+    row.home_stories = home_stories       
+    row.away_stories = away_stories       
+    row.contrarian = contrarian           
+    row.pro_takeaways = pro_takeaways     
+    row.narrative_generated_at = new Date().toISOString()
+  }
+
   if (streakData !== null) {
     row.streak_data = streakData
   }
- 
+
+  // The upsert
   await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })
 }
