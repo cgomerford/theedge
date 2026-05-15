@@ -375,11 +375,7 @@ export async function logPrediction(
    row.pro_takeaways = pro_takeaways      // NEW
   row.narrative_generated_at = new Date().toISOString()
    }
- 
-  // Write Pro narrative when present — null means "keep existing" via upsert
-  if (narrative_pro !== null) {
-    row.narrative_pro = narrative_pro
-  }
+
  
   if (streakData !== null) {
     row.streak_data = streakData
