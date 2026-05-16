@@ -1,121 +1,232 @@
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
+import { getPredictionsForDate } from '@/lib/edge-fetch'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
+import StreamerSummary from '@/components/StreamerSummary'
+import { rankStreamers } from '@/lib/streamer'
+import type { StreamerInput } from '@/lib/streamer'
 
 export const revalidate = 1800
 
 export default async function TonightPage() {
   const today = new Date().toISOString().split('T')[0]
-  const games = await getScheduleForDate(today)
+  const displayDate = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  const [games, predictions] = await Promise.all([
+    getScheduleForDate(today),
+    getPredictionsForDate(today),
+  ])
+
+  // ── Streamer inputs ──────────────────────────────────────────────────────
+  const streamerInputs: StreamerInput[] = []
+
+  for (const game of games) {
+    const pred = predictions.get(game.gamePk)
+    const parkComponent = pred?.components?.park ?? 0
+    const gameSlug = slugifyGame(game)
+    const gameTime = new Date(game.gameDate).toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London',
+    })
+
+    if (game.teams.away.probablePitcher) {
+      streamerInputs.push({
+        pitcherName:   game.teams.away.probablePitcher.fullName,
+        pitcherId:     game.teams.away.probablePitcher.id,
+        teamName:      shortName(game.teams.away.team.name),
+        opponentName:  shortName(game.teams.home.team.name),
+        opponentStats: null,
+        pitcherStats:  null,
+        pitchMix:      [],
+        parkComponent,
+        isPitcherHome: false,
+        gameSlug,
+        gameTime,
+      })
+    }
+    if (game.teams.home.probablePitcher) {
+      streamerInputs.push({
+        pitcherName:   game.teams.home.probablePitcher.fullName,
+        pitcherId:     game.teams.home.probablePitcher.id,
+        teamName:      shortName(game.teams.home.team.name),
+        opponentName:  shortName(game.teams.away.team.name),
+        opponentStats: null,
+        pitcherStats:  null,
+        pitchMix:      [],
+        parkComponent: -parkComponent,
+        isPitcherHome: true,
+        gameSlug,
+        gameTime,
+      })
+    }
+  }
+
+  const tonightStreamers = rankStreamers(streamerInputs).slice(0, 3)
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <main className="min-h-screen bg-stone-950 text-stone-100">
-      <SiteHeader variant="home" />
+    <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
+      <SiteHeader variant="page" />
       <LiveTicker />
 
-      <section className="px-6 py-24 max-w-5xl mx-auto">
-        <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-6">
-          — Issue 001
-        </div>
-        <h1 className="text-6xl md:text-8xl font-serif font-light leading-none tracking-tight mb-8">
-          The pre-game brief<br />
-          for the{' '}
-          <em className="italic text-yellow-300 font-normal">analytics era.</em>
-        </h1>
-        <p className="text-xl text-stone-400 mb-10 max-w-2xl leading-relaxed font-light">
-          Statcast, advanced metrics, and the data that explains tonight&apos;s game — distilled into a five-minute read, three hours before first pitch.
-        </p>
-
-        <form id="signup" action="/api/subscribe" method="POST" className="flex gap-2 max-w-md flex-col sm:flex-row mb-3">
-          <input type="hidden" name="source" value="home" />
-          <input
-            name="email"
-            type="email"
-            required
-            placeholder="you@example.com"
-            className="flex-1 px-4 py-4 bg-stone-900 border border-stone-800 text-stone-100 outline-none focus:border-stone-600"
-          />
-          <button type="submit" className="px-6 py-4 bg-stone-100 text-stone-900 font-semibold hover:bg-yellow-300 transition">
-            Get the brief →
-          </button>
-        </form>
-        <div className="text-xs text-stone-500 font-mono">No spam. Unsubscribe anytime.</div>
-      </section>
-
-      <section className="px-6 py-16 border-t border-stone-800">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-500 mb-2">
-            § Tonight in MLB
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div className="border-b border-stone-200 bg-stone-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">
+            — {displayDate}
           </div>
-          <h2 className="text-4xl font-serif font-light mb-12">
-            {games.length > 0 ? `${games.length} games on the slate.` : 'No games today.'}
-          </h2>
-
-          {games.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-px bg-stone-800 border border-stone-800">
-              {games.map((game) => (
-                <Link
-                  key={game.gamePk}
-                  href={`/mlb/${slugifyGame(game)}`}
-                  className="bg-stone-950 p-6 hover:bg-stone-900 transition group"
-                >
-                  <div className="text-xs font-mono uppercase tracking-wider text-stone-500 mb-3">
-                    {new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
-                    {' · '}{game.venue?.name}
-                  </div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={teamLogoUrl(game.teams.away.team.id)}
-                        alt=""
-                        className="max-w-full max-h-full object-contain"
-                      />
-                    </div>
-                    <span className="text-xl font-serif font-medium">{shortName(game.teams.away.team.name)}</span>
-                    <span className="text-stone-600 italic font-light text-base">at</span>
-                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={teamLogoUrl(game.teams.home.team.id)}
-                        alt=""
-                        className="max-w-full max-h-full object-contain"
-                      />
-                    </div>
-                    <span className="text-xl font-serif font-medium">{shortName(game.teams.home.team.name)}</span>
-                  </div>
-                  {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
-                    <div className="text-sm text-stone-500 mt-2 font-mono">
-                      {game.teams.away.probablePitcher?.fullName ?? 'TBD'}
-                      {' vs '}
-                      {game.teams.home.probablePitcher?.fullName ?? 'TBD'}
-                    </div>
-                  )}
-                  <div className="text-xs text-orange-500 mt-4 font-mono group-hover:text-yellow-300 transition">
-                    Read the preview →
-                  </div>
-                </Link>
-              ))}
+          <div className="flex items-end justify-between gap-4">
+            <h1 className="text-4xl sm:text-5xl font-serif font-light tracking-tight leading-none">
+              Tonight&apos;s slate.
+            </h1>
+            <div className="text-right shrink-0">
+              <div className="text-3xl font-serif font-light text-stone-900 leading-none">
+                {games.length}
+              </div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-1">
+                {games.length === 1 ? 'game' : 'games'}
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </section>
+      </div>
 
-      <footer className="px-6 py-12 border-t border-stone-800 text-xs text-stone-500 font-mono">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-wrap gap-x-6 gap-y-2 mb-6">
-            <a href="/about" className="hover:text-stone-100">About</a>
-            <a href="/how-it-works" className="hover:text-stone-100">How it works</a>
-            <a href="/privacy" className="hover:text-stone-100">Privacy</a>
-            <a href="/terms" className="hover:text-stone-100">Terms</a>
-            <a href="mailto:hello@edgereportdaily.com" className="hover:text-stone-100">Contact</a>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-12">
+
+        {/* ── Game grid ─────────────────────────────────────────────────── */}
+        {games.length === 0 ? (
+          <div className="py-20 text-center">
+            <div className="text-5xl font-serif font-light text-stone-300 mb-4">—</div>
+            <p className="font-mono text-sm text-stone-400 uppercase tracking-widest">No games scheduled today</p>
           </div>
-          <div className="mb-4">
-            © 2026 The Edge · Game data via official MLB Stats API
+        ) : (
+          <section>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-5">
+              § MLB · Tonight
+            </div>
+            <div className="divide-y divide-stone-200 border-t border-b border-stone-200">
+              {games.map((game) => {
+                const pred = predictions.get(game.gamePk)
+                const gameTime = new Date(game.gameDate).toLocaleTimeString('en-GB', {
+                  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London',
+                })
+                const hasEdge = pred && pred.confidence_tier !== 'tossup'
+
+                return (
+                  <Link
+                    key={game.gamePk}
+                    href={`/mlb/${slugifyGame(game)}`}
+                    className="flex items-center justify-between gap-4 py-4 group hover:bg-stone-50 transition px-2 -mx-2"
+                  >
+                    {/* Time */}
+                    <div className="shrink-0 w-16 text-[11px] font-mono text-stone-400 leading-tight">
+                      {gameTime}<br />
+                      <span className="text-stone-300">GMT+1</span>
+                    </div>
+
+                    {/* Teams */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <img
+                          src={teamLogoUrl(game.teams.away.team.id)}
+                          alt=""
+                          className="w-5 h-5 object-contain shrink-0"
+                        />
+                        <span className="font-serif font-medium text-stone-700">
+                          {shortName(game.teams.away.team.name)}
+                        </span>
+                        <span className="text-stone-300 text-xs font-serif italic">at</span>
+                        <img
+                          src={teamLogoUrl(game.teams.home.team.id)}
+                          alt=""
+                          className="w-5 h-5 object-contain shrink-0"
+                        />
+                        <span className="font-serif font-semibold text-stone-900">
+                          {shortName(game.teams.home.team.name)}
+                        </span>
+                      </div>
+                      {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
+                        <div className="text-[11px] font-mono text-stone-400 truncate">
+                          {game.teams.away.probablePitcher?.fullName ?? 'TBD'}
+                          {' · '}
+                          {game.teams.home.probablePitcher?.fullName ?? 'TBD'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Edge score badge (if available) */}
+                    <div className="shrink-0 flex items-center gap-3">
+                      {pred && hasEdge && (
+                        <div className="text-right hidden sm:block">
+                          <div className={`font-mono font-bold text-sm ${
+                            Math.abs(pred.edge_score) >= 25 ? 'text-orange-600' :
+                            Math.abs(pred.edge_score) >= 12 ? 'text-stone-700' :
+                            'text-stone-400'
+                          }`}>
+                            {pred.edge_score > 0 ? '+' : ''}{Math.round(pred.edge_score)}
+                          </div>
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">
+                            {pred.predicted_winner === 'home'
+                              ? shortName(game.teams.home.team.name)
+                              : shortName(game.teams.away.team.name)
+                            }
+                          </div>
+                        </div>
+                      )}
+                      <span className="text-stone-300 group-hover:text-orange-600 transition text-sm">→</span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Streamer picks ────────────────────────────────────────────── */}
+        {tonightStreamers.filter(p => p.tier !== 'avoid').length > 0 && (
+          <section className="bg-stone-900 p-6 sm:p-8">
+            <StreamerSummary picks={tonightStreamers} isPro={false} />
+          </section>
+        )}
+
+        {/* ── Sign up strip ─────────────────────────────────────────────── */}
+        <section className="border border-stone-200 p-6 sm:p-8">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-3">
+            — Get the daily brief
           </div>
-          <div className="text-stone-600 leading-relaxed max-w-2xl">
-            The Edge provides information and statistical analysis only. We do not provide gambling advice, picks, or recommendations. All decisions are yours alone.
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl font-serif font-light text-stone-900 leading-tight mb-1">
+                Three hours before first pitch, every day.
+              </h2>
+              <p className="text-sm text-stone-500 font-serif">
+                Free. No credit card. Unsubscribe anytime.
+              </p>
+            </div>
+            <Link
+              href="/#signup"
+              className="shrink-0 text-xs font-mono uppercase tracking-widest bg-stone-900 text-yellow-300 px-6 py-3 hover:bg-stone-700 transition text-center"
+            >
+              Get the brief →
+            </Link>
+          </div>
+        </section>
+      </div>
+
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      <footer className="border-t border-stone-200 mt-8 px-4 sm:px-6 py-8 text-[11px] font-mono text-stone-400">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <Link href="/about"       className="hover:text-stone-600 transition">About</Link>
+            <Link href="/faq"         className="hover:text-stone-600 transition">FAQ</Link>
+            <Link href="/track-record" className="hover:text-stone-600 transition">Track Record</Link>
+            <Link href="/privacy"     className="hover:text-stone-600 transition">Privacy</Link>
+            <Link href="/terms"       className="hover:text-stone-600 transition">Terms</Link>
+          </div>
+          <div className="text-stone-300 uppercase tracking-wider">
+            Information only · Not gambling advice
           </div>
         </div>
       </footer>

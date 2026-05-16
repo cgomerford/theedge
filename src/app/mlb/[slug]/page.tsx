@@ -32,6 +32,11 @@ import Storylines from '@/components/Storylines'
 import Contrarian from '@/components/Contrarian'
 import ProTakeaways from '@/components/ProTakeaways'
 import { findTeamByName, findTeamBySlug, getTeamTheme, teamIdBySlug } from '@/lib/teams'
+import StreamerPick from '@/components/StreamerPick'
+import { scoreStreamer } from '@/lib/streamer'
+import type { StreamerInput } from '@/lib/streamer'
+import HotZone from '@/components/HotZone'
+import { getBatterHotZones, getPitcherHotZones } from '@/lib/hot-zones'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -114,6 +119,8 @@ const [
   homeForm,
   awayLineup,
   homeLineup,
+   awayPitcherHotZones,
+  homePitcherHotZones,
 ] = await Promise.all([
   awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
   homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
@@ -128,8 +135,77 @@ const [
   getTeamForm(game.teams.home.team.id),
 getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
   getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
+    game.teams.away.probablePitcher
+    ? getPitcherHotZones(game.teams.away.probablePitcher.id)
+    : Promise.resolve({}),
+  game.teams.home.probablePitcher
+    ? getPitcherHotZones(game.teams.home.probablePitcher.id)
+    : Promise.resolve({}),
 ])
 
+const awayFeatureBatter = awayLineup?.batters?.[2] ?? null   // 3-hole hitter
+const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
+
+const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
+  awayFeatureBatter ? getBatterHotZones(awayFeatureBatter.player_id) : Promise.resolve({}),
+  homeFeatureBatter ? getBatterHotZones(homeFeatureBatter.player_id) : Promise.resolve({}),
+])
+
+
+ // ── Streamer Pick ────────────────────────────────────────
+  // Calculate for BOTH pitchers, pick the better one to highlight.
+  // awaySeasonStats, homeSeasonStats, awayPitchMix, homePitchMix,
+  // prediction?.components.park are all already fetched above.
+ 
+  const parkComponent = prediction?.components?.park ?? 0
+ 
+  const awayStreamerInput: StreamerInput | null =
+    game.teams.away.probablePitcher && awaySeasonStats
+      ? {
+          pitcherName:   game.teams.away.probablePitcher.fullName,
+          pitcherId:     game.teams.away.probablePitcher.id,
+          teamName:      shortName(game.teams.away.team.name),
+          opponentName:  shortName(game.teams.home.team.name),
+          opponentStats: null,   // TODO: wire homeTeamStats when available
+          pitcherStats:  awaySeasonStats,
+          pitchMix:      awayPitchMix,
+          parkComponent,
+          isPitcherHome: false,
+          gameSlug:      slug,
+          gameTime:      new Date(game.gameDate).toLocaleTimeString('en-GB', {
+                           hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London'
+                         }),
+        }
+      : null
+ 
+  const homeStreamerInput: StreamerInput | null =
+    game.teams.home.probablePitcher && homeSeasonStats
+      ? {
+          pitcherName:   game.teams.home.probablePitcher.fullName,
+          pitcherId:     game.teams.home.probablePitcher.id,
+          teamName:      shortName(game.teams.home.team.name),
+          opponentName:  shortName(game.teams.away.team.name),
+          opponentStats: null,   // TODO: wire awayTeamStats when available
+          pitcherStats:  homeSeasonStats,
+          pitchMix:      homePitchMix,
+          parkComponent: -parkComponent, // flip sign — park favours the other team from home pitcher POV
+          isPitcherHome: true,
+          gameSlug:      slug,
+          gameTime:      new Date(game.gameDate).toLocaleTimeString('en-GB', {
+                           hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London'
+                         }),
+        }
+      : null
+ 
+  const awayStreamer = awayStreamerInput ? scoreStreamer(awayStreamerInput) : null
+  const homeStreamer = homeStreamerInput ? scoreStreamer(homeStreamerInput) : null
+ 
+  // Pick whichever pitcher scored higher to show on this game page
+  const topStreamer =
+    !awayStreamer ? homeStreamer :
+    !homeStreamer ? awayStreamer :
+    awayStreamer.streamerScore >= homeStreamer.streamerScore ? awayStreamer : homeStreamer
+  // ─────────────────────────────────────────────────────────
 
 // Generate the gameline narrative
   const windImpact = weather && game.venue?.name
@@ -332,6 +408,62 @@ getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     isPro={false}
   />
 )}
+
+{/* HOT ZONES */}
+<section className="mt-10 space-y-6">
+  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">
+    § Hot Zones
+  </div>
+
+  <div className="grid md:grid-cols-2 gap-4">
+    {/* Away pitcher */}
+    {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
+      <HotZone
+        mode="pitcher"
+        data={awayPitcherHotZones}
+        isPro={false}
+        playerName={game.teams.away.probablePitcher.fullName}
+      />
+    )}
+
+    {/* Home pitcher */}
+    {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
+      <HotZone
+        mode="pitcher"
+        data={homePitcherHotZones}
+        isPro={false}
+        playerName={game.teams.home.probablePitcher.fullName}
+      />
+    )}
+
+    {/* Away feature batter */}
+    {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
+      <HotZone
+        mode="batter"
+        data={awayBatterHotZones}
+        isPro={false}
+        playerName={awayFeatureBatter.player_name}
+      />
+    )}
+
+    {/* Home feature batter */}
+    {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
+      <HotZone
+        mode="batter"
+        data={homeBatterHotZones}
+        isPro={false}
+        playerName={homeFeatureBatter.player_name}
+      />
+    )}
+  </div>
+</section>
+ 
+  {/* STREAMER PICK */}
+  {topStreamer && (
+    <section className="mt-10">
+      <StreamerPick result={topStreamer} isPro={false} />
+    </section>
+  )}
 
 {/* PROJECTED LINEUPS */}
 {(awayLineup || homeLineup) && (

@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@import "tailwindcss";
+
+/* ── Hot Zone dynamic colour safelist ──────────────────────────────────
+   These classes are generated dynamically in hot-zones.ts and would
+   otherwise be purged by Tailwind v4's content scanner.
+   @source inline() forces them into the CSS bundle regardless.
+─────────────────────────────────────────────────────────────────────── */
+@source inline("{bg-blue-200,bg-blue-300,bg-blue-400,bg-blue-500,bg-orange-100,bg-orange-200,bg-orange-300,bg-orange-400,bg-orange-500,bg-red-500,bg-stone-100,bg-stone-200}");
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

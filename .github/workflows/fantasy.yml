@@ -1,0 +1,71 @@
+name: Update fantasy picks
+
+on:
+  schedule:
+    # Snapshot predictions multiple times daily — feeds the Movers logic
+    # Each snapshot is an append to prediction_history (~30 sec)
+    - cron: '15 10 * * *'   # 10:15 UTC — just after main predictions cron
+    - cron: '15 14 * * *'   # 14:15 UTC
+    - cron: '15 17 * * *'   # 17:15 UTC
+    - cron: '15 20 * * *'   # 20:15 UTC
+    - cron: '15 23 * * *'   # 23:15 UTC
+
+    # Compute all 4 pick types once per day — runs after the last snapshot
+    # so it has full day's movement data to compute Movers
+    - cron: '30 23 * * *'   # 23:30 UTC — covers tonight's late games
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Runs on every schedule above EXCEPT the 23:30 compute slot
+    if: github.event.schedule != '30 23 * * *'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Snapshot predictions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/log_prediction_snapshot.py
+
+  compute-picks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Runs only on the 23:30 compute slot + manual trigger
+    if: github.event.schedule == '30 23 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Snapshot one more time (close-of-day baseline for tomorrow)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/log_prediction_snapshot.py
+
+      - name: Compute fantasy picks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/compute_fantasy_picks.py
