@@ -1,0 +1,43 @@
+name: Update pitch data (arsenals + velocity)
+
+on:
+  # Run weekly on Mondays at 4am UTC (before Vercel's 5am UTC pitcher refresh)
+  schedule:
+    - cron: '0 4 * * 1'
+  # Also allow manual triggering from the GitHub UI
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Velocity script takes ~30 min for 150 pitchers @ 0.5s each
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r scripts/requirements.txt
+
+      # Step 1: Arsenal stats (whiff%, BAA, hard_hit%, usage)
+      # Now uses upsert, so velocity columns from previous runs survive
+      - name: Fetch pitch arsenals
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_pitch_arsenals.py
+
+      # Step 2: Velocity + movement (release_speed, pfx_x, pfx_z)
+      # Runs after arsenal so the pitcher list is fresh
+      - name: Fetch pitch velocity & movement
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_pitch_velocity_movement.py

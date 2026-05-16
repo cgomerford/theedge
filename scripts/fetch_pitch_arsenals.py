@@ -162,21 +162,41 @@ def main():
             'hard_hit_percent': safe_pct(hardhit_col),
         })
   
-    print(f'Prepared {len(rows)} rows to upsert')
+        print(f'Prepared {len(rows)} rows to upsert')
 
     if not rows:
-        print('No rows to insert — exiting cleanly')
+        print('No rows to upsert — exiting cleanly')
         return
 
-    # Wipe season's data and re-insert
-    supabase.table('pitch_arsenals').delete().eq('season', season).execute()
-    print(f'Cleared existing {season} rows')
-
+    # Upsert preserves columns we don't write (avg_velocity, avg_h_break, avg_v_break)
+    # These come from fetch_pitch_velocity_movement.py running later in the workflow
     BATCH = 500
     for i in range(0, len(rows), BATCH):
         batch = rows[i:i+BATCH]
-        supabase.table('pitch_arsenals').insert(batch).execute()
-        print(f'  Inserted batch {i//BATCH + 1} ({len(batch)} rows)')
+        supabase.table('pitch_arsenals')\
+            .upsert(batch, on_conflict='player_id,season,pitch_type')\
+            .execute()
+        print(f'  Upserted batch {i//BATCH + 1} ({len(batch)} rows)')
+
+    # Optional: clean up rows for pitchers no longer in current arsenal
+    # (e.g. retired, traded to minors, hasn't pitched enough)
+    current_keys = {(r['player_id'], r['pitch_type']) for r in rows}
+    response = supabase.table('pitch_arsenals')\
+        .select('id, player_id, pitch_type')\
+        .eq('season', season)\
+        .execute()
+    
+    stale_ids = [
+        row['id'] for row in (response.data or [])
+        if (row['player_id'], row['pitch_type']) not in current_keys
+    ]
+    
+    if stale_ids:
+        # Delete in batches to avoid URL length limits
+        for i in range(0, len(stale_ids), 100):
+            chunk = stale_ids[i:i+100]
+            supabase.table('pitch_arsenals').delete().in_('id', chunk).execute()
+        print(f'  Cleaned up {len(stale_ids)} stale rows (pitchers no longer active)')
 
     print(f'✓ Done — {len(rows)} pitch arsenal records updated for {season}')
 
