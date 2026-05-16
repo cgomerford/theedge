@@ -62,7 +62,7 @@ export default async function FantasyPage() {
           colorKey="emerald"
           picks={picks.streamer}
           renderPick={(p) => <StreamerCard pick={p} isPro={isPro} />}
-          emptyMessage="No streamers identified yet for tonight — lineups still pending."
+         emptyMessage="Lineups still pending tonight. Streamers populate when probable pitchers confirm — usually 3-4 hours pre-first-pitch."
         />
 
         {/* ════ MOVERS ══════════════════════════════════════════════════ */}
@@ -72,7 +72,7 @@ export default async function FantasyPage() {
           colorKey="orange"
           picks={picks.mover}
           renderPick={(p) => <MoverCard pick={p} isPro={isPro} />}
-          emptyMessage="No significant edge swings in tonight's slate yet. We log changes throughout the day."
+          emptyMessage="No 8+ point edge swings yet. We snapshot predictions every few hours — check back after lineup news drops."
         />
 
         {/* ════ FALLERS ═════════════════════════════════════════════════ */}
@@ -82,7 +82,7 @@ export default async function FantasyPage() {
           colorKey="red"
           picks={picks.faller}
           renderPick={(p) => <FallerCard pick={p} isPro={isPro} />}
-          emptyMessage="No fallers flagged tonight — most matchups look favourable for the bats."
+          emptyMessage="Most matchups look favourable for the bats tonight. Fallers surface when an elite arm draws a strong-offence club."
         />
 
         {/* ════ SLEEPERS ════════════════════════════════════════════════ */}
@@ -92,7 +92,7 @@ export default async function FantasyPage() {
           colorKey="blue"
           picks={picks.sleeper}
           renderPick={(p) => <SleeperCard pick={p} isPro={isPro} />}
-          emptyMessage="No clear sleeper plays tonight — surface stats and underlying numbers are aligned."
+          emptyMessage="Tonight's slate is clean — no significant ERA/FIP gaps or vulnerable bottom-tier lineups. We surface these when the math justifies it, not just to fill space."
         />
 
         {/* ════ DECODING THE STATS ═════════════════════════════════════ */}

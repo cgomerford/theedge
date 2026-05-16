@@ -415,9 +415,11 @@ def compute_sleepers(games, today):
             opp_stats = get_team_stats(opp)
             opp_rpg = float(opp_stats.get('runs_per_game_l30')) if opp_stats and opp_stats.get('runs_per_game_l30') else 4.5
 
-            # Sleeper if: big era-fip gap OR facing weak offence
-            is_regression = era >= 4.50 and fip < 4.00 and gap >= 0.8
-            is_easy_spot  = opp_rpg < 4.0
+           # Sleeper if: meaningful era-fip gap OR facing weak offence
+            # Looser than V1 to ensure soft-launch sections populate.
+            # Quality bar still meaningful — not just any pitcher qualifies.
+            is_regression = era >= 4.20 and fip < 4.20 and gap >= 0.6
+            is_easy_spot  = opp_rpg < 4.1
 
             if not (is_regression or is_easy_spot):
                 continue
