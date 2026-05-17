@@ -62,6 +62,5 @@ export async function POST(req: NextRequest) {
     console.error('Preferences save error:', error)
     return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
-
-  return NextResponse.redirect(new URL(`/preferences/${token}?saved=1`, req.url), { status: 303 })
+return NextResponse.redirect(new URL('/dugout', req.url), { status: 303 })
 }

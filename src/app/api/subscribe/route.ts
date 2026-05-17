@@ -52,11 +52,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Insert or update — set unverified, generate fresh token
+// Generate tokens upfront so they're available for the insert
+  const verificationToken = crypto.randomUUID().replace(/-/g, '')
+  const preferencesToken = crypto.randomUUID().replace(/-/g, '')
+
   const { error: dbError } = await supa.from('subscribers').upsert(
     {
       email: parsed.data.email,
       source: parsed.data.source ?? 'web',
       email_verified: false,
+      verification_token: verificationToken,
+      preferences_token: preferencesToken,
       verification_sent_at: new Date().toISOString(),
     },
     { onConflict: 'email' }
@@ -80,7 +86,7 @@ export async function POST(req: NextRequest) {
   if (process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
-      const content = verificationEmail(parsed.data.email, newToken)
+      const content = verificationEmail(parsed.data.email, verificationToken)
 
       await resend.emails.send({
         from: 'The Edge <hello@edgereportdaily.com>',

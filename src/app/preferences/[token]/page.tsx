@@ -188,11 +188,13 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
                 {showPrimaryPicker
                   ? 'Update your team selections, then pick a primary team below.'
                   : 'Your preferences won\'t apply until you click save.'}
-                {!subscriber.is_pro && (
-                  <span className="block mt-1 text-orange-600 font-mono text-xs uppercase tracking-wider">
-                    Free tier: 3 team limit
-                  </span>
-                )}
+              {!subscriber.is_pro && (
+  <span className="block mt-1 text-orange-400 font-mono text-xs uppercase tracking-wider">
+    {followedTeams.length >= 3
+      ? '⚠ 3-team limit reached · upgrade for unlimited'
+      : `Free tier: ${followedTeams.length}/3 teams selected`}
+  </span>
+)}
               </div>
             </div>
             <button
