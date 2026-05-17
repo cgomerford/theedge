@@ -5,12 +5,12 @@ import crypto from 'crypto'
 const SESSION_COOKIE_NAME = 'edge_session'
 const SESSION_DURATION_DAYS = 30
 const LOGIN_LINK_DURATION_MIN = 30
-
 export type AuthSubscriber = {
   id: string
   email: string
   teams: string[]
   preferences_token: string
+  is_pro: boolean
 }
 
 // Create a one-time login token for a verified email
@@ -73,17 +73,17 @@ export async function consumeLoginLink(token: string): Promise<AuthSubscriber | 
   // Fetch the subscriber
   const { data: sub } = await supa
     .from('subscribers')
-    .select('id, email, teams, preferences_token')
+    .select('id, email, teams, preferences_token, is_pro')
     .eq('email', link.email)
     .single()
 
   if (!sub) return null
-
-  return {
+return {
     id: sub.id,
     email: sub.email,
     teams: (sub.teams ?? []) as string[],
     preferences_token: sub.preferences_token ?? '',
+    is_pro: sub.is_pro ?? false,
   }
 }
 
@@ -123,7 +123,7 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
 
   const { data: session } = await supa
     .from('sessions')
-    .select('*, subscribers(id, email, teams, preferences_token)')
+    .select('*, subscribers(id, email, teams, preferences_token, is_pro)')
     .eq('token', token)
     .single()
 
@@ -144,11 +144,12 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
   const sub = (session.subscribers as any)
   if (!sub) return null
 
-  return {
+return {
     id: sub.id,
     email: sub.email,
     teams: (sub.teams ?? []) as string[],
     preferences_token: sub.preferences_token ?? '',
+    is_pro: sub.is_pro ?? false,
   }
 }
 

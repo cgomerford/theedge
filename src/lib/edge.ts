@@ -8,17 +8,17 @@ const supa = createClient(
 
 // ============================================================
 // COMPONENT WEIGHTS
-// V1 weights — tune post-launch with live data
+// V2 weights — tuned to prioritize SP, Matchup, and Defense synergy
 // ============================================================
 const WEIGHTS = {
-  starting_pitcher: 0.22,    // up from 0.20 — biggest single factor
+  starting_pitcher: 0.25,    // up from 0.22 — biggest single factor
   bullpen: 0.15,
-  offense: 0.18,             // up from 0.15
-  defense: 0.05,             // DOWN from 0.15 — weak proxy in V1
+  offense: 0.20,             // up from 0.18
+  defense: 0.10,             // up from 0.05 — synergistic with GB pitchers
   matchup: 0.15,
-  park: 0.10,
-  weather: 0.07,
-  rest: 0.08,                // up from 0.03 — defense weight redistributed here
+  park: 0.05,                // down from 0.10 — baked into advanced stats
+  weather: 0.05,             // down from 0.07 — only extremes matter
+  rest: 0.05,                // down from 0.08
 }
 // Total: 1.00
 
@@ -82,30 +82,29 @@ export async function calculateEdgeScore(inputs: GameInputs): Promise<EdgeScoreR
     getParkFactor(inputs.venue_name),
   ])
 
- const componentsRaw: EdgeComponents = {
-  starting_pitcher: computePitcherEdge(homePitcher, awayPitcher),
-  bullpen: computeBullpenEdge(homeTeam, awayTeam),
-  offense: computeOffenseEdge(homeTeam, awayTeam),
-  defense: computeDefenseEdge(homeTeam, awayTeam),
-  matchup: computeMatchupEdge(homePitcher, awayPitcher, homeTeam, awayTeam),
-  park: computeParkEdge(park, homeTeam, awayTeam, homePitcher, awayPitcher),
-  weather: computeWeatherEdge(inputs.weather, park, homeTeam, awayTeam),
-  rest: computeRestEdge(homeTeam, awayTeam),
-}
+  const componentsRaw: EdgeComponents = {
+    starting_pitcher: computePitcherEdge(homePitcher, awayPitcher),
+    bullpen: computeBullpenEdge(homeTeam, awayTeam),
+    offense: computeOffenseEdge(homeTeam, awayTeam),
+    defense: computeDefenseEdge(homeTeam, awayTeam, homePitcher, awayPitcher),
+    matchup: computeMatchupEdge(homePitcher, awayPitcher, homeTeam, awayTeam),
+    park: computeParkEdge(park, homeTeam, awayTeam, homePitcher, awayPitcher),
+    weather: computeWeatherEdge(inputs.weather, park, homeTeam, awayTeam),
+    rest: computeRestEdge(homeTeam, awayTeam),
+  }
 
-// Round each component to 1 decimal for clean display
-const components: EdgeComponents = {
-  starting_pitcher: Math.round(componentsRaw.starting_pitcher * 10) / 10,
-  bullpen: Math.round(componentsRaw.bullpen * 10) / 10,
-  offense: Math.round(componentsRaw.offense * 10) / 10,
-  defense: Math.round(componentsRaw.defense * 10) / 10,
-  matchup: Math.round(componentsRaw.matchup * 10) / 10,
-  park: Math.round(componentsRaw.park * 10) / 10,
-  weather: Math.round(componentsRaw.weather * 10) / 10,
-  rest: Math.round(componentsRaw.rest * 10) / 10,
-}
+  // Round each component to 1 decimal for clean display
+  const components: EdgeComponents = {
+    starting_pitcher: Math.round(componentsRaw.starting_pitcher * 10) / 10,
+    bullpen: Math.round(componentsRaw.bullpen * 10) / 10,
+    offense: Math.round(componentsRaw.offense * 10) / 10,
+    defense: Math.round(componentsRaw.defense * 10) / 10,
+    matchup: Math.round(componentsRaw.matchup * 10) / 10,
+    park: Math.round(componentsRaw.park * 10) / 10,
+    weather: Math.round(componentsRaw.weather * 10) / 10,
+    rest: Math.round(componentsRaw.rest * 10) / 10,
+  }
   
-
   // Weighted sum
   let edge_score = 0
   for (const [key, value] of Object.entries(components)) {
@@ -149,33 +148,24 @@ const components: EdgeComponents = {
 // ============================================================
 
 function computePitcherEdge(home: any, away: any): number {
-  // V1 approach: handle partial data gracefully
-  // If both missing → 0
-  // If one missing → use the other against league average proxy
-  
   if (!home && !away) return 0
   
   // Use FIP if available, else ERA, else null
   const homeQuality = home?.fip ?? home?.era ?? null
   const awayQuality = away?.fip ?? away?.era ?? null
   
-  // League average proxy
   const LEAGUE_AVG = 4.10
   
-  // If both have data, compare directly
   if (homeQuality !== null && awayQuality !== null) {
     const diff = awayQuality - homeQuality
-    // Lower is better, so positive diff = home pitcher better
     return Math.max(-100, Math.min(100, diff * 18))
   }
   
-  // If only home has data, compare against league average
   if (homeQuality !== null) {
     const diff = LEAGUE_AVG - homeQuality
-    return Math.max(-100, Math.min(100, diff * 12))  // half-confidence
+    return Math.max(-100, Math.min(100, diff * 12))
   }
   
-  // If only away has data, compare against league average
   if (awayQuality !== null) {
     const diff = awayQuality - LEAGUE_AVG
     return Math.max(-100, Math.min(100, diff * 12))
@@ -190,7 +180,6 @@ function computeBullpenEdge(home: any, away: any): number {
   
   let edge = (away.bullpen_era - home.bullpen_era) * 8
   
-  // Availability adjustments
   let homePenalty = 0
   let awayPenalty = 0
   if (home.bullpen_innings_yesterday >= 5) homePenalty = 8
@@ -205,50 +194,77 @@ function computeOffenseEdge(home: any, away: any): number {
   if (!home.runs_per_game_l30 || !away.runs_per_game_l30) return 0
   
   const rpg_diff = home.runs_per_game_l30 - away.runs_per_game_l30
-  // 1 R/G difference = ~15 pts
   let edge = rpg_diff * 15
   
-  // Bonus from OPS if available
   if (home.ops_l30 && away.ops_l30) {
     const ops_diff = home.ops_l30 - away.ops_l30
-    edge += ops_diff * 60  // .100 OPS gap = 6 pts
+    edge += ops_diff * 60
   }
   
   return Math.max(-100, Math.min(100, edge))
 }
 
-function computeDefenseEdge(home: any, away: any): number {
-  // V1 — proxy is weak, weight is low (0.05)
-  // Post-launch: replace with OAA + DRS from Statcast/FanGraphs
-  if (!home?.oaa || !away?.oaa) return 0  // returns 0 in V1 since we have no OAA
+function computeDefenseEdge(homeT: any, awayT: any, homeP: any, awayP: any): number {
+  if (!homeT?.infield_oaa || !awayT?.infield_oaa) return 0
   
-  return Math.max(-100, Math.min(100, (home.oaa - away.oaa) * 5))
+  const calculateDefenseScore = (team: any, pitcher: any) => {
+    // Base defense score using Outs Above Average and DP%
+    let defScore = (team.infield_oaa * 2) + ((team.outfield_oaa || 0) * 1)
+    
+    // Double Play Conversion modifier
+    if (team.dp_conversion_rate) {
+       const dpEdge = (team.dp_conversion_rate - 0.10) * 100 // assuming league avg is ~10%
+       defScore += dpEdge
+    }
+
+    // Pitcher Synergy: Multiply infield value by how often the pitcher uses them
+    if (pitcher?.gb_percent) {
+        const gbMultiplier = pitcher.gb_percent / 0.43 // Normalizes to league average
+        defScore = defScore * gbMultiplier
+    }
+    
+    return defScore
+  }
+
+  const homeDef = calculateDefenseScore(homeT, homeP)
+  const awayDef = calculateDefenseScore(awayT, awayP)
+  
+  return Math.max(-100, Math.min(100, (homeDef - awayDef) * 8))
 }
 
 function computeMatchupEdge(homeP: any, awayP: any, homeT: any, awayT: any): number {
-  // Need at least one pitcher AND both teams
-  if (!homeT || !awayT) return 0
-  if (!homeP && !awayP) return 0
+  if (!homeT || !awayT || (!homeP && !awayP)) return 0
   
   const LEAGUE_AVG_K9 = 8.5
   const LEAGUE_AVG_RPG = 4.5
+  const LEAGUE_AVG_GB_PCT = 0.43 // 43%
   
-  let home_advantage = 0
-  let away_advantage = 0
-  
-  // Home pitcher's matchup vs away offense
-  if (homeP?.k_per_9 && awayT.runs_per_game_l30) {
-    const home_pitcher_quality = homeP.k_per_9 - LEAGUE_AVG_K9
-    const away_offense_quality = awayT.runs_per_game_l30 - LEAGUE_AVG_RPG
-    home_advantage = home_pitcher_quality * away_offense_quality * 2
+  const calculateSynergy = (pitcher: any, offense: any) => {
+    let advantage = 0
+    
+    // 1. K/9 vs Runs/Game
+    if (pitcher?.k_per_9 && offense?.runs_per_game_l30) {
+      advantage += (pitcher.k_per_9 - LEAGUE_AVG_K9) * (offense.runs_per_game_l30 - LEAGUE_AVG_RPG) * 2
+    }
+
+    // 2. Groundball Synergy
+    if (pitcher?.gb_percent && offense?.gb_percent) {
+      const gbPitcherEdge = pitcher.gb_percent - LEAGUE_AVG_GB_PCT
+      const gbHitterFlaw = offense.gb_percent - LEAGUE_AVG_GB_PCT
+      
+      if (gbPitcherEdge > 0 && gbHitterFlaw > 0) {
+          advantage += (gbPitcherEdge * 100) * (gbHitterFlaw * 100) * 0.5 
+      }
+      else if (gbPitcherEdge < 0 && gbHitterFlaw < 0) {
+          advantage -= Math.abs(gbPitcherEdge * 100) * Math.abs(gbHitterFlaw * 100) * 0.3
+      }
+    }
+    
+    return advantage
   }
-  
-  // Away pitcher's matchup vs home offense
-  if (awayP?.k_per_9 && homeT.runs_per_game_l30) {
-    const away_pitcher_quality = awayP.k_per_9 - LEAGUE_AVG_K9
-    const home_offense_quality = homeT.runs_per_game_l30 - LEAGUE_AVG_RPG
-    away_advantage = away_pitcher_quality * home_offense_quality * 2
-  }
+
+  const home_advantage = calculateSynergy(homeP, awayT)
+  const away_advantage = calculateSynergy(awayP, homeT)
   
   return Math.max(-100, Math.min(100, home_advantage - away_advantage))
 }
@@ -256,14 +272,12 @@ function computeMatchupEdge(homeP: any, awayP: any, homeT: any, awayT: any): num
 function computeParkEdge(park: any, homeT: any, awayT: any, homeP: any, awayP: any): number {
   if (!park || !homeT || !awayT) return 0
   
-  // Hitter park: favors team with better offense
   if (parkLeansHitter(park)) {
     if (homeT.runs_per_game_l30 && awayT.runs_per_game_l30) {
       return homeT.runs_per_game_l30 > awayT.runs_per_game_l30 ? 6 : -6
     }
   }
   
-  // Pitcher park: favors team with better pitching
   if (parkLeansPitcher(park)) {
     if (homeP?.fip && awayP?.fip) {
       return homeP.fip < awayP.fip ? 5 : -5
@@ -274,22 +288,18 @@ function computeParkEdge(park: any, homeT: any, awayT: any, homeP: any, awayP: a
 }
 
 function computeWeatherEdge(weather: any, park: any, homeT: any, awayT: any): number {
-  // Domes ignore weather
   if (park?.is_dome) return 0
   if (!weather) return 0
   if (!homeT || !awayT) return 0
   
-  // Wind out + warm = offense friendly
   if (weather.wind_dir === 'out' && weather.wind_mph > 8 && weather.temp_f > 70) {
     return homeT.runs_per_game_l30 > awayT.runs_per_game_l30 ? 6 : -6
   }
   
-  // Wind in + cold = pitcher friendly
   if (weather.wind_dir === 'in' && weather.wind_mph > 8) {
-    return -3  // slight pitcher edge regardless of team
+    return -3
   }
   
-  // Cold suppresses offense
   if (weather.temp_f < 50) {
     return -2
   }
@@ -298,7 +308,6 @@ function computeWeatherEdge(weather: any, park: any, homeT: any, awayT: any): nu
 }
 
 function computeRestEdge(home: any, away: any): number {
-  // V1 simple proxy: heavy bullpen usage yesterday creates rest disadvantage
   if (!home || !away) return 0
   
   let edge = 0
@@ -329,10 +338,6 @@ async function fetchTeam(teamId: number) {
   return error ? null : data
 }
 
-// PREDICTION LOGGING
-// Drop-in replacement for the logPrediction function in src/lib/edge.ts
-// Changes: aligned parameter order with route.ts + added narrative_pro
-// ============================================================
 export async function logPrediction(
   gamePk: number,
   gameDate: string,
@@ -345,12 +350,12 @@ export async function logPrediction(
   summary: string | null = null,
   story_lead: string | null = null,
   narrative: string | null = null,
-  streakData: any | null = null,        // Aligned: 12th arg (streaks)
-  narrative_pro: string | null = null,  // Aligned: 13th arg
-  home_stories: any = null,             // Aligned: 14th arg
-  away_stories: any = null,             // Aligned: 15th arg
-  contrarian: string | null = null,     // Aligned: 16th arg
-  pro_takeaways: any = null             // Aligned: 17th arg
+  streakData: any | null = null,        
+  narrative_pro: string | null = null,  
+  home_stories: any = null,             
+  away_stories: any = null,             
+  contrarian: string | null = null,     
+  pro_takeaways: any = null             
 ) {
   const row: any = {
     game_pk: gamePk,
@@ -372,7 +377,7 @@ export async function logPrediction(
     row.summary = summary
     row.story_lead = story_lead
     row.narrative = narrative
-    row.narrative_pro = narrative_pro     // Don't forget to attach this!
+    row.narrative_pro = narrative_pro     
     row.home_stories = home_stories       
     row.away_stories = away_stories       
     row.contrarian = contrarian           
@@ -384,6 +389,5 @@ export async function logPrediction(
     row.streak_data = streakData
   }
 
-  // The upsert
   await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })
 }

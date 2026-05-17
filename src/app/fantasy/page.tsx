@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { getFantasyPicks, type FantasyPick } from '@/lib/fantasy'
+import { getCurrentSubscriber } from '@/lib/auth'
 
 export const revalidate = 1800
 export const metadata = {
@@ -15,7 +16,8 @@ export default async function FantasyPage() {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
-  const isPro = false  // hardcoded until Stripe wired
+const subscriber = await getCurrentSubscriber()
+  const isPro = subscriber?.is_pro ?? false
 
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">

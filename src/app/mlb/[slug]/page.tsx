@@ -37,6 +37,7 @@ import { scoreStreamer } from '@/lib/streamer'
 import type { StreamerInput } from '@/lib/streamer'
 import HotZone from '@/components/HotZone'
 import { getBatterHotZones, getPitcherHotZones } from '@/lib/hot-zones'
+import { getCurrentSubscriber } from '@/lib/auth'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -66,7 +67,9 @@ export async function generateMetadata({ params }: Props) {
 export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
-const isPro = true
+const subscriber = await getCurrentSubscriber()
+  const isPro = subscriber?.is_pro ?? false
+  
   // Try cache first
   const { data: cached } = await supa
     .from('game_previews')
@@ -100,63 +103,59 @@ const isPro = true
       raw_data: game,
     }, { onConflict: 'slug' })
   }
-const prediction = await getEdgePrediction(game.gamePk)
-  // Fetch pitcher data in parallel (faster than sequential)
+  const prediction = await getEdgePrediction(game.gamePk)
+  
+  // Fetch pitcher data in parallel
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const venue = getVenueInfo(game.venue?.name)
-const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
+  const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
 
-const [
-  awayRecentStarts,
-  homeRecentStarts,
-  awaySeasonStats,
-  homeSeasonStats,
-  weather,
-  awayPitchMix,
-  homePitchMix,
-  awayForm,
-  homeForm,
-  awayLineup,
-  homeLineup,
-   awayPitcherHotZones,
-  homePitcherHotZones,
-] = await Promise.all([
-  awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
-  homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
-  awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
-  homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
-  venue && !venue.indoor
-    ? getGameWeather(venue.lat, venue.lon, game.gameDate)
-    : Promise.resolve(null),
-  awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
-  homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
-  getTeamForm(game.teams.away.team.id),
-  getTeamForm(game.teams.home.team.id),
-getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
-  getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
+  const [
+    awayRecentStarts,
+    homeRecentStarts,
+    awaySeasonStats,
+    homeSeasonStats,
+    weather,
+    awayPitchMix,
+    homePitchMix,
+    awayForm,
+    homeForm,
+    awayLineup,
+    homeLineup,
+    awayPitcherHotZones,
+    homePitcherHotZones,
+  ] = await Promise.all([
+    awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
+    homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
+    awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
+    homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
+    venue && !venue.indoor
+      ? getGameWeather(venue.lat, venue.lon, game.gameDate)
+      : Promise.resolve(null),
+    awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
+    homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
+    getTeamForm(game.teams.away.team.id),
+    getTeamForm(game.teams.home.team.id),
+    getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
+    getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
     game.teams.away.probablePitcher
-    ? getPitcherHotZones(game.teams.away.probablePitcher.id)
-    : Promise.resolve({}),
-  game.teams.home.probablePitcher
-    ? getPitcherHotZones(game.teams.home.probablePitcher.id)
-    : Promise.resolve({}),
-])
+      ? getPitcherHotZones(game.teams.away.probablePitcher.id)
+      : Promise.resolve({}),
+    game.teams.home.probablePitcher
+      ? getPitcherHotZones(game.teams.home.probablePitcher.id)
+      : Promise.resolve({}),
+  ])
 
-const awayFeatureBatter = awayLineup?.batters?.[2] ?? null   // 3-hole hitter
-const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
+  const awayFeatureBatter = awayLineup?.batters?.[2] ?? null   // 3-hole hitter
+  const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
 
-const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
-  awayFeatureBatter ? getBatterHotZones(awayFeatureBatter.player_id) : Promise.resolve({}),
-  homeFeatureBatter ? getBatterHotZones(homeFeatureBatter.player_id) : Promise.resolve({}),
-])
+  const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
+    awayFeatureBatter ? getBatterHotZones(awayFeatureBatter.player_id) : Promise.resolve({}),
+    homeFeatureBatter ? getBatterHotZones(homeFeatureBatter.player_id) : Promise.resolve({}),
+  ])
 
-
- // ── Streamer Pick ────────────────────────────────────────
-  // Calculate for BOTH pitchers, pick the better one to highlight.
-  // awaySeasonStats, homeSeasonStats, awayPitchMix, homePitchMix,
-  // prediction?.components.park are all already fetched above.
- 
+  // ── Streamer Pick ────────────────────────────────────────
   const parkComponent = prediction?.components?.park ?? 0
  
   const awayStreamerInput: StreamerInput | null =
@@ -166,7 +165,7 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
           pitcherId:     game.teams.away.probablePitcher.id,
           teamName:      shortName(game.teams.away.team.name),
           opponentName:  shortName(game.teams.home.team.name),
-          opponentStats: null,   // TODO: wire homeTeamStats when available
+          opponentStats: null,
           pitcherStats:  awaySeasonStats,
           pitchMix:      awayPitchMix,
           parkComponent,
@@ -185,10 +184,10 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
           pitcherId:     game.teams.home.probablePitcher.id,
           teamName:      shortName(game.teams.home.team.name),
           opponentName:  shortName(game.teams.away.team.name),
-          opponentStats: null,   // TODO: wire awayTeamStats when available
+          opponentStats: null,
           pitcherStats:  homeSeasonStats,
           pitchMix:      homePitchMix,
-          parkComponent: -parkComponent, // flip sign — park favours the other team from home pitcher POV
+          parkComponent: -parkComponent,
           isPitcherHome: true,
           gameSlug:      slug,
           gameTime:      new Date(game.gameDate).toLocaleTimeString('en-GB', {
@@ -200,69 +199,40 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
   const awayStreamer = awayStreamerInput ? scoreStreamer(awayStreamerInput) : null
   const homeStreamer = homeStreamerInput ? scoreStreamer(homeStreamerInput) : null
  
-  // Pick whichever pitcher scored higher to show on this game page
   const topStreamer =
     !awayStreamer ? homeStreamer :
     !homeStreamer ? awayStreamer :
     awayStreamer.streamerScore >= homeStreamer.streamerScore ? awayStreamer : homeStreamer
   // ─────────────────────────────────────────────────────────
 
-// Generate the gameline narrative
   const windImpact = weather && game.venue?.name
     ? describeWindImpact(game.venue.name, weather.wind_direction, weather.wind_mph)
     : null
 
-  const gameline = generateGameline({
-    awayShort: shortName(game.teams.away.team.name),
-    homeShort: shortName(game.teams.home.team.name),
-    awayPitcherName: game.teams.away.probablePitcher?.fullName ?? null,
-    homePitcherName: game.teams.home.probablePitcher?.fullName ?? null,
-    awaySeasonStats,
-    homeSeasonStats,
-    awayPitchMix,
-    homePitchMix,
-    awayForm,
-    homeForm,
-    weather,
-    windImpact,
-    isIndoor: venue?.indoor ?? false,
-  })
-
-  const edgeReport = calculateEdge({
-    awayShort: shortName(game.teams.away.team.name),
-    homeShort: shortName(game.teams.home.team.name),
-    awayPitcherName: game.teams.away.probablePitcher?.fullName ?? null,
-    homePitcherName: game.teams.home.probablePitcher?.fullName ?? null,
-    awaySeasonStats,
-    homeSeasonStats,
-    awayPitchMix,
-    homePitchMix,
-    awayForm,
-    homeForm,
-    weather,
-    windImpact,
-    isIndoor: venue?.indoor ?? false,
-  })
-
-  const edgeCategories = [edgeReport.pitching, edgeReport.form].filter(Boolean) as Array<NonNullable<typeof edgeReport.pitching>>
-  const gameTime = new Date(game.gameDate).toLocaleTimeString('en-US', {
-    hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-  })
   const gameDate = new Date(game.gameDate).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric'
   })
 
+  // Helper component for collapsed sections
+  const ChevronDown = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  )
+
   return (
-<main className="min-h-screen bg-stone-50 text-stone-900">
+    <main className="min-h-screen bg-stone-50 text-stone-900">
       <SiteHeader variant="page" />
       <LiveTicker />
       <div className="max-w-3xl mx-auto px-6 py-12">
+        
+        {/* 1. TEAM HEADER (Open) */}
         <div 
-  className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4"
-  suppressHydrationWarning
->
-  MLB · {gameDate} · {game.venue?.name}
-</div>
+          className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4"
+          suppressHydrationWarning
+        >
+          MLB · {gameDate} · {game.venue?.name}
+        </div>
 
         <h1 className="text-5xl md:text-7xl font-serif font-light leading-none tracking-tight mb-2">
           {shortName(game.teams.away.team.name)}
@@ -274,11 +244,10 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
           {shortName(game.teams.home.team.name)}
         </h1>
 
-    
-<div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
+        <div className="grid grid-cols-2 gap-6 py-8 border-y border-stone-300 my-8">
           <div>
             <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Away</div>
-           <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -303,7 +272,7 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
           </div>
           <div>
             <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">Home</div>
-          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -328,312 +297,98 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
           </div>
         </div>
 
-      {/* EDGE INDICATOR */}
-{prediction && (
-  <EdgeIndicator
-    edge_score={prediction.edge_score}
-    predicted_winner={prediction.predicted_winner}
-    confidence_tier={prediction.confidence_tier}
-    components={prediction.components}
-    components_raw={prediction.components_raw}
-    home_team={game.teams.home.team.name}
-    away_team={game.teams.away.team.name}
-    home_team_abbr={game.teams.home.team.abbreviation}
-    away_team_abbr={game.teams.away.team.abbreviation}
-    updated_at={prediction.updated_at}
-    lineups_confirmed={prediction.lineups_confirmed}
-    is_pro={false}
-    llm_summary={prediction.summary}
-    llm_narrative={prediction.narrative}
-    drilldown={{
-      away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
-        name: game.teams.away.probablePitcher.fullName,
-        era: awaySeasonStats.era,
-        whip: awaySeasonStats.whip,
-        k_per_9: awaySeasonStats.k_per_9,
-      } : null,
-      home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
-        name: game.teams.home.probablePitcher.fullName,
-        era: homeSeasonStats.era,
-        whip: homeSeasonStats.whip,
-        k_per_9: homeSeasonStats.k_per_9,
-      } : null,
-      away_form: awayForm ? {
-        last_10_wins: awayForm.last_10_wins,
-        last_10_losses: awayForm.last_10_losses,
-        bullpen_era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
-        bullpen_ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
-        closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
-        setup1_available: prediction?.components_raw?.away_team?.setup1_available ?? null,
-        setup2_available: prediction?.components_raw?.away_team?.setup2_available ?? null,
-      } : null,
-      home_form: homeForm ? {
-        last_10_wins: homeForm.last_10_wins,
-        last_10_losses: homeForm.last_10_losses,
-        bullpen_era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
-        bullpen_ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
-        closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
-        setup1_available: prediction?.components_raw?.home_team?.setup1_available ?? null,
-        setup2_available: prediction?.components_raw?.home_team?.setup2_available ?? null,
-      } : null,
-    }}
-  />
-)}
-
-{/* TONIGHT'S STORYLINES */}
-{prediction?.home_stories && prediction?.away_stories && (
-  <Storylines
-    homeTeam={game.teams.home.team.name}
-    awayTeam={game.teams.away.team.name}
-    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-    homeColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
-    awayColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
-    homeStories={prediction.home_stories}
-    awayStories={prediction.away_stories}
-  />
-)}
-
-{/* WHY WE MIGHT BE WRONG */}
-{prediction?.contrarian && (
-  <Contrarian text={prediction.contrarian} />
-)}
-
-{/* FANTASY MATCHUP INTEL (PRO) */}
-{prediction?.pro_takeaways && (
-  <ProTakeaways
-    takeaways={prediction.pro_takeaways}
-    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-    isPro={false}
-  />
-)}
-
-{/* HOT ZONES */}
-<section className="mt-10 space-y-6">
-  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">
-    § Hot Zones
-  </div>
-
-  <div className="grid md:grid-cols-2 gap-4">
-    {/* Away pitcher */}
-    {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
-      <HotZone
-        mode="pitcher"
-        data={awayPitcherHotZones}
-        isPro={false}
-        playerName={game.teams.away.probablePitcher.fullName}
-      />
-    )}
-
-    {/* Home pitcher */}
-    {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
-      <HotZone
-        mode="pitcher"
-        data={homePitcherHotZones}
-        isPro={false}
-        playerName={game.teams.home.probablePitcher.fullName}
-      />
-    )}
-
-    {/* Away feature batter */}
-    {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
-      <HotZone
-        mode="batter"
-        data={awayBatterHotZones}
-        isPro={false}
-        playerName={awayFeatureBatter.player_name}
-      />
-    )}
-
-    {/* Home feature batter */}
-    {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
-      <HotZone
-        mode="batter"
-        data={homeBatterHotZones}
-        isPro={false}
-        playerName={homeFeatureBatter.player_name}
-      />
-    )}
-  </div>
-</section>
- 
-  {/* STREAMER PICK */}
-  {topStreamer && (
-    <section className="mt-10">
-      <StreamerPick result={topStreamer} isPro={false} />
-    </section>
-  )}
-
-{/* PROJECTED LINEUPS */}
-{(awayLineup || homeLineup) && (
-  <section className="mt-12">
-    <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4">
-      § Projected Lineups
-    </div>
-    <div className="grid md:grid-cols-2 gap-4">
-      {/* Away Lineup Check */}
-      {awayLineup ? (
-        <LineupCard 
-          lineup={awayLineup} 
-          teamName={game.teams.away.team.name}
-          teamShort={shortName(game.teams.away.team.name)}
-          teamAbbr={game.teams.away.team.abbreviation}
-          teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
-        />
-      ) : (
-        <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
-          {shortName(game.teams.away.team.name)} lineup not yet available
-        </div>
-      )}
-
-      {/* Home Lineup Check */}
-      {homeLineup ? (
-        <LineupCard 
-          lineup={homeLineup} 
-          teamName={game.teams.home.team.name}
-          teamShort={shortName(game.teams.home.team.name)}
-          teamAbbr={game.teams.home.team.abbreviation}
-          teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
-        />
-      ) : (
-        <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
-          {shortName(game.teams.home.team.name)} lineup not yet available
-        </div>
-      )}
-    </div>
-  </section>
-)}
-
-
-{/* FORM GUIDE */}
-        {(awayForm || homeForm) && (
-          <PreviewSection
-            eyebrow="Form Guide"
-            title="How they're trending."
-            meta="Last 10 games"
-            variant="highlight"
-          >
-            <div className="grid md:grid-cols-2 gap-8">
-       {/* AWAY FORM */}
-              {awayForm && (
-                <div>
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={teamLogoUrl(game.teams.away.team.id)}
-                      alt=""
-                      className="w-5 h-5 object-contain"
-                    />
-                    {shortName(game.teams.away.team.name)}
-                    {awayForm.streak && (
-                      <span className={`ml-2 font-mono font-bold ${
-                        awayForm.streak_type === 'W' ? 'text-green-700' :
-                        awayForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
-                      }`}>
-                        {awayForm.streak}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
-                    {describeTeamForm(awayForm, shortName(game.teams.away.team.name))}
-                  </p>
-
-                 <div className="grid grid-cols-3 gap-4 pb-4">
-                    <div>
-                      <div className="text-5xl font-display leading-none text-stone-900">
-                        {awayForm.last_10_wins}–{awayForm.last_10_losses}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
-                    </div>
-                    <div>
-                      <div className="text-5xl font-display leading-none text-stone-900">
-                        {awayForm.runs_per_game_l10}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
-                    </div>
-                    <div>
-                      <div className={`text-5xl font-display leading-none ${
-                        awayForm.run_diff_l10 > 0 ? 'text-green-700' :
-                        awayForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
-                      }`}>
-                        {awayForm.run_diff_l10 > 0 ? '+' : ''}{awayForm.run_diff_l10}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-          
-            {/* HOME FORM */}
-              {homeForm && (
-                <div>
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={teamLogoUrl(game.teams.home.team.id)}
-                      alt=""
-                      className="w-5 h-5 object-contain"
-                    />
-                    {shortName(game.teams.home.team.name)}
-                    {homeForm.streak && (
-                      <span className={`ml-2 font-mono font-bold ${
-                        homeForm.streak_type === 'W' ? 'text-green-700' :
-                        homeForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
-                      }`}>
-                        {homeForm.streak}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
-                    {describeTeamForm(homeForm, shortName(game.teams.home.team.name))}
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-4 pb-4">
-                    <div>
-                      <div className="text-5xl font-display leading-none text-stone-900">
-                        {homeForm.last_10_wins}–{homeForm.last_10_losses}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
-                    </div>
-                    <div>
-                      <div className="text-5xl font-display leading-none text-stone-900">
-                        {homeForm.runs_per_game_l10}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
-                    </div>
-                    <div>
-                      <div className={`text-5xl font-display leading-none ${
-                        homeForm.run_diff_l10 > 0 ? 'text-green-700' :
-                        homeForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
-                      }`}>
-                        {homeForm.run_diff_l10 > 0 ? '+' : ''}{homeForm.run_diff_l10}
-                      </div>
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
-                    </div>
-                  </div>
-                </div>
-             )}
-            </div>
-          </PreviewSection>
+        {/* 2, 3, 7. THE STORY, EDGE SCORE, 8 COMPONENTS (EdgeIndicator handles this UI block) */}
+        {prediction && (
+          <div className="mb-12">
+            <EdgeIndicator
+              edge_score={prediction.edge_score}
+              predicted_winner={prediction.predicted_winner}
+              confidence_tier={prediction.confidence_tier}
+              components={prediction.components}
+              components_raw={prediction.components_raw}
+              home_team={game.teams.home.team.name}
+              away_team={game.teams.away.team.name}
+              home_team_abbr={game.teams.home.team.abbreviation}
+              away_team_abbr={game.teams.away.team.abbreviation}
+              updated_at={prediction.updated_at}
+              lineups_confirmed={prediction.lineups_confirmed}
+              is_pro={false}
+              llm_summary={prediction.summary}
+              llm_narrative={prediction.narrative}
+              drilldown={{
+                away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
+                  name: game.teams.away.probablePitcher.fullName,
+                  era: awaySeasonStats.era,
+                  whip: awaySeasonStats.whip,
+                  k_per_9: awaySeasonStats.k_per_9,
+                } : null,
+                home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
+                  name: game.teams.home.probablePitcher.fullName,
+                  era: homeSeasonStats.era,
+                  whip: homeSeasonStats.whip,
+                  k_per_9: homeSeasonStats.k_per_9,
+                } : null,
+                away_form: awayForm ? {
+                  last_10_wins: awayForm.last_10_wins,
+                  last_10_losses: awayForm.last_10_losses,
+                  bullpen_era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
+                  bullpen_ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
+                  closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
+                  setup1_available: prediction?.components_raw?.away_team?.setup1_available ?? null,
+                  setup2_available: prediction?.components_raw?.away_team?.setup2_available ?? null,
+                } : null,
+                home_form: homeForm ? {
+                  last_10_wins: homeForm.last_10_wins,
+                  last_10_losses: homeForm.last_10_losses,
+                  bullpen_era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
+                  bullpen_ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
+                  closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
+                  setup1_available: prediction?.components_raw?.home_team?.setup1_available ?? null,
+                  setup2_available: prediction?.components_raw?.home_team?.setup2_available ?? null,
+                } : null,
+              }}
+            />
+          </div>
         )}
-     {/* PITCHING MATCHUP */}
+
+        {/* 4. STORYLINES (Open) */}
+        {prediction?.home_stories && prediction?.away_stories && (
+          <div className="mb-12">
+            <Storylines
+              homeTeam={game.teams.home.team.name}
+              awayTeam={game.teams.away.team.name}
+              homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+              awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+              homeColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
+              awayColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
+              homeStories={prediction.home_stories}
+              awayStories={prediction.away_stories}
+            />
+          </div>
+        )}
+
+        {/* 5. WHY WE MIGHT BE WRONG (Open) */}
+        {prediction?.contrarian && (
+          <div className="mb-12">
+            <Contrarian text={prediction.contrarian} />
+          </div>
+        )}
+
+        {/* 6. THE ARMS (Open, Compact) */}
         {(awayPitcherId || homePitcherId) && (
-          <PreviewSection
-            eyebrow="Pitching Matchup"
-            title="The arms tonight."
-            meta={`${new Date().getFullYear()} · Statcast`}
-            variant="highlight"
-          >
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* AWAY PITCHER */}
-        {game.teams.away.probablePitcher && (
+          <div className="mb-12">
+            <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">
+              § The Arms
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 p-6 bg-white border border-stone-200">
+              
+              {/* AWAY PITCHER COMPACT */}
+              {game.teams.away.probablePitcher && (
                 <div>
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.away.team.name)} · {awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'}
                   </div>
-              <div className="flex items-center gap-4 mb-6">
+                  <div className="flex items-center gap-4 mb-6">
                     <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden bg-stone-200">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -642,127 +397,37 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <h3 className="text-2xl font-serif font-semibold leading-tight">
+                    <h3 className="text-xl font-serif font-semibold leading-tight">
                       {game.teams.away.probablePitcher.fullName}
                     </h3>
                   </div>
 
-                {awaySeasonStats && (
-                    <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
+                  {awaySeasonStats && (
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.era}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">ERA</div>
-                      </div>
-                      <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.whip}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">WHIP</div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{awaySeasonStats.era}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">ERA</div>
                       </div>
                       <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{awaySeasonStats.k_per_9}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">K/9</div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{awaySeasonStats.whip}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">WHIP</div>
                       </div>
-                    </div>
-                  )}
-{awayPitchMix.length > 0 && game.teams.away.probablePitcher && (
-  <div className="mb-6">
-    <PitchArsenalChart 
-      arsenal={awayPitchMix as any}
-      pitcherName={game.teams.away.probablePitcher.fullName}
-    />
-  </div>
-)}
-                 {awayPitchMix.length > 0 && (
-                    <div className="mb-6 pb-6 border-b border-stone-200">
-                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
-                        Pitch Arsenal · {new Date().getFullYear()}
+                      <div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{awaySeasonStats.k_per_9}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">K/9</div>
                       </div>
-                      <div className="space-y-3">
-                        {awayPitchMix.slice(0, 5).map((p, i) => (
-                          <div key={i}>
-                            <div className="flex items-center gap-3 text-sm mb-1">
-                              <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
-                              <div className="flex-1 h-5 bg-stone-100 relative">
-                                <div
-                                  className="h-full"
-                                  style={{
-                                    width: `${p.percentage}%`,
-                                    backgroundColor: pitchColor(p.pitch_code)
-                                  }}
-                                />
-                              </div>
-                              <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                              {p.avg_velocity > 0 && (
-                                <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
-                              )}
-                            </div>
-                            {(p.whiff_percent !== null || p.ba_against !== null) && (
-                              <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
-                                {p.whiff_percent !== null && (
-                                  <span><span className="text-stone-400">Whiff</span> <strong className={`${
-                                    p.whiff_percent >= 30 ? 'text-green-700' :
-                                    p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
-                                  }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
-                                )}
-                                {p.ba_against !== null && (
-                                  <span><span className="text-stone-400">BAA</span> <strong className={`${
-                                    p.ba_against <= 0.220 ? 'text-green-700' :
-                                    p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
-                                  }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
-                                )}
-                                {p.k_percent !== null && p.k_percent >= 25 && (
-                                  <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {awayRecentStarts.length > 0 && (
-                    <div>
-                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
-                        Last {awayRecentStarts.length} Starts
-                      </div>
-                      <table className="w-full text-sm font-mono">
-                        <thead>
-                          <tr className="text-stone-400 text-xs uppercase tracking-wider">
-                            <th className="text-left pb-2 font-normal">Date</th>
-                            <th className="text-left pb-2 font-normal">Opp</th>
-                            <th className="text-right pb-2 font-normal">IP</th>
-                            <th className="text-right pb-2 font-normal">ER</th>
-                            <th className="text-right pb-2 font-normal">K</th>
-                            <th className="text-right pb-2 font-normal">Res</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {awayRecentStarts.map((g, i) => (
-                            <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
-                              <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
-                              <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
-                              <td className="py-2 text-right">{g.ip}</td>
-                              <td className="py-2 text-right">{g.er}</td>
-                              <td className="py-2 text-right">{g.so}</td>
-                              <td className={`py-2 text-right font-semibold ${
-                                g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
-                              }`}>{g.result}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* HOME PITCHER */}
-     {game.teams.home.probablePitcher && (
+              {/* HOME PITCHER COMPACT */}
+              {game.teams.home.probablePitcher && (
                 <div>
                   <div className="text-xs uppercase tracking-widest text-stone-500 mb-2">
                     {shortName(game.teams.home.team.name)} · {homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'}
                   </div>
-               <div className="flex items-center gap-4 mb-6">
+                  <div className="flex items-center gap-4 mb-6">
                     <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden bg-stone-200">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -771,219 +436,581 @@ const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <h3 className="text-2xl font-serif font-semibold leading-tight">
+                    <h3 className="text-xl font-serif font-semibold leading-tight">
                       {game.teams.home.probablePitcher.fullName}
                     </h3>
                   </div>
 
-                 {homeSeasonStats && (
-                    <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-stone-200">
+                  {homeSeasonStats && (
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.era}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">ERA</div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{homeSeasonStats.era}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">ERA</div>
                       </div>
                       <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.whip}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">WHIP</div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{homeSeasonStats.whip}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">WHIP</div>
                       </div>
                       <div>
-                        <div className="text-5xl font-display leading-none text-stone-900">{homeSeasonStats.k_per_9}</div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">K/9</div>
+                        <div className="text-3xl font-display leading-none text-stone-900">{homeSeasonStats.k_per_9}</div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-1">K/9</div>
                       </div>
                     </div>
                   )}
-{homePitchMix.length > 0 && game.teams.home.probablePitcher && (
-  <div className="mb-6">
-    <PitchArsenalChart 
-      arsenal={homePitchMix as any}
-      pitcherName={game.teams.home.probablePitcher.fullName}
-    />
-  </div>
-)}
-                  {homePitchMix.length > 0 && (
-                    <div className="mb-6 pb-6 border-b border-stone-200">
-                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
-                        Pitch Arsenal · {new Date().getFullYear()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 8. PITCH ARSENAL (Collapsed) */}
+        {(awayPitchMix.length > 0 || homePitchMix.length > 0 || awayRecentStarts.length > 0 || homeRecentStarts.length > 0) && (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-8">
+                
+                {/* Away Pitcher Extended */}
+                {game.teams.away.probablePitcher && (
+                  <div>
+                    {awayPitchMix.length > 0 && (
+                      <div className="mb-6">
+                        <PitchArsenalChart 
+                          arsenal={awayPitchMix as any}
+                          pitcherName={game.teams.away.probablePitcher.fullName}
+                        />
                       </div>
-                      <div className="space-y-3">
-                        {homePitchMix.slice(0, 5).map((p, i) => (
-                          <div key={i}>
-                            <div className="flex items-center gap-3 text-sm mb-1">
-                              <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
-                              <div className="flex-1 h-5 bg-stone-100 relative">
-                                <div
-                                  className="h-full"
-                                  style={{
-                                    width: `${p.percentage}%`,
-                                    backgroundColor: pitchColor(p.pitch_code)
-                                  }}
-                                />
+                    )}
+                    {awayPitchMix.length > 0 && (
+                      <div className="mb-6 pb-6 border-b border-stone-200">
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                          Pitch Arsenal · {new Date().getFullYear()}
+                        </div>
+                        <div className="space-y-3">
+                          {awayPitchMix.slice(0, 5).map((p, i) => (
+                            <div key={i}>
+                              <div className="flex items-center gap-3 text-sm mb-1">
+                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                                <div className="flex-1 h-5 bg-stone-100 relative">
+                                  <div
+                                    className="h-full"
+                                    style={{
+                                      width: `${p.percentage}%`,
+                                      backgroundColor: pitchColor(p.pitch_code)
+                                    }}
+                                  />
+                                </div>
+                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                                {p.avg_velocity > 0 && (
+                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                                )}
                               </div>
-                              <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                              {p.avg_velocity > 0 && (
-                                <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                              {(p.whiff_percent !== null || p.ba_against !== null) && (
+                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                  {p.whiff_percent !== null && (
+                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                      p.whiff_percent >= 30 ? 'text-green-700' :
+                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                  )}
+                                  {p.ba_against !== null && (
+                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                      p.ba_against <= 0.220 ? 'text-green-700' :
+                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                  )}
+                                  {p.k_percent !== null && p.k_percent >= 25 && (
+                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                            {(p.whiff_percent !== null || p.ba_against !== null) && (
-                              <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
-                                {p.whiff_percent !== null && (
-                                  <span><span className="text-stone-400">Whiff</span> <strong className={`${
-                                    p.whiff_percent >= 30 ? 'text-green-700' :
-                                    p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
-                                  }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
-                                )}
-                                {p.ba_against !== null && (
-                                  <span><span className="text-stone-400">BAA</span> <strong className={`${
-                                    p.ba_against <= 0.220 ? 'text-green-700' :
-                                    p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
-                                  }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
-                                )}
-                                {p.k_percent !== null && p.k_percent >= 25 && (
-                                  <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {awayRecentStarts.length > 0 && (
+                      <div>
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
+                          Last {awayRecentStarts.length} Starts
+                        </div>
+                        <table className="w-full text-sm font-mono">
+                          <thead>
+                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
+                              <th className="text-left pb-2 font-normal">Date</th>
+                              <th className="text-left pb-2 font-normal">Opp</th>
+                              <th className="text-right pb-2 font-normal">IP</th>
+                              <th className="text-right pb-2 font-normal">ER</th>
+                              <th className="text-right pb-2 font-normal">K</th>
+                              <th className="text-right pb-2 font-normal">Res</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {awayRecentStarts.map((g, i) => (
+                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
+                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
+                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
+                                <td className="py-2 text-right">{g.ip}</td>
+                                <td className="py-2 text-right">{g.er}</td>
+                                <td className="py-2 text-right">{g.so}</td>
+                                <td className={`py-2 text-right font-semibold ${
+                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
+                                }`}>{g.result}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Home Pitcher Extended */}
+                {game.teams.home.probablePitcher && (
+                  <div>
+                    {homePitchMix.length > 0 && (
+                      <div className="mb-6">
+                        <PitchArsenalChart 
+                          arsenal={homePitchMix as any}
+                          pitcherName={game.teams.home.probablePitcher.fullName}
+                        />
+                      </div>
+                    )}
+                    {homePitchMix.length > 0 && (
+                      <div className="mb-6 pb-6 border-b border-stone-200">
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                          Pitch Arsenal · {new Date().getFullYear()}
+                        </div>
+                        <div className="space-y-3">
+                          {homePitchMix.slice(0, 5).map((p, i) => (
+                            <div key={i}>
+                              <div className="flex items-center gap-3 text-sm mb-1">
+                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                                <div className="flex-1 h-5 bg-stone-100 relative">
+                                  <div
+                                    className="h-full"
+                                    style={{
+                                      width: `${p.percentage}%`,
+                                      backgroundColor: pitchColor(p.pitch_code)
+                                    }}
+                                  />
+                                </div>
+                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                                {p.avg_velocity > 0 && (
+                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {homeRecentStarts.length > 0 && (
-                    <div>
-                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
-                        Last {homeRecentStarts.length} Starts
-                      </div>
-                      <table className="w-full text-sm font-mono">
-                        <thead>
-                          <tr className="text-stone-400 text-xs uppercase tracking-wider">
-                            <th className="text-left pb-2 font-normal">Date</th>
-                            <th className="text-left pb-2 font-normal">Opp</th>
-                            <th className="text-right pb-2 font-normal">IP</th>
-                            <th className="text-right pb-2 font-normal">ER</th>
-                            <th className="text-right pb-2 font-normal">K</th>
-                            <th className="text-right pb-2 font-normal">Res</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {homeRecentStarts.map((g, i) => (
-                            <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
-                              <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
-                              <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
-                              <td className="py-2 text-right">{g.ip}</td>
-                              <td className="py-2 text-right">{g.er}</td>
-                              <td className="py-2 text-right">{g.so}</td>
-                              <td className={`py-2 text-right font-semibold ${
-                                g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
-                              }`}>{g.result}</td>
-                            </tr>
+                              {(p.whiff_percent !== null || p.ba_against !== null) && (
+                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                  {p.whiff_percent !== null && (
+                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                      p.whiff_percent >= 30 ? 'text-green-700' :
+                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                  )}
+                                  {p.ba_against !== null && (
+                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                      p.ba_against <= 0.220 ? 'text-green-700' :
+                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                  )}
+                                  {p.k_percent !== null && p.k_percent >= 25 && (
+                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
+                        </div>
+                      </div>
+                    )}
+                    {homeRecentStarts.length > 0 && (
+                      <div>
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
+                          Last {homeRecentStarts.length} Starts
+                        </div>
+                        <table className="w-full text-sm font-mono">
+                          <thead>
+                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
+                              <th className="text-left pb-2 font-normal">Date</th>
+                              <th className="text-left pb-2 font-normal">Opp</th>
+                              <th className="text-right pb-2 font-normal">IP</th>
+                              <th className="text-right pb-2 font-normal">ER</th>
+                              <th className="text-right pb-2 font-normal">K</th>
+                              <th className="text-right pb-2 font-normal">Res</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {homeRecentStarts.map((g, i) => (
+                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
+                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
+                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
+                                <td className="py-2 text-right">{g.ip}</td>
+                                <td className="py-2 text-right">{g.er}</td>
+                                <td className="py-2 text-right">{g.so}</td>
+                                <td className={`py-2 text-right font-semibold ${
+                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
+                                }`}>{g.result}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </PreviewSection>
+          </details>
         )}
 
-{/* CONDITIONS */}
-        {(weather || venue?.indoor) && (
-          <PreviewSection
-            eyebrow="Conditions"
-            title={venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}
-            meta={weather && !venue?.indoor ? weather.conditions : undefined}
-          >
-            <div className="mb-2">
-              {weather && !venue?.indoor && (
-                <div className="flex items-center gap-3 mb-6">
-                  <WeatherIcon conditions={weather.conditions} size={40} />
-                  <div className="font-serif text-stone-600 italic text-sm">Game-time conditions</div>
-                </div>
+        {/* 9. HOT ZONES (Collapsed) */}
+        <details className="group border border-stone-200 bg-white mb-6">
+          <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+            <div className="font-serif text-xl font-medium">Hot Zones</div>
+            <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+              <ChevronDown />
+            </span>
+          </summary>
+          <div className="p-6 border-t border-stone-100">
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Away pitcher */}
+              {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
+                <HotZone
+                  mode="pitcher"
+                  data={awayPitcherHotZones}
+                 isPro={isPro}
+                  playerName={game.teams.away.probablePitcher.fullName}
+                />
+              )}
+
+              {/* Home pitcher */}
+              {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
+                <HotZone
+                  mode="pitcher"
+                  data={homePitcherHotZones}
+                  isPro={isPro}
+                  playerName={game.teams.home.probablePitcher.fullName}
+                />
+              )}
+
+              {/* Away feature batter */}
+              {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
+                <HotZone
+                  mode="batter"
+                  data={awayBatterHotZones}
+                 isPro={isPro}
+                  playerName={awayFeatureBatter.player_name}
+                />
+              )}
+
+              {/* Home feature batter */}
+              {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
+                <HotZone
+                  mode="batter"
+                  data={homeBatterHotZones}
+                  isPro={isPro}
+                  playerName={homeFeatureBatter.player_name}
+                />
               )}
             </div>
+          </div>
+        </details>
 
-            {venue?.indoor ? (
-              <p className="text-lg text-stone-600 font-serif leading-relaxed">
-                Climate-controlled. Roof closed. Weather is not a factor.
-              </p>
-            ) : weather ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                  <div>
-                    <div className={`text-5xl font-display leading-none ${
-                      weather.temp_f >= 85 ? 'text-orange-700' :
-                      weather.temp_f <= 50 ? 'text-blue-700' :
-                      'text-stone-900'
-                    }`}>
-                      {weather.temp_f}°<span className="text-stone-400 text-3xl">F</span>
-                    </div>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
-                      Temp · feels {weather.feels_like_f}°
-                    </div>
+        {/* 10. STREAMER PICK (Open) */}
+        {topStreamer && (
+          <div className="mb-12 mt-6">
+            <StreamerPick result={topStreamer} isPro={isPro}/>
+          </div>
+        )}
+
+        {/* 11. FANTASY MATCHUP INTEL (Collapsed) */}
+        {prediction?.pro_takeaways && (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Fantasy Matchup Intel</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <ProTakeaways
+                takeaways={prediction.pro_takeaways}
+                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+                isPro={isPro}
+              />
+            </div>
+          </details>
+        )}
+
+        {/* 12. PROJECTED LINEUPS (Collapsed) */}
+        {(awayLineup || homeLineup) && (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Projected Lineups</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Away Lineup */}
+                {awayLineup ? (
+                  <LineupCard 
+                    lineup={awayLineup} 
+                    teamName={game.teams.away.team.name}
+                    teamShort={shortName(game.teams.away.team.name)}
+                    teamAbbr={game.teams.away.team.abbreviation}
+                    teamLogoUrl={teamLogoUrl(game.teams.away.team.id)}
+                  />
+                ) : (
+                  <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
+                    {shortName(game.teams.away.team.name)} lineup not yet available
                   </div>
+                )}
 
+                {/* Home Lineup */}
+                {homeLineup ? (
+                  <LineupCard 
+                    lineup={homeLineup} 
+                    teamName={game.teams.home.team.name}
+                    teamShort={shortName(game.teams.home.team.name)}
+                    teamAbbr={game.teams.home.team.abbreviation}
+                    teamLogoUrl={teamLogoUrl(game.teams.home.team.id)}
+                  />
+                ) : (
+                  <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif">
+                    {shortName(game.teams.home.team.name)} lineup not yet available
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+        )}
+
+        {/* 13. FORM GUIDE (Collapsed) */}
+        {(awayForm || homeForm) && (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Form Guide</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* AWAY FORM */}
+                {awayForm && (
                   <div>
-                    <div className="text-5xl font-display leading-none flex items-baseline gap-2 text-stone-900">
-                      {weather.wind_mph}
-                      <span className="text-stone-400 text-base font-mono">mph</span>
-                      <WindArrow
-                        direction={weather.wind_direction}
-                        size={20}
-                        className="text-stone-700 self-center"
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={teamLogoUrl(game.teams.away.team.id)}
+                        alt=""
+                        className="w-5 h-5 object-contain"
                       />
-                    </div>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
-                      Wind · from {weather.wind_direction_text}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className={`text-5xl font-display leading-none ${
-                      weather.precipitation_chance >= 50 ? 'text-blue-700' : 'text-stone-900'
-                    }`}>
-                      {weather.precipitation_chance}<span className="text-stone-400 text-3xl">%</span>
-                    </div>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
-                      Precipitation
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-5xl font-display leading-none text-stone-900">
-                      {weather.cloud_cover}<span className="text-stone-400 text-3xl">%</span>
-                    </div>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
-                      Cloud cover
-                    </div>
-                  </div>
-                </div>
-
-                {(() => {
-                  const impact = describeWindImpact(
-                    game.venue?.name ?? '',
-                    weather.wind_direction,
-                    weather.wind_mph
-                  )
-                  return (
-                    <div className="border-t border-stone-200 pt-4 space-y-1">
-                      <p className="text-stone-600 font-serif italic">
-                        {weather.conditions}
-                        {venue?.city && ` in ${venue.city}`} at first pitch.
-                      </p>
-                      {impact && (
-                        <p className="text-sm font-mono uppercase tracking-wider text-orange-600">
-                          → {impact}
-                        </p>
+                      {shortName(game.teams.away.team.name)}
+                      {awayForm.streak && (
+                        <span className={`ml-2 font-mono font-bold ${
+                          awayForm.streak_type === 'W' ? 'text-green-700' :
+                          awayForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
+                        }`}>
+                          {awayForm.streak}
+                        </span>
                       )}
                     </div>
-                  )
-                })()}
-              </>
-        ) : null}
-          </PreviewSection>
+                    <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
+                      {describeTeamForm(awayForm, shortName(game.teams.away.team.name))}
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-4 pb-4">
+                      <div>
+                        <div className="text-5xl font-display leading-none text-stone-900">
+                          {awayForm.last_10_wins}–{awayForm.last_10_losses}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
+                      </div>
+                      <div>
+                        <div className="text-5xl font-display leading-none text-stone-900">
+                          {awayForm.runs_per_game_l10}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
+                      </div>
+                      <div>
+                        <div className={`text-5xl font-display leading-none ${
+                          awayForm.run_diff_l10 > 0 ? 'text-green-700' :
+                          awayForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
+                        }`}>
+                          {awayForm.run_diff_l10 > 0 ? '+' : ''}{awayForm.run_diff_l10}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* HOME FORM */}
+                {homeForm && (
+                  <div>
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-stone-500 mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={teamLogoUrl(game.teams.home.team.id)}
+                        alt=""
+                        className="w-5 h-5 object-contain"
+                      />
+                      {shortName(game.teams.home.team.name)}
+                      {homeForm.streak && (
+                        <span className={`ml-2 font-mono font-bold ${
+                          homeForm.streak_type === 'W' ? 'text-green-700' :
+                          homeForm.streak_type === 'L' ? 'text-red-700' : 'text-stone-600'
+                        }`}>
+                          {homeForm.streak}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-serif text-lg leading-snug mb-6 text-stone-800">
+                      {describeTeamForm(homeForm, shortName(game.teams.home.team.name))}
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-4 pb-4">
+                      <div>
+                        <div className="text-5xl font-display leading-none text-stone-900">
+                          {homeForm.last_10_wins}–{homeForm.last_10_losses}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">L10</div>
+                      </div>
+                      <div>
+                        <div className="text-5xl font-display leading-none text-stone-900">
+                          {homeForm.runs_per_game_l10}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Runs / G</div>
+                      </div>
+                      <div>
+                        <div className={`text-5xl font-display leading-none ${
+                          homeForm.run_diff_l10 > 0 ? 'text-green-700' :
+                          homeForm.run_diff_l10 < 0 ? 'text-red-700' : 'text-stone-900'
+                        }`}>
+                          {homeForm.run_diff_l10 > 0 ? '+' : ''}{homeForm.run_diff_l10}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">Run Diff</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
         )}
+
+        {/* 14. CONDITIONS (Collapsed) */}
+        {(weather || venue?.indoor) && (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">{venue?.indoor ? 'Indoors tonight.' : 'Game-time forecast.'}</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="mb-2">
+                {weather && !venue?.indoor && (
+                  <div className="flex items-center gap-3 mb-6">
+                    <WeatherIcon conditions={weather.conditions} size={40} />
+                    <div className="font-serif text-stone-600 italic text-sm">Game-time conditions</div>
+                  </div>
+                )}
+              </div>
+
+              {venue?.indoor ? (
+                <p className="text-lg text-stone-600 font-serif leading-relaxed">
+                  Climate-controlled. Roof closed. Weather is not a factor.
+                </p>
+              ) : weather ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                      <div className={`text-5xl font-display leading-none ${
+                        weather.temp_f >= 85 ? 'text-orange-700' :
+                        weather.temp_f <= 50 ? 'text-blue-700' :
+                        'text-stone-900'
+                      }`}>
+                        {weather.temp_f}°<span className="text-stone-400 text-3xl">F</span>
+                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
+                        Temp · feels {weather.feels_like_f}°
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-5xl font-display leading-none flex items-baseline gap-2 text-stone-900">
+                        {weather.wind_mph}
+                        <span className="text-stone-400 text-base font-mono">mph</span>
+                        <WindArrow
+                          direction={weather.wind_direction}
+                          size={20}
+                          className="text-stone-700 self-center"
+                        />
+                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
+                        Wind · from {weather.wind_direction_text}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className={`text-5xl font-display leading-none ${
+                        weather.precipitation_chance >= 50 ? 'text-blue-700' : 'text-stone-900'
+                      }`}>
+                        {weather.precipitation_chance}<span className="text-stone-400 text-3xl">%</span>
+                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
+                        Precipitation
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-5xl font-display leading-none text-stone-900">
+                        {weather.cloud_cover}<span className="text-stone-400 text-3xl">%</span>
+                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500 mt-2">
+                        Cloud cover
+                      </div>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const impact = describeWindImpact(
+                      game.venue?.name ?? '',
+                      weather.wind_direction,
+                      weather.wind_mph
+                    )
+                    return (
+                      <div className="border-t border-stone-200 pt-4 space-y-1">
+                        <p className="text-stone-600 font-serif italic">
+                          {weather.conditions}
+                          {venue?.city && ` in ${venue.city}`} at first pitch.
+                        </p>
+                        {impact && (
+                          <p className="text-sm font-mono uppercase tracking-wider text-orange-600">
+                            → {impact}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </>
+              ) : null}
+            </div>
+          </details>
+        )}
+
+        {/* 15. CTA + FOOTER (Open) */}
         <div className="bg-stone-900 text-stone-100 p-8 my-12">
           <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-3">
             Get the full pre-game brief
