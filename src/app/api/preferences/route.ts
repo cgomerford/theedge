@@ -14,6 +14,21 @@ export async function POST(req: NextRequest) {
   const token = formData.get('token') as string
   const teams = formData.getAll('teams') as string[]
 
+  // Free tier: max 3 teams. Pro subscribers: unlimited.
+  if (teams.length > 3) {
+    const supa2 = createAdminClient()
+    const { data: sub } = await supa2
+      .from('subscribers')
+      .select('is_pro')
+      .eq('preferences_token', token)
+      .single()
+
+    if (!sub?.is_pro) {
+      // Silently trim to first 3 selected
+      teams.length = 3
+    }
+  }
+  
   if (!token) {
     return NextResponse.redirect(new URL('/?error=invalid-token', req.url), { status: 303 })
   }

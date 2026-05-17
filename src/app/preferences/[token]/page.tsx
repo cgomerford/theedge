@@ -120,7 +120,10 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
         </h1>
 
         <p className="text-lg text-stone-600 font-serif italic mb-8 max-w-2xl">
-          We&apos;ll only send briefs for games featuring teams you follow. Pick as many as you like.
+          We&apos;ll only send briefs for games featuring teams you follow.
+          {subscriber.is_pro
+            ? ' Pick as many as you like.'
+            : ' Free accounts can follow up to 3 teams — upgrade to Pro for unlimited.'}
         </p>
 
         <p className="text-sm font-mono text-stone-500 mb-12">
@@ -185,6 +188,11 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
                 {showPrimaryPicker
                   ? 'Update your team selections, then pick a primary team below.'
                   : 'Your preferences won\'t apply until you click save.'}
+                {!subscriber.is_pro && (
+                  <span className="block mt-1 text-orange-600 font-mono text-xs uppercase tracking-wider">
+                    Free tier: 3 team limit
+                  </span>
+                )}
               </div>
             </div>
             <button
