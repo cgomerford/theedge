@@ -463,8 +463,9 @@ const subscriber = await getCurrentSubscriber()
           </div>
         )}
 
-        {/* 8. PITCH ARSENAL (Collapsed) */}
+      {/* 8. PITCH ARSENAL (Pro only) */}
         {(awayPitchMix.length > 0 || homePitchMix.length > 0 || awayRecentStarts.length > 0 || homeRecentStarts.length > 0) && (
+          isPro ? (
           <details className="group border border-stone-200 bg-white mb-6">
             <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
               <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
@@ -667,60 +668,60 @@ const subscriber = await getCurrentSubscriber()
               </div>
             </div>
           </details>
-        )}
-
-        {/* 9. HOT ZONES (Collapsed) */}
-        <details className="group border border-stone-200 bg-white mb-6">
-          <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
-            <div className="font-serif text-xl font-medium">Hot Zones</div>
-            <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
-              <ChevronDown />
-            </span>
-          </summary>
-          <div className="p-6 border-t border-stone-100">
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Away pitcher */}
-              {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
-                <HotZone
-                  mode="pitcher"
-                  data={awayPitcherHotZones}
-                 isPro={isPro}
-                  playerName={game.teams.away.probablePitcher.fullName}
-                />
-              )}
-
-              {/* Home pitcher */}
-              {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
-                <HotZone
-                  mode="pitcher"
-                  data={homePitcherHotZones}
-                  isPro={isPro}
-                  playerName={game.teams.home.probablePitcher.fullName}
-                />
-              )}
-
-              {/* Away feature batter */}
-              {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
-                <HotZone
-                  mode="batter"
-                  data={awayBatterHotZones}
-                 isPro={isPro}
-                  playerName={awayFeatureBatter.player_name}
-                />
-              )}
-
-              {/* Home feature batter */}
-              {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
-                <HotZone
-                  mode="batter"
-                  data={homeBatterHotZones}
-                  isPro={isPro}
-                  playerName={homeFeatureBatter.player_name}
-                />
-              )}
+          ) : (
+          <div className="border border-stone-200 bg-white mb-6 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
+                <p className="text-sm text-stone-500 mt-1 font-serif">Arsenal effectiveness charts, velocity data, whiff rates, and recent starts.</p>
+              </div>
+              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                Pro →
+              </a>
             </div>
           </div>
-        </details>
+          )
+        )}
+
+    {/* 9. HOT ZONES (Pro only) */}
+        {isPro ? (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Hot Zones</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-4">
+                {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
+                  <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
+                )}
+                {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
+                  <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
+                )}
+                {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
+                  <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
+                )}
+                {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
+                  <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
+                )}
+              </div>
+            </div>
+          </details>
+        ) : (
+          <div className="border border-stone-200 bg-white mb-6 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-serif text-xl font-medium">Hot Zones</div>
+                <p className="text-sm text-stone-500 mt-1 font-serif">3×3 heatmaps for pitchers and batters — xwOBA, splits, tap-to-explore.</p>
+              </div>
+              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                Pro →
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* 10. STREAMER PICK (Open) */}
         {topStreamer && (
