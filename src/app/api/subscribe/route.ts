@@ -73,15 +73,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
 
-  // Fetch the verification token (auto-generated)
-  // Need to set it manually first since the default isn't auto-generating on upsert
-  const newToken = crypto.randomUUID().replace(/-/g, '')
-  await supa
-    .from('subscribers')
-    .update({ verification_token: newToken })
-    .eq('email', parsed.data.email)
-    .is('email_verified', false)
-
   // Send verification email
   if (process.env.RESEND_API_KEY) {
     try {
