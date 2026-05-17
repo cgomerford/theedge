@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { welcomeEmail } from '@/lib/emails'
 import { Resend } from 'resend'
+import crypto from 'crypto'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     .update({ email_verified: true })
     .eq('id', sub.id)
 
-  // Send the welcome email NOW (which includes preferences link)
+  // Send the welcome email
   if (process.env.RESEND_API_KEY && sub.preferences_token) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
@@ -52,12 +53,30 @@ export async function GET(req: NextRequest) {
       console.error('Welcome email failed:', e)
     }
   }
-const { createSession } = await import('@/lib/auth')
-await createSession(sub.id)
 
-return NextResponse.redirect(
-  new URL(`/preferences/${sub.preferences_token}?verified=1`, req.url),
-  { status: 303 }
-)
+  // Create a session manually on the SAME response object
+  const sessionToken = crypto.randomBytes(32).toString('hex')
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
+  await supa.from('sessions').insert({
+    subscriber_id: sub.id,
+    token: sessionToken,
+    expires_at: expiresAt.toISOString(),
+  })
+
+  // Build redirect with cookie on the SAME response
+  const response = NextResponse.redirect(
+    new URL(`/preferences/${sub.preferences_token}?verified=1`, req.url),
+    { status: 303 }
+  )
+
+  response.cookies.set('edge_session', sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60,
+    path: '/',
+  })
+
+  return response
 }
