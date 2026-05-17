@@ -463,292 +463,6 @@ const subscriber = await getCurrentSubscriber()
           </div>
         )}
 
-      {/* 8. PITCH ARSENAL (Pro only) */}
-        {(awayPitchMix.length > 0 || homePitchMix.length > 0 || awayRecentStarts.length > 0 || homeRecentStarts.length > 0) && (
-          isPro ? (
-          <details className="group border border-stone-200 bg-white mb-6">
-            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
-              <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
-              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
-                <ChevronDown />
-              </span>
-            </summary>
-            <div className="p-6 border-t border-stone-100">
-              <div className="grid md:grid-cols-2 gap-8">
-                
-                {/* Away Pitcher Extended */}
-                {game.teams.away.probablePitcher && (
-                  <div>
-                    {awayPitchMix.length > 0 && (
-                      <div className="mb-6">
-                        <PitchArsenalChart 
-                          arsenal={awayPitchMix as any}
-                          pitcherName={game.teams.away.probablePitcher.fullName}
-                        />
-                      </div>
-                    )}
-                    {awayPitchMix.length > 0 && (
-                      <div className="mb-6 pb-6 border-b border-stone-200">
-                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
-                          Pitch Arsenal · {new Date().getFullYear()}
-                        </div>
-                        <div className="space-y-3">
-                          {awayPitchMix.slice(0, 5).map((p, i) => (
-                            <div key={i}>
-                              <div className="flex items-center gap-3 text-sm mb-1">
-                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
-                                <div className="flex-1 h-5 bg-stone-100 relative">
-                                  <div
-                                    className="h-full"
-                                    style={{
-                                      width: `${p.percentage}%`,
-                                      backgroundColor: pitchColor(p.pitch_code)
-                                    }}
-                                  />
-                                </div>
-                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                                {p.avg_velocity > 0 && (
-                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
-                                )}
-                              </div>
-                              {(p.whiff_percent !== null || p.ba_against !== null) && (
-                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
-                                  {p.whiff_percent !== null && (
-                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
-                                      p.whiff_percent >= 30 ? 'text-green-700' :
-                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
-                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
-                                  )}
-                                  {p.ba_against !== null && (
-                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
-                                      p.ba_against <= 0.220 ? 'text-green-700' :
-                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
-                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
-                                  )}
-                                  {p.k_percent !== null && p.k_percent >= 25 && (
-                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {awayRecentStarts.length > 0 && (
-                      <div>
-                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
-                          Last {awayRecentStarts.length} Starts
-                        </div>
-                        <table className="w-full text-sm font-mono">
-                          <thead>
-                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
-                              <th className="text-left pb-2 font-normal">Date</th>
-                              <th className="text-left pb-2 font-normal">Opp</th>
-                              <th className="text-right pb-2 font-normal">IP</th>
-                              <th className="text-right pb-2 font-normal">ER</th>
-                              <th className="text-right pb-2 font-normal">K</th>
-                              <th className="text-right pb-2 font-normal">Res</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {awayRecentStarts.map((g, i) => (
-                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
-                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
-                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
-                                <td className="py-2 text-right">{g.ip}</td>
-                                <td className="py-2 text-right">{g.er}</td>
-                                <td className="py-2 text-right">{g.so}</td>
-                                <td className={`py-2 text-right font-semibold ${
-                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
-                                }`}>{g.result}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Home Pitcher Extended */}
-                {game.teams.home.probablePitcher && (
-                  <div>
-                    {homePitchMix.length > 0 && (
-                      <div className="mb-6">
-                        <PitchArsenalChart 
-                          arsenal={homePitchMix as any}
-                          pitcherName={game.teams.home.probablePitcher.fullName}
-                        />
-                      </div>
-                    )}
-                    {homePitchMix.length > 0 && (
-                      <div className="mb-6 pb-6 border-b border-stone-200">
-                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
-                          Pitch Arsenal · {new Date().getFullYear()}
-                        </div>
-                        <div className="space-y-3">
-                          {homePitchMix.slice(0, 5).map((p, i) => (
-                            <div key={i}>
-                              <div className="flex items-center gap-3 text-sm mb-1">
-                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
-                                <div className="flex-1 h-5 bg-stone-100 relative">
-                                  <div
-                                    className="h-full"
-                                    style={{
-                                      width: `${p.percentage}%`,
-                                      backgroundColor: pitchColor(p.pitch_code)
-                                    }}
-                                  />
-                                </div>
-                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
-                                {p.avg_velocity > 0 && (
-                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
-                                )}
-                              </div>
-                              {(p.whiff_percent !== null || p.ba_against !== null) && (
-                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
-                                  {p.whiff_percent !== null && (
-                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
-                                      p.whiff_percent >= 30 ? 'text-green-700' :
-                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
-                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
-                                  )}
-                                  {p.ba_against !== null && (
-                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
-                                      p.ba_against <= 0.220 ? 'text-green-700' :
-                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
-                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
-                                  )}
-                                  {p.k_percent !== null && p.k_percent >= 25 && (
-                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {homeRecentStarts.length > 0 && (
-                      <div>
-                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
-                          Last {homeRecentStarts.length} Starts
-                        </div>
-                        <table className="w-full text-sm font-mono">
-                          <thead>
-                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
-                              <th className="text-left pb-2 font-normal">Date</th>
-                              <th className="text-left pb-2 font-normal">Opp</th>
-                              <th className="text-right pb-2 font-normal">IP</th>
-                              <th className="text-right pb-2 font-normal">ER</th>
-                              <th className="text-right pb-2 font-normal">K</th>
-                              <th className="text-right pb-2 font-normal">Res</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {homeRecentStarts.map((g, i) => (
-                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
-                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
-                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
-                                <td className="py-2 text-right">{g.ip}</td>
-                                <td className="py-2 text-right">{g.er}</td>
-                                <td className="py-2 text-right">{g.so}</td>
-                                <td className={`py-2 text-right font-semibold ${
-                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
-                                }`}>{g.result}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </details>
-          ) : (
-          <div className="border border-stone-200 bg-white mb-6 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
-                <p className="text-sm text-stone-500 mt-1 font-serif">Arsenal effectiveness charts, velocity data, whiff rates, and recent starts.</p>
-              </div>
-              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
-                Pro →
-              </a>
-            </div>
-          </div>
-          )
-        )}
-
-    {/* 9. HOT ZONES (Pro only) */}
-        {isPro ? (
-          <details className="group border border-stone-200 bg-white mb-6">
-            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
-              <div className="font-serif text-xl font-medium">Hot Zones</div>
-              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
-                <ChevronDown />
-              </span>
-            </summary>
-            <div className="p-6 border-t border-stone-100">
-              <div className="grid md:grid-cols-2 gap-4">
-                {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
-                  <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
-                )}
-                {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
-                  <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
-                )}
-                {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
-                  <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
-                )}
-                {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
-                  <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
-                )}
-              </div>
-            </div>
-          </details>
-        ) : (
-          <div className="border border-stone-200 bg-white mb-6 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-serif text-xl font-medium">Hot Zones</div>
-                <p className="text-sm text-stone-500 mt-1 font-serif">3×3 heatmaps for pitchers and batters — xwOBA, splits, tap-to-explore.</p>
-              </div>
-              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
-                Pro →
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* 10. STREAMER PICK (Open) */}
-        {topStreamer && (
-          <div className="mb-12 mt-6">
-            <StreamerPick result={topStreamer} isPro={isPro}/>
-          </div>
-        )}
-
-        {/* 11. FANTASY MATCHUP INTEL (Collapsed) */}
-        {prediction?.pro_takeaways && (
-          <details className="group border border-stone-200 bg-white mb-6">
-            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
-              <div className="font-serif text-xl font-medium">Fantasy Matchup Intel</div>
-              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
-                <ChevronDown />
-              </span>
-            </summary>
-            <div className="p-6 border-t border-stone-100">
-              <ProTakeaways
-                takeaways={prediction.pro_takeaways}
-                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-                isPro={isPro}
-              />
-            </div>
-          </details>
-        )}
 
         {/* 12. PROJECTED LINEUPS (Collapsed) */}
         {(awayLineup || homeLineup) && (
@@ -1010,6 +724,322 @@ const subscriber = await getCurrentSubscriber()
             </div>
           </details>
         )}
+
+
+      {/* 8. PITCH ARSENAL (Pro only) */}
+        {(awayPitchMix.length > 0 || homePitchMix.length > 0 || awayRecentStarts.length > 0 || homeRecentStarts.length > 0) && (
+          isPro ? (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-8">
+                
+                {/* Away Pitcher Extended */}
+                {game.teams.away.probablePitcher && (
+                  <div>
+                    {awayPitchMix.length > 0 && (
+                      <div className="mb-6">
+                        <PitchArsenalChart 
+                          arsenal={awayPitchMix as any}
+                          pitcherName={game.teams.away.probablePitcher.fullName}
+                        />
+                      </div>
+                    )}
+                    {awayPitchMix.length > 0 && (
+                      <div className="mb-6 pb-6 border-b border-stone-200">
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                          Pitch Arsenal · {new Date().getFullYear()}
+                        </div>
+                        <div className="space-y-3">
+                          {awayPitchMix.slice(0, 5).map((p, i) => (
+                            <div key={i}>
+                              <div className="flex items-center gap-3 text-sm mb-1">
+                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                                <div className="flex-1 h-5 bg-stone-100 relative">
+                                  <div
+                                    className="h-full"
+                                    style={{
+                                      width: `${p.percentage}%`,
+                                      backgroundColor: pitchColor(p.pitch_code)
+                                    }}
+                                  />
+                                </div>
+                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                                {p.avg_velocity > 0 && (
+                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                                )}
+                              </div>
+                              {(p.whiff_percent !== null || p.ba_against !== null) && (
+                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                  {p.whiff_percent !== null && (
+                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                      p.whiff_percent >= 30 ? 'text-green-700' :
+                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                  )}
+                                  {p.ba_against !== null && (
+                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                      p.ba_against <= 0.220 ? 'text-green-700' :
+                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                  )}
+                                  {p.k_percent !== null && p.k_percent >= 25 && (
+                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {awayRecentStarts.length > 0 && (
+                      <div>
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
+                          Last {awayRecentStarts.length} Starts
+                        </div>
+                        <table className="w-full text-sm font-mono">
+                          <thead>
+                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
+                              <th className="text-left pb-2 font-normal">Date</th>
+                              <th className="text-left pb-2 font-normal">Opp</th>
+                              <th className="text-right pb-2 font-normal">IP</th>
+                              <th className="text-right pb-2 font-normal">ER</th>
+                              <th className="text-right pb-2 font-normal">K</th>
+                              <th className="text-right pb-2 font-normal">Res</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {awayRecentStarts.map((g, i) => (
+                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
+                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
+                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
+                                <td className="py-2 text-right">{g.ip}</td>
+                                <td className="py-2 text-right">{g.er}</td>
+                                <td className="py-2 text-right">{g.so}</td>
+                                <td className={`py-2 text-right font-semibold ${
+                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
+                                }`}>{g.result}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Home Pitcher Extended */}
+                {game.teams.home.probablePitcher && (
+                  <div>
+                    {homePitchMix.length > 0 && (
+                      <div className="mb-6">
+                        <PitchArsenalChart 
+                          arsenal={homePitchMix as any}
+                          pitcherName={game.teams.home.probablePitcher.fullName}
+                        />
+                      </div>
+                    )}
+                    {homePitchMix.length > 0 && (
+                      <div className="mb-6 pb-6 border-b border-stone-200">
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-4 font-mono">
+                          Pitch Arsenal · {new Date().getFullYear()}
+                        </div>
+                        <div className="space-y-3">
+                          {homePitchMix.slice(0, 5).map((p, i) => (
+                            <div key={i}>
+                              <div className="flex items-center gap-3 text-sm mb-1">
+                                <div className="w-28 text-stone-800 font-medium truncate">{p.pitch_name}</div>
+                                <div className="flex-1 h-5 bg-stone-100 relative">
+                                  <div
+                                    className="h-full"
+                                    style={{
+                                      width: `${p.percentage}%`,
+                                      backgroundColor: pitchColor(p.pitch_code)
+                                    }}
+                                  />
+                                </div>
+                                <div className="w-12 text-right font-mono text-xs text-stone-600">{p.percentage.toFixed(1)}%</div>
+                                {p.avg_velocity > 0 && (
+                                  <div className="w-16 text-right font-mono text-xs text-stone-400">{p.avg_velocity} mph</div>
+                                )}
+                              </div>
+                              {(p.whiff_percent !== null || p.ba_against !== null) && (
+                                <div className="ml-28 pl-3 flex gap-4 text-xs font-mono text-stone-500">
+                                  {p.whiff_percent !== null && (
+                                    <span><span className="text-stone-400">Whiff</span> <strong className={`${
+                                      p.whiff_percent >= 30 ? 'text-green-700' :
+                                      p.whiff_percent <= 15 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>{p.whiff_percent.toFixed(1)}%</strong></span>
+                                  )}
+                                  {p.ba_against !== null && (
+                                    <span><span className="text-stone-400">BAA</span> <strong className={`${
+                                      p.ba_against <= 0.220 ? 'text-green-700' :
+                                      p.ba_against >= 0.290 ? 'text-red-700' : 'text-stone-700'
+                                    }`}>.{Math.round(p.ba_against * 1000).toString().padStart(3, '0')}</strong></span>
+                                  )}
+                                  {p.k_percent !== null && p.k_percent >= 25 && (
+                                    <span className="text-green-700"><span className="text-stone-400">K</span> <strong>{p.k_percent.toFixed(0)}%</strong></span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {homeRecentStarts.length > 0 && (
+                      <div>
+                        <div className="text-xs uppercase tracking-widest text-stone-500 mb-3 font-mono">
+                          Last {homeRecentStarts.length} Starts
+                        </div>
+                        <table className="w-full text-sm font-mono">
+                          <thead>
+                            <tr className="text-stone-400 text-xs uppercase tracking-wider">
+                              <th className="text-left pb-2 font-normal">Date</th>
+                              <th className="text-left pb-2 font-normal">Opp</th>
+                              <th className="text-right pb-2 font-normal">IP</th>
+                              <th className="text-right pb-2 font-normal">ER</th>
+                              <th className="text-right pb-2 font-normal">K</th>
+                              <th className="text-right pb-2 font-normal">Res</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {homeRecentStarts.map((g, i) => (
+                              <tr key={i} className="border-t border-stone-200 hover:bg-stone-50 transition-colors">
+                                <td className="py-2 text-stone-600">{new Date(g.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</td>
+                                <td className="py-2 text-stone-700">{shortName(g.opponent)}</td>
+                                <td className="py-2 text-right">{g.ip}</td>
+                                <td className="py-2 text-right">{g.er}</td>
+                                <td className="py-2 text-right">{g.so}</td>
+                                <td className={`py-2 text-right font-semibold ${
+                                  g.result === 'W' ? 'text-green-700' : g.result === 'L' ? 'text-red-700' : 'text-stone-500'
+                                }`}>{g.result}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+          ) : (
+          <div className="border border-stone-200 bg-white mb-6 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-serif text-xl font-medium">Pitch Arsenal</div>
+                <p className="text-sm text-stone-500 mt-1 font-serif">Arsenal effectiveness charts, velocity data, whiff rates, and recent starts.</p>
+              </div>
+              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                Pro →
+              </a>
+            </div>
+          </div>
+          )
+        )}
+
+    {/* 9. HOT ZONES (Pro only) */}
+        {isPro ? (
+          <details className="group border border-stone-200 bg-white mb-6">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+              <div className="font-serif text-xl font-medium">Hot Zones</div>
+              <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                <ChevronDown />
+              </span>
+            </summary>
+            <div className="p-6 border-t border-stone-100">
+              <div className="grid md:grid-cols-2 gap-4">
+                {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
+                  <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
+                )}
+                {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
+                  <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
+                )}
+                {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
+                  <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
+                )}
+                {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
+                  <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
+                )}
+              </div>
+            </div>
+          </details>
+        ) : (
+          <div className="border border-stone-200 bg-white mb-6 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-serif text-xl font-medium">Hot Zones</div>
+                <p className="text-sm text-stone-500 mt-1 font-serif">3×3 heatmaps for pitchers and batters — xwOBA, splits, tap-to-explore.</p>
+              </div>
+              <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                Pro →
+              </a>
+            </div>
+          </div>
+        )}
+
+      {/* 10. STREAMER PICK (Pro only) */}
+        {topStreamer && (
+          isPro ? (
+            <div className="mb-12 mt-6">
+              <StreamerPick result={topStreamer} isPro={isPro}/>
+            </div>
+          ) : (
+            <div className="border border-stone-200 bg-white mb-6 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-serif text-xl font-medium">The Streamer Pick</div>
+                  <p className="text-sm text-stone-500 mt-1 font-serif">Tonight's best streaming pitcher with score breakdown, top pitch, and matchup analysis.</p>
+                </div>
+                <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                  Pro →
+                </a>
+              </div>
+            </div>
+          )
+        )}
+{/* 11. FANTASY MATCHUP INTEL (Pro only) */}
+        {prediction?.pro_takeaways && (
+          isPro ? (
+            <details className="group border border-stone-200 bg-white mb-6">
+              <summary className="flex items-center justify-between p-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden bg-stone-50 hover:bg-stone-100 transition-colors">
+                <div className="font-serif text-xl font-medium">Fantasy Matchup Intel</div>
+                <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">
+                  <ChevronDown />
+                </span>
+              </summary>
+              <div className="p-6 border-t border-stone-100">
+                <ProTakeaways
+                  takeaways={prediction.pro_takeaways}
+                  homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+                  awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+                  isPro={isPro}
+                />
+              </div>
+            </details>
+          ) : (
+            <div className="border border-stone-200 bg-white mb-6 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-serif text-xl font-medium">Fantasy Matchup Intel</div>
+                  <p className="text-sm text-stone-500 mt-1 font-serif">DFS edges, lineup stacks, and pitcher vulnerability breakdowns for tonight's game.</p>
+                </div>
+                <a href="/pricing" className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-[#FDE047] px-4 py-2 hover:bg-[#FF5722] hover:text-white transition">
+                  Pro →
+                </a>
+              </div>
+            </div>
+          )
+        )}
+
 
         {/* 15. CTA + FOOTER (Open) */}
         <div className="bg-stone-900 text-stone-100 p-8 my-12">
