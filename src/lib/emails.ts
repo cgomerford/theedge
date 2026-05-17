@@ -68,7 +68,7 @@ export function welcomeEmail(email: string, preferencesToken: string) {
                 <strong>The brief lands three hours before first pitch</strong> on game days. Five-minute read. Statcast, advanced metrics, the matchups that actually matter — no hot takes, no padding.
               </p>
               <p style="font-family:Georgia,serif;font-size:16px;line-height:1.6;color:#333;margin:0 0 16px 0;">
-                MLB now. NBA, NFL, NHL, and EPL roll out over the coming weeks.
+                MLB now. NFL launching August, NBA and NHL following in October.
               </p>
               <p style="font-family:Georgia,serif;font-size:16px;line-height:1.6;color:#333;margin:0;">
                 The Edge is information, not advice. We tell you what the data says — you decide what it means.
@@ -90,16 +90,25 @@ export function welcomeEmail(email: string, preferencesToken: string) {
             </td>
           </tr>
 
+   <tr>
+            <td style="padding:24px 40px;background:#f4f1ea;border-top:1px solid #ddd;">
+              <p style="font-family:Georgia,serif;font-size:13px;line-height:1.6;color:#555;margin:0 0 8px 0;">
+                <strong>Got feedback?</strong> Found something broken or have a thought?
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSc2ARao0o34I6aQl-Bl0d-FtBj5y-JvC03OcChgxuX9__2LuA/viewform" style="color:#ff5722;text-decoration:underline;">Tell us here</a> — goes straight to George.
+              </p>
+            </td>
+          </tr>
+
           <tr>
-            <td style="padding:32px 40px;background:#0a0a0a;color:#666;">
-              <p style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;color:#999;margin:0 0 12px 0;">
+            <td style="padding:20px 40px;background:#0a0a0a;">
+              <p style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:1px;color:#999;margin:0 0 8px 0;">
                 THE EDGE · EDGEREPORTDAILY.COM
               </p>
-              <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;line-height:1.6;color:#888;margin:0 0 12px 0;">
-                You&apos;re receiving this because you signed up at edgereportdaily.com.
-              </p>
               <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;line-height:1.6;color:#666;margin:0;">
-                The Edge provides statistical information and analysis only. We do not provide gambling advice, picks, or recommendations. <a href="https://edgereportdaily.com/privacy" style="color:#888;">Privacy</a> · <a href="https://edgereportdaily.com/terms" style="color:#888;">Terms</a> · <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe</a>
+                Information only · Not gambling advice ·
+                <a href="https://edgereportdaily.com/privacy" style="color:#888;">Privacy</a> ·
+                <a href="https://edgereportdaily.com/terms" style="color:#888;">Terms</a> ·
+                <a href="${unsubscribeUrl}" style="color:#888;">Unsubscribe</a>
               </p>
             </td>
           </tr>
@@ -111,7 +120,7 @@ export function welcomeEmail(email: string, preferencesToken: string) {
 </body>
 </html>
     `.trim(),
-    text: `Welcome to The Edge.
+text: `Welcome to The Edge.
 
 One quick thing before tomorrow morning's brief.
 
@@ -121,18 +130,16 @@ ${preferencesUrl}
 
 The brief lands three hours before first pitch on game days. Five-minute read. Statcast, advanced metrics, the matchups that actually matter.
 
-MLB now. NBA, NFL, NHL, and EPL roll out over the coming weeks.
+MLB now. NFL, NBA and NHL coming.
 
 The Edge is information, not advice. We tell you what the data says — you decide what it means.
 
-A couple of things that help:
-- Add hello@edgereportdaily.com to your contacts
-- Reply with your favorite team
-
-— The Edge
+---
+Got feedback? Tell us here: https://docs.google.com/forms/d/e/1FAIpQLSc2ARao0o34I6aQl-Bl0d-FtBj5y-JvC03OcChgxuX9__2LuA/viewform
 
 Unsubscribe: ${unsubscribeUrl}
-Privacy: https://edgereportdaily.com/privacy · Terms: https://edgereportdaily.com/terms`,
+Privacy: https://edgereportdaily.com/privacy
+Terms: https://edgereportdaily.com/terms`,
   }
 }
 
