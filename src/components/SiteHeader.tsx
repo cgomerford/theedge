@@ -15,7 +15,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
   {
     label: 'MLB',
     links: [
-      { href: '/',             label: '← Tonight',     description: "Tonight's full slate" },
+      { href: '/tonight',             label: '← Tonight',     description: "Tonight's full slate" },
       { href: '/fantasy',      label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers', badge: 'NEW' },
       { href: '/track-record', label: 'Track Record',  description: 'Our accuracy log' },
       { href: '/how-it-works', label: 'How it works',  description: 'What The Edge does' },
@@ -24,7 +24,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
   {
     label: 'Sports',
     links: [
-      { href: '/',            label: 'MLB', description: 'Live now',    badge: 'LIVE' },
+      { href: '/tonight',            label: 'MLB', description: 'Live now',    badge: 'LIVE' },
       { href: '/preview/nfl', label: 'NFL', description: 'Coming soon', badge: 'SOON' },
       { href: '/preview/nba', label: 'NBA', description: 'Coming soon', badge: 'SOON' },
       { href: '/preview/nhl', label: 'NHL', description: 'Coming soon', badge: 'SOON' },

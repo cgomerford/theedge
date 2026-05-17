@@ -24,7 +24,7 @@ const FAQS = [
       },
       {
         q: 'Is The Edge free?',
-        a: 'Yes. The core daily brief — Edge Score, The Story, starting pitcher breakdown, and two key components — is free, always. Pro subscribers unlock all 8 components, deeper analytics, the Bullpen Fatigue Tracker, and eventually fantasy league sync. Pro is £6/month or £60/year.',
+        a: 'Yes. The core daily brief — Edge Score, The Story, starting pitcher breakdown, and two key components — is free, always. Pro subscribers unlock all 8 components, deeper analytics, the Bullpen Fatigue Tracker, and eventually fantasy league sync. Pro is £4/month or £40/year for our first 100 founding members, then £6/month or £60/year.',
       },
     ],
   },

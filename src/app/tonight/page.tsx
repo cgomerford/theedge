@@ -224,6 +224,7 @@ export default async function TonightPage() {
             <Link href="/track-record" className="hover:text-stone-600 transition">Track Record</Link>
             <Link href="/privacy"     className="hover:text-stone-600 transition">Privacy</Link>
             <Link href="/terms"       className="hover:text-stone-600 transition">Terms</Link>
+            <Link href="/pricing" className="hover:text-stone-600 transition">Pricing</Link>
           </div>
           <div className="text-stone-300 uppercase tracking-wider">
             Information only · Not gambling advice

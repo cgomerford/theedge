@@ -144,7 +144,7 @@ const subscriber = await getCurrentSubscriber()
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-2">
-                  ⊕ Pro Tier · Launch June 1
+                  ⊕ Pro Tier · £4/mo · Founding 100
                 </div>
                 <h3 className="font-serif font-semibold text-2xl text-stone-900 leading-tight mb-2">
                   Get the picks in your inbox every morning.

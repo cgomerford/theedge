@@ -241,14 +241,14 @@ export default async function PricingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/#signup"
-              className="inline-block bg-stone-900 text-stone-100 px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-stone-700 transition"
+              className="inline-block bg-stone-900 text-stone-100 p-[1px] px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-stone-700 transition"
             >
               Start with free →
             </Link>
             {!isPro && (
               <Link
                 href="/#signup"
-                className="inline-block bg-[#FDE047] text-stone-900 px-8 py-3 text-sm font-mono uppercase tracking-widest font-bold hover:bg-yellow-200 transition"
+                className="inline-block bg-[#FDE047] text-stone-900 p-[1px] px-8 py-3 text-sm font-mono uppercase tracking-widest font-bold hover:bg-yellow-200 transition"
               >
                 Get Pro · £4/mo →
               </Link>
@@ -268,6 +268,7 @@ export default async function PricingPage() {
             <Link href="/faq"          className="hover:text-stone-600 transition">FAQ</Link>
             <Link href="/privacy"      className="hover:text-stone-600 transition">Privacy</Link>
             <Link href="/terms"        className="hover:text-stone-600 transition">Terms</Link>
+            <Link href="/pricing" className="hover:text-stone-600 transition">Pricing</Link>
           </div>
           <div className="text-stone-300 uppercase tracking-wider">
             Information only · Not gambling advice

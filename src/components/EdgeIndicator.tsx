@@ -493,8 +493,8 @@ export default function EdgeIndicator(props: EdgeIndicatorProps) {
           <div className="mt-8 pt-6 border-t border-[#1A1A1A]/10">
             <div className="bg-[#1A1A1A] text-[#FAF8F3] rounded p-5 mb-4 shadow-xl border border-[#1A1A1A]">
               <div className="text-[#FDE047] text-xs font-mono uppercase tracking-wider mb-2">
-                ⊕ Pro Tier · £6/mo · £60/yr
-              </div>
+        ⊕ Pro Tier · £4/mo · £40/yr · Founding 100
+      </div>
               <h4 className="text-xl font-bold mb-2" style={{ fontFamily: 'Fraunces, serif' }}>
                 Unlock all 8 components.
               </h4>
