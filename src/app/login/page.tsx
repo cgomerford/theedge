@@ -1,4 +1,5 @@
 import SiteHeader from '@/components/SiteHeader'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 type Props = {
   searchParams: Promise<{ sent?: string; error?: string }>
@@ -52,6 +53,9 @@ export default async function LoginPage({ searchParams }: Props) {
               placeholder="you@example.com"
               className="w-full px-4 py-4 bg-white border border-stone-300 text-stone-900 outline-none focus:border-stone-900 font-serif text-lg"
             />
+
+            <TurnstileWidget theme="light" />
+
             <button
               type="submit"
               className="w-full px-6 py-4 bg-stone-900 text-stone-100 font-semibold hover:bg-stone-800 transition"
@@ -70,6 +74,9 @@ export default async function LoginPage({ searchParams }: Props) {
             )}
             {error === 'missing' && (
               <p className="text-red-700 text-sm font-mono">Invalid sign-in link.</p>
+            )}
+            {error === 'verify-failed' && (
+              <p className="text-red-700 text-sm font-mono">Browser check failed. Reload the page and try again.</p>
             )}
           </form>
         )}

@@ -10,14 +10,41 @@ const Schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  // Rate limit reuses signupLimit (5/min/IP) — same protection profile
   const ip = getClientIp(req)
+
+  // Parse form once so we can grab the Turnstile token
+  const formData = await req.formData()
+  const turnstileToken = formData.get('cf-turnstile-response') as string
+
+  // === Turnstile gate ===
+  if (!turnstileToken) {
+    return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+  }
+
+  try {
+    const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.TURNSTILE_SECRET_KEY ?? '',
+        response: turnstileToken,
+        remoteip: ip,
+      }),
+    })
+    const verifyData = await verifyRes.json()
+    if (!verifyData.success) {
+      return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+    }
+  } catch {
+    return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+  }
+
+  // Rate limit reuses signupLimit (5/min/IP) — same protection profile
   const { success } = await signupLimit.limit(ip)
   if (!success) {
     return NextResponse.redirect(new URL('/login?error=rate-limit', req.url), { status: 303 })
   }
 
-  const formData = await req.formData()
   const parsed = Schema.safeParse({ email: formData.get('email') })
 
   if (!parsed.success) {

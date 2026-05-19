@@ -6,6 +6,7 @@ import { getOverallStats, getRecentPredictions } from '@/lib/track-record'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 export const revalidate = 1800
 
@@ -144,18 +145,21 @@ export default async function HomePage({ searchParams }: Props) {
   Pre-game analysis for the analytically-minded fan. Eight components, one Edge Score, a smart-friend read — delivered free to your inbox before first pitch. MLB now. NFL, NBA and NHL coming.
 </p>
 
-        <form id="signup" action="/api/subscribe" method="POST" className="flex gap-2 max-w-md flex-col sm:flex-row mb-3">
+      <form id="signup" action="/api/subscribe" method="POST" className="max-w-md mb-3">
           <input type="hidden" name="source" value="home_hero" />
-          <input
-            name="email"
-            type="email"
-            required
-            placeholder="your@email.com"
-            className="flex-1 px-4 py-4 bg-stone-900 border border-stone-700 text-stone-100 placeholder:text-stone-600 outline-none focus:border-yellow-300 transition"
-          />
-          <button type="submit" className="px-6 py-4 bg-yellow-300 text-stone-900 font-bold hover:bg-yellow-200 transition font-mono text-sm uppercase tracking-widest whitespace-nowrap">
-            Get free access →
-          </button>
+          <div className="flex gap-2 flex-col sm:flex-row mb-3">
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="your@email.com"
+              className="flex-1 px-4 py-4 bg-stone-900 border border-stone-700 text-stone-100 placeholder:text-stone-600 outline-none focus:border-yellow-300 transition"
+            />
+            <button type="submit" className="px-6 py-4 bg-yellow-300 text-stone-900 font-bold hover:bg-yellow-200 transition font-mono text-sm uppercase tracking-widest whitespace-nowrap">
+              Get free access →
+            </button>
+          </div>
+          <TurnstileWidget />
         </form>
         <div className="text-xs text-stone-500 font-mono mb-6">
           Free forever · No spam · Unsubscribe anytime
@@ -357,18 +361,23 @@ export default async function HomePage({ searchParams }: Props) {
           <p className="text-stone-500 font-mono text-xs uppercase tracking-widest mb-8">
             Free forever · No card required · Unsubscribe anytime
           </p>
-          <form action="/api/subscribe" method="POST" className="flex gap-2 max-w-md mx-auto flex-col sm:flex-row">
+       <form action="/api/subscribe" method="POST" className="max-w-md mx-auto">
             <input type="hidden" name="source" value="home_footer" />
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="your@email.com"
-              className="flex-1 px-4 py-4 bg-stone-950 border border-stone-700 text-stone-100 placeholder:text-stone-600 outline-none focus:border-yellow-300 transition"
-            />
-            <button type="submit" className="px-6 py-4 bg-yellow-300 text-stone-900 font-bold hover:bg-yellow-200 transition font-mono text-sm uppercase tracking-widest whitespace-nowrap">
-              Get free access →
-            </button>
+            <div className="flex gap-2 flex-col sm:flex-row mb-3">
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="your@email.com"
+                className="flex-1 px-4 py-4 bg-stone-950 border border-stone-700 text-stone-100 placeholder:text-stone-600 outline-none focus:border-yellow-300 transition"
+              />
+              <button type="submit" className="px-6 py-4 bg-yellow-300 text-stone-900 font-bold hover:bg-yellow-200 transition font-mono text-sm uppercase tracking-widest whitespace-nowrap">
+                Get free access →
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <TurnstileWidget />
+            </div>
           </form>
         </div>
       </section>
