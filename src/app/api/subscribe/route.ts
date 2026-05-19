@@ -11,6 +11,17 @@ const SignupSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  // === EMERGENCY KILL SWITCH ===
+  // Set SIGNUPS_ENABLED=false in Vercel to disable signups.
+  // Added May 19, 2026 during bot incident.
+  // Remove this block (or set SIGNUPS_ENABLED=true) once Turnstile + disposable-email filter are live.
+  if (process.env.SIGNUPS_ENABLED === 'false') {
+    return NextResponse.redirect(
+      new URL('/?signups=paused', req.url),
+      { status: 303 }
+    )
+  }
+
   // Rate limit
   const ip = getClientIp(req)
   const { success } = await signupLimit.limit(ip)
