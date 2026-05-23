@@ -88,24 +88,24 @@ function CalendarCell({ game, day, iso, isToday, teamPrimaryColor }: CellProps) 
   let letter = '·'
   let letterColor = '#a8a29e'
 
-  if (isWin) {
-    // Team color gradient, intensity-modulated
-    const startAlpha = 0.08 + intensity * 0.22  // 0.08-0.30
+if (isWin) {
+    // Green gradient, intensity-modulated — universal "good"
+    const startAlpha = 0.10 + intensity * 0.20  // 0.10-0.30
     const endAlpha = 0.20 + intensity * 0.40    // 0.20-0.60
     bgStyle = {
-      background: `linear-gradient(135deg, ${hexToRgba(teamPrimaryColor, startAlpha)} 0%, ${hexToRgba(teamPrimaryColor, endAlpha)} 100%)`,
+      background: `linear-gradient(135deg, rgba(21, 128, 61, ${startAlpha}) 0%, rgba(21, 128, 61, ${endAlpha}) 100%)`,
     }
     letter = 'W'
-    letterColor = teamPrimaryColor
+    letterColor = '#166534' // green-800
   } else if (isLoss) {
-    // Charcoal gradient
-    const startAlpha = 0.06 + intensity * 0.10  // 0.06-0.16
-    const endAlpha = 0.14 + intensity * 0.24    // 0.14-0.38
+    // Red gradient, intensity-modulated — universal "bad"
+    const startAlpha = 0.08 + intensity * 0.16  // 0.08-0.24
+    const endAlpha = 0.18 + intensity * 0.30    // 0.18-0.48
     bgStyle = {
-      background: `linear-gradient(135deg, rgba(28, 25, 23, ${startAlpha}) 0%, rgba(28, 25, 23, ${endAlpha}) 100%)`,
+      background: `linear-gradient(135deg, rgba(185, 28, 28, ${startAlpha}) 0%, rgba(185, 28, 28, ${endAlpha}) 100%)`,
     }
     letter = 'L'
-    letterColor = '#44403c'
+    letterColor = '#991b1b' // red-800
   } else if (isPending) {
     // Soft warm cream — upcoming
     bgStyle = {
@@ -121,15 +121,15 @@ function CalendarCell({ game, day, iso, isToday, teamPrimaryColor }: CellProps) 
     : {}
 
   // Edge score chip — small, tasteful
-  const edgeChip = game.edge_score !== null && (
+const edgeChip = game.edge_score !== null && (
     <span
-      className="text-[9px] font-mono font-bold px-1.5 py-0.5 leading-none whitespace-nowrap"
+      className="text-[9px] font-mono font-bold px-1.5 py-0.5 leading-none whitespace-nowrap bg-white/80 backdrop-blur-sm border"
       style={{
-        background: game.was_correct === true
-          ? 'rgba(22, 101, 52, 0.12)'
+        borderColor: game.was_correct === true
+          ? 'rgba(22, 101, 52, 0.4)'
           : game.was_correct === false
-            ? 'rgba(153, 27, 27, 0.12)'
-            : 'rgba(120, 113, 108, 0.12)',
+            ? 'rgba(153, 27, 27, 0.4)'
+            : 'rgba(120, 113, 108, 0.3)',
         color: game.was_correct === true
           ? '#15803d'
           : game.was_correct === false
