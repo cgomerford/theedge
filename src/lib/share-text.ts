@@ -6,9 +6,10 @@ function teamSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
+import { shareDisplayName } from '@/lib/teams'
+
 function shortName(name: string): string {
-  const parts = name.split(' ')
-  return parts[parts.length - 1]
+  return shareDisplayName(name)
 }
 
 function teamHashtag(name: string): string {

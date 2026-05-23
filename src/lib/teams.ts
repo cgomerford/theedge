@@ -114,3 +114,36 @@ export function getTeamTheme(slug: string): { primary: string; secondary: string
     text: team.text_on_primary,
   }
 }
+
+// Names that are ambiguous when shortened (e.g. "Sox" = either Red Sox or White Sox)
+// For these, prefer the 3-letter abbreviation in social-share contexts.
+const AMBIGUOUS_SHORT_NAMES = new Set([
+  'Sox',   // Red Sox + White Sox both → "Sox"
+  'Jays',  // Blue Jays → "Jays" (sometimes confused with non-MLB)
+])
+
+/**
+ * Best display name for social-share contexts (cards, tweets).
+ * - "Boston Red Sox"  → "BOS" (would have been ambiguous "Sox")
+ * - "Chicago White Sox" → "CWS"
+ * - "Philadelphia Phillies" → "Phillies" (no ambiguity, fuller word)
+ */
+export function shareDisplayName(fullName: string): string {
+  const team = findTeamByName(fullName)
+  if (!team) {
+    // Fallback to last word
+    const parts = fullName.split(' ')
+    return parts[parts.length - 1]
+  }
+
+  // Last word of `short` — handles "Red Sox" → "Sox", "Blue Jays" → "Jays"
+  const lastWord = team.short.split(' ').pop() ?? team.short
+
+  if (AMBIGUOUS_SHORT_NAMES.has(lastWord)) {
+    return team.abbrev
+  }
+
+  // For multi-word shorts like "Red Sox", "Blue Jays", "D-Backs" — keep them whole
+  // (they're already team-specific even if ending word is ambiguous)
+  return team.short
+}

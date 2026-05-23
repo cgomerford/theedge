@@ -11,10 +11,10 @@ type RouteParams = { params: Promise<{ gamePk: string }> }
 // Helpers
 // ============================================================
 
-function shortName(name: string): string {
-  const parts = name.split(' ')
-  return parts[parts.length - 1]
-}
+// Import at top of file (along with existing imports)
+import { shareDisplayName } from '@/lib/teams'
+
+// (remove the local shortName function — we'll use shareDisplayName everywhere)
 
 function tierLabel(tier: string): string {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
@@ -46,18 +46,33 @@ const { gamePk } = await params
   }
 
   // Derive display values
-  const awayShort = shortName(pred.away_team)
-  const homeShort = shortName(pred.home_team)
+const awayShort = shareDisplayName(pred.away_team)
+const homeShort = shareDisplayName(pred.home_team)
   const predictedTeamName = pred.predicted_winner === 'home' ? pred.home_team : pred.away_team
-  const predictedShort = shortName(predictedTeamName)
+  const predictedShort = shareDisplayName(predictedTeamName)
   const edgeStr = (pred.edge_score > 0 ? '+' : '') + pred.edge_score
   
   const isGraded = pred.was_correct !== null
   const wasRight = pred.was_correct === true
 
-  // Team colors for the predicted-team accent
+// Team colors for the predicted-team accent
+  // If primary is too dark for the black panel, use secondary instead
   const predictedTeam = findTeamByName(predictedTeamName)
-  const accentColor = predictedTeam?.primary_color ?? '#FF5722'
+
+  function hexLuminance(hex: string): number {
+    const clean = hex.replace('#', '')
+    const r = parseInt(clean.slice(0, 2), 16) / 255
+    const g = parseInt(clean.slice(2, 4), 16) / 255
+    const b = parseInt(clean.slice(4, 6), 16) / 255
+    // Standard relative luminance (WCAG)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+
+  const primaryColor = predictedTeam?.primary_color ?? '#FF5722'
+  const secondaryColor = predictedTeam?.secondary_color ?? '#FAF8F3'
+  // If primary luminance < 0.2 (very dark), it'll be invisible on the black panel.
+  // Swap to secondary, which is almost always lighter (gold, white, etc.)
+  const accentColor = hexLuminance(primaryColor) < 0.2 ? secondaryColor : primaryColor
 
   // Format the date — "May 22, 2026"
   const dateObj = new Date(pred.game_date + 'T00:00:00Z')
@@ -83,7 +98,7 @@ const { gamePk } = await params
   // ============================================================
   return new ImageResponse(
     (
-      <div
+   <div
         style={{
           width: '1200px',
           height: '630px',
@@ -91,9 +106,8 @@ const { gamePk } = await params
           color: '#1a1a1a',
           display: 'flex',
           flexDirection: 'column',
-          padding: '60px 70px',
+          padding: '50px 60px',
           fontFamily: 'Georgia, serif',
-          position: 'relative',
         }}
       >
         {/* ═══ HEADER ROW ═══ */}
@@ -222,23 +236,24 @@ const { gamePk } = await params
           </div>
         </div>
 
-        {/* ═══ RESULT ROW ═══ */}
+       {/* ═══ RESULT ROW ═══ */}
         {isGraded ? (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '24px 32px',
+              padding: '20px 28px',
               border: `2px solid ${resultColor}`,
               background: wasRight ? '#f0fdf4' : '#fef2f2',
+              gap: '20px',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
               <span
                 style={{
                   fontFamily: 'monospace',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   letterSpacing: '3px',
                   textTransform: 'uppercase',
                   color: resultColor,
@@ -247,16 +262,17 @@ const { gamePk } = await params
               >
                 Final · {wasRight ? 'Model called it' : 'Model missed'}
               </span>
-              <span style={{ fontSize: '40px', fontWeight: 700, color: '#1a1a1a' }}>
+              <span style={{ fontSize: '36px', fontWeight: 700, color: '#1a1a1a', lineHeight: 1.1 }}>
                 {scoreText}
               </span>
             </div>
             <span
               style={{
-                fontSize: '80px',
+                fontSize: '64px',
                 fontWeight: 900,
                 color: resultColor,
                 lineHeight: 1,
+                flexShrink: 0,
               }}
             >
               {wasRight ? '✓' : '✗'}
@@ -267,14 +283,14 @@ const { gamePk } = await params
             style={{
               display: 'flex',
               alignItems: 'center',
-              padding: '24px 32px',
+              padding: '20px 28px',
               border: '2px dashed #a8a29e',
             }}
           >
             <span
               style={{
                 fontFamily: 'monospace',
-                fontSize: '20px',
+                fontSize: '18px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
                 color: '#78716c',
@@ -285,21 +301,19 @@ const { gamePk } = await params
           </div>
         )}
 
-        {/* ═══ FOOTER ═══ */}
+        {/* ═══ FOOTER — now in flow, pushed to bottom via marginTop: auto ═══ */}
         <div
           style={{
-            position: 'absolute',
-            bottom: '30px',
-            left: '70px',
-            right: '70px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             fontFamily: 'monospace',
-            fontSize: '14px',
+            fontSize: '13px',
             letterSpacing: '2px',
             textTransform: 'uppercase',
             color: '#a8a29e',
+            marginTop: 'auto',
+            paddingTop: '24px',
           }}
         >
           <span>edgereportdaily.com</span>
