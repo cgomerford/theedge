@@ -268,14 +268,15 @@ if (!subscriber) {
 {/* ============ CALENDAR ============ */}
       {primaryTeam && primaryTeamId && (
         <section className="px-6 pt-12 max-w-5xl mx-auto">
-          <DugoutCalendar
-            games={calendarGames}
-            yearMonth={calendarMonth}
-            teamShort={primaryTeam.short.toUpperCase()}
-            teamPrimaryColor={theme.primary}
-            prevMonth={prevMonth}
-            nextMonth={nextMonth}
-          />
+         <DugoutCalendar
+     games={calendarGames}
+     yearMonth={calendarMonth}
+     teamShort={primaryTeam.short.toUpperCase()}
+     teamPrimaryColor={theme.primary}
+     teamSecondaryColor={theme.secondary}
+     prevMonth={prevMonth}
+     nextMonth={nextMonth}
+   />
         </section>
       )}
 

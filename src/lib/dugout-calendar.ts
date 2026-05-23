@@ -127,3 +127,111 @@ export async function getCalendarMonth(
 
   return results
 }
+
+// ============================================================
+// MONTH SUMMARY — for the dashboard strip above the calendar
+// ============================================================
+
+export type MonthSummary = {
+  wins: number
+  losses: number
+  current_streak: { type: 'W' | 'L' | null; count: number }
+  best_win: CalendarGame | null   // biggest run-diff win this month
+  worst_loss: CalendarGame | null // biggest run-diff loss this month
+  model_correct: number
+  model_total: number
+  model_accuracy_pct: number | null
+}
+
+export function summarizeMonth(games: CalendarGame[]): MonthSummary {
+  // Sort by date ascending for streak calc
+  const sortedByDate = [...games].sort((a, b) =>
+    a.game_date.localeCompare(b.game_date)
+  )
+
+  let wins = 0
+  let losses = 0
+  let modelCorrect = 0
+  let modelTotal = 0
+
+  let bestWin: CalendarGame | null = null
+  let worstLoss: CalendarGame | null = null
+
+  for (const g of sortedByDate) {
+    if (g.team_won === true) {
+      wins++
+      const diff = (g.team_score ?? 0) - (g.opponent_score ?? 0)
+      const bestDiff = bestWin ? (bestWin.team_score ?? 0) - (bestWin.opponent_score ?? 0) : -Infinity
+      if (diff > bestDiff) bestWin = g
+    } else if (g.team_won === false) {
+      losses++
+      const diff = (g.opponent_score ?? 0) - (g.team_score ?? 0)
+      const worstDiff = worstLoss
+        ? (worstLoss.opponent_score ?? 0) - (worstLoss.team_score ?? 0)
+        : -Infinity
+      if (diff > worstDiff) worstLoss = g
+    }
+
+    if (g.was_correct === true) {
+      modelCorrect++
+      modelTotal++
+    } else if (g.was_correct === false) {
+      modelTotal++
+    }
+  }
+
+  // Current streak — walk backward from most recent played game
+  const playedDescending = [...sortedByDate]
+    .filter(g => g.team_won !== null)
+    .reverse()
+
+  let streakType: 'W' | 'L' | null = null
+  let streakCount = 0
+  for (const g of playedDescending) {
+    if (g.team_won === null) continue
+    const thisResult: 'W' | 'L' = g.team_won ? 'W' : 'L'
+    if (streakType === null) {
+      streakType = thisResult
+      streakCount = 1
+    } else if (streakType === thisResult) {
+      streakCount++
+    } else {
+      break
+    }
+  }
+
+  return {
+    wins,
+    losses,
+    current_streak: { type: streakType, count: streakCount },
+    best_win: bestWin,
+    worst_loss: worstLoss,
+    model_correct: modelCorrect,
+    model_total: modelTotal,
+    model_accuracy_pct: modelTotal > 0
+      ? Math.round((modelCorrect / modelTotal) * 100)
+      : null,
+  }
+}
+
+// ============================================================
+// CELL INTENSITY — how dominant was the result?
+// Used to drive gradient strength in cell backgrounds.
+// Returns a number 0..1 (0 = barely, 1 = dominant blowout)
+// ============================================================
+
+export function cellIntensity(game: CalendarGame): number {
+  if (game.team_score === null || game.opponent_score === null) return 0
+  const diff = Math.abs(game.team_score - game.opponent_score)
+  // 1-run game = 0.2, 5-run = 0.7, 9+ run = 1.0
+  // Curve plateaus so 8-run and 10-run blowouts look similar
+  return Math.min(1, 0.15 + (diff / 10))
+}
+
+// Get team ID from cached game data (we need this for logo display)
+// Note: gamePk uniquely identifies the game; this is a quick lookup
+export function getTeamId(_game: CalendarGame): number | null {
+  // The calendar caller passes in the primary team's ID separately
+  // This is a placeholder for if we extend CalendarGame to include it later
+  return null
+}
