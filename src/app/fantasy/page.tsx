@@ -45,6 +45,7 @@ const subscriber = await getCurrentSubscriber()
           </p>
         </div>
       </div>
+      
 
       {/* Stale data warning */}
       {isStale && (

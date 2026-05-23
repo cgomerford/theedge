@@ -297,60 +297,60 @@ const subscriber = await getCurrentSubscriber()
           </div>
         </div>
 
-        {/* 2, 3, 7. THE STORY, EDGE SCORE, 8 COMPONENTS (EdgeIndicator handles this UI block) */}
-        {prediction && (
-          <div className="mb-12">
-            <EdgeIndicator
-              edge_score={prediction.edge_score}
-              predicted_winner={prediction.predicted_winner}
-              confidence_tier={prediction.confidence_tier}
-              components={prediction.components}
-              components_raw={prediction.components_raw}
-              home_team={game.teams.home.team.name}
-              away_team={game.teams.away.team.name}
-              home_team_abbr={game.teams.home.team.abbreviation}
-              away_team_abbr={game.teams.away.team.abbreviation}
-              updated_at={prediction.updated_at}
-              lineups_confirmed={prediction.lineups_confirmed}
-              is_pro={false}
-              llm_summary={prediction.summary}
-              llm_narrative={prediction.narrative}
-              drilldown={{
-                away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
-                  name: game.teams.away.probablePitcher.fullName,
-                  era: awaySeasonStats.era,
-                  whip: awaySeasonStats.whip,
-                  k_per_9: awaySeasonStats.k_per_9,
-                } : null,
-                home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
-                  name: game.teams.home.probablePitcher.fullName,
-                  era: homeSeasonStats.era,
-                  whip: homeSeasonStats.whip,
-                  k_per_9: homeSeasonStats.k_per_9,
-                } : null,
-                away_form: awayForm ? {
-                  last_10_wins: awayForm.last_10_wins,
-                  last_10_losses: awayForm.last_10_losses,
-                  bullpen_era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
-                  bullpen_ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
-                  closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
-                  setup1_available: prediction?.components_raw?.away_team?.setup1_available ?? null,
-                  setup2_available: prediction?.components_raw?.away_team?.setup2_available ?? null,
-                } : null,
-                home_form: homeForm ? {
-                  last_10_wins: homeForm.last_10_wins,
-                  last_10_losses: homeForm.last_10_losses,
-                  bullpen_era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
-                  bullpen_ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
-                  closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
-                  setup1_available: prediction?.components_raw?.home_team?.setup1_available ?? null,
-                  setup2_available: prediction?.components_raw?.home_team?.setup2_available ?? null,
-                } : null,
-              }}
-            />
-          </div>
-        )}
-
+       {/* 2, 3, 7. THE STORY, EDGE SCORE, 8 COMPONENTS (EdgeIndicator handles this UI block) */}
+{prediction && (
+  <div className="mb-12">
+    <EdgeIndicator
+      edge_score={prediction.edge_score}
+      predicted_winner={prediction.predicted_winner}
+      confidence_tier={prediction.confidence_tier}
+      components={prediction.components}
+      components_raw={prediction.components_raw}
+      home_team={game.teams.home.team.name}
+      away_team={game.teams.away.team.name}
+      home_team_abbr={game.teams.home.team.abbreviation}
+      away_team_abbr={game.teams.away.team.abbreviation}
+      updated_at={prediction.updated_at}
+      lineups_confirmed={prediction.lineups_confirmed}
+      // CHANGED: Pass the global or scoped 'isPro' variable here
+      is_pro={isPro} 
+      llm_summary={prediction.summary}
+      llm_narrative={prediction.narrative}
+      drilldown={{
+        away_pitcher: game.teams.away.probablePitcher && awaySeasonStats ? {
+          name: game.teams.away.probablePitcher.fullName,
+          era: awaySeasonStats.era,
+          whip: awaySeasonStats.whip,
+          k_per_9: awaySeasonStats.k_per_9,
+        } : null,
+        home_pitcher: game.teams.home.probablePitcher && homeSeasonStats ? {
+          name: game.teams.home.probablePitcher.fullName,
+          era: homeSeasonStats.era,
+          whip: homeSeasonStats.whip,
+          k_per_9: homeSeasonStats.k_per_9,
+        } : null,
+        away_form: awayForm ? {
+          last_10_wins: awayForm.last_10_wins,
+          last_10_losses: awayForm.last_10_losses,
+          bullpen_era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
+          bullpen_ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
+          closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
+          setup1_available: prediction?.components_raw?.away_team?.setup1_available ?? null,
+          setup2_available: prediction?.components_raw?.away_team?.setup2_available ?? null,
+        } : null,
+        home_form: homeForm ? {
+          last_10_wins: homeForm.last_10_wins,
+          last_10_losses: homeForm.last_10_losses,
+          bullpen_era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
+          bullpen_ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
+          closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
+          setup1_available: prediction?.components_raw?.home_team?.setup1_available ?? null,
+          setup2_available: prediction?.components_raw?.home_team?.setup2_available ?? null,
+        } : null,
+      }}
+    />
+  </div>
+)}
         {/* 4. STORYLINES (Open) */}
         {prediction?.home_stories && prediction?.away_stories && (
           <div className="mb-12">

@@ -35,6 +35,7 @@ export type ComponentStats = {
 }
 
 export type RecentPrediction = {
+  game_pk: number
   game_date: string
   away_team: string
   home_team: string
@@ -45,6 +46,7 @@ export type RecentPrediction = {
   was_correct: boolean | null
   home_score: number | null
   away_score: number | null
+  summary: string | null
 }
 
 const MIN_SAMPLE_SIZE = 100
@@ -153,6 +155,25 @@ export async function getComponentStats(): Promise<ComponentStats[]> {
       accuracy_percent: games.length > 0 ? (correct / games.length) * 100 : null,
     }
   }).filter(s => s.games >= 5) // hide stats with too-small samples
+}
+
+// ============================================================
+// PREDICTIONS BY DATE RANGE (admin tool)
+// ============================================================
+export async function getPredictionsInRange(
+  startDate: string,  // YYYY-MM-DD inclusive
+  endDate: string,    // YYYY-MM-DD inclusive
+): Promise<RecentPrediction[]> {
+  const { data, error } = await supa
+    .from('edge_predictions')
+    .select('game_pk, game_date, away_team, home_team, edge_score, confidence_tier, predicted_winner, actual_winner, was_correct, home_score, away_score, summary')
+    .gte('game_date', startDate)
+    .lte('game_date', endDate)
+    .order('game_date', { ascending: false })
+    .order('edge_score', { ascending: false })
+
+  if (error || !data) return []
+  return data as RecentPrediction[]
 }
 
 // ============================================================

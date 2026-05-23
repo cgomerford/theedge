@@ -16,7 +16,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
     label: 'MLB',
     links: [
       { href: '/tonight',             label: '← Tonight',     description: "Tonight's full slate" },
-      { href: '/fantasy',      label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers', badge: 'NEW' },
+      { href: '/fantasy',      label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers',badge: 'Pro' },
       { href: '/track-record', label: 'Track Record',  description: 'Our accuracy log' },
       { href: '/how-it-works', label: 'How it works',  description: 'What The Edge does' },
     ],
@@ -167,7 +167,12 @@ function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
                                   : '#78716C',
                       }}
                     >
-                      {link.badge}
+                    {link.badge && (
+  <span className="ml-1.5 text-[9px] font-mono uppercase tracking-wider text-orange-500 bg-orange-500/10 px-1.5 py-0.5">
+    {link.badge}
+  </span>
+)}
+
                     </span>
                   ) : (
                     <span

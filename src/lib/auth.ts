@@ -11,8 +11,8 @@ export type AuthSubscriber = {
   teams: string[]
   preferences_token: string
   is_pro: boolean
+  role: 'user' | 'admin'
 }
-
 // Create a one-time login token for a verified email
 export async function createLoginLink(email: string): Promise<string | null> {
   const supa = createAdminClient()
@@ -73,7 +73,7 @@ export async function consumeLoginLink(token: string): Promise<AuthSubscriber | 
   // Fetch the subscriber
   const { data: sub } = await supa
     .from('subscribers')
-    .select('id, email, teams, preferences_token, is_pro')
+    .select('id, email, teams, preferences_token, is_pro, role')
     .eq('email', link.email)
     .single()
 
@@ -84,6 +84,7 @@ return {
     teams: (sub.teams ?? []) as string[],
     preferences_token: sub.preferences_token ?? '',
     is_pro: sub.is_pro ?? false,
+    role: (sub.role ?? 'user') as 'user' | 'admin',
   }
 }
 
@@ -123,7 +124,7 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
 
   const { data: session } = await supa
     .from('sessions')
-    .select('*, subscribers(id, email, teams, preferences_token, is_pro)')
+    .select('*, subscribers(id, email, teams, preferences_token, is_pro, role)')
     .eq('token', token)
     .single()
 
@@ -150,8 +151,11 @@ return {
     teams: (sub.teams ?? []) as string[],
     preferences_token: sub.preferences_token ?? '',
     is_pro: sub.is_pro ?? false,
+    role: (sub.role ?? 'user') as 'user' | 'admin',
   }
 }
+
+// Create a session for a subscriber, set cookie
 
 // Destroy current session
 export async function logout(): Promise<void> {
