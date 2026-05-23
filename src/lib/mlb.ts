@@ -6,6 +6,7 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 export type MLBGame = {
   gamePk: number
   gameDate: string
+  officialDate?: string  // YYYY-MM-DD format, MLB's "official" date for the game
   doubleHeader?: string  // 'N' | 'Y' (traditional) | 'S' (split)
   gameNumber?: number
   status: { detailedState: string; abstractGameState: string }
@@ -108,7 +109,9 @@ function teamSlug(name: string): string {
 }
 // Build the URL slug for a game's preview page
 export function slugifyGame(game: MLBGame): string {
-  const date = game.gameDate.split('T')[0]
+  // Use officialDate (MLB's "this game belongs to date X") not gameDate (UTC timestamp)
+  // Fixes 404s for late-night games whose UTC time crosses midnight (e.g. White Sox 10pm ET = 3am UK = next-day UTC)
+  const date = game.officialDate ?? game.gameDate.split('T')[0]
   const away = teamSlug(game.teams.away.team.name)
   const home = teamSlug(game.teams.home.team.name)
   const base = `${away}-vs-${home}-${date}`
