@@ -7,10 +7,17 @@ import SiteHeader from '@/components/SiteHeader'
 import AnalyticsTrigger from '@/components/AnalyticsTrigger'
 import { createAdminClient } from '@/lib/supabase'
 import { getCurrentSubscriber } from '@/lib/auth'
+import DugoutCalendar from '@/components/DugoutCalendar'
+import { getCalendarMonth } from '@/lib/dugout-calendar'
 
 export const revalidate = 600
 
-export default async function DugoutPage() {
+type Props = {
+  searchParams: Promise<{ month?: string }>
+}
+
+export default async function DugoutPage({ searchParams }: Props) {
+  const sp = await searchParams
   // Real auth check
 const sub = await getCurrentSubscriber()
 
@@ -65,10 +72,42 @@ if (!subscriber) {
     : null
 
   const primaryGamePrediction = primaryTeamGame ? predictions.get(primaryTeamGame.gamePk) : null
-
-  // Get primary team form (last 5 record + streak)
+// Get primary team form (last 5 record + streak)
   const primaryTeamId = teamIdBySlug(primaryTeamSlug)
   const primaryTeamForm = primaryTeamId ? await getTeamForm(primaryTeamId) : null
+
+  // === CALENDAR DATA ===
+  // Default to current month; user can navigate via ?month=YYYY-MM
+  const currentMonth = today.slice(0, 7)  // 'YYYY-MM'
+  const selectedMonth = sp.month ?? currentMonth
+
+  // Validate format — anything weird falls back to current month
+  const isValidMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth)
+  const calendarMonth = isValidMonth ? selectedMonth : currentMonth
+
+  // Compute prev/next month, clamped to the season (April → October)
+  // Note: MLB season is usually Mar-Oct, but April covers regular season opener cleanly.
+  function shiftMonth(ym: string, delta: number): string {
+    const [y, m] = ym.split('-').map(n => parseInt(n, 10))
+    const date = new Date(Date.UTC(y, m - 1 + delta, 1))
+    const newY = date.getUTCFullYear()
+    const newM = String(date.getUTCMonth() + 1).padStart(2, '0')
+    return `${newY}-${newM}`
+  }
+
+  const SEASON_START = `${currentMonth.slice(0, 4)}-04`  // e.g. '2026-04'
+  const SEASON_END = currentMonth  // can't navigate past current month
+
+  const prevCandidate = shiftMonth(calendarMonth, -1)
+  const nextCandidate = shiftMonth(calendarMonth, 1)
+
+  const prevMonth = prevCandidate >= SEASON_START ? prevCandidate : null
+  const nextMonth = nextCandidate <= SEASON_END ? nextCandidate : null
+
+  // Fetch calendar data (only if we have a valid primary team)
+  const calendarGames = primaryTeamId
+    ? await getCalendarMonth(primaryTeamId, calendarMonth)
+    : []
 
   return (
     <main className="min-h-screen bg-stone-50">
@@ -226,6 +265,19 @@ if (!subscriber) {
           )}
         </div>
       </section>
+{/* ============ CALENDAR ============ */}
+      {primaryTeam && primaryTeamId && (
+        <section className="px-6 pt-12 max-w-5xl mx-auto">
+          <DugoutCalendar
+            games={calendarGames}
+            yearMonth={calendarMonth}
+            teamShort={primaryTeam.short.toUpperCase()}
+            teamPrimaryColor={theme.primary}
+            prevMonth={prevMonth}
+            nextMonth={nextMonth}
+          />
+        </section>
+      )}
 
       {/* ============ MY GAMES ============ */}
       <section className="px-6 py-12 max-w-5xl mx-auto">
