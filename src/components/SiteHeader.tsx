@@ -226,9 +226,11 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const close = useCallback(() => setOpen(false), [])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  useEffect(() => {
-    // Check for session cookie — if present, user is authenticated
-    setIsLoggedIn(document.cookie.includes('edge_session='))
+useEffect(() => {
+    fetch('/api/auth/status')
+      .then(r => r.json())
+      .then(data => { setIsLoggedIn(data.authenticated === true) })
+      .catch(() => { setIsLoggedIn(false) })
   }, [])
 
   return (

@@ -92,7 +92,7 @@ function PlayerCard({
       <div className="flex-grow flex flex-col items-center justify-center px-2 py-1 relative overflow-hidden">
         {/* Headshot watermark behind text */}
         <div
-          className="absolute inset-0 opacity-[0.15] bg-center bg-cover bg-no-repeat"
+         className="absolute inset-0 opacity-[0.35] bg-center bg-cover bg-no-repeat"
           style={{
             backgroundImage: `url(https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current)`,
           }}
