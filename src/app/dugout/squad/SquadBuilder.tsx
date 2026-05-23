@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { PoolPlayer, SquadLineup, SquadSlot } from '@/lib/ultimate-team-types'
 import { ALL_SLOTS, HITTER_POSITIONS, PITCHER_SLOTS, positionsForSlot, gradeColor, gradeBg } from '@/lib/ultimate-team-types'
+import { playerHeadshotUrl } from '@/lib/mlb'
 
 type Props = {
   initialLineup: SquadLineup
@@ -56,7 +57,7 @@ function PlayerCard({
   const color = gradeColor(grade)
   const bg = gradeBg(grade)
 
-  const headshotUrl = `https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current`
+
 
   const keyStat = player.player_type === 'hitter'
     ? { label: 'OPS', value: player.ops?.toFixed(3) ?? '—' }
@@ -88,14 +89,16 @@ function PlayerCard({
         </span>
       </div>
 
-      {/* Headshot + Name */}
+  {/* Headshot + Name */}
       <div className="flex-grow flex flex-col items-center justify-center px-2 py-1.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={headshotUrl}
-          alt={player.full_name}
-          className="w-11 h-11 rounded-full object-cover border-2 border-white/10 mb-1.5 bg-white/5"
-        />
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-stone-300 mb-1.5 flex-shrink-0 border-2 border-white/20">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={playerHeadshotUrl(player.player_id, 200)}
+            alt={player.full_name}
+            className="w-full h-full object-cover"
+          />
+        </div>
         <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full">
           {player.full_name.split(' ').pop()}
         </span>
