@@ -23,10 +23,18 @@ const subscriber = await getCurrentSubscriber()
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
 
-      {/* ════ MASTHEAD ════════════════════════════════════════════════════ */}
+{/* ════ MASTHEAD ════════════════════════════════════════════════════ */}
       <div className="border-b border-stone-200 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
-          <span>{displayDate}</span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dugout"
+              className="text-orange-600 hover:text-orange-700 transition"
+            >
+              ← Dugout
+            </Link>
+            <span>{displayDate}</span>
+          </div>
           <span className="text-stone-300">Fantasy Edition</span>
         </div>
       </div>

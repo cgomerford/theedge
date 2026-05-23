@@ -44,7 +44,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
 // ─── NavDrawer ────────────────────────────────────────────────────────────────
 // Rendered via React Portal directly into document.body.
 
-function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () => void; isLoggedIn: boolean }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -188,9 +188,9 @@ function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
           ))}
         </nav>
 
-        <div style={{ padding: '20px 24px', borderTop: '1px solid #E7E5E4' }}>
+          <div style={{ padding: '20px 24px', borderTop: '1px solid #E7E5E4' }}>
           <Link
-            href="/login"
+            href={isLoggedIn ? '/dugout' : '/login'}
             onClick={onClose}
             className="font-mono uppercase tracking-widest hover:bg-stone-700 transition"
             style={{
@@ -199,14 +199,16 @@ function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
               fontSize: 11, textDecoration: 'none', letterSpacing: '0.1em',
             }}
           >
-            Sign in
+            {isLoggedIn ? 'My Dugout' : 'Sign in'}
           </Link>
-          <p
-            className="font-mono text-stone-400 uppercase tracking-wider text-center"
-            style={{ fontSize: 10, marginTop: 10 }}
-          >
-            Free · No credit card needed
-          </p>
+          {!isLoggedIn && (
+            <p
+              className="font-mono text-stone-400 uppercase tracking-wider text-center"
+              style={{ fontSize: 10, marginTop: 10 }}
+            >
+              Free · No credit card needed
+            </p>
+          )}
         </div>
       </div>
     </>,
@@ -219,10 +221,15 @@ function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 type Props = {
   variant?: 'home' | 'page'
 }
-
 export default function SiteHeader({ variant = 'page' }: Props) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    // Check for session cookie — if present, user is authenticated
+    setIsLoggedIn(document.cookie.includes('edge_session='))
+  }, [])
 
   return (
     <>
@@ -237,11 +244,11 @@ export default function SiteHeader({ variant = 'page' }: Props) {
           </Link>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
+   <Link
+              href={isLoggedIn ? '/dugout' : '/login'}
               className="text-xs font-mono uppercase tracking-widest bg-stone-900 text-stone-50 px-3 py-1.5 hover:bg-stone-700 transition"
             >
-              Sign in
+              {isLoggedIn ? 'My Dugout' : 'Sign in'}
             </Link>
 
             <button
@@ -260,7 +267,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
         </div>
       </header>
 
-      <NavDrawer open={open} onClose={close} />
+  <NavDrawer open={open} onClose={close} isLoggedIn={isLoggedIn} />
     </>
   )
 }

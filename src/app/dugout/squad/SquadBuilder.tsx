@@ -88,12 +88,19 @@ function PlayerCard({
         </span>
       </div>
 
-      {/* Player info */}
-      <div className="flex-grow flex flex-col items-center justify-center px-2 py-1">
-        <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full">
+{/* Player info with headshot */}
+      <div className="flex-grow flex flex-col items-center justify-center px-2 py-1 relative overflow-hidden">
+        {/* Headshot watermark behind text */}
+        <div
+          className="absolute inset-0 opacity-[0.15] bg-center bg-cover bg-no-repeat"
+          style={{
+            backgroundImage: `url(https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current)`,
+          }}
+        />
+        <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full relative z-10">
           {player.full_name.split(' ').pop()}
         </span>
-        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider mt-0.5">
+        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider mt-0.5 relative z-10">
           {player.team_short}
         </span>
       </div>
