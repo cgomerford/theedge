@@ -39,11 +39,10 @@ function PlayerCard({
   onClick: () => void
 }) {
   if (!player) {
-    // Empty slot
     return (
       <button
         onClick={onClick}
-        className="group flex flex-col items-center justify-center w-[100px] h-[130px] rounded-lg border-2 border-dashed border-white/20 bg-black/30 backdrop-blur-sm cursor-pointer transition-all hover:border-lime-400/60 hover:bg-black/50 hover:scale-105"
+        className="group flex flex-col items-center justify-center w-[110px] h-[160px] rounded-lg border-2 border-dashed border-white/20 bg-black/30 backdrop-blur-sm cursor-pointer transition-all hover:border-lime-400/60 hover:bg-black/50 hover:scale-105"
       >
         <span className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">
           {slot.replace(/\d+$/, '')}
@@ -57,7 +56,8 @@ function PlayerCard({
   const color = gradeColor(grade)
   const bg = gradeBg(grade)
 
-  // Key stat for display
+  const headshotUrl = `https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current`
+
   const keyStat = player.player_type === 'hitter'
     ? { label: 'OPS', value: player.ops?.toFixed(3) ?? '—' }
     : { label: 'ERA', value: player.era?.toFixed(2) ?? '—' }
@@ -69,7 +69,7 @@ function PlayerCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col w-[100px] h-[130px] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/40"
+      className="group flex flex-col w-[110px] h-[160px] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/40"
       style={{ background: '#1a1a1a' }}
     >
       {/* Grade header */}
@@ -88,19 +88,18 @@ function PlayerCard({
         </span>
       </div>
 
-{/* Player info with headshot */}
-      <div className="flex-grow flex flex-col items-center justify-center px-2 py-1 relative overflow-hidden">
-        {/* Headshot watermark behind text */}
-        <div
-         className="absolute inset-0 opacity-[0.35] bg-center bg-cover bg-no-repeat"
-          style={{
-            backgroundImage: `url(https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current)`,
-          }}
+      {/* Headshot + Name */}
+      <div className="flex-grow flex flex-col items-center justify-center px-2 py-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={headshotUrl}
+          alt={player.full_name}
+          className="w-11 h-11 rounded-full object-cover border-2 border-white/10 mb-1.5 bg-white/5"
         />
-        <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full relative z-10">
+        <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full">
           {player.full_name.split(' ').pop()}
         </span>
-        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider mt-0.5 relative z-10">
+        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">
           {player.team_short}
         </span>
       </div>
@@ -118,7 +117,7 @@ function PlayerCard({
         </div>
       </div>
 
-      {/* Percentile bar at very bottom */}
+      {/* Percentile bar */}
       <div className="h-1 w-full bg-white/10">
         <div
           className="h-full transition-all"
@@ -131,7 +130,6 @@ function PlayerCard({
     </button>
   )
 }
-
 // ============================================================
 // Player Picker Modal
 // ============================================================
