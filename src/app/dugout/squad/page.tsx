@@ -2,6 +2,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase'
 import SiteHeader from '@/components/SiteHeader'
+// Change line 5 in page.tsx to this:
 import SquadBuilder from './SquadBuilder'
 import type { PoolPlayer, SquadLineup } from '@/lib/ultimate-team-types'
 

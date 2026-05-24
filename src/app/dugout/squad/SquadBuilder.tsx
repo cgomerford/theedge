@@ -1,355 +1,528 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+'use client'
 
-const MLB_API = 'https://statsapi.mlb.com/api/v1'
-const SEASON = 2026
+import { useState, useEffect, useCallback } from 'react'
+import type { PoolPlayer, SquadLineup, SquadSlot } from '@/lib/ultimate-team-types'
+import { ALL_SLOTS, HITTER_POSITIONS, PITCHER_SLOTS, positionsForSlot, gradeColor, gradeBg } from '@/lib/ultimate-team-types'
 
-const supa = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
-// ============================================================
-// Convert "5.1" IP string to decimal (5.1 → 5.333)
-// MLB uses .1 = 1 out, .2 = 2 outs notation
-// ============================================================
-function parseInnings(ip: string | number | null | undefined): number {
-  if (ip === null || ip === undefined) return 0
-  const str = String(ip)
-  const parts = str.split('.')
-  const full = parseInt(parts[0] ?? '0')
-  const outs = parseInt(parts[1] ?? '0')
-  return full + outs / 3
+type Props = {
+  initialLineup: SquadLineup
+  initialPlayers: Record<number, PoolPlayer>
+  initialGrade: string | null
+  initialPercentile: number | null
 }
 
-export async function GET(request: Request) {
-  // Auth check
-  const authHeader = request.headers.get('authorization')
-  const validSecrets = [
-    process.env.CRON_SECRET,
-    process.env.EDGE_CRON_AUTH,
-  ].filter(Boolean)
+// ============================================================
+// Diamond position coordinates (percentage-based, responsive)
+// ============================================================
+const FIELD_POSITIONS: Record<string, { top: string; left: string }> = {
+  CF:  { top: '8%',  left: '50%' },
+  LF:  { top: '22%', left: '18%' },
+  RF:  { top: '22%', left: '82%' },
+  SS:  { top: '42%', left: '35%' },
+  '2B': { top: '38%', left: '65%' },
+  '3B': { top: '55%', left: '22%' },
+  '1B': { top: '52%', left: '78%' },
+  C:   { top: '78%', left: '50%' },
+  DH:  { top: '68%', left: '10%' },
+}
 
-  const isValid = validSecrets.some(secret =>
-    authHeader === `Bearer ${secret}`
-  )
-
-  if (!isValid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  try {
-    // Step 1: Get all probable pitchers from upcoming games (next 7 days)
-    const today = new Date().toISOString().split('T')[0]
-    const weekAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-    const scheduleUrl = `${MLB_API}/schedule?sportId=1&startDate=${today}&endDate=${weekAhead}&hydrate=probablePitcher`
-    const schedRes = await fetch(scheduleUrl)
-    const schedData = await schedRes.json()
-
-    const pitcherIds = new Set<number>()
-    for (const block of schedData.dates ?? []) {
-      for (const g of block.games ?? []) {
-        const home = g.teams?.home?.probablePitcher?.id
-        const away = g.teams?.away?.probablePitcher?.id
-        if (home) pitcherIds.add(home)
-        if (away) pitcherIds.add(away)
-      }
-    }
-
-    console.log(`Found ${pitcherIds.size} pitchers to refresh`)
-
-    // Step 2: Fetch all stats for each pitcher
-    const rows = []
-    let fetchedCount = 0
-    for (const pitcherId of pitcherIds) {
-      const stats = await fetchPitcherStats(pitcherId)
-      if (stats) rows.push(stats)
-      fetchedCount++
-      if (fetchedCount % 20 === 0) {
-        console.log(`  Processed ${fetchedCount}/${pitcherIds.size} pitchers...`)
-      }
-    }
-
-    console.log(`Fetched stats for ${rows.length} pitchers`)
-
-    // Step 3: Upsert into Supabase
-    if (rows.length > 0) {
-      // Batch upsert in groups of 25 to avoid payload limits
-      const BATCH = 25
-      for (let i = 0; i < rows.length; i += BATCH) {
-        const batch = rows.slice(i, i + BATCH)
-        const { error } = await supa
-          .from('pitcher_stats')
-          .upsert(batch, { onConflict: 'player_id' })
-        if (error) {
-          console.error(`Upsert batch ${i}-${i + BATCH} failed:`, error)
-        }
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      pitchers_processed: pitcherIds.size,
-      pitchers_stored: rows.length,
-    })
-  } catch (err) {
-    console.error('Pitcher stats refresh failed:', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
-      { status: 500 }
+// ============================================================
+// Player Card Component
+// ============================================================
+// ============================================================
+// Player Card Component
+// ============================================================
+function PlayerCard({
+  player,
+  slot,
+  onClick,
+}: {
+  player: PoolPlayer | null
+  slot: SquadSlot
+  onClick: () => void
+}) {
+  if (!player) {
+    return (
+      <button
+        onClick={onClick}
+        className="group flex flex-col items-center justify-center w-[110px] h-[160px] rounded-lg border-2 border-dashed border-white/20 bg-black/30 backdrop-blur-sm cursor-pointer transition-all hover:border-lime-400/60 hover:bg-black/50 hover:scale-105"
+      >
+        <span className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-1">
+          {slot.replace(/\d+$/, '')}
+        </span>
+        <span className="text-2xl text-white/20 group-hover:text-lime-400/60 transition">+</span>
+      </button>
     )
   }
+
+  const grade = player.grade ?? 'C'
+  const color = gradeColor(grade)
+  const bg = gradeBg(grade)
+
+  const headshotUrl = `https://img.mlb.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.player_id}/headshot/67/current`
+
+  const keyStat = player.player_type === 'hitter'
+    ? { label: 'OPS', value: player.ops?.toFixed(3) ?? '—' }
+    : { label: 'ERA', value: player.era?.toFixed(2) ?? '—' }
+
+  const secondaryStat = player.player_type === 'hitter'
+    ? { label: 'HR', value: String(player.home_runs ?? 0) }
+    : { label: 'K/9', value: player.k_per_9?.toFixed(1) ?? '—' }
+
+  return (
+    <button
+      onClick={onClick}
+      className="group flex flex-col w-[110px] h-[160px] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-105 hover:shadow-xl hover:shadow-black/40"
+      style={{ background: '#1a1a1a' }}
+    >
+      {/* Grade header */}
+      <div
+        className="flex items-center justify-between px-2 py-1"
+        style={{ background: bg }}
+      >
+        <span className="text-[10px] font-mono uppercase tracking-widest text-white/60">
+          {player.primary_position}
+        </span>
+        <span
+          className="text-sm font-black font-mono"
+          style={{ color }}
+        >
+          {grade}
+        </span>
+      </div>
+
+      {/* Headshot + Name */}
+      <div className="flex-grow flex flex-col items-center justify-center px-2 py-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={headshotUrl}
+          alt={player.full_name}
+          className="w-11 h-11 rounded-full object-cover border-2 border-white/10 mb-1.5 bg-white/5"
+        />
+        <span className="text-[11px] font-bold text-white text-center leading-tight truncate w-full">
+          {player.full_name.split(' ').pop()}
+        </span>
+        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">
+          {player.team_short}
+        </span>
+      </div>
+
+      {/* Stats footer */}
+      <div className="flex items-center justify-between px-2 py-1.5 bg-white/5 border-t border-white/10">
+        <div className="text-center flex-1">
+          <div className="text-[9px] font-mono text-white/40 uppercase">{keyStat.label}</div>
+          <div className="text-[11px] font-mono font-bold text-white">{keyStat.value}</div>
+        </div>
+        <div className="w-px h-5 bg-white/10" />
+        <div className="text-center flex-1">
+          <div className="text-[9px] font-mono text-white/40 uppercase">{secondaryStat.label}</div>
+          <div className="text-[11px] font-mono font-bold text-white">{secondaryStat.value}</div>
+        </div>
+      </div>
+
+      {/* Percentile bar */}
+      <div className="h-1 w-full bg-white/10">
+        <div
+          className="h-full transition-all"
+          style={{
+            width: `${player.position_percentile ?? 0}%`,
+            background: color,
+          }}
+        />
+      </div>
+    </button>
+  )
 }
 
 // ============================================================
-// MAIN PITCHER FETCH — V3: season + advanced + game logs + splits
+// Player Picker Modal
 // ============================================================
-async function fetchPitcherStats(pitcherId: number) {
-  try {
-    // ── 1. Season + Advanced stats (same as V2) ──────────────
-    const seasonUrl = `${MLB_API}/people/${pitcherId}/stats?stats=season,seasonAdvanced&group=pitching&season=${SEASON}`
-    const seasonRes = await fetch(seasonUrl)
-    if (!seasonRes.ok) return null
-    const seasonData = await seasonRes.json()
+function PlayerPicker({
+  slot,
+  onSelect,
+  onClose,
+  currentPlayerIds,
+}: {
+  slot: SquadSlot
+  onSelect: (player: PoolPlayer) => void
+  onClose: () => void
+  currentPlayerIds: number[]
+}) {
+  const [players, setPlayers] = useState<PoolPlayer[]>([])
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
 
-    let basic: any = {}
-    let advanced: any = {}
-    let playerName = ''
-    let teamId: number | null = null
+  const positions = positionsForSlot(slot)
 
-    for (const block of seasonData.stats ?? []) {
-      if (block.type?.displayName === 'season' && block.splits?.[0]) {
-        basic = block.splits[0].stat ?? {}
-        playerName = block.splits[0].player?.fullName ?? ''
-        teamId = block.splits[0].team?.id ?? null
-      }
-      if (block.type?.displayName === 'seasonAdvanced' && block.splits?.[0]) {
-        advanced = block.splits[0].stat ?? {}
-      }
-    }
+  useEffect(() => {
+    setLoading(true)
+    const params = new URLSearchParams()
+    params.set('position', positions[0])
+    if (search.trim()) params.set('search', search.trim())
 
-    // If no name found, fetch person record
-    if (!playerName) {
-      try {
-        const personRes = await fetch(`${MLB_API}/people/${pitcherId}`)
-        if (personRes.ok) {
-          const personData = await personRes.json()
-          playerName = personData.people?.[0]?.fullName ?? `Pitcher ${pitcherId}`
-          teamId = personData.people?.[0]?.currentTeam?.id ?? null
-        }
-      } catch { /* proceed without name */ }
-    }
+    fetch(`/api/squad/players?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        setPlayers(data.players ?? [])
+        setLoading(false)
+      })
+      .catch(() => { setLoading(false) })
+  }, [search, positions[0]])
 
-    // Skip if no innings pitched (haven't played)
-    const innings = parseInnings(basic.inningsPitched)
-    if (innings < 1) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-    // ── 2. Game logs → L3 stats + pitch count + days rest ────
-    const { l3, pitchCountLast, daysRest } = await fetchGameLogs(pitcherId)
+      {/* Modal */}
+      <div className="relative bg-[#1a1a1a] border border-white/10 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h3 className="text-white font-serif text-xl">
+              Select {slot.replace(/\d+$/, '')}
+            </h3>
+            <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest mt-1">
+              {positions.join(' / ')} · sorted by percentile
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/40 hover:text-white text-xl px-2"
+          >
+            ✕
+          </button>
+        </div>
 
-    // ── 3. Splits → vs LHB/RHB + home/away ERA ──────────────
-    const splits = await fetchSplits(pitcherId)
+        {/* Search */}
+        <div className="p-3 border-b border-white/10">
+          <input
+            type="text"
+            placeholder="Search players..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white placeholder:text-white/30 font-mono focus:outline-none focus:border-lime-400/40"
+            autoFocus
+          />
+        </div>
 
-    // ── 4. Compute derived fields ────────────────────────────
-    // Season IP pace: project full-season innings from current rate
-    const gamesPlayed = parseInt(basic.gamesPlayed ?? '0')
-    const todayDate = new Date()
-    const seasonStartApprox = new Date(SEASON, 2, 28) // ~March 28
-    const daysSoFar = Math.max(1, Math.floor((todayDate.getTime() - seasonStartApprox.getTime()) / 86400000))
-    const seasonIpPace = daysSoFar > 0 ? Math.round((innings / daysSoFar) * 183 * 10) / 10 : null // ~183 days in season
+        {/* Player list */}
+        <div className="flex-grow overflow-y-auto">
+          {loading ? (
+            <div className="p-8 text-center text-white/40 font-mono text-sm">Loading...</div>
+          ) : players.length === 0 ? (
+            <div className="p-8 text-center text-white/40 font-mono text-sm">No players found</div>
+          ) : (
+            players.map(player => {
+              const isAlreadyPicked = currentPlayerIds.includes(player.player_id)
+              const grade = player.grade ?? 'C'
+              const color = gradeColor(grade)
+              const keyStat = player.player_type === 'hitter'
+                ? `${player.ops?.toFixed(3) ?? '—'} OPS`
+                : `${player.era?.toFixed(2) ?? '—'} ERA`
 
-    // GB% from advanced stats
-    const gbPercent = advanced.groundOutsToAirouts
-      ? parseFloat(advanced.groundOutsToAirouts) / (1 + parseFloat(advanced.groundOutsToAirouts))
-      : null
+              return (
+                <button
+                  key={player.player_id}
+                  onClick={() => { if (!isAlreadyPicked) onSelect(player) }}
+                  disabled={isAlreadyPicked}
+                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-white/5 transition ${
+                    isAlreadyPicked
+                      ? 'opacity-30 cursor-not-allowed'
+                      : 'hover:bg-white/5 cursor-pointer'
+                  }`}
+                >
+                  {/* Grade badge */}
+                  <span
+                    className="w-10 h-10 rounded-lg flex items-center justify-center font-mono font-black text-sm flex-shrink-0"
+                    style={{ background: gradeBg(grade), color }}
+                  >
+                    {grade}
+                  </span>
 
-    return {
-      player_id: pitcherId,
-      player_name: playerName,
-      team_id: teamId,
-      season: SEASON,
+                  {/* Name + team */}
+                  <div className="flex-grow text-left min-w-0">
+                    <div className="text-white text-sm font-bold truncate">{player.full_name}</div>
+                    <div className="text-white/40 text-[10px] font-mono uppercase tracking-wider">
+                      {player.team_short} · {player.primary_position} · {keyStat}
+                    </div>
+                  </div>
 
-      // Core stats (V2 — unchanged)
-      era: basic.era ? parseFloat(basic.era) : null,
-      whip: basic.whip ? parseFloat(basic.whip) : null,
-      innings_pitched: Math.round(innings * 10) / 10,
-      starts: basic.gamesStarted ? parseInt(basic.gamesStarted) : 0,
-      fip: advanced.fip ? parseFloat(advanced.fip) : null,
-      xfip_minus: null, // still needs Baseball Savant — P2 enhancement
-      k_per_9: advanced.strikeoutsPer9Inn ? parseFloat(advanced.strikeoutsPer9Inn) : null,
-      bb_per_9: advanced.walksPer9Inn ? parseFloat(advanced.walksPer9Inn) : null,
+                  {/* Percentile */}
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-white/60 text-xs font-mono">
+                      {Math.round(player.position_percentile ?? 0)}th
+                    </div>
+                    <div className="text-white/30 text-[10px] font-mono uppercase">pctl</div>
+                  </div>
 
-      // V3: Last 3 starts
-      l3_era: l3.era,
-      l3_innings: l3.innings,
-      l3_strikeouts: l3.strikeouts,
-      l3_walks: l3.walks,
-      l3_k_per_9: l3.innings > 0 ? Math.round((l3.strikeouts / l3.innings) * 9 * 100) / 100 : null,
-
-      // V3: Splits
-      vs_lhb_baa: splits.vsLhbBaa,
-      vs_rhb_baa: splits.vsRhbBaa,
-      home_era: splits.homeEra,
-      away_era: splits.awayEra,
-
-      // V3: Fatigue / workload
-      pitch_count_last: pitchCountLast,
-      days_rest: daysRest,
-      season_ip_pace: seasonIpPace,
-
-      // V3: Contact quality
-      gb_percent: gbPercent,
-      fb_percent: gbPercent !== null ? Math.round((1 - gbPercent) * 1000) / 1000 : null,
-      hard_hit_pct: null, // needs Statcast — P2 enhancement
-
-      // V3: Record
-      wins: basic.wins ? parseInt(basic.wins) : null,
-      losses: basic.losses ? parseInt(basic.losses) : null,
-      games_played: gamesPlayed,
-
-      updated_at: new Date().toISOString(),
-    }
-  } catch (err) {
-    console.error(`Failed to fetch pitcher ${pitcherId}:`, err)
-    return null
-  }
+                  {isAlreadyPicked && (
+                    <span className="text-[10px] font-mono text-white/30 uppercase">In squad</span>
+                  )}
+                </button>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ============================================================
-// GAME LOGS → Last 3 starts + pitch count + days rest
+// Main Squad Builder
 // ============================================================
-async function fetchGameLogs(pitcherId: number): Promise<{
-  l3: { era: number | null; innings: number; strikeouts: number; walks: number }
-  pitchCountLast: number | null
-  daysRest: number | null
-}> {
-  const empty = {
-    l3: { era: null, innings: 0, strikeouts: 0, walks: 0 },
-    pitchCountLast: null,
-    daysRest: null,
+export default function SquadBuilder({
+  initialLineup,
+  initialPlayers,
+  initialGrade,
+  initialPercentile,
+}: Props) {
+  const [lineup, setLineup] = useState<SquadLineup>(initialLineup)
+  const [players, setPlayers] = useState<Record<number, PoolPlayer>>(initialPlayers)
+  const [squadGrade, setSquadGrade] = useState(initialGrade)
+  const [saving, setSaving] = useState(false)
+  const [activeSlot, setActiveSlot] = useState<SquadSlot | null>(null)
+
+  // All currently assigned player IDs (for deduplication in picker)
+  const currentPlayerIds = Object.values(lineup).filter((id): id is number => id != null)
+
+  // Filled count
+  const filledCount = currentPlayerIds.length
+  const totalSlots = ALL_SLOTS.length // 14
+
+  // Save to backend
+  const save = useCallback(async (newLineup: SquadLineup) => {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/squad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineup: newLineup }),
+      })
+      const data = await res.json()
+      if (data.squad_grade) setSquadGrade(data.squad_grade)
+    } catch (err) {
+      console.error('Save failed:', err)
+    }
+    setSaving(false)
+  }, [])
+
+  // Handle player selection from picker
+  function handleSelect(player: PoolPlayer) {
+    if (!activeSlot) return
+
+    const newLineup = { ...lineup, [activeSlot]: player.player_id }
+    const newPlayers = { ...players, [player.player_id]: player }
+
+    setLineup(newLineup)
+    setPlayers(newPlayers)
+    setActiveSlot(null)
+
+    // Auto-save
+    save(newLineup)
   }
 
-  try {
-    const url = `${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}`
-    const res = await fetch(url)
-    if (!res.ok) return empty
-    const data = await res.json()
+  // Handle removing a player from a slot
+  function handleRemove(slot: SquadSlot) {
+    const newLineup = { ...lineup }
+    delete newLineup[slot]
 
-    const allGames = data.stats?.[0]?.splits ?? []
-    if (allGames.length === 0) return empty
+    setLineup(newLineup)
 
-    // Filter to starts only (gamesStarted > 0 for that game)
-    const starts = allGames.filter((g: any) => {
-      const gs = parseInt(g.stat?.gamesStarted ?? '0')
-      return gs > 0
-    })
-
-    // Last 3 starts
-    const last3 = starts.slice(-3)
-
-    let totalIP = 0
-    let totalER = 0
-    let totalK = 0
-    let totalBB = 0
-
-    for (const g of last3) {
-      const stat = g.stat ?? {}
-      totalIP += parseInnings(stat.inningsPitched)
-      totalER += parseInt(stat.earnedRuns ?? '0')
-      totalK += parseInt(stat.strikeOuts ?? '0')
-      totalBB += parseInt(stat.baseOnBalls ?? '0')
-    }
-
-    const l3Era = totalIP > 0 ? Math.round((totalER / totalIP) * 9 * 100) / 100 : null
-
-    // Last game (any appearance, not just starts) for pitch count + days rest
-    const lastGame = allGames[allGames.length - 1]
-    const lastStat = lastGame?.stat ?? {}
-    const pitchCountLast = lastStat.numberOfPitches
-      ? parseInt(lastStat.numberOfPitches)
-      : lastStat.pitchesThrown
-        ? parseInt(lastStat.pitchesThrown)
-        : null
-
-    // Days rest: difference between today and last game date
-    let daysRest: number | null = null
-    const lastDate = lastGame?.date
-    if (lastDate) {
-      const lastMs = new Date(lastDate + 'T00:00:00Z').getTime()
-      const todayMs = new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z').getTime()
-      daysRest = Math.floor((todayMs - lastMs) / 86400000)
-    }
-
-    return {
-      l3: {
-        era: l3Era,
-        innings: Math.round(totalIP * 10) / 10,
-        strikeouts: totalK,
-        walks: totalBB,
-      },
-      pitchCountLast,
-      daysRest,
-    }
-  } catch (err) {
-    console.error(`Game log fetch failed for pitcher ${pitcherId}:`, err)
-    return empty
+    // Auto-save
+    save(newLineup)
   }
-}
 
-// ============================================================
-// SPLITS → vs LHB/RHB batting average + home/away ERA
-// ============================================================
-async function fetchSplits(pitcherId: number): Promise<{
-  vsLhbBaa: number | null
-  vsRhbBaa: number | null
-  homeEra: number | null
-  awayEra: number | null
-}> {
-  const empty = { vsLhbBaa: null, vsRhbBaa: null, homeEra: null, awayEra: null }
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* ═══ HEADER ═══ */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-lime-400/80 mb-1">
+            ⊕ Ultimate Team · Pro
+          </div>
+          <h1 className="font-serif text-4xl sm:text-5xl font-light text-white tracking-tight">
+            My Squad<span className="text-lime-400">.</span>
+          </h1>
+        </div>
 
-  try {
-    // MLB Stats API: statSplits with sitCodes
-    // vl = vs Left-handed batters, vr = vs Right-handed batters
-    // h = Home games, a = Away games
-    const url = `${MLB_API}/people/${pitcherId}/stats?stats=statSplits&group=pitching&season=${SEASON}&sitCodes=vl,vr,h,a`
-    const res = await fetch(url)
-    if (!res.ok) return empty
-    const data = await res.json()
+        <div className="text-right">
+          {squadGrade && (
+            <div
+              className="text-5xl font-black font-mono leading-none"
+              style={{ color: gradeColor(squadGrade) }}
+            >
+              {squadGrade}
+            </div>
+          )}
+          <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mt-1">
+            {filledCount}/{totalSlots} filled
+            {saving && <span className="ml-2 text-lime-400">saving...</span>}
+          </div>
+        </div>
+      </div>
 
-    let vsLhbBaa: number | null = null
-    let vsRhbBaa: number | null = null
-    let homeEra: number | null = null
-    let awayEra: number | null = null
+      {/* ═══ DIAMOND FIELD ═══ */}
+      <div
+        className="relative w-full rounded-2xl overflow-hidden mb-8"
+        style={{
+          aspectRatio: '16/10',
+          background: 'radial-gradient(ellipse 120% 100% at 50% 100%, #2d5016 0%, #1a3a0a 40%, #0d1f05 70%, #0a0f0d 100%)',
+        }}
+      >
+        {/* Diamond lines (decorative) */}
+        <svg
+          className="absolute inset-0 w-full h-full"
+          viewBox="0 0 1000 625"
+          preserveAspectRatio="none"
+          style={{ opacity: 0.15 }}
+        >
+          {/* Infield diamond */}
+          <polygon
+            points="500,520 350,400 500,280 650,400"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+          />
+          {/* Outfield arc */}
+          <path
+            d="M 150,400 Q 500,50 850,400"
+            fill="none"
+            stroke="white"
+            strokeWidth="1.5"
+          />
+          {/* Base paths */}
+          <line x1="500" y1="520" x2="350" y2="400" stroke="white" strokeWidth="1" />
+          <line x1="350" y1="400" x2="500" y2="280" stroke="white" strokeWidth="1" />
+          <line x1="500" y1="280" x2="650" y2="400" stroke="white" strokeWidth="1" />
+          <line x1="650" y1="400" x2="500" y2="520" stroke="white" strokeWidth="1" />
+          {/* Bases */}
+          <rect x="345" y="395" width="10" height="10" fill="white" transform="rotate(45 350 400)" />
+          <rect x="495" y="275" width="10" height="10" fill="white" transform="rotate(45 500 280)" />
+          <rect x="645" y="395" width="10" height="10" fill="white" transform="rotate(45 650 400)" />
+          {/* Home plate */}
+          <polygon points="500,520 494,514 494,508 506,508 506,514" fill="white" />
+        </svg>
 
-    for (const block of data.stats ?? []) {
-      for (const split of block.splits ?? []) {
-        const sitCode = split.split?.code ?? ''
-        const stat = split.stat ?? {}
+        {/* Position cards — absolutely positioned on the field */}
+        {(Object.entries(FIELD_POSITIONS) as [string, { top: string; left: string }][]).map(
+          ([pos, coords]) => {
+            const slot = pos as SquadSlot
+            const playerId = lineup[slot]
+            const player = playerId ? players[playerId] ?? null : null
 
-        switch (sitCode) {
-          case 'vl': // vs Left-handed batters
-            vsLhbBaa = stat.avg ? parseFloat(stat.avg) : null
-            break
-          case 'vr': // vs Right-handed batters
-            vsRhbBaa = stat.avg ? parseFloat(stat.avg) : null
-            break
-          case 'h': // Home games
-            homeEra = stat.era ? parseFloat(stat.era) : null
-            break
-          case 'a': // Away games
-            awayEra = stat.era ? parseFloat(stat.era) : null
-            break
-        }
-      }
-    }
+            return (
+              <div
+                key={slot}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ top: coords.top, left: coords.left }}
+              >
+                <PlayerCard
+                  player={player}
+                  slot={slot}
+                  onClick={() => setActiveSlot(slot)}
+                />
+              </div>
+            )
+          }
+        )}
+      </div>
 
-    return { vsLhbBaa, vsRhbBaa, homeEra, awayEra }
-  } catch (err) {
-    console.error(`Splits fetch failed for pitcher ${pitcherId}:`, err)
-    return empty
-  }
+      {/* ═══ PITCHING ROTATION ═══ */}
+      <div className="bg-[#1a1a1a] rounded-xl border border-white/10 p-6 mb-6">
+        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-white/40 mb-4">
+          ⊕ Pitching staff
+        </div>
+        <div className="flex flex-wrap justify-center gap-4">
+          {PITCHER_SLOTS.map(slot => {
+            const playerId = lineup[slot]
+            const player = playerId ? players[playerId] ?? null : null
+
+            return (
+              <div key={slot} className="flex flex-col items-center gap-1">
+                <PlayerCard
+                  player={player}
+                  slot={slot}
+                  onClick={() => setActiveSlot(slot)}
+                />
+                <span className="text-[9px] font-mono uppercase tracking-widest text-white/30">
+                  {slot}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ═══ ROSTER TABLE (quick reference) ═══ */}
+      {filledCount > 0 && (
+        <div className="bg-[#1a1a1a] rounded-xl border border-white/10 overflow-hidden">
+          <div className="p-4 border-b border-white/10">
+            <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-white/40">
+              ⊕ Roster overview
+            </div>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-widest text-white/40">Pos</th>
+                <th className="text-left p-3 text-[10px] font-mono uppercase tracking-widest text-white/40">Player</th>
+                <th className="text-center p-3 text-[10px] font-mono uppercase tracking-widest text-white/40">Grade</th>
+                <th className="text-right p-3 text-[10px] font-mono uppercase tracking-widest text-white/40">Key stat</th>
+                <th className="text-right p-3 text-[10px] font-mono uppercase tracking-widest text-white/40"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {ALL_SLOTS.map(slot => {
+                const playerId = lineup[slot]
+                if (!playerId) return null
+                const player = players[playerId]
+                if (!player) return null
+
+                const grade = player.grade ?? 'C'
+                const keyStat = player.player_type === 'hitter'
+                  ? `${player.ops?.toFixed(3) ?? '—'} OPS`
+                  : `${player.era?.toFixed(2) ?? '—'} ERA`
+
+                return (
+                  <tr key={slot} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="p-3 text-white/60 font-mono text-xs">{slot}</td>
+                    <td className="p-3 text-white font-bold">{player.full_name}</td>
+                    <td className="p-3 text-center">
+                      <span
+                        className="px-2 py-0.5 rounded font-mono font-bold text-xs"
+                        style={{ background: gradeBg(grade), color: gradeColor(grade) }}
+                      >
+                        {grade}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right text-white/60 font-mono text-xs">{keyStat}</td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => handleRemove(slot)}
+                        className="text-white/20 hover:text-red-500 text-xs font-mono transition"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ═══ PICKER MODAL ═══ */}
+      {activeSlot && (
+        <PlayerPicker
+          slot={activeSlot}
+          onSelect={handleSelect}
+          onClose={() => setActiveSlot(null)}
+          currentPlayerIds={currentPlayerIds}
+        />
+      )}
+    </div>
+  )
 }
