@@ -14,19 +14,19 @@ export const revalidate = 0
 
 export async function GET(request: Request) {
   // Auth check
-const authHeader = request.headers.get('authorization')
-const validSecrets = [
-  process.env.CRON_SECRET,         // Vercel-injected for scheduled runs
-  process.env.EDGE_CRON_AUTH,      // Our manual auth for curl/testing
-].filter(Boolean)
+  const authHeader = request.headers.get('authorization')
+  const validSecrets = [
+    process.env.CRON_SECRET,         // Vercel-injected for scheduled runs
+    process.env.EDGE_CRON_AUTH,      // Our manual auth for curl/testing
+  ].filter(Boolean)
 
-const isValid = validSecrets.some(secret => 
-  authHeader === `Bearer ${secret}`
-)
+  const isValid = validSecrets.some(secret => 
+    authHeader === `Bearer ${secret}`
+  )
 
-if (!isValid) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-}
+  if (!isValid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   try {
     // Step 1: Get all probable pitchers from upcoming games (next 7 days)
@@ -83,25 +83,46 @@ if (!isValid) {
 
 async function fetchPitcherStats(pitcherId: number) {
   try {
-    // Fetch season pitching stats
-    const url = `${MLB_API}/people/${pitcherId}/stats?stats=season,seasonAdvanced&group=pitching&season=${SEASON}`
+    // We request season, seasonAdvanced, gameLog, and statSplits (vs Left / vs Right)
+    const url = `${MLB_API}/people/${pitcherId}/stats?stats=season,seasonAdvanced,gameLog,statSplits&sitCodes=vl,vr&group=pitching&season=${SEASON}`
     const r = await fetch(url)
     if (!r.ok) return null
     const data = await r.json()
 
     let basic: any = {}
     let advanced: any = {}
+    let gameLogs: any[] = []
+    let vsLHB: string | null = null
+    let vsRHB: string | null = null
+    
     let playerName = ''
     let teamId: number | null = null
 
     for (const block of data.stats ?? []) {
+      // 1. Basic Season Stats
       if (block.type?.displayName === 'season' && block.splits?.[0]) {
         basic = block.splits[0].stat ?? {}
         playerName = block.splits[0].player?.fullName ?? ''
         teamId = block.splits[0].team?.id ?? null
       }
+      // 2. Advanced Season Stats
       if (block.type?.displayName === 'seasonAdvanced' && block.splits?.[0]) {
         advanced = block.splits[0].stat ?? {}
+      }
+      // 3. Game Logs (for Last 3 Starts)
+      if (block.type?.displayName === 'gameLog') {
+        gameLogs = block.splits ?? []
+      }
+      // 4. Splits (vs LHB / vs RHB)
+      if (block.type?.displayName === 'statSplits') {
+        for (const split of block.splits ?? []) {
+          if (split.split?.code === 'vl' || split.split?.description === 'vs Left') {
+            vsLHB = split.stat?.avg ?? null
+          }
+          if (split.split?.code === 'vr' || split.split?.description === 'vs Right') {
+            vsRHB = split.stat?.avg ?? null
+          }
+        }
       }
     }
 
@@ -119,6 +140,55 @@ async function fetchPitcherStats(pitcherId: number) {
     const innings = parseFloat(basic.inningsPitched ?? '0')
     if (innings < 1) return null
 
+    // --- CALCULATE GB% ---
+    const groundOuts = basic.groundOuts ? parseInt(basic.groundOuts) : 0
+    const airOuts = basic.airOuts ? parseInt(basic.airOuts) : 0
+    const totalBattedOuts = groundOuts + airOuts
+    const gbRate = totalBattedOuts > 0 ? (groundOuts / totalBattedOuts) * 100 : null
+
+    // --- CALCULATE LAST 3 STARTS (L3) ---
+    let l3_era = null
+    let l3_innings = null
+    let l3_strikeouts = null
+    let l3_walks = null
+    let l3_k_per_9 = null
+
+    // Filter to only games where they actually pitched, sort descending by date, take top 3
+    const recentGames = gameLogs
+      .filter(g => g.stat && parseFloat(g.stat.inningsPitched ?? '0') > 0)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 3)
+
+    if (recentGames.length > 0) {
+      let earnedRuns = 0
+      let outs = 0
+      let ks = 0
+      let bbs = 0
+
+      for (const g of recentGames) {
+        earnedRuns += parseInt(g.stat.earnedRuns ?? '0')
+        ks += parseInt(g.stat.strikeOuts ?? '0')
+        bbs += parseInt(g.stat.baseOnBalls ?? '0')
+        
+        // Parse innings correctly (e.g., "5.1" means 5 innings + 1 out = 16 outs)
+        const ipStr = g.stat.inningsPitched ?? '0'
+        const parts = ipStr.split('.')
+        const fullInnings = parseInt(parts[0])
+        const partialOuts = parts.length > 1 ? parseInt(parts[1]) : 0
+        outs += (fullInnings * 3) + partialOuts
+      }
+
+      const totalIp = outs / 3
+      l3_innings = totalIp
+      l3_strikeouts = ks
+      l3_walks = bbs
+      
+      if (totalIp > 0) {
+        l3_era = parseFloat(((earnedRuns / totalIp) * 9).toFixed(2))
+        l3_k_per_9 = parseFloat(((ks / totalIp) * 9).toFixed(2))
+      }
+    }
+
     return {
       player_id: pitcherId,
       player_name: playerName,
@@ -130,22 +200,23 @@ async function fetchPitcherStats(pitcherId: number) {
       innings_pitched: innings,
       starts: basic.gamesStarted ? parseInt(basic.gamesStarted) : 0,
       
-      // Use FIP as proxy for V1 (xFIP- upgrade post-launch)
-      xfip_minus: null,  // computed in Edge Score from FIP + league avg
       fip: advanced.fip ? parseFloat(advanced.fip) : null,
       k_per_9: advanced.strikeoutsPer9Inn ? parseFloat(advanced.strikeoutsPer9Inn) : null,
       bb_per_9: advanced.walksPer9Inn ? parseFloat(advanced.walksPer9Inn) : null,
       
-      // L3 stats — V1 leaves null, populated from game logs in v2
-      l3_era: null,
-      l3_innings: null,
-      l3_strikeouts: null,
-      l3_walks: null,
+      // --- NEWLY EXTRACTED DATA FOR YOUR UI ---
+      gb_rate: gbRate ? parseFloat(gbRate.toFixed(1)) : null,
+      vs_lhb_baa: vsLHB ? parseFloat(vsLHB) : null,
+      vs_rhb_baa: vsRHB ? parseFloat(vsRHB) : null,
       
-      // Splits — V1 from advanced if available
-      vs_lhb_baa: null,
-      vs_rhb_baa: null,
+      // --- RECENT FORM ---
+      l3_era: l3_era,
+      l3_innings: l3_innings,
+      l3_strikeouts: l3_strikeouts,
+      l3_walks: l3_walks,
+      l3_k_per_9: l3_k_per_9,
       
+      xfip_minus: null, 
       updated_at: new Date().toISOString(),
     }
   } catch (err) {
