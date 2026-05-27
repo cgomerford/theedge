@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getParkFactor, parkLeansHitter, parkLeansPitcher } from './parks'
+import type { ComponentsRaw } from './matchup-tilt';
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

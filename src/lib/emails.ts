@@ -1,3 +1,7 @@
+import { generateMatchupTiltEmailBlock } from './matchup-tilt-email';
+import { buildMatchupTiltData } from './matchup-tilt';
+import type { ComponentsRaw, ComponentScores } from './matchup-tilt';
+
 export function welcomeEmail(email: string, preferencesToken: string) {
   const preferencesUrl = `https://edgereportdaily.com/preferences/${preferencesToken}`
   const unsubscribeUrl = `https://edgereportdaily.com/api/unsubscribe?email=${encodeURIComponent(email)}`
@@ -276,7 +280,10 @@ export type BriefGameContext = {
   llm_summary: string | null
   llm_narrative: string | null
   llm_narrative_pro?: string | null   // NEW: Pro GM briefing narrative
+  components?: any | null          // ← ADD
+  components_raw?: any | null      // ← ADD
 }
+
  
 export function dailyBriefEmail(
   email: string,
@@ -314,6 +321,28 @@ export function dailyBriefEmail(
     const awayPitcher = game.teams.away.probablePitcher
     const homePitcher = game.teams.home.probablePitcher
 
+    // ── Matchup Tilt email block (replaces Edge Indicator) ──
+    const homeColor = '#CC0C00'  // fallback — or use findTeamByName if imported
+    const awayColor = '#002D72'
+    let tiltBlock = ''
+    if (ctx.components_raw && ctx.components) {
+      try {
+        const tiltData = buildMatchupTiltData(
+          ctx.components_raw as ComponentsRaw,
+          ctx.components as ComponentScores,
+          { abbr: homeShort?.toUpperCase() ?? 'HOME', name: homeTeam, primaryColor: homeColor },
+          { abbr: awayShort?.toUpperCase() ?? 'AWAY', name: awayTeam, primaryColor: awayColor },
+          ctx.venueName,
+          gameTime,
+        )
+        tiltBlock = `<tr><td style="padding:0 40px 16px;">${generateMatchupTiltEmailBlock(tiltData)}</td></tr>`
+      } catch (e) {
+        console.error('Tilt email block failed, falling back to Edge Indicator', e)
+      }
+    }
+
+  
+
   return `
       <tr><td style="padding:32px 40px 8px;border-top:2px solid #1a1a1a;">
         <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:#ff5722;text-transform:uppercase;margin-bottom:12px;">
@@ -341,7 +370,7 @@ export function dailyBriefEmail(
           </td>
         </tr></table>
       </td> </tr>
-     ${buildEdgeIndicatorBlock(ctx)}
+    ${tiltBlock || buildEdgeIndicatorBlock(ctx)}
      ${buildNarrativeBlock(ctx, isPro)}
       ${(awayPitcher || homePitcher) ? `
       <tr><td style="padding:16px 40px;">

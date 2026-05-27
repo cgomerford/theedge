@@ -68,8 +68,7 @@ export async function GET(request: NextRequest) {
         : null
 
       const prediction = predictions.get(game.gamePk)
-
-      return {
+return {
         game,
         awaySeasonStats,
         homeSeasonStats,
@@ -83,6 +82,8 @@ export async function GET(request: NextRequest) {
         confidence_tier: prediction?.confidence_tier ?? null,
         llm_summary: prediction?.summary ?? null,
         llm_narrative: prediction?.narrative ?? null,
+        components: prediction?.components ?? null,          // ← ADD
+        components_raw: prediction?.components_raw ?? null,  // ← ADD
       }
     })
   )
