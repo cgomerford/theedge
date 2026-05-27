@@ -29,34 +29,38 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Step 1: Get all probable pitchers from upcoming games (next 7 days)
-    const today = new Date().toISOString().split('T')[0]
-    const weekAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    
-    const scheduleUrl = `${MLB_API}/schedule?sportId=1&startDate=${today}&endDate=${weekAhead}&hydrate=probablePitcher`
-    const schedRes = await fetch(scheduleUrl)
-    const schedData = await schedRes.json()
+    // Step 1: Get EVERY active player for the season, filter for Pitchers
+    console.log(`Fetching all active players for season ${SEASON}...`)
+    const playersUrl = `${MLB_API}/sports/1/players?season=${SEASON}`
+    const playersRes = await fetch(playersUrl)
+    const playersData = await playersRes.json()
 
     const pitcherIds = new Set<number>()
-    for (const block of schedData.dates ?? []) {
-      for (const g of block.games ?? []) {
-        const home = g.teams?.home?.probablePitcher?.id
-        const away = g.teams?.away?.probablePitcher?.id
-        if (home) pitcherIds.add(home)
-        if (away) pitcherIds.add(away)
+    for (const player of playersData.people ?? []) {
+      // Code 1 or abbreviation 'P' designates a pitcher
+      if (player.primaryPosition?.abbreviation === 'P' || player.primaryPosition?.code === '1') {
+        pitcherIds.add(player.id)
       }
     }
 
-    console.log(`Found ${pitcherIds.size} pitchers to refresh`)
+    console.log(`Found ${pitcherIds.size} total pitchers in the league. Fetching stats...`)
 
-    // Step 2: Fetch advanced stats for each
+    // Step 2: Fetch advanced stats in batches to avoid timeouts
     const rows = []
-    for (const pitcherId of pitcherIds) {
-      const stats = await fetchPitcherStats(pitcherId)
-      if (stats) rows.push(stats)
+    const idsArray = Array.from(pitcherIds)
+    const BATCH_SIZE = 20 // Process 20 pitchers at a time simultaneously
+
+    for (let i = 0; i < idsArray.length; i += BATCH_SIZE) {
+      const batch = idsArray.slice(i, i + BATCH_SIZE)
+      const results = await Promise.all(batch.map(id => fetchPitcherStats(id)))
+      
+      for (const stats of results) {
+        if (stats) rows.push(stats)
+      }
+      console.log(`Processed ${Math.min(i + BATCH_SIZE, idsArray.length)} / ${idsArray.length} pitchers...`)
     }
 
-    console.log(`Fetched stats for ${rows.length} pitchers`)
+    console.log(`Successfully compiled data for ${rows.length} active pitchers`)
 
     // Step 3: Upsert into Supabase
     if (rows.length > 0) {
@@ -69,8 +73,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
-      pitchers_processed: pitcherIds.size,
-      pitchers_stored: rows.length,
+      total_pitchers_found: pitcherIds.size,
+      pitchers_with_data_stored: rows.length,
     })
   } catch (err) {
     console.error('Pitcher stats refresh failed:', err)
@@ -130,11 +134,11 @@ async function fetchPitcherStats(pitcherId: number) {
       }
     }
 
-    // Relaxed this constraint to catch relievers/openers with < 1 IP
+    // Ignore pitchers who haven't thrown a single pitch this year
     const innings = parseFloat(basic.inningsPitched ?? '0')
     if (innings <= 0) return null
 
-    // --- NEW: BASIC STATS ---
+    // --- BASIC STATS ---
     const wins = basic.wins ? parseInt(basic.wins) : null
     const losses = basic.losses ? parseInt(basic.losses) : null
     const games_played = basic.gamesPlayed ? parseInt(basic.gamesPlayed) : null
@@ -242,7 +246,6 @@ async function fetchPitcherStats(pitcherId: number) {
       k_per_9: advanced.strikeoutsPer9Inn ? parseFloat(advanced.strikeoutsPer9Inn) : null,
       bb_per_9: advanced.walksPer9Inn ? parseFloat(advanced.walksPer9Inn) : null,
       
-      // --- ALL NEW FIELDS ---
       wins: wins,
       losses: losses,
       games_played: games_played,
@@ -254,7 +257,6 @@ async function fetchPitcherStats(pitcherId: number) {
       vs_lhb_baa: vsLHB ? parseFloat(vsLHB) : null,
       vs_rhb_baa: vsRHB ? parseFloat(vsRHB) : null,
       
-      // --- L3 RECENT FORM ---
       l3_era: l3_era,
       l3_innings: l3_innings,
       l3_strikeouts: l3_strikeouts,
