@@ -75,9 +75,11 @@ export default async function GamePreview({ params }: Props) {
   const venue = getVenueInfo(game.venue?.name)
   const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
 
+  // Added the two Supabase fetches to this Promise.all array
   const [
     awayRecentStarts, homeRecentStarts, awaySeasonStats, homeSeasonStats, weather,
     awayPitchMix, homePitchMix, awayForm, homeForm, awayLineup, homeLineup, awayPitcherHotZones, homePitcherHotZones,
+    awayPitcherStatsRes, homePitcherStatsRes
   ] = await Promise.all([
     awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
     homePitcherId ? getPitcherRecentStarts(homePitcherId, 5) : Promise.resolve([]),
@@ -92,7 +94,13 @@ export default async function GamePreview({ params }: Props) {
     getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
     game.teams.away.probablePitcher ? getPitcherHotZones(game.teams.away.probablePitcher.id) : Promise.resolve({}),
     game.teams.home.probablePitcher ? getPitcherHotZones(game.teams.home.probablePitcher.id) : Promise.resolve({}),
+    awayPitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', awayPitcherId).single() : Promise.resolve({ data: null }),
+    homePitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', homePitcherId).single() : Promise.resolve({ data: null }),
   ])
+
+  // Extract the raw database rows gracefully
+  const awayPitcherStats = awayPitcherStatsRes?.data || null
+  const homePitcherStats = homePitcherStatsRes?.data || null
 
   const awayFeatureBatter = awayLineup?.batters?.[2] ?? null
   const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
@@ -124,11 +132,14 @@ export default async function GamePreview({ params }: Props) {
   const gameDate = new Date(game.gameDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET'
 
+  // Updated builder to pass the new stats objects directly into the team meta objects
   const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
-    prediction.components_raw as ComponentsRaw, prediction.components as ComponentScores,
-    { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A' },
-    { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A' },
-    game.venue?.name ?? '', gameTimeFormatted
+    prediction.components_raw as ComponentsRaw, 
+    prediction.components as ComponentScores,
+    { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
+    { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
+    game.venue?.name ?? '', 
+    gameTimeFormatted
   ) : null
 
   return (
@@ -147,7 +158,6 @@ export default async function GamePreview({ params }: Props) {
         isPro={isPro}
 
         // ── 1. TEAMS TAB ──────────────────────
-   // ── 1. TEAMS TAB ──────────────────────
         slotTeams={
           <div className="space-y-10">
             {/* Streamlined Game Header with Logos */}
@@ -183,9 +193,6 @@ export default async function GamePreview({ params }: Props) {
                 <span>{game.venue?.name}</span>
               </div>
             </div>
-
-            {/* Matchup Tilt */}
-            {/* ... Rest of your existing slotTeams content ... */}
 
             {/* Matchup Tilt */}
             {prediction && tiltData && (

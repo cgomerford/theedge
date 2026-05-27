@@ -61,8 +61,8 @@ export interface ComponentTilt {
 }
 
 export interface MatchupTiltData {
-  home: { abbr: string; name: string; primaryColor: string };
-  away: { abbr: string; name: string; primaryColor: string };
+  home: { abbr: string; name: string; primaryColor: string; stats?: any };
+  away: { abbr: string; name: string; primaryColor: string; stats?: any };
   venue: string;
   gameTime: string;
   components: {
@@ -185,8 +185,8 @@ function restSummary(
  *
  * @param raw       - edge_predictions.components_raw (the full DB rows stored by edge.ts)
  * @param scores    - edge_predictions.components (the 8 tilt values, -100 to +100)
- * @param home      - { abbr, name, primaryColor }
- * @param away      - { abbr, name, primaryColor }
+ * @param home      - { abbr, name, primaryColor, stats? }
+ * @param away      - { abbr, name, primaryColor, stats? }
  * @param venue     - venue name
  * @param gameTime  - formatted game time string
  */
@@ -198,8 +198,10 @@ export function buildMatchupTiltData(
   venue: string,
   gameTime: string,
 ): MatchupTiltData {
-  const hp = raw.home_pitcher;
-  const ap = raw.away_pitcher;
+  
+  // Merge live database stats (if provided via page.tsx) with the cached Python prediction payload
+  const hp = { ...(raw.home_pitcher || {}), ...(home.stats || {}) };
+  const ap = { ...(raw.away_pitcher || {}), ...(away.stats || {}) };
   const ht = raw.home_team;
   const at = raw.away_team;
   const park = raw.park;
@@ -222,6 +224,7 @@ export function buildMatchupTiltData(
             home: fmt(hp?.era),
             away: fmt(ap?.era),
             homeWins: (hp?.era ?? 99) < (ap?.era ?? 99),
+            note: 'lower = better',
           },
           {
             label: 'FIP',
@@ -241,6 +244,7 @@ export function buildMatchupTiltData(
             home: fmt(hp?.k_per_9, 1),
             away: fmt(ap?.k_per_9, 1),
             homeWins: (hp?.k_per_9 ?? 0) > (ap?.k_per_9 ?? 0),
+            note: 'higher = better',
           },
           {
             label: 'BB/9',
@@ -344,9 +348,9 @@ export function buildMatchupTiltData(
         subfactors: [
           {
             label: 'GB% (groundball rate)',
-            home: hp?.gb_percent != null ? `${(hp.gb_percent * 100).toFixed(0)}%` : '—',
-            away: ap?.gb_percent != null ? `${(ap.gb_percent * 100).toFixed(0)}%` : '—',
-            homeWins: (hp?.gb_percent ?? 0) > (ap?.gb_percent ?? 0),
+            home: hp?.gb_rate != null ? `${Number(hp.gb_rate).toFixed(1)}%` : '—',
+            away: ap?.gb_rate != null ? `${Number(ap.gb_rate).toFixed(1)}%` : '—',
+            homeWins: (hp?.gb_rate ?? 0) > (ap?.gb_rate ?? 0),
             note: 'higher = more GBs',
           },
           {
@@ -368,6 +372,7 @@ export function buildMatchupTiltData(
             home: fmt(hp?.l3_k_per_9, 1),
             away: fmt(ap?.l3_k_per_9, 1),
             homeWins: (hp?.l3_k_per_9 ?? 0) > (ap?.l3_k_per_9 ?? 0),
+            note: 'higher = better',
           },
         ],
       },
