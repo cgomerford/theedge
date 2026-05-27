@@ -83,7 +83,6 @@ export async function GET(request: Request) {
 
 async function fetchPitcherStats(pitcherId: number) {
   try {
-    // We request season, seasonAdvanced, gameLog, and statSplits (vs Left / vs Right)
     const url = `${MLB_API}/people/${pitcherId}/stats?stats=season,seasonAdvanced,gameLog,statSplits&sitCodes=vl,vr&group=pitching&season=${SEASON}`
     const r = await fetch(url)
     if (!r.ok) return null
@@ -99,21 +98,17 @@ async function fetchPitcherStats(pitcherId: number) {
     let teamId: number | null = null
 
     for (const block of data.stats ?? []) {
-      // 1. Basic Season Stats
       if (block.type?.displayName === 'season' && block.splits?.[0]) {
         basic = block.splits[0].stat ?? {}
         playerName = block.splits[0].player?.fullName ?? ''
         teamId = block.splits[0].team?.id ?? null
       }
-      // 2. Advanced Season Stats
       if (block.type?.displayName === 'seasonAdvanced' && block.splits?.[0]) {
         advanced = block.splits[0].stat ?? {}
       }
-      // 3. Game Logs (for Last 3 Starts)
       if (block.type?.displayName === 'gameLog') {
         gameLogs = block.splits ?? []
       }
-      // 4. Splits (vs LHB / vs RHB)
       if (block.type?.displayName === 'statSplits') {
         for (const split of block.splits ?? []) {
           if (split.split?.code === 'vl' || split.split?.description === 'vs Left') {
@@ -126,7 +121,6 @@ async function fetchPitcherStats(pitcherId: number) {
       }
     }
 
-    // If no name found, fetch person record
     if (!playerName) {
       const personRes = await fetch(`${MLB_API}/people/${pitcherId}`)
       if (personRes.ok) {
@@ -136,15 +130,61 @@ async function fetchPitcherStats(pitcherId: number) {
       }
     }
 
-    // Skip if no innings pitched (haven't played)
+    // Relaxed this constraint to catch relievers/openers with < 1 IP
     const innings = parseFloat(basic.inningsPitched ?? '0')
-    if (innings < 1) return null
+    if (innings <= 0) return null
+
+    // --- NEW: BASIC STATS ---
+    const wins = basic.wins ? parseInt(basic.wins) : null
+    const losses = basic.losses ? parseInt(basic.losses) : null
+    const games_played = basic.gamesPlayed ? parseInt(basic.gamesPlayed) : null
+    const starts = basic.gamesStarted ? parseInt(basic.gamesStarted) : 0
 
     // --- CALCULATE GB% ---
     const groundOuts = basic.groundOuts ? parseInt(basic.groundOuts) : 0
     const airOuts = basic.airOuts ? parseInt(basic.airOuts) : 0
     const totalBattedOuts = groundOuts + airOuts
     const gbRate = totalBattedOuts > 0 ? (groundOuts / totalBattedOuts) * 100 : null
+
+    // --- CALCULATE HOME / AWAY ERA FROM GAME LOGS ---
+    let homeER = 0, homeOuts = 0
+    let awayER = 0, awayOuts = 0
+
+    for (const g of gameLogs) {
+      if (!g.stat) continue
+      const er = parseInt(g.stat.earnedRuns ?? '0')
+      const ipStr = g.stat.inningsPitched ?? '0'
+      const parts = ipStr.split('.')
+      const outs = (parseInt(parts[0] || '0') * 3) + parseInt(parts[1] || '0')
+      
+      if (g.isHome) {
+        homeER += er
+        homeOuts += outs
+      } else {
+        awayER += er
+        awayOuts += outs
+      }
+    }
+
+    const home_era = homeOuts > 0 ? parseFloat(((homeER / (homeOuts / 3)) * 9).toFixed(2)) : null
+    const away_era = awayOuts > 0 ? parseFloat(((awayER / (awayOuts / 3)) * 9).toFixed(2)) : null
+
+    // --- CALCULATE DAYS REST ---
+    let days_rest = null
+    if (gameLogs.length > 0) {
+      const sortedLogs = [...gameLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      const lastGameDate = new Date(sortedLogs[0].date)
+      const diffTime = Math.abs(Date.now() - lastGameDate.getTime())
+      days_rest = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    }
+
+    // --- CALCULATE IP PACE ---
+    let season_ip_pace = null
+    if (starts > 0 && innings > 0) {
+      season_ip_pace = parseFloat(((innings / starts) * 32).toFixed(1)) // Assume 32 starts
+    } else if (games_played && games_played > 0 && innings > 0) {
+      season_ip_pace = parseFloat(((innings / games_played) * 65).toFixed(1)) // Assume 65 apps for relievers
+    }
 
     // --- CALCULATE LAST 3 STARTS (L3) ---
     let l3_era = null
@@ -153,7 +193,6 @@ async function fetchPitcherStats(pitcherId: number) {
     let l3_walks = null
     let l3_k_per_9 = null
 
-    // Filter to only games where they actually pitched, sort descending by date, take top 3
     const recentGames = gameLogs
       .filter(g => g.stat && parseFloat(g.stat.inningsPitched ?? '0') > 0)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -170,7 +209,6 @@ async function fetchPitcherStats(pitcherId: number) {
         ks += parseInt(g.stat.strikeOuts ?? '0')
         bbs += parseInt(g.stat.baseOnBalls ?? '0')
         
-        // Parse innings correctly (e.g., "5.1" means 5 innings + 1 out = 16 outs)
         const ipStr = g.stat.inningsPitched ?? '0'
         const parts = ipStr.split('.')
         const fullInnings = parseInt(parts[0])
@@ -198,18 +236,25 @@ async function fetchPitcherStats(pitcherId: number) {
       era: basic.era ? parseFloat(basic.era) : null,
       whip: basic.whip ? parseFloat(basic.whip) : null,
       innings_pitched: innings,
-      starts: basic.gamesStarted ? parseInt(basic.gamesStarted) : 0,
+      starts: starts,
       
       fip: advanced.fip ? parseFloat(advanced.fip) : null,
       k_per_9: advanced.strikeoutsPer9Inn ? parseFloat(advanced.strikeoutsPer9Inn) : null,
       bb_per_9: advanced.walksPer9Inn ? parseFloat(advanced.walksPer9Inn) : null,
       
-      // --- NEWLY EXTRACTED DATA FOR YOUR UI ---
+      // --- ALL NEW FIELDS ---
+      wins: wins,
+      losses: losses,
+      games_played: games_played,
+      days_rest: days_rest,
+      home_era: home_era,
+      away_era: away_era,
+      season_ip_pace: season_ip_pace,
       gb_rate: gbRate ? parseFloat(gbRate.toFixed(1)) : null,
       vs_lhb_baa: vsLHB ? parseFloat(vsLHB) : null,
       vs_rhb_baa: vsRHB ? parseFloat(vsRHB) : null,
       
-      // --- RECENT FORM ---
+      // --- L3 RECENT FORM ---
       l3_era: l3_era,
       l3_innings: l3_innings,
       l3_strikeouts: l3_strikeouts,
