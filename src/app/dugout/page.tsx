@@ -10,6 +10,15 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import DugoutCalendar from '@/components/DugoutCalendar'
 import { getCalendarMonth } from '@/lib/dugout-calendar'
 
+// ── Factor count helper for Matchup Tilt display ──
+function factorSummary(components: any) {
+  if (!components) return null
+  const entries = Object.entries(components) as [string, number][]
+  const homeCount = entries.filter(([, v]) => v > 5).length
+  const awayCount = entries.filter(([, v]) => v < -5).length
+  return { homeCount, awayCount, total: entries.length }
+}
+
 export const revalidate = 600
 
 type Props = {
@@ -204,26 +213,59 @@ if (!subscriber) {
                     ⊕ Tonight&apos;s Edge
                   </div>
 
-                  <div className="flex items-baseline gap-3 mb-3">
-                    <div className="text-5xl md:text-6xl font-serif font-black leading-none">
-                      {primaryGamePrediction.edge_score >= 0 ? '+' : ''}{Math.round(primaryGamePrediction.edge_score)}
-                    </div>
-                    <div className="text-xs font-mono uppercase tracking-widest opacity-80">
-                      — {primaryGamePrediction.confidence_tier}
-                    </div>
-                  </div>
+        {(() => {
+                    const factors = factorSummary(primaryGamePrediction.components)
+                    const winnerShort = primaryGamePrediction.predicted_winner === 'home'
+                      ? shortName(primaryTeamGame.teams.home.team.name)
+                      : shortName(primaryTeamGame.teams.away.team.name)
+                    const isTossup = primaryGamePrediction.confidence_tier === 'tossup'
 
-                  {primaryGamePrediction.confidence_tier !== 'tossup' && (
-                    <div className="mb-3">
-                      <div className="text-xs font-mono uppercase tracking-wider opacity-60 mb-1">Edge favors</div>
-                      <div className="text-xl font-serif font-bold">
-                        {(primaryGamePrediction.predicted_winner === 'home'
-                          ? shortName(primaryTeamGame.teams.home.team.name)
-                          : shortName(primaryTeamGame.teams.away.team.name)
-                        ).toUpperCase()}
-                      </div>
-                    </div>
-                  )}
+                    return (
+                      <>
+                        {factors && (
+                          <div className="mb-3">
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <div className="text-4xl md:text-5xl font-serif font-black leading-none">
+                                {Math.max(factors.homeCount, factors.awayCount)} of {factors.total}
+                              </div>
+                              <div className="text-sm font-mono uppercase tracking-wider opacity-80">
+                                factors
+                              </div>
+                            </div>
+                            <div className="flex gap-1 mb-3">
+                              {Object.entries(primaryGamePrediction.components)
+                                .map(([key, val]) => {
+                                  const v = val as number
+                                  const bg = v > 5 ? 'bg-white' : v < -5 ? 'bg-white/30' : 'bg-white/10'
+                                  return <div key={key} className={`w-2 h-2 rounded-full ${bg}`} />
+                                })}
+                            </div>
+                          </div>
+                        )}
+
+                        {!isTossup ? (
+                          <div className="mb-3">
+                            <div className="text-xs font-mono uppercase tracking-wider opacity-60 mb-1">
+                              Tilts toward
+                            </div>
+                            <div className="text-xl font-serif font-bold">
+                              {winnerShort.toUpperCase()}
+                            </div>
+                            <div className="text-xs font-mono uppercase tracking-widest opacity-80 mt-1">
+                              — {primaryGamePrediction.confidence_tier}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mb-3">
+                            <div className="text-xl font-serif font-bold opacity-80">Toss-up</div>
+                            <div className="text-xs font-mono uppercase tracking-wider opacity-60 mt-1">
+                              Factors split evenly tonight
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
 
                   {primaryGamePrediction.summary && (
                     <p className="text-sm font-serif italic leading-relaxed opacity-90 mt-4">
@@ -391,16 +433,33 @@ if (!subscriber) {
                             </p>
                           )}
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <div
-                            className="text-3xl md:text-4xl font-serif font-black leading-none"
-                            style={{ color: pred.confidence_tier === 'tossup' ? '#A3A3A3' : theme.primary }}
-                          >
-                            {pred.edge_score >= 0 ? '+' : ''}{Math.round(pred.edge_score)}
-                          </div>
-                          <div className="text-xs font-mono uppercase tracking-wider text-stone-500 mt-1">
-                            {pred.confidence_tier}
-                          </div>
+                     <div className="text-right flex-shrink-0">
+                          {(() => {
+                            const f = factorSummary(pred.components)
+                            if (!f) return null
+                            const dominant = Math.max(f.homeCount, f.awayCount)
+                            return (
+                              <>
+                                <div
+                                  className="text-3xl md:text-4xl font-serif font-black leading-none"
+                                  style={{ color: pred.confidence_tier === 'tossup' ? '#A3A3A3' : theme.primary }}
+                                >
+                                  {dominant}/{f.total}
+                                </div>
+                                <div className="text-xs font-mono uppercase tracking-wider text-stone-500 mt-1">
+                                  factors · {pred.confidence_tier}
+                                </div>
+                                <div className="flex gap-0.5 justify-end mt-1.5">
+                                  {Object.entries(pred.components)
+                                    .map(([key, val]) => {
+                                      const v = val as number
+                                      const bg = v > 5 ? 'bg-stone-900' : v < -5 ? 'bg-stone-400' : 'bg-stone-200'
+                                      return <div key={key} className={`w-1.5 h-1.5 rounded-full ${bg}`} />
+                                    })}
+                                </div>
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
 
@@ -427,7 +486,7 @@ if (!subscriber) {
                               )
                             })}
                           <div className="text-[10px] font-mono uppercase tracking-wider text-orange-600 self-center">
-                            +6 more →
+                            All 8 factors →
                           </div>
                         </div>
                       )}
