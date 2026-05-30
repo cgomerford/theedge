@@ -313,7 +313,12 @@ export async function generateFantasyCards(
       return null
     }
 
-    return {
+
+// ADD THESE TWO LINES
+console.log(`Fantasy cards parsed — pitchers: ${(parsed.pitchers as any[])?.length}, batters: ${(parsed.batters as any[])?.length}`)
+console.log(`Fantasy cards batters:`, JSON.stringify(parsed.batters))
+
+return {
       generated_at: new Date().toISOString(),
       lineups_used: input.lineups_confirmed,
       pitchers: (parsed.pitchers ?? []) as FantasyPitcherCard[],

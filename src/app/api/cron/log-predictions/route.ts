@@ -205,8 +205,14 @@ if (lineupsConfirmed && homeLineup) {
 }
 // ── Fantasy cards — runs independently of narrative regeneration ──────
 // ── Fantasy cards — runs independently of narrative regeneration ──────
+// ── Fantasy cards — runs independently of narrative regeneration ──────
 console.log(`Game ${game.gamePk}: shouldGenerateFantasy=${shouldGenerateFantasy}, existing=${!!existing?.fantasy_cards}`)
 if (shouldGenerateFantasy) {
+  // ← ADD THIS
+  if (lineupsConfirmed && homeLineup) {
+    console.log(`Game ${game.gamePk} passing to LLM:`, JSON.stringify(formatLineup(homeLineup)))
+  }
+
   const generatedFantasy = await generateFantasyCards({
     home_team: game.teams.home.team.name,
     away_team: game.teams.away.team.name,
