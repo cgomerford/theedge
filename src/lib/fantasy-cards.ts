@@ -196,7 +196,8 @@ RATING SCALE:
 1 = avoid / stream elsewhere
 
 RULES:
-- If no lineup data: return empty batters array and null stack_pick
+- IF LINEUP DATA IS PROVIDED: generate 4-5 batter cards for each team (8-10 batters total). DO NOT return empty batters array. ALSO generate a stack_pick.
+- If NO lineup data: return empty batters array and null stack_pick
 - Assess park factors honestly — hitter-friendly parks hurt pitchers
 - Bullpen exhaustion lowers a team's save/hold upside
 - K/9 matters more than ERA for SP fantasy
@@ -278,9 +279,9 @@ export async function generateFantasyCards(
   input: FantasyCardsInput
 ): Promise<FantasyCards | null> {
   try {
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1400,
+   const message = await client.messages.create({
+  model: MODEL,
+  max_tokens: 3500,
       system: [
         {
           type: 'text',
