@@ -23,13 +23,12 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 function formatLineup(players: any[]): Array<{ order: number; name: string; position: string }> {
   return players
-    .filter(p => p.battingOrder)
-    .map(p => ({
-      order: Math.round(parseInt(p.battingOrder) / 100),
-      name: p.person?.fullName ?? 'Unknown',
+    .slice(0, 9)
+    .map((p, index) => ({
+      order: index + 1,
+      name: p.fullName ?? 'Unknown',
       position: p.primaryPosition?.abbreviation ?? '?',
     }))
-    .sort((a, b) => a.order - b.order)
     .slice(0, 5)
 }
 export async function GET(request: Request) {
