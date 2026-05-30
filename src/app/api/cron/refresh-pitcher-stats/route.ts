@@ -24,9 +24,11 @@ export async function GET(request: Request) {
     authHeader === `Bearer ${secret}`
   )
 
-  if (!isValid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  
+
+if (!isValid) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+}
 
   try {
     // Step 1: Get EVERY active player for the season, filter for Pitchers
@@ -83,6 +85,21 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
+}
+
+// Calculate FIP from basic stats — MLB API doesn't return FIP directly
+function calculateFIP(stat: any): number | null {
+  const ip = parseFloat(stat.inningsPitched ?? '0')
+  if (ip <= 0) return null
+
+  const hr = parseInt(stat.homeRuns ?? '0')
+  const bb = parseInt(stat.baseOnBalls ?? '0')
+  const hbp = parseInt(stat.hitByPitch ?? '0')
+  const k = parseInt(stat.strikeOuts ?? '0')
+
+  const FIP_CONSTANT = 3.10
+  const fip = ((13 * hr) + (3 * (bb + hbp)) - (2 * k)) / ip + FIP_CONSTANT
+  return parseFloat(fip.toFixed(2))
 }
 
 async function fetchPitcherStats(pitcherId: number) {
@@ -242,9 +259,9 @@ async function fetchPitcherStats(pitcherId: number) {
       innings_pitched: innings,
       starts: starts,
       
-      fip: advanced.fip ? parseFloat(advanced.fip) : null,
-      k_per_9: advanced.strikeoutsPer9Inn ? parseFloat(advanced.strikeoutsPer9Inn) : null,
-      bb_per_9: advanced.walksPer9Inn ? parseFloat(advanced.walksPer9Inn) : null,
+     fip: calculateFIP(basic),
+k_per_9: basic.strikeoutsPer9Inn ? parseFloat(basic.strikeoutsPer9Inn) : null,
+bb_per_9: basic.walksPer9Inn ? parseFloat(basic.walksPer9Inn) : null,
       
       wins: wins,
       losses: losses,

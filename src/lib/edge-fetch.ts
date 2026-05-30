@@ -30,6 +30,7 @@ export type EdgePrediction = {
   away_stories: { stat: string; text: string }[] | null
   contrarian: string | null
   pro_takeaways: { stat: string; text: string; edge: 'home' | 'away' | 'neutral' }[] | null
+  fantasy_cards?: any | null   // ← change | to ?
 }
 
 // Fetch all today's predictions in one query (for email cron)
@@ -53,7 +54,7 @@ export async function getPredictionsForDate(date: string): Promise<Map<number, E
 export async function getEdgePrediction(gamePk: number): Promise<EdgePrediction | null> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at,home_stories, away_stories, contrarian, pro_takeaways, summary, story_lead, narrative, narrative_pro,components_raw')
+    .select('edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, home_stories, away_stories, contrarian, pro_takeaways, summary, story_lead, narrative, narrative_pro, components_raw, fantasy_cards')
     .eq('game_pk', gamePk)
     .single()
 

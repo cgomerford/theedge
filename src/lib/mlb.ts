@@ -318,6 +318,7 @@ export type PitchType = {
   k_percent: number | null
   ba_against: number | null
   est_woba: number | null
+  hard_hit_percent: number | null
 }
 
 export async function getPitchMix(playerId: number): Promise<PitchType[]> {
@@ -345,7 +346,8 @@ export async function getPitchMix(playerId: number): Promise<PitchType[]> {
     whiff_percent: r.whiff_percent !== null ? Number(r.whiff_percent) : null,
     k_percent: r.k_percent !== null ? Number(r.k_percent) : null,
     ba_against: r.ba_against !== null ? Number(r.ba_against) : null,
-    est_woba: r.est_woba !== null ? Number(r.est_woba) : null,
+est_woba: r.est_woba !== null ? Number(r.est_woba) : null,
+    hard_hit_percent: r.hard_hit_percent !== null ? Number(r.hard_hit_percent) : null,
   }))
 }
 

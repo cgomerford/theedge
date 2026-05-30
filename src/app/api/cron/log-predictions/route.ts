@@ -4,6 +4,8 @@ import { calculateEdgeScore, logPrediction } from '@/lib/edge'
 import { generateNarrative } from '@/lib/narrative'
 import { aggregateGameStreaks } from '@/lib/streaks'
 import type { GameStreaks } from '@/lib/streaks'
+import { generateFantasyCards } from '@/lib/fantasy-cards'
+import type { FantasyCards } from '@/lib/fantasy-cards'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -19,7 +21,17 @@ const NARRATIVE_REGEN_THRESHOLD = 15
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
+function formatLineup(players: any[]): Array<{ order: number; name: string; position: string }> {
+  return players
+    .filter(p => p.battingOrder)
+    .map(p => ({
+      order: Math.round(parseInt(p.battingOrder) / 100),
+      name: p.person?.fullName ?? 'Unknown',
+      position: p.primaryPosition?.abbreviation ?? '?',
+    }))
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 5)
+}
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
   const validSecrets = [
@@ -36,7 +48,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0]
+   const url_date = new URL(request.url).searchParams.get('date')
+const today = url_date ?? new Date().toISOString().split('T')[0]
     const url = `${MLB_API}/schedule?sportId=1&date=${today}&hydrate=team,probablePitcher,venue,lineups`
 
     const res = await fetch(url)
@@ -96,9 +109,11 @@ export async function GET(request: Request) {
         // ADDED: Fetch the new structured columns so we don't overwrite them with null
         const { data: existing } = await supa
           .from('edge_predictions')
-          .select('edge_score, summary, story_lead, narrative, narrative_pro, lineups_confirmed, home_stories, away_stories, contrarian, pro_takeaways')
+          .select('edge_score, summary, story_lead, narrative, narrative_pro, lineups_confirmed, home_stories, away_stories, contrarian, pro_takeaways, fantasy_cards')
           .eq('game_pk', game.gamePk)
           .single()
+          
+
 
         const hasExistingNarrative = !!(existing?.summary && existing?.narrative)
         const scoreSwing = existing
@@ -120,11 +135,17 @@ export async function GET(request: Request) {
         let narrative: string | null = existing?.narrative ?? null
         let narrative_pro: string | null = existing?.narrative_pro ?? null
         
-        // ADDED: Initialize variables for new structures
-        let home_stories: any = existing?.home_stories ?? null
-        let away_stories: any = existing?.away_stories ?? null
-        let contrarian: string | null = existing?.contrarian ?? null
-        let pro_takeaways: any = existing?.pro_takeaways ?? null
+        
+         let home_stories: any = existing?.home_stories ?? null
+              let away_stories: any = existing?.away_stories ?? null
+let contrarian: string | null = existing?.contrarian ?? null
+let pro_takeaways: any = existing?.pro_takeaways ?? null
+let fantasy_cards: FantasyCards | null = existing?.fantasy_cards ?? null  // ← ADD
+
+// Only regenerate fantasy cards if: never generated, OR lineups just confirmed
+const shouldGenerateFantasy =                                              // ← ADD
+  !existing?.fantasy_cards ||                                             // ← ADD
+  (!existing?.fantasy_cards?.lineups_used && lineupsConfirmed)            // ← ADD
 
         console.log(
           `Game ${game.gamePk}: shouldRegenerate=${shouldRegenerate}, ` +
@@ -132,70 +153,105 @@ export async function GET(request: Request) {
           `scoreSwing=${scoreSwing.toFixed(1)}, lineupsConfirmed=${lineupsConfirmed}`
         )
 
-        if (shouldRegenerate) {
-          const narrativeInputsBase = {
-            home_team: game.teams.home.team.name,
-            away_team: game.teams.away.team.name,
-            edge_score: result.edge_score,
-            predicted_winner: result.predicted_winner,
-            confidence_tier: result.confidence_tier,
-            components: result.components,
-            components_raw: result.components_raw,
-            venue_name: game.venue?.name ?? '',
-            streaks,
-          }
+console.log(
+  `Game ${game.gamePk}: shouldRegenerate=${shouldRegenerate}, ` +
+  `locked=${narrativeLocked}, hasExisting=${hasExistingNarrative}, ` +
+  `scoreSwing=${scoreSwing.toFixed(1)}, lineupsConfirmed=${lineupsConfirmed}`
+)
 
-          const [generatedFree, generatedPro] = await Promise.all([
-            generateNarrative({ ...narrativeInputsBase, is_pro: false }),
-            generateNarrative({ ...narrativeInputsBase, is_pro: true }),
-          ])
+// ── Narrative regeneration ────────────────────────────────────────────
+if (shouldRegenerate) {
+  const narrativeInputsBase = {
+    home_team: game.teams.home.team.name,
+    away_team: game.teams.away.team.name,
+    edge_score: result.edge_score,
+    predicted_winner: result.predicted_winner,
+    confidence_tier: result.confidence_tier,
+    components: result.components,
+    components_raw: result.components_raw,
+    venue_name: game.venue?.name ?? '',
+    streaks,
+  }
 
-          if (generatedFree) {
-            summary = generatedFree.summary
-            story_lead = generatedFree.story_lead
-            narrative = generatedFree.narrative
-            // ADDED: Extract the structured tags from the LLM
-            home_stories = generatedFree.home_stories
-            away_stories = generatedFree.away_stories
-            contrarian = generatedFree.contrarian
-            pro_takeaways = generatedFree.pro_takeaways
-          }
+  const [generatedFree, generatedPro] = await Promise.all([
+    generateNarrative({ ...narrativeInputsBase, is_pro: false }),
+    generateNarrative({ ...narrativeInputsBase, is_pro: true }),
+  ])
 
-          if (generatedPro) {
-            narrative_pro = generatedPro.narrative
-          }
+  if (generatedFree) {
+    summary = generatedFree.summary
+    story_lead = generatedFree.story_lead
+    narrative = generatedFree.narrative
+    home_stories = generatedFree.home_stories
+    away_stories = generatedFree.away_stories
+    contrarian = generatedFree.contrarian
+    pro_takeaways = generatedFree.pro_takeaways
+  }
 
-          if (generatedFree || generatedPro) {
-            narratives_regenerated++
-            console.log(
-              `Game ${game.gamePk}: narratives generated — ` +
-              `free=${!!generatedFree}, pro=${!!generatedPro}`
-            )
-          }
-        } else {
-          narratives_kept++
-        }
+  if (generatedPro) {
+    narrative_pro = generatedPro.narrative
+  }
 
-        // ADDED: Pass the new variables into logPrediction
-        await logPrediction(
-          game.gamePk,
-          gameDate,
-          game.teams.home.team.id,
-          game.teams.home.team.name,
-          game.teams.away.team.id,
-          game.teams.away.team.name,
-          result,
-          lineupsConfirmed,
-          summary,
-          story_lead,
-          narrative,
-          streaks,
-          narrative_pro,
-          home_stories,
-          away_stories,
-          contrarian,
-          pro_takeaways
-        )
+  if (generatedFree || generatedPro) {
+    narratives_regenerated++
+    console.log(`Game ${game.gamePk}: narratives generated — free=${!!generatedFree}, pro=${!!generatedPro}`)
+  }
+} else {
+  narratives_kept++
+}
+
+if (lineupsConfirmed && homeLineup) {
+  console.log(`Game ${game.gamePk} raw home lineup sample:`, JSON.stringify(homeLineup[0]))
+  console.log(`Game ${game.gamePk} formatted home lineup:`, JSON.stringify(formatLineup(homeLineup)))
+}
+// ── Fantasy cards — runs independently of narrative regeneration ──────
+// ── Fantasy cards — runs independently of narrative regeneration ──────
+console.log(`Game ${game.gamePk}: shouldGenerateFantasy=${shouldGenerateFantasy}, existing=${!!existing?.fantasy_cards}`)
+if (shouldGenerateFantasy) {
+  const generatedFantasy = await generateFantasyCards({
+    home_team: game.teams.home.team.name,
+    away_team: game.teams.away.team.name,
+    home_abbr: game.teams.home.team.abbreviation ?? 'HOME',
+    away_abbr: game.teams.away.team.abbreviation ?? 'AWAY',
+    edge_score: result.edge_score,
+    confidence_tier: result.confidence_tier,
+    predicted_winner: result.predicted_winner,
+    venue_name: game.venue?.name ?? '',
+    lineups_confirmed: lineupsConfirmed,
+    components_raw: result.components_raw,
+    home_lineup: lineupsConfirmed && homeLineup ? formatLineup(homeLineup) : undefined,
+    away_lineup: lineupsConfirmed && awayLineup ? formatLineup(awayLineup) : undefined,
+  })
+
+  if (generatedFantasy) {
+    fantasy_cards = generatedFantasy
+    console.log(`Game ${game.gamePk}: fantasy cards generated — lineups_used=${generatedFantasy.lineups_used}`)
+  } else {
+    console.error(`Game ${game.gamePk}: fantasy cards generation failed`)
+  }
+}
+
+// ── Save to DB ────────────────────────────────────────────────────────
+await logPrediction(
+  game.gamePk,
+  gameDate,
+  game.teams.home.team.id,
+  game.teams.home.team.name,
+  game.teams.away.team.id,
+  game.teams.away.team.name,
+  result,
+  lineupsConfirmed,
+  summary,
+  story_lead,
+  narrative,
+  streaks,
+  narrative_pro,
+  home_stories,
+  away_stories,
+  contrarian,
+  pro_takeaways,
+  fantasy_cards
+)
 
         predictions_logged++
       } catch (err) {

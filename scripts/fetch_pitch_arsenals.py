@@ -1,15 +1,17 @@
 """
-Fetches pitch arsenal data for every active MLB starter and writes to Supabase.
-Runs once daily via GitHub Actions.
+Fetches pitch arsenal data AND pitch movement physics for every active MLB starter.
+Writes a complete profile to Supabase.
 """
 import os
 import sys
 from datetime import datetime
 import pandas as pd
 from pybaseball import statcast_pitcher_arsenal_stats, cache
+from pybaseball.statcast_pitcher import statcast_pitcher_pitch_movement
 from supabase import create_client
+from dotenv import load_dotenv
 
-# Enable pybaseball caching to be polite to Statcast
+load_dotenv()
 cache.enable()
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -20,131 +22,139 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     sys.exit(1)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
 def format_name(raw):
-    """Convert 'Pérez, Eury' to 'Eury Pérez'"""
-    if not raw:
-        return None
+    if not raw: return None
     s = str(raw).strip()
-    if not s:
-        return None
     if ',' in s:
         last, first = s.split(',', 1)
         return f'{first.strip()} {last.strip()}'
     return s
-# Pitch type code -> friendly name
+
 PITCH_NAMES = {
-    'FF': '4-Seam Fastball',
-    'SI': 'Sinker',
-    'FC': 'Cutter',
-    'SL': 'Slider',
-    'ST': 'Sweeper',
-    'SV': 'Slurve',
-    'CU': 'Curveball',
-    'KC': 'Knuckle Curve',
-    'CH': 'Changeup',
-    'FS': 'Splitter',
-    'FO': 'Forkball',
-    'SC': 'Screwball',
-    'KN': 'Knuckleball',
-    'EP': 'Eephus',
+    'FF': '4-Seam Fastball', 'SI': 'Sinker', 'FC': 'Cutter', 'SL': 'Slider',
+    'ST': 'Sweeper', 'SV': 'Slurve', 'CU': 'Curveball', 'KC': 'Knuckle Curve',
+    'CH': 'Changeup', 'FS': 'Splitter', 'FO': 'Forkball', 'SC': 'Screwball',
+    'KN': 'Knuckleball', 'EP': 'Eephus',
 }
+
+REVERSE_NAMES = {v.upper(): k for k, v in PITCH_NAMES.items()}
 
 def main():
     season = datetime.now().year
-    print(f'Fetching pitch arsenal stats for {season}...')
+    print(f'Fetching data for {season}...')
 
-    df = statcast_pitcher_arsenal_stats(year=season, minPA=5)
-
-    if df is None or df.empty:
-        print('No data returned from Statcast — exiting cleanly')
+    # 1. Fetch Arsenal Stats (minPA=0 gets everyone)
+    df_arsenal = statcast_pitcher_arsenal_stats(year=season, minPA=0)
+    
+    if df_arsenal is None or df_arsenal.empty:
+        print('No arsenal data returned from Statcast — exiting')
         sys.exit(0)
 
-    print(f'Got {len(df)} pitcher-pitch rows from Statcast')
-    print(f'DataFrame columns: {list(df.columns)}')
+    # 2. Fetch Movement Stats (Bypass Savant's 1-pitch limit by looping!)
+    print("Downloading physics for ALL pitch types...")
+    movement_dfs = []
+    savant_pitch_codes = ['FF', 'SI', 'FC', 'SL', 'CH', 'CU', 'FS', 'KC', 'ST', 'SV']
+    
+    for pt in savant_pitch_codes:
+        try:
+            # We explicitly pass the pitch type string so Savant returns it
+            df_pt = statcast_pitcher_pitch_movement(year=season, minP=0, pitch_type=pt)
+            if df_pt is not None and not df_pt.empty:
+                movement_dfs.append(df_pt)
+        except Exception:
+            pass
 
-    # Helper to find the right column name (pybaseball varies by version)
+    # If it's early in the season and data is empty, safely fall back to last year
+    if not movement_dfs:
+        print(f"Movement data for {season} empty, trying {season - 1}...")
+        for pt in savant_pitch_codes:
+            try:
+                df_pt = statcast_pitcher_pitch_movement(year=season-1, minP=0, pitch_type=pt)
+                if df_pt is not None and not df_pt.empty:
+                    movement_dfs.append(df_pt)
+            except Exception:
+                pass
+
+    if movement_dfs:
+        # Stack all the separate pitch type dataframes together
+        df_movement = pd.concat(movement_dfs, ignore_index=True)
+    else:
+        df_movement = pd.DataFrame()
+
+    # --- BULLETPROOF MOVEMENT PARSING ---
+    movement_dict = {}
+    if not df_movement.empty:
+        
+        # Explicitly check for the new column names, falling back to older versions just in case
+        def get_col(df, options):
+            for opt in options:
+                if opt in df.columns: return opt
+            return None
+
+        v_col = get_col(df_movement, ['pitcher_break_z', 'pitch_movement_cxz', 'pitch_movement_xz'])
+        h_col = get_col(df_movement, ['pitcher_break_x', 'pitch_movement_cxw', 'pitch_movement_xw'])
+        
+        print(f"👉 Found Movement Columns: Vertical = '{v_col}', Horizontal = '{h_col}'")
+
+        match_count = 0
+        for _, r in df_movement.iterrows():
+            try:
+                pid_val = r.get('pitcher_id') or r.get('player_id')
+                if pd.isna(pid_val): continue
+                pid = int(pid_val)
+                
+                pt_raw = str(r.get('pitch_type', r.get('pitch_type_name', ''))).strip().upper()
+                pt = REVERSE_NAMES.get(pt_raw, pt_raw) 
+                
+                v_val = r.get(v_col) if v_col else None
+                h_val = r.get(h_col) if h_col else None
+                
+                if v_val is not None and pd.notna(v_val):
+                    movement_dict[(pid, pt)] = {
+                        'v_break': float(v_val),
+                        'h_break': float(h_val) if h_val is not None and pd.notna(h_val) else 0.0
+                    }
+                    match_count += 1
+            except Exception:
+                continue
+        print(f"👉 Successfully loaded {match_count} pitch movement profiles into memory.")
+    else:
+        print("❌ CRITICAL: Could not find any movement data from Statcast.")
+
+    # --- ARSENAL PARSING & MERGING ---
     def first_col(*names):
         for n in names:
-            if n in df.columns:
-                return n
+            if n in df_arsenal.columns: return n
         return None
 
-    pid_col = first_col('pitcher_id', 'player_id', 'pitcher', 'mlbam_id')
-    name_col = first_col('last_name, first_name', 'name', 'player_name', 'first_last_name', 'last_first_name')
+    pid_col = first_col('pitcher_id', 'player_id', 'pitcher')
+    name_col = first_col('last_name, first_name', 'name', 'player_name')
     ptype_col = first_col('pitch_type', 'pitchType', 'pitch')
-    pitches_col = first_col('pitches', 'n', 'count')
-    usage_col = first_col('pitch_usage', 'pitch_pct', 'pct', 'percentage')
+    usage_col = first_col('pitch_usage', 'pitch_pct', 'pct')
     speed_col = first_col('avg_speed', 'velocity', 'release_speed')
-    whiff_col = first_col('whiff_percent', 'whiff_pct')
-    k_col = first_col('k_percent', 'k_pct')
-    ba_col = first_col('ba', 'opponent_ba', 'avg_against')
-    xwoba_col = first_col('est_woba', 'xwoba', 'expected_woba')
-    hardhit_col = first_col('hard_hit_percent', 'hard_hit_pct')
-
-    if not pid_col or not ptype_col:
-        print(f'ERROR: Required columns not found. Available: {list(df.columns)}')
-        sys.exit(1)
-# Print first row sample so we can debug values
-    if not df.empty:
-        first_row = df.iloc[0].to_dict()
-        print(f'Sample row: {first_row}')
-    print(f'Using columns: id={pid_col}, name={name_col}, type={ptype_col}, count={pitches_col}, usage={usage_col}, speed={speed_col}')
-
+    
     rows = []
-    for _, r in df.iterrows():
-        pitch_type = str(r.get(ptype_col, '')).strip()
-        if not pitch_type:
-            continue
+    successful_merges = 0
 
-        pitches = int(r.get(pitches_col, 0) or 0) if pitches_col else 0
-        if pitches < 1:
-            continue  # only filter rows with literally zero
-
-        # Handle pitch_usage NaN
-        try:
-            pitch_usage = float(r.get(usage_col, 0) or 0) if usage_col else 0
-            if pd.isna(pitch_usage):
-                pitch_usage = 0
-        except (ValueError, TypeError):
-            pitch_usage = 0
-
-        # Handle avg_speed NaN
-        avg_speed = r.get(speed_col) if speed_col else None
-        try:
-            avg_speed = float(avg_speed) if avg_speed not in (None, '') else None
-            if avg_speed is not None and pd.isna(avg_speed):
-                avg_speed = None
-        except (ValueError, TypeError):
-            avg_speed = None
+    for _, r in df_arsenal.iterrows():
+        pitch_type = str(r.get(ptype_col, '')).strip().upper()
+        if not pitch_type: continue
 
         try:
             player_id_int = int(r[pid_col])
-        except (ValueError, TypeError):
-            continue
+        except (ValueError, TypeError): continue
 
-        def safe_pct(col):
-            if not col:
-                return None
-            v = r.get(col)
-            try:
-                f = float(v) if v not in (None, '') else None
-                if f is None or pd.isna(f):
-                    return None
-                return round(f, 2)
-            except (ValueError, TypeError):
-                return None
+        pitch_usage = float(r.get(usage_col, 0)) if pd.notna(r.get(usage_col)) else 0
+        avg_speed = float(r.get(speed_col)) if pd.notna(r.get(speed_col)) else None
 
-        def safe_avg(col):
-            if not col:
-                return None
-            v = r.get(col)
-            try:
-                f = float(v) if v not in (None, '') else None
-                if f is None or pd.isna(f):
-                    return None
-                return round(f, 3)
-            except (ValueError, TypeError):
-                return None
+        # MERGE THE DATA
+        move_data = movement_dict.get((player_id_int, pitch_type), {})
+        avg_v_break = move_data.get('v_break')
+        avg_h_break = move_data.get('h_break')
+        
+        if avg_v_break is not None:
+            successful_merges += 1
 
         rows.append({
             'player_id': player_id_int,
@@ -152,53 +162,25 @@ def main():
             'season': season,
             'pitch_type': pitch_type,
             'pitch_name': PITCH_NAMES.get(pitch_type, pitch_type),
-            'count': pitches,
+            'count': int(r.get('pitches', 0) or 0),
             'percentage': round(pitch_usage, 2),
             'avg_velocity': round(avg_speed, 1) if avg_speed else None,
-            'whiff_percent': safe_pct(whiff_col),
-            'k_percent': safe_pct(k_col),
-            'ba_against': safe_avg(ba_col),
-            'est_woba': safe_avg(xwoba_col),
-            'hard_hit_percent': safe_pct(hardhit_col),
+            'avg_v_break': round(avg_v_break, 1) if avg_v_break is not None else None,
+            'avg_h_break': round(avg_h_break, 1) if avg_h_break is not None else None,
         })
   
-        print(f'Prepared {len(rows)} rows to upsert')
+    print(f'👉 Merged movement physics for {successful_merges} out of {len(rows)} total pitches.')
 
     if not rows:
         print('No rows to upsert — exiting cleanly')
         return
 
-    # Upsert preserves columns we don't write (avg_velocity, avg_h_break, avg_v_break)
-    # These come from fetch_pitch_velocity_movement.py running later in the workflow
     BATCH = 500
     for i in range(0, len(rows), BATCH):
         batch = rows[i:i+BATCH]
-        supabase.table('pitch_arsenals')\
-            .upsert(batch, on_conflict='player_id,season,pitch_type')\
-            .execute()
-        print(f'  Upserted batch {i//BATCH + 1} ({len(batch)} rows)')
-
-    # Optional: clean up rows for pitchers no longer in current arsenal
-    # (e.g. retired, traded to minors, hasn't pitched enough)
-    current_keys = {(r['player_id'], r['pitch_type']) for r in rows}
-    response = supabase.table('pitch_arsenals')\
-        .select('id, player_id, pitch_type')\
-        .eq('season', season)\
-        .execute()
+        supabase.table('pitch_arsenals').upsert(batch, on_conflict='player_id,season,pitch_type').execute()
     
-    stale_ids = [
-        row['id'] for row in (response.data or [])
-        if (row['player_id'], row['pitch_type']) not in current_keys
-    ]
-    
-    if stale_ids:
-        # Delete in batches to avoid URL length limits
-        for i in range(0, len(stale_ids), 100):
-            chunk = stale_ids[i:i+100]
-            supabase.table('pitch_arsenals').delete().in_('id', chunk).execute()
-        print(f'  Cleaned up {len(stale_ids)} stale rows (pitchers no longer active)')
-
-    print(f'✓ Done — {len(rows)} pitch arsenal records updated for {season}')
+    print(f'✓ DONE! Uploaded to Supabase.')
 
 if __name__ == '__main__':
     main()

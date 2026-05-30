@@ -24,6 +24,14 @@ function parseInnings(ip: string | number | null | undefined): number {
   return full + outs / 3
 }
 
+// Convert decimal innings (3.333) back to baseball notation (3.1)
+// In baseball: .1 = 1 out, .2 = 2 outs, never .3/.4/.5 etc
+function toBaseballIP(decimalIP: number): number {
+  const full = Math.floor(decimalIP)
+  const outs = Math.round((decimalIP - full) * 3)
+  return parseFloat(`${full}.${outs}`)
+}
+
 // ============================================================
 // VENUE COORDINATES for travel distance calculation
 // Haversine distance between two lat/lng points
@@ -128,7 +136,7 @@ export async function GET(request: Request) {
 async function fetchTeamStats(teamId: number, teamName: string) {
   try {
     const today_str = new Date().toISOString().split('T')[0]
-    const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const thirty_days_ago = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().split('T')[0]
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]

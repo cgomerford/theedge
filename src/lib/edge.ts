@@ -677,7 +677,8 @@ export async function logPrediction(
   home_stories: any = null,
   away_stories: any = null,
   contrarian: string | null = null,
-  pro_takeaways: any = null
+  pro_takeaways: any = null,
+  fantasy_cards: any = null        // ← ADD THIS
 ) {
   const row: any = {
     game_pk: gamePk,
@@ -707,9 +708,12 @@ export async function logPrediction(
     row.narrative_generated_at = new Date().toISOString()
   }
 
-  if (streakData !== null) {
+if (streakData !== null) {
     row.streak_data = streakData
   }
 
-  await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })
-}
+  if (fantasy_cards !== null) {
+    row.fantasy_cards = fantasy_cards
+  }
+
+  await supa.from('edge_predictions').upsert(row, { onConflict: 'game_pk' })}

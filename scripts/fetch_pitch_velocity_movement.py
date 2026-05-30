@@ -75,13 +75,27 @@ def main():
                 skip_count += 1
                 continue
             
-            # Filter to valid pitch types
+         # Filter to valid pitch types
             df = df[df['pitch_type'].notna() & (df['pitch_type'] != '')]
             
             if df.empty:
                 skip_count += 1
                 continue
             
+            # --- NEW: CALCULATE WHIFF RATE ---
+            swing_events = ['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'hit_into_play', 'missed_bunt', 'foul_bunt']
+            whiff_events = ['swinging_strike', 'swinging_strike_blocked', 'missed_bunt']
+            
+            swings = df[df['description'].isin(swing_events)]
+            whiffs = df[df['description'].isin(whiff_events)]
+            
+            swing_counts = swings.groupby('pitch_type').size()
+            whiff_counts = whiffs.groupby('pitch_type').size()
+            
+            # Calculate percentage, handle NaN for pitches with 0 swings
+            whiff_rates = (whiff_counts / swing_counts * 100).round(1).rename('whiff_rate')
+            # ---------------------------------
+
             # Aggregate by pitch type
             agg = df.groupby('pitch_type').agg(
                 avg_velocity=('release_speed', 'mean'),
@@ -89,6 +103,9 @@ def main():
                 avg_v_break=('pfx_z', 'mean'),  # vertical break (inches)
                 pitch_count=('release_speed', 'count'),
             ).reset_index()
+            
+            # --- NEW: MERGE WHIFF RATE INTO AGG ---
+            agg = agg.merge(whiff_rates, on='pitch_type', how='left')
             
             # Filter to pitches with at least 10 samples (data quality)
             agg = agg[agg['pitch_count'] >= 10]
@@ -102,6 +119,9 @@ def main():
                 avg_hb = round(float(row['avg_h_break']) * 12, 1) if pd.notna(row['avg_h_break']) else None
                 avg_vb = round(float(row['avg_v_break']) * 12, 1) if pd.notna(row['avg_v_break']) else None
                 
+                # --- NEW: PARSE WHIFF RATE ---
+                whiff_rate = float(row['whiff_rate']) if pd.notna(row['whiff_rate']) else None
+                
                 # Update the existing pitch_arsenals row
                 update_data = {}
                 if avg_velo is not None:
@@ -110,6 +130,10 @@ def main():
                     update_data['avg_h_break'] = avg_hb
                 if avg_vb is not None:
                     update_data['avg_v_break'] = avg_vb
+                    
+                # --- NEW: ADD TO UPDATE DATA ---
+                if whiff_rate is not None:
+                    update_data['whiff_rate'] = whiff_rate
                 
                 if update_data:
                     supabase.table('pitch_arsenals')\
