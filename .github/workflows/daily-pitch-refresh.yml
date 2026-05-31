@@ -10,7 +10,7 @@ on:
 jobs:
   refresh-pitch-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # pybaseball can be slow — give it room
+    timeout-minutes: 90  # Increased from 30 to 90 to prevent timeout kills
 
     steps:
       - name: Checkout repo

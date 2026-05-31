@@ -58,14 +58,12 @@ def main():
     
     for pt in savant_pitch_codes:
         try:
-            # We explicitly pass the pitch type string so Savant returns it
             df_pt = statcast_pitcher_pitch_movement(year=season, minP=0, pitch_type=pt)
             if df_pt is not None and not df_pt.empty:
                 movement_dfs.append(df_pt)
         except Exception:
             pass
 
-    # If it's early in the season and data is empty, safely fall back to last year
     if not movement_dfs:
         print(f"Movement data for {season} empty, trying {season - 1}...")
         for pt in savant_pitch_codes:
@@ -77,7 +75,6 @@ def main():
                 pass
 
     if movement_dfs:
-        # Stack all the separate pitch type dataframes together
         df_movement = pd.concat(movement_dfs, ignore_index=True)
     else:
         df_movement = pd.DataFrame()
@@ -85,8 +82,6 @@ def main():
     # --- BULLETPROOF MOVEMENT PARSING ---
     movement_dict = {}
     if not df_movement.empty:
-        
-        # Explicitly check for the new column names, falling back to older versions just in case
         def get_col(df, options):
             for opt in options:
                 if opt in df.columns: return opt
@@ -148,7 +143,6 @@ def main():
         pitch_usage = float(r.get(usage_col, 0)) if pd.notna(r.get(usage_col)) else 0
         avg_speed = float(r.get(speed_col)) if pd.notna(r.get(speed_col)) else None
 
-        # MERGE THE DATA
         move_data = movement_dict.get((player_id_int, pitch_type), {})
         avg_v_break = move_data.get('v_break')
         avg_h_break = move_data.get('h_break')
@@ -156,7 +150,8 @@ def main():
         if avg_v_break is not None:
             successful_merges += 1
 
-        rows.append({
+        # FIX: Conditionally build the dictionary so we don't push None values
+        row_data = {
             'player_id': player_id_int,
             'player_name': format_name(r.get(name_col)) if name_col else None,
             'season': season,
@@ -164,10 +159,16 @@ def main():
             'pitch_name': PITCH_NAMES.get(pitch_type, pitch_type),
             'count': int(r.get('pitches', 0) or 0),
             'percentage': round(pitch_usage, 2),
-            'avg_velocity': round(avg_speed, 1) if avg_speed else None,
-            'avg_v_break': round(avg_v_break, 1) if avg_v_break is not None else None,
-            'avg_h_break': round(avg_h_break, 1) if avg_h_break is not None else None,
-        })
+        }
+
+        if avg_speed:
+            row_data['avg_velocity'] = round(avg_speed, 1)
+        if avg_v_break is not None:
+            row_data['avg_v_break'] = round(avg_v_break, 1)
+        if avg_h_break is not None:
+            row_data['avg_h_break'] = round(avg_h_break, 1)
+
+        rows.append(row_data)
   
     print(f'👉 Merged movement physics for {successful_merges} out of {len(rows)} total pitches.')
 

@@ -7,6 +7,7 @@ Runs after fetch_pitch_arsenals.py (which provides the player_id list).
 import os
 import sys
 import time
+import traceback
 from datetime import datetime, timedelta
 import pandas as pd
 from pybaseball import statcast_pitcher, cache
@@ -30,13 +31,13 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 def main():
     season = datetime.now().year
     
-    # Date range: full season so far
-    season_start = f'{season}-03-15'  # Spring training rough start
+    # FIX: Use a rolling 14-day window instead of the full season to prevent timeouts
+    start_date = datetime.now() - timedelta(days=14)
+    season_start = start_date.strftime('%Y-%m-%d')
     season_end = datetime.now().strftime('%Y-%m-%d')
     
     print(f'Fetching velocity/movement for {season} season ({season_start} to {season_end})')
     
-    # Step 1: Get all unique player_ids from pitch_arsenals
     print('\nFetching pitcher list from pitch_arsenals...')
     response = supabase.table('pitch_arsenals')\
         .select('player_id, player_name')\
@@ -58,7 +59,6 @@ def main():
     total = len(pitcher_ids)
     print(f'Found {total} unique pitchers to process')
     
-    # Step 2: For each pitcher, fetch raw pitches and aggregate
     success_count = 0
     skip_count = 0
     fail_count = 0
@@ -75,14 +75,13 @@ def main():
                 skip_count += 1
                 continue
             
-         # Filter to valid pitch types
+            # Filter to valid pitch types
             df = df[df['pitch_type'].notna() & (df['pitch_type'] != '')]
             
             if df.empty:
                 skip_count += 1
                 continue
             
-            # --- NEW: CALCULATE WHIFF RATE ---
             swing_events = ['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'hit_into_play', 'missed_bunt', 'foul_bunt']
             whiff_events = ['swinging_strike', 'swinging_strike_blocked', 'missed_bunt']
             
@@ -92,37 +91,28 @@ def main():
             swing_counts = swings.groupby('pitch_type').size()
             whiff_counts = whiffs.groupby('pitch_type').size()
             
-            # Calculate percentage, handle NaN for pitches with 0 swings
             whiff_rates = (whiff_counts / swing_counts * 100).round(1).rename('whiff_rate')
-            # ---------------------------------
 
-            # Aggregate by pitch type
             agg = df.groupby('pitch_type').agg(
                 avg_velocity=('release_speed', 'mean'),
-                avg_h_break=('pfx_x', 'mean'),  # horizontal break (inches)
-                avg_v_break=('pfx_z', 'mean'),  # vertical break (inches)
+                avg_h_break=('pfx_x', 'mean'),
+                avg_v_break=('pfx_z', 'mean'),
                 pitch_count=('release_speed', 'count'),
             ).reset_index()
             
-            # --- NEW: MERGE WHIFF RATE INTO AGG ---
             agg = agg.merge(whiff_rates, on='pitch_type', how='left')
             
-            # Filter to pitches with at least 10 samples (data quality)
+            # Filter to pitches with at least 10 samples in the 14 day window
             agg = agg[agg['pitch_count'] >= 10]
             
-            # Note: pfx_x/pfx_z are in feet — multiply by 12 for inches
-            # Also they're from CATCHER's perspective so velocity sign is flipped
             updates = 0
             for _, row in agg.iterrows():
                 pitch_type = row['pitch_type']
                 avg_velo = round(float(row['avg_velocity']), 1) if pd.notna(row['avg_velocity']) else None
                 avg_hb = round(float(row['avg_h_break']) * 12, 1) if pd.notna(row['avg_h_break']) else None
                 avg_vb = round(float(row['avg_v_break']) * 12, 1) if pd.notna(row['avg_v_break']) else None
-                
-                # --- NEW: PARSE WHIFF RATE ---
                 whiff_rate = float(row['whiff_rate']) if pd.notna(row['whiff_rate']) else None
                 
-                # Update the existing pitch_arsenals row
                 update_data = {}
                 if avg_velo is not None:
                     update_data['avg_velocity'] = avg_velo
@@ -130,8 +120,6 @@ def main():
                     update_data['avg_h_break'] = avg_hb
                 if avg_vb is not None:
                     update_data['avg_v_break'] = avg_vb
-                    
-                # --- NEW: ADD TO UPDATE DATA ---
                 if whiff_rate is not None:
                     update_data['whiff_rate'] = whiff_rate
                 
@@ -146,14 +134,14 @@ def main():
             
             success_count += 1
             print(f'  {progress} {name}: {updates} pitch types updated')
-            
-            # Be polite to Statcast — 0.5s between requests
             time.sleep(0.5)
             
         except Exception as e:
-            print(f'  {progress} {name}: ERROR — {str(e)[:80]}')
+            # FIX: Print full traceback so we know exactly why PyBaseball fails
+            print(f'  {progress} {name}: ERROR — {str(e)}')
+            traceback.print_exc()
             fail_count += 1
-            time.sleep(1)  # Longer pause after error
+            time.sleep(5)  # Increased backoff time on errors
     
     print(f'\n=== DONE ===')
     print(f'  Success: {success_count}')
