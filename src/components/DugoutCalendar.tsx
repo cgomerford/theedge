@@ -1,34 +1,35 @@
+'use client'
+
+import { useState, useRef, useTransition } from 'react'
 import Link from 'next/link'
 import type { CalendarGame } from '@/lib/dugout-calendar'
 import { cellIntensity, summarizeMonth } from '@/lib/dugout-calendar'
 
 type Props = {
   games: CalendarGame[]
-  yearMonth: string  // 'YYYY-MM'
+  yearMonth: string
   teamShort: string
-  teamPrimaryColor: string  // hex
-  teamSecondaryColor?: string  // hex, optional
-  prevMonth: string | null
+  teamPrimaryColor: string
+  teamSecondaryColor?: string
+  prevMonth: string | null   // initial boundary hint from server
   nextMonth: string | null
 }
 
-// ============================================================
-// Pure helpers
-// ============================================================
+// ── pure helpers (same as before) ──────────────────────────
 
 function getMonthName(yearMonth: string): string {
-  const [year, month] = yearMonth.split('-').map(n => parseInt(n, 10))
-  const date = new Date(Date.UTC(year, month - 1, 1))
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const [year, month] = yearMonth.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, 1))
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
 function daysInMonth(yearMonth: string): number {
-  const [year, month] = yearMonth.split('-').map(n => parseInt(n, 10))
+  const [year, month] = yearMonth.split('-').map(Number)
   return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
 
 function firstDayWeekday(yearMonth: string): number {
-  const [year, month] = yearMonth.split('-').map(n => parseInt(n, 10))
+  const [year, month] = yearMonth.split('-').map(Number)
   return new Date(Date.UTC(year, month - 1, 1)).getUTCDay()
 }
 
@@ -36,252 +37,241 @@ function todayISO(): string {
   return new Date().toISOString().split('T')[0]
 }
 
-// Convert hex (e.g. "#E81828") + alpha 0..1 → rgba string
 function hexToRgba(hex: string, alpha: number): string {
-  const clean = hex.replace('#', '')
-  const r = parseInt(clean.slice(0, 2), 16)
-  const g = parseInt(clean.slice(2, 4), 16)
-  const b = parseInt(clean.slice(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 function formatDateForDisplay(iso: string): string {
-  const d = new Date(iso + 'T00:00:00Z')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const [, , d] = iso.split('-')
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const monthIdx = parseInt(iso.split('-')[1], 10) - 1
+  return `${months[monthIdx]} ${parseInt(d, 10)}`
 }
 
-// ============================================================
-// Cell — extracted for readability
-// ============================================================
+// ── CalendarCell (same as before) ─────────────────────────
 
-type CellProps = {
-  game: CalendarGame | undefined
+function CalendarCell({
+  game, day, iso, isToday, teamPrimaryColor,
+}: {
+  game?: CalendarGame
   day: number | null
   iso: string | null
   isToday: boolean
   teamPrimaryColor: string
-}
-
-function CalendarCell({ game, day, iso, isToday, teamPrimaryColor }: CellProps) {
-  // Empty day (leading blank or non-game day)
-  if (day === null) {
-    return <div className="aspect-[1.1/1] bg-stone-50/40" />
+}) {
+  if (!day || !iso) {
+    return <div className="border-l border-t border-stone-100 bg-stone-50/50 min-h-[52px] md:min-h-[72px]" />
   }
 
-  // No-game day
-  if (!game) {
-    return (
-      <div className="aspect-[1.1/1] bg-white border-t border-l border-stone-100 p-2">
-        <span className="text-stone-300 font-mono text-[10px]">{day}</span>
-      </div>
-    )
-  }
+  const isWin = game?.team_won === true
+  const isLoss = game?.team_won === false
+  const isPending = game && game.team_won === null
+  const intensity = game ? cellIntensity(game) : 0
 
-  // Has a game — figure out visual state
-  const intensity = cellIntensity(game)
-  const isWin = game.team_won === true
-  const isLoss = game.team_won === false
-  const isPending = game.team_won === null
+  const bg = isWin
+    ? `rgba(134,190,135,${0.15 + intensity * 0.45})`
+    : isLoss
+    ? `rgba(239,154,154,${0.15 + intensity * 0.45})`
+    : isPending
+    ? 'rgba(251,191,36,0.08)'
+    : undefined
 
-  // Background gradient + letter color
-  let bgStyle: React.CSSProperties = {}
-  let letter = '·'
-  let letterColor = '#a8a29e'
+  const letter = isWin ? 'W' : isLoss ? 'L' : isPending ? '·' : ''
+  const letterColor = isWin
+    ? '#166534'
+    : isLoss
+    ? '#991b1b'
+    : isPending
+    ? '#92400e'
+    : '#d6d3d1'
 
-if (isWin) {
-    // Green gradient, intensity-modulated — universal "good"
-    const startAlpha = 0.10 + intensity * 0.20  // 0.10-0.30
-    const endAlpha = 0.20 + intensity * 0.40    // 0.20-0.60
-    bgStyle = {
-      background: `linear-gradient(135deg, rgba(21, 128, 61, ${startAlpha}) 0%, rgba(21, 128, 61, ${endAlpha}) 100%)`,
-    }
-    letter = 'W'
-    letterColor = '#166534' // green-800
-  } else if (isLoss) {
-    // Red gradient, intensity-modulated — universal "bad"
-    const startAlpha = 0.08 + intensity * 0.16  // 0.08-0.24
-    const endAlpha = 0.18 + intensity * 0.30    // 0.18-0.48
-    bgStyle = {
-      background: `linear-gradient(135deg, rgba(185, 28, 28, ${startAlpha}) 0%, rgba(185, 28, 28, ${endAlpha}) 100%)`,
-    }
-    letter = 'L'
-    letterColor = '#991b1b' // red-800
-  } else if (isPending) {
-    // Soft warm cream — upcoming
-    bgStyle = {
-      background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, rgba(251, 191, 36, 0.15) 100%)',
-    }
-    letter = '·'
-    letterColor = '#a8a29e'
-  }
+  const edgeDisplay = game?.edge_score != null
+    ? (game.edge_score >= 0 ? '+' : '') + game.edge_score.toFixed(1)
+    : null
 
-  // Today gets a vivid border treatment
-  const todayBorder = isToday
-    ? { boxShadow: `inset 0 0 0 2px #FF5722, 0 4px 12px rgba(255, 87, 34, 0.2)` }
-    : {}
-
-  // Edge score chip — small, tasteful
-const edgeChip = game.edge_score !== null && (
-    <span
-      className="text-[9px] font-mono font-bold px-1.5 py-0.5 leading-none whitespace-nowrap bg-white/80 backdrop-blur-sm border"
-      style={{
-        borderColor: game.was_correct === true
-          ? 'rgba(22, 101, 52, 0.4)'
-          : game.was_correct === false
-            ? 'rgba(153, 27, 27, 0.4)'
-            : 'rgba(120, 113, 108, 0.3)',
-        color: game.was_correct === true
-          ? '#15803d'
-          : game.was_correct === false
-            ? '#b91c1c'
-            : '#78716c',
-      }}
+  const cellContent = (
+    <div
+      className="border-l border-t border-stone-100 min-h-[52px] md:min-h-[72px] p-1 flex flex-col justify-between relative"
+      style={{ background: bg }}
     >
-      {game.edge_score > 0 ? '+' : ''}{game.edge_score}
-    </span>
-  )
-
-  return (
-    <Link
-      href={`/mlb/${game.slug}`}
-      className="group aspect-[1.1/1] border-t border-l border-stone-100 p-2 flex flex-col relative overflow-hidden transition-all duration-150 hover:shadow-lg hover:-translate-y-[1px] hover:z-10"
-      style={{ ...bgStyle, ...todayBorder }}
-    >
-      {/* Top row — date + edge chip */}
-      <div className="flex items-start justify-between gap-1 relative z-10">
+      {/* Top row */}
+      <div className="flex items-start justify-between">
         <span
-          className={`font-mono text-[10px] font-bold ${
-            isToday ? 'text-orange-600' : 'text-stone-500'
-          }`}
+          className="text-[10px] font-mono leading-none"
+          style={{
+            color: isToday ? teamPrimaryColor : '#a8a29e',
+            fontWeight: isToday ? 700 : 400,
+          }}
         >
           {day}
         </span>
-        {edgeChip}
+        {edgeDisplay && (
+          <span
+            className="text-[8px] font-mono leading-none px-0.5 rounded"
+            style={{
+              color: game?.edge_score! > 0 ? '#166534' : '#991b1b',
+              background: game?.edge_score! > 0 ? 'rgba(134,190,135,0.2)' : 'rgba(239,154,154,0.2)',
+            }}
+          >
+            {edgeDisplay}
+          </span>
+        )}
       </div>
 
-      {/* Letter — big, dominant, centered */}
-      <div className="flex-grow flex items-center justify-center relative z-10">
+      {/* W/L letter — bigger on desktop */}
+      <div className="flex items-center justify-center flex-1">
         <span
-          className="font-serif font-black leading-none"
+          className="font-serif font-bold leading-none select-none"
           style={{
             color: letterColor,
-            fontSize: isWin || isLoss ? '2.5rem' : '1.5rem',
+            fontSize: letter === 'W' || letter === 'L' ? '1.5rem' : '1rem',
             opacity: isPending ? 0.5 : 1,
-            textShadow: isWin ? `0 1px 0 ${hexToRgba(teamPrimaryColor, 0.2)}` : undefined,
           }}
         >
           {letter}
         </span>
       </div>
 
-      {/* Bottom row — opponent + score */}
-      <div className="flex items-end justify-between gap-1 relative z-10">
-        <span className="text-[9px] font-mono uppercase tracking-wide text-stone-600 truncate">
-          {game.is_home ? 'vs' : '@'}&nbsp;{game.opponent_short}
+      {/* Opponent + score */}
+      <div className="flex items-end justify-between gap-1">
+        <span className="text-[8px] font-mono uppercase tracking-wide text-stone-500 truncate">
+          {game ? `${game.is_home ? 'vs' : '@'} ${game.opponent_short}` : ''}
         </span>
-        {game.team_score !== null && game.opponent_score !== null && (
-          <span className="text-[9px] font-mono font-bold text-stone-700 whitespace-nowrap">
+        {game?.team_score != null && game?.opponent_score != null && (
+          <span className="text-[8px] font-mono font-bold text-stone-600 whitespace-nowrap">
             {game.team_score}-{game.opponent_score}
           </span>
         )}
       </div>
-    </Link>
+
+      {/* Today indicator dot */}
+      {isToday && (
+        <div
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+          style={{ background: teamPrimaryColor }}
+        />
+      )}
+    </div>
   )
+
+  // Link to game page if there's a slug
+  if (game?.slug) {
+    return <Link href={`/mlb/${game.slug}`}>{cellContent}</Link>
+  }
+  return cellContent
 }
 
-// ============================================================
-// Main component
-// ============================================================
+// ── Main component ─────────────────────────────────────────
+
+const SEASON_YEAR = new Date().getFullYear()
+const SEASON_START = `${SEASON_YEAR}-04`
+const SEASON_END   = new Date().toISOString().slice(0, 7)   // can't go past today's month
 
 export default function DugoutCalendar({
-  games,
-  yearMonth,
+  games: initialGames,
+  yearMonth: initialMonth,
   teamShort,
   teamPrimaryColor,
-  prevMonth,
-  nextMonth,
+  prevMonth: initialPrev,
+  nextMonth: initialNext,
 }: Props) {
-  const totalDays = daysInMonth(yearMonth)
-  const startWeekday = firstDayWeekday(yearMonth)
-  const today = todayISO()
+  const [currentMonth, setCurrentMonth] = useState(initialMonth)
+  const [games, setGames] = useState<CalendarGame[]>(initialGames)
+  const [loading, setLoading] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
 
-  const gameByDate = new Map<string, CalendarGame>()
-  for (const g of games) {
-    if (!gameByDate.has(g.game_date)) {
-      gameByDate.set(g.game_date, g)
+  const today = todayISO()
+  const prevMonth = shiftMonth(currentMonth, -1) >= SEASON_START ? shiftMonth(currentMonth, -1) : null
+  const nextMonth = shiftMonth(currentMonth, 1)  <= SEASON_END  ? shiftMonth(currentMonth, 1)  : null
+
+  async function goToMonth(month: string) {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/dugout/calendar?month=${month}`)
+      const data = await res.json()
+      setGames(data.games ?? [])
+      setCurrentMonth(month)
+      // Scroll calendar into view — no page jump
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } catch (e) {
+      console.error('Calendar fetch failed', e)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const summary = summarizeMonth(games)
+  const totalDays = daysInMonth(currentMonth)
+  const startWeekday = firstDayWeekday(currentMonth)
+  const gameByDate = new Map<string, CalendarGame>()
+  for (const g of games) {
+    if (!gameByDate.has(g.game_date)) gameByDate.set(g.game_date, g)
+  }
 
-  // Build cells
+  const summary = summarizeMonth(games)
+  const streakSymbol = summary.current_streak.type === 'W' ? '🔥' : summary.current_streak.type === 'L' ? '🧊' : ''
+
   const cells: Array<{ day: number | null; iso: string | null }> = []
   for (let i = 0; i < startWeekday; i++) cells.push({ day: null, iso: null })
   for (let d = 1; d <= totalDays; d++) {
-    const iso = `${yearMonth}-${String(d).padStart(2, '0')}`
+    const iso = `${currentMonth}-${String(d).padStart(2, '0')}`
     cells.push({ day: d, iso })
   }
 
-  // Streak emoji
-  const streakSymbol = summary.current_streak.type === 'W'
-    ? '🔥'
-    : summary.current_streak.type === 'L'
-      ? '🧊'
-      : ''
+  const NavButton = ({ direction, month }: { direction: 'prev' | 'next', month: string | null }) => {
+    const label = direction === 'prev' ? '← Prev' : 'Next →'
+    if (!month) {
+      return (
+        <span className="px-3 py-1.5 border border-stone-200 text-xs font-mono uppercase tracking-widest text-stone-300 cursor-not-allowed select-none">
+          {label}
+        </span>
+      )
+    }
+    return (
+      <button
+        onClick={() => goToMonth(month)}
+        disabled={loading}
+        className="px-3 py-1.5 border border-stone-300 text-xs font-mono uppercase tracking-widest hover:bg-stone-900 hover:text-white hover:border-stone-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {loading ? '···' : label}
+      </button>
+    )
+  }
 
   return (
-    <section className="bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm">
-      {/* ═══ HEADER STRIP ═══ */}
+    <section ref={sectionRef} className="bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm scroll-mt-4">
+      {/* ═══ HEADER ═══ */}
       <div
         className="px-5 py-4 flex items-center justify-between flex-wrap gap-3 border-b border-stone-200"
-        style={{
-          background: `linear-gradient(90deg, ${hexToRgba(teamPrimaryColor, 0.08)} 0%, rgba(255,255,255,0) 60%)`,
-        }}
+        style={{ background: `linear-gradient(90deg, ${hexToRgba(teamPrimaryColor, 0.08)} 0%, rgba(255,255,255,0) 60%)` }}
       >
         <div>
           <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-0.5">
             ⊕ {teamShort} · Season at a glance
           </div>
           <h2 className="font-serif text-3xl font-light text-stone-900 leading-none tracking-tight">
-            {getMonthName(yearMonth)}
+            {getMonthName(currentMonth)}
           </h2>
         </div>
-
         <div className="flex items-center gap-2">
-          {prevMonth ? (
-            <Link
-              href={`/dugout?month=${prevMonth}`}
-              className="px-3 py-1.5 border border-stone-300 text-xs font-mono uppercase tracking-widest hover:bg-stone-900 hover:text-white hover:border-stone-900 transition"
-            >
-              ← Prev
-            </Link>
-          ) : (
-            <span className="px-3 py-1.5 border border-stone-200 text-xs font-mono uppercase tracking-widest text-stone-300 cursor-not-allowed">
-              ← Prev
-            </span>
-          )}
-          {nextMonth ? (
-            <Link
-              href={`/dugout?month=${nextMonth}`}
-              className="px-3 py-1.5 border border-stone-300 text-xs font-mono uppercase tracking-widest hover:bg-stone-900 hover:text-white hover:border-stone-900 transition"
-            >
-              Next →
-            </Link>
-          ) : (
-            <span className="px-3 py-1.5 border border-stone-200 text-xs font-mono uppercase tracking-widest text-stone-300 cursor-not-allowed">
-              Next →
-            </span>
-          )}
+          <NavButton direction="prev" month={prevMonth} />
+          <NavButton direction="next" month={nextMonth} />
         </div>
       </div>
 
-      {/* ═══ DASHBOARD STATS ═══ */}
+      {/* ═══ STATS STRIP ═══ */}
       <div className="grid grid-cols-2 md:grid-cols-4 border-b border-stone-200">
-        {/* Record */}
-        <div className="p-4 border-r border-stone-200 last:border-r-0">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">
-            Record
-          </div>
+        <div className="p-4 border-r border-stone-200">
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">Record</div>
           <div className="font-serif text-2xl font-bold" style={{ color: teamPrimaryColor }}>
             {summary.wins}<span className="text-stone-300 font-light">-</span>{summary.losses}
           </div>
@@ -290,11 +280,8 @@ export default function DugoutCalendar({
           </div>
         </div>
 
-        {/* Streak */}
-        <div className="p-4 border-r border-stone-200 last:border-r-0">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">
-            Streak
-          </div>
+        <div className="p-4 border-r border-stone-200">
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">Streak</div>
           {summary.current_streak.type ? (
             <>
               <div className="font-serif text-2xl font-bold text-stone-900">
@@ -304,35 +291,23 @@ export default function DugoutCalendar({
                 {summary.current_streak.type === 'W' ? 'on the rise' : 'searching'}
               </div>
             </>
-          ) : (
-            <div className="font-serif text-xl text-stone-400">—</div>
-          )}
+          ) : <div className="font-serif text-xl text-stone-400">—</div>}
         </div>
 
-        {/* Model accuracy */}
-        <div className="p-4 border-r border-stone-200 last:border-r-0">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">
-            Edge model
-          </div>
+        <div className="p-4 border-r border-stone-200">
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">Edge model</div>
           {summary.model_accuracy_pct !== null ? (
             <>
-              <div className="font-serif text-2xl font-bold text-stone-900">
-                {summary.model_accuracy_pct}%
-              </div>
+              <div className="font-serif text-2xl font-bold text-stone-900">{summary.model_accuracy_pct}%</div>
               <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400 mt-1">
                 {summary.model_correct} of {summary.model_total} calls
               </div>
             </>
-          ) : (
-            <div className="font-serif text-xl text-stone-400">—</div>
-          )}
+          ) : <div className="font-serif text-xl text-stone-400">—</div>}
         </div>
 
-        {/* Best win / worst loss */}
         <div className="p-4">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">
-            Best win
-          </div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-1">Best win</div>
           {summary.best_win ? (
             <>
               <div className="font-serif text-base font-bold text-stone-900 leading-tight">
@@ -345,26 +320,21 @@ export default function DugoutCalendar({
                 {formatDateForDisplay(summary.best_win.game_date)}
               </div>
             </>
-          ) : (
-            <div className="font-serif text-xl text-stone-400">—</div>
-          )}
+          ) : <div className="font-serif text-xl text-stone-400">—</div>}
         </div>
       </div>
 
-      {/* ═══ DAY-OF-WEEK HEADER ═══ */}
+      {/* ═══ DAY HEADERS ═══ */}
       <div className="grid grid-cols-7 bg-stone-50">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div
-            key={d}
-            className="text-center py-2 text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500"
-          >
+        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+          <div key={d} className="text-center py-2 text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500">
             {d}
           </div>
         ))}
       </div>
 
       {/* ═══ GRID ═══ */}
-      <div className="grid grid-cols-7 border-r border-b border-stone-100">
+      <div className={`grid grid-cols-7 border-r border-b border-stone-100 transition-opacity ${loading ? 'opacity-40' : 'opacity-100'}`}>
         {cells.map((cell, i) => (
           <CalendarCell
             key={i}

@@ -38,6 +38,11 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
+function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return s[(v - 20) % 10] || s[v] || s[0]
+}
 // ─── Section label ─────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -178,7 +183,7 @@ export function BatterCard({ card, isPro }: BatterCardProps) {
         <div>
           <div className="text-[9px] font-mono uppercase tracking-widest text-[#FF5722] mb-0.5">
             § {card.position}
-            {card.batting_order ? ` · Bats ${card.batting_order}th` : ''} · {card.team}
+            {card.batting_order ? ` · Bats ${card.batting_order}${ordinal(card.batting_order)}` : ''} · {card.team}
           </div>
           <div className="font-serif font-light text-xl text-white leading-tight">
             {card.name}

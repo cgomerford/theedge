@@ -1,36 +1,49 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { getFantasyPicks, type FantasyPick } from '@/lib/fantasy'
+import { getTonightAllPitchers } from '@/lib/fantasy-ticker'
 import { getCurrentSubscriber } from '@/lib/auth'
+import FantasyPlayerCard from '@/components/fantasy/FantasyPlayerCard'
+import FantasyMoverAlert from '@/components/fantasy/FantasyMoverAlert'
+import FantasyTicker from '@/components/fantasy/FantasyTicker'
 
 export const revalidate = 1800
 export const metadata = {
   title: 'The Fantasy Desk · The Edge',
-  description: 'Tonight\'s streamers, movers, fallers, and sleepers — what to do with your fantasy roster, with plain-English explanations of every stat.',
+  description: 'Tonight\'s streamers, movers, fallers, and sleepers — what to do with your fantasy roster, with the math behind every call.',
 }
 
+/* ════════════════════════════════════════════════════════════════════
+ *  PAGE
+ * ════════════════════════════════════════════════════════════════════ */
 export default async function FantasyPage() {
-  const { picks, forDate, isStale } = await getFantasyPicks()
+  const [{ picks, forDate, isStale }, subscriber, tickerPitchers] = await Promise.all([
+    getFantasyPicks(),
+    getCurrentSubscriber(),
+    getTonightAllPitchers(),
+  ])
+  const isPro = subscriber?.is_pro ?? false
 
   const displayDate = new Date(forDate + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
-const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const counts = {
+    streamer: picks.streamer.length,
+    mover:    picks.mover.length,
+    faller:   picks.faller.length,
+    sleeper:  picks.sleeper.length,
+  }
 
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
 
-{/* ════ MASTHEAD ════════════════════════════════════════════════════ */}
+      {/* ════ MASTHEAD ════════════════════════════════════════════════ */}
       <div className="border-b border-stone-200 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
           <div className="flex items-center gap-4">
-            <Link
-              href="/dugout"
-              className="text-orange-600 hover:text-orange-700 transition"
-            >
+            <Link href="/dugout" className="text-orange-600 hover:text-orange-700 transition">
               ← Dugout
             </Link>
             <span>{displayDate}</span>
@@ -39,23 +52,25 @@ const subscriber = await getCurrentSubscriber()
         </div>
       </div>
 
-      {/* ════ TITLE BLOCK ════════════════════════════════════════════════ */}
+      {/* ════ TITLE BLOCK ════════════════════════════════════════════ */}
       <div className="border-b-2 border-stone-900 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">
             ⊕ The Fantasy Desk
           </div>
           <h1 className="font-serif font-light text-5xl sm:text-7xl tracking-tight leading-none">
-            Tonight&apos;s plays<span className="text-orange-600">.</span>
+            Your daily edge<span className="text-orange-600">.</span>
           </h1>
           <p className="text-stone-500 font-serif italic mt-3 text-base sm:text-lg max-w-2xl">
-            What to start, what to bench, who to add. With the math behind every call.
+            Streamers, movers, fallers — with the math behind every call.
           </p>
         </div>
       </div>
-      
 
-      {/* Stale data warning */}
+      {/* ════ TICKER BAR ═════════════════════════════════════════════ */}
+      <FantasyTicker pitchers={tickerPitchers} />
+
+      {/* ════ STALE WARNING ══════════════════════════════════════════ */}
       {isStale && (
         <div className="bg-yellow-50 border-b border-yellow-200">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-2 text-[11px] font-mono text-yellow-800">
@@ -64,117 +79,164 @@ const subscriber = await getCurrentSubscriber()
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-14">
+      {/* ════ HERO STAT STRIP ════════════════════════════════════════ */}
+      <div className="border-b border-stone-200">
+        <div className="max-w-5xl mx-auto grid grid-cols-4">
+          <HeroCell label="Streamers" count={counts.streamer} color="text-emerald-600" targetId="streamers" />
+          <HeroCell label="Movers" count={counts.mover} color="text-orange-600" targetId="movers" />
+          <HeroCell label="Fallers" count={counts.faller} color="text-red-600" targetId="fallers" />
+          <HeroCell label="Sleepers" count={counts.sleeper} color="text-blue-600" targetId="sleepers" />
+        </div>
+      </div>
 
-        {/* ════ STREAMERS ═══════════════════════════════════════════════ */}
-        <PickSection
-          label="Streamers"
-          sublabel="The best free-agent pitchers to stream tonight"
-          colorKey="emerald"
-          picks={picks.streamer}
-          renderPick={(p) => <StreamerCard pick={p} isPro={isPro} />}
-         emptyMessage="Lineups still pending tonight. Streamers populate when probable pitchers confirm — usually 3-4 hours pre-first-pitch."
-        />
-
-        {/* ════ MOVERS ══════════════════════════════════════════════════ */}
-        <PickSection
-          label="Movers"
-          sublabel="Edge scores that swung since this morning"
-          colorKey="orange"
-          picks={picks.mover}
-          renderPick={(p) => <MoverCard pick={p} isPro={isPro} />}
-          emptyMessage="No 8+ point edge swings yet. We snapshot predictions every few hours — check back after lineup news drops."
-        />
-
-        {/* ════ FALLERS ═════════════════════════════════════════════════ */}
-        <PickSection
-          label="Fallers"
-          sublabel="Fantasy stars in tough spots tonight"
-          colorKey="red"
-          picks={picks.faller}
-          renderPick={(p) => <FallerCard pick={p} isPro={isPro} />}
-          emptyMessage="Most matchups look favourable for the bats tonight. Fallers surface when an elite arm draws a strong-offence club."
-        />
-
-        {/* ════ SLEEPERS ════════════════════════════════════════════════ */}
-        <PickSection
-          label="Sleepers"
-          sublabel="Hidden value the surface stats miss"
-          colorKey="blue"
-          picks={picks.sleeper}
-          renderPick={(p) => <SleeperCard pick={p} isPro={isPro} />}
-          emptyMessage="Tonight's slate is clean — no significant ERA/FIP gaps or vulnerable bottom-tier lineups. We surface these when the math justifies it, not just to fill space."
-        />
-
-        {/* ════ DECODING THE STATS ═════════════════════════════════════ */}
-        <section>
-          <SectionHeader
-            label="Decoding the stats"
-            sublabel="Plain English for every metric we use"
-            colorKey="stone"
+      {/* ════ NAVIGATION HUB ═════════════════════════════════════════ */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <NavCard
+            href="/fantasy/streamers"
+            title="Streamers"
+            desc="7-day board, all 30 teams"
+            colorClass="bg-emerald-50 border-emerald-200 hover:border-emerald-400"
+            iconBg="bg-emerald-600"
+            iconLetter="S"
           />
-          <div className="grid sm:grid-cols-2 gap-4 mt-6">
-            {STAT_GUIDES.map((s) => (
-              <StatGuideCard key={s.stat} guide={s} />
-            ))}
-          </div>
+          <NavCard
+            title="Platforms"
+            desc="ESPN vs Yahoo vs Sleeper scoring"
+            colorClass="bg-violet-50 border-violet-200"
+            iconBg="bg-violet-600"
+            iconLetter="P"
+            badge="Wk 2"
+          />
+          <NavCard
+            title="DFS"
+            desc="DraftKings slate + edge scores"
+            colorClass="bg-amber-50 border-amber-200"
+            iconBg="bg-amber-600"
+            iconLetter="D"
+            badge="Wk 3"
+          />
+          <NavCard
+            href="#movers"
+            title="Movers"
+            desc="Edge scores that swung today"
+            colorClass="bg-orange-50 border-orange-200 hover:border-orange-400"
+            iconBg="bg-orange-600"
+            iconLetter="M"
+          />
+          <NavCard
+            href="#fallers"
+            title="Sell / Sit"
+            desc="Stars in tough spots tonight"
+            colorClass="bg-red-50 border-red-200 hover:border-red-400"
+            iconBg="bg-red-600"
+            iconLetter="X"
+          />
+          <NavCard
+            href="#sleepers"
+            title="Undervalued"
+            desc="Regression watch"
+            colorClass="bg-blue-50 border-blue-200 hover:border-blue-400"
+            iconBg="bg-blue-600"
+            iconLetter="U"
+          />
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-10">
+
+        {/* ════ STREAMERS ══════════════════════════════════════════════ */}
+        <section id="streamers">
+          <SectionDivider label="Tonight's streamers" live />
+          <p className="text-[11px] font-mono text-stone-400 mb-3 tracking-wide">
+            Tap a card to see the full breakdown
+          </p>
+          {picks.streamer.length > 0 ? (
+            <div className="space-y-2.5">
+              {picks.streamer.map((p) => (
+                <FantasyPlayerCard key={p.id} pick={p} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="Lineups still pending tonight. Streamers populate when probable pitchers confirm — usually 3-4 hours pre-first-pitch." />
+          )}
+          <Link
+            href="/fantasy/streamers"
+            className="inline-flex items-center gap-1 mt-3 font-mono text-[10px] tracking-widest uppercase text-orange-600 hover:text-orange-700 transition"
+          >
+            Full 7-day streamer board →
+          </Link>
         </section>
 
-        {/* ════ THE MATH ═══════════════════════════════════════════════ */}
-        <section className="bg-stone-900 text-stone-100 p-6 sm:p-8">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-yellow-300 font-bold mb-3">
-            § How we pick
-          </div>
-          <h2 className="font-serif font-light text-2xl sm:text-3xl tracking-tight mb-4">
-            No black boxes. Just weighted math.
-          </h2>
-          <div className="space-y-4 text-sm text-stone-300 leading-relaxed font-serif">
-            <p>
-              Every pick on this page comes from a transparent formula. <strong className="text-stone-100">Streamers</strong> blend
-              pitcher quality (40%), opponent offence (30%), stuff/whiff% (15%), and park (15%) into a single 0–100 score.
-              <strong className="text-stone-100"> Movers</strong> are games where the edge swung 8+ points since our morning prediction.
-              <strong className="text-stone-100"> Fallers</strong> are high-OPS offences facing pitchers in the top quintile
-              by FIP and whiff%.
-              <strong className="text-stone-100"> Sleepers</strong> are pitchers with an ugly ERA but a much better FIP — the
-              regression-incoming candidates — or anyone facing a bottom-5 offence.
-            </p>
-            <p>
-              Sample sizes matter. We only count splits with enough data to be meaningful.
-              If you ever want to see the raw numbers behind a pick,{' '}
-              <Link href="/track-record" className="text-yellow-300 hover:underline">our public track record</Link>{' '}
-              shows the whole grading log.
-            </p>
-          </div>
+        {/* ════ MOVERS ═════════════════════════════════════════════════ */}
+        <section id="movers">
+          <SectionDivider label="Edge movers" />
+          {picks.mover.length > 0 ? (
+            <div className="space-y-2.5">
+              {picks.mover.map((p) => (
+                <FantasyMoverAlert key={p.id} pick={p} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="No big edge swings yet. We snapshot predictions every few hours — check back after lineup news drops." />
+          )}
+        </section>
+
+        {/* ════ FALLERS ════════════════════════════════════════════════ */}
+        <section id="fallers">
+          <SectionDivider label="Sell / sit tonight" />
+          {picks.faller.length > 0 ? (
+            <div className="space-y-2.5">
+              {picks.faller.map((p) => (
+                <FantasyPlayerCard key={p.id} pick={p} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="Most matchups look favourable tonight. Fallers surface when an elite arm draws a strong-offence club." />
+          )}
+        </section>
+
+        {/* ════ SLEEPERS ═══════════════════════════════════════════════ */}
+        <section id="sleepers">
+          <SectionDivider label="Undervalued — regression watch" />
+          {picks.sleeper.length > 0 ? (
+            <div className="space-y-2.5">
+              {picks.sleeper.map((p) => (
+                <FantasyPlayerCard key={p.id} pick={p} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="Tonight's slate is clean — no significant ERA/FIP gaps. We surface these when the math justifies it, not to fill space." />
+          )}
         </section>
 
         {/* ════ PRO UPSELL ═════════════════════════════════════════════ */}
         {!isPro && (
-          <section className="border border-stone-200 bg-white p-6 sm:p-8">
+          <section className="bg-stone-900 rounded-lg p-6 sm:p-8 -mx-4 sm:mx-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-2">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-yellow-300 font-bold mb-2">
                   ⊕ Pro Tier · £4/mo · Founding 100
                 </div>
-                <h3 className="font-serif font-semibold text-2xl text-stone-900 leading-tight mb-2">
-                  Get the picks in your inbox every morning.
+                <h3 className="font-serif font-light text-2xl text-white leading-tight mb-2">
+                  Get the full desk in your inbox at 7am.
                 </h3>
-                <p className="text-sm text-stone-500 font-serif">
-                  Pro adds Hot Zones, Umpire Effect, Bullpen Fatigue Tracker, full splits — and emails the Fantasy Desk to you at 7am.
+                <p className="text-sm text-stone-400 font-serif">
+                  Hot Zones · Umpire Effect · Bullpen Fatigue · Full splits · DFS slate
                 </p>
               </div>
               <Link
-                href="/#signup"
-                className="shrink-0 text-xs font-mono uppercase tracking-widest bg-stone-900 text-yellow-300 px-6 py-3 hover:bg-stone-700 transition whitespace-nowrap"
+                href="/pricing"
+                className="shrink-0 text-xs font-mono uppercase tracking-widest bg-yellow-300 text-stone-900 px-6 py-3 hover:bg-yellow-200 transition whitespace-nowrap"
               >
-                Get on the list →
+                See Pro →
               </Link>
             </div>
           </section>
         )}
-
       </div>
 
-      {/* ════ FOOTER ════════════════════════════════════════════════════ */}
+      {/* ════ FOOTER ═════════════════════════════════════════════════ */}
       <footer className="border-t border-stone-200 mt-8 px-4 sm:px-6 py-8 text-[11px] font-mono text-stone-400 bg-stone-50">
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -195,305 +257,81 @@ const subscriber = await getCurrentSubscriber()
 }
 
 
-/* ════════════════════════════════════════════════════════════════════════
- *  SUB-COMPONENTS (kept in same file for self-containment)
- * ════════════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+ *  SUB-COMPONENTS
+ * ════════════════════════════════════════════════════════════════════ */
 
-type ColorKey = 'emerald' | 'orange' | 'red' | 'blue' | 'stone'
-
-const COLOR_STYLES: Record<ColorKey, { accent: string; dot: string; text: string; bg: string }> = {
-  emerald: { accent: 'border-emerald-600', dot: 'bg-emerald-600', text: 'text-emerald-700', bg: 'bg-emerald-50' },
-  orange:  { accent: 'border-orange-600',  dot: 'bg-orange-600',  text: 'text-orange-700',  bg: 'bg-orange-50' },
-  red:     { accent: 'border-red-600',     dot: 'bg-red-600',     text: 'text-red-700',     bg: 'bg-red-50' },
-  blue:    { accent: 'border-blue-600',    dot: 'bg-blue-600',    text: 'text-blue-700',    bg: 'bg-blue-50' },
-  stone:   { accent: 'border-stone-400',   dot: 'bg-stone-400',   text: 'text-stone-700',   bg: 'bg-stone-50' },
+function HeroCell({ label, count, color, targetId }: {
+  label: string; count: number; color: string; targetId: string
+}) {
+  return (
+    <a
+      href={`#${targetId}`}
+      className="py-4 text-center border-r border-stone-200 last:border-r-0 hover:bg-stone-50 transition"
+    >
+      <div className={`font-serif text-3xl font-semibold leading-none ${color}`}>
+        {count}
+      </div>
+      <div className="font-mono text-[9px] tracking-widest uppercase text-stone-400 mt-1">
+        {label}
+      </div>
+    </a>
+  )
 }
 
-function SectionHeader({ label, sublabel, colorKey }: { label: string; sublabel: string; colorKey: ColorKey }) {
-  const c = COLOR_STYLES[colorKey]
+function NavCard({ href, title, desc, colorClass, iconBg, iconLetter, badge }: {
+  href?: string; title: string; desc: string; colorClass: string; iconBg: string; iconLetter: string; badge?: string
+}) {
+  const Wrapper = href ? Link : 'div'
+  const wrapperProps = href ? { href } : {}
+  const isComingSoon = !!badge
+
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-stone-200 pb-3">
-      <div className="flex items-baseline gap-3 min-w-0">
-        <div className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
-        <div className="min-w-0">
-          <div className={`text-[10px] font-mono uppercase tracking-widest font-bold ${c.text}`}>
-            § {label}
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-serif font-light text-stone-900 leading-tight mt-1">
-            {sublabel}
-          </h2>
-        </div>
+    <Wrapper
+      {...(wrapperProps as any)}
+      className={`relative border rounded-lg p-4 shadow-sm transition ${colorClass} ${
+        isComingSoon
+          ? 'opacity-60 cursor-default'
+          : 'cursor-pointer hover:shadow-md'
+      }`}
+    >
+      <div className={`w-7 h-7 rounded-md ${iconBg} flex items-center justify-center mb-2`}>
+        <span className="font-mono text-[11px] font-bold text-white">{iconLetter}</span>
       </div>
+      <div className="font-serif font-semibold text-sm text-stone-900">{title}</div>
+      <div className="text-[11px] text-stone-500 leading-snug mt-0.5">{desc}</div>
+      {badge && (
+        <span className="absolute top-3 right-3 font-mono text-[8px] tracking-widest uppercase bg-white/80 text-stone-500 px-2 py-0.5 font-bold rounded">
+          {badge}
+        </span>
+      )}
+    </Wrapper>
+  )
+}
+
+function SectionDivider({ label, live }: { label: string; live?: boolean }) {
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-orange-600 font-bold whitespace-nowrap">
+        § {label}
+      </span>
+      <div className="flex-1 h-px bg-stone-200" />
+      {live && (
+        <span className="flex items-center gap-1.5 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="font-mono text-[9px] tracking-widest uppercase text-emerald-600">
+            Live
+          </span>
+        </span>
+      )}
     </div>
   )
 }
 
-function PickSection({
-  label,
-  sublabel,
-  colorKey,
-  picks,
-  renderPick,
-  emptyMessage,
-}: {
-  label: string
-  sublabel: string
-  colorKey: ColorKey
-  picks: FantasyPick[]
-  renderPick: (p: FantasyPick) => React.ReactNode
-  emptyMessage: string
-}) {
+function EmptyState({ message }: { message: string }) {
   return (
-    <section>
-      <SectionHeader label={label} sublabel={sublabel} colorKey={colorKey} />
-      {picks.length === 0 ? (
-        <p className="text-sm text-stone-400 font-serif italic mt-6 py-8 text-center">
-          {emptyMessage}
-        </p>
-      ) : (
-        <div className="space-y-3 mt-6">
-          {picks.map((p) => (
-            <div key={p.id}>{renderPick(p)}</div>
-          ))}
-        </div>
-      )}
-    </section>
-  )
-}
-
-
-/* ─── Card components ─────────────────────────────────────────────────── */
-
-function CardShell({
-  rank,
-  headline,
-  oneLine,
-  rightSlot,
-  gameSlug,
-  colorKey,
-}: {
-  rank: number
-  headline: string
-  oneLine: string
-  rightSlot: React.ReactNode
-  gameSlug: string | null
-  colorKey: ColorKey
-}) {
-  const c = COLOR_STYLES[colorKey]
-  return (
-    <article className={`bg-white border border-stone-200 border-l-2 ${c.accent} p-4 sm:p-5`}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className="font-mono text-stone-300 text-sm font-bold mt-0.5 shrink-0 w-4">
-            {rank}.
-          </div>
-          <div className="min-w-0">
-            <div className="font-serif font-semibold text-stone-900 leading-tight">
-              {headline}
-            </div>
-            <p className="text-sm text-stone-600 mt-1 leading-relaxed font-serif italic">
-              {oneLine}
-            </p>
-            {gameSlug && (
-              <Link
-                href={`/mlb/${gameSlug}`}
-                className="inline-block mt-2 text-[10px] font-mono uppercase tracking-widest text-orange-600 hover:underline"
-              >
-                View full game preview →
-              </Link>
-            )}
-          </div>
-        </div>
-        <div className="shrink-0">
-          {rightSlot}
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function StreamerCard({ pick, isPro }: { pick: FantasyPick; isPro: boolean }) {
-  const d = pick.details ?? {}
-  const tier = d.tier ?? 'viable'
-  const tierBg =
-    tier === 'strong' ? 'bg-emerald-600 text-white' :
-    tier === 'viable' ? 'bg-yellow-400 text-stone-900' :
-    'bg-stone-300 text-stone-600'
-
-  return (
-    <CardShell
-      rank={pick.rank}
-      headline={pick.headline}
-      oneLine={pick.one_liner}
-      gameSlug={pick.game_slug}
-      colorKey="emerald"
-      rightSlot={
-        <div className="flex flex-col items-end gap-1.5">
-          <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 ${tierBg}`}>
-            {tier === 'strong' ? 'Strong stream' : 'Viable'}
-          </span>
-          {isPro && pick.signal_score && (
-            <span className="text-[10px] font-mono text-stone-400">{Math.round(pick.signal_score)}/100</span>
-          )}
-        </div>
-      }
-    />
-  )
-}
-
-function MoverCard({ pick, isPro }: { pick: FantasyPick; isPro: boolean }) {
-  const d = pick.details ?? {}
-  const swing = d.swing ?? 0
-  const direction = d.direction ?? 'up'
-
-  return (
-    <CardShell
-      rank={pick.rank}
-      headline={pick.headline}
-      oneLine={pick.one_liner}
-      gameSlug={pick.game_slug}
-      colorKey="orange"
-      rightSlot={
-        <div className="flex flex-col items-end gap-1">
-          <div className={`text-2xl font-serif font-bold leading-none ${direction === 'up' ? 'text-emerald-600' : 'text-red-600'}`}>
-            {direction === 'up' ? '↑' : '↓'} {Math.abs(swing).toFixed(0)}
-          </div>
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400">
-            Edge swing
-          </span>
-          {isPro && d.previous_score != null && d.current_score != null && (
-            <span className="text-[10px] font-mono text-stone-500 mt-1">
-              {d.previous_score > 0 ? '+' : ''}{d.previous_score} → {d.current_score > 0 ? '+' : ''}{d.current_score}
-            </span>
-          )}
-        </div>
-      }
-    />
-  )
-}
-
-function FallerCard({ pick, isPro }: { pick: FantasyPick; isPro: boolean }) {
-  const d = pick.details ?? {}
-  return (
-    <CardShell
-      rank={pick.rank}
-      headline={pick.headline}
-      oneLine={pick.one_liner}
-      gameSlug={pick.game_slug}
-      colorKey="red"
-      rightSlot={
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 bg-red-600 text-white">
-            ↓ Tough spot
-          </span>
-          {isPro && d.pitcher_quality != null && (
-            <span className="text-[10px] font-mono text-stone-400 mt-1">
-              Stuff: {Math.round(d.pitcher_stuff ?? 0)} · Quality: {Math.round(d.pitcher_quality)}
-            </span>
-          )}
-        </div>
-      }
-    />
-  )
-}
-
-function SleeperCard({ pick, isPro }: { pick: FantasyPick; isPro: boolean }) {
-  const d = pick.details ?? {}
-  const isRegression = d.regression === true
-  return (
-    <CardShell
-      rank={pick.rank}
-      headline={pick.headline}
-      oneLine={pick.one_liner}
-      gameSlug={pick.game_slug}
-      colorKey="blue"
-      rightSlot={
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-1 bg-blue-600 text-white">
-            ⊕ Sleeper
-          </span>
-          {isPro && isRegression && d.gap != null && (
-            <span className="text-[10px] font-mono text-stone-400 mt-1">
-              ERA-FIP gap: +{Number(d.gap).toFixed(2)}
-            </span>
-          )}
-        </div>
-      }
-    />
-  )
-}
-
-
-/* ─── Stat education ──────────────────────────────────────────────────── */
-
-const STAT_GUIDES = [
-  {
-    stat: 'xFIP',
-    full: 'Expected Fielding Independent Pitching',
-    short: 'Better than ERA for predicting a pitcher\'s future.',
-    why: 'ERA includes luck — bloopers, defensive errors, weird hops. xFIP strips that out and looks only at what the pitcher controls (Ks, walks, fly balls). A pitcher with 5.50 ERA but 3.80 xFIP is due for a correction.',
-    fantasy: 'Use xFIP when scouring the waiver wire. The ERA might scare other managers off — your edge is knowing the underlying numbers are better.',
-  },
-  {
-    stat: 'wRC+',
-    full: 'Weighted Runs Created Plus',
-    short: 'Park-adjusted offence rating. 100 = league average.',
-    why: 'Counting stats like RBIs depend on teammates. wRC+ adjusts for park (Coors inflates everything; Petco crushes it) and league context. 120+ is genuinely elite. 80 or below means avoid in tough spots.',
-    fantasy: 'Streaming hitters against weak lineups? Look at wRC+ over the last 30 days, not season stats. A team can be hot or cold in May regardless of their April.',
-  },
-  {
-    stat: 'Whiff%',
-    full: 'Percentage of swings that miss',
-    short: 'How often hitters swing and don\'t make contact.',
-    why: 'Strikeouts are the cleanest pitcher stat — they don\'t depend on defence or sequencing. Whiff% on a specific pitch (e.g. 38% whiff on a slider) tells you which pitch is doing the work. Elite is 32%+. League average is ~24%.',
-    fantasy: 'When picking a streamer, look for pitchers with one elite whiff pitch (>30%). Even mediocre starters can rack up Ks against the right matchup.',
-  },
-  {
-    stat: 'K/9',
-    full: 'Strikeouts per nine innings',
-    short: 'Pure strikeout rate. The fantasy pitcher\'s bread and butter.',
-    why: 'In points leagues, strikeouts are usually worth more than wins. K/9 is your single best snapshot of strikeout upside — better than season totals (which favour innings-eaters) or rate stats.',
-    fantasy: 'Compare K/9 over the last 3 starts vs season average. A starter trending up (10+ K/9 in their last 3) is often a buy-low before others notice.',
-  },
-  {
-    stat: 'FIP',
-    full: 'Fielding Independent Pitching',
-    short: 'ERA-style stat that ignores everything but Ks, walks, and HRs.',
-    why: 'FIP scales like ERA (3.50 is good, 5.00 is bad) but strips out the noise. ERA above FIP by 0.5+ means the pitcher has been unlucky — Sleeper material. ERA below FIP by 0.5+ means they\'ve been lucky and may regress.',
-    fantasy: 'Our Sleepers section is built on this gap. We surface pitchers with ugly ERAs but FIPs that say their stuff is real.',
-  },
-  {
-    stat: 'OPS',
-    full: 'On-base Plus Slugging',
-    short: 'The simplest "is this hitter good" number.',
-    why: 'OBP + SLG. Captures both getting on base and hitting for power. Elite is .900+. Average is .720. Below .680 means a struggling bat. Use last-30-day OPS, not season — context matters.',
-    fantasy: 'When deciding whether to bench a fantasy star against a tough pitcher, check their OPS vs that pitcher\'s handedness — left-handed hitters often have much lower OPS vs LHP.',
-  },
-]
-
-function StatGuideCard({ guide }: { guide: typeof STAT_GUIDES[number] }) {
-  return (
-    <article className="bg-white border border-stone-200 p-5 hover:border-stone-300 transition">
-      <div className="flex items-baseline justify-between gap-3 mb-2">
-        <h3 className="font-mono font-bold text-stone-900 text-base">{guide.stat}</h3>
-        <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400">
-          {guide.full}
-        </span>
-      </div>
-      <p className="text-sm font-serif font-semibold text-stone-800 leading-snug mb-3">
-        {guide.short}
-      </p>
-      <p className="text-xs text-stone-600 leading-relaxed mb-3">
-        {guide.why}
-      </p>
-      <div className="border-t border-stone-100 pt-3">
-        <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-1">
-          Fantasy use
-        </div>
-        <p className="text-xs text-stone-600 leading-relaxed italic">
-          {guide.fantasy}
-        </p>
-      </div>
-    </article>
+    <div className="border border-dashed border-stone-300 rounded-lg bg-stone-50 p-5 text-sm text-stone-500 font-serif italic">
+      {message}
+    </div>
   )
 }

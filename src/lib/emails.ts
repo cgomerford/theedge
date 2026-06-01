@@ -1,6 +1,7 @@
 import { generateMatchupTiltEmailBlock } from './matchup-tilt-email';
 import { buildMatchupTiltData } from './matchup-tilt';
 import type { ComponentsRaw, ComponentScores } from './matchup-tilt';
+import { findTeamByName } from '@/lib/teams'
 
 export function welcomeEmail(email: string, preferencesToken: string) {
   const preferencesUrl = `https://edgereportdaily.com/preferences/${preferencesToken}`
@@ -327,14 +328,14 @@ export function dailyBriefEmail(
     let tiltBlock = ''
     if (ctx.components_raw && ctx.components) {
       try {
-        const tiltData = buildMatchupTiltData(
-          ctx.components_raw as ComponentsRaw,
-          ctx.components as ComponentScores,
-          { abbr: homeShort?.toUpperCase() ?? 'HOME', name: homeTeam, primaryColor: homeColor },
-          { abbr: awayShort?.toUpperCase() ?? 'AWAY', name: awayTeam, primaryColor: awayColor },
-          ctx.venueName,
-          gameTime,
-        )
+       const tiltData = buildMatchupTiltData(
+  ctx.components_raw as ComponentsRaw,
+  ctx.components as ComponentScores,
+  { abbr: awayShort?.toUpperCase() ?? 'AWAY', name: awayTeam, primaryColor: awayColor },
+  { abbr: homeShort?.toUpperCase() ?? 'HOME', name: homeTeam, primaryColor: homeColor },
+  ctx.venueName,
+  gameTime,
+)
         tiltBlock = `<tr><td style="padding:0 40px 16px;">${generateMatchupTiltEmailBlock(tiltData)}</td></tr>`
       } catch (e) {
         console.error('Tilt email block failed, falling back to Edge Indicator', e)

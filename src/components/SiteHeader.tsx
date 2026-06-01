@@ -10,33 +10,29 @@ type NavLink = {
   description?: string
   badge?: string
 }
-
 const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
   {
     label: 'MLB',
     links: [
-      { href: '/tonight',             label: '← Tonight',     description: "Tonight's full slate" },
-      { href: '/fantasy',      label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers',badge: 'Pro' },
-      { href: '/track-record', label: 'Track Record',  description: 'Our accuracy log' },
-      { href: '/how-it-works', label: 'How it works',  description: 'What The Edge does' },
+      { href: '/mlb',     label: 'MLB Home',     description: 'Standings · leaders · edges',    badge: 'LIVE' },
+      { href: '/tonight', label: 'Tonight',       description: "Tonight's full slate" },
+      { href: '/fantasy', label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers', badge: 'Pro' },
     ],
   },
   {
-    label: 'Sports',
+    label: 'NFL',
     links: [
-      { href: '/tonight',            label: 'MLB', description: 'Live now',    badge: 'LIVE' },
-      { href: '/preview/nfl', label: 'NFL', description: 'Coming soon', badge: 'SOON' },
-      { href: '/preview/nba', label: 'NBA', description: 'Coming soon', badge: 'SOON' },
-      { href: '/preview/nhl', label: 'NHL', description: 'Coming soon', badge: 'SOON' },
+      { href: '/nfl', label: 'NFL Home', description: 'Standings · leaders · news', badge: 'NEW' },
     ],
   },
   {
-    label: 'About',
+    label: 'More',
     links: [
-      { href: '/about',   label: 'About',   description: 'What we are' },
-      { href: '/faq',     label: 'FAQ',     description: 'Common questions' },
-      { href: '/privacy', label: 'Privacy', description: 'How we use your data' },
-      { href: '/terms',   label: 'Terms',   description: 'Terms of use' },
+      { href: '/how-it-works', label: 'How it works',  description: 'The 8-component model' },
+      { href: '/faq',          label: 'FAQ',            description: 'Common questions' },
+      { href: '/about',        label: 'About',          description: 'What we are' },
+      { href: '/privacy',      label: 'Privacy',        description: 'How we use your data' },
+      { href: '/terms',        label: 'Terms',          description: 'Terms of use' },
     ],
   },
 ]
@@ -159,12 +155,12 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
                       className="font-mono font-bold uppercase"
                       style={{
                         fontSize: 9, letterSpacing: '0.08em', padding: '2px 6px',
-                        background: link.badge === 'LIVE' ? '#EA580C'
-                                  : link.badge === 'NEW'  ? '#FDE047'
+                        background: link.badge === 'LIVE' ? '#000000'
+                                  : link.badge === 'NEW'  ? '#0a0c0d'
                                   : '#E7E5E4',
-                        color:      link.badge === 'LIVE' ? '#fff'
-                                  : link.badge === 'NEW'  ? '#1C1917'
-                                  : '#78716C',
+                        color:      link.badge === 'LIVE' ? '#0a0101'
+                                  : link.badge === 'NEW'  ? '#1c191700'
+                                  : '#090606',
                       }}
                     >
                     {link.badge && (

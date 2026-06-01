@@ -309,31 +309,32 @@ if (!subscriber) {
       </section>
 
 
-      {/* ============ SQUAD LINK (Pro) ============ */}
-      {subscriber?.is_pro || subscriber?.role === 'admin' ? (
-        <section className="px-6 pt-8 max-w-5xl mx-auto">
-          <Link
-            href="/dugout/squad"
-            className="block bg-stone-900 text-white rounded-lg p-6 hover:bg-stone-800 transition group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-lime-400 mb-1">
-                  ⊕ Pro · Ultimate Team
-                </div>
-                <h3 className="font-serif text-xl">
-                  Build your squad<span className="text-lime-400">.</span>
-                </h3>
-                <p className="text-stone-400 text-sm mt-1">
-                  Draft your fantasy lineup. Every player graded by position.
-                </p>
-              </div>
-              <span className="text-2xl text-stone-600 group-hover:text-lime-400 transition">→</span>
-            </div>
-          </Link>
-        </section>
-      ) : null}
-{/* ============ CALENDAR ============ */}
+{/* ============ SQUAD LINK (Pro) — COMMENTED OUT UNTIL READY ============ */}
+{/* 
+{subscriber?.is_pro || subscriber?.role === 'admin' ? (
+  <section className="px-6 pt-8 max-w-5xl mx-auto">
+    <Link
+      href="/dugout/squad"
+      className="block bg-stone-900 text-white rounded-lg p-6 hover:bg-stone-800 transition group"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-lime-400 mb-1">
+            ⊕ Pro · Ultimate Team
+          </div>
+          <h3 className="font-serif text-xl">
+            Build your squad<span className="text-lime-400">.</span>
+          </h3>
+          <p className="text-stone-400 text-sm mt-1">
+            Draft your fantasy lineup. Every player graded by position.
+          </p>
+        </div>
+        <span className="text-2xl text-stone-600 group-hover:text-lime-400 transition">→</span>
+      </div>
+    </Link>
+  </section>
+) : null}
+*/}{/* ============ CALENDAR ============ */}
       {primaryTeam && primaryTeamId && (
         <section className="px-6 pt-12 max-w-5xl mx-auto">
          <DugoutCalendar

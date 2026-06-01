@@ -101,6 +101,8 @@ export function teamIdBySlug(slug: string): number | null {
   return TEAM_ID_BY_SLUG[slug] ?? null
 }
 
+
+
 // Get team theme colors by slug
 export function getTeamTheme(slug: string): { primary: string; secondary: string; text: string } {
   const team = findTeamBySlug(slug)
