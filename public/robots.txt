@@ -1,0 +1,15 @@
+# public/robots.txt
+# Allow all search engine crawlers to index the entire site.
+# Block API routes and internal/admin paths.
+
+User-agent: *
+Allow: /
+
+# Block API and internal routes from crawlers
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /preferences/
+
+# Point crawlers at the sitemap
+Sitemap: https://edgereportdaily.com/sitemap.xml

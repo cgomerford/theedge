@@ -458,27 +458,29 @@ def compute_fallers(games, today):
                 why_parts.append(top_pitch)
             why = ', '.join(why_parts) if why_parts else 'elite arm'
 
-            # FIX 2: Player is the pitcher (the identifiable individual)
-            # Opponent is the team whose batters should be benched
+            # Card subject is WHO needs the action — the opposing team's bats.
+            # Pitcher name lives in details + one_liner as the *threat*, not the subject.
+            opp_short = short_name(opp_team_name)
             candidates.append({
                 'game_pk':       game['gamePk'],
                 'game_slug':     slugify_game(away['team']['name'], home['team']['name'], today),
                 'game_time':     format_uk_time(game['gameDate']),
-                'player_id':     pid,
-                'player_name':   pitcher_name,                   # FIX 2: pitcher name
-                'team_name':     short_name(pitcher_team),       # FIX 2: pitcher's team
-                'opponent_name': short_name(opp_team_name),      # FIX 2: team whose bats struggle
+                'player_id':     pid,                            # pitcher id (for dedup + game link)
+                'player_name':   f'{opp_short} Bats',            # who you sit
+                'team_name':     opp_short,                      # bats' team
+                'opponent_name': pitcher_name,                   # who they face
                 'signal_score':  score,
                 'details': {
                     'pitcher_name':     pitcher_name,
+                    'pitcher_team':     short_name(pitcher_team),
                     'pitcher_quality':  pitcher_quality,
                     'stuff':            stuff,
                     'opp_strength':     opp_strength,
                     'top_pitch':        top_pitch,
                     'opp_team_ops':     opp_ops,
                 },
-                'headline': f'{pitcher_name} · {short_name(pitcher_team)} vs {short_name(opp_team_name)}',
-                'one_liner': f'Sit {short_name(opp_team_name)} hitters — {pitcher_name} ({why}) is a wall tonight',
+                'headline':  f'{opp_short} bats · vs {pitcher_name}',
+                'one_liner': f'{pitcher_name} ({why}) — bench your {opp_short} bats tonight',
             })
 
     candidates = _dedup_candidates(candidates)

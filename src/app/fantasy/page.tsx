@@ -6,6 +6,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import FantasyPlayerCard from '@/components/fantasy/FantasyPlayerCard'
 import FantasyMoverAlert from '@/components/fantasy/FantasyMoverAlert'
 import FantasyTicker from '@/components/fantasy/FantasyTicker'
+import FantasySubNav from '@/components/fantasy/FantasySubNav'
 
 export const revalidate = 1800
 export const metadata = {
@@ -38,19 +39,7 @@ export default async function FantasyPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
-
-      {/* ════ MASTHEAD ════════════════════════════════════════════════ */}
-      <div className="border-b border-stone-200 bg-stone-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
-          <div className="flex items-center gap-4">
-            <Link href="/dugout" className="text-orange-600 hover:text-orange-700 transition">
-              ← Dugout
-            </Link>
-            <span>{displayDate}</span>
-          </div>
-          <span className="text-stone-300">Fantasy Edition</span>
-        </div>
-      </div>
+      <FantasySubNav active="home" />
 
       {/* ════ TITLE BLOCK ════════════════════════════════════════════ */}
       <div className="border-b-2 border-stone-900 bg-stone-50">
@@ -101,28 +90,28 @@ export default async function FantasyPage() {
             iconLetter="S"
           />
           <NavCard
+            href="/fantasy/platforms"
             title="Platforms"
             desc="ESPN vs Yahoo vs Sleeper scoring"
-            colorClass="bg-violet-50 border-violet-200"
+            colorClass="bg-violet-50 border-violet-200 hover:border-violet-400"
             iconBg="bg-violet-600"
             iconLetter="P"
-            badge="Wk 2"
           />
           <NavCard
-            title="DFS"
-            desc="DraftKings slate + edge scores"
-            colorClass="bg-amber-50 border-amber-200"
+            href="/fantasy/two-start"
+            title="Two-Start"
+            desc="Pitchers going twice this week"
+            colorClass="bg-amber-50 border-amber-200 hover:border-amber-400"
             iconBg="bg-amber-600"
-            iconLetter="D"
-            badge="Wk 3"
+            iconLetter="2"
           />
           <NavCard
-            href="#movers"
-            title="Movers"
-            desc="Edge scores that swung today"
-            colorClass="bg-orange-50 border-orange-200 hover:border-orange-400"
-            iconBg="bg-orange-600"
-            iconLetter="M"
+            href="/fantasy/news"
+            title="News Wire"
+            desc="Injuries, lineups, transactions"
+            colorClass="bg-blue-50 border-blue-200 hover:border-blue-400"
+            iconBg="bg-blue-600"
+            iconLetter="N"
           />
           <NavCard
             href="#fallers"
@@ -136,8 +125,8 @@ export default async function FantasyPage() {
             href="#sleepers"
             title="Undervalued"
             desc="Regression watch"
-            colorClass="bg-blue-50 border-blue-200 hover:border-blue-400"
-            iconBg="bg-blue-600"
+            colorClass="bg-indigo-50 border-indigo-200 hover:border-indigo-400"
+            iconBg="bg-indigo-600"
             iconLetter="U"
           />
         </div>

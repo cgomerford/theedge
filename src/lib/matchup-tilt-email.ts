@@ -21,15 +21,6 @@
 //     : null;
 //
 //   const tiltHtml = tiltData ? generateMatchupTiltEmailBlock(tiltData) : '';
-//
-//   // Insert into your email template where EdgeIndicator block was:
-//   const emailHtml = `
-//     ...
-//     ${storyLeadHtml}
-//     ${tiltHtml}
-//     ${narrativeHtml}
-//     ...
-//   `;
 
 import type { MatchupTiltData } from './matchup-tilt'
 
@@ -38,6 +29,7 @@ import type { MatchupTiltData } from './matchup-tilt'
 /**
  * Renders a 10-cell mini tilt bar for email.
  * Each cell is a tiny <td> coloured home/away/neutral.
+ * Cells 0-4 fill from centre-left (away), cells 5-9 fill from centre-right (home).
  */
 function emailBar(
   tilt: number,
@@ -64,6 +56,7 @@ function emailBar(
 
 /**
  * Returns edge label HTML for email (e.g. "PHI EDGE ↑").
+ * Positive tilt = home edge. Negative tilt = away edge.
  */
 function emailEdgeLabel(
   tilt: number,
@@ -99,20 +92,20 @@ export function generateMatchupTiltEmailBlock(
     label: string;
   }> = [
     { key: 'pitching', label: 'Starting Pitching' },
-    { key: 'bullpen', label: 'Bullpen' },
-    { key: 'offense', label: 'Offensive Form' },
-    { key: 'matchup', label: 'Pitch Matchups' },
-    { key: 'park', label: 'Park Factor' },
-    { key: 'weather', label: 'Weather' },
-    { key: 'defense', label: 'Defense' },
-    { key: 'rest', label: 'Rest & Travel' },
+    { key: 'bullpen',  label: 'Bullpen' },
+    { key: 'offense',  label: 'Offensive Form' },
+    { key: 'matchup',  label: 'Pitch Matchups' },
+    { key: 'park',     label: 'Park Factor' },
+    { key: 'weather',  label: 'Weather' },
+    { key: 'defense',  label: 'Defense' },
+    { key: 'rest',     label: 'Rest & Travel' },
   ];
 
   const allTilts = keys.map((k) => components[k.key].tilt);
   const homeCount = allTilts.filter((t) => t > 5).length;
   const awayCount = allTilts.filter((t) => t < -5).length;
 
-  // Build component rows
+  // ── Component rows ─────────────────────────────────────────────────────────
   const rows = keys
     .map(({ key, label }) => {
       const comp = components[key];
@@ -151,7 +144,7 @@ export function generateMatchupTiltEmailBlock(
     })
     .join('');
 
-  // Factor dots (8 coloured circles)
+  // ── Factor dots (8 coloured circles) ──────────────────────────────────────
   const dots = keys
     .map(({ key }) => {
       const t = components[key].tilt;
@@ -183,23 +176,23 @@ export function generateMatchupTiltEmailBlock(
           </td>
         </tr>
 
-        <!-- Team names -->
+        <!-- Team names — FIX 1: AWAY left, HOME right. Matches website + sports convention. -->
         <tr>
           <td colspan="2" style="padding-top:12px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${home.primaryColor};letter-spacing:-0.02em;">
-                  ${home.abbr}
-                  <br/>
-                  <span style="font-size:10px;font-weight:400;color:#555;letter-spacing:0.08em;font-family:monospace;">HOME</span>
-                </td>
-                <td style="text-align:center;font-family:monospace;font-size:10px;color:#444;letter-spacing:0.1em;vertical-align:middle;">
-                  vs
-                </td>
-                <td style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${away.primaryColor};letter-spacing:-0.02em;">
+                <td style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${away.primaryColor};letter-spacing:-0.02em;">
                   ${away.abbr}
                   <br/>
                   <span style="font-size:10px;font-weight:400;color:#555;letter-spacing:0.08em;font-family:monospace;">AWAY</span>
+                </td>
+                <td style="text-align:center;font-family:monospace;font-size:14px;color:#444;letter-spacing:0.1em;vertical-align:middle;">
+                  @
+                </td>
+                <td style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${home.primaryColor};letter-spacing:-0.02em;">
+                  ${home.abbr}
+                  <br/>
+                  <span style="font-size:10px;font-weight:400;color:#555;letter-spacing:0.08em;font-family:monospace;">HOME</span>
                 </td>
               </tr>
             </table>
@@ -215,12 +208,12 @@ export function generateMatchupTiltEmailBlock(
           </td>
         </tr>
 
-        <!-- Factor count -->
+        <!-- Factor count — FIX 2: away first (matches team-name order), plural "hold" -->
         <tr>
           <td colspan="2" style="padding-top:6px;text-align:center;font-family:monospace;font-size:11px;color:#666;">
-            <span style="color:${home.primaryColor};font-weight:700;">${home.abbr} holds ${homeCount}</span>
+            <span style="color:${away.primaryColor};font-weight:700;">${away.abbr} hold ${awayCount}</span>
             &nbsp;·&nbsp;
-            <span style="color:${away.primaryColor};font-weight:700;">${away.abbr} holds ${awayCount}</span>
+            <span style="color:${home.primaryColor};font-weight:700;">${home.abbr} hold ${homeCount}</span>
           </td>
         </tr>
 
