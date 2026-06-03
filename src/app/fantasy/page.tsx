@@ -39,7 +39,7 @@ export default async function FantasyPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
-      <FantasySubNav active="home" />
+      <FantasySubNav active="home" isPro={isPro} />
 
       {/* ════ TITLE BLOCK ════════════════════════════════════════════ */}
       <div className="border-b-2 border-stone-900 bg-stone-50">
@@ -88,6 +88,8 @@ export default async function FantasyPage() {
             colorClass="bg-emerald-50 border-emerald-200 hover:border-emerald-400"
             iconBg="bg-emerald-600"
             iconLetter="S"
+            proOnly
+            isPro={isPro}
           />
           <NavCard
             href="/fantasy/platforms"
@@ -96,6 +98,8 @@ export default async function FantasyPage() {
             colorClass="bg-violet-50 border-violet-200 hover:border-violet-400"
             iconBg="bg-violet-600"
             iconLetter="P"
+            proOnly
+            isPro={isPro}
           />
           <NavCard
             href="/fantasy/two-start"
@@ -104,6 +108,8 @@ export default async function FantasyPage() {
             colorClass="bg-amber-50 border-amber-200 hover:border-amber-400"
             iconBg="bg-amber-600"
             iconLetter="2"
+            proOnly
+            isPro={isPro}
           />
           <NavCard
             href="/fantasy/news"
@@ -143,7 +149,7 @@ export default async function FantasyPage() {
           {picks.streamer.length > 0 ? (
             <div className="space-y-2.5">
               {picks.streamer.map((p) => (
-                <FantasyPlayerCard key={p.id} pick={p} />
+                <FantasyPlayerCard key={p.id} pick={p} isPro={isPro} />
               ))}
             </div>
           ) : (
@@ -177,7 +183,7 @@ export default async function FantasyPage() {
           {picks.faller.length > 0 ? (
             <div className="space-y-2.5">
               {picks.faller.map((p) => (
-                <FantasyPlayerCard key={p.id} pick={p} />
+                <FantasyPlayerCard key={p.id} pick={p} isPro={isPro} />
               ))}
             </div>
           ) : (
@@ -191,7 +197,7 @@ export default async function FantasyPage() {
           {picks.sleeper.length > 0 ? (
             <div className="space-y-2.5">
               {picks.sleeper.map((p) => (
-                <FantasyPlayerCard key={p.id} pick={p} />
+                <FantasyPlayerCard key={p.id} pick={p} isPro={isPro} />
               ))}
             </div>
           ) : (
@@ -268,11 +274,15 @@ function HeroCell({ label, count, color, targetId }: {
   )
 }
 
-function NavCard({ href, title, desc, colorClass, iconBg, iconLetter, badge }: {
-  href?: string; title: string; desc: string; colorClass: string; iconBg: string; iconLetter: string; badge?: string
+function NavCard({ href, title, desc, colorClass, iconBg, iconLetter, badge, proOnly, isPro }: {
+  href?: string; title: string; desc: string; colorClass: string; iconBg: string; iconLetter: string
+  badge?: string; proOnly?: boolean; isPro?: boolean
 }) {
-  const Wrapper = href ? Link : 'div'
-  const wrapperProps = href ? { href } : {}
+  const isLocked = proOnly && !isPro
+  // Locked cards route to pricing instead of the gated page
+  const effectiveHref = isLocked ? '/pricing' : href
+  const Wrapper = effectiveHref ? Link : 'div'
+  const wrapperProps = effectiveHref ? { href: effectiveHref } : {}
   const isComingSoon = !!badge
 
   return (
@@ -284,11 +294,23 @@ function NavCard({ href, title, desc, colorClass, iconBg, iconLetter, badge }: {
           : 'cursor-pointer hover:shadow-md'
       }`}
     >
-      <div className={`w-7 h-7 rounded-md ${iconBg} flex items-center justify-center mb-2`}>
-        <span className="font-mono text-[11px] font-bold text-white">{iconLetter}</span>
+      <div className="flex items-start justify-between">
+        <div className={`w-7 h-7 rounded-md ${iconBg} flex items-center justify-center mb-2 ${isLocked ? 'opacity-50' : ''}`}>
+          <span className="font-mono text-[11px] font-bold text-white">{iconLetter}</span>
+        </div>
+        {/* Lock badge for Pro-only cards */}
+        {isLocked && (
+          <span className="flex items-center gap-1 font-mono text-[8px] tracking-widest uppercase bg-stone-900 text-yellow-300 px-2 py-1 font-bold rounded">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Pro
+          </span>
+        )}
       </div>
-      <div className="font-serif font-semibold text-sm text-stone-900">{title}</div>
-      <div className="text-[11px] text-stone-500 leading-snug mt-0.5">{desc}</div>
+      <div className={`font-serif font-semibold text-sm text-stone-900 ${isLocked ? 'opacity-70' : ''}`}>{title}</div>
+      <div className={`text-[11px] text-stone-500 leading-snug mt-0.5 ${isLocked ? 'opacity-70' : ''}`}>{desc}</div>
       {badge && (
         <span className="absolute top-3 right-3 font-mono text-[8px] tracking-widest uppercase bg-white/80 text-stone-500 px-2 py-0.5 font-bold rounded">
           {badge}

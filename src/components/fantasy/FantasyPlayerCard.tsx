@@ -195,8 +195,9 @@ function MovementPill({ pick }: { pick: FantasyPick }) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
-export default function FantasyPlayerCard({ pick }: { pick: FantasyPick }) {
+export default function FantasyPlayerCard({ pick, isPro = true }: { pick: FantasyPick; isPro?: boolean }) {
   const [open, setOpen] = useState(false)
+  const [showGate, setShowGate] = useState(false)
 
   const tier = getTier(pick)
   const meta = TIER_META[tier]
@@ -207,6 +208,14 @@ export default function FantasyPlayerCard({ pick }: { pick: FantasyPick }) {
 
   const gameLink = pick.game_slug ? `/mlb/${pick.game_slug}` : null
 
+  const handleToggle = () => {
+    if (!isPro) {
+      setShowGate(true)
+      return
+    }
+    setOpen(!open)
+  }
+
   return (
     <div
       className={`bg-white rounded-lg shadow-sm border transition-colors ${
@@ -216,7 +225,7 @@ export default function FantasyPlayerCard({ pick }: { pick: FantasyPick }) {
       {/* ── Collapsed view (always visible) ─────────────────────── */}
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="w-full text-left flex items-stretch"
         aria-expanded={open}
       >
@@ -318,6 +327,31 @@ export default function FantasyPlayerCard({ pick }: { pick: FantasyPick }) {
           )}
         </div>
       </div>
+
+      {/* ── Pro gate (free users trying to expand) ──────────────── */}
+      {showGate && !isPro && (
+        <div className="border-t border-stone-100 bg-stone-50 rounded-b-lg px-4 sm:px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-stone-700 font-serif">
+                See why this scores <span className="font-semibold">{scoreDisplay}</span> — component breakdowns are Pro.
+              </p>
+            </div>
+            <Link
+              href="/pricing"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-widest bg-stone-900 text-white px-4 py-2 hover:bg-stone-800 transition rounded"
+            >
+              Unlock →
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

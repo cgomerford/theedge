@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
+import FantasySubNav from '@/components/fantasy/FantasySubNav'
+import ProGate from '@/components/fantasy/ProGate'
 import { getTwoStartPitchers, type TwoStartPitcher } from '@/lib/fantasy-two-start'
 import { getCurrentSubscriber } from '@/lib/auth'
 
@@ -33,17 +35,7 @@ export default async function TwoStartPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
-
-      {/* MASTHEAD */}
-      <div className="border-b border-stone-200 bg-stone-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
-          <div className="flex items-center gap-4">
-            <Link href="/fantasy" className="text-orange-600 hover:text-orange-700 transition">← Fantasy Desk</Link>
-            <span>Two-Start Pitchers</span>
-          </div>
-          <span className="text-stone-300">7-Day Window</span>
-        </div>
-      </div>
+      <FantasySubNav active="two-start" isPro={isPro} />
 
       {/* TITLE BLOCK */}
       <div className="border-b-2 border-stone-900 bg-stone-50">
@@ -71,6 +63,7 @@ export default async function TwoStartPage() {
       </div>
 
       {/* EXPLAINER */}
+      <ProGate isPro={isPro} feature="Two-Start Pitchers" description="See every pitcher with two starts this week, ranked by matchup difficulty. Critical for weekly H2H leagues.">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-white rounded-lg border border-stone-200 p-5 sm:p-6 shadow-sm">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">
@@ -119,6 +112,8 @@ export default async function TwoStartPage() {
           </section>
         </div>
       )}
+
+      </ProGate>
 
       <footer className="border-t border-stone-200 mt-8 px-4 sm:px-6 py-8 text-[11px] font-mono text-stone-400 bg-stone-50">
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">

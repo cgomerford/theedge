@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
+import FantasySubNav from '@/components/fantasy/FantasySubNav'
 import { getFantasyNews, type NewsItem } from '@/lib/fantasy-news'
+import { getCurrentSubscriber } from '@/lib/auth'
 
 export const revalidate = 900
 export const metadata = {
@@ -16,7 +18,11 @@ const CATEGORY_META = {
 } as const
 
 export default async function NewsPage() {
-  const news = await getFantasyNews()
+  const [news, subscriber] = await Promise.all([
+    getFantasyNews(),
+    getCurrentSubscriber(),
+  ])
+  const isPro = subscriber?.is_pro ?? false
 
   const counts = {
     injury:      news.filter(n => n.category === 'injury').length,
@@ -28,16 +34,7 @@ export default async function NewsPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 overflow-x-hidden">
       <SiteHeader variant="page" />
-
-      <div className="border-b border-stone-200 bg-stone-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
-          <div className="flex items-center gap-4">
-            <Link href="/fantasy" className="text-orange-600 hover:text-orange-700 transition">← Fantasy Desk</Link>
-            <span>News Wire</span>
-          </div>
-          <span className="text-stone-300">Updated every 15 min</span>
-        </div>
-      </div>
+      <FantasySubNav active="news" isPro={isPro} />
 
       <div className="border-b-2 border-stone-900 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
