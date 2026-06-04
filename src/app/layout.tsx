@@ -3,6 +3,7 @@ import { Fraunces, Inter, JetBrains_Mono, Bebas_Neue } from 'next/font/google';
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieConsent from "@/components/CookieConsent";
+import BottomNav from '@/components/BottomNav'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable} antialiased`}>
         <GoogleAnalytics />
         {children}
+        <BottomNav />
         <CookieConsent />
       </body>
     </html>
