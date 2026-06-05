@@ -2,11 +2,12 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { getScheduleForDate, slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
-import { getOverallStats, getRecentPredictions } from '@/lib/track-record'
+import { getOverallStats, getRecentReads } from '@/lib/track-record'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import TurnstileWidget from '@/components/TurnstileWidget'
+import { getActiveSport, SPORT_LABELS, SPORT_HUB_PATH } from '@/lib/active-sport'
 
 export const revalidate = 1800
 
@@ -27,6 +28,8 @@ export default async function HomePage({ searchParams }: Props) {
   if (sessionCookie?.value) {
     redirect('/dugout')
   }
+
+  const { primary: activeSport } = getActiveSport()
 
   const today = new Date().toISOString().split('T')[0]
   const [games, overallStats, predictions] = await Promise.all([
@@ -54,7 +57,7 @@ export default async function HomePage({ searchParams }: Props) {
       {/* ============ HERO ============ */}
       <section className="px-6 pt-24 pb-20 max-w-5xl mx-auto">
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] mb-6">
-          § THE EDGE · DAILY BRIEF
+         § THE EDGE · {SPORT_LABELS[activeSport]} IN SEASON
         </div>
         <h1 className="text-6xl md:text-7xl font-serif font-bold tracking-tight mb-6 text-stone-900">
           Sharp analysis.<br />
@@ -98,27 +101,27 @@ export default async function HomePage({ searchParams }: Props) {
         )}
       </section>
 
-      {/* ============ TRACK RECORD / STATS ============ */}
+{/* ============ FACTOR ALIGNMENT / STATS ============ */}
       <section className="px-6 py-10 border-t border-stone-200 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-3 divide-x divide-stone-100">
             <Link href="/track-record" className="group px-6 py-2 first:pl-0">
               <div className="text-4xl md:text-5xl font-serif font-bold text-stone-900 group-hover:text-[#ea580c] transition leading-none mb-2">
-                {overallStats.total_graded}
+                {overallStats.total_reviewed}
               </div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500">
-                Predictions graded
+                Games reviewed
               </div>
             </Link>
             <Link href="/track-record" className="group px-6 py-2">
               <div className="text-4xl md:text-5xl font-serif font-bold text-stone-900 group-hover:text-[#ea580c] transition leading-none mb-2">
                 {overallStats.insufficient_sample
                   ? <span className="text-stone-400 text-2xl font-normal">Tracking…</span>
-                  : `${overallStats.accuracy_percent?.toFixed(1)}%`
+                  : `${overallStats.alignment_percent?.toFixed(1)}%`
                 }
               </div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500">
-                {overallStats.insufficient_sample ? 'Building sample size' : 'Accuracy on confident calls'}
+                {overallStats.insufficient_sample ? 'Building sample size' : 'Factor alignment rate'}
               </div>
             </Link>
             <div className="px-6 py-2">
@@ -133,7 +136,7 @@ export default async function HomePage({ searchParams }: Props) {
 
           <div className="mt-8 pt-6 border-t border-stone-100 flex items-center justify-between flex-wrap gap-3">
             <Link href="/track-record" className="text-[10px] text-[#ea580c] hover:text-stone-900 transition font-mono uppercase tracking-widest">
-              Every prediction logged publicly →
+              Every game reviewed publicly →
             </Link>
             <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-widest">
               <span className="text-[#ea580c] font-bold">MLB LIVE</span>

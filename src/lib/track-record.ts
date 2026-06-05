@@ -1,193 +1,318 @@
-import { createClient } from '@supabase/supabase-js'
+// src/lib/track-record.ts
+//
+// FACTOR ALIGNMENT ANALYSIS
+//
+// This replaces "prediction accuracy" with something fundamentally different.
+//
+// Old framing: "The model predicted X and was correct Y% of the time."
+// New framing: "When N of 8 factors leaned one way, the outcome matched Z% of the time."
+//
+// Why: the old framing sounds like a betting tipster grading picks.
+// The new framing is observational — it tells the reader which factor
+// patterns are most predictive, without ever claiming "we called it."
+//
+// The computation is independent of `predicted_winner`. It looks at
+// the raw components, counts how many favor each side, and checks
+// whether the team with more factors actually won. Pure factor-vs-outcome.
 
-const supa = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createAdminClient } from '@/lib/supabase'
 
-// ============================================================
-// TYPES
-// ============================================================
+const supa = createAdminClient()
+
+const MIN_SAMPLE_SIZE = 100
+
+const COMPONENT_KEYS = [
+  'starting_pitcher', 'bullpen', 'offense', 'matchup',
+  'park', 'weather', 'defense', 'rest',
+] as const
+
+const COMPONENT_LABELS: Record<string, string> = {
+  starting_pitcher: 'Starting Pitching',
+  bullpen: 'Bullpen',
+  offense: 'Offense',
+  matchup: 'Pitch Matchups',
+  park: 'Park Factor',
+  weather: 'Weather',
+  defense: 'Defense',
+  rest: 'Rest & Travel',
+}
+
+// A component "favors" a side when its absolute value exceeds this.
+// Below this threshold, the factor is neutral / too close to call.
+// Matches the ±5 threshold used in the Matchup Tilt display.
+const FACTOR_THRESHOLD = 5
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export type OverallStats = {
-  total_games: number
-  total_graded: number
-  total_correct: number
-  total_incorrect: number
-  accuracy_percent: number | null
-  insufficient_sample: boolean  // true if < 100 graded games
+  total_reviewed: number
+  total_matched: number
+  alignment_percent: number | null
+  insufficient_sample: boolean
   date_range_start: string | null
   date_range_end: string | null
 }
 
-export type TierStats = {
-  tier: 'strong' | 'moderate' | 'slight'
+export type FactorBracketStats = {
+  label: string
+  min_factors: number
+  max_factors: number
   games: number
-  correct: number
-  accuracy_percent: number | null
+  matched: number
+  alignment_percent: number | null
 }
 
-export type ComponentStats = {
-  component: string
-  threshold_label: string  // e.g. ">+30"
-  games: number
-  correct: number
-  accuracy_percent: number | null
+export type LeadingFactorStats = {
+  factor_key: string
+  factor_label: string
+  games_led: number
+  matched: number
+  alignment_percent: number | null
 }
 
-export type RecentPrediction = {
+export type RecentRead = {
   game_pk: number
   game_date: string
-  away_team: string
   home_team: string
-  edge_score: number
-  confidence_tier: string
-  predicted_winner: string
-  actual_winner: string | null
-  was_correct: boolean | null
+  away_team: string
+  factor_lean: 'home' | 'away' | 'split'
+  lean_factors: number
+  total_factors: number  // home + away (excludes neutral)
+  actual_winner: 'home' | 'away'
+  outcome_matched: boolean | null
   home_score: number | null
   away_score: number | null
-  summary: string | null
 }
 
-const MIN_SAMPLE_SIZE = 100
+// ─── Factor analysis helper ──────────────────────────────────────────────────
+//
+// For each game, count how many of the 8 components favor home vs away.
+// Positive component value = home edge. Negative = away edge.
+// Values between -5 and +5 are neutral (too close to call).
+//
+// This is the same ±5 threshold used in the Matchup Tilt bars on the site.
 
-// ============================================================
-// OVERALL ACCURACY
-// ============================================================
+function analyzeFactors(components: Record<string, any>): {
+  homeFactors: number
+  awayFactors: number
+  neutralFactors: number
+  lean: 'home' | 'away' | 'split'
+  leanCount: number
+} {
+  let home = 0
+  let away = 0
+  let neutral = 0
+
+  for (const key of COMPONENT_KEYS) {
+    // Supabase JSONB may return strings — always cast to number
+    const val = Number(components[key] ?? 0)
+    if (val > FACTOR_THRESHOLD) home++
+    else if (val < -FACTOR_THRESHOLD) away++
+    else neutral++
+  }
+
+  const lean: 'home' | 'away' | 'split' =
+    home > away ? 'home' : away > home ? 'away' : 'split'
+
+  return {
+    homeFactors: home,
+    awayFactors: away,
+    neutralFactors: neutral,
+    lean,
+    leanCount: Math.max(home, away),
+  }
+}
+
+// ─── Overall alignment stats ─────────────────────────────────────────────────
+//
+// "Across all reviewed games where factors leaned one way,
+//  how often did the outcome match?"
+//
+// Split games (equal factors each way) are excluded — there's no lean to check.
+
 export async function getOverallStats(): Promise<OverallStats> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('was_correct, game_date')
+    .select('components, actual_winner, game_date')
     .not('graded_at', 'is', null)
+    .not('actual_winner', 'is', null)
 
   if (error || !data) {
     return {
-      total_games: 0,
-      total_graded: 0,
-      total_correct: 0,
-      total_incorrect: 0,
-      accuracy_percent: null,
+      total_reviewed: 0,
+      total_matched: 0,
+      alignment_percent: null,
       insufficient_sample: true,
       date_range_start: null,
       date_range_end: null,
     }
   }
 
-  const gradeable = data.filter(d => d.was_correct !== null)
-  const correct = gradeable.filter(d => d.was_correct === true).length
-  const incorrect = gradeable.filter(d => d.was_correct === false).length
+  const analyzed = data
+    .map(d => ({
+      factors: analyzeFactors(d.components ?? {}),
+      actual_winner: d.actual_winner as string,
+      game_date: d.game_date as string,
+    }))
+    .filter(d => d.factors.lean !== 'split')
 
-  const dates = data.map(d => d.game_date).sort()
-  
+  const matched = analyzed.filter(d => d.factors.lean === d.actual_winner).length
+  const dates = data
+    .map(d => d.game_date as string)
+    .filter(Boolean)
+    .sort()
+
   return {
-    total_games: data.length,
-    total_graded: gradeable.length,
-    total_correct: correct,
-    total_incorrect: incorrect,
-    accuracy_percent: gradeable.length > 0 ? (correct / gradeable.length) * 100 : null,
-    insufficient_sample: gradeable.length < MIN_SAMPLE_SIZE,
+    total_reviewed: analyzed.length,
+    total_matched: matched,
+    alignment_percent:
+      analyzed.length > 0 ? (matched / analyzed.length) * 100 : null,
+    insufficient_sample: analyzed.length < MIN_SAMPLE_SIZE,
     date_range_start: dates[0] ?? null,
     date_range_end: dates[dates.length - 1] ?? null,
   }
 }
 
-// ============================================================
-// ACCURACY BY CONFIDENCE TIER
-// ============================================================
-export async function getTierStats(): Promise<TierStats[]> {
+// ─── Factor bracket stats ────────────────────────────────────────────────────
+//
+// Replaces the old tier stats (strong/moderate/slight).
+// Groups by how many of 8 factors leaned one way:
+//
+//   7–8 factors aligned  →  strong lean
+//   5–6 factors aligned  →  moderate lean
+//   3–4 factors          →  near-split
+//
+// The question each bracket answers: "When this many factors agree,
+// how often does the outcome follow?"
+
+export async function getFactorBracketStats(): Promise<FactorBracketStats[]> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('confidence_tier, was_correct')
+    .select('components, actual_winner')
     .not('graded_at', 'is', null)
-    .not('was_correct', 'is', null)
+    .not('actual_winner', 'is', null)
 
   if (error || !data) return []
 
-  const tiers: ('strong' | 'moderate' | 'slight')[] = ['strong', 'moderate', 'slight']
-  
-  return tiers.map(tier => {
-    const games = data.filter(d => d.confidence_tier === tier)
-    const correct = games.filter(d => d.was_correct === true).length
+  const analyzed = data
+    .map(d => ({
+      factors: analyzeFactors(d.components ?? {}),
+      actual_winner: d.actual_winner as string,
+    }))
+    .filter(d => d.factors.lean !== 'split')
+
+  const brackets = [
+    { label: '7–8 of 8 factors aligned', min: 7, max: 8 },
+    { label: '5–6 of 8 factors aligned', min: 5, max: 6 },
+    { label: '3–4 of 8 factors (near-split)', min: 3, max: 4 },
+  ]
+
+  return brackets.map(b => {
+    const games = analyzed.filter(
+      d => d.factors.leanCount >= b.min && d.factors.leanCount <= b.max,
+    )
+    const matched = games.filter(d => d.factors.lean === d.actual_winner).length
+
     return {
-      tier,
+      label: b.label,
+      min_factors: b.min,
+      max_factors: b.max,
       games: games.length,
-      correct,
-      accuracy_percent: games.length > 0 ? (correct / games.length) * 100 : null,
+      matched,
+      alignment_percent:
+        games.length > 0 ? (matched / games.length) * 100 : null,
     }
   })
 }
 
-// ============================================================
-// COMPONENT-LEVEL ACCURACY
-// ============================================================
-const COMPONENT_THRESHOLDS = [
-  { component: 'starting_pitcher', label: 'Starting Pitcher >+20', threshold: 20 },
-  { component: 'starting_pitcher', label: 'Starting Pitcher >+30', threshold: 30 },
-  { component: 'bullpen', label: 'Bullpen >+15', threshold: 15 },
-  { component: 'offense', label: 'Offense >+15', threshold: 15 },
-  { component: 'matchup', label: 'Matchup >+15', threshold: 15 },
-  { component: 'park', label: 'Park >+5', threshold: 5 },
-]
+// ─── Leading factor stats ────────────────────────────────────────────────────
+//
+// "When starting pitching was the dominant factor, how often did the
+//  outcome follow the factor lean?"
+//
+// "Dominant" = that component had the highest absolute value of all 8.
+// Ties go to both components (a game can count for multiple leaders).
 
-export async function getComponentStats(): Promise<ComponentStats[]> {
+export async function getLeadingFactorStats(): Promise<LeadingFactorStats[]> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('components, was_correct')
+    .select('components, actual_winner')
     .not('graded_at', 'is', null)
-    .not('was_correct', 'is', null)
+    .not('actual_winner', 'is', null)
 
   if (error || !data) return []
 
-  return COMPONENT_THRESHOLDS.map(({ component, label, threshold }) => {
-    // Filter games where this component is dominant (above threshold AND favoring same team as prediction)
-    const games = data.filter(d => {
-      const componentValue = d.components?.[component]
-      return typeof componentValue === 'number' && Math.abs(componentValue) >= threshold
+  return COMPONENT_KEYS.map(key => {
+    const gamesWhereLead = data.filter(d => {
+      if (!d.components) return false
+      const absVal = Math.abs(Number(d.components[key] ?? 0))
+      // Must be above threshold to count as "leading"
+      if (absVal <= FACTOR_THRESHOLD) return false
+      // Must be >= every other component's absolute value
+      return COMPONENT_KEYS.every(other =>
+        absVal >= Math.abs(Number(d.components[other] ?? 0)),
+      )
     })
-    
-    const correct = games.filter(d => d.was_correct === true).length
-    
+
+    const matched = gamesWhereLead.filter(d => {
+      const factors = analyzeFactors(d.components ?? {})
+      return factors.lean !== 'split' && factors.lean === (d.actual_winner as string)
+    }).length
+
     return {
-      component,
-      threshold_label: label,
-      games: games.length,
-      correct,
-      accuracy_percent: games.length > 0 ? (correct / games.length) * 100 : null,
+      factor_key: key,
+      factor_label: COMPONENT_LABELS[key] ?? key,
+      games_led: gamesWhereLead.length,
+      matched,
+      alignment_percent:
+        gamesWhereLead.length > 0
+          ? (matched / gamesWhereLead.length) * 100
+          : null,
     }
-  }).filter(s => s.games >= 5) // hide stats with too-small samples
+  })
+    .filter(f => f.games_led > 0)
+    .sort((a, b) => b.games_led - a.games_led)
 }
 
-// ============================================================
-// PREDICTIONS BY DATE RANGE (admin tool)
-// ============================================================
-export async function getPredictionsInRange(
-  startDate: string,  // YYYY-MM-DD inclusive
-  endDate: string,    // YYYY-MM-DD inclusive
-): Promise<RecentPrediction[]> {
+// ─── Recent reads ────────────────────────────────────────────────────────────
+//
+// Last N reviewed games with factor analysis. Used on the Track Record page
+// and (later) for inline calibration on game pages.
+//
+// NOTE: if your edge_predictions table doesn't have home_team / away_team
+// columns, you'll need to resolve team names from game_pk via the schedule
+// API or a teams lookup. Adjust the select() accordingly.
+
+export async function getRecentReads(limit = 20): Promise<RecentRead[]> {
   const { data, error } = await supa
     .from('edge_predictions')
-    .select('game_pk, game_date, away_team, home_team, edge_score, confidence_tier, predicted_winner, actual_winner, was_correct, home_score, away_score, summary')
-    .gte('game_date', startDate)
-    .lte('game_date', endDate)
-    .order('game_date', { ascending: false })
-    .order('edge_score', { ascending: false })
-
-  if (error || !data) return []
-  return data as RecentPrediction[]
-}
-
-// ============================================================
-// RECENT PREDICTIONS
-// ============================================================
-export async function getRecentPredictions(limit: number = 20): Promise<RecentPrediction[]> {
-  const { data, error } = await supa
-    .from('edge_predictions')
-    .select('game_date, away_team, home_team, edge_score, confidence_tier, predicted_winner, actual_winner, was_correct, home_score, away_score')
+    .select(
+      'game_pk, game_date, home_team, away_team, components, actual_winner, home_score, away_score',
+    )
     .not('graded_at', 'is', null)
+    .not('actual_winner', 'is', null)
     .order('game_date', { ascending: false })
-    .order('updated_at', { ascending: false })
     .limit(limit)
 
   if (error || !data) return []
-  return data as RecentPrediction[]
+
+  return data.map(d => {
+    const factors = analyzeFactors(d.components ?? {})
+    return {
+      game_pk: d.game_pk,
+      game_date: d.game_date,
+      home_team: d.home_team ?? 'Home',
+      away_team: d.away_team ?? 'Away',
+      factor_lean: factors.lean,
+      lean_factors: factors.leanCount,
+      total_factors: factors.homeFactors + factors.awayFactors,
+      actual_winner: d.actual_winner as 'home' | 'away',
+      outcome_matched:
+        factors.lean === 'split'
+          ? null
+          : factors.lean === (d.actual_winner as string),
+      home_score: d.home_score ?? null,
+      away_score: d.away_score ?? null,
+    }
+  })
 }

@@ -3,6 +3,7 @@ import { buildMatchupTiltData } from './matchup-tilt';
 import type { ComponentsRaw, ComponentScores } from './matchup-tilt';
 import { findTeamByName } from '@/lib/teams'
 
+
 export function welcomeEmail(email: string, preferencesToken: string) {
   const preferencesUrl = `https://edgereportdaily.com/preferences/${preferencesToken}`
   const unsubscribeUrl = `https://edgereportdaily.com/api/unsubscribe?email=${encodeURIComponent(email)}`
@@ -322,26 +323,27 @@ export function dailyBriefEmail(
     const awayPitcher = game.teams.away.probablePitcher
     const homePitcher = game.teams.home.probablePitcher
 
-    // ── Matchup Tilt email block (replaces Edge Indicator) ──
-    const homeColor = '#CC0C00'  // fallback — or use findTeamByName if imported
-    const awayColor = '#002D72'
+// ── Matchup Tilt email block (replaces Edge Indicator) ──
+    // Real team colours, and HOME/AWAY passed in the order the builder
+    // expects (home 3rd, away 4th) — same as the website game page.
+    const homeColor = findTeamByName(homeTeam)?.primary_color ?? '#1A1A1A'
+    const awayColor = findTeamByName(awayTeam)?.primary_color ?? '#1A1A1A'
     let tiltBlock = ''
     if (ctx.components_raw && ctx.components) {
       try {
-       const tiltData = buildMatchupTiltData(
-  ctx.components_raw as ComponentsRaw,
-  ctx.components as ComponentScores,
-  { abbr: awayShort?.toUpperCase() ?? 'AWAY', name: awayTeam, primaryColor: awayColor },
-  { abbr: homeShort?.toUpperCase() ?? 'HOME', name: homeTeam, primaryColor: homeColor },
-  ctx.venueName,
-  gameTime,
-)
+        const tiltData = buildMatchupTiltData(
+          ctx.components_raw as ComponentsRaw,
+          ctx.components as ComponentScores,
+          { abbr: homeShort?.toUpperCase() ?? 'HOME', name: homeTeam, primaryColor: homeColor },
+          { abbr: awayShort?.toUpperCase() ?? 'AWAY', name: awayTeam, primaryColor: awayColor },
+          ctx.venueName,
+          gameTime,
+        )
         tiltBlock = `<tr><td style="padding:0 40px 16px;">${generateMatchupTiltEmailBlock(tiltData)}</td></tr>`
       } catch (e) {
         console.error('Tilt email block failed, falling back to Edge Indicator', e)
       }
     }
-
   
 
   return `

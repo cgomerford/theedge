@@ -1,277 +1,382 @@
+// src/app/track-record/page.tsx
+//
+// PUBLIC FACTOR ALIGNMENT PAGE
+//
+// Shows how often game outcomes match the factor lean — NOT "prediction accuracy."
+// Every word on this page has been chosen to avoid betting/tipping language.
+//
+// Banned words: prediction, accuracy, correct, incorrect, pick, bet, lock, odds.
+// Preferred: factor, alignment, lean, outcome, matched, reviewed, observed.
+
 import { Metadata } from 'next'
 import Link from 'next/link'
 import {
   getOverallStats,
-  getTierStats,
-  getComponentStats,
-  getRecentPredictions,
+  getFactorBracketStats,
+  getLeadingFactorStats,
+  getRecentReads,
 } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
-import AnalyticsTrigger from '@/components/AnalyticsTrigger'
 
-export const revalidate = 1800 // 30 min cache
+
+export const revalidate = 1800
 
 export const metadata: Metadata = {
-  title: 'Edge Track Record · The Edge',
-  description: 'Public accuracy tracking for The Edge predictions. Information only, fully transparent.',
+  title: 'Factor Alignment · The Edge',
+  description:
+    'Public record of how The Edge\'s 8-factor model aligns with game outcomes. Transparent, auto-reviewed, information only.',
 }
 
 export default async function TrackRecordPage() {
-  const [overall, tiers, components, recent] = await Promise.all([
+  const [overall, brackets, leaders, recent] = await Promise.all([
     getOverallStats(),
-    getTierStats(),
-    getComponentStats(),
-    getRecentPredictions(20),
+    getFactorBracketStats(),
+    getLeadingFactorStats(),
+    getRecentReads(20),
   ])
 
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader />
-      
+    
+
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
-        
-        {/* HERO */}
+        {/* ════════════════════════════════════════════════
+            HERO
+            ════════════════════════════════════════════════ */}
         <header className="mb-12">
           <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-2">
-            — Public Track Record
+            — Factor alignment · public record
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-4" style={{ fontFamily: 'Fraunces, serif' }}>
-            Every prediction. <em className="text-[#FF5722]">Tracked.</em>
+          <h1
+            className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-4"
+            style={{ fontFamily: 'Fraunces, serif' }}
+          >
+            Where the factors pointed{' '}
+            <em className="text-[#FF5722]">— and what happened.</em>
           </h1>
           <p className="text-base md:text-lg text-[#4A4A4A] leading-relaxed max-w-2xl">
-            We log every Edge Score we publish. Each game gets graded against the actual result. 
-            Information only — no advice, no betting recommendations, no cherry-picking.
+            Every game, 8 factors lean one way or another. We log them all, then
+            check whether the outcome followed. No cherry-picking, no hiding
+            misses. Information only.
           </p>
         </header>
 
-        {/* OVERALL ACCURACY */}
+        {/* ════════════════════════════════════════════════
+            OVERALL ALIGNMENT
+            ════════════════════════════════════════════════ */}
         <section className="bg-[#1A1A1A] rounded-lg p-6 md:p-8 mb-8 text-[#FAF8F3]">
           <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-            ⊕ Overall Accuracy
+            ⊕ Overall factor alignment
           </div>
-          
+
           {overall.insufficient_sample ? (
             <div>
-              <div className="text-2xl md:text-3xl font-bold mb-3" style={{ fontFamily: 'Fraunces, serif' }}>
-                Currently tracking — too early to publish
+              <div
+                className="text-2xl md:text-3xl font-bold mb-3"
+                style={{ fontFamily: 'Fraunces, serif' }}
+              >
+                Building the record — too early to publish
               </div>
               <p className="text-[#FAF8F3]/80 leading-relaxed mb-4">
-                We're building the public sample. Right now we have <strong>{overall.total_graded} graded predictions</strong>{overall.date_range_start && ` since ${formatDate(overall.date_range_start)}`}. 
-                Statistical significance requires at least 100 graded games.
+                We&apos;re logging every game and reviewing outcomes as results
+                come in. So far:{' '}
+                <strong>{overall.total_reviewed} games reviewed</strong>
+                {overall.date_range_start &&
+                  ` since ${formatDate(overall.date_range_start)}`}
+                . We need at least {100} before publishing alignment rates —
+                small samples mislead.
               </p>
               <p className="text-[#FAF8F3]/60 text-sm">
-                Check back as the sample grows. Goal: 60%+ accuracy on confident predictions, comparable to Vegas closing lines.
+                Check back as the sample grows. The factors are being logged
+                right now, and every game will be reviewed.
               </p>
-              {overall.total_graded > 0 && (
-                <div className="mt-6 pt-4 border-t border-[#FAF8F3]/20">
-                  <div className="text-xs font-mono uppercase text-[#FAF8F3]/60 mb-2">
-                    Internal sample (not publicly reported until 100+ games)
-                  </div>
-                  <div className="text-sm text-[#FAF8F3]/80">
-                    {overall.total_correct} correct of {overall.total_graded} graded
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div>
-              <div className="flex items-baseline gap-3 mb-3">
-                <div className="text-6xl md:text-7xl font-bold leading-none" style={{ color: '#FDE047', fontFamily: 'Bebas Neue, sans-serif' }}>
-                  {overall.accuracy_percent?.toFixed(1)}%
-                </div>
-                <div className="text-sm text-[#FAF8F3]/60 font-mono uppercase">
-                  over {overall.total_graded} graded games
-                </div>
+              <div
+                className="text-4xl md:text-5xl font-bold mb-2"
+                style={{ fontFamily: 'Fraunces, serif' }}
+              >
+                {overall.alignment_percent?.toFixed(1)}%{' '}
+                <span className="text-lg md:text-xl font-normal text-[#FAF8F3]/60">
+                  alignment
+                </span>
               </div>
-              {overall.date_range_start && overall.date_range_end && (
-                <p className="text-[#FAF8F3]/60 text-sm font-mono">
-                  {formatDate(overall.date_range_start)} — {formatDate(overall.date_range_end)}
-                </p>
-              )}
-              <p className="text-[#FAF8F3]/80 text-sm mt-4">
-                {overall.total_correct} correct · {overall.total_incorrect} incorrect · {overall.total_games - overall.total_graded} ungraded toss-ups
+              <p className="text-[#FAF8F3]/80 leading-relaxed">
+                When the majority of 8 factors lean one way, the outcome has
+                matched{' '}
+                <strong>
+                  {overall.alignment_percent?.toFixed(1)}% of the time
+                </strong>{' '}
+                across {overall.total_reviewed} reviewed games
+                {overall.date_range_start &&
+                  ` (${formatDate(overall.date_range_start)} – ${formatDate(overall.date_range_end!)})`}
+                .
               </p>
             </div>
           )}
         </section>
 
-        {/* BY CONFIDENCE TIER */}
+        {/* ════════════════════════════════════════════════
+            FACTOR BRACKET BREAKDOWN
+            ════════════════════════════════════════════════ */}
         <section className="mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-2" style={{ fontFamily: 'Fraunces, serif' }}>
-            Accuracy by <em className="text-[#FF5722]">confidence</em>
-          </h2>
-          <p className="text-[#4A4A4A] mb-6 text-sm">
-            How the model performs at different confidence levels.
+          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
+            § Factor count vs outcome
+          </div>
+          <p
+            className="text-sm text-[#4A4A4A] mb-6 max-w-xl"
+            style={{ fontFamily: 'Fraunces, serif' }}
+          >
+            The more factors that agree, the more often the outcome follows. Here&apos;s
+            the breakdown by how many of 8 factors leaned the same way.
           </p>
-          <AnalyticsTrigger event="track_record_viewed" />
-          
-          <div className="bg-white border-2 border-[#1A1A1A]/10 rounded-lg overflow-hidden">
-            {tiers.map((tier, i) => (
-              <div 
-                key={tier.tier}
-                className={`flex items-center justify-between p-4 md:p-6 ${i < tiers.length - 1 ? 'border-b border-[#1A1A1A]/10' : ''}`}
+
+          <div className="space-y-3">
+            {brackets.map((b) => (
+              <div
+                key={b.label}
+                className="bg-white border border-[#E7E1D6] rounded-lg p-5"
               >
-                <div className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full ${tierDotColor(tier.tier)}`} />
-                  <div>
-                    <div className="font-bold text-[#1A1A1A] capitalize text-sm md:text-base">
-                      {tier.tier} Edge
-                    </div>
-                    <div className="text-xs text-[#4A4A4A] font-mono">
-                      {tier.tier === 'strong' && 'Edge Score ≥ 25'}
-                      {tier.tier === 'moderate' && 'Edge Score 12-24'}
-                      {tier.tier === 'slight' && 'Edge Score 5-11'}
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className="font-mono text-xs uppercase tracking-wider text-[#1A1A1A]"
+                    style={{ letterSpacing: '0.08em' }}
+                  >
+                    {b.label}
+                  </span>
+                  <span className="font-mono text-xs text-[#A3A3A3]">
+                    {b.games} games
+                  </span>
                 </div>
-                
-                <div className="text-right">
-                  {tier.games < 10 ? (
-                    <div className="text-sm text-[#4A4A4A]">
-                      <span className="font-mono">{tier.games}</span> games · sample too small
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-2xl font-bold text-[#1A1A1A]" style={{ fontFamily: 'Bebas Neue, sans-serif' }}>
-                        {tier.accuracy_percent?.toFixed(1)}%
-                      </div>
-                      <div className="text-xs text-[#4A4A4A] font-mono">
-                        {tier.correct} of {tier.games} games
-                      </div>
-                    </>
-                  )}
+
+                {/* Alignment bar */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-3 bg-[#F0EDE6] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${b.alignment_percent ?? 0}%`,
+                        background:
+                          b.min_factors >= 7
+                            ? '#FF5722'
+                            : b.min_factors >= 5
+                              ? '#FDE047'
+                              : '#A3A3A3',
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="font-mono text-sm font-bold min-w-[48px] text-right"
+                    style={{
+                      color:
+                        b.min_factors >= 7
+                          ? '#FF5722'
+                          : b.min_factors >= 5
+                            ? '#8a6d00'
+                            : '#777',
+                    }}
+                  >
+                    {b.alignment_percent !== null
+                      ? `${b.alignment_percent.toFixed(0)}%`
+                      : '—'}
+                  </span>
+                </div>
+
+                <div className="mt-2 font-mono text-[10px] text-[#A3A3A3]">
+                  Outcome matched in {b.matched} of {b.games} reviewed games
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* COMPONENT-LEVEL ACCURACY */}
-        {components.length > 0 && (
+        {/* ════════════════════════════════════════════════
+            LEADING FACTOR
+            ════════════════════════════════════════════════ */}
+        {leaders.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-2" style={{ fontFamily: 'Fraunces, serif' }}>
-              When <em className="text-[#FF5722]">factors</em> dominate
-            </h2>
-            <p className="text-[#4A4A4A] mb-6 text-sm">
-              Accuracy when a single component is highly favored. Reveals which factors carry the most predictive signal.
+            <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
+              § When each factor led the read
+            </div>
+            <p
+              className="text-sm text-[#4A4A4A] mb-6 max-w-xl"
+              style={{ fontFamily: 'Fraunces, serif' }}
+            >
+              Which factor had the highest magnitude in a given game — and when
+              it led, how often did the outcome follow?
             </p>
-            
-            <div className="bg-white border-2 border-[#1A1A1A]/10 rounded-lg overflow-hidden">
-              {components.map((comp, i) => (
-                <div 
-                  key={comp.threshold_label}
-                  className={`flex items-center justify-between p-4 md:p-6 ${i < components.length - 1 ? 'border-b border-[#1A1A1A]/10' : ''}`}
+
+            <div className="bg-white border border-[#E7E1D6] rounded-lg overflow-hidden">
+              {leaders.map((f, i) => (
+                <div
+                  key={f.factor_key}
+                  className={`flex items-center justify-between px-5 py-4 ${
+                    i < leaders.length - 1 ? 'border-b border-[#F0EDE6]' : ''
+                  }`}
                 >
-                  <div className="font-medium text-[#1A1A1A] text-sm md:text-base">
-                    {comp.threshold_label}
+                  <div>
+                    <span className="font-mono text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
+                      {f.factor_label}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#A3A3A3] ml-2">
+                      led in {f.games_led} games
+                    </span>
                   </div>
-                  <div className="text-right">
-                    {comp.games < 10 ? (
-                      <div className="text-sm text-[#4A4A4A]">
-                        <span className="font-mono">{comp.games}</span> games · sample too small
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-2xl font-bold text-[#FF5722]" style={{ fontFamily: 'Bebas Neue, sans-serif' }}>
-                          {comp.accuracy_percent?.toFixed(1)}%
-                        </div>
-                        <div className="text-xs text-[#4A4A4A] font-mono">
-                          {comp.correct} of {comp.games} games
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <span
+                    className="font-mono text-sm font-bold"
+                    style={{
+                      color:
+                        (f.alignment_percent ?? 0) >= 65
+                          ? '#FF5722'
+                          : (f.alignment_percent ?? 0) >= 55
+                            ? '#8a6d00'
+                            : '#777',
+                    }}
+                  >
+                    {f.alignment_percent !== null
+                      ? `${f.alignment_percent.toFixed(0)}%`
+                      : '—'}
+                  </span>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* RECENT PREDICTIONS */}
+        {/* ════════════════════════════════════════════════
+            RECENT READS
+            ════════════════════════════════════════════════ */}
         {recent.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-2" style={{ fontFamily: 'Fraunces, serif' }}>
-              Last <em className="text-[#FF5722]">{recent.length}</em> predictions
-            </h2>
-            <p className="text-[#4A4A4A] mb-6 text-sm">
-              The most recent graded games, newest first.
-            </p>
-            
-            <div className="bg-white border-2 border-[#1A1A1A]/10 rounded-lg overflow-hidden">
-              {recent.map((p, i) => (
-                <div
-                  key={`${p.game_date}-${p.home_team}-${p.away_team}-${i}`}
-                  className={`flex items-center justify-between p-4 ${i < recent.length - 1 ? 'border-b border-[#1A1A1A]/10' : ''}`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-mono text-[#4A4A4A] mb-1">
-                      {formatDate(p.game_date)}
-                    </div>
-                    <div className="text-sm md:text-base font-medium text-[#1A1A1A] truncate">
-                      {p.away_team} @ {p.home_team}
-                    </div>
-                    {p.home_score !== null && p.away_score !== null && (
-                      <div className="text-xs font-mono text-[#4A4A4A] mt-1">
-                        Final: {p.away_score}-{p.home_score}
+            <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
+              § Recent games reviewed
+            </div>
+
+            <div className="bg-white border border-[#E7E1D6] rounded-lg overflow-hidden">
+              {recent.map((r, i) => {
+                const leanTeam =
+                  r.factor_lean === 'home'
+                    ? r.home_team
+                    : r.factor_lean === 'away'
+                      ? r.away_team
+                      : null
+                const winnerTeam =
+                  r.actual_winner === 'home' ? r.home_team : r.away_team
+
+                return (
+                  <div
+                    key={`${r.game_pk}-${i}`}
+                    className={`px-5 py-4 ${
+                      i < recent.length - 1 ? 'border-b border-[#F0EDE6]' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      {/* Teams + date */}
+                      <div>
+                        <span className="text-sm font-bold text-[#1A1A1A]">
+                          {r.away_team} @ {r.home_team}
+                        </span>
+                        <span className="font-mono text-[10px] text-[#A3A3A3] ml-2">
+                          {formatDate(r.game_date)}
+                        </span>
                       </div>
-                    )}
+
+                      {/* Score */}
+                      {r.away_score != null && r.home_score != null && (
+                        <span className="font-mono text-xs text-[#A3A3A3]">
+                          {r.away_score}–{r.home_score}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Factor lean + outcome */}
+                    <div className="mt-1 font-mono text-[11px]">
+                      {r.factor_lean === 'split' ? (
+                        <span className="text-[#A3A3A3]">
+                          Factors split · {winnerTeam} won
+                        </span>
+                      ) : (
+                        <span>
+                          <span className="text-[#1A1A1A]">
+                            {r.lean_factors} of 8 factors → {leanTeam}
+                          </span>
+                          <span className="mx-1 text-[#A3A3A3]">·</span>
+                          <span
+                            style={{
+                              color: r.outcome_matched
+                                ? '#2E7D52'
+                                : '#B0A99A',
+                            }}
+                          >
+                            {r.outcome_matched
+                              ? `${winnerTeam} won ✓`
+                              : `${winnerTeam} won`}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <div className="text-right">
-                      <div className="text-xs font-mono text-[#4A4A4A] uppercase">
-                        Edge {p.edge_score >= 0 ? '+' : ''}{Math.round(p.edge_score)}
-                      </div>
-                      <div className="text-xs text-[#4A4A4A] capitalize">
-                        {p.confidence_tier}
-                      </div>
-                    </div>
-                    
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      p.was_correct === true ? 'bg-[#16A34A]' : 
-                      p.was_correct === false ? 'bg-[#DC2626]' :
-                      'bg-[#A3A3A3]'
-                    }`}>
-                      {p.was_correct === true ? '✓' : p.was_correct === false ? '✗' : '–'}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}
 
-        {/* METHODOLOGY */}
-        <section className="bg-[#FAF8F3] border-2 border-[#1A1A1A]/10 rounded-lg p-6 md:p-8 mb-8">
-          <h2 className="text-xl font-bold text-[#1A1A1A] mb-4" style={{ fontFamily: 'Fraunces, serif' }}>
-            How this works
-          </h2>
-          <div className="space-y-3 text-sm text-[#4A4A4A] leading-relaxed">
+        {/* ════════════════════════════════════════════════
+            METHODOLOGY
+            ════════════════════════════════════════════════ */}
+        <section className="bg-white border border-[#E7E1D6] rounded-lg p-6 md:p-8 mb-8">
+          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
+            § How this works
+          </div>
+          <div
+            className="space-y-3 text-sm text-[#4A4A4A] leading-relaxed"
+            style={{ fontFamily: 'Fraunces, serif' }}
+          >
             <p>
-              <strong>Eight components.</strong> Every game gets scored on starting pitcher, bullpen, offense, defense, matchup, park factor, weather, and rest. Each weighted, summed, and capped at -100 to +100.
+              <strong>8 factors, every game.</strong> Starting pitching, bullpen,
+              offensive form, pitch matchups, park factor, weather, defense, and
+              rest/travel. Each is scored independently — positive means the home
+              side has the edge in that factor, negative means the away side
+              does.
             </p>
             <p>
-              <strong>Confidence tiers.</strong> Strong (≥25), Moderate (12-24), Slight (5-11), Toss-up (under 5). We only publish predictions for the first three. Toss-ups are excluded from accuracy.
+              <strong>A factor &ldquo;leans&rdquo; when it crosses ±5.</strong>{' '}
+              Below that threshold, the factor is too close to call and counts as
+              neutral. Above it, the factor favours one side. We count how many
+              of 8 factors lean the same direction — that&apos;s the &ldquo;factor
+              count.&rdquo;
             </p>
             <p>
-              <strong>Auto-graded.</strong> Each morning, yesterday's results are pulled from MLB Stats API and predictions are graded automatically. Nothing here is hand-picked.
+              <strong>Auto-reviewed.</strong> Each morning, yesterday&apos;s results are
+              pulled from the MLB Stats API and compared to the factor lean.
+              Nothing is hand-picked or edited after the fact.
             </p>
             <p>
-              <strong>Information only.</strong> The Edge does not provide betting advice. Track record exists for transparency, not as a tipping service.
+              <strong>What this is not.</strong> This is not a tipping record and
+              not a measure of betting performance. Factors describe the
+              analytical landscape of a game — they don&apos;t account for run lines,
+              totals, or market prices. This page exists for one reason:
+              transparency.
             </p>
             <p className="text-xs italic pt-2">
-              Want to see the math live? Open any game preview and tap "See the math behind each component."
+              Open any game preview and tap &ldquo;See the factors&rdquo; to see
+              how each component is scored.
             </p>
           </div>
         </section>
 
-        {/* FOOTER LINK */}
+        {/* ════════════════════════════════════════════════
+            FOOTER LINK
+            ════════════════════════════════════════════════ */}
         <div className="text-center pb-12">
-          <Link 
+          <Link
             href="/"
             className="text-sm font-mono uppercase tracking-wider text-[#FF5722] hover:underline"
           >
-            ← Back to today's games
+            ← Back to today&apos;s games
           </Link>
         </div>
       </div>
@@ -279,17 +384,13 @@ export default async function TrackRecordPage() {
   )
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-function tierDotColor(tier: string): string {
-  if (tier === 'strong') return 'bg-[#FF5722]'
-  if (tier === 'moderate') return 'bg-[#FDE047]'
-  if (tier === 'slight') return 'bg-[#A3A3A3]'
-  return 'bg-[#A3A3A3]'
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }

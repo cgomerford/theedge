@@ -17,7 +17,24 @@
 //   const tiltHtml = tiltData ? generateMatchupTiltEmailBlock(tiltData) : '';
 
 import type { MatchupTiltData } from './matchup-tilt'
-
+// Keep a team colour legible on the dark (#1A1A1A) tilt header.
+// Lightens very dark colours (e.g. White Sox black) while preserving hue.
+// Cream component rows keep the true colour — this is header-only.
+function legibleOnDark(hex?: string, fallback = '#9CA3AF'): string {
+  if (!hex || !/^#?[0-9a-fA-F]{6}$/.test(hex)) return fallback
+  const h = hex.replace('#', '')
+  let r = parseInt(h.slice(0, 2), 16)
+  let g = parseInt(h.slice(2, 4), 16)
+  let b = parseInt(h.slice(4, 6), 16)
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  if (lum < 0.35) {
+    const amt = 0.6 // blend toward white until it reads
+    r = Math.round(r + (255 - r) * amt)
+    g = Math.round(g + (255 - g) * amt)
+    b = Math.round(b + (255 - b) * amt)
+  }
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -80,6 +97,8 @@ export function generateMatchupTiltEmailBlock(
   data: MatchupTiltData,
 ): string {
   const { home, away, venue, gameTime, components } = data;
+  const homeHeaderColor = legibleOnDark(home.primaryColor);
+  const awayHeaderColor = legibleOnDark(away.primaryColor);
 
   const keys: Array<{
     key: keyof typeof components;
@@ -103,13 +122,13 @@ export function generateMatchupTiltEmailBlock(
   const rows = keys
     .map(({ key, label }) => {
       const comp = components[key];
-      const bar = emailBar(comp.tilt, home.primaryColor, away.primaryColor);
+      const bar = emailBar(comp.tilt, homeHeaderColor, awayHeaderColor);
       const edge = emailEdgeLabel(
         comp.tilt,
         home.abbr,
         away.abbr,
-        home.primaryColor,
-        away.primaryColor,
+        homeHeaderColor,
+        awayHeaderColor,
       );
 
       return `
@@ -143,7 +162,7 @@ export function generateMatchupTiltEmailBlock(
     .map(({ key }) => {
       const t = components[key].tilt;
       const color =
-        t > 5 ? home.primaryColor : t < -5 ? away.primaryColor : '#555';
+        t > 5 ? homeHeaderColor: t < -5 ? awayHeaderColor : '#555';
       return `<td width="10" height="10" style="padding:0 2px;">
         <div style="width:8px;height:8px;border-radius:50%;background:${color};"></div>
       </td>`;
@@ -175,7 +194,7 @@ export function generateMatchupTiltEmailBlock(
           <td colspan="2" style="padding-top:12px;">
             <table width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${away.primaryColor};letter-spacing:-0.02em;">
+                <td style="font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${awayHeaderColor};letter-spacing:-0.02em;">
                   ${away.abbr}
                   <br/>
                   <span style="font-size:10px;font-weight:400;color:#555;letter-spacing:0.08em;font-family:monospace;">AWAY</span>
@@ -183,7 +202,7 @@ export function generateMatchupTiltEmailBlock(
                 <td style="text-align:center;font-family:monospace;font-size:14px;color:#444;letter-spacing:0.1em;vertical-align:middle;">
                   @
                 </td>
-                <td style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${home.primaryColor};letter-spacing:-0.02em;">
+                <td style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:900;color:${homeHeaderColor};letter-spacing:-0.02em;">
                   ${home.abbr}
                   <br/>
                   <span style="font-size:10px;font-weight:400;color:#555;letter-spacing:0.08em;font-family:monospace;">HOME</span>
@@ -205,9 +224,9 @@ export function generateMatchupTiltEmailBlock(
         <!-- Factor count — FIX 2: away first (matches team-name order), plural "hold" -->
         <tr>
           <td colspan="2" style="padding-top:6px;text-align:center;font-family:monospace;font-size:11px;color:#666;">
-            <span style="color:${away.primaryColor};font-weight:700;">${away.abbr} hold ${awayCount}</span>
+            <span style="color:${awayHeaderColor};font-weight:700;">${away.abbr} hold ${awayCount}</span>
             &nbsp;·&nbsp;
-            <span style="color:${home.primaryColor};font-weight:700;">${home.abbr} hold ${homeCount}</span>
+            <span style="color:${homeHeaderColor};font-weight:700;">${home.abbr} hold ${homeCount}</span>
           </td>
         </tr>
 
