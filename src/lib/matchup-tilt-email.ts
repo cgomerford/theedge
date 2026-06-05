@@ -1,9 +1,3 @@
-// src/lib/matchup-tilt-email.ts
-//
-// Generates a table-based HTML block for the daily brief email.
-// Uses only inline styles — no CSS classes, no flexbox, no grid.
-// Safe for Gmail, Apple Mail, Outlook, Yahoo.
-//
 // Usage in emails.ts:
 //
 //   import { generateMatchupTiltEmailBlock } from './matchup-tilt-email';
