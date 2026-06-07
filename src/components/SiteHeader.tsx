@@ -1,5 +1,9 @@
 'use client'
 
+/**
+ * src/components/SiteHeader.tsx
+ */
+
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
@@ -10,13 +14,13 @@ type NavLink = {
   description?: string
   badge?: string
 }
+
 const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
   {
     label: 'MLB',
     links: [
-      { href: '/mlb',     label: 'MLB Home',     description: 'Standings · leaders · edges',    badge: 'LIVE' },
-      { href: '/tonight', label: 'Tonight',       description: "Tonight's full slate" },
-      { href: '/fantasy', label: 'Fantasy Desk',  description: 'Streamers · Movers · Sleepers', badge: 'Pro' },
+      { href: '/mlb',     label: 'MLB Home',    description: 'Standings · leaders · edges', badge: 'LIVE' },
+      { href: '/fantasy', label: 'Fantasy Desk', description: 'Streamers · Movers · Sleepers', badge: 'PRO' },
     ],
   },
   {
@@ -28,19 +32,47 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
   {
     label: 'More',
     links: [
+      { href: '/track-record', label: 'Track Record', description: 'How the model is performing' },
       { href: '/how-it-works', label: 'How it works',  description: 'The 8-component model' },
+      { href: '/pricing',      label: 'Pricing',        description: 'Free and Pro tiers' },
+      { href: '/about',        label: 'About',          description: 'What The Edge is' },
       { href: '/faq',          label: 'FAQ',            description: 'Common questions' },
-      { href: '/about',        label: 'About',          description: 'What we are' },
-      { href: '/privacy',      label: 'Privacy',        description: 'How we use your data' },
-      { href: '/terms',        label: 'Terms',          description: 'Terms of use' },
     ],
   },
 ]
 
-// ─── NavDrawer ────────────────────────────────────────────────────────────────
-// Rendered via React Portal directly into document.body.
+// ─── Badge ────────────────────────────────────────────────────────────────────
 
-function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () => void; isLoggedIn: boolean }) {
+function Badge({ text }: { text: string }) {
+  const isAccent = text === 'LIVE' || text === 'NEW'
+  return (
+    <span
+      className="font-mono font-bold uppercase tracking-wider"
+      style={{
+        fontSize: 9,
+        letterSpacing: '0.1em',
+        padding: '2px 7px',
+        borderRadius: 3,
+        background: isAccent ? '#FF5722' : 'rgba(255,87,34,0.1)',
+        color:      isAccent ? '#FFFFFF' : '#FF5722',
+      }}
+    >
+      {text}
+    </span>
+  )
+}
+
+// ─── NavDrawer ────────────────────────────────────────────────────────────────
+
+function NavDrawer({
+  open,
+  onClose,
+  isLoggedIn,
+}: {
+  open: boolean
+  onClose: () => void
+  isLoggedIn: boolean
+}) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -61,35 +93,44 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
 
   return createPortal(
     <>
+      {/* Backdrop */}
       <div
         onClick={onClose}
         aria-hidden="true"
-        style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(28,25,23,0.55)' }}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(26,25,23,0.6)',
+          backdropFilter: 'blur(2px)',
+        }}
       />
 
+      {/* Drawer */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0,
-          width: 320, maxWidth: '90vw',
+          width: 300, maxWidth: '88vw',
           zIndex: 9999,
           display: 'flex', flexDirection: 'column',
           background: '#FAFAF9',
-          boxShadow: '-4px 0 40px rgba(0,0,0,0.16)',
+          boxShadow: '-8px 0 48px rgba(0,0,0,0.18)',
         }}
       >
+        {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 24px', borderBottom: '1px solid #E7E5E4',
+          padding: '18px 22px',
+          borderBottom: '1px solid #E7E5E4',
         }}>
           <Link
             href="/"
             onClick={onClose}
-            className="font-serif font-black text-lg tracking-tight text-stone-900 flex items-baseline hover:opacity-70 transition"
+            style={{ textDecoration: 'none' }}
+            className="font-serif font-black text-lg tracking-tight text-stone-900 hover:opacity-70 transition flex items-baseline"
           >
-            The Edge<span className="text-orange-600">.</span>
+            The Edge<span style={{ color: '#FF5722' }}>.</span>
           </Link>
 
           <button
@@ -97,26 +138,27 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
             onClick={onClose}
             aria-label="Close menu"
             style={{
-              width: 36, height: 36, cursor: 'pointer',
+              width: 34, height: 34,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'none', border: 'none', padding: 0,
-              color: '#78716C',
+              background: '#F5F5F4', border: 'none', borderRadius: 6,
+              cursor: 'pointer', color: '#78716C',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <line x1="2" y1="2"  x2="16" y2="16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-              <line x1="16" y1="2" x2="2"  y2="16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <line x1="1" y1="1" x2="13" y2="13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+              <line x1="13" y1="1" x2="1"  y2="13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
 
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 0' }}>
+        {/* Nav links */}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '20px 22px 0' }}>
           {NAV_SECTIONS.map((section) => (
             <div key={section.label} style={{ marginBottom: 28 }}>
 
               <div
-                className="font-mono uppercase tracking-widest text-stone-400"
-                style={{ fontSize: 10, marginBottom: 10 }}
+                className="font-mono uppercase text-stone-400"
+                style={{ fontSize: 10, letterSpacing: '0.18em', marginBottom: 8 }}
               >
                 — {section.label}
               </div>
@@ -128,7 +170,8 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
                   onClick={onClose}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 0', borderBottom: '1px solid #F5F5F4',
+                    padding: '11px 0',
+                    borderBottom: '1px solid #F5F5F4',
                     textDecoration: 'none',
                   }}
                   className="group"
@@ -136,7 +179,7 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
                   <div>
                     <div
                       className="font-serif font-semibold text-stone-900 group-hover:text-orange-600 transition"
-                      style={{ fontSize: 15 }}
+                      style={{ fontSize: 15, lineHeight: 1.3 }}
                     >
                       {link.label}
                     </div>
@@ -151,29 +194,11 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
                   </div>
 
                   {link.badge ? (
-                    <span
-                      className="font-mono font-bold uppercase"
-                      style={{
-                        fontSize: 9, letterSpacing: '0.08em', padding: '2px 6px',
-                        background: link.badge === 'LIVE' ? '#000000'
-                                  : link.badge === 'NEW'  ? '#0a0c0d'
-                                  : '#E7E5E4',
-                        color:      link.badge === 'LIVE' ? '#0a0101'
-                                  : link.badge === 'NEW'  ? '#1c191700'
-                                  : '#090606',
-                      }}
-                    >
-                    {link.badge && (
-  <span className="ml-1.5 text-[9px] font-mono uppercase tracking-wider text-orange-500 bg-orange-500/10 px-1.5 py-0.5">
-    {link.badge}
-  </span>
-)}
-
-                    </span>
+                    <Badge text={link.badge} />
                   ) : (
                     <span
-                      className="text-stone-300 group-hover:text-orange-400 transition"
-                      style={{ fontSize: 14 }}
+                      className="text-stone-300 group-hover:text-orange-400 transition font-mono"
+                      style={{ fontSize: 13 }}
                     >
                       →
                     </span>
@@ -184,23 +209,25 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
           ))}
         </nav>
 
-          <div style={{ padding: '20px 24px', borderTop: '1px solid #E7E5E4' }}>
+        {/* Footer CTA */}
+        <div style={{ padding: '18px 22px', borderTop: '1px solid #E7E5E4' }}>
           <Link
             href={isLoggedIn ? '/dugout' : '/login'}
             onClick={onClose}
-            className="font-mono uppercase tracking-widest hover:bg-stone-700 transition"
+            className="font-mono uppercase hover:bg-stone-700 transition"
             style={{
-              display: 'block', textAlign: 'center', padding: '12px',
-              background: '#1C1917', color: '#FAFAF9',
-              fontSize: 11, textDecoration: 'none', letterSpacing: '0.1em',
+              display: 'block', textAlign: 'center',
+              padding: '13px', background: '#1A1A1A', color: '#FAFAF9',
+              fontSize: 11, letterSpacing: '0.12em', textDecoration: 'none',
+              borderRadius: 4,
             }}
           >
-            {isLoggedIn ? 'My Dugout' : 'Sign in'}
+            {isLoggedIn ? '⊕ My Dugout' : 'Sign in'}
           </Link>
           {!isLoggedIn && (
             <p
               className="font-mono text-stone-400 uppercase tracking-wider text-center"
-              style={{ fontSize: 10, marginTop: 10 }}
+              style={{ fontSize: 10, marginTop: 9 }}
             >
               Free · No credit card needed
             </p>
@@ -217,12 +244,13 @@ function NavDrawer({ open, onClose, isLoggedIn }: { open: boolean; onClose: () =
 type Props = {
   variant?: 'home' | 'page'
 }
+
 export default function SiteHeader({ variant = 'page' }: Props) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-useEffect(() => {
+  useEffect(() => {
     fetch('/api/auth/status')
       .then(r => r.json())
       .then(data => { setIsLoggedIn(data.authenticated === true) })
@@ -241,31 +269,32 @@ useEffect(() => {
             The Edge<span className="text-orange-600">.</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-   <Link
+          <div className="flex items-center gap-2.5">
+            <Link
               href={isLoggedIn ? '/dugout' : '/login'}
-              className="text-xs font-mono uppercase tracking-widest bg-stone-900 text-stone-50 px-3 py-1.5 hover:bg-stone-700 transition"
+              className="text-[11px] font-mono uppercase tracking-widest bg-stone-900 text-stone-50 px-3.5 py-2 hover:bg-stone-700 transition rounded-sm"
             >
               {isLoggedIn ? 'My Dugout' : 'Sign in'}
             </Link>
 
+            {/* Hamburger — 3 clean lines */}
             <button
               type="button"
               onClick={() => setOpen(true)}
               aria-label="Open navigation menu"
               aria-expanded={open}
               aria-haspopup="dialog"
-              className="flex flex-col justify-center items-center w-9 h-9 gap-1.5 hover:opacity-70 transition"
+              className="flex flex-col justify-center items-center w-9 h-9 gap-[5px] hover:opacity-60 transition rounded-sm"
             >
-              <span className="block w-5 h-px bg-stone-900" />
-              <span className="block w-5 h-px bg-stone-900" />
-              <span className="block w-3 h-px bg-stone-900 self-start ml-1" />
+              <span className="block w-[18px] h-px bg-stone-900 rounded-full" />
+              <span className="block w-[18px] h-px bg-stone-900 rounded-full" />
+              <span className="block w-[11px] h-px bg-stone-900 rounded-full self-start ml-[3px]" />
             </button>
           </div>
         </div>
       </header>
 
-  <NavDrawer open={open} onClose={close} isLoggedIn={isLoggedIn} />
+      <NavDrawer open={open} onClose={close} isLoggedIn={isLoggedIn} />
     </>
   )
 }

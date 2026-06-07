@@ -32,22 +32,54 @@ import ScrollProgress from '@/components/ScrollProgress'
 import PitchTunneling from '@/components/PitchTunneling'
 import ProLockOverlay from '@/components/ProLockOverlay'
 import FantasyTabContent from '@/components/FantasyTabContent'
-
+import { getInlineCalibration } from '@/lib/track-record'
+import InlineCalibration from '@/components/InlineCalibration'
 export const revalidate = 1800
 
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  const title = slug.replace(/-game(\d+)$/, ' (Game $1)').replace(/(\d{4}-\d{2}-\d{2})/, '').replace(/-/g, ' ').trim()
-  return { title: `${title} preview · The Edge`, description: `Pre-game data, lineups, and matchup analysis.` }
+  // Try to pull real team names from the slug for a better title
+  // slug format: away-team-at-home-team-YYYY-MM-DD
+  const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
+  const dateStr = dateMatch?.[1] ?? ''
+  const matchup = slug
+    .replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '')
+    .replace(/-at-/, ' at ')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+
+  const displayDate = dateStr
+    ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : ''
+
+  const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · The Edge`
+  const description = `Pre-game analysis, Edge Score, and data-driven read for ${matchup}. Starting pitchers, lineups, and what the numbers say.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `https://edgereportdaily.com/mlb/${slug}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const isPro = subscriber?.is_pro ?? true // TEMP: default to true during development
+  const isSignedIn = subscriber !== null
   
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
   let game: MLBGame | null = null
@@ -70,6 +102,9 @@ export default async function GamePreview({ params }: Props) {
   }
 
   const prediction = await getEdgePrediction(game.gamePk)
+  const calibration = prediction?.confidence_tier
+  ? await getInlineCalibration(prediction.confidence_tier)
+  : null
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const venue = getVenueInfo(game.venue?.name)
@@ -130,14 +165,14 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
   const gameDate = new Date(game.gameDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET'
 
-  const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
-    prediction.components_raw as ComponentsRaw, 
-    prediction.components as ComponentScores,
-    { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
-    { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
-    game.venue?.name ?? '', 
-    gameTimeFormatted
-  ) : null
+ const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
+  prediction.components_raw as ComponentsRaw,
+  prediction.components as ComponentScores,
+  { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
+  { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
+  game.venue?.name ?? '',
+  gameTimeFormatted
+) : null
 
   
   return (
@@ -151,41 +186,31 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
         awayTeam={game.teams.away.team.name}
         homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
         awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+        homeLogoUrl={teamLogoUrl(game.teams.home.team.id)}   
+        awayLogoUrl={teamLogoUrl(game.teams.away.team.id)}  
         gameTime={gameTimeFormatted}
         venue={game.venue?.name}
         isPro={isPro}
+        isSignedIn={isSignedIn} 
 
         // ── 1. THE READ TAB (free — the 5-minute read) ─────────────────
         // This is now the DEFAULT tab. MatchupTilt hero + narrative + contrarian + game intel.
      slotRead={
           <div className="space-y-10">
             {/* ── GAME HEADER ── */}
-            <div className="text-center pb-2">
-              <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 mb-6">
-                <div className="flex items-center gap-4">
-                  <img src={teamLogoUrl(game.teams.away.team.id)} alt={game.teams.away.team.name} className="w-12 h-12 md:w-16 md:h-16 object-contain" />
-                  <h1 className="text-4xl md:text-6xl font-serif font-light leading-none tracking-tight text-stone-900">
-                    {shortName(game.teams.away.team.name)}
-                  </h1>
-                </div>
-                <span className="text-stone-400 italic font-light text-2xl md:text-4xl">at</span>
-                <div className="flex items-center gap-4">
-                  <h1 className="text-4xl md:text-6xl font-serif font-light leading-none tracking-tight text-stone-900">
-                    {shortName(game.teams.home.team.name)}
-                  </h1>
-                  <img src={teamLogoUrl(game.teams.home.team.id)} alt={game.teams.home.team.name} className="w-12 h-12 md:w-16 md:h-16 object-contain" />
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] font-mono uppercase tracking-widest text-stone-500" suppressHydrationWarning>
-                <span>{gameDate}</span>
-                <span className="text-orange-500">/</span>
-                <span>{gameTimeFormatted}</span>
-                <span className="text-orange-500">/</span>
-                <span>{game.venue?.name}</span>
-              </div>
+       {/* ── DATE / VENUE STRIP — logos live in the sticky header now ── */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-widest text-stone-400 pb-2" suppressHydrationWarning>
+              <span>{gameDate}</span>
+              <span className="text-orange-400">·</span>
+              <span>{gameTimeFormatted}</span>
+              {game.venue?.name && (
+                <>
+                  <span className="text-orange-400">·</span>
+                  <span>{game.venue.name}</span>
+                </>
+              )}
             </div>
-
-            {/* ── STORY LEAD — the hook ── */}
+ {/* ── STORY LEAD — the hook ── */}
             {prediction?.story_lead && (
               <div className="border-l-[3px] border-orange-500 pl-5 py-3 bg-orange-500/[0.03] rounded-r-lg">
                 <p className="text-lg md:text-xl font-serif italic text-stone-900 leading-relaxed">
@@ -193,18 +218,34 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </p>
               </div>
             )}
-
-            {/* ── THE READ — main narrative (MOVED UP, before data) ── */}
-            {prediction?.narrative && (
+  
+             {/* ── MATCHUP TILT — the data backing up the read ── */}
+            {prediction && tiltData && (
               <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Read</h3>
-                <div className="p-6 bg-white border border-stone-200 rounded-xl shadow-sm">
-                  <p className="text-base md:text-lg font-serif text-stone-900 leading-[1.8]">
-                    {prediction.narrative}
-                  </p>
-                </div>
+                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Matchup Factors</h3>
+                <MatchupTilt data={tiltData} isPro={isPro} />
               </section>
             )}
+
+{/* ── THE READ — main narrative (MOVED UP, before data) ── */}
+   {(isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative) && (
+  <section>
+    <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Read</h3>
+    <div className="p-6 bg-white border border-stone-200 rounded-xl shadow-sm">
+      {isPro && prediction?.narrative_pro && (
+        <div className="text-[9px] font-mono uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-1.5">
+          <span>⊕</span>
+          <span>Pro Read</span>
+        </div>
+      )}
+      <p className="text-base md:text-lg font-serif text-stone-900 leading-[1.8] whitespace-pre-line">
+        {isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative}
+      </p>
+    </div>
+  </section>
+)}
+           
+            
 
             {/* ── KNOW BEFORE FIRST PITCH — 3 stats per team ── */}
             {(prediction?.away_stories || prediction?.home_stories) && (
@@ -272,14 +313,7 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
               </section>
             )}
 
-            {/* ── MATCHUP TILT — the data backing up the read ── */}
-            {prediction && tiltData && (
-              <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Matchup Factors</h3>
-                <MatchupTilt data={tiltData} isPro={isPro} />
-              </section>
-            )}
-
+         
             {/* ── CONTRARIAN ANGLE ── */}
             {prediction?.contrarian && (
               <section>

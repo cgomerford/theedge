@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/admin'
-import { getPredictionsInRange } from '@/lib/track-record'
+import { getRecentReads } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 import ShareButton from './ShareButton'
@@ -38,12 +38,12 @@ export default async function AdminPredictionsPage({ searchParams }: Props) {
   const startDate = dateRange[dateRange.length - 1]
 
   // Fetch every prediction in the date range
-  const predictions = await getPredictionsInRange(startDate, endDate)
+const predictions = await getRecentReads(500)
 
   // Compute summary stats
-  const gradedCount = predictions.filter(p => p.was_correct !== null).length
-  const correctCount = predictions.filter(p => p.was_correct === true).length
-  const wrongCount = predictions.filter(p => p.was_correct === false).length
+  const gradedCount = predictions.filter(p => p.outcome_matched !== null).length
+const correctCount = predictions.filter(p => p.outcome_matched === true).length
+  const wrongCount = predictions.filter(p => p.outcome_matched === false).length
   const accuracy = gradedCount > 0 
     ? `${((correctCount / gradedCount) * 100).toFixed(1)}%` 
     : '—'
@@ -185,8 +185,8 @@ export default async function AdminPredictionsPage({ searchParams }: Props) {
                 </thead>
                 <tbody>
                   {predictions.map((p) => {
-                    const predictedTeamName = p.predicted_winner === 'home' ? p.home_team : p.away_team
-                    const actualTeamName = p.actual_winner === 'home' ? p.home_team : p.actual_winner === 'away' ? p.away_team : null
+                    const predictedTeamName = p.factor_lean === 'home' ? p.home_team : p.factor_lean === 'away' ? p.away_team : null
+const actualTeamName = p.actual_winner === 'home' ? p.home_team : p.actual_winner === 'away' ? p.away_team : null
                     const slug = `${teamSlug(p.away_team)}-vs-${teamSlug(p.home_team)}-${p.game_date}`
                     const scoreText = p.home_score !== null && p.away_score !== null
                       ? `${p.away_score}-${p.home_score}`
@@ -201,13 +201,10 @@ export default async function AdminPredictionsPage({ searchParams }: Props) {
                           </Link>
                         </td>
                         <td className="p-3 text-center font-mono font-bold">
-                          {p.edge_score > 0 ? '+' : ''}{p.edge_score}
+                          {p.lean_factors}/{p.total_factors}
                         </td>
                         <td className="p-3 font-serif">
-                          {shortName(predictedTeamName)}
-                          <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 ml-2">
-                            {p.confidence_tier}
-                          </span>
+                         {predictedTeamName ? shortName(predictedTeamName) : <span className="text-stone-400 text-xs">Split</span>}
                         </td>
                         <td className="p-3 font-serif text-stone-600">
                           {actualTeamName ? (
@@ -220,10 +217,9 @@ export default async function AdminPredictionsPage({ searchParams }: Props) {
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          {p.was_correct === true && <span className="text-green-600 font-bold">✓</span>}
-                          {p.was_correct === false && <span className="text-red-600 font-bold">✗</span>}
-                          {p.was_correct === null && p.confidence_tier === 'tossup' && <span className="text-stone-400 text-xs">N/A</span>}
-                          {p.was_correct === null && p.confidence_tier !== 'tossup' && <span className="text-stone-400 text-xs">—</span>}
+                          {p.outcome_matched === true && <span className="text-green-600 font-bold">✓</span>}
+{p.outcome_matched === false && <span className="text-red-600 font-bold">✗</span>}
+{p.outcome_matched === null && <span className="text-stone-400 text-xs">—</span>}
                         </td>
                        <td className="p-3 text-right">
                           <ShareButton

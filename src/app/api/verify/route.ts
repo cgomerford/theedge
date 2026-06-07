@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { welcomeEmail } from '@/lib/emails'
+import { welcomeEmail } from '@/lib/email/auth'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 

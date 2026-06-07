@@ -109,17 +109,32 @@ function windDescription(weather?: { temp_f: number; wind_mph: number; wind_dir:
 
 // ─── Summary generators (free-tier one-liners) ───────────────────────────────
 
+function isOpener(p: any): boolean {
+  if (!p) return false
+  const starts = p.starts ?? 0
+  const games = p.games_played ?? 1
+  const ip = p.innings_pitched ?? 0
+  return starts <= 2 || (games >= 5 && starts / games < 0.4) || (games >= 5 && ip / games < 2.0)
+}
+
 function pitchingSummary(
   hp: any, ap: any, tilt: number, homeAbbr: string, awayAbbr: string,
 ): string {
-  const homeName = hp?.player_name ?? 'TBD';
-  const awayName = ap?.player_name ?? 'TBD';
-  if (Math.abs(tilt) < 5) return `${homeName} vs ${awayName} — evenly matched`;
-  const leader = tilt > 0 ? homeName : awayName;
-  const other = tilt > 0 ? awayName : homeName;
-  return `${leader} holds the pitching edge tonight vs ${other}`;
-}
+  const homeName = hp?.player_name ?? 'TBD'
+  const awayName = ap?.player_name ?? 'TBD'
 
+  const homeIsOpener = isOpener(hp)
+  const awayIsOpener = isOpener(ap)
+
+  if (homeIsOpener && awayIsOpener) return 'Both teams running openers — bullpen game tonight'
+  if (homeIsOpener) return `${homeAbbr} running an opener — bullpen game vs ${awayName}`
+  if (awayIsOpener) return `${awayAbbr} running an opener — bullpen game vs ${homeName}`
+
+  if (Math.abs(tilt) < 5) return `${homeName} vs ${awayName} — evenly matched`
+  const leader = tilt > 0 ? homeName : awayName
+  const other  = tilt > 0 ? awayName : homeName
+  return `${leader} holds the pitching edge tonight vs ${other}`
+}
 function bullpenSummary(
   ht: any, at: any, tilt: number, homeAbbr: string, awayAbbr: string,
 ): string {

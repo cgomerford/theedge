@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLoginLink } from '@/lib/auth'
-import { loginLinkEmail } from '@/lib/emails'
+import { loginLinkEmail } from '@/lib/email/auth'
 import { signupLimit, getClientIp } from '@/lib/ratelimit'
 import { Resend } from 'resend'
 import { z } from 'zod'

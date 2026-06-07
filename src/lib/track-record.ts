@@ -172,7 +172,50 @@ export async function getOverallStats(): Promise<OverallStats> {
     date_range_end: dates[dates.length - 1] ?? null,
   }
 }
+// ============================================================
+// INLINE CALIBRATION — for the game page trust strip
+// ============================================================
+export type InlineCalibration = {
+  tier: string
+  wins: number
+  losses: number
+  total: number
+  accuracy_percent: number | null
+  has_sample: boolean  // false if < 5 graded games for this tier
+}
 
+export async function getInlineCalibration(
+  tier: string
+): Promise<InlineCalibration> {
+  const empty: InlineCalibration = {
+    tier, wins: 0, losses: 0, total: 0,
+    accuracy_percent: null, has_sample: false,
+  }
+
+  if (!['strong', 'moderate', 'slight'].includes(tier)) return empty
+
+  const { data, error } = await supa
+    .from('edge_predictions')
+    .select('was_correct')
+    .eq('confidence_tier', tier)
+    .not('graded_at', 'is', null)
+    .not('was_correct', 'is', null)
+
+  if (error || !data) return empty
+
+  const wins   = data.filter(d => d.was_correct === true).length
+  const losses = data.filter(d => d.was_correct === false).length
+  const total  = data.length
+
+  return {
+    tier,
+    wins,
+    losses,
+    total,
+    accuracy_percent: total > 0 ? (wins / total) * 100 : null,
+    has_sample: total >= 5,
+  }
+}
 // ─── Factor bracket stats ────────────────────────────────────────────────────
 //
 // Replaces the old tier stats (strong/moderate/slight).

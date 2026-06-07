@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { verificationEmail } from '@/lib/emails'
+import { verificationEmail } from '@/lib/email/auth'
 import { Resend } from 'resend'
 import { z } from 'zod'
 import { signupLimit, getClientIp } from '@/lib/ratelimit'

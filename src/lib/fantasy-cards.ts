@@ -278,6 +278,11 @@ Return the <fantasy_cards> JSON now.`
 export async function generateFantasyCards(
   input: FantasyCardsInput
 ): Promise<FantasyCards | null> {
+   if (process.env.DRY_RUN === 'true') {
+    console.log('DRY_RUN: skipping fantasy cards LLM call')
+    return null
+  }
+
   try {
    const message = await client.messages.create({
   model: MODEL,

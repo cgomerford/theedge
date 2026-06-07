@@ -9,6 +9,9 @@ import type { MLBGame } from '@/lib/mlb'
 import { slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
+import MLBFantasySection from '@/components/MLBFantasySection'
+import type { FantasyPicksByType } from '@/lib/fantasy'
+
 
 type Props = {
   standings: MLBDivisionStandings[]
@@ -17,6 +20,8 @@ type Props = {
   predictions: Map<number, EdgePrediction>
   news: MLBNewsItem[]
   today: string
+  fantasyPicks: FantasyPicksByType      // ← add this
+  fantasyIsStale: boolean           
 }
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -155,7 +160,6 @@ function GameCard({ game, prediction }: { game: MLBGame; prediction?: EdgePredic
   )
 }
 
-// ─── Division Standings Table ─────────────────────────────
 
 function DivisionTable({ division }: { division: MLBDivisionStandings }) {
   const leagueColor = division.league === 'AL' ? '#003087' : '#BA0021'
@@ -292,7 +296,7 @@ function NewsCard({ item, featured }: { item: MLBNewsItem; featured?: boolean })
 
 // ─── Main Component ───────────────────────────────────────
 
-export default function MLBHomepage({ standings, statLeaders, games, predictions, news, today }: Props) {
+export default function MLBHomepage({ standings, statLeaders, games, predictions, news, today, fantasyPicks, fantasyIsStale }: Props) {
   const [activeLeague, setActiveLeague] = useState<'AL' | 'NL'>('AL')
   const [activeStat, setActiveStat] = useState(MLB_STAT_CATEGORIES[0].slug)
   const [activeGroup, setActiveGroup] = useState<'batting' | 'pitching'>('batting')
@@ -302,16 +306,15 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
   const groupCats = MLB_STAT_CATEGORIES.filter(c => c.group === activeGroup)
 
   // Top edges today — sort by absolute edge score
-  const topGames = [...games]
+ const edgeGames = [...games]
     .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
     .filter(({ pred }) => pred && pred.edge_score !== null)
     .sort((a, b) => Math.abs(b.pred!.edge_score!) - Math.abs(a.pred!.edge_score!))
-    .slice(0, 6)
 
-  const remainingGames = [...games]
+
+  const pendingGames = [...games]
     .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
     .filter(({ pred }) => !pred || pred.edge_score === null)
-    .slice(0, 4)
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 pb-16">
@@ -329,34 +332,55 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
         </p>
       </div>
 
-      {/* ── TODAY'S EDGES ── */}
+{/* ── TODAY'S FULL SLATE ── */}
       {games.length > 0 && (
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
             <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500">
               ⊕ Today's slate · {today}
             </div>
-            <Link
-              href="/tonight"
-              className="text-[10px] font-mono uppercase tracking-widest text-orange-600 hover:underline"
-            >
-              Full slate →
-            </Link>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400">
+              {games.length} game{games.length !== 1 ? 's' : ''} today
+            </div>
           </div>
 
-          {topGames.length > 0 ? (
+          {/* Games with edge reads — sorted by strength */}
+          {edgeGames.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {topGames.map(({ game, pred }) => (
+              {edgeGames.map(({ game, pred }) => (
                 <GameCard key={game.gamePk} game={game} prediction={pred} />
               ))}
             </div>
-          ) : (
+          )}
+
+          {/* Games still pending a read */}
+          {pendingGames.length > 0 && (
+            <>
+              {edgeGames.length > 0 && (
+                <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-stone-400 mt-6 mb-3">
+                  Read pending
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pendingGames.map(({ game }) => (
+                  <GameCard key={game.gamePk} game={game} prediction={undefined} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Empty state — no games at all today */}
+          {edgeGames.length === 0 && pendingGames.length === 0 && (
             <div className="text-center py-10 bg-white border border-stone-200 rounded-lg text-stone-400 font-mono text-sm">
-              No edge calls yet — check back closer to game time.
+              No games scheduled today.
             </div>
           )}
         </section>
       )}
+
+      {/* After the games grid section, before standings */}
+<MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} />
+
 
       {/* ── STANDINGS ── */}
       <section className="mb-12">

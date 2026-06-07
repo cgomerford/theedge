@@ -188,10 +188,13 @@ export async function getMLBStandings(): Promise<MLBDivisionStandings[]> {
 // ─── League stat leaders ──────────────────────────────────
 export async function getMLBStatLeaders(
   category: string,
-  limit = 10
+  limit = 10,
+  group?: 'batting' | 'pitching'
 ): Promise<MLBStatLeader[]> {
   try {
-    const url = `${MLB_API}/stats/leaders?leaderCategories=${category}&season=${SEASON}&limit=${limit}&sportId=1`
+    const statGroup = group === 'batting' ? 'hitting' : group === 'pitching' ? 'pitching' : ''
+    const groupParam = statGroup ? `&statGroup=${statGroup}` : ''
+    const url = `${MLB_API}/stats/leaders?leaderCategories=${category}&season=${SEASON}&limit=${limit}&sportId=1${groupParam}`
     const res = await fetch(url, { next: { revalidate: 3600 } })
     if (!res.ok) {
       console.error(`MLB leaders ${category}: HTTP ${res.status}`)
