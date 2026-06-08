@@ -11,14 +11,14 @@ from pybaseball.statcast_pitcher import statcast_pitcher_pitch_movement
 from supabase import create_client
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv('.env.local')
 cache.enable()
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
+SUPABASE_URL = os.environ.get('NEXT_PUBLIC_SUPABASE_URL', '').strip()
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY env vars')
+    print('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars')
     sys.exit(1)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -128,7 +128,11 @@ def main():
     ptype_col = first_col('pitch_type', 'pitchType', 'pitch')
     usage_col = first_col('pitch_usage', 'pitch_pct', 'pct')
     speed_col = first_col('avg_speed', 'velocity', 'release_speed')
-    
+    whiff_col = first_col('whiff_percent', 'whiff_pct')
+    hard_hit_col = first_col('hard_hit_percent', 'hard_hit_pct')
+    est_woba_col = first_col('est_woba', 'xwoba')
+    put_away_col = first_col('put_away', 'put_away_percent')
+    ba_against_col = first_col('ba', 'batting_avg')
     rows = []
     successful_merges = 0
 
@@ -167,6 +171,27 @@ def main():
             row_data['avg_v_break'] = round(avg_v_break, 1)
         if avg_h_break is not None:
             row_data['avg_h_break'] = round(avg_h_break, 1)
+
+        # New V4 columns
+        whiff_val = r.get(whiff_col) if whiff_col else None
+        if whiff_val is not None and pd.notna(whiff_val):
+            row_data['whiff_percent'] = round(float(whiff_val), 1)
+
+        hard_hit_val = r.get(hard_hit_col) if hard_hit_col else None
+        if hard_hit_val is not None and pd.notna(hard_hit_val):
+            row_data['hard_hit_percent'] = round(float(hard_hit_val), 1)
+
+        est_woba_val = r.get(est_woba_col) if est_woba_col else None
+        if est_woba_val is not None and pd.notna(est_woba_val):
+            row_data['est_woba'] = round(float(est_woba_val), 3)
+
+        put_away_val = r.get(put_away_col) if put_away_col else None
+        if put_away_val is not None and pd.notna(put_away_val):
+            row_data['put_away_percent'] = round(float(put_away_val), 1)
+
+        ba_against_val = r.get(ba_against_col) if ba_against_col else None
+        if ba_against_val is not None and pd.notna(ba_against_val):
+            row_data['ba_against'] = round(float(ba_against_val), 3)
 
         rows.append(row_data)
   
