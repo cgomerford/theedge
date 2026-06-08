@@ -146,6 +146,78 @@ const hasExistingNarrative = !forceRegen && !!(existing?.summary && existing?.na
 
         // ── Narrative regeneration ────────────────────────────────────
         if (shouldRegenerate) {
+         // ── Fetch H2H pitcher data ────────────────────────────────
+          const homePitcherId = game.teams.home.probablePitcher?.id ?? null
+          const awayPitcherId = game.teams.away.probablePitcher?.id ?? null
+          const awayTeamId = game.teams.away.team.id
+          const homeTeamId = game.teams.home.team.id
+
+          const [homeH2H, awayH2H, homePlatoon, awayPlatoon] = await Promise.all([
+            homePitcherId ? supa
+              .from('pitcher_h2h')
+              .select('wins,losses,era,games,innings_pitched')
+              .eq('player_id', homePitcherId)
+              .eq('opponent_team_id', awayTeamId)
+              .eq('season', 9999)
+              .single()
+              .then(r => r.data ?? null, () => null)
+              : Promise.resolve(null),
+            awayPitcherId ? supa
+              .from('pitcher_h2h')
+              .select('wins,losses,era,games,innings_pitched')
+              .eq('player_id', awayPitcherId)
+              .eq('opponent_team_id', homeTeamId)
+              .eq('season', 9999)
+              .single()
+              .then(r => r.data ?? null, () => null)
+              : Promise.resolve(null),
+            supa
+              .from('team_platoon_splits')
+              .select('vs_lhp_ops,vs_rhp_ops,vs_lhp_avg,vs_rhp_avg')
+              .eq('team_id', homeTeamId)
+              .eq('season', 2026)
+              .single()
+              .then(r => r.data ?? null, () => null),
+            supa
+              .from('team_platoon_splits')
+              .select('vs_lhp_ops,vs_rhp_ops,vs_lhp_avg,vs_rhp_avg')
+              .eq('team_id', awayTeamId)
+              .eq('season', 2026)
+              .single()
+              .then(r => r.data ?? null, () => null),
+          ])
+
+          // ── Derive platoon context strings ────────────────────────
+          const homePitcherHand = result.components_raw?.home_pitcher?.throws ?? null
+          const awayPitcherHand = result.components_raw?.away_pitcher?.throws ?? null
+
+          const awayVsLhp = awayPlatoon?.vs_lhp_ops
+            ? `${awayPlatoon.vs_lhp_ops} OPS vs LHP`
+            : null
+          const awayVsRhp = awayPlatoon?.vs_rhp_ops
+            ? `${awayPlatoon.vs_rhp_ops} OPS vs RHP`
+            : null
+          const homeVsLhp = homePlatoon?.vs_lhp_ops
+            ? `${homePlatoon.vs_lhp_ops} OPS vs LHP`
+            : null
+          const homeVsRhp = homePlatoon?.vs_rhp_ops
+            ? `${homePlatoon.vs_rhp_ops} OPS vs RHP`
+            : null
+
+          // ── H2H record strings ────────────────────────────────────
+          const homeH2HRecord = homeH2H?.games
+            ? `${homeH2H.wins}-${homeH2H.losses} in ${homeH2H.games}G`
+            : null
+          const homeH2HEra = homeH2H?.era
+            ? String(Number(homeH2H.era).toFixed(2))
+            : null
+          const awayH2HRecord = awayH2H?.games
+            ? `${awayH2H.wins}-${awayH2H.losses} in ${awayH2H.games}G`
+            : null
+          const awayH2HEra = awayH2H?.era
+            ? String(Number(awayH2H.era).toFixed(2))
+            : null
+
           const narrativeInputsBase = {
             home_team:        game.teams.home.team.name,
             away_team:        game.teams.away.team.name,
@@ -156,6 +228,16 @@ const hasExistingNarrative = !forceRegen && !!(existing?.summary && existing?.na
             components_raw:   result.components_raw,
             venue_name:       game.venue?.name ?? '',
             streaks,
+            // H2H pitcher history
+            home_pitcher_vs_opponent_record: homeH2HRecord,
+            home_pitcher_vs_opponent_era:    homeH2HEra,
+            away_pitcher_vs_opponent_record: awayH2HRecord,
+            away_pitcher_vs_opponent_era:    awayH2HEra,
+            // Platoon splits
+            away_vs_lhp_record: homePitcherHand === 'L' ? awayVsLhp : null,
+            away_vs_rhp_record: homePitcherHand === 'R' ? awayVsRhp : null,
+            home_vs_lhp_record: awayPitcherHand === 'L' ? homeVsLhp : null,
+            home_vs_rhp_record: awayPitcherHand === 'R' ? homeVsRhp : null,
           }
 
          const generated = await generateNarrative(narrativeInputsBase)
