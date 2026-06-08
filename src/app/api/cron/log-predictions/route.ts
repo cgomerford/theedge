@@ -108,7 +108,8 @@ export async function GET(request: Request) {
           .eq('game_pk', game.gamePk)
           .single()
 
-        const hasExistingNarrative = !!(existing?.summary && existing?.narrative)
+      const forceRegen = new URL(request.url).searchParams.get('force') === 'true'
+const hasExistingNarrative = !forceRegen && !!(existing?.summary && existing?.narrative)
         const scoreSwing = existing
           ? Math.abs(existing.edge_score - result.edge_score)
           : 999

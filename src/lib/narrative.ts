@@ -28,6 +28,29 @@ export type NarrativeInputs = {
   venue_name: string
   game_time?: string
   streaks?: GameStreaks | null
+
+  // ── Series context (available Day 3 — null gracefully until then) ──
+  series_game_number?: number | null
+  series_games_total?: number | null
+  away_series_wins?: number | null
+  home_series_wins?: number | null
+  series_runs_so_far?: string | null     // e.g. "23 combined runs in first two games"
+
+  // ── H2H pitcher history (available Day 2) ──
+  away_pitcher_vs_opponent_era?: string | null    // career ERA vs today's home team
+  away_pitcher_vs_opponent_record?: string | null // e.g. "2-0"
+  home_pitcher_vs_opponent_era?: string | null
+  home_pitcher_vs_opponent_record?: string | null
+
+  // ── Platoon splits (available Day 2) ──
+  away_vs_lhp_record?: string | null   // e.g. "8-15" — relevant if home pitcher is LHP
+  away_vs_rhp_record?: string | null
+  home_vs_lhp_record?: string | null
+  home_vs_rhp_record?: string | null
+
+  // ── Last start detail (available Day 1) ──
+  away_pitcher_last_start?: string | null  // e.g. "5 IP, 2 ER vs San Diego"
+  home_pitcher_last_start?: string | null
 }
 
 export type NarrativeResult = {
@@ -75,7 +98,7 @@ function openerLabel(pitcher: any): string {
 const SYSTEM_PROMPT = `You are a writer for The Edge — a daily 5-minute MLB brief for analytical fans.
 
 VOICE: Smart friend who watches every game. Conversational, specific, confident. Use real numbers; never invent.
-NEVER use betting words: lock, play, value bet, smash, hammer, fade, wager.
+NEVER use these words: lock, play, value bet, smash, hammer, fade, wager, can't be counted out, coin flip.
 
 OPENER RULE: If a pitcher is flagged ⚠ OPENER/BULK ARM — don't call them "the starter" or lead with their ERA. Frame as opening 2-3 innings then handing off; the bullpen is the real story.
 
@@ -103,21 +126,23 @@ Paragraph 2 (2-3 sentences): What to watch. Bullpen situation, key player, or pl
 
 ═══════════════════════════════════════════
 NARRATIVE_PRO — PRO TIER (target 1400-1800 chars, EXACTLY 4 paragraphs separated by blank lines):
-The deeper analytical layer. Same opening insight, then go deep where free can't.
+The GM scout report. Lead with context, go deep where free can't.
 
-Paragraph 1 — The Matchup (3-4 sentences): Same headline factor as free, but with more nuance. Cite multiple stats. Set the scene.
+Paragraph 1 — The Scene (3-4 sentences): Set the stakes. If this is a rubber match, say so and what it means. Use series record and series run totals if provided. Name both pitchers and their roles — don't repeat what's in the free version, expand on it.
 
-Paragraph 2 — The Sabermetric Layer (3-4 sentences): The Free version doesn't show this. Discuss FIP vs ERA gaps, xERA, hard-hit rates, regression flags. Identify if a pitcher's recent ERA is misleading. Reference exact splits (L/R, home/away, vs pitch type) when in the data.
+Paragraph 2 — The Sabermetric Layer (3-4 sentences): FIP vs ERA gaps, xERA, hard-hit rates, regression flags. Use H2H pitcher career stats vs today's opponent if provided — a pitcher who owns a team historically is a real signal. Reference exact splits when in the data.
 
-Paragraph 3 — The Tactical Read (3-4 sentences): What a GM's analytics dept would whisper. Bullpen leverage, lineup vulnerabilities to specific pitch types, park-specific quirks, weather impact on the slate. Be tactical, not generic.
+Paragraph 3 — The Tactical Read (3-4 sentences): What a GM's analytics dept would flag. If platoon data is provided, name the specific mismatch (e.g. "Phillies are 8-15 vs lefties — and Gilbert opens from the left side"). Bullpen leverage, lineup vulnerabilities, park quirks. Be specific, not generic.
 
-Paragraph 4 — The Bottom Line (2-3 sentences): What to actually watch as the game unfolds. The single highest-leverage moment or matchup. Close with the lean or honest toss-up.
+Paragraph 4 — The Bottom Line (2-3 sentences): The single highest-leverage moment to watch. What needs to happen for the underdog to win. Close with the honest lean or toss-up.
 
 PRO NARRATIVE RULES:
+- If SERIES data is provided — use it. Rubber matches, run totals, series momentum are all real signals.
+- If H2H PITCHER data is provided — use it. Career ERA vs a specific opponent is meaningful.
+- If PLATOON data is provided — build a storyline around it. Name the split and the pitcher's handedness.
 - Must contain analysis NOT in the free version
-- Specific stats, not vague claims
-- If a stat is missing, skip it — never invent
-- For openers: paragraphs 2-3 focus on bullpen depth and matchup specifics, not a "starter" framing
+- Specific stats only — never invent
+- For openers: paragraphs 2-3 focus on bullpen depth and matchup specifics
 
 ═══════════════════════════════════════════
 HOME_STORIES (JSON array of exactly 3): {"stat": "≤12 chars", "text": "≤80 chars"}
@@ -145,9 +170,9 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
   try {
     const userPrompt = buildUserPrompt(inputs)
 
-    const message = await client.messages.create({
+   const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 3500,
+      max_tokens: 4500,
       system: [
         {
           type: 'text',
@@ -201,8 +226,8 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
 
 function buildUserPrompt(inputs: NarrativeInputs): string {
   const { components_raw } = inputs
-  const homeP = components_raw.home_pitcher
-  const awayP = components_raw.away_pitcher
+  const homeP = components_raw?.home_pitcher ?? null
+  const awayP = components_raw?.away_pitcher ?? null
   const homeT = components_raw.home_team
   const awayT = components_raw.away_team
   const park  = components_raw.park
@@ -220,17 +245,57 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team)
     : ''
 
+const awayH2H = inputs.away_pitcher_vs_opponent_record && inputs.away_pitcher_vs_opponent_era
+    ? ` | vs ${inputs.home_team.split(' ').pop()}: ${inputs.away_pitcher_vs_opponent_record}, ${inputs.away_pitcher_vs_opponent_era} ERA career`
+    : ''
+  const homeH2H = inputs.home_pitcher_vs_opponent_record && inputs.home_pitcher_vs_opponent_era
+    ? ` | vs ${inputs.away_team.split(' ').pop()}: ${inputs.home_pitcher_vs_opponent_record}, ${inputs.home_pitcher_vs_opponent_era} ERA career`
+    : ''
+  const awayLastStart = inputs.away_pitcher_last_start
+    ? ` | Last start: ${inputs.away_pitcher_last_start}`
+    : ''
+  const homeLastStart = inputs.home_pitcher_last_start
+    ? ` | Last start: ${inputs.home_pitcher_last_start}`
+    : ''
+
   const awayPitcherLine = awayP
-    ? `- ${inputs.away_team} (away): ${awayP.player_name} — ERA ${awayP.era ?? 'N/A'}, FIP ${awayP.fip ?? 'N/A'}, K/9 ${awayP.k_per_9 ?? 'N/A'}, ${awayP.innings_pitched ?? 0} IP in ${awayP.games_played ?? '?'} apps${awayIsOpener ? `\n  ${openerLabel(awayP)}` : ''}`
+    ? `- ${inputs.away_team} (away): ${awayP.player_name} — ERA ${awayP.era ?? 'N/A'}, FIP ${awayP.fip ?? 'N/A'}, K/9 ${awayP.k_per_9 ?? 'N/A'}, ${awayP.innings_pitched ?? 0} IP in ${awayP.games_played ?? '?'} apps${awayH2H}${awayLastStart}${awayIsOpener ? `\n  ${openerLabel(awayP)}` : ''}`
     : `- ${inputs.away_team} (away): pitcher TBD`
 
   const homePitcherLine = homeP
-    ? `- ${inputs.home_team} (home): ${homeP.player_name} — ERA ${homeP.era ?? 'N/A'}, FIP ${homeP.fip ?? 'N/A'}, K/9 ${homeP.k_per_9 ?? 'N/A'}, ${homeP.innings_pitched ?? 0} IP in ${homeP.games_played ?? '?'} apps${homeIsOpener ? `\n  ${openerLabel(homeP)}` : ''}`
+    ? `- ${inputs.home_team} (home): ${homeP.player_name} — ERA ${homeP.era ?? 'N/A'}, FIP ${homeP.fip ?? 'N/A'}, K/9 ${homeP.k_per_9 ?? 'N/A'}, ${homeP.innings_pitched ?? 0} IP in ${homeP.games_played ?? '?'} apps${homeH2H}${homeLastStart}${homeIsOpener ? `\n  ${openerLabel(homeP)}` : ''}`
     : `- ${inputs.home_team} (home): pitcher TBD`
+
+// ── Series context block ──
+  let seriesBlock = ''
+  if (inputs.series_game_number && inputs.series_games_total) {
+    const awayW = inputs.away_series_wins ?? 0
+    const homeW = inputs.home_series_wins ?? 0
+    const isRubber = inputs.series_game_number === inputs.series_games_total && awayW === homeW
+    const seriesStatus = isRubber
+      ? `RUBBER MATCH — series tied ${awayW}-${homeW}`
+      : `Game ${inputs.series_game_number} of ${inputs.series_games_total} (${inputs.away_team} leads ${awayW}-${homeW})`
+    seriesBlock = `\nSERIES: ${seriesStatus}${inputs.series_runs_so_far ? `\nSERIES SCORING: ${inputs.series_runs_so_far}` : ''}`
+  }
+
+  // ── Platoon block ──
+  const awayP_hand = awayP?.throws ?? null
+  const homeP_hand = homeP?.throws ?? null
+  let platoonBlock = ''
+  if (homeP_hand === 'L' && inputs.away_vs_lhp_record) {
+    platoonBlock = `\nPLATOON: ${inputs.away_team} is ${inputs.away_vs_lhp_record} vs LHP this season (home pitcher is lefty)`
+  } else if (homeP_hand === 'R' && inputs.away_vs_rhp_record) {
+    platoonBlock = `\nPLATOON: ${inputs.away_team} is ${inputs.away_vs_rhp_record} vs RHP this season`
+  }
+  if (awayP_hand === 'L' && inputs.home_vs_lhp_record) {
+    platoonBlock += `\nPLATOON: ${inputs.home_team} is ${inputs.home_vs_lhp_record} vs LHP this season (away pitcher is lefty)`
+  } else if (awayP_hand === 'R' && inputs.home_vs_rhp_record) {
+    platoonBlock += `\nPLATOON: ${inputs.home_team} is ${inputs.home_vs_rhp_record} vs RHP this season`
+  }
 
   return `GAME: ${inputs.away_team} @ ${inputs.home_team}
 VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
-EDGE: ${inputs.edge_score >= 0 ? '+' : ''}${inputs.edge_score} (${inputs.confidence_tier}${inputs.confidence_tier !== 'tossup' ? ` to ${winner}` : ''})
+EDGE: ${inputs.edge_score >= 0 ? '+' : ''}${inputs.edge_score} (${inputs.confidence_tier}${inputs.confidence_tier !== 'tossup' ? ` to ${winner}` : ''})${seriesBlock}${platoonBlock}
 
 TOP FACTORS:
 ${sortedComponents.map((c, i) => `${i + 1}. ${formatComponentName(c.key)}: ${c.value >= 0 ? '+' : ''}${c.value.toFixed(1)} ${c.value >= 0 ? `(${inputs.home_team})` : `(${inputs.away_team})`}`).join('\n')}
@@ -277,8 +342,17 @@ function parseOutput(text: string): {
   const contrarianMatch    = text.match(/<contrarian>([\s\S]*?)<\/contrarian>/i)
   const proTakeawaysMatch  = text.match(/<pro_takeaways>([\s\S]*?)<\/pro_takeaways>/i)
 
-  if (!summaryMatch || !narrativeMatch || !narrativeProMatch || !homeStoriesMatch || !awayStoriesMatch || !contrarianMatch || !proTakeawaysMatch) {
-    console.error('Missing tags:', text.substring(0, 500))
+ if (!summaryMatch || !narrativeMatch || !narrativeProMatch || !homeStoriesMatch || !awayStoriesMatch || !contrarianMatch || !proTakeawaysMatch) {
+    console.error('FULL OUTPUT:\n', text)
+    console.error('Missing tags — present:', {
+      summary: !!summaryMatch,
+      narrative: !!narrativeMatch,
+      narrative_pro: !!narrativeProMatch,
+      home_stories: !!homeStoriesMatch,
+      away_stories: !!awayStoriesMatch,
+      contrarian: !!contrarianMatch,
+      pro_takeaways: !!proTakeawaysMatch,
+    })
     return null
   }
 
@@ -288,8 +362,8 @@ function parseOutput(text: string): {
   const contrarian    = contrarianMatch[1].trim()
 
   if (!summary || summary.length > 250) return null
-  if (!narrative || narrative.length > 1000) return null
-  if (!narrative_pro || narrative_pro.length > 2200) return null
+ if (!narrative || narrative.length > 1500) return null
+  if (!narrative_pro || narrative_pro.length > 3000) return null
   if (!contrarian || contrarian.length > 500) return null
 
   let home_stories: StoryItem[] = []

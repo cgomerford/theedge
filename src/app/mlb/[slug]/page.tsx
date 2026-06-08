@@ -168,8 +168,8 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
  const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
   prediction.components_raw as ComponentsRaw,
   prediction.components as ComponentScores,
-  { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
   { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
+  { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
   game.venue?.name ?? '',
   gameTimeFormatted
 ) : null
