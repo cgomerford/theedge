@@ -118,14 +118,14 @@ SUMMARY (≤110 chars): One headline-style pull-quote. Name the 1-2 biggest fact
 Good: "Wheeler's filthy slider vs a Cubs lineup that can't lay off breaking balls."
 
 ═══════════════════════════════════════════
-NARRATIVE — FREE TIER (target 500-700 chars, EXACTLY 2 paragraphs separated by blank line):
+NARRATIVE — FREE TIER (target 400-500 chars, EXACTLY 2 paragraphs separated by blank line):
 The "5-minute read" version. Conversational, accessible.
 
 Paragraph 1 (2-3 sentences): The matchup story. Lead with the biggest factor. Name pitcher + key stat. One supporting fact.
 Paragraph 2 (2-3 sentences): What to watch. Bullpen situation, key player, or platoon angle. Close with the lean or honest toss-up.
 
 ═══════════════════════════════════════════
-NARRATIVE_PRO — PRO TIER (target 1400-1800 chars, EXACTLY 4 paragraphs separated by blank lines):
+NARRATIVE_PRO — PRO TIER (target 900-1100 chars, EXACTLY 4 paragraphs separated by blank lines):
 The GM scout report. Lead with context, go deep where free can't.
 
 Paragraph 1 — The Scene (3-4 sentences): Set the stakes. If this is a rubber match, say so and what it means. Use series record and series run totals if provided. Name both pitchers and their roles — don't repeat what's in the free version, expand on it.
@@ -172,7 +172,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
 
    const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 4500,
+      max_tokens: 6000,
       system: [
         {
           type: 'text',
