@@ -13,6 +13,7 @@ type NavLink = {
   label: string
   description?: string
   badge?: string
+  proOnly?: boolean
 }
 
 const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
@@ -20,7 +21,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
     label: 'MLB',
     links: [
       { href: '/mlb',     label: 'MLB Home',    description: 'Standings · leaders · edges', badge: 'LIVE' },
-      { href: '/fantasy', label: 'Fantasy Desk', description: 'Streamers · Movers · Sleepers', badge: 'PRO' },
+      { href: '/fantasy', label: 'Fantasy Desk', description: 'Streamers · Movers · Sleepers', badge: 'PRO', proOnly: true },
     ],
   },
   {
@@ -34,6 +35,7 @@ const NAV_SECTIONS: { label: string; links: NavLink[] }[] = [
     links: [
       { href: '/track-record', label: 'Track Record', description: 'How the model is performing' },
       { href: '/how-it-works', label: 'How it works',  description: 'The 8-component model' },
+      { href: '/why-edge',     label: 'Why The Edge',  description: 'More than an AI summary' },
       { href: '/pricing',      label: 'Pricing',        description: 'Free and Pro tiers' },
       { href: '/about',        label: 'About',          description: 'What The Edge is' },
       { href: '/faq',          label: 'FAQ',            description: 'Common questions' },
@@ -68,10 +70,12 @@ function NavDrawer({
   open,
   onClose,
   isLoggedIn,
+  isPro,
 }: {
   open: boolean
   onClose: () => void
   isLoggedIn: boolean
+  isPro: boolean
 }) {
   const [mounted, setMounted] = useState(false)
 
@@ -163,48 +167,57 @@ function NavDrawer({
                 — {section.label}
               </div>
 
-              {section.links.map((link) => (
-                <Link
-                  key={link.href + link.label}
-                  href={link.href}
-                  onClick={onClose}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '11px 0',
-                    borderBottom: '1px solid #F5F5F4',
-                    textDecoration: 'none',
-                  }}
-                  className="group"
-                >
-                  <div>
-                    <div
-                      className="font-serif font-semibold text-stone-900 group-hover:text-orange-600 transition"
-                      style={{ fontSize: 15, lineHeight: 1.3 }}
-                    >
-                      {link.label}
-                    </div>
-                    {link.description && (
-                      <div
-                        className="font-mono text-stone-400"
-                        style={{ fontSize: 11, marginTop: 2 }}
-                      >
-                        {link.description}
-                      </div>
-                    )}
-                  </div>
+              {section.links.map((link) => {
+                // Pro-only links: route to /pricing if not Pro
+                const href = link.proOnly && !isPro ? '/pricing' : link.href
 
-                  {link.badge ? (
-                    <Badge text={link.badge} />
-                  ) : (
-                    <span
-                      className="text-stone-300 group-hover:text-orange-400 transition font-mono"
-                      style={{ fontSize: 13 }}
-                    >
-                      →
-                    </span>
-                  )}
-                </Link>
-              ))}
+                return (
+                  <Link
+                    key={link.href + link.label}
+                    href={href}
+                    onClick={onClose}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '11px 0',
+                      borderBottom: '1px solid #F5F5F4',
+                      textDecoration: 'none',
+                      opacity: link.proOnly && !isPro ? 0.6 : 1,
+                    }}
+                    className="group"
+                  >
+                    <div>
+                      <div
+                        className="font-serif font-semibold text-stone-900 group-hover:text-orange-600 transition"
+                        style={{ fontSize: 15, lineHeight: 1.3 }}
+                      >
+                        {link.label}
+                        {link.proOnly && !isPro && (
+                          <span className="ml-2 text-[9px] font-mono text-stone-400">🔒</span>
+                        )}
+                      </div>
+                      {link.description && (
+                        <div
+                          className="font-mono text-stone-400"
+                          style={{ fontSize: 11, marginTop: 2 }}
+                        >
+                          {link.description}
+                        </div>
+                      )}
+                    </div>
+
+                    {link.badge ? (
+                      <Badge text={link.badge} />
+                    ) : (
+                      <span
+                        className="text-stone-300 group-hover:text-orange-400 transition font-mono"
+                        style={{ fontSize: 13 }}
+                      >
+                        →
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           ))}
         </nav>
@@ -249,12 +262,19 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isPro, setIsPro] = useState(false)
 
   useEffect(() => {
     fetch('/api/auth/status')
       .then(r => r.json())
-      .then(data => { setIsLoggedIn(data.authenticated === true) })
-      .catch(() => { setIsLoggedIn(false) })
+      .then(data => {
+        setIsLoggedIn(data.authenticated === true)
+        setIsPro(data.is_pro === true)
+      })
+      .catch(() => {
+        setIsLoggedIn(false)
+        setIsPro(false)
+      })
   }, [])
 
   return (
@@ -277,7 +297,6 @@ export default function SiteHeader({ variant = 'page' }: Props) {
               {isLoggedIn ? 'My Dugout' : 'Sign in'}
             </Link>
 
-            {/* Hamburger — 3 clean lines */}
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -294,7 +313,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
         </div>
       </header>
 
-      <NavDrawer open={open} onClose={close} isLoggedIn={isLoggedIn} />
+      <NavDrawer open={open} onClose={close} isLoggedIn={isLoggedIn} isPro={isPro} />
     </>
   )
 }

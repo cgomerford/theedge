@@ -1,17 +1,36 @@
 // src/app/fantasy/page.tsx
-//
-// "/fantasy" is no longer a standalone page. Fantasy is a layer, not a place.
-// The content now lives inline on /mlb (Fantasy Intel section) and on
-// individual game pages (FantasyTabContent). Sub-pages like
-// /fantasy/streamers still work at their current URLs.
-//
-// This redirect ensures old links, bookmarks, and nav items land somewhere
-// useful instead of a dead page.
-
 import { redirect } from 'next/navigation'
+import { getCurrentSubscriber } from '@/lib/auth'
+import { getFantasyPicks } from '@/lib/fantasy'
+import SiteHeader from '@/components/SiteHeader'
+import FantasyDashboard from './FantasyDashboard'
 
 export const dynamic = 'force-dynamic'
 
-export default function FantasyRedirect() {
-  redirect('/mlb')
+export const metadata = {
+  title: 'Fantasy Desk · The Edge',
+  description: 'The full Pro trading desk — streamers, movers, fallers, sleepers, platforms and two-start picks.',
+}
+
+export default async function FantasyPage() {
+  const [subscriber, fantasyResult] = await Promise.all([
+    getCurrentSubscriber(),
+    getFantasyPicks(),
+  ])
+
+  // Not logged in → pricing
+  if (!subscriber) redirect('/pricing')
+
+  // Logged in but not Pro → pricing
+  if (!subscriber.is_pro) redirect('/pricing')
+
+  return (
+    <main className="min-h-screen bg-[#FAF8F3]">
+      <SiteHeader variant="page" />
+      <FantasyDashboard
+        picks={fantasyResult.picks}
+        isStale={fantasyResult.isStale}
+      />
+    </main>
+  )
 }
