@@ -2,16 +2,6 @@
 
 /**
  * src/components/MLBFantasySection.tsx
- *
- * Fantasy Intel section for the /mlb hub page.
- * Surfaces tonight's streamers, movers, fallers, sleepers inline
- * instead of on a standalone /fantasy page.
- *
- * Always renders in TEASER mode (1 pick visible per tab + Pro CTA)
- * because /mlb is ISR-cached and doesn't check auth state. The full
- * desk experience lives in authenticated spaces (Dugout, game pages).
- *
- * Data comes from getFantasyPicks() in src/lib/fantasy.ts.
  */
 
 import { useState } from 'react'
@@ -23,6 +13,7 @@ import type { FantasyPicksByType, FantasyPick } from '@/lib/fantasy'
 type Props = {
   picks: FantasyPicksByType
   isStale: boolean
+  isPro: boolean
 }
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
@@ -34,7 +25,7 @@ const TABS = [
   { key: 'sleeper'  as const, label: 'Sleepers',   desc: 'Regression watch — hidden value' },
 ]
 
-// ─── Pick card (compact, inline — not the full FantasyPlayerCard) ─────────────
+// ─── Pick card ────────────────────────────────────────────────────────────────
 
 function PickCard({ pick }: { pick: FantasyPick }) {
   const signalColor =
@@ -78,7 +69,7 @@ function PickCard({ pick }: { pick: FantasyPick }) {
   )
 }
 
-// ─── Mover card (game-level, no player) ───────────────────────────────────────
+// ─── Mover card ───────────────────────────────────────────────────────────────
 
 function MoverCard({ pick }: { pick: FantasyPick }) {
   const swing = pick.details?.swing
@@ -121,19 +112,19 @@ function MoverCard({ pick }: { pick: FantasyPick }) {
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
-export default function MLBFantasySection({ picks, isStale }: Props) {
+export default function MLBFantasySection({ picks, isStale, isPro }: Props) {
   const [activeTab, setActiveTab] = useState<keyof FantasyPicksByType>('streamer')
 
   const activePicks = picks[activeTab]
   const hasAnyPicks = Object.values(picks).some(arr => arr.length > 0)
 
-  // Don't render the section at all if there are zero picks across all types
   if (!hasAnyPicks) return null
 
-  // Teaser: show only the first pick. Pro CTA for the rest.
-  const teaserPick = activePicks[0] ?? null
-  const lockedCount = Math.max(0, activePicks.length - 1)
   const activeTabMeta = TABS.find(t => t.key === activeTab)!
+
+  // Pro users see all picks; free users see one + locked CTA
+  const visiblePicks = isPro ? activePicks : activePicks.slice(0, 1)
+  const lockedCount  = isPro ? 0 : Math.max(0, activePicks.length - 1)
 
   return (
     <section className="mb-12">
@@ -142,18 +133,20 @@ export default function MLBFantasySection({ picks, isStale }: Props) {
       <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#FF5722] mb-1">
-            ⊕ Fantasy intel · Pro
+            ⊕ Fantasy intel · {isPro ? 'Pro' : 'Preview'}
           </div>
           <h2 className="text-2xl font-serif font-bold text-stone-900 leading-none">
             Tonight&apos;s desk<span className="text-orange-500">.</span>
           </h2>
         </div>
-        <Link
-          href="/pricing"
-          className="text-[10px] font-mono uppercase tracking-widest text-[#FDE047] bg-[#1A1A1A] px-3 py-1.5 rounded hover:bg-stone-800 transition"
-        >
-          Unlock full desk →
-        </Link>
+        {!isPro && (
+          <Link
+            href="/pricing"
+            className="text-[10px] font-mono uppercase tracking-widest text-[#FDE047] bg-[#1A1A1A] px-3 py-1.5 rounded hover:bg-stone-800 transition"
+          >
+            Unlock full desk →
+          </Link>
+        )}
       </div>
 
       {/* Stale warning */}
@@ -201,14 +194,14 @@ export default function MLBFantasySection({ picks, isStale }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          {/* The one visible pick */}
-          {teaserPick && (
+          {/* Visible picks */}
+          {visiblePicks.map((pick, i) => (
             activeTab === 'mover'
-              ? <MoverCard pick={teaserPick} />
-              : <PickCard pick={teaserPick} />
-          )}
+              ? <MoverCard key={i} pick={pick} />
+              : <PickCard key={i} pick={pick} />
+          ))}
 
-          {/* Pro gate for the rest */}
+          {/* Pro gate for free users */}
           {lockedCount > 0 && (
             <Link
               href="/pricing"

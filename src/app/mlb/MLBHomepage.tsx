@@ -20,8 +20,9 @@ type Props = {
   predictions: Map<number, EdgePrediction>
   news: MLBNewsItem[]
   today: string
-  fantasyPicks: FantasyPicksByType      // ← add this
-  fantasyIsStale: boolean           
+  fantasyPicks: FantasyPicksByType
+  fantasyIsStale: boolean
+  isPro: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -296,7 +297,7 @@ function NewsCard({ item, featured }: { item: MLBNewsItem; featured?: boolean })
 
 // ─── Main Component ───────────────────────────────────────
 
-export default function MLBHomepage({ standings, statLeaders, games, predictions, news, today, fantasyPicks, fantasyIsStale }: Props) {
+export default function MLBHomepage({ standings, statLeaders, games, predictions, news, today, fantasyPicks, fantasyIsStale, isPro }: Props) {
   const [activeLeague, setActiveLeague] = useState<'AL' | 'NL'>('AL')
   const [activeStat, setActiveStat] = useState(MLB_STAT_CATEGORIES[0].slug)
   const [activeGroup, setActiveGroup] = useState<'batting' | 'pitching'>('batting')
@@ -379,7 +380,7 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
       )}
 
       {/* After the games grid section, before standings */}
-<MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} />
+<MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} isPro={isPro} />
 
 
       {/* ── STANDINGS ── */}

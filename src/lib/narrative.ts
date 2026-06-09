@@ -118,7 +118,7 @@ SUMMARY (≤110 chars): One headline-style pull-quote. Name the 1-2 biggest fact
 Good: "Wheeler's filthy slider vs a Cubs lineup that can't lay off breaking balls."
 
 ═══════════════════════════════════════════
-NARRATIVE — FREE TIER (target 400-500 chars, EXACTLY 2 paragraphs separated by blank line):
+NARRATIVE — FREE TIER (target 300-400 chars, EXACTLY 2 paragraphs separated by blank line):
 The "5-minute read" version. Conversational, accessible.
 
 Paragraph 1 (2-3 sentences): The matchup story. Lead with the biggest factor. Name pitcher + key stat. One supporting fact.
@@ -172,7 +172,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
 
    const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 6000,
+      max_tokens: 7000,
       system: [
         {
           type: 'text',
