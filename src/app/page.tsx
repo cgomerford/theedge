@@ -8,7 +8,7 @@ import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import TurnstileWidget from '@/components/TurnstileWidget'
 import { getActiveSport, SPORT_LABELS, SPORT_HUB_PATH } from '@/lib/active-sport'
-
+import SignupForm from '@/components/SignupForm'
 export const revalidate = 1800
 
 type Props = {
@@ -73,22 +73,7 @@ export default async function HomePage({ searchParams }: Props) {
           <span className="bg-stone-100 text-stone-600 px-3 py-1 rounded font-mono text-xs">NBA + NHL — Sept</span>
         </div>
 
-        <form id="signup" action="/api/subscribe" method="POST" className="max-w-md mb-4">
-          <input type="hidden" name="source" value="home_hero" />
-          <div className="flex gap-2 flex-col sm:flex-row mb-3">
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="your@email.com"
-              className="flex-1 px-4 py-3.5 bg-white border border-stone-300 text-stone-900 placeholder:text-stone-400 outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition shadow-sm rounded-none"
-            />
-            <button type="submit" className="px-6 py-3.5 bg-stone-900 text-white font-bold hover:bg-stone-800 transition font-mono text-[10px] uppercase tracking-widest whitespace-nowrap shadow-sm rounded-none">
-              Get free access →
-            </button>
-          </div>
-          <TurnstileWidget />
-        </form>
+     <SignupForm source="home_hero" buttonText="Get free access →" theme="light" />
 
         <div className="text-[10px] text-stone-400 font-mono mb-8 uppercase tracking-widest">
           Free forever · No spam · Unsubscribe anytime
@@ -296,24 +281,7 @@ export default async function HomePage({ searchParams }: Props) {
           <p className="text-stone-400 font-mono text-[10px] uppercase tracking-widest mb-10">
             Free tracking account · No card required · Unsubscribe anytime
           </p>
-          <form action="/api/subscribe" method="POST" className="max-w-md mx-auto">
-            <input type="hidden" name="source" value="home_footer" />
-            <div className="flex gap-2 flex-col sm:flex-row mb-4">
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="your@email.com"
-                className="flex-1 px-4 py-3.5 bg-white border border-stone-300 text-stone-900 placeholder:text-stone-400 outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition shadow-sm rounded-none"
-              />
-              <button type="submit" className="px-6 py-3.5 bg-stone-900 text-white font-bold hover:bg-stone-800 transition font-mono text-[10px] uppercase tracking-widest whitespace-nowrap shadow-sm rounded-none">
-                Setup My Dugout Dashboard →
-              </button>
-            </div>
-            <div className="flex justify-center">
-              <TurnstileWidget />
-            </div>
-          </form>
+         <SignupForm source="home_footer" buttonText="Setup My Dugout Dashboard →" theme="light" />
         </div>
       </section>
 

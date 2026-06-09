@@ -4,12 +4,13 @@ import Script from 'next/script'
 import { useEffect, useRef } from 'react'
 
 declare global {
-  interface Window {
-    turnstile?: {
-      render: (selector: string | HTMLElement, options: object) => string
-      reset: (widgetId?: string) => void
-      remove: (widgetId?: string) => void
-    }
+ interface Window {
+  turnstile?: {
+    render: (selector: string | HTMLElement, options: object) => string
+    getResponse: (widgetId?: string) => string | undefined
+    reset: (widgetId?: string) => void
+    remove: (widgetId?: string) => void
+  }
     onTurnstileLoad?: () => void
   }
 }
