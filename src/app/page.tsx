@@ -113,11 +113,7 @@ export default async function HomePage({ searchParams }: Props) {
                     </div>
                     <div className="flex items-center gap-2 mb-4">
                 
-                      <span className="text-[10px] font-mono text-stone-500">
-                        favours <span className="font-bold text-stone-900">
-                          {shortName(featuredEdge.pred!.predicted_winner === 'home' ? featuredEdge.game.teams.home.team.name : featuredEdge.game.teams.away.team.name)}
-                        </span>
-                      </span>
+                  
                     </div>
                     {featuredEdge.pred!.summary && (
                       <p className="font-serif italic text-stone-600 leading-relaxed text-sm line-clamp-4 mb-5">
