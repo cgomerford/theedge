@@ -3,18 +3,40 @@
 /**
  * src/components/SignupForm.tsx
  *
- * Client-side signup form with Turnstile CAPTCHA.
- * Intercepts submit, waits for the Turnstile token, then POSTs as JSON
- * so the token is always present in the request body.
- *
- * Replaces the raw <form method="POST"> on the homepage which was
- * submitting before Turnstile had a chance to inject the token.
+ * Fixes:
+ * 1. Multiple instances on same page — uses a global registry instead of
+ *    overwriting window.onTurnstileLoad
+ * 2. Race condition — polls for window.turnstile if script already loaded
+ * 3. Cleanup on unmount
  */
 
 import { useState, useRef, useEffect } from 'react'
 import Script from 'next/script'
 
+// ─── Global Turnstile registry ────────────────────────────────────────────────
+// Allows multiple SignupForm instances on the same page without overwriting
+// each other's onTurnstileLoad callback.
 
+declare global {
+  interface Window {
+    _turnstileCallbacks?: Set<() => void>
+    onTurnstileLoad?: () => void
+  }
+}
+
+function registerTurnstileCallback(cb: () => void) {
+  if (!window._turnstileCallbacks) {
+    window._turnstileCallbacks = new Set()
+    // Wire the global callback once
+    window.onTurnstileLoad = () => {
+      window._turnstileCallbacks?.forEach(fn => fn())
+    }
+  }
+  window._turnstileCallbacks.add(cb)
+  return () => window._turnstileCallbacks?.delete(cb)
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = 'idle' | 'loading' | 'success' | 'error' | 'rate-limit' | 'already-subscribed'
 
@@ -24,34 +46,70 @@ type Props = {
   theme?: 'light' | 'dark' | 'auto'
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function SignupForm({
   source = 'home_hero',
   buttonText = 'Get free access →',
   theme = 'light',
 }: Props) {
-  const [email, setEmail] = useState('')
+  const [email, setEmail]   = useState('')
   const [status, setStatus] = useState<Status>('idle')
-  const widgetRef = useRef<HTMLDivElement>(null)
+  const widgetRef   = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
+  const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Render Turnstile widget once script loads
   const tryRender = () => {
-    if (!window.turnstile || !widgetRef.current || widgetIdRef.current) return
+    // Already rendered or container not mounted yet
+    if (widgetIdRef.current || !widgetRef.current) return
+    // Turnstile script not ready yet
+    if (!window.turnstile) return
+
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-    if (!siteKey) { console.error('NEXT_PUBLIC_TURNSTILE_SITE_KEY not set'); return }
+    if (!siteKey) {
+      console.error('[SignupForm] NEXT_PUBLIC_TURNSTILE_SITE_KEY not set')
+      return
+    }
+
     widgetIdRef.current = window.turnstile.render(widgetRef.current, {
       sitekey: siteKey,
       theme,
       appearance: 'always',
     })
+
+    // Widget rendered — stop polling
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
   }
 
   useEffect(() => {
+    // 1. Try immediately — script may already be loaded
     tryRender()
-    window.onTurnstileLoad = tryRender
+
+    // 2. Register in global callback set for when script loads
+    const unregister = registerTurnstileCallback(tryRender)
+
+    // 3. Poll as fallback (handles edge cases where callback fires before
+    //    React has mounted the div)
+    pollRef.current = setInterval(tryRender, 200)
+
+    // Stop polling after 10 seconds regardless
+    const timeout = setTimeout(() => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }, 10_000)
+
     return () => {
+      unregister()
+      if (pollRef.current) clearInterval(pollRef.current)
+      clearTimeout(timeout)
       if (widgetIdRef.current && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current) } catch {}
+        widgetIdRef.current = null
       }
     }
   }, [theme])
@@ -60,7 +118,6 @@ export default function SignupForm({
     e.preventDefault()
     setStatus('loading')
 
-    // Get Turnstile token
     const token = widgetIdRef.current
       ? window.turnstile?.getResponse(widgetIdRef.current)
       : undefined
@@ -82,16 +139,11 @@ export default function SignupForm({
         }),
       })
 
-      // API redirects on success/failure — check the final URL
       if (res.redirected) {
         const url = new URL(res.url)
-        const checkEmail = url.searchParams.get('check-email')
-        const alreadySub  = url.searchParams.get('already-subscribed')
-        const error       = url.searchParams.get('error')
-
-        if (checkEmail)  { setStatus('success'); return }
-        if (alreadySub)  { setStatus('already-subscribed'); return }
-        if (error === 'rate-limit') { setStatus('rate-limit'); return }
+        if (url.searchParams.get('check-email'))        { setStatus('success');            return }
+        if (url.searchParams.get('already-subscribed')) { setStatus('already-subscribed'); return }
+        if (url.searchParams.get('error') === 'rate-limit') { setStatus('rate-limit');     return }
         setStatus('error')
       } else if (res.ok) {
         setStatus('success')
@@ -104,6 +156,8 @@ export default function SignupForm({
 
     if (widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current)
   }
+
+  // ── Success / already-subscribed states ───────────────────────────────────
 
   if (status === 'success') {
     return (
@@ -136,13 +190,14 @@ export default function SignupForm({
     )
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────────
+
   return (
     <>
+      {/* Only load the script once — Next.js deduplicates by src */}
       <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad"
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit"
         strategy="afterInteractive"
-        async
-        defer
       />
 
       <form onSubmit={handleSubmit} className="max-w-md mb-4">
@@ -165,10 +220,9 @@ export default function SignupForm({
           </button>
         </div>
 
-        {/* Turnstile widget */}
+        {/* Turnstile mounts here */}
         <div ref={widgetRef} className="my-3" />
 
-        {/* Error states */}
         {status === 'error' && (
           <p className="font-mono text-[10px] text-red-600 uppercase tracking-widest mt-2">
             Something went wrong — please try again.
