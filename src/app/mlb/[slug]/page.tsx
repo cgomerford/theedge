@@ -78,7 +78,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? true // TEMP: default to true during development
+  const isPro = subscriber?.is_pro ?? false // TEMP: default to true during development
   const isSignedIn = subscriber !== null
   
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
