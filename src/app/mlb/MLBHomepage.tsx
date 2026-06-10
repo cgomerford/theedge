@@ -1,4 +1,3 @@
-// src/app/mlb/MLBHomepage.tsx
 'use client'
 
 import { useState } from 'react'
@@ -11,7 +10,6 @@ import { findTeamByName } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
 import MLBFantasySection from '@/components/MLBFantasySection'
 import type { FantasyPicksByType } from '@/lib/fantasy'
-
 
 type Props = {
   standings: MLBDivisionStandings[]
@@ -65,35 +63,15 @@ function edgeBg(score: number): string {
 
 // ─── Today's Game Card ────────────────────────────────────
 
-// Tier display helpers — no raw numbers, ever
-function tierLabel(tier: string): string {
-  if (tier === 'strong')   return 'Strong edge'
-  if (tier === 'moderate') return 'Moderate edge'
-  if (tier === 'slight')   return 'Slight edge'
-  return 'Toss-up'
-}
-
-function tierStyles(tier: string): { color: string; bg: string; border: string } {
-  if (tier === 'strong')   return { color: '#ea580c', bg: 'rgba(234,88,12,0.08)',  border: 'rgba(234,88,12,0.3)' }
-  if (tier === 'moderate') return { color: '#ca8a04', bg: 'rgba(202,138,4,0.08)',  border: 'rgba(202,138,4,0.3)' }
-  if (tier === 'slight')   return { color: '#78716c', bg: 'rgba(120,113,108,0.08)', border: 'rgba(120,113,108,0.2)' }
-  return { color: '#a8a29e', bg: 'transparent', border: 'transparent' }
-}
-
 function GameCard({ game, prediction }: { game: MLBGame; prediction?: EdgePrediction }) {
   const slug = slugifyGame(game)
   const awayName = shortName(game.teams.away.team.name)
   const homeName = shortName(game.teams.home.team.name)
   const gameTime = formatGameTime(game.gameDate)
 
-  const tier = prediction?.confidence_tier ?? null
-  const winner = prediction?.predicted_winner ?? null
   const summary = prediction?.summary ?? null
   const isLive = game.status.abstractGameState === 'Live'
   const isFinal = game.status.abstractGameState === 'Final'
-
-  const winnerName = winner === 'home' ? homeName : winner === 'away' ? awayName : null
-  const ts = tier ? tierStyles(tier) : null
 
   const cardClass = 'block bg-white border border-stone-200 rounded-lg p-4 hover:border-stone-300 hover:shadow-sm transition group'
 
@@ -115,21 +93,6 @@ function GameCard({ game, prediction }: { game: MLBGame; prediction?: EdgePredic
         />
         <span className="text-sm font-semibold text-stone-900">{homeName}</span>
       </div>
-
-      {/* Tier badge + winner */}
-      {tier && tier !== 'tossup' && winnerName && ts && (
-        <div className="flex items-center gap-2 mb-2">
-          <span
-            className="text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border"
-            style={{ color: ts.color, background: ts.bg, borderColor: ts.border }}
-          >
-            {tierLabel(tier)}
-          </span>
-          <span className="text-xs font-mono text-stone-400">
-            favours <span className="font-bold text-stone-700">{winnerName}</span>
-          </span>
-        </div>
-      )}
 
       {/* Narrative summary */}
       {summary && (
@@ -161,7 +124,6 @@ function GameCard({ game, prediction }: { game: MLBGame; prediction?: EdgePredic
   )
 }
 
-
 function DivisionTable({ division }: { division: MLBDivisionStandings }) {
   const leagueColor = division.league === 'AL' ? '#003087' : '#BA0021'
   const divShort = division.division.replace(/^(AL|NL)\s+/, '')
@@ -190,7 +152,7 @@ function DivisionTable({ division }: { division: MLBDivisionStandings }) {
           <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 w-8 text-right">GB</span>
         </div>
 
-{division.teams.map((team, i) => {
+        {division.teams.map((team, i) => {
           const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
           return (
             <Link
@@ -307,11 +269,10 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
   const groupCats = MLB_STAT_CATEGORIES.filter(c => c.group === activeGroup)
 
   // Top edges today — sort by absolute edge score
- const edgeGames = [...games]
+  const edgeGames = [...games]
     .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
     .filter(({ pred }) => pred && pred.edge_score !== null)
     .sort((a, b) => Math.abs(b.pred!.edge_score!) - Math.abs(a.pred!.edge_score!))
-
 
   const pendingGames = [...games]
     .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
@@ -333,7 +294,7 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
         </p>
       </div>
 
-{/* ── TODAY'S FULL SLATE ── */}
+      {/* ── TODAY'S FULL SLATE ── */}
       {games.length > 0 && (
         <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
@@ -380,8 +341,7 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
       )}
 
       {/* After the games grid section, before standings */}
-<MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} isPro={isPro} />
-
+      <MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} isPro={isPro} />
 
       {/* ── STANDINGS ── */}
       <section className="mb-12">
@@ -471,7 +431,6 @@ export default function MLBHomepage({ standings, statLeaders, games, predictions
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {news.map((item, i) => (
               <NewsCard key={item.id} item={item} featured={i === 0} />
-              
             ))}
           </div>
         )}

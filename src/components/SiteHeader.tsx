@@ -26,7 +26,7 @@ const MLB_DIVISIONS = [
 const MLB_SUB_LINKS = [
   { href: '/mlb', label: 'Home' },
   { href: '/mlb/scores', label: 'Scores & Matchups' },
-  { href: '/fantasy', label: 'Fantasy Desk' },
+  { href: '/fantasy', label: 'Fantasy Desk', proFeature: true },
   { href: '/mlb/standings', label: 'Standings' },
 ]
 
@@ -42,12 +42,18 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
       className="absolute top-full left-0 right-0 bg-white border-b border-stone-200 shadow-xl z-50"
       onMouseLeave={onClose}
     >
+  {/* Sub-nav Bar */}
       <div className="border-b border-stone-100 bg-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center gap-8 h-12">
           {MLB_SUB_LINKS.map(link => (
             <Link key={link.href} href={link.href} onClick={onClose}
-              className="font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
+              className="group flex items-center gap-1.5 font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
               {link.label}
+              {link.proFeature && (
+                <span className="text-[9px] font-mono uppercase tracking-widest bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-sm group-hover:bg-[#FF5722]/10 group-hover:text-[#FF5722] transition">
+                  Pro
+                </span>
+              )}
             </Link>
           ))}
         </div>
