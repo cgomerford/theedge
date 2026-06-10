@@ -1,382 +1,162 @@
 // src/app/track-record/page.tsx
 //
-// PUBLIC FACTOR ALIGNMENT PAGE
+// HISTORICAL ARCHIVE PAGE
 //
-// Shows how often game outcomes match the factor lean — NOT "prediction accuracy."
-// Every word on this page has been chosen to avoid betting/tipping language.
-//
-// Banned words: prediction, accuracy, correct, incorrect, pick, bet, lock, odds.
-// Preferred: factor, alignment, lean, outcome, matched, reviewed, observed.
+// Displays the pre-game factor analysis side-by-side with the actual final box score.
+// Uses neutral terminology ("Factor Lean") and neutral colors to maintain an objective, 
+// non-betting data terminal aesthetic.
 
 import { Metadata } from 'next'
 import Link from 'next/link'
-import {
-  getOverallStats,
-  getFactorBracketStats,
-  getLeadingFactorStats,
-  getRecentReads,
-} from '@/lib/track-record'
+import { getRecentReads } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
-
 
 export const revalidate = 1800
 
 export const metadata: Metadata = {
-  title: 'Factor Alignment · The Edge',
+  title: 'Historical Archive · The Edge',
   description:
-    'Public record of how The Edge\'s 8-factor model aligns with game outcomes. Transparent, auto-reviewed, information only.',
+    'Review past slates. Compare our pre-game structural analysis alongside actual game outcomes. Raw data, pure transparency.',
 }
 
-export default async function TrackRecordPage() {
-  const [overall, brackets, leaders, recent] = await Promise.all([
-    getOverallStats(),
-    getFactorBracketStats(),
-    getLeadingFactorStats(),
-    getRecentReads(20),
-  ])
+export default async function HistoricalArchivePage() {
+  const recent = await getRecentReads(50)
 
   return (
-    <main className="min-h-screen bg-[#FAF8F3]">
+    <main className="min-h-screen bg-[#fafaf9]">
       <SiteHeader />
-    
 
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
         {/* ════════════════════════════════════════════════
-            HERO
+            HERO & DISCLAIMER
             ════════════════════════════════════════════════ */}
-        <header className="mb-12">
-          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-2">
-            — Factor alignment · public record
+        <header className="mb-10">
+          <div className="text-[#ea580c] text-[10px] font-mono uppercase tracking-widest mb-3">
+            — Historical Data Archive
           </div>
           <h1
-            className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-4"
+            className="text-4xl md:text-5xl font-bold text-stone-900 mb-5 tracking-tight"
             style={{ fontFamily: 'Fraunces, serif' }}
           >
-            Where the factors pointed{' '}
-            <em className="text-[#FF5722]">— and what happened.</em>
+            The Archive.
           </h1>
-          <p className="text-base md:text-lg text-[#4A4A4A] leading-relaxed max-w-2xl">
-            Every game, 8 factors lean one way or another. We log them all, then
-            check whether the outcome followed. No cherry-picking, no hiding
-            misses. Information only.
+          <p className="text-base md:text-lg text-stone-500 leading-relaxed max-w-2xl font-serif italic mb-8">
+            We don&apos;t hide our math. Below is a raw log of recent matchups, showing exactly where our 8-factor model identified a structural lean at 10:00 AM ET, side-by-side with the final box score. 
           </p>
+
+          <div className="bg-stone-100 border border-stone-200 rounded-lg p-4 md:p-5">
+            <h2 className="text-[9px] font-mono text-stone-500 uppercase tracking-widest mb-1 font-bold">
+              Information Only
+            </h2>
+            <p className="text-xs text-stone-500 leading-relaxed font-serif">
+              This archive is provided for research and transparency purposes. The Edge provides statistical analysis only. We do not aggregate "win rates" because this is not a tipster service. Users bear sole responsibility for any actions taken using our historical or current data.
+            </p>
+          </div>
         </header>
 
         {/* ════════════════════════════════════════════════
-            OVERALL ALIGNMENT
+            GAME LOGS (NEUTRAL SIDE-BY-SIDE UI)
             ════════════════════════════════════════════════ */}
-        <section className="bg-[#1A1A1A] rounded-lg p-6 md:p-8 mb-8 text-[#FAF8F3]">
-          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-            ⊕ Overall factor alignment
-          </div>
-
-          {overall.insufficient_sample ? (
-            <div>
-              <div
-                className="text-2xl md:text-3xl font-bold mb-3"
-                style={{ fontFamily: 'Fraunces, serif' }}
-              >
-                Building the record — too early to publish
-              </div>
-              <p className="text-[#FAF8F3]/80 leading-relaxed mb-4">
-                We&apos;re logging every game and reviewing outcomes as results
-                come in. So far:{' '}
-                <strong>{overall.total_reviewed} games reviewed</strong>
-                {overall.date_range_start &&
-                  ` since ${formatDate(overall.date_range_start)}`}
-                . We need at least {100} before publishing alignment rates —
-                small samples mislead.
-              </p>
-              <p className="text-[#FAF8F3]/60 text-sm">
-                Check back as the sample grows. The factors are being logged
-                right now, and every game will be reviewed.
-              </p>
+        <section className="space-y-6 mb-12">
+          {recent.length === 0 ? (
+            <div className="text-center py-12 border border-stone-200 rounded-xl bg-white">
+              <p className="font-serif italic text-stone-400">Archive is currently building. Check back soon.</p>
             </div>
           ) : (
-            <div>
-              <div
-                className="text-4xl md:text-5xl font-bold mb-2"
-                style={{ fontFamily: 'Fraunces, serif' }}
-              >
-                {overall.alignment_percent?.toFixed(1)}%{' '}
-                <span className="text-lg md:text-xl font-normal text-[#FAF8F3]/60">
-                  alignment
-                </span>
-              </div>
-              <p className="text-[#FAF8F3]/80 leading-relaxed">
-                When the majority of 8 factors lean one way, the outcome has
-                matched{' '}
-                <strong>
-                  {overall.alignment_percent?.toFixed(1)}% of the time
-                </strong>{' '}
-                across {overall.total_reviewed} reviewed games
-                {overall.date_range_start &&
-                  ` (${formatDate(overall.date_range_start)} – ${formatDate(overall.date_range_end!)})`}
-                .
-              </p>
-            </div>
+            recent.map((r, i) => {
+              const leanTeam =
+                r.factor_lean === 'home'
+                  ? r.home_team
+                  : r.factor_lean === 'away'
+                    ? r.away_team
+                    : null
+              
+              const winnerTeam =
+                r.actual_winner === 'home' ? r.home_team : r.away_team
+
+              return (
+                <div key={`${r.game_pk}-${i}`} className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm hover:border-stone-300 transition">
+                  
+                  {/* Card Header: Matchup & Date */}
+                  <div className="bg-[#fafaf9] px-5 py-3 border-b border-stone-200 flex justify-between items-center">
+                    <span className="font-bold text-sm text-stone-900 tracking-wide">
+                      {r.away_team} <span className="text-stone-400 font-mono text-xs mx-1">@</span> {r.home_team}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-stone-400">
+                      {formatDate(r.game_date)}
+                    </span>
+                  </div>
+
+                  {/* Card Body: Pre-Game vs Outcome */}
+                  <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-stone-200">
+                    
+                    {/* Left: Pre-Game Analysis */}
+                    <div className="p-5 flex flex-col justify-center bg-white">
+                      <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
+                        Pre-Game Data
+                      </div>
+                      {r.factor_lean === 'split' ? (
+                        <div>
+                          <div className="text-sm font-serif font-bold text-stone-800">
+                            Factors evenly split
+                          </div>
+                          <div className="text-xs text-stone-500 mt-1 font-serif italic">
+                            No clear structural lean identified.
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-sm font-serif font-bold text-stone-900">
+                            Factor Lean: <span className="text-stone-900">{leanTeam}</span>
+                          </div>
+                          <div className="text-xs text-stone-500 mt-1 font-serif italic">
+                            {r.lean_factors} of 8 factors favoured the {r.factor_lean} side.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Final Outcome */}
+                    <div className="p-5 flex flex-col justify-center bg-[#fafaf9]">
+                      <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
+                        Final Outcome
+                      </div>
+                      {r.away_score != null && r.home_score != null ? (
+                        <div>
+                          <div className="text-sm font-mono font-bold text-stone-900 mb-1">
+                            <span>{r.away_team} {r.away_score}</span>
+                            <span className="text-stone-300 mx-1.5">—</span>
+                            <span>{r.home_score} {r.home_team}</span>
+                          </div>
+                          <div className="text-xs text-stone-500 font-serif italic">
+                            Winner: <span className="font-semibold text-stone-700">{winnerTeam}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm font-serif italic text-stone-400">
+                          Game pending or postponed
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              )
+            })
           )}
         </section>
 
         {/* ════════════════════════════════════════════════
-            FACTOR BRACKET BREAKDOWN
+            FOOTER CTA
             ════════════════════════════════════════════════ */}
-        <section className="mb-8">
-          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-            § Factor count vs outcome
-          </div>
-          <p
-            className="text-sm text-[#4A4A4A] mb-6 max-w-xl"
-            style={{ fontFamily: 'Fraunces, serif' }}
-          >
-            The more factors that agree, the more often the outcome follows. Here&apos;s
-            the breakdown by how many of 8 factors leaned the same way.
-          </p>
-
-          <div className="space-y-3">
-            {brackets.map((b) => (
-              <div
-                key={b.label}
-                className="bg-white border border-[#E7E1D6] rounded-lg p-5"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className="font-mono text-xs uppercase tracking-wider text-[#1A1A1A]"
-                    style={{ letterSpacing: '0.08em' }}
-                  >
-                    {b.label}
-                  </span>
-                  <span className="font-mono text-xs text-[#A3A3A3]">
-                    {b.games} games
-                  </span>
-                </div>
-
-                {/* Alignment bar */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-3 bg-[#F0EDE6] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${b.alignment_percent ?? 0}%`,
-                        background:
-                          b.min_factors >= 7
-                            ? '#FF5722'
-                            : b.min_factors >= 5
-                              ? '#FDE047'
-                              : '#A3A3A3',
-                      }}
-                    />
-                  </div>
-                  <span
-                    className="font-mono text-sm font-bold min-w-[48px] text-right"
-                    style={{
-                      color:
-                        b.min_factors >= 7
-                          ? '#FF5722'
-                          : b.min_factors >= 5
-                            ? '#8a6d00'
-                            : '#777',
-                    }}
-                  >
-                    {b.alignment_percent !== null
-                      ? `${b.alignment_percent.toFixed(0)}%`
-                      : '—'}
-                  </span>
-                </div>
-
-                <div className="mt-2 font-mono text-[10px] text-[#A3A3A3]">
-                  Outcome matched in {b.matched} of {b.games} reviewed games
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════════
-            LEADING FACTOR
-            ════════════════════════════════════════════════ */}
-        {leaders.length > 0 && (
-          <section className="mb-8">
-            <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-              § When each factor led the read
-            </div>
-            <p
-              className="text-sm text-[#4A4A4A] mb-6 max-w-xl"
-              style={{ fontFamily: 'Fraunces, serif' }}
-            >
-              Which factor had the highest magnitude in a given game — and when
-              it led, how often did the outcome follow?
-            </p>
-
-            <div className="bg-white border border-[#E7E1D6] rounded-lg overflow-hidden">
-              {leaders.map((f, i) => (
-                <div
-                  key={f.factor_key}
-                  className={`flex items-center justify-between px-5 py-4 ${
-                    i < leaders.length - 1 ? 'border-b border-[#F0EDE6]' : ''
-                  }`}
-                >
-                  <div>
-                    <span className="font-mono text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">
-                      {f.factor_label}
-                    </span>
-                    <span className="font-mono text-[10px] text-[#A3A3A3] ml-2">
-                      led in {f.games_led} games
-                    </span>
-                  </div>
-                  <span
-                    className="font-mono text-sm font-bold"
-                    style={{
-                      color:
-                        (f.alignment_percent ?? 0) >= 65
-                          ? '#FF5722'
-                          : (f.alignment_percent ?? 0) >= 55
-                            ? '#8a6d00'
-                            : '#777',
-                    }}
-                  >
-                    {f.alignment_percent !== null
-                      ? `${f.alignment_percent.toFixed(0)}%`
-                      : '—'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ════════════════════════════════════════════════
-            RECENT READS
-            ════════════════════════════════════════════════ */}
-        {recent.length > 0 && (
-          <section className="mb-8">
-            <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-              § Recent games reviewed
-            </div>
-
-            <div className="bg-white border border-[#E7E1D6] rounded-lg overflow-hidden">
-              {recent.map((r, i) => {
-                const leanTeam =
-                  r.factor_lean === 'home'
-                    ? r.home_team
-                    : r.factor_lean === 'away'
-                      ? r.away_team
-                      : null
-                const winnerTeam =
-                  r.actual_winner === 'home' ? r.home_team : r.away_team
-
-                return (
-                  <div
-                    key={`${r.game_pk}-${i}`}
-                    className={`px-5 py-4 ${
-                      i < recent.length - 1 ? 'border-b border-[#F0EDE6]' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      {/* Teams + date */}
-                      <div>
-                        <span className="text-sm font-bold text-[#1A1A1A]">
-                          {r.away_team} @ {r.home_team}
-                        </span>
-                        <span className="font-mono text-[10px] text-[#A3A3A3] ml-2">
-                          {formatDate(r.game_date)}
-                        </span>
-                      </div>
-
-                      {/* Score */}
-                      {r.away_score != null && r.home_score != null && (
-                        <span className="font-mono text-xs text-[#A3A3A3]">
-                          {r.away_score}–{r.home_score}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Factor lean + outcome */}
-                    <div className="mt-1 font-mono text-[11px]">
-                      {r.factor_lean === 'split' ? (
-                        <span className="text-[#A3A3A3]">
-                          Factors split · {winnerTeam} won
-                        </span>
-                      ) : (
-                        <span>
-                          <span className="text-[#1A1A1A]">
-                            {r.lean_factors} of 8 factors → {leanTeam}
-                          </span>
-                          <span className="mx-1 text-[#A3A3A3]">·</span>
-                          <span
-                            style={{
-                              color: r.outcome_matched
-                                ? '#2E7D52'
-                                : '#B0A99A',
-                            }}
-                          >
-                            {r.outcome_matched
-                              ? `${winnerTeam} won ✓`
-                              : `${winnerTeam} won`}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ════════════════════════════════════════════════
-            METHODOLOGY
-            ════════════════════════════════════════════════ */}
-        <section className="bg-white border border-[#E7E1D6] rounded-lg p-6 md:p-8 mb-8">
-          <div className="text-[#FF5722] text-xs font-mono uppercase tracking-wider mb-4">
-            § How this works
-          </div>
-          <div
-            className="space-y-3 text-sm text-[#4A4A4A] leading-relaxed"
-            style={{ fontFamily: 'Fraunces, serif' }}
-          >
-            <p>
-              <strong>8 factors, every game.</strong> Starting pitching, bullpen,
-              offensive form, pitch matchups, park factor, weather, defense, and
-              rest/travel. Each is scored independently — positive means the home
-              side has the edge in that factor, negative means the away side
-              does.
-            </p>
-            <p>
-              <strong>A factor &ldquo;leans&rdquo; when it crosses ±5.</strong>{' '}
-              Below that threshold, the factor is too close to call and counts as
-              neutral. Above it, the factor favours one side. We count how many
-              of 8 factors lean the same direction — that&apos;s the &ldquo;factor
-              count.&rdquo;
-            </p>
-            <p>
-              <strong>Auto-reviewed.</strong> Each morning, yesterday&apos;s results are
-              pulled from the MLB Stats API and compared to the factor lean.
-              Nothing is hand-picked or edited after the fact.
-            </p>
-            <p>
-              <strong>What this is not.</strong> This is not a tipping record and
-              not a measure of betting performance. Factors describe the
-              analytical landscape of a game — they don&apos;t account for run lines,
-              totals, or market prices. This page exists for one reason:
-              transparency.
-            </p>
-            <p className="text-xs italic pt-2">
-              Open any game preview and tap &ldquo;See the factors&rdquo; to see
-              how each component is scored.
-            </p>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════════
-            FOOTER LINK
-            ════════════════════════════════════════════════ */}
-        <div className="text-center pb-12">
+        <div className="text-center pb-12 border-t border-stone-200 pt-10">
+          <h3 className="text-xl font-serif font-bold text-stone-900 mb-3">Stop looking backward.</h3>
+          <p className="text-stone-500 font-serif italic mb-6">See where the structural leans lie for tonight's slate.</p>
           <Link
-            href="/"
-            className="text-sm font-mono uppercase tracking-wider text-[#FF5722] hover:underline"
+            href="/mlb"
+            className="inline-block bg-[#ea580c] text-white px-8 py-3 text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-orange-700 transition"
           >
-            ← Back to today&apos;s games
+            View Today&apos;s Games →
           </Link>
         </div>
       </div>
