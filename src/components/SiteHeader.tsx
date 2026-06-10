@@ -28,6 +28,7 @@ const MLB_SUB_LINKS = [
   { href: '/mlb/scores', label: 'Scores & Matchups' },
   { href: '/fantasy', label: 'Fantasy Desk', proFeature: true },
   { href: '/mlb/standings', label: 'Standings' },
+  {href: '/track-record', label: 'Past Games    ' },
 ]
 
 // ─── MLB Mega Panel ───────────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
           { href: '/about', label: 'About', sub: '' },
           { href: '/why-edge', label: 'Why The Edge', sub: '' },
           { href: '/pricing', label: 'Pricing', sub: '' },
+          {href: '/track-record', label: 'Past Games', sub: '' },
         ].map(link => (
           <Link key={link.href} href={link.href} onClick={onClose}
             className="flex items-center justify-between py-3.5 border-b border-[#2A2A28] group">
@@ -279,6 +281,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
                 <Link href="/about" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">About</Link>
                 <Link href="/why-edge" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Why the Edge</Link>
                 <Link href="/pricing" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Pricing</Link>
+                <Link href="/track-record" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Past Games</Link>
               </nav>
             </div>
 

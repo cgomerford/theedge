@@ -4,14 +4,28 @@ import Link from 'next/link'
 import type { Team } from '@/lib/teams'
 import type { MLBTeamRecord, MLBNextGame, MLBTeamLeader, MLBNewsItem } from '@/lib/mlb-homepage'
 
+// Match the exact same interface structure here
+interface ExtendedNextGame extends MLBNextGame {
+  status?: { abstractGameState: string }
+  teams?: {
+    away?: { score?: number }
+    home?: { score?: number }
+  }
+  linescore?: {
+    inningState?: string
+    currentInningOrdinal?: string
+  }
+}
+
 type Props = {
   team: Team
   record: MLBTeamRecord | null
-  nextGame: MLBNextGame | null
+  nextGame: ExtendedNextGame | null // Apply the updated type here
   leaders: MLBTeamLeader[]
   news: MLBNewsItem[]
 }
 
+// ... rest of your TeamMiniDugout implementation remains exactly the same!
 function timeAgo(iso: string): string {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
@@ -45,6 +59,14 @@ export default function TeamMiniDugout({ team, record, nextGame, leaders, news }
 
   const headshotUrl = (personId: number) =>
     `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${personId}/headshot/67/current`
+
+  // ─── Live Game State Logic ───
+  const isLive = nextGame?.status?.abstractGameState === 'Live'
+  const isFinal = nextGame?.status?.abstractGameState === 'Final'
+  const hasScores = isLive || isFinal
+
+  const myScore = nextGame?.isHome ? nextGame?.teams?.home?.score : nextGame?.teams?.away?.score
+  const oppScore = nextGame?.isHome ? nextGame?.teams?.away?.score : nextGame?.teams?.home?.score
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 pb-16">
@@ -128,20 +150,52 @@ export default function TeamMiniDugout({ team, record, nextGame, leaders, news }
           </div>
         )}
 
-        {/* ── Next game ── */}
+        {/* ── Next game (or Live Game) ── */}
         <div className="bg-white border border-stone-200 rounded-lg p-5">
           <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-4">
-            ⊕ Next game
+            ⊕ {isLive ? 'Live Game' : isFinal ? 'Previous Game' : 'Next game'}
           </div>
           {nextGame ? (
             <div>
-              <div className="text-[10px] font-mono uppercase text-stone-400 mb-1">
-                {formatGameDate(nextGame.gameDate)} · {formatGameTime(nextGame.gameTime)} ET
+              {/* Status Header */}
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-[10px] font-mono uppercase text-stone-400">
+                  {formatGameDate(nextGame.gameDate)} · <span suppressHydrationWarning>{formatGameTime(nextGame.gameTime)} ET</span>
+                </div>
+                {isLive && (
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded animate-pulse">
+                    Live {nextGame.linescore?.inningState} {nextGame.linescore?.currentInningOrdinal}
+                  </span>
+                )}
+                {isFinal && (
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 border border-stone-200 px-1.5 py-0.5 rounded">
+                    Final
+                  </span>
+                )}
               </div>
-              <div className="font-serif text-2xl font-light text-stone-900 mb-1">
-                {nextGame.isHome ? 'vs' : '@'}{' '}
-                <span className="font-bold">{shortName(nextGame.opponent)}</span>
-              </div>
+
+              {/* Dynamic Matchup vs Scoreboard */}
+              {hasScores ? (
+                <div className="flex items-center gap-3 mb-2 mt-1">
+                  {/* Current Team */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-2xl font-bold text-stone-900">{shortName(team.name)}</span>
+                    <span className="font-mono text-xl font-bold bg-stone-100 text-stone-700 px-2 rounded border border-stone-200">{myScore ?? 0}</span>
+                  </div>
+                  <span className="text-stone-300 font-mono text-sm">{nextGame.isHome ? 'vs' : '@'}</span>
+                  {/* Opponent */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-2xl font-light text-stone-600">{shortName(nextGame.opponent)}</span>
+                    <span className="font-mono text-xl font-bold bg-stone-100 text-stone-700 px-2 rounded border border-stone-200">{oppScore ?? 0}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="font-serif text-2xl font-light text-stone-900 mb-1">
+                  {nextGame.isHome ? 'vs' : '@'}{' '}
+                  <span className="font-bold">{shortName(nextGame.opponent)}</span>
+                </div>
+              )}
+
               <div className="text-xs font-mono text-stone-400 mb-4">{nextGame.venue}</div>
               <Link
                 href={`/mlb/${nextGame.slug}`}

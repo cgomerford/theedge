@@ -34,14 +34,14 @@ import ProLockOverlay from '@/components/ProLockOverlay'
 import FantasyTabContent from '@/components/FantasyTabContent'
 import { getInlineCalibration } from '@/lib/track-record'
 import InlineCalibration from '@/components/InlineCalibration'
-export const revalidate = 1800
+
+// Refresh every 60s so live scores stay current
+export const revalidate = 60
 
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  // Try to pull real team names from the slug for a better title
-  // slug format: away-team-at-home-team-YYYY-MM-DD
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   const dateStr = dateMatch?.[1] ?? ''
   const matchup = slug
@@ -49,28 +49,16 @@ export async function generateMetadata({ params }: Props) {
     .replace(/-at-/, ' at ')
     .replace(/-/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
-
   const displayDate = dateStr
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : ''
-
   const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · The Edge`
   const description = `Pre-game analysis, Edge Score, and data-driven read for ${matchup}. Starting pitchers, lineups, and what the numbers say.`
-
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: 'article',
-      url: `https://edgereportdaily.com/mlb/${slug}`,
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-    },
+    openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}` },
+    twitter: { card: 'summary_large_image', title, description },
   }
 }
 
@@ -78,42 +66,76 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false // TEMP: default to true during development
+  const isPro = subscriber?.is_pro ?? false
   const isSignedIn = subscriber !== null
-  
+
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
   let game: MLBGame | null = null
+  const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
+  if (!dateMatch) notFound()
 
-  if (cached?.raw_data) {
-    game = cached.raw_data as MLBGame
-  } else {
-    const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
-    if (!dateMatch) notFound()
-    const games = await getScheduleForDate(dateMatch[1])
-    game = games.find(g => slugifyGame(g) === slug) ?? null
-    if (!game) notFound()
-
-    await supa.from('game_previews').upsert({
-      slug, league: 'mlb', game_date: dateMatch[1], home_team: game.teams.home.team.name,
-      away_team: game.teams.away.team.name, home_team_id: game.teams.home.team.id,
-      away_team_id: game.teams.away.team.id, game_time: game.gameDate, venue: game.venue?.name,
-      status: game.status?.detailedState, raw_data: game,
-    }, { onConflict: 'slug' })
+  // Always fetch fresh from MLB API to get live scores, linescore, and current status.
+  // The cache only stored pre-game state and won't have scores.
+  try {
+    const freshGames = await getScheduleForDate(dateMatch[1])
+    game = freshGames.find(g => slugifyGame(g) === slug) ?? null
+  } catch {
+    // API failure — fall back to cache
   }
 
+  // Fall back to cache if fresh fetch failed
+  if (!game && cached?.raw_data) {
+    game = cached.raw_data as MLBGame
+  }
+
+  if (!game) notFound()
+
+  // Keep cache updated with latest state
+  await supa.from('game_previews').upsert({
+    slug, league: 'mlb', game_date: dateMatch[1], home_team: game.teams.home.team.name,
+    away_team: game.teams.away.team.name, home_team_id: game.teams.home.team.id,
+    away_team_id: game.teams.away.team.id, game_time: game.gameDate, venue: game.venue?.name,
+    status: game.status?.detailedState, raw_data: game,
+  }, { onConflict: 'slug' })
+
+  // ── Live score data ──────────────────────────────────────────────────────
+  // For live/final games, fetch fresh game state directly (not from cache)
+  const gameState = game.status?.abstractGameState
+  const isLive  = gameState === 'Live'
+  const isFinal = gameState === 'Final'
+
+  // game is already fresh from the API fetch above
+  const liveGame = game as any
+
+  const liveScore = (isLive || isFinal) ? {
+    awayRuns:      liveGame.teams?.away?.score ?? 0,
+    homeRuns:      liveGame.teams?.home?.score ?? 0,
+    awayHits:      liveGame.linescore?.teams?.away?.hits,
+    homeHits:      liveGame.linescore?.teams?.home?.hits,
+    awayErrors:    liveGame.linescore?.teams?.away?.errors,
+    homeErrors:    liveGame.linescore?.teams?.home?.errors,
+    inningState:   liveGame.linescore?.inningState,
+    currentInning: liveGame.linescore?.currentInningOrdinal
+      ? `${liveGame.linescore?.inningState ?? ''} ${liveGame.linescore?.currentInningOrdinal ?? ''}`.trim()
+      : undefined,
+    isLive,
+    isFinal,
+  } : undefined
+
+  // ── Rest of data fetching ────────────────────────────────────────────────
   const prediction = await getEdgePrediction(game.gamePk)
   const calibration = prediction?.confidence_tier
-  ? await getInlineCalibration(prediction.confidence_tier)
-  : null
+    ? await getInlineCalibration(prediction.confidence_tier)
+    : null
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const venue = getVenueInfo(game.venue?.name)
   const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
 
-  // Swapped out black-box getPitchMix functions for explicit, direct Supabase selects
   const [
     awayRecentStarts, homeRecentStarts, awaySeasonStats, homeSeasonStats, weather,
-   awayPitchMix, homePitchMix,  awayForm, homeForm, awayLineup, homeLineup, awayPitcherHotZones, homePitcherHotZones,
+    awayPitchMix, homePitchMix, awayForm, homeForm, awayLineup, homeLineup,
+    awayPitcherHotZones, homePitcherHotZones,
     awayPitcherStatsRes, homePitcherStatsRes
   ] = await Promise.all([
     awayPitcherId ? getPitcherRecentStarts(awayPitcherId, 5) : Promise.resolve([]),
@@ -122,7 +144,7 @@ export default async function GamePreview({ params }: Props) {
     homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
     venue && !venue.indoor ? getGameWeather(venue.lat, venue.lon, game.gameDate) : Promise.resolve(null),
     awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
-homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
+    homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
     getTeamForm(game.teams.away.team.id),
     getTeamForm(game.teams.home.team.id),
     getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
@@ -160,21 +182,23 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
 
   const awayStreamer = awayStreamerInput ? scoreStreamer(awayStreamerInput) : null
   const homeStreamer = homeStreamerInput ? scoreStreamer(homeStreamerInput) : null
-  const topStreamer = !awayStreamer ? homeStreamer : !homeStreamer ? awayStreamer : awayStreamer.streamerScore >= homeStreamer.streamerScore ? awayStreamer : homeStreamer
+  const topStreamer = !awayStreamer ? homeStreamer : !homeStreamer ? awayStreamer
+    : awayStreamer.streamerScore >= homeStreamer.streamerScore ? awayStreamer : homeStreamer
 
   const gameDate = new Date(game.gameDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-  const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET'
+  const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
+  }) + ' ET'
 
- const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
-  prediction.components_raw as ComponentsRaw,
-  prediction.components as ComponentScores,
-  { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
-  { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
-  game.venue?.name ?? '',
-  gameTimeFormatted
-) : null
+  const tiltData = prediction?.components_raw && prediction?.components ? buildMatchupTiltData(
+    prediction.components_raw as ComponentsRaw,
+    prediction.components as ComponentScores,
+    { abbr: game.teams.home.team.abbreviation ?? 'HOME', name: shortName(game.teams.home.team.name), primaryColor: findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A', stats: homePitcherStats },
+    { abbr: game.teams.away.team.abbreviation ?? 'AWAY', name: shortName(game.teams.away.team.name), primaryColor: findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A', stats: awayPitcherStats },
+    game.venue?.name ?? '',
+    gameTimeFormatted
+  ) : null
 
-  
   return (
     <>
       <ScrollProgress />
@@ -186,19 +210,16 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
         awayTeam={game.teams.away.team.name}
         homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
         awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-        homeLogoUrl={teamLogoUrl(game.teams.home.team.id)}   
-        awayLogoUrl={teamLogoUrl(game.teams.away.team.id)}  
+        homeLogoUrl={teamLogoUrl(game.teams.home.team.id)}
+        awayLogoUrl={teamLogoUrl(game.teams.away.team.id)}
         gameTime={gameTimeFormatted}
         venue={game.venue?.name}
         isPro={isPro}
-        isSignedIn={isSignedIn} 
+        isSignedIn={isSignedIn}
+        liveScore={liveScore}
 
-        // ── 1. THE READ TAB (free — the 5-minute read) ─────────────────
-        // This is now the DEFAULT tab. MatchupTilt hero + narrative + contrarian + game intel.
-     slotRead={
+        slotRead={
           <div className="space-y-10">
-            {/* ── GAME HEADER ── */}
-       {/* ── DATE / VENUE STRIP — logos live in the sticky header now ── */}
             <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono uppercase tracking-widest text-stone-400 pb-2" suppressHydrationWarning>
               <span>{gameDate}</span>
               <span className="text-orange-400">·</span>
@@ -210,7 +231,7 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </>
               )}
             </div>
- {/* ── STORY LEAD — the hook ── */}
+
             {prediction?.story_lead && (
               <div className="border-l-[3px] border-orange-500 pl-5 py-3 bg-orange-500/[0.03] rounded-r-lg">
                 <p className="text-lg md:text-xl font-serif italic text-stone-900 leading-relaxed">
@@ -218,8 +239,7 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </p>
               </div>
             )}
-  
-             {/* ── MATCHUP TILT — the data backing up the read ── */}
+
             {prediction && tiltData && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Matchup Factors</h3>
@@ -227,32 +247,26 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
               </section>
             )}
 
-{/* ── THE READ — main narrative (MOVED UP, before data) ── */}
-   {(isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative) && (
-  <section>
-    <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Read</h3>
-    <div className="p-6 bg-white border border-stone-200 rounded-xl shadow-sm">
-      {isPro && prediction?.narrative_pro && (
-        <div className="text-[9px] font-mono uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-1.5">
-          <span>⊕</span>
-          <span>Pro Read</span>
-        </div>
-      )}
-      <p className="text-base md:text-lg font-serif text-stone-900 leading-[1.8] whitespace-pre-line">
-        {isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative}
-      </p>
-    </div>
-  </section>
-)}
-           
-            
+            {(isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative) && (
+              <section>
+                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ The Read</h3>
+                <div className="p-6 bg-white border border-stone-200 rounded-xl shadow-sm">
+                  {isPro && prediction?.narrative_pro && (
+                    <div className="text-[9px] font-mono uppercase tracking-widest text-orange-500 mb-3 flex items-center gap-1.5">
+                      <span>⊕</span><span>Pro Read</span>
+                    </div>
+                  )}
+                  <p className="text-base md:text-lg font-serif text-stone-900 leading-[1.8] whitespace-pre-line">
+                    {isPro ? (prediction?.narrative_pro ?? prediction?.narrative) : prediction?.narrative}
+                  </p>
+                </div>
+              </section>
+            )}
 
-            {/* ── KNOW BEFORE FIRST PITCH — 3 stats per team ── */}
             {(prediction?.away_stories || prediction?.home_stories) && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Know Before First Pitch</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {/* Away team stories */}
                   {prediction?.away_stories && (
                     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-3">
@@ -269,19 +283,13 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                       <div className="divide-y divide-stone-50">
                         {prediction.away_stories.map((story: { stat: string; text: string }, i: number) => (
                           <div key={i} className="px-5 py-3 flex gap-3 items-start">
-                            <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded shrink-0 mt-0.5">
-                              {story.stat}
-                            </span>
-                            <span className="text-sm font-serif text-stone-700 leading-snug">
-                              {story.text}
-                            </span>
+                            <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded shrink-0 mt-0.5">{story.stat}</span>
+                            <span className="text-sm font-serif text-stone-700 leading-snug">{story.text}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {/* Home team stories */}
                   {prediction?.home_stories && (
                     <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
                       <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-3">
@@ -298,12 +306,8 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                       <div className="divide-y divide-stone-50">
                         {prediction.home_stories.map((story: { stat: string; text: string }, i: number) => (
                           <div key={i} className="px-5 py-3 flex gap-3 items-start">
-                            <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded shrink-0 mt-0.5">
-                              {story.stat}
-                            </span>
-                            <span className="text-sm font-serif text-stone-700 leading-snug">
-                              {story.text}
-                            </span>
+                            <span className="text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded shrink-0 mt-0.5">{story.stat}</span>
+                            <span className="text-sm font-serif text-stone-700 leading-snug">{story.text}</span>
                           </div>
                         ))}
                       </div>
@@ -313,8 +317,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
               </section>
             )}
 
-         
-            {/* ── CONTRARIAN ANGLE ── */}
             {prediction?.contrarian && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-red-500 font-bold mb-4">§ The Contrarian Angle</h3>
@@ -322,32 +324,22 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
               </section>
             )}
 
-            {/* ── GAME INTEL GRID ── */}
             <section>
               <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Game Intel</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                {/* Weather — full width */}
                 {!venue?.indoor && weather ? (
                   <div className="md:col-span-2 p-5 bg-white border border-stone-200 rounded-xl flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <WeatherIcon conditions={weather.conditions} className="w-10 h-10 text-stone-400 shrink-0" />
                       <div>
-                        <div className="font-serif text-lg font-semibold text-stone-900">
-                          {weather.temp_f}°F · {weather.conditions}
-                        </div>
+                        <div className="font-serif text-lg font-semibold text-stone-900">{weather.temp_f}°F · {weather.conditions}</div>
                         <div className="text-xs font-mono text-stone-500 flex items-center gap-2 mt-0.5">
                           {weather.wind_mph > 0 && (
-                            <>
-                              <WindArrow direction={weather.wind_direction} className="w-3.5 h-3.5" />
-                              <span>{weather.wind_mph} mph</span>
-                            </>
+                            <><WindArrow direction={weather.wind_direction} className="w-3.5 h-3.5" /><span>{weather.wind_mph} mph</span></>
                           )}
                           {(() => {
                             const impact = describeWindImpact(game.venue?.name ?? '', weather.wind_direction, weather.wind_mph)
-                            return impact ? (
-                              <span className="text-orange-600 font-bold ml-1">· {impact}</span>
-                            ) : null
+                            return impact ? <span className="text-orange-600 font-bold ml-1">· {impact}</span> : null
                           })()}
                         </div>
                       </div>
@@ -371,7 +363,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                   </div>
                 ) : null}
 
-                {/* Park Factor */}
                 <div className="p-5 bg-white border border-stone-200 rounded-xl">
                   <div className="text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-3">Park Factor</div>
                   <div className="font-serif text-lg font-semibold text-stone-900 mb-1">{game.venue?.name}</div>
@@ -390,19 +381,12 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                     )}
                   </div>
                   {prediction?.components_raw?.park?.hr_factor != null && (
-                    <div className={`text-[10px] font-mono font-bold mt-2 ${
-                      prediction.components_raw.park.hr_factor > 1.05 ? 'text-red-500'
-                      : prediction.components_raw.park.hr_factor < 0.95 ? 'text-blue-500'
-                      : 'text-stone-400'
-                    }`}>
-                      {prediction.components_raw.park.hr_factor > 1.05 ? 'Hitter-friendly park'
-                        : prediction.components_raw.park.hr_factor < 0.95 ? 'Pitcher-friendly park'
-                        : 'Neutral park'}
+                    <div className={`text-[10px] font-mono font-bold mt-2 ${prediction.components_raw.park.hr_factor > 1.05 ? 'text-red-500' : prediction.components_raw.park.hr_factor < 0.95 ? 'text-blue-500' : 'text-stone-400'}`}>
+                      {prediction.components_raw.park.hr_factor > 1.05 ? 'Hitter-friendly park' : prediction.components_raw.park.hr_factor < 0.95 ? 'Pitcher-friendly park' : 'Neutral park'}
                     </div>
                   )}
                 </div>
 
-                {/* Game Details */}
                 <div className="p-5 bg-white border border-stone-200 rounded-xl">
                   <div className="text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-3">Game Details</div>
                   <div className="space-y-3">
@@ -428,17 +412,13 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                     )}
                   </div>
                 </div>
-
               </div>
             </section>
           </div>
         }
 
-              // ── 2. TEAMS TAB (free — form, lineups, SP matchup) ─────────────
         slotTeams={
           <div className="space-y-10">
-
-            {/* ── RECENT FORM ── */}
             {(awayForm || homeForm) && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Recent Form</h3>
@@ -448,21 +428,16 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                     { team: game.teams.home.team, form: homeForm, logo: teamLogoUrl(game.teams.home.team.id) },
                   ].map(({ team, form, logo }) => form && (
                     <div key={team.name} className="p-5 bg-white border border-stone-200 rounded-xl">
-                      {/* Team header — bigger logo */}
                       <div className="flex items-center gap-3 mb-4">
                         <img src={logo} alt={team.name} className="w-10 h-10 object-contain" />
                         <div>
                           <div className="font-serif text-lg font-semibold text-stone-900">{shortName(team.name)}</div>
-                          <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">
-                            {team.abbreviation}
-                          </div>
+                          <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{team.abbreviation}</div>
                         </div>
-                        {/* Streak badge */}
                         <span className={`ml-auto text-lg font-bold font-mono ${form.streak_type === 'W' ? 'text-green-600' : form.streak_type === 'L' ? 'text-red-500' : 'text-stone-400'}`}>
                           {form.streak}
                         </span>
                       </div>
-                      {/* Stats row */}
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
@@ -489,37 +464,24 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
               </section>
             )}
 
-            {/* ── SP MATCHUP — 2 separate cards, one per team ── */}
             {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Starting Pitcher Matchup</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-
-                  {/* Away SP */}
                   {game.teams.away.probablePitcher ? (
                     <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-                        {shortName(game.teams.away.team.name)} · Away
-                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">{shortName(game.teams.away.team.name)} · Away</div>
                       <div className="flex items-center gap-4 mb-4">
-                        <img
-                          src={playerHeadshotUrl(game.teams.away.probablePitcher.id)}
-                          alt={game.teams.away.probablePitcher.fullName}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-200"
-                        />
+                        <img src={playerHeadshotUrl(game.teams.away.probablePitcher.id)} alt={game.teams.away.probablePitcher.fullName} className="w-16 h-16 rounded-full object-cover border-2 border-stone-200" />
                         <div>
-                          <div className="font-serif text-xl font-semibold text-stone-900">
-                            {game.teams.away.probablePitcher.fullName}
-                          </div>
-                          <div className="text-xs font-mono text-stone-500 mt-0.5">
-                            {awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'} · {awaySeasonStats?.innings ?? '–'} IP
-                          </div>
+                          <div className="font-serif text-xl font-semibold text-stone-900">{game.teams.away.probablePitcher.fullName}</div>
+                          <div className="text-xs font-mono text-stone-500 mt-0.5">{awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'} · {awaySeasonStats?.innings ?? '–'} IP</div>
                         </div>
                       </div>
                       <div className="space-y-2">
                         {[
                           { label: 'ERA', value: awaySeasonStats?.era ?? '–' },
-                                                 { label: 'WHIP', value: awaySeasonStats?.whip ?? '–' },
+                          { label: 'WHIP', value: awaySeasonStats?.whip ?? '–' },
                           { label: 'K/9', value: awaySeasonStats?.k_per_9 ?? '–' },
                           { label: 'BB/9', value: awaySeasonStats?.bb_per_9 ?? '–' },
                         ].map(s => (
@@ -531,58 +493,40 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                       </div>
                     </div>
                   ) : (
-                    <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">
-                      Pitcher TBD
-                    </div>
+                    <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
                   )}
 
-                  {/* Home SP */}
                   {game.teams.home.probablePitcher ? (
                     <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-                        {shortName(game.teams.home.team.name)} · Home
-                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">{shortName(game.teams.home.team.name)} · Home</div>
                       <div className="flex items-center gap-4 mb-4">
-                        <img
-                          src={playerHeadshotUrl(game.teams.home.probablePitcher.id)}
-                          alt={game.teams.home.probablePitcher.fullName}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-stone-200"
-                        />
+                        <img src={playerHeadshotUrl(game.teams.home.probablePitcher.id)} alt={game.teams.home.probablePitcher.fullName} className="w-16 h-16 rounded-full object-cover border-2 border-stone-200" />
                         <div>
-                          <div className="font-serif text-xl font-semibold text-stone-900">
-                            {game.teams.home.probablePitcher.fullName}
-                          </div>
-                          <div className="text-xs font-mono text-stone-500 mt-0.5">
-                            {homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'} · {homeSeasonStats?.innings ?? '–'} IP
-                          </div>
+                          <div className="font-serif text-xl font-semibold text-stone-900">{game.teams.home.probablePitcher.fullName}</div>
+                          <div className="text-xs font-mono text-stone-500 mt-0.5">{homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'} · {homeSeasonStats?.innings ?? '–'} IP</div>
                         </div>
                       </div>
                       <div className="space-y-2">
                         {[
                           { label: 'ERA', value: homeSeasonStats?.era ?? '–' },
-                          
                           { label: 'WHIP', value: homeSeasonStats?.whip ?? '–' },
                           { label: 'K/9', value: homeSeasonStats?.k_per_9 ?? '–' },
                           { label: 'BB/9', value: homeSeasonStats?.bb_per_9 ?? '–' },
                         ].map(s => (
                           <div key={s.label} className="flex justify-between items-center py-1 border-b border-stone-50 last:border-0">
                             <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                           <span className="text-sm font-mono font-bold text-stone-900">{s.value}</span>
+                            <span className="text-sm font-mono font-bold text-stone-900">{s.value}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">
-                      Pitcher TBD
-                    </div>
+                    <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
                   )}
-
                 </div>
               </section>
             )}
 
-            {/* ── LINEUPS ── */}
             {(awayLineup || homeLineup) && (
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
@@ -597,9 +541,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
           </div>
         }
 
-        // ── 3. PITCHING TAB (Pro-locked) ────────────────────────────────
-        // Free users see ProLockOverlay. Pro users see arsenal + hot zones.
-      // ── 3. PITCHING TAB (Pro-locked) ────────────────────────────────
         slotPitching={
           !isPro ? (
             <ProLockOverlay
@@ -608,20 +549,12 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
             />
           ) : (
             <div className="space-y-10">
-
-              {/* ── ARSENAL + PITCH TABLE: AWAY SP ── */}
               {game.teams.away.probablePitcher && awayPitchMix.length > 0 && (
                 <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">
-                    § {game.teams.away.probablePitcher.fullName} — Arsenal
-                  </h3>
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">§ {game.teams.away.probablePitcher.fullName} — Arsenal</h3>
                   <PitchArsenalChart arsenal={awayPitchMix as any} pitcherName={game.teams.away.probablePitcher.fullName} />
-
-                  {/* Pitch breakdown table */}
                   <div className="mt-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-stone-100">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span>
-                    </div>
+                    <div className="px-5 py-3 border-b border-stone-100"><span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span></div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -643,15 +576,9 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                               </td>
                               <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.percentage?.toFixed(1)}%</td>
                               <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.avg_velocity?.toFixed(1) ?? '–'}</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>
-                                {p.whiff_percent?.toFixed(1) ?? '–'}%
-                              </td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>
-                                {p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}
-                              </td>
-                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>
-                                {p.hard_hit_percent?.toFixed(1) ?? '–'}%
-                              </td>
+                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>{p.whiff_percent?.toFixed(1) ?? '–'}%</td>
+                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>{p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}</td>
+                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>{p.hard_hit_percent?.toFixed(1) ?? '–'}%</td>
                             </tr>
                           ))}
                         </tbody>
@@ -661,19 +588,12 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </section>
               )}
 
-              {/* ── ARSENAL + PITCH TABLE: HOME SP ── */}
               {game.teams.home.probablePitcher && homePitchMix.length > 0 && (
                 <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">
-                    § {game.teams.home.probablePitcher.fullName} — Arsenal
-                  </h3>
+                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">§ {game.teams.home.probablePitcher.fullName} — Arsenal</h3>
                   <PitchArsenalChart arsenal={homePitchMix as any} pitcherName={game.teams.home.probablePitcher.fullName} />
-
-                  {/* Pitch breakdown table */}
                   <div className="mt-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-stone-100">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span>
-                    </div>
+                    <div className="px-5 py-3 border-b border-stone-100"><span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span></div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -695,15 +615,9 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                               </td>
                               <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.percentage?.toFixed(1)}%</td>
                               <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.avg_velocity?.toFixed(1) ?? '–'}</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>
-                                {p.whiff_percent?.toFixed(1) ?? '–'}%
-                              </td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>
-                                {p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}
-                              </td>
-                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>
-                                {p.hard_hit_percent?.toFixed(1) ?? '–'}%
-                              </td>
+                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>{p.whiff_percent?.toFixed(1) ?? '–'}%</td>
+                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>{p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}</td>
+                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>{p.hard_hit_percent?.toFixed(1) ?? '–'}%</td>
                             </tr>
                           ))}
                         </tbody>
@@ -713,7 +627,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </section>
               )}
 
-              {/* ── PITCHER ADVANCED PROFILES ── */}
               {(prediction?.components_raw?.away_pitcher || prediction?.components_raw?.home_pitcher) && (
                 <section>
                   <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Advanced Profile</h3>
@@ -732,21 +645,19 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                         </div>
                         <div className="space-y-2">
                           {[
-                            { label: 'FIP', value: stats.fip != null ? stats.fip.toFixed(2) : null, good: stats.fip < 3.5 },
-                            { label: 'xFIP', value: stats.xfip_minus != null ? stats.xfip_minus.toFixed(2) : null, good: false },
-                            { label: 'GB Rate', value: stats.gb_rate != null ? `${stats.gb_rate}%` : null, good: stats.gb_rate > 45 },
-                            { label: 'vs LHB', value: stats.vs_lhb_baa != null ? `.${Math.round(stats.vs_lhb_baa * 1000).toString().padStart(3, '0')}` : null, good: stats.vs_lhb_baa < 0.23 },
-                            { label: 'vs RHB', value: stats.vs_rhb_baa != null ? `.${Math.round(stats.vs_rhb_baa * 1000).toString().padStart(3, '0')}` : null, good: stats.vs_rhb_baa < 0.23 },
-                            { label: 'L3 ERA', value: stats.l3_era != null ? stats.l3_era.toFixed(2) : null, good: stats.l3_era < 3.0 },
-                            { label: 'Home ERA', value: stats.home_era != null ? stats.home_era.toFixed(2) : null, good: stats.home_era < 3.5 },
-                            { label: 'Away ERA', value: stats.away_era != null ? stats.away_era.toFixed(2) : null, good: stats.away_era < 3.5 },
-                            { label: 'Days Rest', value: stats.days_rest != null ? `${stats.days_rest}` : null, good: stats.days_rest >= 4 },
+                            { label: 'FIP',       value: stats.fip != null ? stats.fip.toFixed(2) : null,                                                               good: stats.fip < 3.5 },
+                            { label: 'xFIP',      value: stats.xfip_minus != null ? stats.xfip_minus.toFixed(2) : null,                                                 good: false },
+                            { label: 'GB Rate',   value: stats.gb_rate != null ? `${stats.gb_rate}%` : null,                                                             good: stats.gb_rate > 45 },
+                            { label: 'vs LHB',    value: stats.vs_lhb_baa != null ? `.${Math.round(stats.vs_lhb_baa * 1000).toString().padStart(3, '0')}` : null,       good: stats.vs_lhb_baa < 0.23 },
+                            { label: 'vs RHB',    value: stats.vs_rhb_baa != null ? `.${Math.round(stats.vs_rhb_baa * 1000).toString().padStart(3, '0')}` : null,       good: stats.vs_rhb_baa < 0.23 },
+                            { label: 'L3 ERA',    value: stats.l3_era != null ? stats.l3_era.toFixed(2) : null,                                                          good: stats.l3_era < 3.0 },
+                            { label: 'Home ERA',  value: stats.home_era != null ? stats.home_era.toFixed(2) : null,                                                      good: stats.home_era < 3.5 },
+                            { label: 'Away ERA',  value: stats.away_era != null ? stats.away_era.toFixed(2) : null,                                                      good: stats.away_era < 3.5 },
+                            { label: 'Days Rest', value: stats.days_rest != null ? `${stats.days_rest}` : null,                                                          good: stats.days_rest >= 4 },
                           ].filter(s => s.value != null).map(s => (
                             <div key={s.label} className="flex justify-between items-center py-1 border-b border-stone-50 last:border-0">
                               <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                              <span className={`text-sm font-mono font-bold ${s.good ? 'text-green-600' : 'text-stone-900'}`}>
-                                {s.value}
-                              </span>
+                              <span className={`text-sm font-mono font-bold ${s.good ? 'text-green-600' : 'text-stone-900'}`}>{s.value}</span>
                             </div>
                           ))}
                         </div>
@@ -756,7 +667,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </section>
               )}
 
-              {/* ── HOT ZONES ── */}
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Hot Zones</h3>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -774,21 +684,10 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                   )}
                 </div>
               </section>
-
-              {/* Tunnelling — commented out until feature works */}
-              {/* <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Pitch Tunnelling</h3>
-                <div className="p-8 bg-white border border-stone-200 rounded-xl text-center">
-                  <p className="text-sm text-stone-400 font-serif italic">Coming soon — tracking release points and movement profiles for deceptive pitch pairs.</p>
-                </div>
-              </section> */}
             </div>
           )
         }
 
-        // ── 4. GM LAB TAB (Pro-locked) ──────────────────────────────────
-        // Free users see ProLockOverlay. Pro users see the full ProDashboard.
-        // ── 4. GM LAB TAB (Pro-locked) ──────────────────────────────────
         slotGmlab={
           !isPro ? (
             <ProLockOverlay
@@ -797,8 +696,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
             />
           ) : (
             <div className="space-y-10">
-
-              {/* ── ALL 8 COMPONENTS ── */}
               {prediction?.components && (
                 <section>
                   <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ All 8 Components</h3>
@@ -828,7 +725,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                       const pct = Math.min(abs / 50, 1) * 100
                       const awayColor = findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'
                       const homeColor = findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'
-
                       return (
                         <div key={key} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-5 py-3 border-b border-stone-50 last:border-0">
                           <span className="text-sm font-serif text-stone-900">{label}</span>
@@ -841,12 +737,8 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                               <div className="h-full rounded-full" style={{ width: isHome ? `${pct}%` : '0%', background: homeColor }} />
                             </div>
                           </div>
-                          <span className={`w-8 text-right font-mono text-xs font-bold ${isAway ? 'text-stone-900' : 'text-stone-300'}`}>
-                            {isAway ? `+${abs}` : '–'}
-                          </span>
-                          <span className={`w-8 text-right font-mono text-xs font-bold ${isHome ? 'text-stone-900' : 'text-stone-300'}`}>
-                            {isHome ? `+${abs}` : '–'}
-                          </span>
+                          <span className={`w-8 text-right font-mono text-xs font-bold ${isAway ? 'text-stone-900' : 'text-stone-300'}`}>{isAway ? `+${abs}` : '–'}</span>
+                          <span className={`w-8 text-right font-mono text-xs font-bold ${isHome ? 'text-stone-900' : 'text-stone-300'}`}>{isHome ? `+${abs}` : '–'}</span>
                         </div>
                       )
                     })}
@@ -854,7 +746,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </section>
               )}
 
-              {/* ── TEAM STATS COMPARISON ── */}
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Team Stats</h3>
                 <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
@@ -864,43 +755,12 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                     <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{shortName(game.teams.home.team.name)}</span>
                   </div>
                   {[
-                    {
-                      label: 'L10 Record',
-                      away: awayForm ? `${awayForm.last_10_wins}-${awayForm.last_10_losses}` : '–',
-                      home: homeForm ? `${homeForm.last_10_wins}-${homeForm.last_10_losses}` : '–',
-                      awayBetter: (awayForm?.last_10_wins ?? 0) > (homeForm?.last_10_wins ?? 0),
-                    },
-                    {
-                      label: 'Run Diff (L10)',
-                      away: awayForm?.run_diff_l10 != null ? `${awayForm.run_diff_l10 > 0 ? '+' : ''}${awayForm.run_diff_l10.toFixed(1)}` : '–',
-                      home: homeForm?.run_diff_l10 != null ? `${homeForm.run_diff_l10 > 0 ? '+' : ''}${homeForm.run_diff_l10.toFixed(1)}` : '–',
-                      awayBetter: (awayForm?.run_diff_l10 ?? -99) > (homeForm?.run_diff_l10 ?? -99),
-                    },
-                    {
-                      label: 'R/G (L10)',
-                      away: awayForm?.runs_per_game_l10?.toFixed(1) ?? '–',
-                      home: homeForm?.runs_per_game_l10?.toFixed(1) ?? '–',
-                      awayBetter: (awayForm?.runs_per_game_l10 ?? 0) > (homeForm?.runs_per_game_l10 ?? 0),
-                    },
-                    {
-                      label: 'Bullpen ERA',
-                      away: prediction?.components_raw?.away_team?.bullpen_era?.toFixed(2) ?? '–',
-                      home: prediction?.components_raw?.home_team?.bullpen_era?.toFixed(2) ?? '–',
-                      awayBetter: (prediction?.components_raw?.away_team?.bullpen_era ?? 99) < (prediction?.components_raw?.home_team?.bullpen_era ?? 99),
-                    },
-                    {
-                      label: 'Bullpen IP Yesterday',
-                      away: prediction?.components_raw?.away_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',
-                      home: prediction?.components_raw?.home_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',
-                      awayBetter: (prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? 99) < (prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? 99),
-                      note: 'lower = fresher',
-                    },
-                    {
-                      label: 'Closer Available',
-                      away: prediction?.components_raw?.away_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.away_team?.closer_available === true ? 'Yes' : '–',
-                      home: prediction?.components_raw?.home_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.home_team?.closer_available === true ? 'Yes' : '–',
-                      awayBetter: prediction?.components_raw?.away_team?.closer_available !== false,
-                    },
+                    { label: 'L10 Record',           away: awayForm ? `${awayForm.last_10_wins}-${awayForm.last_10_losses}` : '–',                                                                                                                  home: homeForm ? `${homeForm.last_10_wins}-${homeForm.last_10_losses}` : '–',                                                                                                                  awayBetter: (awayForm?.last_10_wins ?? 0) > (homeForm?.last_10_wins ?? 0) },
+                    { label: 'Run Diff (L10)',        away: awayForm?.run_diff_l10 != null ? `${awayForm.run_diff_l10 > 0 ? '+' : ''}${awayForm.run_diff_l10.toFixed(1)}` : '–',                                                                    home: homeForm?.run_diff_l10 != null ? `${homeForm.run_diff_l10 > 0 ? '+' : ''}${homeForm.run_diff_l10.toFixed(1)}` : '–',                                                                    awayBetter: (awayForm?.run_diff_l10 ?? -99) > (homeForm?.run_diff_l10 ?? -99) },
+                    { label: 'R/G (L10)',             away: awayForm?.runs_per_game_l10?.toFixed(1) ?? '–',                                                                                                                                          home: homeForm?.runs_per_game_l10?.toFixed(1) ?? '–',                                                                                                                                          awayBetter: (awayForm?.runs_per_game_l10 ?? 0) > (homeForm?.runs_per_game_l10 ?? 0) },
+                    { label: 'Bullpen ERA',           away: prediction?.components_raw?.away_team?.bullpen_era?.toFixed(2) ?? '–',                                                                                                                   home: prediction?.components_raw?.home_team?.bullpen_era?.toFixed(2) ?? '–',                                                                                                                   awayBetter: (prediction?.components_raw?.away_team?.bullpen_era ?? 99) < (prediction?.components_raw?.home_team?.bullpen_era ?? 99) },
+                    { label: 'Bullpen IP Yesterday',  away: prediction?.components_raw?.away_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',                                                                                                     home: prediction?.components_raw?.home_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',                                                                                                     awayBetter: (prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? 99) < (prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? 99), note: 'lower = fresher' },
+                    { label: 'Closer Available',      away: prediction?.components_raw?.away_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.away_team?.closer_available === true ? 'Yes' : '–',                          home: prediction?.components_raw?.home_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.home_team?.closer_available === true ? 'Yes' : '–',                          awayBetter: prediction?.components_raw?.away_team?.closer_available !== false },
                   ].map((row, i) => (
                     <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-stone-50 last:border-0">
                       <div>
@@ -914,19 +774,14 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </div>
               </section>
 
-              {/* ── PITCHING DEEP DIVE ── */}
               {(prediction?.components_raw?.away_pitcher || prediction?.components_raw?.home_pitcher) && (
                 <section>
                   <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Pitching Deep Dive</h3>
                   <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
                     <div className="grid grid-cols-[1fr_auto_auto] px-5 py-3 bg-stone-50 border-b border-stone-100">
                       <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400">Stat</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">
-                        {game.teams.away.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.away.team.abbreviation}
-                      </span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">
-                        {game.teams.home.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.home.team.abbreviation}
-                      </span>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{game.teams.away.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.away.team.abbreviation}</span>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{game.teams.home.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.home.team.abbreviation}</span>
                     </div>
                     {[
                       { label: 'ERA',       key: 'era',        lowerBetter: true,  dec: 2 },
@@ -935,25 +790,21 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                       { label: 'BB/9',      key: 'bb_per_9',   lowerBetter: true,  dec: 1 },
                       { label: 'GB Rate',   key: 'gb_rate',    lowerBetter: false, dec: 1, suffix: '%' },
                       { label: 'L3 ERA',    key: 'l3_era',     lowerBetter: true,  dec: 2 },
-                      { label: 'vs LHB',   key: 'vs_lhb_baa', lowerBetter: true,  dec: 3, ba: true },
-                      { label: 'vs RHB',   key: 'vs_rhb_baa', lowerBetter: true,  dec: 3, ba: true },
+                      { label: 'vs LHB',    key: 'vs_lhb_baa', lowerBetter: true,  dec: 3, ba: true },
+                      { label: 'vs RHB',    key: 'vs_rhb_baa', lowerBetter: true,  dec: 3, ba: true },
                       { label: 'Days Rest', key: 'days_rest',  lowerBetter: false, dec: 0 },
                     ].map((row, i) => {
                       const ap = prediction?.components_raw?.away_pitcher
                       const hp = prediction?.components_raw?.home_pitcher
                       const av = ap?.[row.key]
                       const hv = hp?.[row.key]
-                      const awayBetter = av != null && hv != null
-                        ? row.lowerBetter ? Number(av) < Number(hv) : Number(av) > Number(hv)
-                        : false
-
+                      const awayBetter = av != null && hv != null ? row.lowerBetter ? Number(av) < Number(hv) : Number(av) > Number(hv) : false
                       const fmt = (v: any) => {
                         if (v == null) return '–'
                         const n = Number(v)
                         if (row.ba) return `.${Math.round(n * 1000).toString().padStart(3, '0')}`
                         return `${n.toFixed(row.dec)}${row.suffix ?? ''}`
                       }
-
                       return (
                         <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-stone-50 last:border-0">
                           <span className="text-sm font-serif text-stone-900">{row.label}</span>
@@ -966,7 +817,6 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                 </section>
               )}
 
-              {/* ── PARK + CONDITIONS ── */}
               <section>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Park & Conditions</h3>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1002,31 +852,28 @@ homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
                   </div>
                 </div>
               </section>
-
             </div>
           )
         }
 
-        // ── 5. FANTASY TAB (Pro-locked) ─────────────────────────────────
-        // Free users see ProLockOverlay. Pro users see streamer + DFS + takeaways.
         slotFantasy={
-  <FantasyTabContent
-    fantasyCards={prediction?.fantasy_cards ?? null}
-    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-    homeBullpen={{
-      era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
-      ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
-      closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
-    }}
-    awayBullpen={{
-      era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
-      ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
-      closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
-    }}
-    isPro={isPro}
-  />
-}
+          <FantasyTabContent
+            fantasyCards={prediction?.fantasy_cards ?? null}
+            homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+            awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+            homeBullpen={{
+              era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
+              ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
+              closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
+            }}
+            awayBullpen={{
+              era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
+              ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
+              closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
+            }}
+            isPro={isPro}
+          />
+        }
       />
     </>
   )

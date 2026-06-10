@@ -107,10 +107,10 @@ export default async function HistoricalArchivePage() {
                       ) : (
                         <div>
                           <div className="text-sm font-serif font-bold text-stone-900">
-                            Factor Lean: <span className="text-stone-900">{leanTeam}</span>
+                            Majority Data Factors : <span className="text-stone-900">{leanTeam}</span>
                           </div>
                           <div className="text-xs text-stone-500 mt-1 font-serif italic">
-                            {r.lean_factors} of 8 factors favoured the {r.factor_lean} side.
+                            {r.lean_factors} of 8 data factors were for the {r.factor_lean} side.
                           </div>
                         </div>
                       )}

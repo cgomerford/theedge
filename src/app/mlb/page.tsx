@@ -51,7 +51,7 @@ export default async function MLBPage() {
         today={today}
         fantasyPicks={fantasyResult.picks}
         fantasyIsStale={fantasyResult.isStale}
-        isPro={isPro}
+        isPro={isPrgit add -A && git commit -m "V4 Day 3 series context, shadow mode, why-edge page, fantasy desk auth fix" && git pusho}
       />
     </main>
   )
