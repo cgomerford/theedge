@@ -101,7 +101,7 @@ export default async function HomePage({ searchParams }: Props) {
             <div className="hidden md:flex flex-col justify-center py-14 pl-10">
               {featuredEdge ? (
                 <div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-4">⊕ Tonight&apos;s strongest edge</div>
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-4">⊕ Featured Matchup</div>
                   <Link href={`/mlb/${slugifyGame(featuredEdge.game)}`}
                     className="block bg-white border border-stone-200 rounded-xl p-6 hover:border-stone-400 hover:shadow-md transition group">
                     <div className="flex items-center gap-3 mb-4">
@@ -112,9 +112,7 @@ export default async function HomePage({ searchParams }: Props) {
                       <span className="font-serif text-lg font-bold">{shortName(featuredEdge.game.teams.home.team.name)}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-4">
-                      <span className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 border rounded-sm ${tierStyles(featuredEdge.pred!.confidence_tier)}`}>
-                        {tierText(featuredEdge.pred!.confidence_tier)}
-                      </span>
+                
                       <span className="text-[10px] font-mono text-stone-500">
                         favours <span className="font-bold text-stone-900">
                           {shortName(featuredEdge.pred!.predicted_winner === 'home' ? featuredEdge.game.teams.home.team.name : featuredEdge.game.teams.away.team.name)}
@@ -204,7 +202,7 @@ export default async function HomePage({ searchParams }: Props) {
             {/* LEFT — Tonight's edges */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500">⊕ Tonight&apos;s biggest edges</div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-stone-500">⊕ Selected Matches</div>
                 <Link href="/mlb" className="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] hover:text-stone-900 transition">Full slate →</Link>
               </div>
               <div className="space-y-3">
@@ -222,12 +220,8 @@ export default async function HomePage({ searchParams }: Props) {
                         <span className="font-serif text-sm font-bold">{shortName(game.teams.home.team.name)}</span>
                       </div>
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className={`text-[8px] font-mono uppercase tracking-widest px-1.5 py-0.5 border rounded-sm ${tierStyles(pred!.confidence_tier)}`}>
-                          {tierText(pred!.confidence_tier)}
-                        </span>
-                        <span className="text-[9px] font-mono text-stone-400">
-                          {shortName(pred!.predicted_winner === 'home' ? game.teams.home.team.name : game.teams.away.team.name)}
-                        </span>
+                    
+                    
                       </div>
                       {pred!.summary && (
                         <p className="text-[11px] font-serif italic text-stone-500 line-clamp-2 leading-relaxed">
