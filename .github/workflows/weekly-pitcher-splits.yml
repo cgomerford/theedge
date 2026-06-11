@@ -1,0 +1,20 @@
+name: weekly-pitcher-splits
+on:
+schedule:
+- cron: '0 6 * * 1'  # Every Monday 6:00 UTC
+workflow_dispatch:
+jobs:
+fetch-splits:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5
+with:
+python-version: '3.11'
+- name: Install dependencies
+run: pip install pybaseball supabase python-dotenv requests pandas
+- name: Fetch pitcher TTO + two-strike splits
+env:
+SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+run: python scripts/fetch_pitcher_tto_splits.

@@ -34,6 +34,13 @@ import ProLockOverlay from '@/components/ProLockOverlay'
 import FantasyTabContent from '@/components/FantasyTabContent'
 import { getInlineCalibration } from '@/lib/track-record'
 import InlineCalibration from '@/components/InlineCalibration'
+import SeriesContext from '@/components/SeriesContext'
+import { getSeriesContext } from '@/lib/series-context'
+import GmLabContent from '@/components/GmLabContent'
+import { getTeamTransactions } from '@/lib/team-transactions'
+import PitchingLabContent from '@/components/PitchingLabContent'
+
+
 
 // Refresh every 60s so live scores stay current
 export const revalidate = 60
@@ -66,7 +73,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const isPro = subscriber?.is_pro ?? true
   const isSignedIn = subscriber !== null
 
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
@@ -153,9 +160,15 @@ export default async function GamePreview({ params }: Props) {
     game.teams.home.probablePitcher ? getPitcherHotZones(game.teams.home.probablePitcher.id) : Promise.resolve({}),
     awayPitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', awayPitcherId).single() : Promise.resolve({ data: null }),
     homePitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', homePitcherId).single() : Promise.resolve({ data: null }),
+    getSeriesContext(game.gamePk),
   ])
   const awayPitcherStats = awayPitcherStatsRes?.data || null
   const homePitcherStats = homePitcherStatsRes?.data || null
+  const seriesContext = await getSeriesContext(game.gamePk)
+  const [awayTransactions, homeTransactions] = await Promise.all([
+getTeamTransactions(game.teams.away.team.id, 14),
+getTeamTransactions(game.teams.home.team.id, 14),
+])
 
   const awayFeatureBatter = awayLineup?.batters?.[2] ?? null
   const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
@@ -541,339 +554,141 @@ export default async function GamePreview({ params }: Props) {
           </div>
         }
 
-        slotPitching={
-          !isPro ? (
-            <ProLockOverlay
-              tabName="Pitching Lab"
-              description="Arsenal breakdowns, hot zone heatmaps, pitch effectiveness tables, and advanced pitcher profiles — see exactly what each starter brings tonight."
-            />
-          ) : (
-            <div className="space-y-10">
-              {game.teams.away.probablePitcher && awayPitchMix.length > 0 && (
-                <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">§ {game.teams.away.probablePitcher.fullName} — Arsenal</h3>
-                  <PitchArsenalChart arsenal={awayPitchMix as any} pitcherName={game.teams.away.probablePitcher.fullName} />
-                  <div className="mt-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-stone-100"><span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span></div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-stone-100">
-                            <th className="text-left px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Pitch</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Usage</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Velo</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Whiff%</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">BAA</th>
-                            <th className="text-right px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Hard%</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(awayPitchMix as any[]).filter((p: any) => p.percentage > 0).map((p: any, i: number) => (
-                            <tr key={i} className="border-b border-stone-50 last:border-0 hover:bg-stone-50 transition">
-                              <td className="px-4 py-2 flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pitchColor(p.pitch_code ?? p.pitch_type) }} />
-                                <span className="font-mono text-xs font-bold text-stone-900">{p.pitch_name}</span>
-                              </td>
-                              <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.percentage?.toFixed(1)}%</td>
-                              <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.avg_velocity?.toFixed(1) ?? '–'}</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>{p.whiff_percent?.toFixed(1) ?? '–'}%</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>{p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}</td>
-                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>{p.hard_hit_percent?.toFixed(1) ?? '–'}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </section>
+       slotPitching={
+      !isPro ? (
+        <ProLockOverlay
+          tabName="Pitching Lab"
+          description="Arsenal grades, two-strike profiles, times-through-the-order breakdown, first-pitch tendencies, and hot zones — the full scouting brief."
+        />
+      ) : (
+        <PitchingLabContent
+          awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
+          homePitcherName={game.teams.home.probablePitcher?.fullName ?? null}
+          awayPitcherId={game.teams.away.probablePitcher?.id ?? null}
+          homePitcherId={game.teams.home.probablePitcher?.id ?? null}
+          awayPitchMix={awayPitchMix as any}
+          homePitchMix={homePitchMix as any}
+          awayPitcherStats={awayPitcherStats}
+homePitcherStats={homePitcherStats}
+          awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+          homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+          hotZoneSlot={
+            <div className="grid md:grid-cols-2 gap-4">
+              {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
+                <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
               )}
-
-              {game.teams.home.probablePitcher && homePitchMix.length > 0 && (
-                <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-4 font-bold">§ {game.teams.home.probablePitcher.fullName} — Arsenal</h3>
-                  <PitchArsenalChart arsenal={homePitchMix as any} pitcherName={game.teams.home.probablePitcher.fullName} />
-                  <div className="mt-4 bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="px-5 py-3 border-b border-stone-100"><span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-bold">Pitch-by-Pitch Breakdown</span></div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-stone-100">
-                            <th className="text-left px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Pitch</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Usage</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Velo</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Whiff%</th>
-                            <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">BAA</th>
-                            <th className="text-right px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-stone-400">Hard%</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(homePitchMix as any[]).filter((p: any) => p.percentage > 0).map((p: any, i: number) => (
-                            <tr key={i} className="border-b border-stone-50 last:border-0 hover:bg-stone-50 transition">
-                              <td className="px-4 py-2 flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pitchColor(p.pitch_code ?? p.pitch_type) }} />
-                                <span className="font-mono text-xs font-bold text-stone-900">{p.pitch_name}</span>
-                              </td>
-                              <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.percentage?.toFixed(1)}%</td>
-                              <td className="text-right px-3 py-2 font-mono text-xs text-stone-700">{p.avg_velocity?.toFixed(1) ?? '–'}</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.whiff_percent ?? 0) >= 30 ? 'text-orange-600' : 'text-stone-700'}`}>{p.whiff_percent?.toFixed(1) ?? '–'}%</td>
-                              <td className={`text-right px-3 py-2 font-mono text-xs font-bold ${(p.ba_against ?? 1) < 0.2 ? 'text-green-600' : (p.ba_against ?? 0) > 0.28 ? 'text-red-500' : 'text-stone-700'}`}>{p.ba_against != null ? `.${Math.round(p.ba_against * 1000).toString().padStart(3, '0')}` : '–'}</td>
-                              <td className={`text-right px-4 py-2 font-mono text-xs ${(p.hard_hit_percent ?? 0) > 40 ? 'text-red-500 font-bold' : 'text-stone-700'}`}>{p.hard_hit_percent?.toFixed(1) ?? '–'}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </section>
+              {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
+                <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
               )}
-
-              {(prediction?.components_raw?.away_pitcher || prediction?.components_raw?.home_pitcher) && (
-                <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Advanced Profile</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {[
-                      { pitcher: game.teams.away.probablePitcher, stats: prediction?.components_raw?.away_pitcher, team: game.teams.away.team },
-                      { pitcher: game.teams.home.probablePitcher, stats: prediction?.components_raw?.home_pitcher, team: game.teams.home.team },
-                    ].map(({ pitcher, stats, team }) => pitcher && stats && (
-                      <div key={pitcher.fullName} className="p-5 bg-white border border-stone-200 rounded-xl">
-                        <div className="flex items-center gap-3 mb-4">
-                          <img src={playerHeadshotUrl(pitcher.id)} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-stone-200" />
-                          <div>
-                            <div className="font-serif text-base font-semibold text-stone-900">{pitcher.fullName}</div>
-                            <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{shortName(team.name)}</div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          {[
-                            { label: 'FIP',       value: stats.fip != null ? stats.fip.toFixed(2) : null,                                                               good: stats.fip < 3.5 },
-                            { label: 'xFIP',      value: stats.xfip_minus != null ? stats.xfip_minus.toFixed(2) : null,                                                 good: false },
-                            { label: 'GB Rate',   value: stats.gb_rate != null ? `${stats.gb_rate}%` : null,                                                             good: stats.gb_rate > 45 },
-                            { label: 'vs LHB',    value: stats.vs_lhb_baa != null ? `.${Math.round(stats.vs_lhb_baa * 1000).toString().padStart(3, '0')}` : null,       good: stats.vs_lhb_baa < 0.23 },
-                            { label: 'vs RHB',    value: stats.vs_rhb_baa != null ? `.${Math.round(stats.vs_rhb_baa * 1000).toString().padStart(3, '0')}` : null,       good: stats.vs_rhb_baa < 0.23 },
-                            { label: 'L3 ERA',    value: stats.l3_era != null ? stats.l3_era.toFixed(2) : null,                                                          good: stats.l3_era < 3.0 },
-                            { label: 'Home ERA',  value: stats.home_era != null ? stats.home_era.toFixed(2) : null,                                                      good: stats.home_era < 3.5 },
-                            { label: 'Away ERA',  value: stats.away_era != null ? stats.away_era.toFixed(2) : null,                                                      good: stats.away_era < 3.5 },
-                            { label: 'Days Rest', value: stats.days_rest != null ? `${stats.days_rest}` : null,                                                          good: stats.days_rest >= 4 },
-                          ].filter(s => s.value != null).map(s => (
-                            <div key={s.label} className="flex justify-between items-center py-1 border-b border-stone-50 last:border-0">
-                              <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                              <span className={`text-sm font-mono font-bold ${s.good ? 'text-green-600' : 'text-stone-900'}`}>{s.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+              {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
+                <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
               )}
-
-              <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Hot Zones</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
-                    <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
-                  )}
-                  {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
-                    <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
-                  )}
-                  {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
-                    <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
-                  )}
-                  {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
-                    <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
-                  )}
-                </div>
-              </section>
+              {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
+                <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
+              )}
             </div>
-          )
-        }
+          }
+        />
+      )
+    }
 
-        slotGmlab={
-          !isPro ? (
-            <ProLockOverlay
-              tabName="GM Lab"
-              description="Every number, side by side — all 8 components, team stats, bullpen status, and park conditions in one clean view."
-            />
-          ) : (
-            <div className="space-y-10">
-              {prediction?.components && (
-                <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ All 8 Components</h3>
-                  <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-2 bg-stone-50 border-b border-stone-100">
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400">Factor</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-24 text-center">Tilt</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-8 text-right">{game.teams.away.team.abbreviation}</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-8 text-right">{game.teams.home.team.abbreviation}</span>
-                    </div>
-                    {([
-                      { key: 'starting_pitcher', label: 'Starting Pitcher' },
-                      { key: 'bullpen',           label: 'Bullpen' },
-                      { key: 'offense',           label: 'Offense' },
-                      { key: 'defense',           label: 'Defense' },
-                      { key: 'matchup',           label: 'Matchup' },
-                      { key: 'park',              label: 'Park Factor' },
-                      { key: 'weather',           label: 'Weather' },
-                      { key: 'rest',              label: 'Rest / Travel' },
-                    ] as const).map(({ key, label }) => {
-                      const raw = prediction.components as Record<string, number>
-                      const val = raw[key] ?? 0
-                      const abs = Math.abs(val)
-                      const isAway = val > 5
-                      const isHome = val < -5
-                      const isNeutral = !isAway && !isHome
-                      const pct = Math.min(abs / 50, 1) * 100
-                      const awayColor = findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'
-                      const homeColor = findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'
-                      return (
-                        <div key={key} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-5 py-3 border-b border-stone-50 last:border-0">
-                          <span className="text-sm font-serif text-stone-900">{label}</span>
-                          <div className="w-24 flex items-center gap-1">
-                            <div className="flex-1 h-1.5 bg-stone-100 rounded-full flex justify-end overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: isAway ? `${pct}%` : '0%', background: awayColor }} />
-                            </div>
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: isNeutral ? '#D4D0C8' : isAway ? awayColor : homeColor }} />
-                            <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: isHome ? `${pct}%` : '0%', background: homeColor }} />
-                            </div>
-                          </div>
-                          <span className={`w-8 text-right font-mono text-xs font-bold ${isAway ? 'text-stone-900' : 'text-stone-300'}`}>{isAway ? `+${abs}` : '–'}</span>
-                          <span className={`w-8 text-right font-mono text-xs font-bold ${isHome ? 'text-stone-900' : 'text-stone-300'}`}>{isHome ? `+${abs}` : '–'}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
+slotGmlab={
+      !isPro ? (
+        <ProLockOverlay
+          tabName="GM Lab"
+          description="IL board, roster moves, bullpen decision tree, and starter intelligence — the full pre-game briefing."
+        />
+      ) : (
+        <div className="space-y-10">
 
-              <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Team Stats</h3>
-                <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-[1fr_auto_auto] px-5 py-3 bg-stone-50 border-b border-stone-100">
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400">Stat</span>
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{shortName(game.teams.away.team.name)}</span>
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{shortName(game.teams.home.team.name)}</span>
-                  </div>
-                  {[
-                    { label: 'L10 Record',           away: awayForm ? `${awayForm.last_10_wins}-${awayForm.last_10_losses}` : '–',                                                                                                                  home: homeForm ? `${homeForm.last_10_wins}-${homeForm.last_10_losses}` : '–',                                                                                                                  awayBetter: (awayForm?.last_10_wins ?? 0) > (homeForm?.last_10_wins ?? 0) },
-                    { label: 'Run Diff (L10)',        away: awayForm?.run_diff_l10 != null ? `${awayForm.run_diff_l10 > 0 ? '+' : ''}${awayForm.run_diff_l10.toFixed(1)}` : '–',                                                                    home: homeForm?.run_diff_l10 != null ? `${homeForm.run_diff_l10 > 0 ? '+' : ''}${homeForm.run_diff_l10.toFixed(1)}` : '–',                                                                    awayBetter: (awayForm?.run_diff_l10 ?? -99) > (homeForm?.run_diff_l10 ?? -99) },
-                    { label: 'R/G (L10)',             away: awayForm?.runs_per_game_l10?.toFixed(1) ?? '–',                                                                                                                                          home: homeForm?.runs_per_game_l10?.toFixed(1) ?? '–',                                                                                                                                          awayBetter: (awayForm?.runs_per_game_l10 ?? 0) > (homeForm?.runs_per_game_l10 ?? 0) },
-                    { label: 'Bullpen ERA',           away: prediction?.components_raw?.away_team?.bullpen_era?.toFixed(2) ?? '–',                                                                                                                   home: prediction?.components_raw?.home_team?.bullpen_era?.toFixed(2) ?? '–',                                                                                                                   awayBetter: (prediction?.components_raw?.away_team?.bullpen_era ?? 99) < (prediction?.components_raw?.home_team?.bullpen_era ?? 99) },
-                    { label: 'Bullpen IP Yesterday',  away: prediction?.components_raw?.away_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',                                                                                                     home: prediction?.components_raw?.home_team?.bullpen_innings_yesterday?.toFixed(1) ?? '–',                                                                                                     awayBetter: (prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? 99) < (prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? 99), note: 'lower = fresher' },
-                    { label: 'Closer Available',      away: prediction?.components_raw?.away_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.away_team?.closer_available === true ? 'Yes' : '–',                          home: prediction?.components_raw?.home_team?.closer_available === false ? 'No ⚠️' : prediction?.components_raw?.home_team?.closer_available === true ? 'Yes' : '–',                          awayBetter: prediction?.components_raw?.away_team?.closer_available !== false },
-                  ].map((row, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-stone-50 last:border-0">
-                      <div>
-                        <span className="text-sm font-serif text-stone-900">{row.label}</span>
-                        {row.note && <span className="text-[9px] font-mono text-stone-400 ml-2">({row.note})</span>}
-                      </div>
-                      <span className={`w-20 text-right font-mono text-xs font-bold ${row.awayBetter ? 'text-stone-900' : 'text-stone-400'}`}>{row.away}</span>
-                      <span className={`w-20 text-right font-mono text-xs font-bold ${!row.awayBetter ? 'text-stone-900' : 'text-stone-400'}`}>{row.home}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
+          {/* Series Context — top of GM Lab */}
+          {seriesContext && (
+            <section>
+              <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Series Context</h3>
+              <SeriesContext
+                seriesGameNumber={seriesContext.series_game_number}
+                seriesTotalGames={seriesContext.series_total_games}
+                awayTeamName={game.teams.away.team.name}
+                homeTeamName={game.teams.home.team.name}
+                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+                awaySeriesWins={seriesContext.away_series_wins}
+                homeSeriesWins={seriesContext.home_series_wins}
+                seriesLeader={seriesContext.series_leader}
+                seriesDescription={seriesContext.series_description}
+                lastWinner={seriesContext.last_winner}
+                lastGameMargin={seriesContext.last_game_margin}
+                isSeriesDecider={seriesContext.is_series_decider}
+                awayFacesElimination={seriesContext.away_faces_elimination}
+                homeFacesElimination={seriesContext.home_faces_elimination}
+                seriesOpenerDate={seriesContext.series_opener_date}
+                awayPrimaryColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
+                homePrimaryColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
+              />
+            </section>
+          )}
 
-              {(prediction?.components_raw?.away_pitcher || prediction?.components_raw?.home_pitcher) && (
-                <section>
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Pitching Deep Dive</h3>
-                  <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-                    <div className="grid grid-cols-[1fr_auto_auto] px-5 py-3 bg-stone-50 border-b border-stone-100">
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400">Stat</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{game.teams.away.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.away.team.abbreviation}</span>
-                      <span className="text-[9px] font-mono uppercase tracking-wider text-stone-400 w-20 text-right">{game.teams.home.probablePitcher?.fullName?.split(' ').pop() ?? game.teams.home.team.abbreviation}</span>
-                    </div>
-                    {[
-                      { label: 'ERA',       key: 'era',        lowerBetter: true,  dec: 2 },
-                      { label: 'FIP',       key: 'fip',        lowerBetter: true,  dec: 2 },
-                      { label: 'K/9',       key: 'k_per_9',    lowerBetter: false, dec: 1 },
-                      { label: 'BB/9',      key: 'bb_per_9',   lowerBetter: true,  dec: 1 },
-                      { label: 'GB Rate',   key: 'gb_rate',    lowerBetter: false, dec: 1, suffix: '%' },
-                      { label: 'L3 ERA',    key: 'l3_era',     lowerBetter: true,  dec: 2 },
-                      { label: 'vs LHB',    key: 'vs_lhb_baa', lowerBetter: true,  dec: 3, ba: true },
-                      { label: 'vs RHB',    key: 'vs_rhb_baa', lowerBetter: true,  dec: 3, ba: true },
-                      { label: 'Days Rest', key: 'days_rest',  lowerBetter: false, dec: 0 },
-                    ].map((row, i) => {
-                      const ap = prediction?.components_raw?.away_pitcher
-                      const hp = prediction?.components_raw?.home_pitcher
-                      const av = ap?.[row.key]
-                      const hv = hp?.[row.key]
-                      const awayBetter = av != null && hv != null ? row.lowerBetter ? Number(av) < Number(hv) : Number(av) > Number(hv) : false
-                      const fmt = (v: any) => {
-                        if (v == null) return '–'
-                        const n = Number(v)
-                        if (row.ba) return `.${Math.round(n * 1000).toString().padStart(3, '0')}`
-                        return `${n.toFixed(row.dec)}${row.suffix ?? ''}`
-                      }
-                      return (
-                        <div key={i} className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-stone-50 last:border-0">
-                          <span className="text-sm font-serif text-stone-900">{row.label}</span>
-                          <span className={`w-20 text-right font-mono text-xs font-bold ${awayBetter ? 'text-stone-900' : 'text-stone-400'}`}>{fmt(av)}</span>
-                          <span className={`w-20 text-right font-mono text-xs font-bold ${!awayBetter && av != null && hv != null ? 'text-stone-900' : 'text-stone-400'}`}>{fmt(hv)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
-
-              <section>
-                <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Park & Conditions</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                    <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mb-3">Park Factors</div>
-                    {[
-                      { label: 'Venue',      value: game.venue?.name },
-                      { label: 'HR Factor',  value: prediction?.components_raw?.park?.hr_factor?.toFixed(2) },
-                      { label: 'Run Factor', value: prediction?.components_raw?.park?.run_factor?.toFixed(2) },
-                      { label: 'Type',       value: venue?.indoor ? 'Dome / Closed' : 'Open Air' },
-                    ].map((s, i) => (
-                      <div key={i} className="flex justify-between py-1.5 border-b border-stone-50 last:border-0">
-                        <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                        <span className="text-xs font-mono font-bold text-stone-900">{s.value ?? '–'}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                    <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mb-3">Conditions</div>
-                    {(weather ? [
-                      { label: 'Temperature', value: `${weather.temp_f}°F` },
-                      { label: 'Conditions',  value: weather.conditions },
-                      { label: 'Wind',        value: `${weather.wind_mph} mph` },
-                      { label: 'Precip',      value: `${weather.precipitation_chance}%` },
-                    ] : [
-                      { label: 'Status', value: venue?.indoor ? 'Indoor — no impact' : 'No weather data' },
-                    ]).map((s, i) => (
-                      <div key={i} className="flex justify-between py-1.5 border-b border-stone-50 last:border-0">
-                        <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                        <span className="text-xs font-mono font-bold text-stone-900">{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            </div>
-          )
-        }
-
-        slotFantasy={
-          <FantasyTabContent
-            fantasyCards={prediction?.fantasy_cards ?? null}
-            homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+          {/* Main GM Lab briefing */}
+          <GmLabContent
+            awayTeamName={game.teams.away.team.name}
+            homeTeamName={game.teams.home.team.name}
             awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-            homeBullpen={{
-              era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
-              ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
-              closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
-            }}
-            awayBullpen={{
-              era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
-              ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
-              closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
-            }}
-            isPro={isPro}
+            homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+            awayTeamId={game.teams.away.team.id}
+            homeTeamId={game.teams.home.team.id}
+            awayPrimaryColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
+            homePrimaryColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
+            awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
+            homePitcherName={game.teams.home.probablePitcher?.fullName ?? null}
+            awayPitcherId={game.teams.away.probablePitcher?.id ?? null}
+            homePitcherId={game.teams.home.probablePitcher?.id ?? null}
+            awayPitcherStats={prediction?.components_raw?.away_pitcher ?? null}
+            homePitcherStats={prediction?.components_raw?.home_pitcher ?? null}
+            awayTeamData={prediction?.components_raw?.away_team ?? null}
+            homeTeamData={prediction?.components_raw?.home_team ?? null}
+            awayTransactions={awayTransactions}
+            homeTransactions={homeTransactions}
           />
-        }
+
+        </div>
+      )
+    }
+
+      slotFantasy={
+  <FantasyTabContent
+    fantasyCards={prediction?.fantasy_cards ?? null}
+    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+    homeBullpen={{
+      era: prediction?.components_raw?.home_team?.bullpen_era ?? null,
+      ip_yesterday: prediction?.components_raw?.home_team?.bullpen_innings_yesterday ?? null,
+      closer_available: prediction?.components_raw?.home_team?.closer_available ?? null,
+      ip_last_3: prediction?.components_raw?.home_team?.bullpen_ip_last_3 ?? null,
+      k_per_9: prediction?.components_raw?.home_team?.bullpen_k_per_9 ?? null,
+    }}
+    awayBullpen={{
+      era: prediction?.components_raw?.away_team?.bullpen_era ?? null,
+      ip_yesterday: prediction?.components_raw?.away_team?.bullpen_innings_yesterday ?? null,
+      closer_available: prediction?.components_raw?.away_team?.closer_available ?? null,
+      ip_last_3: prediction?.components_raw?.away_team?.bullpen_ip_last_3 ?? null,
+      k_per_9: prediction?.components_raw?.away_team?.bullpen_k_per_9 ?? null,
+    }}
+    awayPitcherStats={awayPitcherStats}
+    homePitcherStats={homePitcherStats}
+    park={{
+      hr_factor: prediction?.components_raw?.park?.hr_factor ?? null,
+      run_factor: prediction?.components_raw?.park?.run_factor ?? null,
+      is_dome: prediction?.components_raw?.park?.is_dome ?? false,
+    }}
+weather={weather ? {
+  temp_f: weather.temp_f,
+  wind_mph: weather.wind_mph,
+  wind_dir: weather.wind_direction_text,
+} : null}
+    venueName={game.venue?.name ?? null}
+    isPro={isPro}
+  />
+}
       />
     </>
   )

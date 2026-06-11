@@ -14,14 +14,14 @@ from dotenv import load_dotenv
 load_dotenv('.env.local')
 cache.enable()
 
-SUPABASE_URL = os.environ.get('NEXT_PUBLIC_SUPABASE_URL', '').strip()
-SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '').strip()
+SUPABASE_URL = os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    print('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars')
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print('Missing SUPABASE_URL or SUPABASE_KEY env vars')
     sys.exit(1)
 
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def format_name(raw):
     if not raw: return None
