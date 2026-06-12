@@ -120,6 +120,7 @@ function MetricTip({ children, tip }: { children: React.ReactNode; tip: string }
   }
 
   return (
+
     <span
       ref={ref}
       className="relative inline-flex items-center gap-1 cursor-help"
@@ -846,8 +847,29 @@ export default function FantasyTabContent({
   venueName,
   isPro,
 }: FantasyTabContentProps) {
-
+  if (!isPro) {
+    return (
+      <div className="py-16 flex flex-col items-center justify-center text-center gap-4">
+        <div className="font-mono text-[9px] uppercase tracking-widest text-stone-400">
+          ⊕ Pro feature
+       </div>
+        <div className="font-serif text-2xl font-semibold text-stone-900">
+          Fantasy Desk
+        </div>
+        <p className="font-serif italic text-stone-500 text-sm max-w-xs leading-relaxed">
+          Per-game fantasy ratings, batter intelligence, DFS stack picks, and bullpen watch — Pro only.
+        </p>
+        
+          <a href="/pricing"
+          className="font-mono text-[10px] uppercase tracking-widest bg-stone-900 text-yellow-300 px-5 py-2.5 rounded hover:bg-[#FF5722] hover:text-white transition mt-2">
+      
+          Upgrade to Pro →
+        </a>
+      </div>
+    )
+  }
   if (!fantasyCards) {
+
     return (
       <div className="space-y-10">
         <MethodologyPanel />
