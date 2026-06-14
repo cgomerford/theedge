@@ -1,21 +1,22 @@
-/**
- * src/app/why-edge/page.tsx
- */
-
-import type { Metadata } from 'next'
+// src/app/why-edge/page.tsx  —  server component wrapper
+import { getOverallStats } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
 import WhyEdgeClient from './WhyEdgeClient'
 
-export const metadata: Metadata = {
-  title: 'Why The Edge | More than an AI summary',
-  description: `Google tells you who's playing. The Edge tells you who holds the advantage — with a public track record, factor-by-factor transparency, and a daily brief that makes you smarter before first pitch.`,
+export const revalidate = 3600
+
+export const metadata = {
+  title: 'Why The Edge · Smart-friend reads for every level of fan',
+  description:
+    'The Edge meets you where you are — casual fan to GM-level analyst. Same game, four reads. See how the 8-factor model works and what makes it different.',
 }
 
-export default function WhyEdgePage() {
+export default async function WhyEdgePage() {
+  const stats = await getOverallStats()
   return (
     <>
-      <SiteHeader />
-      <WhyEdgeClient />
+      <SiteHeader variant="page" />
+      <WhyEdgeClient stats={stats} />
     </>
   )
 }
