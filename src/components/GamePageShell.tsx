@@ -8,7 +8,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import LiveScoreboard from './LiveScoreboard'
 
-export type GamePageTab = 'read' | 'teams' | 'pitching' | 'gmlab' | 'fantasy'
+export type GamePageTab = 'read' | 'teams' | 'pitching' | 'gmlab' | 'fantasy' | 'batting'
 
 type LiveScoreData = {
   awayRuns: number
@@ -41,14 +41,17 @@ type GamePageShellProps = {
   slotPitching: React.ReactNode
   slotGmlab: React.ReactNode
   slotFantasy: React.ReactNode
+  slotBatting?: React.ReactNode
 }
 
 const TABS = [
   { key: 'read'     as const, label: 'The Read',  shortLabel: 'Read',    proOnly: false },
   { key: 'teams'    as const, label: 'Teams',     shortLabel: 'Teams',   proOnly: false },
   { key: 'pitching' as const, label: 'Pitching',  shortLabel: 'Pitching', proOnly: true },
+  { key: 'batting'  as const, label: 'Batting',   shortLabel: 'Batting', proOnly: true  },
   { key: 'gmlab'    as const, label: 'GM Lab',    shortLabel: 'Lab',     proOnly: true  },
   { key: 'fantasy'  as const, label: 'Fantasy',   shortLabel: 'Fantasy', proOnly: true  },
+  
 ]
 
 export default function GamePageShell({
@@ -56,7 +59,7 @@ export default function GamePageShell({
   homeLogoUrl, awayLogoUrl,
   gameTime, venue, isPro, isSignedIn = false,
   liveScore,
-  slotRead, slotTeams, slotPitching, slotGmlab, slotFantasy,
+ slotRead, slotTeams, slotPitching, slotGmlab, slotFantasy, slotBatting,
 }: GamePageShellProps) {
   const [activeTab, setActiveTab] = useState<GamePageTab>('read')
 
@@ -64,7 +67,7 @@ export default function GamePageShell({
     <div className="min-h-screen bg-stone-50">
 
       {/* ── STICKY HEADER ── */}
-      <div className="sticky top-0 z-40 bg-white border-b border-stone-200 shadow-sm">
+     <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
 
         {/* Logo vs logo strip */}
         <div className="flex items-center px-3 py-2 max-w-4xl mx-auto gap-2">
@@ -209,8 +212,11 @@ export default function GamePageShell({
             )}
           </div>
         )}
-        {activeTab === 'fantasy' && (
+     {activeTab === 'fantasy' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotFantasy}</div>
+        )}
+        {activeTab === 'batting' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBatting}</div>
         )}
       </div>
     </div>

@@ -126,9 +126,18 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="absolute top-full left-0 right-0 bg-white border-b border-stone-200 shadow-xl z-50"
-      onMouseLeave={onClose}
-    >
+  style={{
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    background: '#fff',
+    borderBottom: '1px solid #e7e5e0',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+    zIndex: 50,
+  }}
+  onMouseLeave={onClose}
+>
       <div className="border-b border-stone-100 bg-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center gap-8 h-12">
           {MLB_SUB_LINKS.map(link => (
@@ -174,9 +183,18 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
 function NFLMegaPanel({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="absolute top-full left-0 right-0 bg-white border-b border-stone-200 shadow-xl z-50"
-      onMouseLeave={onClose}
-    >
+  style={{
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    background: '#fff',
+    borderBottom: '1px solid #e7e5e0',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+    zIndex: 50,
+  }}
+  onMouseLeave={onClose}
+>
       {/* Sub-nav */}
       <div className="border-b border-stone-100 bg-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center gap-8 h-12">
@@ -231,14 +249,18 @@ function NFLMegaPanel({ onClose }: { onClose: () => void }) {
 
 // ─── Mobile Drawer ────────────────────────────────────────────────────────────
 
+// ─── Mobile Drawer ────────────────────────────────────────────────────────────
+// Full-screen overlay, Athletic-style. Replaces the side drawer.
+
+// ─── Menu Panel (Athletic-style) ──────────────────────────────────────────────
+// Drops below header as a white panel. Header stays visible.
+
 function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
   open: boolean
   onClose: () => void
   isLoggedIn: boolean
   isPro: boolean
 }) {
-  const [mlbOpen, setMlbOpen] = useState(false)
-  const [nflOpen, setNflOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
@@ -258,152 +280,257 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
   if (!mounted || !open) return null
 
   return createPortal(
-    <div role="dialog" aria-modal="true" style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: '#111110', display: 'flex', flexDirection: 'column', overflowY: 'auto'
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #2A2A28', flexShrink: 0 }}>
-        <Link href="/" onClick={onClose} className="font-serif font-black text-xl text-white tracking-tight">
-          The Edge<span style={{ color: '#FF5722' }}>.</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          {!isLoggedIn && (
-            <Link href="/pricing" onClick={onClose} className="font-mono text-[10px] uppercase tracking-widest bg-[#FF5722] text-white px-3 py-2 font-bold">
-              Free daily reports
-            </Link>
-          )}
-          <button type="button" onClick={onClose} style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <line x1="1" y1="1" x2="17" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <line x1="17" y1="1" x2="1" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+    <>
+     {/* Backdrop — click to close, starts below header */}
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          top: 64,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 48,
+          background: 'rgba(0,0,0,0.08)',
+        }}
+      />
+
+      {/* Panel — drops below the header, doesn't cover it */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+       style={{
+          position: 'fixed',
+          top: 64,
+          left: 0,
+          right: 0,
+          zIndex: 49,
+          maxHeight: 'calc(100vh - 64px)',
+          overflowY: 'auto',
+          background: '#FAF8F3',
+          borderTop: '1px solid #E2DCCF',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+        }}
+      >
+        <div style={{
+          maxWidth: 1400,
+          margin: '0 auto',
+          padding: '32px 24px 48px',
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: 0,
+        }}>
+
+          {/* ── On desktop: 4-col layout. On mobile: stacked ── */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            .menu-grid { display: grid; grid-template-columns: 1fr; gap: 32px; }
+            @media (min-width: 768px) { .menu-grid { grid-template-columns: 1fr 1fr 1fr 280px; gap: 40px; } }
+          `}} />
+
+          <div className="menu-grid">
+
+            {/* ─── COL 1: MLB ─── */}
+            <div>
+              <div style={sectionHead}>
+                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> MLB
+              </div>
+              {MLB_SUB_LINKS.map(link => (
+                <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
+                  {link.label}
+                  {link.proFeature && !isPro && <span style={proBadge}>PRO</span>}
+                </Link>
+              ))}
+              <div style={{ marginTop: 20 }}>
+                {MLB_DIVISIONS.slice(0, 3).map(div => (
+                  <div key={div.label} style={{ marginBottom: 16 }}>
+                    <div style={divLabel}>{div.label}</div>
+                    {div.teams.map(team => (
+                      <Link key={team.slug} href={`/mlb/teams/${team.slug}`} onClick={onClose} style={teamRow}>
+                        <img
+                          src={`https://www.mlbstatic.com/team-logos/${MLB_TEAM_IDS[team.slug]}.svg`}
+                          alt="" width={16} height={16}
+                          style={{ objectFit: 'contain', flexShrink: 0 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                        <span style={teamName}>{team.short}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── COL 2: MLB continued (NL) ─── */}
+            <div>
+              <div style={{ ...sectionHead, color: 'transparent' }}>.</div>
+              <div>
+                {MLB_DIVISIONS.slice(3).map(div => (
+                  <div key={div.label} style={{ marginBottom: 16 }}>
+                    <div style={divLabel}>{div.label}</div>
+                    {div.teams.map(team => (
+                      <Link key={team.slug} href={`/mlb/teams/${team.slug}`} onClick={onClose} style={teamRow}>
+                        <img
+                          src={`https://www.mlbstatic.com/team-logos/${MLB_TEAM_IDS[team.slug]}.svg`}
+                          alt="" width={16} height={16}
+                          style={{ objectFit: 'contain', flexShrink: 0 }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                        <span style={teamName}>{team.short}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── COL 3: NFL + More ─── */}
+            <div>
+              <div style={sectionHead}>
+                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> NFL
+                <span style={{
+                  marginLeft: 8, fontFamily: 'Space Mono, monospace',
+                  fontSize: 9, letterSpacing: '0.12em',
+                  color: '#FF5722', border: '1px solid #FF572240',
+                  padding: '1px 6px',
+                }}>SEP 9</span>
+              </div>
+              {NFL_SUB_LINKS.map(link => (
+                <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
+                  {link.label}
+                </Link>
+              ))}
+
+              <div style={{ ...sectionHead, marginTop: 32 }}>
+                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> More
+              </div>
+              {[
+                { href: '/how-it-works', label: 'How It Works' },
+                { href: '/why-edge',     label: 'Why The Edge' },
+                { href: '/pricing',      label: 'Pricing' },
+                { href: '/track-record', label: 'Past Games' },
+                { href: '/about',        label: 'About' },
+              ].map(link => (
+                <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* ─── COL 4: Auth + utilities (right sidebar) ─── */}
+            <div style={{ borderLeft: '1px solid #E2DCCF', paddingLeft: 32 }}>
+              {isLoggedIn ? (
+                <Link href="/dugout" onClick={onClose} style={authLink}>My Dugout</Link>
+              ) : (
+                <>
+                  <Link href="/login"   onClick={onClose} style={authLink}>Log In</Link>
+                  <Link href="/pricing" onClick={onClose} style={authLink}>Subscribe Now</Link>
+                </>
+              )}
+
+              <div style={{
+                borderTop: '1px solid #E2DCCF', marginTop: 24, paddingTop: 24,
+              }}>
+                <div style={{
+                  fontFamily: 'Space Mono, monospace', fontSize: 9,
+                  letterSpacing: '0.16em', textTransform: 'uppercase',
+                  color: '#8A8275', marginBottom: 12,
+                }}>QUICK LINKS</div>
+                <Link href="/tonight"       onClick={onClose} style={utilLink}>Tonight&apos;s Slate</Link>
+                <Link href="/fantasy"       onClick={onClose} style={utilLink}>Fantasy Desk</Link>
+                <Link href="/track-record"  onClick={onClose} style={utilLink}>Track Record</Link>
+              </div>
+
+              {!isLoggedIn && (
+                <div style={{ marginTop: 32 }}>
+                  <Link
+                    href="/pricing"
+                    onClick={onClose}
+                    style={{
+                      display: 'block', textAlign: 'center',
+                      padding: '12px 20px',
+                      background: '#FF5722', color: '#fff',
+                      fontFamily: 'Space Mono, monospace',
+                      fontSize: 10, letterSpacing: '0.14em',
+                      textTransform: 'uppercase', fontWeight: 700,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Free daily reports →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
       </div>
-
-      {/* Auth */}
-      <div style={{ padding: '8px 20px', borderBottom: '1px solid #2A2A28' }}>
-        {isLoggedIn ? (
-          <Link href="/dugout" onClick={onClose} className="block font-serif text-white text-lg py-2 hover:text-[#FF5722] transition">My Dugout</Link>
-        ) : (
-          <>
-            <Link href="/login" onClick={onClose} className="block font-serif text-white text-lg py-2 hover:text-[#FF5722] transition">Log in</Link>
-            <Link href="/pricing" onClick={onClose} className="block font-serif text-white text-lg py-2 hover:text-[#FF5722] transition">Subscribe Now</Link>
-          </>
-        )}
-      </div>
-
-      {/* Nav items */}
-      <div style={{ padding: '8px 20px', flex: 1 }}>
-
-        {/* MLB accordion */}
-        <button
-          onClick={() => { setMlbOpen(o => !o); setNflOpen(false) }}
-          className="w-full flex items-center justify-between py-3.5 border-b border-[#2A2A28]"
-        >
-          <span className="font-serif text-white text-lg">MLB</span>
-          <svg width="14" height="9" viewBox="0 0 14 9" fill="none" className={`transition-transform text-stone-400 ${mlbOpen ? 'rotate-180' : ''}`}>
-            <path d="M1 1l6 6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {mlbOpen && (
-          <div className="py-3 pl-3 border-b border-[#2A2A28]">
-            {MLB_SUB_LINKS.map(link => (
-              <Link key={link.href} href={link.href} onClick={onClose}
-                className="block font-serif text-stone-300 text-base py-2 hover:text-white transition">
-                {link.label}
-                {link.label === 'Fantasy Desk' && !isPro && (
-                  <span className="ml-2 text-[9px] font-mono text-stone-500">PRO</span>
-                )}
-              </Link>
-            ))}
-            <div className="mt-3 space-y-4">
-              {MLB_DIVISIONS.map(div => (
-                <div key={div.label}>
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mb-1.5">{div.label}</div>
-                  {div.teams.map(team => (
-                    <Link key={team.slug} href={`/mlb/teams/${team.slug}`} onClick={onClose}
-                      className="flex items-center gap-2.5 py-1.5 group">
-                      <img src={`https://www.mlbstatic.com/team-logos/${MLB_TEAM_IDS[team.slug]}.svg`} alt=""
-                        className="w-5 h-5 object-contain shrink-0"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                      <span className="font-serif text-[13px] text-stone-300 group-hover:text-white transition">{team.short}</span>
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* NFL accordion */}
-        <button
-          onClick={() => { setNflOpen(o => !o); setMlbOpen(false) }}
-          className="w-full flex items-center justify-between py-3.5 border-b border-[#2A2A28]"
-        >
-          <div className="flex items-center gap-3">
-            <span className="font-serif text-white text-lg">NFL</span>
-            <span className="font-mono text-[9px] uppercase tracking-widest text-orange-500 border border-orange-500/30 px-1.5 py-0.5 rounded-sm">
-              Sep 9
-            </span>
-          </div>
-          <svg width="14" height="9" viewBox="0 0 14 9" fill="none" className={`transition-transform text-stone-400 ${nflOpen ? 'rotate-180' : ''}`}>
-            <path d="M1 1l6 6 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {nflOpen && (
-          <div className="py-3 pl-3 border-b border-[#2A2A28]">
-            {NFL_SUB_LINKS.map(link => (
-              <Link key={link.href} href={link.href} onClick={onClose}
-                className="block font-serif text-stone-300 text-base py-2 hover:text-white transition">
-                {link.label}
-              </Link>
-            ))}
-            <div className="mt-3 space-y-4">
-              {NFL_DIVISIONS.map(div => (
-                <div key={div.label}>
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mb-1.5">{div.label}</div>
-                  {div.teams.map(team => (
-                    <Link key={team.slug} href={`/nfl/teams/${team.slug}`} onClick={onClose}
-                      className="flex items-center gap-2.5 py-1.5 group">
-                      <img
-                        src={`https://a.espncdn.com/i/teamlogos/nfl/500/${team.slug}.png`}
-                        alt=""
-                        className="w-5 h-5 object-contain shrink-0"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                      />
-                      <span className="font-serif text-[13px] text-stone-300 group-hover:text-white transition">
-                        {team.name.split(' ').slice(-1)[0]}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Other nav items */}
-        {[
-          { href: '/about',        label: 'About',          sub: '' },
-          { href: '/why-edge',     label: 'Why The Edge',   sub: '' },
-          { href: '/pricing',      label: 'Pricing',        sub: '' },
-          { href: '/track-record', label: 'Past Games',     sub: '' },
-        ].map(link => (
-          <Link key={link.href} href={link.href} onClick={onClose}
-            className="flex items-center justify-between py-3.5 border-b border-[#2A2A28] group">
-            <span className="font-serif text-white text-lg group-hover:text-[#FF5722] transition">{link.label}</span>
-            {link.sub && <span className="font-mono text-[10px] text-stone-500 uppercase">{link.sub}</span>}
-          </Link>
-        ))}
-      </div>
-    </div>,
+    </>,
     document.body
   )
 }
+
+// ─── Style tokens for menu panel ──────────────────────────────────────────────
+
+const sectionHead: React.CSSProperties = {
+  fontFamily: 'Space Mono, monospace',
+  fontSize: 11, fontWeight: 700,
+  letterSpacing: '0.14em', textTransform: 'uppercase',
+  color: '#1A1A1A',
+  marginBottom: 14,
+  paddingBottom: 8,
+  borderBottom: '2px solid #1A1A1A',
+}
+
+const menuLink: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6,
+  fontFamily: 'Fraunces, serif',
+  fontSize: 15, color: '#1A1A1A',
+  textDecoration: 'none',
+  padding: '6px 0',
+}
+
+const proBadge: React.CSSProperties = {
+  fontFamily: 'Space Mono, monospace',
+  fontSize: 9, letterSpacing: '0.1em',
+  color: '#FF5722', textTransform: 'uppercase',
+}
+
+const divLabel: React.CSSProperties = {
+  fontFamily: 'Space Mono, monospace',
+  fontSize: 9, letterSpacing: '0.16em',
+  textTransform: 'uppercase',
+  color: '#8A8275', marginBottom: 6,
+}
+
+const teamRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  padding: '4px 0', textDecoration: 'none',
+}
+
+const teamName: React.CSSProperties = {
+  fontFamily: 'system-ui, sans-serif',
+  fontSize: 13, color: '#57534E',
+}
+
+const authLink: React.CSSProperties = {
+  display: 'block',
+  fontFamily: 'Fraunces, serif',
+  fontSize: 17, fontWeight: 600,
+  color: '#1A1A1A', textDecoration: 'none',
+  padding: '8px 0',
+}
+
+const utilLink: React.CSSProperties = {
+  display: 'block',
+  fontFamily: 'system-ui, sans-serif',
+  fontSize: 13, color: '#57534E',
+  textDecoration: 'none',
+  padding: '5px 0',
+}
+
+
 
 // ─── SiteHeader ───────────────────────────────────────────────────────────────
 
@@ -455,7 +582,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
 
   return (
     <>
-      <header className="relative z-40 border-b bg-[#FAF8F3] border-[#E8E4DC]">
+      <header style={{ position: 'relative', zIndex: 50, borderBottom: '1px solid #E8E4DC', background: '#FAF8F3' }}>
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
 
@@ -464,7 +591,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
 
               <button
                 type="button"
-                onClick={() => setDrawerOpen(true)}
+                onClick={() => setDrawerOpen(o => !o)}
                 aria-label="Open menu"
                 className="flex flex-col justify-center items-center w-8 h-8 gap-[5px] hover:opacity-60 transition shrink-0 mr-3 md:mr-4"
               >

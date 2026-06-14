@@ -39,6 +39,7 @@ import { getSeriesContext } from '@/lib/series-context'
 import GmLabContent from '@/components/GmLabContent'
 import { getTeamTransactions } from '@/lib/team-transactions'
 import PitchingLabContent from '@/components/PitchingLabContent'
+import BattingTabContent from '@/components/BattingTabContent'
 
 
 
@@ -73,7 +74,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const isPro = subscriber?.is_pro ?? true
   const isSignedIn = subscriber !== null
 
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
@@ -453,19 +454,19 @@ getTeamTransactions(game.teams.home.team.id, 14),
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+                          <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Fraunces', sans-serif" }}>
                             {form.last_10_wins}-{form.last_10_losses}
                           </div>
                           <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">L10</div>
                         </div>
                         <div>
-                          <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+                          <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Fraunces', sans-serif" }}>
                             {form.runs_per_game_l10?.toFixed(1) ?? '–'}
                           </div>
                           <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">R/G</div>
                         </div>
                         <div>
-                          <div className={`text-3xl font-bold leading-none ${(form.run_diff_l10 ?? 0) > 0 ? 'text-green-600' : (form.run_diff_l10 ?? 0) < 0 ? 'text-red-500' : 'text-stone-400'}`} style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+                          <div className={`text-3xl font-bold leading-none ${(form.run_diff_l10 ?? 0) > 0 ? 'text-green-600' : (form.run_diff_l10 ?? 0) < 0 ? 'text-red-500' : 'text-stone-400'}`} style={{ fontFamily: "'Fraunces', sans-serif" }}>
                             {(form.run_diff_l10 ?? 0) > 0 ? '+' : ''}{form.run_diff_l10?.toFixed(1) ?? '–'}
                           </div>
                           <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">Run Diff</div>
@@ -591,7 +592,22 @@ homePitcherStats={homePitcherStats}
         />
       )
     }
-
+slotBatting={
+  <BattingTabContent
+    awayTeamName={game.teams.away.team.name}
+    homeTeamName={game.teams.home.team.name}
+    awayTeamId={game.teams.away.team.id}
+    homeTeamId={game.teams.home.team.id}
+    awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+    homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+    awayBatters={awayLineup?.batters ?? []}
+    homeBatters={homeLineup?.batters ?? []}
+    awayPitcherId={game.teams.away.probablePitcher?.id ?? null}  // ← add
+    homePitcherId={game.teams.home.probablePitcher?.id ?? null}  // ← add
+    isPro={isPro}
+    lineupsConfirmed={prediction?.lineups_confirmed ?? false}
+  />
+}
 slotGmlab={
       !isPro ? (
         <ProLockOverlay

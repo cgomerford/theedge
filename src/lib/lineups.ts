@@ -179,11 +179,9 @@ async function getLineupFromGame(
   return batters.length > 0 ? batters : null
 }
 
-// Enrich batters with current season stats (parallel fetch)
 async function enrichBattersWithStats(batters: LineupBatter[]): Promise<LineupBatter[]> {
   const year = new Date().getFullYear()
   
-  // Fetch all batters in parallel (9 players)
   const enriched = await Promise.all(
     batters.map(async (batter) => {
       try {

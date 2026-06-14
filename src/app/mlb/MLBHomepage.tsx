@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { MLBDivisionStandings, MLBStatLeader, MLBNewsItem, MLBStatCategory } from '@/lib/mlb-homepage'
+import type { MLBDivisionStandings, MLBStatLeader, MLBNewsItem } from '@/lib/mlb-homepage'
 import { MLB_STAT_CATEGORIES } from '@/lib/mlb-homepage'
 import type { MLBGame } from '@/lib/mlb'
 import { slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
@@ -10,7 +10,9 @@ import { findTeamByName } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
 import MLBFantasySection from '@/components/MLBFantasySection'
 import type { FantasyPicksByType } from '@/lib/fantasy'
+import type { TeamTransaction } from '@/lib/team-transactions'
 
+// ─── Types ────────────────────────────────────────────────
 type Props = {
   standings: MLBDivisionStandings[]
   statLeaders: Record<string, MLBStatLeader[]>
@@ -21,10 +23,11 @@ type Props = {
   fantasyPicks: FantasyPicksByType
   fantasyIsStale: boolean
   isPro: boolean
+  activeIL: TeamTransaction[]
+  recentTransactions: TeamTransaction[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────
-
 function timeAgo(iso: string): string {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
@@ -37,405 +40,453 @@ function timeAgo(iso: string): string {
 function formatGameTime(dateStr: string): string {
   try {
     return new Date(dateStr).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
+      hour: 'numeric', minute: '2-digit', hour12: true,
       timeZone: 'America/New_York',
     })
-  } catch {
-    return '—'
-  }
+  } catch { return '—' }
 }
 
-function edgeColor(score: number): string {
-  if (score >= 15) return '#166534'
-  if (score >= 5)  return '#15803d'
-  if (score <= -15) return '#991b1b'
-  if (score <= -5)  return '#b91c1c'
-  return '#78716c'
+function parseStreak(code: string): { type: 'W' | 'L' | null; count: number } {
+  const m = (code ?? '').match(/^([WL])(\d+)$/)
+  if (!m) return { type: null, count: 0 }
+  return { type: m[1] as 'W' | 'L', count: parseInt(m[2]) }
 }
 
-function edgeBg(score: number): string {
-  if (score >= 5)  return 'rgba(134,190,135,0.15)'
-  if (score <= -5) return 'rgba(239,154,154,0.15)'
-  return 'rgba(214,211,209,0.15)'
+function streakLabel(code: string): string {
+  const { type, count } = parseStreak(code)
+  if (!type) return code || '—'
+  return `${count}-game ${type === 'W' ? 'win' : 'loss'} streak`
 }
 
-// ─── Today's Game Card ────────────────────────────────────
-
-function GameCard({ game, prediction }: { game: MLBGame; prediction?: EdgePrediction }) {
-  const slug = slugifyGame(game)
-  const awayName = shortName(game.teams.away.team.name)
-  const homeName = shortName(game.teams.home.team.name)
-  const gameTime = formatGameTime(game.gameDate)
-
-  const summary = prediction?.summary ?? null
-  const isLive = game.status.abstractGameState === 'Live'
-  const isFinal = game.status.abstractGameState === 'Final'
-
-  const cardClass = 'block bg-white border border-stone-200 rounded-lg p-4 hover:border-stone-300 hover:shadow-sm transition group'
-
+// ─── Circular Headshot ────────────────────────────────────
+function CircularHeadshot({ src, size = 28, alt = '' }: { src: string; size?: number; alt?: string }) {
   return (
-    <Link href={`/mlb/${slug}`} className={cardClass}>
-      {/* Matchup row */}
-      <div className="flex items-center gap-2 mb-3">
-        <img
-          src={teamLogoUrl(game.teams.away.team.id)}
-          alt={awayName}
-          className="w-5 h-5 object-contain flex-shrink-0"
-        />
-        <span className="text-sm font-semibold text-stone-600">{awayName}</span>
-        <span className="text-stone-300 text-xs font-mono">@</span>
-        <img
-          src={teamLogoUrl(game.teams.home.team.id)}
-          alt={homeName}
-          className="w-5 h-5 object-contain flex-shrink-0"
-        />
-        <span className="text-sm font-semibold text-stone-900">{homeName}</span>
-      </div>
-
-      {/* Narrative summary */}
-      {summary && (
-        <p className="text-xs text-stone-500 leading-relaxed font-serif italic line-clamp-2 mb-2">
-          &ldquo;{summary}&rdquo;
-        </p>
-      )}
-
-      {/* Footer row */}
-      <div className="flex items-center justify-between mt-1">
-        <div className="flex items-center gap-2">
-          {isLive && (
-            <span className="text-[9px] font-mono uppercase tracking-widest text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">
-              Live
-            </span>
-          )}
-          {isFinal && (
-            <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400">Final</span>
-          )}
-          {!isLive && !isFinal && (
-            <span className="text-[10px] font-mono text-stone-400">{gameTime} ET</span>
-          )}
-        </div>
-        <span className="text-[10px] font-mono text-orange-500 group-hover:text-orange-600 transition">
-          Full preview →
-        </span>
-      </div>
-    </Link>
-  )
-}
-
-function DivisionTable({ division }: { division: MLBDivisionStandings }) {
-  const leagueColor = division.league === 'AL' ? '#003087' : '#BA0021'
-  const divShort = division.division.replace(/^(AL|NL)\s+/, '')
-
-  return (
-    <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-stone-100 flex items-center gap-2">
-        <span
-          className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold px-2 py-0.5 rounded"
-          style={{ background: leagueColor, color: '#fff' }}
-        >
-          {division.league}
-        </span>
-        <span className="text-[11px] font-mono uppercase tracking-widest text-stone-500">
-          {divShort}
-        </span>
-      </div>
-
-      <div className="divide-y divide-stone-100">
-        {/* Header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-1.5">
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400">Team</span>
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 w-7 text-center">W</span>
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 w-7 text-center">L</span>
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 w-10 text-right">PCT</span>
-          <span className="text-[9px] font-mono uppercase tracking-widest text-stone-400 w-8 text-right">GB</span>
-        </div>
-
-        {division.teams.map((team, i) => {
-          const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
-          return (
-            <Link
-              key={team.id}
-              href={`/mlb/teams/${teamSlug}`}
-              className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-4 py-2.5 items-center hover:bg-stone-50 transition"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
-                  alt={team.abbreviation}
-                  className="w-5 h-5 object-contain flex-shrink-0"
-                  onError={(e) => { const img = e.target as HTMLImageElement; img.style.display = 'none' }}
-                />
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-stone-900 truncate leading-tight">
-                    {team.name.split(' ').slice(-1)[0]}
-                  </div>
-                  <div className="text-[9px] font-mono text-stone-400 leading-tight">
-                    {team.streak}
-                  </div>
-                </div>
-                {i === 0 && (
-                  <span className="text-[8px] font-mono uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 hidden sm:inline">
-                    1st
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-mono font-bold text-stone-900 w-7 text-center">{team.wins}</span>
-              <span className="text-sm font-mono text-stone-500 w-7 text-center">{team.losses}</span>
-              <span className="text-sm font-mono text-stone-600 w-10 text-right">{team.pct}</span>
-              <span className="text-xs font-mono text-stone-400 w-8 text-right">{team.gb}</span>
-            </Link>
-          )
-        })}
-      </div>
+    <div style={{
+      width: size, height: size, borderRadius: '50%', overflow: 'hidden',
+      flexShrink: 0, background: '#f4f4f5', border: '1px solid #e4e4e7'
+    }}>
+      <img src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
     </div>
   )
 }
 
-// ─── Stat Leaders Panel ───────────────────────────────────
-
-function StatLeadersPanel({ leaders, label }: { leaders: MLBStatLeader[]; label: string }) {
-  if (!leaders || leaders.length === 0) {
-    return (
-      <div className="text-center py-12 text-stone-400 font-mono text-sm">
-        No data available — check back when the season is underway.
-      </div>
-    )
+// ─── Transaction badge ────────────────────────────────────
+function TxBadge({ category }: { category: string }) {
+  const map: Record<string, { color: string; bg: string; border: string }> = {
+    IL:         { color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+    TRADE:      { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+    SIGNING:    { color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+    CALLUP:     { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
+    ACTIVATION: { color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
+    OPTION:     { color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' },
+    DFA:        { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
   }
-
+  const s = map[category] ?? { color: '#374151', bg: '#f9fafb', border: '#e5e7eb' }
   return (
-    <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
-      <div className="divide-y divide-stone-100">
-        {leaders.slice(0, 10).map((leader) => (
-          <div key={`${leader.rank}-${leader.name}`} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition">
-            <span className="text-[11px] font-mono text-stone-400 w-4 flex-shrink-0">{leader.rank}</span>
-            <img
-              src={leader.headshot}
-              alt={leader.name}
-              className="w-9 h-9 rounded-full object-cover bg-stone-100 flex-shrink-0"
-              onError={(e) => { const img = e.target as HTMLImageElement; img.style.display = 'none' }}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-stone-900 truncate">{leader.name}</div>
-              <div className="text-[10px] font-mono uppercase text-stone-400">{leader.teamAbbr}</div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-lg font-serif font-bold text-stone-900">{leader.statValue}</div>
-              <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">{label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── News Card ────────────────────────────────────────────
-
-function NewsCard({ item, featured }: { item: MLBNewsItem; featured?: boolean }) {
-  const containerClass = `block bg-white border border-stone-200 rounded-lg overflow-hidden hover:border-stone-400 hover:shadow-md transition group${featured ? ' md:col-span-2' : ''}`
-  const headingClass = `font-serif text-stone-900 leading-snug group-hover:text-orange-700 transition${featured ? ' text-xl mb-2' : ' text-base mb-1'}`
-
-  return (
-    <a href={item.link} target="_blank" rel="noopener noreferrer" className={containerClass}>
-      {featured && (
-        item.image
-          ? <img src={item.image} alt="" className="w-full h-48 object-cover" />
-          : <div className="w-full h-24 bg-gradient-to-r from-stone-100 to-stone-50" />
-      )}
-      <div className="p-4">
-        <h3 className={headingClass}>{item.headline}</h3>
-        {item.description && (
-          <p className="text-stone-500 text-sm leading-relaxed line-clamp-2">{item.description}</p>
-        )}
-        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-2">
-          {timeAgo(item.published)}
-        </div>
-      </div>
-    </a>
+    <span style={{
+      fontSize: 10, fontWeight: 700, color: s.color,
+      background: s.bg, border: `1px solid ${s.border}`,
+      borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0
+    }}>
+      {category}
+    </span>
   )
 }
 
 // ─── Main Component ───────────────────────────────────────
-
-export default function MLBHomepage({ standings, statLeaders, games, predictions, news, today, fantasyPicks, fantasyIsStale, isPro }: Props) {
+export default function MLBHomepage({
+  standings, statLeaders, games, predictions, news, today,
+  fantasyPicks, fantasyIsStale, isPro, activeIL, recentTransactions
+}: Props) {
   const [activeLeague, setActiveLeague] = useState<'AL' | 'NL'>('AL')
-  const [activeStat, setActiveStat] = useState(MLB_STAT_CATEGORIES[0].slug)
-  const [activeGroup, setActiveGroup] = useState<'batting' | 'pitching'>('batting')
 
   const activeDivisions = standings.filter(d => d.league === activeLeague)
-  const currentCat = MLB_STAT_CATEGORIES.find(c => c.slug === activeStat)
-  const groupCats = MLB_STAT_CATEGORIES.filter(c => c.group === activeGroup)
 
-  // Top edges today — sort by absolute edge score
-  const edgeGames = [...games]
-    .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
-    .filter(({ pred }) => pred && pred.edge_score !== null)
-    .sort((a, b) => Math.abs(b.pred!.edge_score!) - Math.abs(a.pred!.edge_score!))
+  const sortedGames = [...games].sort((a, b) =>
+    new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime()
+  )
 
-  const pendingGames = [...games]
-    .map(g => ({ game: g, pred: predictions.get(g.gamePk) }))
-    .filter(({ pred }) => !pred || pred.edge_score === null)
+  const allTeams = standings.flatMap(d => d.teams.map(t => ({ ...t, division: d.division, league: d.league })))
+  const hotTeams = allTeams
+    .map(t => ({ ...t, parsed: parseStreak(t.streak) }))
+    .filter(t => t.parsed.type === 'W' && t.parsed.count >= 3)
+    .sort((a, b) => b.parsed.count - a.parsed.count)
+    .slice(0, 5)
+  const coldTeams = allTeams
+    .map(t => ({ ...t, parsed: parseStreak(t.streak) }))
+    .filter(t => t.parsed.type === 'L' && t.parsed.count >= 3)
+    .sort((a, b) => b.parsed.count - a.parsed.count)
+    .slice(0, 5)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 pb-16">
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#fff' }}>
 
-      {/* ── Hero ── */}
-      <div className="py-10 md:py-14">
-        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-orange-600 mb-3">
-          § The Edge · MLB
+      {/* ── Header ── */}
+      <div style={{
+        borderBottom: '1px solid #e5e5e5', padding: '18px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16
+      }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '1px' }}>THE EDGE • {today}</div>
+          <h1 style={{ fontSize: 34, fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1, letterSpacing: '-1px' }}>
+            MLB<span style={{ color: '#f97316' }}>.</span>
+          </h1>
         </div>
-        <h1 className="font-serif text-4xl md:text-5xl font-bold text-stone-900 leading-none tracking-tight mb-3">
-          The GM Brief<span className="text-orange-500">.</span>
-        </h1>
-        <p className="text-stone-500 text-base md:text-lg max-w-xl font-serif italic">
-          Standings, stat leaders, and today's edges — in five minutes.
-        </p>
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {[
+            { value: games.length, label: 'GAMES TODAY' },
+            { value: games.filter(g => predictions.get(g.gamePk)?.edge_score != null).length, label: 'EDGES' },
+            { value: games.filter(g => !predictions.get(g.gamePk)?.edge_score).length, label: 'PENDING' },
+          ].map((stat, i) => (
+            <div key={i} style={{ textAlign: 'center', minWidth: 70 }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#111827' }}>{stat.value}</div>
+              <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2, letterSpacing: '0.5px' }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+        
       </div>
 
-      {/* ── TODAY'S FULL SLATE ── */}
-      {games.length > 0 && (
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500">
-              ⊕ Today's slate · {today}
-            </div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400">
-              {games.length} game{games.length !== 1 ? 's' : ''} today
-            </div>
+      {/* ══════════════════════════════════════════════════════
+          PREVIEWS (3/4) + NEWS (1/4)
+      ══════════════════════════════════════════════════════ */}
+      <style>{`
+        .top-section-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          border-bottom: 1px solid #e5e5e5;
+        }
+        @media (min-width: 768px) {
+          .top-section-grid { grid-template-columns: 3fr 1fr; }
+        }
+        .previews-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1px;
+          background: #f4f4f5;
+        }
+        @media (min-width: 768px) {
+          .previews-grid { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
+      <div className="top-section-grid">
+
+        {/* PREVIEWS */}
+        <div style={{ borderRight: '1px solid #e5e5e5' }}>
+          <div style={{
+            padding: '12px 20px', borderBottom: '1px solid #e5e5e5',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: '#fafafa'
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>
+              § PREVIEWS • {games.length} GAMES
+            </span>
+            <Link href="/tonight" style={{ fontSize: 11, color: '#6b7280', textDecoration: 'none' }}>Full slate →</Link>
           </div>
+          <div className="previews-grid">
+            {sortedGames.map((game) => {
+              const slug = slugifyGame(game)
+              const pred = predictions.get(game.gamePk)
+              const isLive = game.status.abstractGameState === 'Live'
+              const isFinal = game.status.abstractGameState === 'Final'
+              return (
+                <Link key={game.gamePk} href={`/mlb/${slug}`} style={{
+                  display: 'block', padding: '14px 18px',
+                  background: '#fff', textDecoration: 'none', borderBottom: '1px solid #f4f4f5'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <img src={teamLogoUrl(game.teams.away.team.id)} alt="" width={18} height={18} />
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>@</span>
+                    <img src={teamLogoUrl(game.teams.home.team.id)} alt="" width={18} height={18} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+                      {game.teams.away.team.abbreviation} @ {game.teams.home.team.abbreviation}
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: isLive ? '#f97316' : '#6b7280', fontWeight: isLive ? 600 : 400 }}>
+                      {isLive ? 'LIVE' : isFinal ? 'Final' : formatGameTime(game.gameDate)}
+                    </span>
+                  </div>
+                  {pred?.summary ? (
+                    <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.45, margin: 0 }}>{pred.summary}</p>
+                  ) : (
+                    <p style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>Preview generating…</p>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
 
-          {/* Games with edge reads — sorted by strength */}
-          {edgeGames.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {edgeGames.map(({ game, pred }) => (
-                <GameCard key={game.gamePk} game={game} prediction={pred} />
-              ))}
-            </div>
-          )}
-
-          {/* Games still pending a read */}
-          {pendingGames.length > 0 && (
-            <>
-              {edgeGames.length > 0 && (
-                <div className="text-[10px] font-mono uppercase tracking-[0.15em] text-stone-400 mt-6 mb-3">
-                  Read pending
+        {/* NEWS */}
+        <div style={{ background: '#fafafa' }}>
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid #e5e5e5' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>§ AROUND THE LEAGUE</span>
+          </div>
+          <div style={{ padding: '4px 16px' }}>
+            {news.slice(0, 8).map((item, index) => (
+              <a key={index} href={item.link} target="_blank" rel="noopener noreferrer" style={{
+                display: 'flex', gap: 10, padding: '11px 0',
+                borderBottom: index < 7 ? '1px solid #f3f4f6' : 'none', textDecoration: 'none'
+              }}>
+                <div style={{ width: 52, height: 52, flexShrink: 0, background: '#FAF8F3', borderRadius: 6, overflow: 'hidden' }}>
+                  {item.image && <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />}
                 </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {pendingGames.map(({ game }) => (
-                  <GameCard key={game.gamePk} game={game} prediction={undefined} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, color: '#111827', lineHeight: 1.35, marginBottom: 3 }}>{item.headline}</div>
+                  <div style={{ fontSize: 10, color: '#6b7280' }}>{timeAgo(item.published)}</div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          STATS + STANDINGS
+      ══════════════════════════════════════════════════════ */}
+      <style>{`
+        .stats-standings-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 28px;
+          padding: 28px 24px;
+          background: #fff;
+        }
+        @media (min-width: 900px) {
+          .stats-standings-grid { grid-template-columns: 3fr 2fr; }
+        }
+      `}</style>
+      <div className="stats-standings-grid">
+
+        {/* STATS */}
+        <div>
+          <div style={{ marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>PITCHING LEADERS</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: '#f4f4f5', borderRadius: 10, overflow: 'hidden', marginBottom: 28 }}>
+            {MLB_STAT_CATEGORIES.filter(c => c.group === 'pitching').map((cat) => (
+              <div key={cat.slug} style={{ background: '#fff', padding: '12px 14px' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#f97316', marginBottom: 10, letterSpacing: '0.3px' }}>{cat.label}</div>
+                {(statLeaders[cat.slug] ?? []).slice(0, 3).map((leader, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0', borderTop: i > 0 ? '1px solid #f4f4f5' : 'none' }}>
+                    <CircularHeadshot src={leader.headshot} size={26} alt={leader.name} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{leader.name}</div>
+                      <div style={{ fontSize: 10.5, color: '#6b7280' }}>{leader.teamAbbr}</div>
+                    </div>
+                    <div style={{ fontSize: 15.5, fontWeight: 700, color: i === 0 ? '#f97316' : '#111827', fontFeatureSettings: '"tnum"' }}>
+                      {leader.statValue}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </>
-          )}
-
-          {/* Empty state — no games at all today */}
-          {edgeGames.length === 0 && pendingGames.length === 0 && (
-            <div className="text-center py-10 bg-white border border-stone-200 rounded-lg text-stone-400 font-mono text-sm">
-              No games scheduled today.
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* After the games grid section, before standings */}
-      <MLBFantasySection picks={fantasyPicks} isStale={fantasyIsStale} isPro={isPro} />
-
-      {/* ── STANDINGS ── */}
-      <section className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500">
-            ⊕ Division standings
+            ))}
           </div>
-          <div className="flex gap-1">
-            {(['AL', 'NL'] as const).map(league => (
-              <button
-                key={league}
-                onClick={() => setActiveLeague(league)}
-                className={`px-3 py-1 text-xs font-mono uppercase tracking-widest transition rounded ${activeLeague === league ? 'bg-stone-900 text-white' : 'text-stone-500 hover:text-stone-800 border border-stone-300'}`}
-              >
-                {league}
-              </button>
+
+          <div style={{ marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>BATTING LEADERS</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: '#f4f4f5', borderRadius: 10, overflow: 'hidden' }}>
+            {MLB_STAT_CATEGORIES.filter(c => c.group === 'batting').map((cat) => (
+              <div key={cat.slug} style={{ background: '#fff', padding: '12px 14px' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#f97316', marginBottom: 10, letterSpacing: '0.3px' }}>{cat.label}</div>
+                {(statLeaders[cat.slug] ?? []).slice(0, 3 ).map((leader, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0', borderTop: i > 0 ? '1px solid #f4f4f5' : 'none' }}>
+                    <CircularHeadshot src={leader.headshot} size={26} alt={leader.name} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{leader.name}</div>
+                      <div style={{ fontSize: 10.5, color: '#6b7280' }}>{leader.teamAbbr}</div>
+                    </div>
+                    <div style={{ fontSize: 15.5, fontWeight: 700, color: i === 0 ? '#f97316' : '#111827', fontFeatureSettings: '"tnum"' }}>
+                      {leader.statValue}
+                    </div>
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {activeDivisions.length > 0 ? (
-            activeDivisions.map(div => (
-              <DivisionTable key={div.division} division={div} />
-            ))
-          ) : (
-            <div className="col-span-3 text-center py-16 bg-white border border-stone-200 rounded-lg">
-              <div className="font-mono text-stone-400 text-sm">Standings unavailable — retrying shortly.</div>
+        {/* STANDINGS */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>STANDINGS</span>
+            <div style={{ display: 'flex', background: '#f4f4f5', borderRadius: 999, padding: 3 }}>
+              {(['AL', 'NL'] as const).map(l => (
+                <button key={l} onClick={() => setActiveLeague(l)} style={{
+                  fontSize: 11, padding: '5px 18px', border: 'none',
+                  background: activeLeague === l ? '#111827' : 'transparent',
+                  color: activeLeague === l ? '#fff' : '#6b7280',
+                  borderRadius: 999, cursor: 'pointer', fontWeight: 600, transition: 'all 0.15s ease'
+                }}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 12, overflow: 'hidden' }}>
+            {activeDivisions.length > 0 ? activeDivisions.map((div, idx) => (
+              <div key={idx} style={{ borderBottom: idx < activeDivisions.length - 1 ? '1px solid #f4f4f5' : 'none' }}>
+                <div style={{ padding: '10px 16px', background: '#fafafa', fontSize: 11.5, fontWeight: 700, color: '#374151' }}>
+                  {div.division.replace(/^(AL|NL)\s+/, '')}
+                </div>
+                {div.teams.map((team, i) => {
+                  const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
+                  return (
+                    <Link key={i} href={`/mlb/teams/${teamSlug}`} style={{
+                      display: 'flex', alignItems: 'center', padding: '9px 16px',
+                      textDecoration: 'none', borderTop: '1px solid #f4f4f5',
+                      background: i === 0 ? '#fffbeb' : '#fff'
+                    }}>
+                      <div style={{ width: 22, fontSize: 12, color: i === 0 ? '#f97316' : '#9ca3af', fontWeight: 600 }}>{i + 1}</div>
+                      <img src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`} alt="" width={18} height={18} style={{ marginRight: 10 }} />
+                      <span style={{ flex: 1, fontSize: 13.5, color: '#111827', fontWeight: i === 0 ? 600 : 400 }}>
+                        {team.name.split(' ').slice(-1)[0]}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', width: 28, textAlign: 'right' }}>{team.wins}</span>
+                      <span style={{ fontSize: 13, color: '#6b7280', width: 28, textAlign: 'center' }}>{team.losses}</span>
+                      <span style={{ fontSize: 12, color: '#6b7280', width: 30, textAlign: 'right' }}>{team.gb}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )) : (
+              <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Standings unavailable</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          THINGS YOU MAY HAVE MISSED
+      ══════════════════════════════════════════════════════ */}
+      <div style={{ borderTop: '3px solid #111827' }} />
+      <style>{`
+        .missed-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        @media (min-width: 640px) {
+          .missed-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (min-width: 1024px) {
+          .missed-grid { grid-template-columns: 1fr 1fr 1fr; }
+        }
+      `}</style>
+      <div style={{ padding: '32px 24px 40px', background: '#fafafa' }}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '1px', marginBottom: 4 }}>
+            § THE EDGE
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>
+            Things You May Have Missed
+          </h2>
+        </div>
+
+        <div className="missed-grid">
+
+          {/* INJURY REPORT */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px', marginBottom: 10 }}>
+              INJURY REPORT
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
+              {activeIL.length === 0 ? (
+                <div style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>No active IL placements.</div>
+              ) : activeIL.slice(0, 8).map((tx, i) => (
+                <div key={tx.transaction_id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                  borderBottom: i < Math.min(activeIL.length, 8) - 1 ? '1px solid #f9f9f9' : 'none'
+                }}>
+                  {tx.team_id && (
+                    <img src={`https://www.mlbstatic.com/team-logos/${tx.team_id}.svg`} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
+                  )}
+                  <CircularHeadshot
+                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
+                    size={28} alt={tx.player_name}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827' }}>{tx.player_name}</div>
+                    <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{tx.injury_reason ?? tx.team_name ?? '—'}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap' }}>
+                    {tx.il_days ? `IL-${tx.il_days}` : 'IL'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TRANSACTIONS */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>TRANSACTIONS</span>
+              <span style={{ fontSize: 10, color: '#9ca3af' }}>Last 5 days</span>
+            </div>
+            <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
+              {recentTransactions.length === 0 ? (
+                <div style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>No recent transactions.</div>
+              ) : recentTransactions.slice(0, 8).map((tx, i) => (
+                <div key={tx.transaction_id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                  borderBottom: i < Math.min(recentTransactions.length, 8) - 1 ? '1px solid #f9f9f9' : 'none'
+                }}>
+                  {(tx.team_id ?? tx.to_team_id) && (
+                    <img src={`https://www.mlbstatic.com/team-logos/${tx.team_id ?? tx.to_team_id}.svg`} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
+                  )}
+                  <CircularHeadshot
+                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
+                    size={28} alt={tx.player_name}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827' }}>{tx.player_name}</div>
+                    <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{tx.team_name ?? tx.to_team_name ?? '—'}</div>
+                  </div>
+                  <TxBadge category={tx.category} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* STREAKS */}
+          {(hotTeams.length > 0 || coldTeams.length > 0) && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px', marginBottom: 10 }}>
+                STREAKS
+              </div>
+              <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
+                {[...hotTeams, ...coldTeams].map((team, i) => {
+                  const isHot = team.parsed.type === 'W'
+                  const total = hotTeams.length + coldTeams.length
+                  return (
+                    <div key={team.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                      borderBottom: i < total - 1 ? '1px solid #f9f9f9' : 'none'
+                    }}>
+                      <img src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`} alt="" width={20} height={20} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{team.name.split(' ').slice(-1)[0]}</div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{streakLabel(team.streak)}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 12, fontWeight: 700,
+                        color: isHot ? '#16a34a' : '#dc2626',
+                        background: isHot ? '#f0fdf4' : '#fef2f2',
+                        border: `1px solid ${isHot ? '#bbf7d0' : '#fecaca'}`,
+                        borderRadius: 6, padding: '2px 8px'
+                      }}>
+                        {isHot ? 'W' : 'L'}{team.parsed.count}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
+
         </div>
-      </section>
+      </div>
 
-      {/* ── STAT LEADERS ── */}
-      <section className="mb-12">
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-4">
-          ⊕ Statistical leaders
-        </div>
-
-        {/* Batting / Pitching toggle */}
-        <div className="flex gap-1 mb-3">
-          {(['batting', 'pitching'] as const).map(group => (
-            <button
-              key={group}
-              onClick={() => {
-                setActiveGroup(group)
-                const first = MLB_STAT_CATEGORIES.find(c => c.group === group)
-                if (first) setActiveStat(first.slug)
-              }}
-              className={`px-3 py-1.5 text-xs font-mono uppercase tracking-widest transition rounded ${activeGroup === group ? 'bg-stone-900 text-white' : 'text-stone-500 hover:text-stone-800 border border-stone-200 bg-white'}`}
-            >
-              {group}
-            </button>
-          ))}
-        </div>
-
-        {/* Category tabs */}
-        <div className="flex gap-1 flex-wrap mb-4">
-          {groupCats.map(cat => (
-            <button
-              key={cat.slug}
-              onClick={() => setActiveStat(cat.slug)}
-              className={`px-3 py-1.5 text-xs font-mono uppercase tracking-widest transition rounded ${activeStat === cat.slug ? 'bg-orange-600 text-white' : 'text-stone-500 hover:text-stone-800 border border-stone-200 bg-white'}`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        <StatLeadersPanel
-          leaders={statLeaders[activeStat] ?? []}
-          label={currentCat?.label ?? activeStat}
-        />
-      </section>
-
-      {/* ── NEWS ── */}
-      <section>
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-4">
-          § Around the league
-        </div>
-
-        {news.length === 0 ? (
-          <div className="text-center py-12 bg-white border border-stone-200 rounded-lg text-stone-400 font-mono text-sm">
-            News unavailable — check back shortly.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {news.map((item, i) => (
-              <NewsCard key={item.id} item={item} featured={i === 0} />
-            ))}
-          </div>
-        )}
-      </section>
-
+          
     </div>
   )
 }

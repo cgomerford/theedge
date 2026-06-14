@@ -1,22 +1,22 @@
 name: fetch-team-transactions
 
 on:
-schedule:
-- cron: '0 11 * * *'   # 11:00 UTC daily — after morning roster moves
-workflow_dispatch:         # manual trigger
+  schedule:
+    - cron: '0 11 * * *'   # 11:00 UTC daily — after morning roster moves
+  workflow_dispatch:         # manual trigger
 
 jobs:
-fetch-transactions:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5
-with:
-python-version: '3.11'
-- name: Install dependencies
-run: pip install requests supabase python-dotenv
-- name: Fetch team transactions
-env:
-SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-run: python scripts/fetch_team_transactions.py
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch team transactions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_team_transactions.py

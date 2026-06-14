@@ -11,6 +11,8 @@ import { getPredictionsForDate } from '@/lib/edge-fetch'
 import MLBHomepage from './MLBHomepage'
 import { getFantasyPicks } from '@/lib/fantasy'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { getAllActiveIL, getAllRecentTransactions } from '@/lib/team-transactions'
+import MLBSubNav from '@/components/MLBSubNav'
 
 export const metadata = {
   title: 'MLB · The Edge',
@@ -22,13 +24,15 @@ export const revalidate = 1800
 export default async function MLBPage() {
   const today = new Date().toISOString().split('T')[0]
 
-  const [standings, news, games, predictions, fantasyResult, subscriber, ...statLeaderGroups] = await Promise.all([
+  const [standings, news, games, predictions, fantasyResult, subscriber, activeIL, recentTransactions, ...statLeaderGroups] = await Promise.all([
     getMLBStandings(),
     getMLBNewsMultiSource(),
     getScheduleForDate(today),
     getPredictionsForDate(today),
     getFantasyPicks(),
     getCurrentSubscriber(),
+    getAllActiveIL(),
+    getAllRecentTransactions(5, ['IL', 'ACTIVATION', 'TRADE', 'SIGNING', 'CALLUP']),
     ...MLB_STAT_CATEGORIES.map(cat => getMLBStatLeaders(cat.slug, 10, cat.group)),
   ])
 
@@ -42,6 +46,7 @@ export default async function MLBPage() {
   return (
     <main className="min-h-screen bg-stone-50">
       <SiteHeader variant="page" />
+      <MLBSubNav />
       <MLBHomepage
         standings={standings}
         statLeaders={statLeaders}
@@ -52,6 +57,8 @@ export default async function MLBPage() {
         fantasyPicks={fantasyResult.picks}
         fantasyIsStale={fantasyResult.isStale}
         isPro={isPro}
+        activeIL={activeIL}
+        recentTransactions={recentTransactions}
       />
     </main>
   )
