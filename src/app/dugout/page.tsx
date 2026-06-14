@@ -116,7 +116,7 @@ export default async function DugoutPage({ searchParams }: Props) {
     if (!primaryTeam) return null
     // Find which division contains the primary team by matching team name
     return allStandings.find(div =>
-      div.teams.some(t => t.name === primaryTeam.name || t.abbreviation === primaryTeam.short)
+      div.teams.some(t => t.name === primaryTeam.name || t.abbreviation === primaryTeam.abbrev)
     ) ?? null
   })()
 
@@ -544,7 +544,7 @@ export default async function DugoutPage({ searchParams }: Props) {
                 <div className="px-4 py-5 text-[12px] font-serif italic text-stone-400">Standings unavailable.</div>
               ) : primaryTeamDivision.teams.map((team, i) => {
                 const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
-                const isPrimary = team.name === primaryTeam?.name || team.abbreviation === primaryTeam?.short
+                const isPrimary = team.name === primaryTeam?.name || team.abbreviation === primaryTeam?.abbrev
                 const { type: streakType, count: streakCount } = parseStreak(team.streak)
                 return (
                   <Link
