@@ -481,7 +481,7 @@ export default async function DugoutPage({ searchParams }: Props) {
                     src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
                     alt={tx.player_name}
                     className="w-7 h-7 rounded-full object-cover bg-stone-100 shrink-0"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                   
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-[12.5px] font-semibold text-stone-900 truncate">{tx.player_name}</div>
@@ -519,7 +519,7 @@ export default async function DugoutPage({ searchParams }: Props) {
                       src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
                       alt={tx.player_name}
                       className="w-7 h-7 rounded-full object-cover bg-stone-100 shrink-0"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                     
                     />
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-semibold text-stone-900 truncate">{tx.player_name}</div>
@@ -592,7 +592,7 @@ export default async function DugoutPage({ searchParams }: Props) {
                     src={leader.headshot}
                     alt={leader.name}
                     className="w-7 h-7 rounded-full object-cover bg-stone-100 shrink-0"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                   
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-[12px] font-semibold text-stone-900 truncate">{leader.name}</div>
