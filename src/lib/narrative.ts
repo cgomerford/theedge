@@ -64,8 +64,6 @@ function openerLabel(pitcher: any): string {
   return `⚠ OPENER/BULK ARM (${pitcher.starts ?? 0} starts in ${games} apps, ${(ip / games).toFixed(1)} IP/game). Frame as short-stint arm handing off; bullpen is the real pitching story.`
 }
 
-// ── Converts raw component score to a descriptive label ─────────────────────
-// Prevents raw numbers like "+9.7" or "-28.0" leaking into narratives
 function componentLabel(key: string, value: number, homeTeam: string, awayTeam: string): string {
   const abs = Math.abs(value)
   const favours = value >= 0 ? homeTeam : awayTeam
@@ -79,7 +77,6 @@ function componentLabel(key: string, value: number, homeTeam: string, awayTeam: 
     case 'offense':
       return abs < 5 ? `Offensive output roughly even L30` : `Offensive edge to ${favours} over L30 (${strength})`
     case 'defense':
-      // Never expose score — describe using real defensive concepts
       return abs < 5 ? `Defensive metrics roughly even` : `Defensive edge to ${favours} based on range/OAA metrics (${strength})`
     case 'matchup':
       return abs < 5 ? `Arsenal vs lineup matchup roughly neutral` : `Pitch-type matchup edge to ${favours} (${strength})`
@@ -267,7 +264,6 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
   const awayIsOpener = detectOpener(awayP)
   const homeIsOpener = detectOpener(homeP)
 
-  // Top factors as descriptive labels — no raw scores
   const sortedComponents = Object.entries(inputs.components)
     .map(([key, value]) => ({ key, value, abs: Math.abs(value) }))
     .sort((a, b) => b.abs - a.abs)
@@ -290,7 +286,6 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     ? `- ${inputs.home_team} (home): ${homeP.player_name} — ERA ${homeP.era ?? 'N/A'}, FIP ${homeP.fip ?? 'N/A'}, K/9 ${homeP.k_per_9 ?? 'N/A'}, ${homeP.innings_pitched ?? 0} IP in ${homeP.games_played ?? '?'} apps${homeH2H}${homeLastStart}${homeIsOpener ? `\n  ${openerLabel(homeP)}` : ''}`
     : `- ${inputs.home_team} (home): pitcher TBD`
 
-  // Defense: pass real metrics only, never the component score
   const awayDefense = awayT?.oaa != null
     ? `OAA ${awayT.oaa > 0 ? '+' : ''}${awayT.oaa}`
     : awayT?.errors_l30 != null ? `${awayT.errors_l30} errors L30` : 'no data'
@@ -298,7 +293,6 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     ? `OAA ${homeT.oaa > 0 ? '+' : ''}${homeT.oaa}`
     : homeT?.errors_l30 != null ? `${homeT.errors_l30} errors L30` : 'no data'
 
-  // Series context
   let seriesBlock = ''
   if (inputs.series_game_number && inputs.series_games_total) {
     const awayW = inputs.away_series_wins ?? 0
@@ -307,7 +301,6 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     seriesBlock = `\nSERIES: ${isRubber ? `RUBBER MATCH — tied ${awayW}-${homeW}` : `Game ${inputs.series_game_number} of ${inputs.series_games_total} (${inputs.away_team} leads ${awayW}-${homeW})`}${inputs.series_runs_so_far ? `\nSERIES SCORING: ${inputs.series_runs_so_far}` : ''}`
   }
 
-  // Platoon block
   const awayP_hand = awayP?.throws ?? null
   const homeP_hand = homeP?.throws ?? null
   let platoonBlock = ''
@@ -355,8 +348,6 @@ Write all 7 tags now.`
 }
 
 function parseOutput(text: string) {
-
-  
   const summaryMatch      = text.match(/<summary>([\s\S]*?)<\/summary>/i)
   const narrativeMatch    = text.match(/<narrative>([\s\S]*?)<\/narrative>/i)
   const narrativeProMatch = text.match(/<narrative_pro>([\s\S]*?)<\/narrative_pro>/i)
@@ -366,7 +357,15 @@ function parseOutput(text: string) {
   const proTakeawaysMatch = text.match(/<pro_takeaways>([\s\S]*?)<\/pro_takeaways>/i)
 
   if (!summaryMatch || !narrativeMatch || !narrativeProMatch || !homeStoriesMatch || !awayStoriesMatch || !contrarianMatch || !proTakeawaysMatch) {
-    console.error('Missing tags:', { summary: !!summaryMatch, narrative: !!narrativeMatch, narrative_pro: !!narrativeProMatch, home_stories: !!homeStoriesMatch, away_stories: !!awayStoriesMatch, contrarian: !!contrarianMatch, pro_takeaways: !!proTakeawaysMatch })
+    console.error('Missing tags:', {
+      summary:       !!summaryMatch,
+      narrative:     !!narrativeMatch,
+      narrative_pro: !!narrativeProMatch,
+      home_stories:  !!homeStoriesMatch,
+      away_stories:  !!awayStoriesMatch,
+      contrarian:    !!contrarianMatch,
+      pro_takeaways: !!proTakeawaysMatch,
+    })
     return null
   }
 
@@ -375,29 +374,77 @@ function parseOutput(text: string) {
   const narrative_pro = narrativeProMatch[1].trim()
   const contrarian    = contrarianMatch[1].trim()
 
-  if (!summary || summary.length > 250)        return null
-  if (!narrative || narrative.length > 1500)   return null
-  if (!narrative_pro || narrative_pro.length > 3000) return null
-  if (!contrarian || contrarian.length > 500)  return null
+  // ── Length guards with specific logging so we know which one fires ────────
+  if (!summary || summary.length > 250) {
+    console.error(`parseOutput: summary invalid (length=${summary?.length ?? 0})`)
+    return null
+  }
+  if (!narrative || narrative.length > 1500) {
+    console.error(`parseOutput: narrative invalid (length=${narrative?.length ?? 0})`)
+    return null
+  }
+  if (!narrative_pro || narrative_pro.length > 3000) {
+    console.error(`parseOutput: narrative_pro invalid (length=${narrative_pro?.length ?? 0})`)
+    return null
+  }
+  if (!contrarian || contrarian.length > 500) {
+    console.error(`parseOutput: contrarian invalid (length=${contrarian?.length ?? 0})`)
+    return null
+  }
 
+  // ── JSON array guards — relaxed from exactly 3 to at least 2 ─────────────
   let home_stories: StoryItem[] = []
   let away_stories: StoryItem[] = []
   let pro_takeaways: ProTakeaway[] = []
 
-  try { home_stories = JSON.parse(homeStoriesMatch[1].trim()); if (!Array.isArray(home_stories) || home_stories.length !== 3) return null } catch { return null }
-  try { away_stories = JSON.parse(awayStoriesMatch[1].trim()); if (!Array.isArray(away_stories) || away_stories.length !== 3) return null } catch { return null }
+  try {
+    home_stories = JSON.parse(homeStoriesMatch[1].trim())
+    if (!Array.isArray(home_stories) || home_stories.length < 2) {
+      console.error(`parseOutput: home_stories invalid (length=${home_stories?.length ?? 0})`)
+      return null
+    }
+    home_stories = home_stories.slice(0, 3)
+  } catch {
+    console.error('parseOutput: home_stories JSON parse failed')
+    return null
+  }
+
+  try {
+    away_stories = JSON.parse(awayStoriesMatch[1].trim())
+    if (!Array.isArray(away_stories) || away_stories.length < 2) {
+      console.error(`parseOutput: away_stories invalid (length=${away_stories?.length ?? 0})`)
+      return null
+    }
+    away_stories = away_stories.slice(0, 3)
+  } catch {
+    console.error('parseOutput: away_stories JSON parse failed')
+    return null
+  }
 
   try {
     const rawTakeaways = JSON.parse(proTakeawaysMatch[1].trim())
-    if (!Array.isArray(rawTakeaways)) return null
+    if (!Array.isArray(rawTakeaways)) {
+      console.error('parseOutput: pro_takeaways not an array')
+      return null
+    }
     const merged: any[] = []
     for (const item of rawTakeaways) {
       if (item.stat && item.text) { merged.push({ ...item }) }
-      else if (item.edge && merged.length > 0) { const prev = merged[merged.length - 1]; if (!prev.edge) prev.edge = item.edge }
+      else if (item.edge && merged.length > 0) {
+        const prev = merged[merged.length - 1]
+        if (!prev.edge) prev.edge = item.edge
+      }
     }
     pro_takeaways = merged.filter((t: any) => t?.stat && t?.text && t?.edge)
-    if (pro_takeaways.length !== 3) return null
-  } catch { return null }
+    if (pro_takeaways.length < 2) {
+      console.error(`parseOutput: pro_takeaways insufficient (length=${pro_takeaways.length})`)
+      return null
+    }
+    pro_takeaways = pro_takeaways.slice(0, 3)
+  } catch {
+    console.error('parseOutput: pro_takeaways JSON parse failed')
+    return null
+  }
 
   return { summary, narrative, narrative_pro, home_stories, away_stories, contrarian, pro_takeaways }
 }
@@ -426,6 +473,15 @@ function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: st
 }
 
 function formatComponentName(key: string): string {
-  const map: Record<string, string> = { starting_pitcher: 'Starting Pitcher', bullpen: 'Bullpen', offense: 'Offense', defense: 'Defense', matchup: 'Matchup', park: 'Park', weather: 'Weather', rest: 'Rest' }
+  const map: Record<string, string> = {
+    starting_pitcher: 'Starting Pitcher',
+    bullpen:          'Bullpen',
+    offense:          'Offense',
+    defense:          'Defense',
+    matchup:          'Matchup',
+    park:             'Park',
+    weather:          'Weather',
+    rest:             'Rest',
+  }
   return map[key] ?? key
 }
