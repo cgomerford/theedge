@@ -379,11 +379,11 @@ function parseOutput(text: string) {
     console.error(`parseOutput: summary invalid (length=${summary?.length ?? 0})`)
     return null
   }
-  if (!narrative || narrative.length > 1500) {
+  if (!narrative || narrative.length > 3500) {
     console.error(`parseOutput: narrative invalid (length=${narrative?.length ?? 0})`)
     return null
   }
-  if (!narrative_pro || narrative_pro.length > 3000) {
+  if (!narrative_pro || narrative_pro.length > 5000) {
     console.error(`parseOutput: narrative_pro invalid (length=${narrative_pro?.length ?? 0})`)
     return null
   }
