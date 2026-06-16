@@ -42,6 +42,7 @@ import PitchingLabContent from '@/components/PitchingLabContent'
 import BattingTabContent from '@/components/BattingTabContent'
 import BullpenPanel from '@/components/BullpenPanel'
 import { getBullpenData } from '@/lib/bullpen'
+import OAAZoneMap from '@/components/OAAZoneMap'
 
 
 
@@ -76,7 +77,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const isPro = subscriber?.is_pro ?? true
   const isSignedIn = subscriber !== null
 
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
@@ -486,6 +487,32 @@ getTeamTransactions(game.teams.home.team.id, 14),
                 </div>
               </section>
             )}
+
+<section>
+              <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ Outfield Defense</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-white border border-stone-200 rounded-xl p-4">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
+                    {shortName(game.teams.away.team.name)} · Away
+                  </div>
+                  <OAAZoneMap
+                    teamId={game.teams.away.team.id}
+                    teamName={game.teams.away.team.name}
+                    oaaFromModel={prediction?.components_raw?.away_team?.oaa ?? null}
+                  />
+                </div>
+                <div className="bg-white border border-stone-200 rounded-xl p-4">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
+                    {shortName(game.teams.home.team.name)} · Home
+                  </div>
+                  <OAAZoneMap
+                    teamId={game.teams.home.team.id}
+                    teamName={game.teams.home.team.name}
+                    oaaFromModel={prediction?.components_raw?.home_team?.oaa ?? null}
+                  />
+                </div>
+              </div>
+            </section>
 
             {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
               <section>

@@ -11,8 +11,8 @@ export type LineupBatter = {
   season_avg: number | null
   season_obp: number | null
   season_ops: number | null
+  bat_side?: 'L' | 'R' | null
 }
-
 export type ProjectedLineup = {
   source: 'confirmed' | 'projected_from_previous_game' | 'unavailable'
   game_date_used: string | null  // when the lineup was last seen (null if unavailable)

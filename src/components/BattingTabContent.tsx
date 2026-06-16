@@ -3,12 +3,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { playerHeadshotUrl, teamLogoUrl, shortName } from '@/lib/mlb'
 import type { LineupBatter } from '@/lib/lineups'
+import SprayChart from '@/components/SprayChart'
+import StrikeZoneHeatMap from '@/components/StrikeZoneHeatMap'
+
 import type {
   BatterSeasonStats,
   BatterStatcast,
   BatterSplits,
   BatterVsPitcher,
 } from '@/lib/batter-stats'
+
 
 // =====================================================
 // TYPES
@@ -297,14 +301,22 @@ async function fetchStatcastClientSide(playerId: number): Promise<BatterStatcast
 // BATTER DETAIL VIEW
 // =====================================================
 
+// =====================================================
+// BATTER DETAIL VIEW — tabbed layout
+// Drop this in as a full replacement for the
+// BatterDetailView function in BattingTabContent.tsx
+// =====================================================
+
+type BatterTab = 'overview' | 'form' | 'spray' | 'zones' | 'statcast' | 'pitcher'
+
 function BatterDetailView({
   detail, isPro, onBack,
-  
 }: {
   detail: BatterDetail
   isPro: boolean
   onBack: () => void
 }) {
+  const [activeTab, setActiveTab]     = useState<BatterTab>('overview')
   const [seasonStats, setSeasonStats] = useState<BatterSeasonStats | null>(null)
   const [statcast, setStatcast]       = useState<BatterStatcast | null>(null)
   const [splits, setSplits]           = useState<BatterSplits | null>(null)
@@ -319,6 +331,7 @@ function BatterDetailView({
     setSplits(null)
     setStatcast(null)
     setVsPitcher('none')
+    setActiveTab('overview')
 
     Promise.all([
       fetch(`/api/batter-stats?playerId=${detail.batter.player_id}&type=season`).then(r => r.json()),
@@ -341,8 +354,8 @@ function BatterDetailView({
   }, [detail.batter.player_id, detail.opposingPitcherId, isPro])
 
   const { batter, teamName, teamId } = detail
+  const ops = batter.season_ops
 
-  // OPS trend chart
   const opsValues = [
     splits?.last_30 ? parseFloat(splits.last_30.ops) : null,
     splits?.last_14 ? parseFloat(splits.last_14.ops) : null,
@@ -350,42 +363,38 @@ function BatterDetailView({
   ]
   const hasOpsTrend = opsValues.some(v => v !== null)
 
-  // Radar — values are already percentiles from Savant
-const radarLabels = ['Exit velo', 'Barrel%', 'Sweet spot%', 'xBA', 'xSLG', 'xwOBA']
-const radarValues = statcast ? [
-  // Exit velo: 82-95mph range
-  statcast.avg_exit_velocity != null
-    ? Math.min(Math.max(Math.round((statcast.avg_exit_velocity - 82) / (95 - 82) * 100), 0), 100)
-    : 0,
-  // Barrel%: 0-20% range
-  statcast.barrel_pct != null
-    ? Math.min(Math.round(statcast.barrel_pct * 5), 100)
-    : 0,
-  // Sweet spot%: 20-45% range
-  statcast.sweet_spot_pct != null
-    ? Math.min(Math.max(Math.round((statcast.sweet_spot_pct - 20) / (45 - 20) * 100), 0), 100)
-    : 0,
-  // xBA: .180-.340 range
-  statcast.xba != null
-    ? Math.min(Math.max(Math.round((statcast.xba - 0.180) / (0.340 - 0.180) * 100), 0), 100)
-    : 0,
-  // xSLG: .280-.650 range
-  statcast.xslg != null
-    ? Math.min(Math.max(Math.round((statcast.xslg - 0.280) / (0.650 - 0.280) * 100), 0), 100)
-    : 0,
-  // xwOBA: .260-.430 range
-  statcast.xwoba != null
-    ? Math.min(Math.max(Math.round((statcast.xwoba - 0.260) / (0.430 - 0.260) * 100), 0), 100)
-    : 0,
-] : []
-  const ops = batter.season_ops
+  const radarLabels = ['Exit velo', 'Barrel%', 'Sweet spot%', 'xBA', 'xSLG', 'xwOBA']
+  const radarValues = statcast ? [
+    statcast.avg_exit_velocity != null
+      ? Math.min(Math.max(Math.round((statcast.avg_exit_velocity - 82) / (95 - 82) * 100), 0), 100) : 0,
+    statcast.barrel_pct != null
+      ? Math.min(Math.round(statcast.barrel_pct * 5), 100) : 0,
+    statcast.sweet_spot_pct != null
+      ? Math.min(Math.max(Math.round((statcast.sweet_spot_pct - 20) / (45 - 20) * 100), 0), 100) : 0,
+    statcast.xba != null
+      ? Math.min(Math.max(Math.round((statcast.xba - 0.180) / (0.340 - 0.180) * 100), 0), 100) : 0,
+    statcast.xslg != null
+      ? Math.min(Math.max(Math.round((statcast.xslg - 0.280) / (0.650 - 0.280) * 100), 0), 100) : 0,
+    statcast.xwoba != null
+      ? Math.min(Math.max(Math.round((statcast.xwoba - 0.260) / (0.430 - 0.260) * 100), 0), 100) : 0,
+  ] : []
+
+  const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
+    { key: 'overview',  label: 'Overview' },
+    { key: 'form',      label: 'Form' },
+    { key: 'spray',     label: 'Spray chart' },
+    { key: 'zones',     label: 'Hot zones' },
+    { key: 'statcast',  label: 'Statcast', proOnly: true },
+    { key: 'pitcher',   label: 'vs Pitcher' },
+  ]
 
   return (
-    <div className="overflow-y-auto space-y-4 pb-6">
+    <div className="space-y-3 pb-6">
 
+      {/* Back button — mobile */}
       <button
         onClick={onBack}
-        className="md:hidden flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-stone-400 hover:text-orange-600 transition mb-2"
+        className="md:hidden flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-stone-400 hover:text-orange-600 transition mb-1"
       >
         ← Back to lineup
       </button>
@@ -406,11 +415,6 @@ const radarValues = statcast ? [
             <span className="font-serif text-xl font-semibold text-stone-900">
               {batter.player_name}
             </span>
-            {isPro && (
-              <span className="text-[8px] font-mono font-bold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full">
-                ⊕ PRO
-              </span>
-            )}
             <span className="ml-auto text-[10px] font-mono text-stone-400">
               #{batter.batting_order} · {batter.position}
             </span>
@@ -422,24 +426,18 @@ const radarValues = statcast ? [
           {ops != null && (
             <div className="flex gap-4 mt-2">
               <div>
-                <span className={`text-xl font-mono font-bold ${opsColor(ops)}`}>
-                  {ops.toFixed(3)}
-                </span>
+                <span className={`text-xl font-mono font-bold ${opsColor(ops)}`}>{ops.toFixed(3)}</span>
                 <span className="text-[9px] font-mono text-stone-400 ml-1 uppercase">OPS</span>
               </div>
               {batter.season_avg != null && (
                 <div>
-                  <span className="text-xl font-mono font-bold text-stone-900">
-                    {batter.season_avg.toFixed(3)}
-                  </span>
+                  <span className="text-xl font-mono font-bold text-stone-900">{batter.season_avg.toFixed(3)}</span>
                   <span className="text-[9px] font-mono text-stone-400 ml-1 uppercase">AVG</span>
                 </div>
               )}
               {batter.season_obp != null && (
                 <div>
-                  <span className="text-xl font-mono font-bold text-stone-900">
-                    {batter.season_obp.toFixed(3)}
-                  </span>
+                  <span className="text-xl font-mono font-bold text-stone-900">{batter.season_obp.toFixed(3)}</span>
                   <span className="text-[9px] font-mono text-stone-400 ml-1 uppercase">OBP</span>
                 </div>
               )}
@@ -449,349 +447,340 @@ const radarValues = statcast ? [
       </div>
 
       {loading && (
-        <div className="text-center py-10 text-sm font-serif text-stone-400 italic">
-          Loading stats...
-        </div>
+        <div className="text-center py-10 text-sm font-serif text-stone-400 italic">Loading stats...</div>
       )}
 
       {loaded && (
-        <>
-          {/* Season stats */}
-          {seasonStats && (
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <SectionLabel title="2026 Season" />
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                <StatBox label="AVG" value={seasonStats.avg} />
-                <StatBox label="OBP" value={seasonStats.obp} />
-                <StatBox label="SLG" value={seasonStats.slg} />
-                <StatBox label="OPS" value={seasonStats.ops}
-                  color={opsColor(parseFloat(seasonStats.ops))} />
+        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+
+          {/* Tab bar */}
+          <div className="flex border-b border-stone-100 overflow-x-auto">
+            {TABS.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap border-b-2 transition shrink-0 ${
+                  activeTab === t.key
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-stone-400 hover:text-stone-600'
+                }`}
+              >
+                {t.label}
+                {t.proOnly && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="p-4">
+
+            {/* ── OVERVIEW ── */}
+            {activeTab === 'overview' && (
+              <div className="space-y-3">
+                <SectionLabel title="2026 Season" />
+                {seasonStats ? (
+                  <>
+                    <div className="grid grid-cols-4 gap-2">
+                      <StatBox label="AVG"  value={seasonStats.avg} />
+                      <StatBox label="OBP"  value={seasonStats.obp} />
+                      <StatBox label="SLG"  value={seasonStats.slg} />
+                      <StatBox label="OPS"  value={seasonStats.ops} color={opsColor(parseFloat(seasonStats.ops))} />
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <StatBox label="HR"    value={seasonStats.home_runs} />
+                      <StatBox label="RBI"   value={seasonStats.rbi} />
+                      <StatBox label="BABIP" value={seasonStats.babip} />
+                      <StatBox label="ISO"   value={seasonStats.iso} />
+                    </div>
+                    {/* Regression alert */}
+                    {statcast?.xba != null && (() => {
+                      const ba  = parseFloat(seasonStats.avg)
+                      const xba = statcast.xba!
+                      const gap = ba - xba
+                      if (Math.abs(gap) < 0.015) return null
+                      const over = gap > 0
+                      return (
+                        <div className={`p-3 rounded-lg text-xs font-serif ${over ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                          {over
+                            ? `BA (${seasonStats.avg}) runs ${Math.round(gap * 1000)} points ahead of xBA (${xba.toFixed(3)}) — negative regression candidate.`
+                            : `xBA (${xba.toFixed(3)}) outpaces BA (${seasonStats.avg}) by ${Math.round(Math.abs(gap) * 1000)} points — positive regression candidate.`
+                          }
+                        </div>
+                      )
+                    })()}
+                  </>
+                ) : (
+                  <p className="text-sm font-serif text-stone-400 italic">Season stats unavailable.</p>
+                )}
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                <StatBox label="HR"    value={seasonStats.home_runs} />
-                <StatBox label="RBI"   value={seasonStats.rbi} />
-                <StatBox label="BABIP" value={seasonStats.babip} />
-                <StatBox label="ISO"   value={seasonStats.iso} />
+            )}
+
+            {/* ── FORM ── */}
+            {activeTab === 'form' && (
+              <div className="space-y-3">
+                {splits ? (
+                  <>
+                    <SectionLabel title="OPS trend" />
+                    {hasOpsTrend && <LineChart opsValues={opsValues} />}
+
+                    <div className="space-y-0">
+                      {[
+                        { label: 'Last 7',  data: splits.last_7  },
+                        { label: 'Last 14', data: splits.last_14 },
+                        { label: 'Last 30', data: splits.last_30 },
+                      ].map(({ label, data }) => data && (
+                        <div key={label} className="flex items-center justify-between py-2.5 border-b border-stone-50 last:border-0">
+                          <span className="text-[10px] font-mono text-stone-400 w-16 shrink-0">{label}</span>
+                          <div className="flex gap-3 flex-wrap justify-end">
+                            <span className="text-xs font-mono">
+                              <span className="font-bold text-stone-900">{data.avg}</span>
+                              <span className="text-stone-400 ml-1">AVG</span>
+                            </span>
+                            <span className="text-xs font-mono">
+                              <span className="font-bold text-stone-900">{data.obp}</span>
+                              <span className="text-stone-400 ml-1">OBP</span>
+                            </span>
+                            <span className="text-xs font-mono">
+                              <span className={`font-bold ${opsColor(parseFloat(data.ops))}`}>{data.ops}</span>
+                              <span className="text-stone-400 ml-1">OPS</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-stone-400">{data.pa} PA</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {(splits.vs_lhp || splits.vs_rhp) && (
+                      <div className="pt-3 border-t border-stone-100">
+                        <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">vs handedness</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {splits.vs_rhp && (
+                            <div className="bg-stone-50 rounded-lg p-3">
+                              <p className="text-[9px] font-mono text-stone-400 uppercase mb-1">vs RHP</p>
+                              <p className="text-sm font-mono font-bold text-stone-900">{splits.vs_rhp.ops} OPS</p>
+                              <p className="text-[10px] font-mono text-stone-500">{splits.vs_rhp.avg} / {splits.vs_rhp.obp} / {splits.vs_rhp.slg}</p>
+                              <p className="text-[9px] font-mono text-stone-400 mt-1">{splits.vs_rhp.pa} PA</p>
+                            </div>
+                          )}
+                          {splits.vs_lhp && (
+                            <div className="bg-stone-50 rounded-lg p-3">
+                              <p className="text-[9px] font-mono text-stone-400 uppercase mb-1">vs LHP</p>
+                              <p className="text-sm font-mono font-bold text-stone-900">{splits.vs_lhp.ops} OPS</p>
+                              <p className="text-[10px] font-mono text-stone-500">{splits.vs_lhp.avg} / {splits.vs_lhp.obp} / {splits.vs_lhp.slg}</p>
+                              <p className="text-[9px] font-mono text-stone-400 mt-1">{splits.vs_lhp.pa} PA</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-serif text-stone-400 italic">Form data unavailable.</p>
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Statcast — Pro only */}
-          {isPro && statcast && (
-            
+            {/* ── SPRAY CHART ── */}
+            {activeTab === 'spray' && (
+              <SprayChart
+                playerId={batter.player_id}
+                playerName={batter.player_name}
+                stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
+                isPro={isPro}
+              />
+            )}
 
+            {/* ── HOT ZONES ── */}
+            {activeTab === 'zones' && (
+              <StrikeZoneHeatMap
+                playerId={batter.player_id}
+                playerName={batter.player_name}
+                stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
+                isPro={isPro}
+              />
+            )}
 
-  <div className="bg-white border border-stone-200 rounded-xl p-4">
-    <SectionLabel title="Statcast" pro />
+            {/* ── STATCAST ── */}
+            {activeTab === 'statcast' && (
+              <>
+                {!isPro && (
+                  <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
+                    <p className="font-serif text-stone-700 text-base">Contact quality metrics — exit velocity, barrel rate, expected stats</p>
+                    <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
+                      Statcast data tells you how hard a batter is actually hitting the ball, independent of luck or defensive positioning.
+                    </p>
+                    <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                      Unlock Pro →
+                    </a>
+                  </div>
+                )}
 
-  <div className="grid grid-cols-3 gap-2 mb-2">
-  {statcast.avg_exit_velocity != null && (
-    <StatBox label="Exit velo"
-      value={`${statcast.avg_exit_velocity.toFixed(1)} mph`}
-      color={
-        statcast.avg_exit_velocity >= 92 ? 'text-green-500' :
-        statcast.avg_exit_velocity >= 89 ? 'text-green-600' :
-        statcast.avg_exit_velocity <= 85 ? 'text-red-500' :
-        'text-orange-500'
-      } />
-  )}
-  {statcast.barrel_pct != null && (
-    <StatBox label="Barrel%"
-      value={`${statcast.barrel_pct.toFixed(1)}%`}
-      color={
-        statcast.barrel_pct >= 12 ? 'text-green-500' :
-        statcast.barrel_pct >= 8  ? 'text-green-600' :
-        statcast.barrel_pct >= 5  ? 'text-orange-500' :
-        'text-red-500'
-      } />
-  )}
-  {statcast.sweet_spot_pct != null && (
-    <StatBox label="Sweet spot%"
-      value={`${statcast.sweet_spot_pct.toFixed(1)}%`}
-      color={
-        statcast.sweet_spot_pct >= 36 ? 'text-green-500' :
-        statcast.sweet_spot_pct >= 31 ? 'text-green-600' :
-        statcast.sweet_spot_pct >= 26 ? 'text-orange-500' :
-        'text-red-500'
-      } />
-  )}
-</div>
-<div className="grid grid-cols-3 gap-2 mb-4">
-  {statcast.xba != null && (
-    <StatBox label="xBA"
-      value={statcast.xba.toFixed(3)}
-      color={
-        statcast.xba >= 0.290 ? 'text-green-500' :
-        statcast.xba >= 0.260 ? 'text-green-600' :
-        statcast.xba >= 0.240 ? 'text-orange-500' :
-        'text-red-500'
-      } />
-  )}
-  {statcast.xslg != null && (
-    <StatBox label="xSLG"
-      value={statcast.xslg.toFixed(3)}
-      color={
-        statcast.xslg >= 0.500 ? 'text-green-500' :
-        statcast.xslg >= 0.420 ? 'text-green-600' :
-        statcast.xslg >= 0.360 ? 'text-orange-500' :
-        'text-red-500'
-      } />
-  )}
-  {statcast.xwoba != null && (
-    <StatBox label="xwOBA"
-      value={statcast.xwoba.toFixed(3)}
-      color={
-        statcast.xwoba >= 0.370 ? 'text-green-500' :
-        statcast.xwoba >= 0.330 ? 'text-green-600' :
-        statcast.xwoba >= 0.300 ? 'text-orange-500' :
-        'text-red-500'
-      } />
-  )}
-</div>
+                {isPro && !statcast && (
+                  <p className="text-sm font-serif text-stone-400 italic py-6 text-center">
+                    Below qualifier threshold — insufficient PA for Statcast percentile rankings.
+                  </p>
+                )}
 
-   {radarValues.length > 0 && radarValues.some(v => v > 0) && (
-  <div className="mt-4 mb-2">
-    <div className="bg-stone-50 rounded-lg p-3 mb-3 flex gap-3 items-start">
-      <span className="text-lg shrink-0">📊</span>
-      <div>
-        <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-600 mb-1">
-          How to read this chart
-        </p>
-        <p className="text-xs font-serif text-stone-500 leading-relaxed">
-          Each axis shows a <span className="font-semibold text-stone-700">percentile rank</span> from 0–100 compared to all qualified MLB hitters. A score of <span className="font-semibold text-stone-700">75</span> means this batter outperforms 75% of the league in that category. The further the shape extends toward the edge, the better the contact quality.
-        </p>
-      </div>
-    </div>
-    <RadarChart values={radarValues} labels={radarLabels} />
-  </div>
-)}
+                {isPro && statcast && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      {statcast.avg_exit_velocity != null && (
+                        <StatBox label="Exit velo" value={`${statcast.avg_exit_velocity.toFixed(1)} mph`}
+                          color={statcast.avg_exit_velocity >= 92 ? 'text-green-500' : statcast.avg_exit_velocity >= 89 ? 'text-green-600' : statcast.avg_exit_velocity <= 85 ? 'text-red-500' : 'text-orange-500'} />
+                      )}
+                      {statcast.barrel_pct != null && (
+                        <StatBox label="Barrel%" value={`${statcast.barrel_pct.toFixed(1)}%`}
+                          color={statcast.barrel_pct >= 12 ? 'text-green-500' : statcast.barrel_pct >= 8 ? 'text-green-600' : statcast.barrel_pct >= 5 ? 'text-orange-500' : 'text-red-500'} />
+                      )}
+                      {statcast.sweet_spot_pct != null && (
+                        <StatBox label="Sweet spot%" value={`${statcast.sweet_spot_pct.toFixed(1)}%`}
+                          color={statcast.sweet_spot_pct >= 36 ? 'text-green-500' : statcast.sweet_spot_pct >= 31 ? 'text-green-600' : statcast.sweet_spot_pct >= 26 ? 'text-orange-500' : 'text-red-500'} />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {statcast.xba != null && (
+                        <StatBox label="xBA" value={statcast.xba.toFixed(3)}
+                          color={statcast.xba >= 0.290 ? 'text-green-500' : statcast.xba >= 0.260 ? 'text-green-600' : statcast.xba >= 0.240 ? 'text-orange-500' : 'text-red-500'} />
+                      )}
+                      {statcast.xslg != null && (
+                        <StatBox label="xSLG" value={statcast.xslg.toFixed(3)}
+                          color={statcast.xslg >= 0.500 ? 'text-green-500' : statcast.xslg >= 0.420 ? 'text-green-600' : statcast.xslg >= 0.360 ? 'text-orange-500' : 'text-red-500'} />
+                      )}
+                      {statcast.xwoba != null && (
+                        <StatBox label="xwOBA" value={statcast.xwoba.toFixed(3)}
+                          color={statcast.xwoba >= 0.370 ? 'text-green-500' : statcast.xwoba >= 0.330 ? 'text-green-600' : statcast.xwoba >= 0.300 ? 'text-orange-500' : 'text-red-500'} />
+                      )}
+                    </div>
 
-    <div className="mt-4 space-y-3 border-t border-stone-100 pt-4">
-      <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-        What these numbers mean
-      </p>
+                    {/* Radar */}
+                    {radarValues.length > 0 && radarValues.some(v => v > 0) && (
+                      <div className="pt-2">
+                        <div className="bg-stone-50 rounded-lg p-3 mb-3 flex gap-3 items-start">
+                          <div>
+                            <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-stone-600 mb-1">How to read this chart</p>
+                            <p className="text-xs font-serif text-stone-500 leading-relaxed">
+                              Each axis shows a <span className="font-semibold text-stone-700">percentile rank</span> from 0–100 vs all qualified MLB hitters. Further from the centre = better than more of the league.
+                            </p>
+                          </div>
+                        </div>
+                        <RadarChart values={radarValues} labels={radarLabels} />
+                      </div>
+                    )}
 
-      {statcast.avg_exit_velocity != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            EXIT VELO
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            How hard the ball comes off the bat on average. Above <span className="font-semibold">90mph</span> is above average — harder contact means fewer outs on routine plays. Elite hitters consistently sit above <span className="font-semibold">92mph</span>.
-            {statcast.avg_exit_velocity >= 92
-              ? ' This batter is making genuinely hard contact.'
-              : statcast.avg_exit_velocity >= 89
-              ? ' Solid contact, around league average.'
-              : ' Below average exit velocity — pitchers can attack this hitter with softer stuff.'}
-          </p>
-        </div>
-      )}
+                    {/* Explainers */}
+                    <div className="space-y-3 border-t border-stone-100 pt-4">
+                      <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-3">What these numbers mean</p>
 
-      {statcast.barrel_pct != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            BARREL%
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            The percentage of batted balls hit with the ideal combination of exit velocity and launch angle — the sweet spot that produces a batting average above .500 and slugging above 1.500. League average is around <span className="font-semibold">6-7%</span>. Above <span className="font-semibold">10%</span> is elite and directly correlates with home run power.
-            {statcast.barrel_pct >= 12
-              ? ' This is a legitimate power threat — pitchers cannot afford to make mistakes over the plate.'
-              : statcast.barrel_pct >= 8
-              ? ' Above average power — a hitter who punishes mistakes.'
-              : statcast.barrel_pct <= 4
-              ? ' Low barrel rate — this hitter rarely squares up elite contact.'
-              : ' League average barrel rate.'}
-          </p>
-        </div>
-      )}
+                      {statcast.avg_exit_velocity != null && (
+                        <div className="flex gap-3 items-start">
+                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">EXIT VELO</span>
+                          <p className="text-xs font-serif text-stone-600 leading-relaxed">
+                            How hard the ball comes off the bat on average. Above <span className="font-semibold">90mph</span> is above average. Elite hitters sit above <span className="font-semibold">92mph</span>.
+                            {statcast.avg_exit_velocity >= 92 ? ' This batter is making genuinely hard contact.' : statcast.avg_exit_velocity >= 89 ? ' Solid contact, around league average.' : ' Below average — pitchers can attack with softer stuff.'}
+                          </p>
+                        </div>
+                      )}
 
-      {statcast.sweet_spot_pct != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            SWEET SPOT%
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            Percentage of batted balls hit at the optimal launch angle of 8-32°. Balls in this range turn into hits at a significantly higher rate than grounders or pop-ups. League average is around <span className="font-semibold">31-33%</span>. Above <span className="font-semibold">36%</span> signals a hitter with excellent bat-to-ball skills who consistently drives the ball.
-          </p>
-        </div>
-      )}
+                      {statcast.barrel_pct != null && (
+                        <div className="flex gap-3 items-start">
+                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">BARREL%</span>
+                          <p className="text-xs font-serif text-stone-600 leading-relaxed">
+                            Balls hit with the ideal exit velocity and launch angle combination. League average is <span className="font-semibold">6–7%</span>. Above <span className="font-semibold">10%</span> is elite.
+                            {statcast.barrel_pct >= 12 ? ' Legitimate power threat — pitchers cannot make mistakes.' : statcast.barrel_pct >= 8 ? ' Above average power.' : statcast.barrel_pct <= 4 ? ' Low barrel rate.' : ' League average barrel rate.'}
+                          </p>
+                        </div>
+                      )}
 
-      {statcast.xba != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            xBA
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            Expected batting average based purely on exit velocity and launch angle — what this hitter <span className="font-semibold italic">should</span> be hitting, independent of defensive positioning or luck. When xBA is significantly higher than actual BA, the hitter is due for positive regression. When lower, they've been getting lucky.
-            {seasonStats && (() => {
-              const ba = parseFloat(seasonStats.avg)
-              const diff = ba - statcast.xba!
-              if (diff > 0.020) return <span className="text-red-600 font-semibold"> Currently outperforming xBA by {Math.round(diff * 1000)} points — expect a pullback.</span>
-              if (diff < -0.020) return <span className="text-green-600 font-semibold"> Underperforming xBA by {Math.round(Math.abs(diff) * 1000)} points — due for positive regression.</span>
-              return <span className="text-stone-500"> Performing in line with underlying contact quality.</span>
-            })()}
-          </p>
-        </div>
-      )}
+                      {statcast.xba != null && (
+                        <div className="flex gap-3 items-start">
+                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">xBA</span>
+                          <p className="text-xs font-serif text-stone-600 leading-relaxed">
+                            What this batter <span className="font-semibold italic">should</span> be hitting based on contact quality alone. When xBA is higher than actual BA, positive regression is coming.
+                            {seasonStats && (() => {
+                              const ba   = parseFloat(seasonStats.avg)
+                              const diff = ba - statcast.xba!
+                              if (diff > 0.020) return <span className="text-red-600 font-semibold"> Currently outperforming xBA by {Math.round(diff * 1000)} points — expect a pullback.</span>
+                              if (diff < -0.020) return <span className="text-green-600 font-semibold"> Underperforming xBA by {Math.round(Math.abs(diff) * 1000)} points — due for positive regression.</span>
+                              return <span className="text-stone-500"> Performing in line with contact quality.</span>
+                            })()}
+                          </p>
+                        </div>
+                      )}
 
-      {statcast.xslg != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            xSLG
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            Expected slugging percentage based on contact quality. This tells you how much extra-base power a hitter is generating regardless of whether balls happened to land for hits. Above <span className="font-semibold">.450</span> is solid, above <span className="font-semibold">.550</span> is elite. A gap between xSLG and actual SLG signals an incoming power surge or cooldown.
-          </p>
-        </div>
-      )}
-
-      {statcast.xwoba != null && (
-        <div className="flex gap-3 items-start">
-          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-            xwOBA
-          </span>
-          <p className="text-xs font-serif text-stone-600 leading-relaxed">
-            The most complete expected stat — it weights every batted ball outcome by how much it contributes to scoring runs. Think of it as the single best number for overall offensive value, stripped of luck. League average is around <span className="font-semibold">.320</span>. Above <span className="font-semibold">.370</span> is a genuine offensive weapon. Above <span className="font-semibold">.400</span> is MVP-calibre.
-            {statcast.xwoba >= 0.400
-              ? ' This hitter is making MVP-calibre contact quality right now.'
-              : statcast.xwoba >= 0.370
-              ? ' Elite offensive profile — a hitter pitchers must respect.'
-              : statcast.xwoba >= 0.320
-              ? ' Solid, around league average offensive value.'
-              : ' Below league average contact quality — pitchers have the advantage.'}
-          </p>
-        </div>
-      )}
-    </div>
-
-    {seasonStats && statcast.xba != null && (() => {
-      const ba  = parseFloat(seasonStats.avg)
-      const xba = statcast.xba!
-      const gap = ba - xba
-      if (Math.abs(gap) < 0.015) return null
-      const overlucky = gap > 0
-      return (
-        <div className={`mt-3 p-3 rounded-lg text-xs font-serif ${overlucky ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-          {overlucky
-            ? `BA (${seasonStats.avg}) runs ${Math.round(gap * 1000)} points ahead of xBA (${xba.toFixed(3)}) — negative regression candidate.`
-            : `xBA (${xba.toFixed(3)}) outpaces BA (${seasonStats.avg}) by ${Math.round(Math.abs(gap) * 1000)} points — positive regression candidate.`
-          }
-        </div>
-      )
-    })()}
-  </div>
-)}
-
-{isPro && !statcast && loaded && (
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <SectionLabel title="Statcast" pro />
-              <p className="text-sm font-serif text-stone-400 italic">
-                Below qualifier threshold — insufficient PA for Statcast percentile rankings.
-              </p>
-            </div>
-          )}
-
-          {/* Recent form */}
-          {splits && (
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <SectionLabel title="Recent form" />
-
-              {hasOpsTrend && <LineChart opsValues={opsValues} />}
-
-              <div className="space-y-0">
-                {[
-                  { label: 'Last 7',  data: splits.last_7  },
-                  { label: 'Last 14', data: splits.last_14 },
-                  { label: 'Last 30', data: splits.last_30 },
-                ].map(({ label, data }) => data && (
-                  <div key={label} className="flex items-center justify-between py-2.5 border-b border-stone-50 last:border-0">
-                    <span className="text-[10px] font-mono text-stone-400 w-16 shrink-0">{label}</span>
-                    <div className="flex gap-3 flex-wrap justify-end">
-                      <span className="text-xs font-mono">
-                        <span className="font-bold text-stone-900">{data.avg}</span>
-                        <span className="text-stone-400 ml-1">AVG</span>
-                      </span>
-                      <span className="text-xs font-mono">
-                        <span className="font-bold text-stone-900">{data.obp}</span>
-                        <span className="text-stone-400 ml-1">OBP</span>
-                      </span>
-                      <span className="text-xs font-mono">
-                        <span className={`font-bold ${opsColor(parseFloat(data.ops))}`}>{data.ops}</span>
-                        <span className="text-stone-400 ml-1">OPS</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-stone-400">{data.pa} PA</span>
+                      {statcast.xwoba != null && (
+                        <div className="flex gap-3 items-start">
+                          <span className="text-[9px] font-mono font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 mt-0.5">xwOBA</span>
+                          <p className="text-xs font-serif text-stone-600 leading-relaxed">
+                            The single best overall offensive value number, stripped of luck. League average is <span className="font-semibold">.320</span>. Above <span className="font-semibold">.370</span> is a genuine weapon. Above <span className="font-semibold">.400</span> is MVP-calibre.
+                            {statcast.xwoba >= 0.400 ? ' MVP-calibre contact quality right now.' : statcast.xwoba >= 0.370 ? ' Elite offensive profile.' : statcast.xwoba >= 0.320 ? ' Solid, around league average.' : ' Below league average contact quality.'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
+            )}
 
-              {(splits.vs_lhp || splits.vs_rhp) && (
-                <div className="mt-4 pt-3 border-t border-stone-100">
-                  <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
-                    vs handedness
+            {/* ── VS PITCHER ── */}
+            {activeTab === 'pitcher' && (
+              <div>
+                {!detail.opposingPitcherId ? (
+                  <p className="text-sm font-serif text-stone-400 italic py-4 text-center">Opposing pitcher not yet confirmed.</p>
+                ) : vsPitcher === 'none' || vsPitcher === null ? (
+                  <p className="text-sm font-serif text-stone-400 italic py-4 text-center">No career H2H data available.</p>
+                ) : vsPitcher.ab < 3 ? (
+                  <p className="text-sm font-serif text-stone-400 italic py-4 text-center">
+                    {vsPitcher.ab} AB — too small a sample to draw conclusions.
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {splits.vs_rhp && (
-                      <div className="bg-stone-50 rounded-lg p-3">
-                        <p className="text-[9px] font-mono text-stone-400 uppercase mb-1">vs RHP</p>
-                        <p className="text-sm font-mono font-bold text-stone-900">{splits.vs_rhp.ops} OPS</p>
-                        <p className="text-[10px] font-mono text-stone-500">
-                          {splits.vs_rhp.avg} / {splits.vs_rhp.obp} / {splits.vs_rhp.slg}
-                        </p>
-                        <p className="text-[9px] font-mono text-stone-400 mt-1">{splits.vs_rhp.pa} PA</p>
-                      </div>
-                    )}
-                    {splits.vs_lhp && (
-                      <div className="bg-stone-50 rounded-lg p-3">
-                        <p className="text-[9px] font-mono text-stone-400 uppercase mb-1">vs LHP</p>
-                        <p className="text-sm font-mono font-bold text-stone-900">{splits.vs_lhp.ops} OPS</p>
-                        <p className="text-[10px] font-mono text-stone-500">
-                          {splits.vs_lhp.avg} / {splits.vs_lhp.obp} / {splits.vs_lhp.slg}
-                        </p>
-                        <p className="text-[9px] font-mono text-stone-400 mt-1">{splits.vs_lhp.pa} PA</p>
-                      </div>
-                    )}
+                ) : (
+                  <div className="space-y-3">
+                    <SectionLabel title="Career vs tonight's starter" />
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      <StatBox label="AVG" value={vsPitcher.avg} />
+                      <StatBox label="OBP" value={vsPitcher.obp} />
+                      <StatBox label="SLG" value={vsPitcher.slg} />
+                      <StatBox label="OPS" value={vsPitcher.ops} color={opsColor(parseFloat(vsPitcher.ops))} />
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <StatBox label="AB" value={vsPitcher.ab} />
+                      <StatBox label="H"  value={vsPitcher.hits} />
+                      <StatBox label="HR" value={vsPitcher.home_runs} />
+                      <StatBox label="K"  value={vsPitcher.strikeouts} />
+                    </div>
+                    {/* Contextual label */}
+                    {(() => {
+                      const ops = parseFloat(vsPitcher.ops)
+                      if (ops >= 1.000) return (
+                        <div className="p-3 bg-green-50 rounded-lg text-xs font-serif text-green-700">
+                          Owns this pitcher. {vsPitcher.home_runs > 0 ? `${vsPitcher.home_runs} home runs in ${vsPitcher.ab} career AB is an extraordinary rate.` : `A .${Math.round(parseFloat(vsPitcher.avg) * 1000)} average over ${vsPitcher.ab} AB is a real historical edge.`}
+                        </div>
+                      )
+                      if (ops <= 0.500) return (
+                        <div className="p-3 bg-red-50 rounded-lg text-xs font-serif text-red-700">
+                          Struggles against this pitcher historically. {vsPitcher.strikeouts} strikeouts in {vsPitcher.ab} AB suggests this matchup heavily favours the pitcher.
+                        </div>
+                      )
+                      return (
+                        <div className="p-3 bg-stone-50 rounded-lg text-xs font-serif text-stone-600">
+                          Neutral career history — {vsPitcher.ab} AB isn't a large enough sample to lean heavily on.
+                        </div>
+                      )
+                    })()}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          {/* vs Tonight's Pitcher */}
-          {detail.opposingPitcherId && (
-            <div className="bg-white border border-stone-200 rounded-xl p-4">
-              <SectionLabel title="vs Tonight's pitcher" />
-              {vsPitcher === 'none' || vsPitcher === null ? (
-                <p className="text-sm font-serif text-stone-400 italic">No career H2H data available.</p>
-              ) : vsPitcher.ab < 3 ? (
-                <p className="text-sm font-serif text-stone-400 italic">
-                  {vsPitcher.ab} AB — too small a sample to draw conclusions.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    <StatBox label="AVG" value={vsPitcher.avg} />
-                    <StatBox label="OBP" value={vsPitcher.obp} />
-                    <StatBox label="SLG" value={vsPitcher.slg} />
-                    <StatBox label="OPS" value={vsPitcher.ops}
-                      color={opsColor(parseFloat(vsPitcher.ops))} />
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <StatBox label="AB" value={vsPitcher.ab} />
-                    <StatBox label="H"  value={vsPitcher.hits} />
-                    <StatBox label="HR" value={vsPitcher.home_runs} />
-                    <StatBox label="K"  value={vsPitcher.strikeouts} />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   )
 }
-
 // =====================================================
 // LINEUP ROW
 // =====================================================
