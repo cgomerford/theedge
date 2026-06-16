@@ -30,6 +30,7 @@ export async function getBullpenData(
     }
 
     function toTeamData(teamId: number, teamName: string): BullpenData | null {
+      if (!data) return null
       const arms = data
         .filter((r: any) => r.team_id === teamId)
         .map((r: any): BullpenArm => {
