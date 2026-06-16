@@ -40,6 +40,8 @@ import GmLabContent from '@/components/GmLabContent'
 import { getTeamTransactions } from '@/lib/team-transactions'
 import PitchingLabContent from '@/components/PitchingLabContent'
 import BattingTabContent from '@/components/BattingTabContent'
+import BullpenPanel from '@/components/BullpenPanel'
+import { getBullpenData } from '@/lib/bullpen'
 
 
 
@@ -74,7 +76,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? true
+  const isPro = subscriber?.is_pro ?? false
   const isSignedIn = subscriber !== null
 
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
@@ -165,7 +167,14 @@ export default async function GamePreview({ params }: Props) {
   ])
   const awayPitcherStats = awayPitcherStatsRes?.data || null
   const homePitcherStats = homePitcherStatsRes?.data || null
-  const seriesContext = await getSeriesContext(game.gamePk)
+const seriesContext = await getSeriesContext(game.gamePk)
+
+  const { home: homeBullpen, away: awayBullpen } = await getBullpenData(
+    game.teams.home.team.id,
+    game.teams.away.team.id,
+    dateMatch[1]
+  )
+
   const [awayTransactions, homeTransactions] = await Promise.all([
 getTeamTransactions(game.teams.away.team.id, 14),
 getTeamTransactions(game.teams.home.team.id, 14),
@@ -608,7 +617,15 @@ slotBatting={
     lineupsConfirmed={prediction?.lineups_confirmed ?? false}
   />
 }
-slotGmlab={
+slotBullpen={
+          <BullpenPanel
+            home={homeBullpen}
+            away={awayBullpen}
+            isPro={isPro}
+          />
+        }
+
+        slotGmlab={
       !isPro ? (
         <ProLockOverlay
           tabName="GM Lab"
