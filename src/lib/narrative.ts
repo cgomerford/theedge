@@ -405,10 +405,13 @@ function parseOutput(text: string) {
     console.error(`parseOutput: narrative invalid (length=${narrative?.length ?? 0})`)
     return null
   }
-  if (!narrative_pro || narrative_pro.length > 5000) {
-    console.error(`parseOutput: narrative_pro invalid (length=${narrative_pro?.length ?? 0})`)
+  if (!narrative_pro) {
+    console.error(`parseOutput: narrative_pro missing`)
     return null
   }
+  const narrative_pro_trimmed = narrative_pro.length > 5500
+    ? narrative_pro.slice(0, 5500).replace(/\s+\S*$/, '') + '…'
+    : narrative_pro
   if (!contrarian || contrarian.length > 500) {
     console.error(`parseOutput: contrarian invalid (length=${contrarian?.length ?? 0})`)
     return null
@@ -468,7 +471,7 @@ function parseOutput(text: string) {
     return null
   }
 
-  return { summary, narrative, narrative_pro, home_stories, away_stories, contrarian, pro_takeaways }
+ return { summary, narrative, narrative_pro: narrative_pro_trimmed, home_stories, away_stories, contrarian, pro_takeaways }
 }
 
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
