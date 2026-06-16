@@ -1,3 +1,5 @@
+export const maxDuration = 800
+
 import Anthropic from '@anthropic-ai/sdk'
 import type { PitcherSeasonStats, PitchType, GameWeather, TeamForm } from '@/lib/mlb'
 import type { EdgeScoreResult } from './edge'
@@ -149,7 +151,7 @@ Injury return: "Wheeler back from the IL — and nobody knows yet what his stuff
 Debut: "[Name]'s MLB debut vs a lineup that punishes first-time starters."
 
 ═══════════════════════════════════════════
-NARRATIVE — FREE (HARD LIMIT: 1000 chars maximum. Target 800-1000. Will be rejected if over 1000. Exactly 4 paragraphs, blank line between):
+NARRATIVE — FREE (4 paragraphs, blank line between):
 Write at the level of a beat writer's pre-game column in a major newspaper. This is not a summary — it is analysis with a voice.
 
 Para 1 — The Lead (3-4 sentences): Follow STORYLINE PRIORITY. If injury return or debut is flagged, that is sentence one — name the player, the context, what it means for tonight. Otherwise, open with the sharpest tension in this matchup. Name both pitchers naturally. Set what is actually at stake — standings position, series context, recent form — in concrete terms, not atmosphere words.
@@ -161,7 +163,7 @@ Para 3 — The Tactical Layer (3-4 sentences): What a smart fan would want to kn
 Para 4 — The Bottom Line (2-3 sentences): The single highest-leverage moment to watch. The specific scenario where the underdog wins — be concrete: not "if their bullpen holds" but "if [Name] can get through six and hand a two-run lead to [closer]." Clear lean or honest toss-up — no hedging, no qualifications.
 
 ═══════════════════════════════════════════
-NARRATIVE_PRO — PRO (HARD LIMIT: 2000 chars maximum. Target 1400-1700. Will be rejected if over 2000. Exactly 5 paragraphs, blank line between):
+NARRATIVE_PRO — PRO (5 paragraphs, blank line between):
 Write like a front office analyst who also contributes to The Athletic. Every sentence is earned. This is the version subscribers pay for.
 
 Para 1 — The Human Story (3-4 sentences): Open with the context a box score will never give you. Injury return: what the injury was, how long he was out, what scouts watched for in his rehab starts, what velocity or arsenal change to expect tonight. Debut: the prospect's journey, what makes him different, what the scouting report says his ceiling is. Rivalry or series context: the real history between these clubs — not "they need this game" but the actual pattern in the standings, the head-to-head record, what losing this series would concretely mean. If none of those apply: open with the most underreported fact about tonight's key pitcher.
@@ -199,6 +201,26 @@ If injury return flagged → one takeaway covers velocity/stuff vs pre-injury ba
 If debut flagged → one takeaway covers the prospect's key pitch vs the lineup's vulnerability.
 Every object must have all three fields.`
 
+/** Run async tasks with a max concurrency cap to avoid hammering the API */
+export async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length)
+  let index = 0
+
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++
+      results[i] = await tasks[i]()
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, worker)
+  await Promise.all(workers)
+  return results
+}
+
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
   if (process.env.DRY_RUN === 'true') {
     console.log('DRY_RUN: skipping narrative LLM call')
@@ -208,7 +230,7 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     const userPrompt = buildUserPrompt(inputs)
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 7000,
+      max_tokens: 9000,
       system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [
         { role: 'user', content: userPrompt },
@@ -379,11 +401,11 @@ function parseOutput(text: string) {
     console.error(`parseOutput: summary invalid (length=${summary?.length ?? 0})`)
     return null
   }
-  if (!narrative || narrative.length > 1000) {
+  if (!narrative || narrative.length > 4000) {
     console.error(`parseOutput: narrative invalid (length=${narrative?.length ?? 0})`)
     return null
   }
-  if (!narrative_pro || narrative_pro.length > 2000) {
+  if (!narrative_pro || narrative_pro.length > 5000) {
     console.error(`parseOutput: narrative_pro invalid (length=${narrative_pro?.length ?? 0})`)
     return null
   }

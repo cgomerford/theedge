@@ -9,6 +9,7 @@ import crypto from 'crypto'
 const SignupSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
   source: z.string().max(200).optional(),
+  fan_type: z.enum(['casual', 'new']).default('casual'),
 })
 
 // === DISPOSABLE EMAIL BLOCK LIST ===
@@ -99,15 +100,19 @@ export async function POST(req: NextRequest) {
   let turnstileToken: string | null = null
 
   const contentType = req.headers.get('content-type') ?? ''
+let fanType: string = 'casual'
+
   if (contentType.includes('application/json')) {
     const body = await req.json()
     email = body.email
     source = body.source
+    fanType = body.fan_type ?? 'casual'
     turnstileToken = body['cf-turnstile-response'] ?? body.turnstileToken
   } else {
     const formData = await req.formData()
     email = formData.get('email') as string
     source = formData.get('source') as string
+    fanType = (formData.get('fan_type') as string) ?? 'casual'
     turnstileToken = formData.get('cf-turnstile-response') as string
   }
 
@@ -160,9 +165,10 @@ export async function POST(req: NextRequest) {
   const preferencesToken = crypto.randomUUID().replace(/-/g, '')
 
   const { error: dbError } = await supa.from('subscribers').upsert(
-    {
+   {
       email: parsed.data.email,
       source: parsed.data.source ?? 'web',
+      fan_type: parsed.data.fan_type,
       email_verified: false,
       verification_token: verificationToken,
       preferences_token: preferencesToken,

@@ -53,8 +53,9 @@ export default function SignupForm({
   buttonText = 'Get free access →',
   theme = 'light',
 }: Props) {
-  const [email, setEmail]   = useState('')
-  const [status, setStatus] = useState<Status>('idle')
+  const [email, setEmail]     = useState('')
+  const [status, setStatus]   = useState<Status>('idle')
+  const [fanType, setFanType] = useState<'casual' | 'new'>('casual')
   const widgetRef   = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -132,9 +133,10 @@ export default function SignupForm({
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      body: JSON.stringify({
           email,
           source,
+          fan_type: fanType,
           'cf-turnstile-response': token,
         }),
       })
@@ -192,16 +194,15 @@ export default function SignupForm({
 
   // ── Form ──────────────────────────────────────────────────────────────────
 
-  return (
+return (
     <>
-      {/* Only load the script once — Next.js deduplicates by src */}
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit"
         strategy="afterInteractive"
       />
 
       <form onSubmit={handleSubmit} className="max-w-md mb-4">
-        <div className="flex gap-2 flex-col sm:flex-row mb-3">
+        <div className="flex gap-2 flex-col sm:flex-row mb-4">
           <input
             type="email"
             required
@@ -211,14 +212,47 @@ export default function SignupForm({
             disabled={status === 'loading'}
             className="flex-1 px-4 py-3.5 bg-white border border-stone-300 text-stone-900 placeholder:text-stone-400 outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition shadow-sm rounded-none disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={status === 'loading'}
-            className="px-6 py-3.5 bg-stone-900 text-white font-bold hover:bg-stone-800 transition font-mono text-[10px] uppercase tracking-widest whitespace-nowrap shadow-sm rounded-none disabled:opacity-50"
-          >
-            {status === 'loading' ? 'Sending...' : buttonText}
-          </button>
         </div>
+
+        {/* ── Fan type selector ── */}
+        <div className="mb-4">
+          <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
+            How should we explain things?
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: 'casual', label: 'I know the game', desc: 'Sharp reads, key stats, no hand-holding.' },
+              { value: 'new',    label: 'New to baseball',  desc: "We'll explain the nuances as we go." },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFanType(opt.value)}
+                className={[
+                  'text-left border p-3 transition',
+                  fanType === opt.value
+                    ? 'border-stone-900 bg-stone-900 text-white'
+                    : 'border-stone-300 bg-white text-stone-900 hover:border-stone-500',
+                ].join(' ')}
+              >
+                <div className="font-mono text-[10px] font-bold uppercase tracking-widest mb-1">
+                  {opt.label}
+                </div>
+                <div className={`font-serif italic text-[11px] leading-snug ${fanType === opt.value ? 'text-stone-300' : 'text-stone-500'}`}>
+                  {opt.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={status === 'loading'}
+          className="w-full px-6 py-3.5 bg-[#FF5722] text-white font-bold hover:bg-orange-600 transition font-mono text-[10px] uppercase tracking-widest shadow-sm rounded-none disabled:opacity-50 mb-3"
+        >
+          {status === 'loading' ? 'Sending...' : buttonText}
+        </button>
 
         {/* Turnstile mounts here */}
         <div ref={widgetRef} className="my-3" />

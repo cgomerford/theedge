@@ -1,3 +1,5 @@
+export const maxDuration = 800
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { calculateEdgeScore, logPrediction } from '@/lib/edge'
@@ -15,6 +17,19 @@ const supa = createClient(
 )
 
 const NARRATIVE_REGEN_THRESHOLD = 15
+
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number
+): Promise<T[]> {
+  const results: T[] = []
+  for (let i = 0; i < tasks.length; i += limit) {
+    const chunk = tasks.slice(i, i + limit)
+    const chunkResults = await Promise.all(chunk.map(t => t()))
+    results.push(...chunkResults)
+  }
+  return results
+}
 
 export const dynamic   = 'force-dynamic'
 export const revalidate = 0
@@ -54,22 +69,22 @@ export async function GET(request: Request) {
     const games = data.dates?.[0]?.games ?? []
     console.log(`Found ${games.length} games for ${today}`)
 
-    let predictions_logged    = 0
+ let predictions_logged    = 0
     let predictions_skipped   = 0
     let narratives_regenerated = 0
     let narratives_kept       = 0
     const errors: string[]    = []
 
-    for (const game of games) {
+   const tasks = games.map((game: any) => async () => {
       try {
-        if (!game.teams?.home?.team?.id || !game.teams?.away?.team?.id) {
+      if (!game.teams?.home?.team?.id || !game.teams?.away?.team?.id) {
           predictions_skipped++
-          continue
+          return
         }
 
         if (game.status?.abstractGameState === 'Final') {
           predictions_skipped++
-          continue
+          return
         }
 
         const result = await calculateEdgeScore({
@@ -311,12 +326,14 @@ if (generated) {
           fantasy_cards,
         )
 
-        predictions_logged++
+   predictions_logged++
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
         errors.push(`Game ${game.gamePk}: ${msg}`)
       }
-    }
+    })
+
+    await runWithConcurrency(tasks, 5)
 
     return NextResponse.json({
       success: true,
