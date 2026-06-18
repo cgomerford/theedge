@@ -63,29 +63,67 @@ def compute_pitcher_regression():
     real performance (FIP) is better than the ERA shows — expect ERA to
     drop (i.e. they're 'due to rise' in value). The inverse also applies:
     era well below fip means a correction upward is likely.
+
+    NOTE: pitcher_stats has no `team_short` or `innings_pitched` column —
+    confirmed against the actual upsert payload in fetch_pitcher_stats.py,
+    which only writes player_id, player_name, season, fip, era, k_per_9,
+    bb_per_9. We cross-reference team_short from ultimate_team_players
+    (which DOES have it) by player_id, and use k_per_9 presence as a crude
+    "has pitched enough to matter" filter instead of an innings floor.
     """
     resp = supa.table('pitcher_stats') \
-        .select('player_id, player_name, team_short, era, fip, innings_pitched') \
-        .gte('innings_pitched', 15) \
+        .select('player_id, player_name, season, era, fip, k_per_9') \
+        .not_.is_('era', 'null') \
+        .not_.is_('fip', 'null') \
+        .order('season', desc=True) \
         .execute()
 
-    rows = resp.data or []
-    candidates = []
+    raw_rows = resp.data or []
+    if not raw_rows:
+        return []
 
+    # Defensive de-dup: if pitcher_stats holds multiple seasons per player
+    # (on_conflict='player_id,season' in fetch_pitcher_stats.py implies it
+    # can), keep only the most-recent-season row per player_id. Sorted desc
+    # by season above, so first occurrence wins.
+    rows = []
+    seen_player_ids = set()
+    for r in raw_rows:
+        if r['player_id'] in seen_player_ids:
+            continue
+        seen_player_ids.add(r['player_id'])
+        rows.append(r)
+
+    # Cross-reference team_short + games_played (sample-size proxy) from the pool table
+    player_ids = [r['player_id'] for r in rows]
+    pool_resp = supa.table('ultimate_team_players') \
+        .select('player_id, team_short, games_played') \
+        .in_('player_id', player_ids) \
+        .execute()
+    pool_lookup = {p['player_id']: p for p in (pool_resp.data or [])}
+
+    candidates = []
     for r in rows:
         era = r.get('era')
         fip = r.get('fip')
         if era is None or fip is None:
             continue
+
+        pool_info = pool_lookup.get(r['player_id'])
+        # games_played is a rough proxy here since innings_pitched isn't stored —
+        # a starter with fewer than 4 games is too small a sample to trust ERA/FIP gap.
+        if not pool_info or (pool_info.get('games_played') or 0) < 4:
+            continue
+
         gap = float(era) - float(fip)
         if abs(gap) < 0.5:
             continue   # not meaningful enough to flag
 
         direction = 'rise' if gap > 0 else 'drop'  # ERA > FIP → expect ERA to fall → value rises
         candidates.append({
-            'player_name':  r['player_name'],
-            'team_short':   r.get('team_short'),
-            'position':     'P',
+            'player_name':   r['player_name'],
+            'team_short':    pool_info.get('team_short'),
+            'position':      'P',
             'surface_label': f"{float(era):.2f} ERA",
             'true_label':    f"{float(fip):.2f} FIP",
             'gap':           round(gap, 2),
