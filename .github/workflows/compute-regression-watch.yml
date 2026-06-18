@@ -1,0 +1,33 @@
+name: Compute Regression Watch
+
+on:
+  schedule:
+    # 10:00 UTC daily — after fetch_ultimate_team_pool.py and pitcher_stats
+    # refreshes have had time to run (both are slow, full-roster API sweeps).
+    # Adjust if those crons move; this one just needs to run AFTER them.
+    - cron: '0 10 * * *'
+  workflow_dispatch: {}   # manual trigger from the Actions tab, for testing
+
+jobs:
+  compute-regression-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-dotenv supabase
+
+      - name: Run regression watch computation
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/compute_regression_watch.py
