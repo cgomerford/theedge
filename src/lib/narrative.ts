@@ -496,10 +496,13 @@ function parseOutput(text: string) {
   const narrative_pro_trimmed = narrative_pro.length > 5500
     ? narrative_pro.slice(0, 5500).replace(/\s+\S*$/, '') + '…'
     : narrative_pro
-  if (!contrarian || contrarian.length > 500) {
-    console.error(`parseOutput: contrarian invalid (length=${contrarian?.length ?? 0})`)
-    return null
-  }
+ if (!contrarian) {
+  console.error('parseOutput: contrarian missing')
+  return null
+}
+const contrarian_trimmed = contrarian.length > 500
+  ? contrarian.slice(0, 500).replace(/\s+\S*$/, '') + '…'
+  : contrarian
 
   let home_stories: StoryItem[] = []
   let away_stories: StoryItem[] = []
