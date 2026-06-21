@@ -8,7 +8,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import LiveScoreboard from './LiveScoreboard'
 
-export type GamePageTab = 'read' | 'teams' | 'pitching' | 'batting' | 'bullpen' | 'gmlab' | 'fantasy'
+export type GamePageTab = 'read' | 'teams' | 'plate' | 'pitching' | 'batting' | 'bullpen' | 'gmlab' | 'fantasy'
 
 type LiveScoreData = {
   awayRuns: number
@@ -34,10 +34,11 @@ type GamePageShellProps = {
   venue?: string
   isPro: boolean
   isSignedIn?: boolean
-  liveScore?: LiveScoreData   // ← new optional prop
+  liveScore?: LiveScoreData
 
   slotRead: React.ReactNode
   slotTeams: React.ReactNode
+  slotPlate?: React.ReactNode
   slotPitching: React.ReactNode
   slotBullpen: React.ReactNode
   slotGmlab: React.ReactNode
@@ -46,14 +47,14 @@ type GamePageShellProps = {
 }
 
 const TABS = [
-  { key: 'read'     as const, label: 'The Read',  shortLabel: 'Read',    proOnly: false },
-  { key: 'teams'    as const, label: 'Teams',     shortLabel: 'Teams',   proOnly: false },
-  { key: 'pitching' as const, label: 'Pitching',  shortLabel: 'Pitching', proOnly: true },
-    { key: 'bullpen' as const, label: 'Bullpen',   shortLabel: 'Pen',     proOnly: true  },
-  { key: 'batting'  as const, label: 'Batting',   shortLabel: 'Batting', proOnly: true  },
-  { key: 'gmlab'    as const, label: 'GM Lab',    shortLabel: 'Lab',     proOnly: true  },
-  { key: 'fantasy'  as const, label: 'Fantasy',   shortLabel: 'Fantasy', proOnly: true  },
-  
+  { key: 'read'     as const, label: 'The Read',         shortLabel: 'Read',     proOnly: false },
+  { key: 'teams'    as const, label: 'Teams',            shortLabel: 'Teams',    proOnly: false },
+  { key: 'plate'    as const, label: 'Behind the Plate', shortLabel: 'Plate',    proOnly: false },
+  { key: 'pitching' as const, label: 'Pitching',         shortLabel: 'Pitching', proOnly: true  },
+  { key: 'bullpen'  as const, label: 'Bullpen',          shortLabel: 'Pen',      proOnly: true  },
+  { key: 'batting'  as const, label: 'Batting',          shortLabel: 'Batting',  proOnly: true  },
+  { key: 'gmlab'    as const, label: 'GM Lab',           shortLabel: 'Lab',      proOnly: true  },
+  { key: 'fantasy'  as const, label: 'Fantasy',          shortLabel: 'Fantasy',  proOnly: true  },
 ]
 
 export default function GamePageShell({
@@ -61,7 +62,7 @@ export default function GamePageShell({
   homeLogoUrl, awayLogoUrl,
   gameTime, venue, isPro, isSignedIn = false,
   liveScore,
-slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatting,
+  slotRead, slotTeams, slotPlate, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatting,
 }: GamePageShellProps) {
   const [activeTab, setActiveTab] = useState<GamePageTab>('read')
 
@@ -69,7 +70,7 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
     <div className="min-h-screen bg-stone-50">
 
       {/* ── STICKY HEADER ── */}
-     <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
 
         {/* Logo vs logo strip */}
         <div className="flex items-center px-3 py-2 max-w-4xl mx-auto gap-2">
@@ -81,7 +82,6 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
           </div>
 
           <div className="flex flex-col items-center shrink-0 px-1">
-            {/* Show live score in header if game is live/final */}
             {liveScore && (liveScore.isLive || liveScore.isFinal) ? (
               <div className="flex items-center gap-2">
                 <span className={`text-lg font-mono font-black leading-none ${liveScore.awayRuns > liveScore.homeRuns ? 'text-stone-900' : 'text-stone-400'}`}>
@@ -128,7 +128,10 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
         </div>
 
         {/* Tab bar */}
-        <div className="flex overflow-x-auto scrollbar-hide max-w-4xl mx-auto border-t border-stone-100">
+        <div
+          className="flex overflow-x-auto scrollbar-hide max-w-4xl mx-auto border-t border-stone-100"
+          style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+        >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key
             const isLocked = tab.proOnly && !isPro
@@ -158,7 +161,7 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
         </div>
       </div>
 
-      {/* ── LIVE SCOREBOARD — shown below sticky header when live/final ── */}
+      {/* ── LIVE SCOREBOARD ── */}
       {liveScore && (liveScore.isLive || liveScore.isFinal) && (
         <LiveScoreboard
           awayTeam={awayTeam}
@@ -189,8 +192,17 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
         {activeTab === 'teams' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotTeams}</div>
         )}
+        {activeTab === 'plate' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotPlate}</div>
+        )}
         {activeTab === 'pitching' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotPitching}</div>
+        )}
+        {activeTab === 'bullpen' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBullpen}</div>
+        )}
+        {activeTab === 'batting' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBatting}</div>
         )}
         {activeTab === 'gmlab' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -214,14 +226,8 @@ slotRead, slotTeams, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatt
             )}
           </div>
         )}
-  {activeTab === 'bullpen' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBullpen}</div>
-        )}
         {activeTab === 'fantasy' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotFantasy}</div>
-        )}
-        {activeTab === 'batting' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBatting}</div>
         )}
       </div>
     </div>

@@ -182,7 +182,7 @@ export default function MLBHomepage({
             <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>
               § PREVIEWS • {games.length} GAMES
             </span>
-            <Link href="/tonight" style={{ fontSize: 11, color: '#6b7280', textDecoration: 'none' }}>Full slate →</Link>
+       <Link href="/mlb/scores" style={{ fontSize: 11, color: '#6b7280', textDecoration: 'none' }}>Full slate →</Link>
           </div>
           <div className="previews-grid">
             {sortedGames.map((game) => {

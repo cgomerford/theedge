@@ -22,6 +22,8 @@ import { scoreStreamer } from '@/lib/streamer'
 import type { StreamerInput } from '@/lib/streamer'
 import HotZone from '@/components/HotZone'
 import { getBatterHotZones, getPitcherHotZones } from '@/lib/hot-zones'
+import { getPitcherZoneArsenal, getMostDangerousBat, type PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
+import TaleOfTheTape from '@/components/TaleOfTheTape'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
 import ProDashboard from '@/components/ProDashboard'
@@ -181,12 +183,21 @@ getTeamTransactions(game.teams.away.team.id, 14),
 getTeamTransactions(game.teams.home.team.id, 14),
 ])
 
-  const awayFeatureBatter = awayLineup?.batters?.[2] ?? null
+const awayFeatureBatter = awayLineup?.batters?.[2] ?? null
   const homeFeatureBatter = homeLineup?.batters?.[2] ?? null
 
   const [awayBatterHotZones, homeBatterHotZones] = await Promise.all([
     awayFeatureBatter ? getBatterHotZones(awayFeatureBatter.player_id) : Promise.resolve({}),
     homeFeatureBatter ? getBatterHotZones(homeFeatureBatter.player_id) : Promise.resolve({}),
+  ])
+
+  // Tale of the Tape: each pitcher's arsenal vs the most dangerous bat they face.
+  // Away pitcher faces the HOME lineup; home pitcher faces the AWAY lineup.
+const [awayArsenal, homeArsenal, awayDangerBat, homeDangerBat] = await Promise.all([
+    awayPitcherId ? getPitcherZoneArsenal(awayPitcherId) : Promise.resolve({} as Record<string, PitcherZoneArsenal>),
+    homePitcherId ? getPitcherZoneArsenal(homePitcherId) : Promise.resolve({} as Record<string, PitcherZoneArsenal>),
+    getMostDangerousBat(homeLineup?.batters ?? null),
+    getMostDangerousBat(awayLineup?.batters ?? null),
   ])
 
   const parkComponent = prediction?.components?.park ?? 0
@@ -597,9 +608,32 @@ getTeamTransactions(game.teams.home.team.id, 14),
           tabName="Pitching Lab"
           description="Arsenal grades, two-strike profiles, times-through-the-order breakdown, first-pitch tendencies, and hot zones — the full scouting brief."
         />
-      ) : (
-        <PitchingLabContent
-          awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
+  ) : (
+        <div className="space-y-8">
+          {game.teams.away.probablePitcher && awayArsenal['all'] && homeDangerBat?.zones?.['all'] && (
+            <TaleOfTheTape
+              isPro={isPro}
+              pitcherName={game.teams.away.probablePitcher.fullName}
+              pitcherHand={awayPitcherStats?.throws ?? null}
+              arsenal={awayArsenal['all']}
+              batterName={homeDangerBat.batter.player_name}
+              batterHand={(homeDangerBat.batter as any).bat_side ?? null}
+              batterZones={homeDangerBat.zones['all']}
+            />
+          )}
+          {game.teams.home.probablePitcher && homeArsenal['all'] && awayDangerBat?.zones?.['all'] && (
+            <TaleOfTheTape
+              isPro={isPro}
+              pitcherName={game.teams.home.probablePitcher.fullName}
+              pitcherHand={homePitcherStats?.throws ?? null}
+              arsenal={homeArsenal['all']}
+              batterName={awayDangerBat.batter.player_name}
+              batterHand={(awayDangerBat.batter as any).bat_side ?? null}
+              batterZones={awayDangerBat.zones['all']}
+            />
+          )}
+          <PitchingLabContent
+            awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
           homePitcherName={game.teams.home.probablePitcher?.fullName ?? null}
           awayPitcherId={game.teams.away.probablePitcher?.id ?? null}
           homePitcherId={game.teams.home.probablePitcher?.id ?? null}
@@ -623,9 +657,10 @@ homePitcherStats={homePitcherStats}
               {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
                 <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
               )}
-            </div>
+       </div>
           }
-        />
+          />
+        </div>
       )
     }
 slotBatting={

@@ -13,6 +13,10 @@ import Link from 'next/link'
 import type { FantasyPicksByType, FantasyPick } from '@/lib/fantasy'
 import type { NewsItem } from '@/lib/fantasy-news'
 import type { TeamTransaction } from '@/lib/team-transactions'
+import type { BoardGame } from '@/lib/trading-floor-board'
+import type { RegressionWatchData } from '@/lib/regression-watch'
+import TradingFloorBoard from '@/components/TradingFloorBoard'
+import RegressionWatchPanel from '@/components/RegressionWatchPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +26,8 @@ type Props = {
   news: NewsItem[]
   ilList: TeamTransaction[]
   transactions: TeamTransaction[]
+  board: BoardGame[]
+  regression: RegressionWatchData | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -677,7 +683,15 @@ function PlatformTable({ picks }: { picks: FantasyPick[] }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export default function FantasyDashboard({ picks, isStale, news, ilList, transactions }: Props) {
+export default function FantasyDashboard({
+  picks,
+  isStale,
+  news,
+  ilList,
+  transactions,
+  board,
+  regression,
+}: Props) {
 
  const allPicks: FantasyPick[] = [
   ...picks.streamer.map(p => ({ ...p, pick_type: 'streamer' as const })),
@@ -709,7 +723,8 @@ export default function FantasyDashboard({ picks, isStale, news, ilList, transac
             </p>
           </div>
           <div className="flex gap-3 flex-wrap">
-            {[
+             {[
+              { label: 'Slate', count: board.length, color: '#FF5722' },
               { label: 'News', count: news.length, color: '#1A1A1A' },
               { label: 'On IL', count: ilList.length, color: '#DC2626' },
               { label: 'Moves', count: transactions.length, color: '#2563EB' },
@@ -743,8 +758,26 @@ export default function FantasyDashboard({ picks, isStale, news, ilList, transac
         </div>
 
         {/* Right: Fantasy picks */}
-        <div className="space-y-10">
-
+      <div className="space-y-10">
+ 
+          {/* The Board — tonight's full slate */}
+          <section>
+            <SectionLabel live>The Board</SectionLabel>
+            <ReadLine>
+              Every game tonight, ranked by Edge Score. Bullpen fatigue, park factor, and what's driving each number — one table, one glance.
+            </ReadLine>
+            <TradingFloorBoard games={board} />
+          </section>
+ 
+          {/* Regression Watch — surface vs underlying */}
+          <section>
+            <SectionLabel>Regression Watch</SectionLabel>
+            <ReadLine>
+              Surface stats lie sometimes. These are the names where the underlying number — FIP, zone-weighted xwOBA — disagrees with what the box score says.
+            </ReadLine>
+            <RegressionWatchPanel data={regression} />
+          </section>
+ 
           {/* Streamers */}
           <section>
             <SectionLabel live>Streamers</SectionLabel>
