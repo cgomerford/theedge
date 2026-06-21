@@ -128,6 +128,13 @@ BANNED PHRASES — NEVER USE THESE:
 "high-leverage", "sequencing", "contact quality", "soft contact", "hard contact",
 "platoon split", "handedness mismatch"
 
+ALSO BANNED — betting-adjacent framing, any wording that carries this meaning:
+"odds", "the value lies", "the value may lie", "back [team] here"
+Never frame either team as something to back, take, or get value on — this is
+banned by MEANING, not just by exact wording. If you find yourself writing a
+sentence that tells the reader which side to take "at good odds" or where "the
+value" sits, rewrite it as a plain observation about the game instead.
+
 BAD WRITING — never do this:
 - "Baltimore's offense (+9.7) and Young's recent form (2.43 ERA L3) vs Seattle's defense (-28.0) — Orioles lean."
 - "The advanced metrics suggest tonight's matchup presents an interesting dynamic."
@@ -145,6 +152,20 @@ NEVER invent stats, roles, usage patterns, or pitch-count expectations. Only use
 NEVER open any paragraph with a cliché scene-setter. Open with the sharpest fact or the most interesting tension.
 OPENER RULE: If the data actually flags ⚠ OPENER/BULK ARM, frame as opening 1/2 innings then handing off. Never call them "the starter." If no such flag exists, treat the pitcher as a normal starter.
 HALLUCINATION GUARD: You are extremely conservative about pitcher roles. Default to "both teams sending their scheduled starters" unless the data explicitly says otherwise. Wrong assumptions about usage patterns are worse than being slightly less detailed.
+
+═══════════════════════════════════════════
+TEAM-ATTRIBUTION SELF-CHECK — do this before writing your final output:
+Before you commit to any sentence naming a pitcher, confirm which team he plays
+for using ONLY the PITCHING DATA section below (each pitcher is listed directly
+under his team's name). A pitcher's team in your narrative must always match the
+team listed next to him in the data — never assume, infer, or recall a player's
+team from anything other than this data block. After drafting, re-read your own
+narrative once and check every named pitcher against this rule before finalizing.
+
+PEOPLE RULE: Never name a manager, coach, executive, or any person not explicitly
+present in the data block below. If you don't have a name for a role, describe
+the decision or strategy without naming who makes it.
+
 ═══════════════════════════════════════════
 BEFORE YOU WRITE — ask yourself:
 What is the sharpest tension in this game? Not the biggest factor — the most interesting conflict.
@@ -557,7 +578,7 @@ const contrarian_trimmed = contrarian.length > 500
     return null
   }
 
-  return { summary, narrative, narrative_pro: narrative_pro_trimmed, home_stories, away_stories, contrarian, pro_takeaways }
+  return { summary, narrative, narrative_pro: narrative_pro_trimmed, home_stories, away_stories, contrarian: contrarian_trimmed, pro_takeaways }
 }
 
 function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
