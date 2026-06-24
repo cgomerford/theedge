@@ -23,7 +23,8 @@ import type { StreamerInput } from '@/lib/streamer'
 import HotZone from '@/components/HotZone'
 import { getBatterHotZones, getPitcherHotZones } from '@/lib/hot-zones'
 import { getPitcherZoneArsenal, getMostDangerousBat, type PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
-import TaleOfTheTape from '@/components/TaleOfTheTape'
+import TaleOfTheTape, { type PitcherOption, type BatterOption } from '@/components/TaleOfTheTape'
+import type { BullpenData } from '@/components/BullpenPanel'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
 import ProDashboard from '@/components/ProDashboard'
@@ -191,6 +192,53 @@ const awayFeatureBatter = awayLineup?.batters?.[2] ?? null
     homeFeatureBatter ? getBatterHotZones(homeFeatureBatter.player_id) : Promise.resolve({}),
   ])
 
+  const awayLeadoff = awayLineup?.batters?.find(b => b.batting_order === 1) ?? null
+const homeLeadoff = homeLineup?.batters?.find(b => b.batting_order === 1) ?? null
+const [awayLeadoffZones, homeLeadoffZones] = await Promise.all([
+  awayLeadoff ? getBatterHotZones(awayLeadoff.player_id) : Promise.resolve({}),
+  homeLeadoff ? getBatterHotZones(homeLeadoff.player_id) : Promise.resolve({}),
+])
+
+function buildPitcherOptions(
+  starter: { id: number; fullName: string } | undefined,
+  starterHand: string | null | undefined,
+  bullpen: BullpenData | null,
+): PitcherOption[] {
+  const opts: PitcherOption[] = []
+  if (starter) {
+    opts.push({
+      player_id: starter.id,
+      name: starter.fullName,
+      hand: (starterHand as 'L' | 'R' | null) ?? null,
+      role: 'SP',
+      isDefault: true,
+    })
+  }
+  for (const arm of bullpen?.arms ?? []) {
+    if (arm.player_id === starter?.id) continue
+    opts.push({
+      player_id: arm.player_id,
+      name: arm.name,
+      hand: arm.hand,
+      role: arm.role,
+      isDefault: false,
+    })
+  }
+  return opts
+}
+
+function buildBatterOptions(lineup: any[] | null | undefined): BatterOption[] {
+  if (!lineup) return []
+  return [...lineup]
+    .sort((a, b) => a.batting_order - b.batting_order)
+    .map(b => ({
+      player_id: b.player_id,
+      name: b.player_name,
+      bat_side: (b.bat_side ?? null) as 'L' | 'R' | 'S' | null,
+      battingOrder: b.batting_order,
+      isDefault: b.batting_order === 1,
+    }))
+}
   // Tale of the Tape: each pitcher's arsenal vs the most dangerous bat they face.
   // Away pitcher faces the HOME lineup; home pitcher faces the AWAY lineup.
 const [awayArsenal, homeArsenal, awayDangerBat, homeDangerBat] = await Promise.all([
@@ -601,8 +649,28 @@ const [awayArsenal, homeArsenal, awayDangerBat, homeDangerBat] = await Promise.a
             )}
           </div>
         }
+slotPlate={
+  <TaleOfTheTape
+    isPro={isPro}
+    defaultSide="away"
+    away={{
+      pitcherOptions: buildPitcherOptions(game.teams.away.probablePitcher, awayPitcherStats?.throws, awayBullpen),
+      defaultArsenal: awayArsenal['all'] ?? null,
+      batterOptions: buildBatterOptions(homeLineup?.batters),
+      defaultBatterZones: homeLeadoffZones,
+      teamAbbr: game.teams.away.team.abbreviation ?? 'AWAY',
+    }}
+    home={{
+      pitcherOptions: buildPitcherOptions(game.teams.home.probablePitcher, homePitcherStats?.throws, homeBullpen),
+      defaultArsenal: homeArsenal['all'] ?? null,
+      batterOptions: buildBatterOptions(awayLineup?.batters),
+      defaultBatterZones: awayLeadoffZones,
+      teamAbbr: game.teams.home.team.abbreviation ?? 'HOME',
+    }}
+  />
+}
 
-       slotPitching={
+     slotPitching={
       !isPro ? (
         <ProLockOverlay
           tabName="Pitching Lab"
@@ -610,29 +678,9 @@ const [awayArsenal, homeArsenal, awayDangerBat, homeDangerBat] = await Promise.a
         />
   ) : (
         <div className="space-y-8">
-          {game.teams.away.probablePitcher && awayArsenal['all'] && homeDangerBat?.zones?.['all'] && (
-            <TaleOfTheTape
-              isPro={isPro}
-              pitcherName={game.teams.away.probablePitcher.fullName}
-              pitcherHand={awayPitcherStats?.throws ?? null}
-              arsenal={awayArsenal['all']}
-              batterName={homeDangerBat.batter.player_name}
-              batterHand={(homeDangerBat.batter as any).bat_side ?? null}
-              batterZones={homeDangerBat.zones['all']}
-            />
-          )}
-          {game.teams.home.probablePitcher && homeArsenal['all'] && awayDangerBat?.zones?.['all'] && (
-            <TaleOfTheTape
-              isPro={isPro}
-              pitcherName={game.teams.home.probablePitcher.fullName}
-              pitcherHand={homePitcherStats?.throws ?? null}
-              arsenal={homeArsenal['all']}
-              batterName={awayDangerBat.batter.player_name}
-              batterHand={(awayDangerBat.batter as any).bat_side ?? null}
-              batterZones={awayDangerBat.zones['all']}
-            />
-          )}
-          <PitchingLabContent
+          
+         
+      <PitchingLabContent
             awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
           homePitcherName={game.teams.home.probablePitcher?.fullName ?? null}
           awayPitcherId={game.teams.away.probablePitcher?.id ?? null}
@@ -643,26 +691,13 @@ const [awayArsenal, homeArsenal, awayDangerBat, homeDangerBat] = await Promise.a
 homePitcherStats={homePitcherStats}
           awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
           homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-          hotZoneSlot={
-            <div className="grid md:grid-cols-2 gap-4">
-              {game.teams.away.probablePitcher && Object.keys(awayPitcherHotZones).length > 0 && (
-                <HotZone mode="pitcher" data={awayPitcherHotZones} isPro={isPro} playerName={game.teams.away.probablePitcher.fullName} />
-              )}
-              {game.teams.home.probablePitcher && Object.keys(homePitcherHotZones).length > 0 && (
-                <HotZone mode="pitcher" data={homePitcherHotZones} isPro={isPro} playerName={game.teams.home.probablePitcher.fullName} />
-              )}
-              {awayFeatureBatter && Object.keys(awayBatterHotZones).length > 0 && (
-                <HotZone mode="batter" data={awayBatterHotZones} isPro={isPro} playerName={awayFeatureBatter.player_name} />
-              )}
-              {homeFeatureBatter && Object.keys(homeBatterHotZones).length > 0 && (
-                <HotZone mode="batter" data={homeBatterHotZones} isPro={isPro} playerName={homeFeatureBatter.player_name} />
-              )}
-       </div>
-          }
           />
         </div>
       )
     }
+
+
+    
 slotBatting={
   <BattingTabContent
     awayTeamName={game.teams.away.team.name}

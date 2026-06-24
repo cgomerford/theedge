@@ -6,13 +6,19 @@
  * once per day by `scripts/compute_fantasy_picks.py`.
  *
  * The page never recomputes — it just SELECTs and renders.
+ *
+ * 'cooler' and 'riser' are the newest pick types — see compute_fantasy_picks.py
+ * for where they come from. Unlike the other four, they aren't tied to a
+ * specific game (game_pk/game_slug/game_time are null), so any UI rendering
+ * them needs to handle that the same way it already does for fields it treats
+ * as optional elsewhere (e.g. `pick.game_slug &&` guards).
  */
 
 import { createAdminClient } from '@/lib/supabase'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PickType = 'streamer' | 'mover' | 'faller' | 'sleeper'
+export type PickType = 'streamer' | 'mover' | 'faller' | 'sleeper' | 'cooler' | 'riser' | 'prospect'
 
 export type FantasyPick = {
   id:             number
@@ -38,6 +44,9 @@ export type FantasyPicksByType = {
   mover:    FantasyPick[]
   faller:   FantasyPick[]
   sleeper:  FantasyPick[]
+  cooler:   FantasyPick[]
+  riser:    FantasyPick[]
+  prospect: FantasyPick[]
 }
 
 // ─── Fetcher ──────────────────────────────────────────────────────────────────
@@ -88,7 +97,9 @@ export async function getFantasyPicks(): Promise<{
 }
 
 function groupByType(rows: FantasyPick[]): FantasyPicksByType {
-  const out: FantasyPicksByType = { streamer: [], mover: [], faller: [], sleeper: [] }
+  const out: FantasyPicksByType = {
+    streamer: [], mover: [], faller: [], sleeper: [], cooler: [], riser: [], prospect: [],
+  }
   for (const r of rows) {
     if (out[r.pick_type]) out[r.pick_type].push(r)
   }

@@ -1,19 +1,44 @@
 """
 scripts/compute_fantasy_picks.py
 
-Computes the four pick types for the /fantasy page:
+Computes the seven pick types for the /fantasy page:
   - Streamers (best pitchers to stream tonight)
   - Movers   (games where edge_score swung sharply since first snapshot)
   - Fallers  (elite pitchers who are tough matchups for opposing fantasy hitters)
   - Sleepers (regression candidates with hidden value)
+  - Coolers  (batters/pitchers fading off a recent strong stretch)
+  - Risers   (batters/pitchers rebounding off a recent weak stretch)
+  - Prospects (AAA hitters heating up — same mechanism, heating-only, see below)
 
-Writes ~12 rows total to `daily_fantasy_picks` (3 per type × 4 types).
+Writes ~30 rows total to `daily_fantasy_picks` (3 per type x 4 types, up to 6
+each for cooler/riser split across batters/pitchers, up to 6 for prospects).
 
 Runs once per day at ~11:00 UTC (after the 10:00 predictions cron and snapshot).
-This is the single source of truth for the /fantasy page — the page just SELECTS
+This is the single source of truth for the /fantasy page — the page just SELECTs
 from this table, never recomputes.
 
-CHEAP: ~30-60 seconds total. No Statcast pulls. Pure DB read + aggregate.
+CHEAP: ~30-60 seconds total. No Statcast pulls, no per-player game-log fetches.
+Pure DB read + aggregate — INCLUDING the new cooler/riser types, which read
+from `player_form_signals` (populated separately, see scripts/fetch_player_form.py).
+That script is the slow one (one game-log API call per player in the pool);
+keeping it out of this file is what keeps this file's runtime budget intact.
+
+BACKGROUND ON COOLERS/RISERS:
+The original idea here was a head-and-shoulders chart pattern — see
+scripts/backtest_head_and_shoulders.py. That backtest killed it: 1 qualifying
+shape in 25 qualified hitters over a full season, and that one instance didn't
+even confirm. What the SAME backtest validated instead was the boring version:
+any local peak in rolling OPS tends to give some back (54% of 221 peaks
+regressed, mean -0.028 OPS). Coolers/risers ship that simpler, validated
+mechanism. The riser (rebound) side is the same mechanism mirrored, not
+separately backtested — treat it as a reasonable bet, not a proven one.
+
+PROSPECTS reuse the exact same detector and batter thresholds, just pointed
+at the AAA pool (sportId 11) instead of MLB — see fetch_player_form.py's
+scan_milb_prospects(). Heating-only: a cooling AAA hitter isn't an actionable
+pickup signal. This is "good recent AAA form," not a scouting grade — there's
+no prospect-ranking data source wired in here, and the copy should never
+imply there is.
 
 FIXES applied (June 1 2026):
   1. Faller scores normalised to 0-100 (was pitcher_quality + stuff = up to 200)
@@ -30,8 +55,8 @@ from dotenv import load_dotenv
 
 load_dotenv('.env.local')
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
+SUPABASE_URL = os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     print('Missing env vars')
@@ -43,6 +68,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 # ─── Constants (mirrors src/lib/streamer.ts) ─────────────────────────────────
 LEAGUE_AVG_FIP = 4.20
 LEAGUE_AVG_K9  = 8.8
+LEAGUE_AVG_BB9 = 3.1
 LEAGUE_AVG_WRC = 100
 LEAGUE_AVG_RPG = 4.5
 
@@ -243,6 +269,60 @@ def get_pitch_mix(pid):
     return resp.data if resp.data else None
 
 
+def project_pitcher_line(pstats, opponent_score, park_score):
+    """
+    Real per-start projection for tonight, used by Platform Scoring.
+    Previously that table had no real projection at all — every pitcher fell
+    through to the same hardcoded (6 IP, 7 K, 2 ER, 2 BB) defaults because
+    compute_streamers()'s details dict never had proj_* keys, so every row
+    scored identically. This is what actually feeds it now.
+
+    proj_ip:  season_ip_pace if present (already a recent per-start pace),
+              else innings_pitched/starts, else a league-average default.
+    proj_k:   proj_ip scaled by the pitcher's own k_per_9 (already used
+              elsewhere in this file) — falls back to league average.
+    proj_bb:  same idea, bb_per_9.
+    proj_er:  season ERA scaled to proj_ip, then adjusted by tonight's
+              opponent/park scores (already computed for the streamer score
+              itself, so this reuses real signal rather than inventing a
+              second, disconnected projection).
+    """
+    if not pstats:
+        pstats = {}
+
+    ip_pace = pstats.get('season_ip_pace')
+    starts = pstats.get('starts') or 0
+    innings = pstats.get('innings_pitched')
+    if ip_pace:
+        proj_ip = float(ip_pace)
+    elif innings and starts:
+        proj_ip = float(innings) / float(starts)
+    else:
+        proj_ip = 5.5
+    proj_ip = clamp(proj_ip, 3.0, 7.5)
+
+    k9 = float(pstats['k_per_9']) if pstats.get('k_per_9') else LEAGUE_AVG_K9
+    bb9 = float(pstats['bb_per_9']) if pstats.get('bb_per_9') else LEAGUE_AVG_BB9
+    era = float(pstats['era']) if pstats.get('era') else LEAGUE_AVG_FIP
+
+    proj_k = proj_ip * (k9 / 9)
+    proj_bb = proj_ip * (bb9 / 9)
+
+    base_er = proj_ip * (era / 9)
+    # opponent/park are already 0-100 "good for the pitcher" scores; 50 = neutral.
+    # Adjustment is intentionally mild (capped 0.7-1.3x) — this nudges a real
+    # season ERA toward tonight's matchup, it doesn't override it.
+    matchup_adj = clamp(1 - ((opponent_score - 50) + (park_score - 50)) / 300, 0.7, 1.3)
+    proj_er = base_er * matchup_adj
+
+    return {
+        'proj_ip': round(proj_ip, 1),
+        'proj_k': round(proj_k, 1),
+        'proj_er': round(proj_er, 1),
+        'proj_bb': round(proj_bb, 1),
+    }
+
+
 # ─── Compute: Streamers ─────────────────────────────────────────────────────
 def compute_streamers(games, today):
     """
@@ -275,6 +355,7 @@ def compute_streamers(games, today):
             quality   = score_pitcher_quality(pstats)
             opponent  = score_opponent_offence(opp_stats)
             stuff, top_pitch = score_stuff(mix)
+            projection = project_pitcher_line(pstats, opponent, park)
 
             score = round(quality * 0.40 + opponent * 0.30 + park * 0.15 + stuff * 0.15)
             tier  = 'strong' if score >= 70 else 'viable' if score >= 55 else 'avoid'
@@ -313,6 +394,7 @@ def compute_streamers(games, today):
                     'stuff':           stuff,
                     'park':            park,
                     'venue':           venue_name,
+                    **projection,      # proj_ip, proj_k, proj_er, proj_bb — what Platform Scoring actually reads
                 },
                 'headline':  f'{name} · {short_name(team_side)} vs {short_name(opponent_team)}',
                 'one_liner': one_liner,
@@ -567,6 +649,130 @@ def compute_sleepers(games, today):
     return candidates[:3]
 
 
+# ─── NEW: Compute Coolers / Risers ───────────────────────────────────────────
+def get_latest_form_date(today):
+    """
+    fetch_player_form.py runs on its own schedule and may not have a row for
+    `today` yet (or ever, if it failed). Fall back to the most recent date
+    available, same spirit as the yesterday-fallback in src/lib/fantasy.ts.
+    """
+    resp = supabase.table('player_form_signals')\
+        .select('computed_date')\
+        .lte('computed_date', today)\
+        .order('computed_date', desc=True)\
+        .limit(1).execute()
+    return resp.data[0]['computed_date'] if resp.data else None
+
+
+def _form_one_liner(row):
+    pt = row['player_type']
+    cur, ext = float(row['current_value']), float(row['extreme_value'])
+    if pt == 'batter':
+        if row['signal'] == 'cooling':
+            return f"Rolling OPS down to {cur:.3f} from a recent high of {ext:.3f} — sell while it's still warm"
+        return f"Rolling OPS up to {cur:.3f} from a recent low of {ext:.3f} — buy before it shows up in the box score"
+    else:
+        if row['signal'] == 'cooling':
+            return f"Rolling ERA up to {cur:.2f} from a {ext:.2f} stretch — last start was better than what's coming"
+        return f"Rolling ERA down to {cur:.2f} from a {ext:.2f} stretch — buy-low window before results catch up to form"
+
+
+def compute_form_picks(today, signal_type):
+    """
+    signal_type: 'cooling' (-> 'cooler' picks) or 'heating' (-> 'riser' picks).
+    Queries batters and pitchers SEPARATELY (top 3 each, so up to 6 rows) —
+    a single combined top-3-by-magnitude query could (and on a real run did)
+    return all batters and zero pitchers on a given day, which doesn't match
+    "batters trending + pitchers trending" as two distinct sections.
+    Cheap SELECT against player_form_signals — see scripts/fetch_player_form.py
+    for how that table gets populated and why this is a separate script.
+    """
+    form_date = get_latest_form_date(today)
+    if not form_date:
+        return []
+
+    out = []
+    for player_type in ('batter', 'pitcher'):
+        resp = supabase.table('player_form_signals')\
+            .select('*')\
+            .eq('computed_date', form_date)\
+            .eq('signal', signal_type)\
+            .eq('player_type', player_type)\
+            .order('magnitude', desc=True)\
+            .limit(3).execute()
+        for row in resp.data or []:
+            out.append({
+                'game_pk': None, 'game_slug': None, 'game_time': None,
+                'player_id':     row['player_id'],
+                'player_name':   row['player_name'],
+                'team_name':     row.get('team_name'),
+                'opponent_name': None,
+                'signal_score':  round(float(row['magnitude']), 3),
+                'details': {
+                    'player_type':   row['player_type'],
+                    'current_value': row['current_value'],
+                    'extreme_value': row['extreme_value'],
+                    'trend':         row['trend'],
+                    'form_date':     form_date,
+                },
+                'headline':  f"{row['player_name']} · {row.get('team_name') or ''}".strip(' ·'),
+                'one_liner': _form_one_liner(row),
+            })
+    return out
+
+
+def compute_coolers(today):
+    return compute_form_picks(today, 'cooling')
+
+
+def compute_risers(today):
+    return compute_form_picks(today, 'heating')
+
+
+def compute_prospects(today):
+    """
+    Top AAA hitters currently heating up — same form-trend mechanism as
+    coolers/risers, pointed at scripts/fetch_player_form.py's AAA scan.
+    Heating-only by design (see that script for why). NOT a scouting grade —
+    just "good recent form in the high minors." one_liner below should never
+    imply more certainty than that.
+    """
+    form_date = get_latest_form_date(today)
+    if not form_date:
+        return []
+
+    resp = supabase.table('player_form_signals')\
+        .select('*')\
+        .eq('computed_date', form_date)\
+        .eq('signal', 'heating')\
+        .eq('player_type', 'milb_batter')\
+        .order('magnitude', desc=True)\
+        .limit(6).execute()
+
+    out = []
+    for row in resp.data or []:
+        cur, ext = float(row['current_value']), float(row['extreme_value'])
+        out.append({
+            'game_pk': None, 'game_slug': None, 'game_time': None,
+            'player_id':     row['player_id'],
+            'player_name':   row['player_name'],
+            'team_name':     row.get('team_name'),
+            'opponent_name': None,
+            'signal_score':  round(float(row['magnitude']), 3),
+            'details': {
+                'player_type':   'milb_batter',
+                'current_value': row['current_value'],
+                'extreme_value': row['extreme_value'],
+                'trend':         row['trend'],
+                'form_date':     form_date,
+            },
+            'headline':  f"{row['player_name']} · {row.get('team_name') or ''} (AAA)".strip(' ·'),
+            'one_liner': f"Rolling OPS up to {cur:.3f} from a recent low of {ext:.3f} in Triple-A — "
+                         f"good recent form, not a scouting grade.",
+        })
+    return out
+
+
 # ─── FIX 4: Upsert instead of delete-then-insert ────────────────────────────
 def save_picks(today, pick_type, picks):
     """
@@ -618,10 +824,13 @@ def save_picks(today, pick_type, picks):
         print(f'  No {pick_type} picks today')
 
 
-def deduplicate(streamers, movers, fallers, sleepers):
+def deduplicate(streamers, movers, fallers, sleepers, coolers, risers):
     """
-    A pitcher should only appear in one pick type per day.
-    Priority order: streamer > faller > sleeper
+    A player should only appear in one pick type per day.
+    Priority order: streamer > faller > sleeper > cooler > riser
+    (existing baseball-specific calls beat the new, less-validated trend signal —
+    e.g. a pitcher already flagged as a sleeper on ERA-vs-FIP shouldn't also
+    show up as a cooler/riser on rolling ERA, that's the same idea said twice.)
     Movers are game-level (no player_id) so they're excluded from dedup.
     """
     seen_pids = set()
@@ -643,8 +852,14 @@ def deduplicate(streamers, movers, fallers, sleepers):
     seen_pids.update(p['player_id'] for p in fallers_clean if p.get('player_id'))
 
     sleepers_clean = filter_picks(sleepers)
+    seen_pids.update(p['player_id'] for p in sleepers_clean if p.get('player_id'))
 
-    return streamers_clean, fallers_clean, sleepers_clean
+    coolers_clean = filter_picks(coolers)
+    seen_pids.update(p['player_id'] for p in coolers_clean if p.get('player_id'))
+
+    risers_clean = filter_picks(risers)
+
+    return streamers_clean, fallers_clean, sleepers_clean, coolers_clean, risers_clean
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -658,29 +873,43 @@ def main():
 
     games_by_pk = {g['gamePk']: g for g in games}
 
-    print('\n[1/4] Computing streamers...')
+    print('\n[1/7] Computing streamers...')
     streamers = compute_streamers(games, today)
 
-    print('\n[2/4] Computing movers...')
+    print('\n[2/7] Computing movers...')
     movers_raw = compute_movers(today)
     movers = enrich_movers(movers_raw, games_by_pk, today)
 
-    print('\n[3/4] Computing fallers...')
+    print('\n[3/7] Computing fallers...')
     fallers = compute_fallers(games, today)
 
-    print('\n[4/4] Computing sleepers...')
+    print('\n[4/7] Computing sleepers...')
     sleepers = compute_sleepers(games, today)
 
+    print('\n[5/7] Computing coolers (peak-fade)...')
+    coolers = compute_coolers(today)
+
+    print('\n[6/7] Computing risers (trough-rebound)...')
+    risers = compute_risers(today)
+
+    print('\n[7/7] Computing prospects (AAA heating up)...')
+    prospects = compute_prospects(today)
+
     print('\nDeduplicating across pick types...')
-    streamers, fallers, sleepers = deduplicate(streamers, movers, fallers, sleepers)
+    streamers, fallers, sleepers, coolers, risers = deduplicate(
+        streamers, movers, fallers, sleepers, coolers, risers)
 
     save_picks(today, 'streamer', streamers)
     save_picks(today, 'mover', movers)
     save_picks(today, 'faller', fallers)
     save_picks(today, 'sleeper', sleepers)
+    save_picks(today, 'cooler', coolers)
+    save_picks(today, 'riser', risers)
+    save_picks(today, 'prospect', prospects)
 
     print(f'\n✓ Done — {len(streamers)} streamers, {len(movers)} movers, '
-          f'{len(fallers)} fallers, {len(sleepers)} sleepers')
+          f'{len(fallers)} fallers, {len(sleepers)} sleepers, '
+          f'{len(coolers)} coolers, {len(risers)} risers, {len(prospects)} prospects')
 
 
 if __name__ == '__main__':

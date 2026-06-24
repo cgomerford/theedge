@@ -140,9 +140,7 @@ function bullpenSummary(
 ): string {
   if (Math.abs(tilt) < 5) return 'Both bullpens equally rested';
   const fresher = tilt > 0 ? homeAbbr : awayAbbr;
-  const homeIp = ht?.bullpen_innings_yesterday ?? 0;
-  const awayIp = at?.bullpen_innings_yesterday ?? 0;
-  return `${fresher} pen fresher — ${fmt(homeIp, 1)} vs ${fmt(awayIp, 1)} IP last night`;
+  return `${fresher} pen fresher tonight`;
 }
 
 function offenseSummary(
@@ -150,8 +148,7 @@ function offenseSummary(
 ): string {
   if (Math.abs(tilt) < 5) return 'Offences similarly productive over the last 30 days';
   const edge = tilt > 0 ? homeAbbr : awayAbbr;
-  const rpg = tilt > 0 ? ht?.runs_per_game_l30 : at?.runs_per_game_l30;
-  return `${edge} bats sharper — ${fmt(rpg, 1)} R/G over last 30 days`;
+  return `${edge} bats have been sharper lately`;
 }
 
 function matchupSummary(hp: any, ap: any, tilt: number): string {

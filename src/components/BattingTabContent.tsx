@@ -379,11 +379,11 @@ function BatterDetailView({
       ? Math.min(Math.max(Math.round((statcast.xwoba - 0.260) / (0.430 - 0.260) * 100), 0), 100) : 0,
   ] : []
 
-  const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
+const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
     { key: 'overview',  label: 'Overview' },
-    { key: 'form',      label: 'Form' },
-    { key: 'spray',     label: 'Spray chart' },
-    { key: 'zones',     label: 'Hot zones' },
+    { key: 'form',      label: 'Form', proOnly: true },
+    { key: 'spray',     label: 'Spray chart', proOnly: true },
+    { key: 'zones',     label: 'Hot zones', proOnly: true },
     { key: 'statcast',  label: 'Statcast', proOnly: true },
     { key: 'pitcher',   label: 'vs Pitcher' },
   ]
@@ -517,8 +517,20 @@ function BatterDetailView({
               </div>
             )}
 
-            {/* ── FORM ── */}
+          {/* ── FORM ── */}
             {activeTab === 'form' && (
+              !isPro ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
+                  <p className="font-serif text-stone-700 text-base">Recent form — last 7/14/30 day splits and OPS trend</p>
+                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
+                    See whether this batter is heating up or cooling off, and how they hit against lefties vs righties.
+                  </p>
+                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                    Unlock Pro →
+                  </a>
+                </div>
+              ) : (
               <div className="space-y-3">
                 {splits ? (
                   <>
@@ -576,30 +588,57 @@ function BatterDetailView({
                       </div>
                     )}
                   </>
-                ) : (
+              ) : (
                   <p className="text-sm font-serif text-stone-400 italic">Form data unavailable.</p>
                 )}
               </div>
+              )
             )}
 
             {/* ── SPRAY CHART ── */}
             {activeTab === 'spray' && (
-              <SprayChart
-                playerId={batter.player_id}
-                playerName={batter.player_name}
-                stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
-                isPro={isPro}
-              />
+              !isPro ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
+                  <p className="font-serif text-stone-700 text-base">Spray chart — where this batter hits the ball</p>
+                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
+                    Every ball in play this season, mapped on the field. See pull tendency and home run locations.
+                  </p>
+                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                    Unlock Pro →
+                  </a>
+                </div>
+              ) : (
+                <SprayChart
+                  playerId={batter.player_id}
+                  playerName={batter.player_name}
+                  stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
+                  isPro={isPro}
+                />
+              )
             )}
 
             {/* ── HOT ZONES ── */}
             {activeTab === 'zones' && (
-              <StrikeZoneHeatMap
-                playerId={batter.player_id}
-                playerName={batter.player_name}
-                stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
-                isPro={isPro}
-              />
+              !isPro ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
+                  <p className="font-serif text-stone-700 text-base">Hot zones — where pitchers should and shouldn't throw</p>
+                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
+                    A 9-zone breakdown of batting average by location in the strike zone, built from this season's pitches.
+                  </p>
+                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                    Unlock Pro →
+                  </a>
+                </div>
+              ) : (
+                <StrikeZoneHeatMap
+                  playerId={batter.player_id}
+                  playerName={batter.player_name}
+                  stand={(batter.bat_side ?? null) as 'L' | 'R' | null}
+                  isPro={isPro}
+                />
+              )
             )}
 
             {/* ── STATCAST ── */}
