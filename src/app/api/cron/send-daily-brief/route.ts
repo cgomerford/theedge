@@ -122,6 +122,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // 1b. Beta pause — skip the whole pipeline (no MLB fetch, no LLM cost, no sends)
+  // until we go live. Set BETA_PAUSE_EMAILS=true in Vercel env vars now,
+  // remove it (or set to false) at launch.
+  if (process.env.BETA_PAUSE_EMAILS === 'true') {
+    console.log('[daily-brief] Skipped — BETA_PAUSE_EMAILS=true')
+    return NextResponse.json({ skipped: true, reason: 'beta_pause_emails' })
+  }
+
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'RESEND_API_KEY missing' }, { status: 500 })
   }

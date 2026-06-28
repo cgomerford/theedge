@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
+import SignupForm from '@/components/SignupForm'
 import { getCurrentSubscriber } from '@/lib/auth'
 
 export const metadata = {
@@ -19,7 +20,7 @@ export default async function PricingPage() {
       <div className="border-b border-stone-200 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-stone-400">
           <span>Pricing</span>
-          <span className="text-orange-600">Founding 100 · Limited</span>
+          <span className="text-orange-600">Beta · Pro opens at launch</span>
         </div>
       </div>
 
@@ -74,27 +75,24 @@ export default async function PricingPage() {
               ))}
             </div>
 
+            {/* Real signup form here (was a link out to /#signup) — Turnstile
+                bot protection comes along for free since it's inside SignupForm */}
             <div className="mt-8 pt-6 border-t border-stone-100">
               {subscriber ? (
                 <div className="text-sm font-mono text-stone-400 text-center py-3">
                   ✓ You&apos;re signed up
                 </div>
               ) : (
-                <Link
-                  href="/#signup"
-                  className="block text-center bg-stone-900 text-stone-100 px-6 py-3 text-sm font-mono uppercase tracking-widest hover:bg-stone-700 transition"
-                >
-                  Start with free →
-                </Link>
+                <SignupForm source="pricing_free" buttonText="Start with free →" theme="light" />
               )}
             </div>
           </div>
 
-          {/* ──── PRO TIER ───────────────────────────────────────────── */}
+          {/* ──── PRO TIER — LOCKED ──────────────────────────────────── */}
           <div className="border-2 border-stone-900 bg-stone-900 text-stone-100 p-6 sm:p-8 flex flex-col relative">
-            {/* Founding badge */}
-            <div className="absolute -top-3 right-6 bg-[#FDE047] text-stone-900 text-[10px] font-mono uppercase tracking-widest px-3 py-1 font-bold">
-              Founding 100
+            {/* Lock badge — replaces the old "Founding 100" live badge */}
+            <div className="absolute -top-3 right-6 bg-stone-700 text-stone-200 text-[10px] font-mono uppercase tracking-widest px-3 py-1 font-bold border border-stone-600">
+              🔒 Opens at launch
             </div>
 
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#FDE047] mb-1">
@@ -108,10 +106,10 @@ export default async function PricingPage() {
               <span className="font-mono text-sm text-stone-400 line-through">£6/mo</span>
             </div>
             <div className="text-xs font-mono text-stone-400 mb-2">
-              or £40/yr <span className="line-through text-stone-500">£60/yr</span> · Save 17%
+              or £40/yr <span className="line-through text-stone-500">£60/yr</span> · Founding 100 price, at launch
             </div>
             <p className="text-sm text-stone-400 font-serif italic mb-8">
-              Enough to win your fantasy league. Full data. Every angle. Founding members lock in this price for life.
+              Enough to win your fantasy league. Full data. Every angle. Join the waitlist now and the first 100 lock in this price for life.
             </p>
 
             <div className="space-y-3 text-sm flex-1">
@@ -151,15 +149,15 @@ export default async function PricingPage() {
                 </div>
               ) : (
                 <>
-                  {/* TODO: Replace with Stripe checkout link when verified */}
-                  <Link
-                    href="/#signup"
-                    className="block text-center bg-[#FDE047] text-stone-900 px-6 py-3 text-sm font-mono uppercase tracking-widest font-bold hover:bg-yellow-200 transition"
-                  >
-                    Get Pro · £4/mo →
-                  </Link>
+                  {/* Pro checkout is locked until launch — no Stripe link yet.
+                      Waitlist capture reuses SignupForm, wrapped in a light
+                      card so it's readable on the dark Pro panel (same
+                      pattern as the homepage hero-over-photo treatment). */}
+                  <div className="bg-[#FAF8F3] p-3 border border-stone-700">
+                    <SignupForm source="pricing_pro_waitlist" buttonText="Join Pro waitlist →" theme="light" />
+                  </div>
                   <p className="text-[10px] font-mono text-stone-500 text-center mt-3">
-                    Cancel anytime · No lock-in · Price locked for life as a founder
+                    No payment yet · Founding 100 price locked in when Pro opens
                   </p>
                 </>
               )}
@@ -195,7 +193,7 @@ export default async function PricingPage() {
             {[
               {
                 q: 'What does "Founding 100" mean?',
-                a: 'The first 100 Pro subscribers lock in £4/mo (or £40/yr) for as long as they stay subscribed. After the 100th sign-up, Pro moves to £6/mo (£60/yr). Your price never changes.',
+                a: 'The first 100 people to join the Pro waitlist lock in £4/mo (or £40/yr) for as long as they stay subscribed once Pro opens. After that, Pro is £6/mo (£60/yr). Your price never changes once locked in.',
               },
               {
                 q: 'Is the free tier actually useful?',
@@ -236,21 +234,18 @@ export default async function PricingPage() {
             Same game<span className="text-orange-600">.</span> Different depth<span className="text-orange-600">.</span>
           </h2>
           <p className="text-stone-500 font-serif italic mb-8 max-w-lg mx-auto">
-            Start free. Upgrade when you want the full playbook.
+            Start free. Join the Pro waitlist for when the full playbook opens.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/#signup"
-              className="inline-block bg-stone-900 text-stone-100 p-[1px] px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-stone-700 transition"
-            >
-              Start with free →
-            </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            {!subscriber && (
+              <SignupForm source="pricing_final_cta" buttonText="Start with free →" theme="light" />
+            )}
             {!isPro && (
               <Link
-                href="/#signup"
-                className="inline-block bg-[#FDE047] text-stone-900 p-[1px] px-8 py-3 text-sm font-mono uppercase tracking-widest font-bold hover:bg-yellow-200 transition"
+                href="#pro-waitlist"
+                className="inline-block bg-stone-200 text-stone-700 p-[1px] px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-stone-300 transition"
               >
-                Get Pro · £4/mo →
+                🔒 Pro waitlist — above
               </Link>
             )}
           </div>

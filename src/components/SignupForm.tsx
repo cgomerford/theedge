@@ -214,38 +214,7 @@ return (
           />
         </div>
 
-        {/* ── Fan type selector ── */}
-        <div className="mb-4">
-          <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
-            How should we explain things?
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { value: 'casual', label: 'I know the game', desc: 'Sharp reads, key stats, no hand-holding.' },
-              { value: 'new',    label: 'New to baseball',  desc: "We'll explain the nuances as we go." },
-            ] as const).map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setFanType(opt.value)}
-                className={[
-                  'text-left border p-3 transition',
-                  fanType === opt.value
-                    ? 'border-stone-900 bg-stone-900 text-white'
-                    : 'border-stone-300 bg-white text-stone-900 hover:border-stone-500',
-                ].join(' ')}
-              >
-                <div className="font-mono text-[10px] font-bold uppercase tracking-widest mb-1">
-                  {opt.label}
-                </div>
-                <div className={`font-serif italic text-[11px] leading-snug ${fanType === opt.value ? 'text-stone-300' : 'text-stone-500'}`}>
-                  {opt.desc}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
+      
         <button
           type="submit"
           disabled={status === 'loading'}

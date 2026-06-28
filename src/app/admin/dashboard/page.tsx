@@ -4,12 +4,26 @@
 //
 // Internal-only. Guarded by middleware.ts (basic auth over /admin/*).
 // Server component — fetches with the service-role client, passes only
-// plain serialisable data down to the client SnipStudio.
+// plain serialisable data down to the client SnipStudio / StatCardPanel.
 //
 // Optional query param for backfill / inspection:
 //   /admin/dashboard?date=YYYY-MM-DD   (sets "today's slate"; perf = day before)
 //
 // REVISION NOTE (2026-06-24): initial build.
+// REVISION NOTE (2026-06-24): added Player Stat Cards section — image
+// export tool for player-level stats (streaks, ERA trends, H2H), separate
+// from Snip Studio's team-level X-post drafts. Fetched outside the main
+// Promise.all since getTodaysStatCardData fans out per-game roster +
+// gamelog calls and is meaningfully slower than the other two queries;
+// kept separate so a slow/failed card fetch can't block the rest of the
+// page. See src/lib/admin-dashboard-cards.ts for the data layer.
+// REVISION NOTE (2026-06-25): added Pre-Game Data Room section — rolling
+// OPS/ERA/errors + rule-based "interesting takes" pulled straight from the
+// MLB Stats API (no edge_predictions dependency, no new table). Unlike the
+// stat cards, this one fetches CLIENT-SIDE and lazily per selected game
+// (AdminDataRoomSection → /api/admin/data-room/[gamePk]) — a 15-game slate
+// fanning out 6+ API calls per team isn't something the server render
+// should ever wait on. See src/lib/pregame-stats.ts + pregame-takes.ts.
 
 import {
   getDailyPerformance,
@@ -17,7 +31,10 @@ import {
   buildSnips,
   etDate,
 } from '@/lib/admin-dashboard'
+import { getTodaysStatCardData } from '@/lib/admin-dashboard-cards'
 import SnipStudio from '@/app/admin/dashboard/SnipStudio'
+import StatCardPanel from '@/app/admin/cards/StatCardPanel'
+import AdminDataRoomSection from '@/components/admin/AdminDataRoomSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +58,7 @@ export default async function AdminDashboard({
     getTodaysReads(slateDate),
   ])
   const snips = await buildSnips(reads, perf)
+  const cardData = await getTodaysStatCardData(slateDate)
 
   const fmtDate = (s: string) =>
     new Date(`${s}T12:00:00`).toLocaleDateString('en-GB', {
@@ -134,13 +152,37 @@ export default async function AdminDashboard({
           )}
         </section>
 
+        {/* ── PRE-GAME DATA ROOM ──────────────────── */}
+        <section className="sec">
+          <div className="sechead">
+            <span className="glyph">§</span><h2>Pre-game data room</h2>
+            <span className="tag">rolling stats · MLB Stats API · raw model OK here</span>
+          </div>
+          <AdminDataRoomSection
+            reads={reads.map((r) => ({ game_pk: r.game_pk, matchup: r.matchup }))}
+          />
+        </section>
+
         {/* ── SNIP STUDIO ─────────────────────────── */}
         <SnipStudio snips={snips} />
 
+        {/* ── PLAYER STAT CARDS ───────────────────── */}
+        <section className="sec">
+          <div className="sechead">
+            <span className="glyph">§</span><h2>Player stat cards</h2>
+            <span className="tag">image export · player-level, not model output</span>
+          </div>
+          <StatCardPanel data={cardData} />
+        </section>
+
         <div className="footnote">
           ⊕ Internal tool — guarded, not indexed. The <b>Yesterday</b> box is your honest scoreboard (your eyes only).
+          The <b>Pre-game Data Room</b> is raw research — rolling OPS/ERA/errors and rule-based takes off live MLB data,
+          meant to be read and then fed into a Read; nothing in it is public-facing copy.
           Everything in <b>Snip studio</b> is public-safe: voice runs through the banned-word rule, links stay out of post bodies,
           and the Track Record post uses neutral &ldquo;alignment&rdquo; framing. Verify any <b>[bracketed]</b> field before posting.
+          <b>Player stat cards</b> are plain numbers off MLB&rsquo;s own data — no model lean, no Edge Score — but still drop the
+          link in your first reply, not the post, same as everything else here.
         </div>
       </div>
     </main>
