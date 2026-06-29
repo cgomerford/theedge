@@ -6,7 +6,7 @@ import type { GameStreaks } from './streaks'
 
 // Initialize the Gemini Client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.5-flash'
 
 export type NarrativeInputs = {
   home_team: string
