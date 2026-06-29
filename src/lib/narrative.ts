@@ -6,7 +6,7 @@ import type { GameStreaks } from './streaks'
 
 // Initialize the Gemini Client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const MODEL = 'gemini-2.5-flash'
+const MODEL = 'gemini-3.5-flash'
 
 export type NarrativeInputs = {
   home_team: string
@@ -273,8 +273,8 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     const promptTokens = result.response.usageMetadata?.promptTokenCount ?? 0
     const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0
     
-    const inputCost  = promptTokens * 0.000000075
-    const outputCost = outputTokens * 0.00000030
+const inputCost  = promptTokens * 0.0000015
+const outputCost = outputTokens * 0.000009
 
     return {
       summary:        parsed.summary,

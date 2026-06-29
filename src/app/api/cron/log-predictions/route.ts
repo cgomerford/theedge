@@ -17,6 +17,8 @@ const supa = createClient(
 )
 
 const NARRATIVE_REGEN_THRESHOLD = 15
+// Paused for now — set PAUSE_FANTASY_CARDS=false in env to bring back.
+const PAUSE_FANTASY_CARDS = process.env.PAUSE_FANTASY_CARDS !== 'false'
 
 async function runWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
@@ -274,9 +276,10 @@ if (generated) {
         }
 
         // ── Fantasy cards ─────────────────────────────────────────────
-        console.log(`Game ${game.gamePk}: shouldGenerateFantasy=${shouldGenerateFantasy}, existing=${!!existing?.fantasy_cards}`)
+        // Paused for now — set PAUSE_FANTASY_CARDS=false in env to bring back.
+        console.log(`Game ${game.gamePk}: shouldGenerateFantasy=${shouldGenerateFantasy}, paused=${PAUSE_FANTASY_CARDS}, existing=${!!existing?.fantasy_cards}`)
 
-        if (shouldGenerateFantasy) {
+        if (shouldGenerateFantasy && !PAUSE_FANTASY_CARDS) {
           if (lineupsConfirmed && homeLineup) {
             console.log(`Game ${game.gamePk} passing to LLM:`, JSON.stringify(formatLineup(homeLineup)))
           }
