@@ -50,6 +50,9 @@ export type NarrativeResult = {
   contrarian: string
   pro_takeaways: ProTakeaway[]
   game_day_notes: GameDayNote[]
+  // Enhanced fields for full analyst breakdown
+  key_matchups?: { matchup: string; insight: string }[]
+  game_flow?: string
   cost_usd: number
 }
 
@@ -66,11 +69,11 @@ const narrativeSchema = {
     },
     narrative: { 
       type: SchemaType.STRING, 
-      description: "Free version narrative — exactly 4 flowing prose paragraphs separated by a single blank line, following the story arc defined in the system prompt (Hook → Matchup → What Else Matters → What to Watch). PLAIN TEXT ONLY: no markdown headers, no **bold**, no bullet points, no asterisks of any kind. Do not organize paragraphs by data category (pitching/bullpen/offense/etc) — see STRUCTURE in the system prompt." 
+      description: "Free version narrative — exactly 5 flowing prose paragraphs, fully developed (4-6 sentences each), separated by a single blank line, following the story arc defined in the system prompt (Hook → Pitching Matchup → Lineups & Hitters to Watch → Bullpen & Game Management → At the Ballpark). PLAIN TEXT ONLY: no markdown headers, no **bold**, no bullet points, no asterisks of any kind. Do not organize paragraphs by data category in the order given — see STRUCTURE in the system prompt. This is a preview of the whole game, not a pitching report." 
     },
     narrative_pro: { 
       type: SchemaType.STRING, 
-      description: "Pro version narrative — exactly 5 flowing prose paragraphs, same plain-text rule and story arc as 'narrative', with one added paragraph of front-office-level depth (FIP/ERA gaps, platoon splits, OAA, leverage) woven into prose, not a labeled breakdown." 
+      description: "Pro version narrative — exactly 6 flowing prose paragraphs, same plain-text rule and story arc as 'narrative', with one added paragraph (after the pitching matchup) of front-office-level depth — FIP/ERA gaps, OAA, leverage, platoon-split numbers — woven into prose, not a labeled breakdown." 
     },
     contrarian: { 
       type: SchemaType.STRING, 
@@ -82,10 +85,11 @@ const narrativeSchema = {
         type: SchemaType.OBJECT, 
         properties: { 
           stat: { type: SchemaType.STRING, description: "≤12 chars" }, 
-          text: { type: SchemaType.STRING, description: "≤80 chars" } 
+          text: { type: SchemaType.STRING, description: "≤90 chars" } 
         },
         required: ["stat", "text"]
-      } 
+      },
+      description: "Exactly 3 items — three distinct key stats for the home team, shown as bullets in the UI separately from the prose. Do not repeat a fact already used as the lead in paragraph 1. Spread across different areas (pitching, offense, bullpen, defense) rather than three angles on the same player."
     },
     away_stories: { 
       type: SchemaType.ARRAY, 
@@ -93,10 +97,11 @@ const narrativeSchema = {
         type: SchemaType.OBJECT, 
         properties: { 
           stat: { type: SchemaType.STRING, description: "≤12 chars" }, 
-          text: { type: SchemaType.STRING, description: "≤80 chars" } 
+          text: { type: SchemaType.STRING, description: "≤90 chars" } 
         },
         required: ["stat", "text"]
-      } 
+      },
+      description: "Exactly 3 items — three distinct key stats for the away team, shown as bullets in the UI separately from the prose. Do not repeat a fact already used as the lead in paragraph 1. Spread across different areas (pitching, offense, bullpen, defense) rather than three angles on the same player."
     },
     pro_takeaways: {
       type: SchemaType.ARRAY,
@@ -116,13 +121,29 @@ const narrativeSchema = {
         type: SchemaType.OBJECT,
         properties: {
           category: { type: SchemaType.STRING, enum: ["weather", "watch_for", "logistics"] },
-          text: { type: SchemaType.STRING, description: "≤140 chars practical tip" }
+          text: { type: SchemaType.STRING, description: "≤140 chars practical tip. For 'weather', include what it will actually feel like at the ballpark (temperature, wind, rain risk) and anything a fan attending in person should consider, e.g. dress warm, bring a rain layer." }
         },
         required: ["category", "text"]
       }
+    },
+    // New fields for full analyst breakdown
+    key_matchups: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          matchup: { type: SchemaType.STRING, description: "Short description e.g. 'Star RF vs LHP sinker'" },
+          insight: { type: SchemaType.STRING, description: "≤110 chars specific, watchable takeaway" }
+        },
+        required: ["matchup", "insight"]
+      }
+    },
+    game_flow: {
+      type: SchemaType.STRING,
+      description: "2-4 sentences describing likely game shape (early scoring, middle-inning bullpen bridge, late leverage) based only on provided data."
     }
   },
-required: [
+  required: [
     "summary", 
     "narrative", 
     "narrative_pro", 
@@ -155,41 +176,42 @@ WHO YOU'RE WRITING FOR: A baseball fan who wants the inside scoop before first p
 VOICE & TONE (CRITICAL): Write like a human journalist, not a robot reading a spreadsheet. 
 - BAD (Robotic): "The [Away Team] will deploy [Pitcher A]. His 5.24 ERA and 5.32 FIP suggest his performance aligns with his results. Conversely, [Pitcher B] enters with a 1.57 ERA."
 - GOOD (Journalistic): "[Pitcher A] takes the mound for [Away Team] tonight, though don't expect him to pitch deep into the evening. He's been operating as a short-stint bulk arm, which puts immediate pressure on a [Away Team] bullpen that was heavily taxed yesterday. On the other side, keep an eye on [Home Team]'s [Pitcher B] — he has been virtually untouchable over his last three starts, striking out more than a batter per inning."
-- Tell the story first, and let the numbers support the story. Provide the "so what?" for every stat.
+- Tell the story first, and let the numbers support the story. Provide the "so what?" for every stat. Use pitch arsenal data when available to explain why a pitcher might succeed or struggle against this lineup.
 
 ═══════════════════════════════════════════
 PROSE STYLE — NO MARKDOWN, EVER:
 Write narrative and narrative_pro as continuous newspaper prose, the kind a reader scrolls through rather than scans.
 - NO markdown headers — no #, ##, or ###, not even conversational ones.
 - NO bold text — no **asterisks** around names, stats, or anything else.
-- NO bullet points or numbered lists inside narrative or narrative_pro.
+- NO bullet points or numbered lists inside narrative or narrative_pro. (The 3-stat bullets live in home_stories/away_stories, a separate field — never duplicate them verbatim inside the prose.)
 - Paragraphs are separated by a single blank line. That is the only structure.
 - Model the rhythm of real MLB beat writing: stats arrive as evidence inside a sentence — "his FIP sits nearly a full run below his ERA, the kind of gap that usually closes" — never as a labeled stat line sitting on its own.
 
 ═══════════════════════════════════════════
-STRUCTURE — A STORY ARC, NOT A DATA CHECKLIST:
-You will be handed data in labeled blocks (pitching, bullpen, offense, defense, park, weather). Do NOT mirror that structure in your output — never write one paragraph per category in the order it was given to you. That produces a spreadsheet wearing a trench coat, which is exactly what you must avoid.
+STRUCTURE — A FULL GAME PREVIEW, NOT A PITCHING REPORT:
+You will be handed data in labeled blocks (pitching, bullpen, offense, defense, park, weather, recent form). Do NOT mirror that order in your output.
 
-Follow this arc instead. The FUNCTION of each paragraph is fixed; the CONTENT inside it is not — pull whichever data actually serves that beat tonight, and skip categories that aren't interesting rather than forcing every one in.
-
-For narrative (4 paragraphs):
+For narrative (exactly 5 fully developed paragraphs, 4-6 sentences each):
 1. THE HOOK — Open with whatever ranks highest in STORYLINE PRIORITY below. Set a scene or stake before you explain anything. No stats in the first sentence.
-2. THE MATCHUP — Develop the pitching story from paragraph 1, pulling in the opposing pitcher and any real history between them or against this opponent.
-3. WHAT ELSE MATTERS — Weave in whichever of bullpen fatigue, offense form, defense, or park conditions actually changes how tonight could go. Pick the most interesting one or two, not all of them on principle.
-4. WHAT TO WATCH — Close by looking forward: a specific moment, matchup, or scenario worth tracking once the game starts. Never literally write the phrase "what to watch for."
+2. THE PITCHING MATCHUP — The starters: their form, the story behind their numbers, any real head-to-head history, and how their arsenal matches up against the opposing lineup.
+3. LINEUPS & HITTERS TO WATCH — Who on each side is hot, cold, or facing a platoon disadvantage right now, and why it matters against tonight's starter. This paragraph must always exist.
+4. BULLPEN & GAME MANAGEMENT — How recent bullpen workload on either side could shape the middle and late innings tonight.
+5. AT THE BALLPARK — Fold together park factors and weather into what it will actually feel like to be there or to watch tonight. Close on a specific, forward-looking moment worth tracking once the game starts.
 
-For narrative_pro (5 paragraphs): the same arc, with one additional paragraph of front-office-level depth — FIP/ERA gaps, platoon splits, OAA, leverage — woven the same way, as analysis embedded in prose, not a labeled breakdown.
+For narrative_pro (exactly 6 paragraphs): the same arc, with one additional paragraph inserted after paragraph 2 — front-office-level depth (FIP/ERA gaps, OAA, leverage, platoon-split numbers) woven as analysis in prose.
+
+home_stories and away_stories: exactly 3 entries per team, shown as bullets in the UI separately from the prose. Each must be a genuinely distinct fact — spread across pitching, offense, bullpen, or defense.
 
 ═══════════════════════════════════════════
 DATA DISCIPLINE — CRITICAL, NON-NEGOTIABLE:
-- NEVER invent stats, injuries, roles, usage patterns, pitch-count tendencies, or basestealing tendencies. Only use what is explicitly present in the data block.
-- NEVER invent quotes or attributed remarks from any player, manager, or anyone else. No quotes are provided in the data — do not write "[Player] said" or any reported speech under any circumstances.
-- IF YOU CANNOT EXPLAIN A STAT IN PLAIN ENGLISH, DON'T USE IT. Explain terms like OPS or FIP naturally in the sentence.
+- NEVER invent stats, injuries, roles, usage patterns, pitch-count tendencies, basestealing tendencies, or batter-vs-pitcher history. Only use what is explicitly present in the data block.
+- NEVER invent quotes or attributed remarks.
+- IF YOU CANNOT EXPLAIN A STAT IN PLAIN ENGLISH, DON'T USE IT.
 
 INJURY & USAGE RULES:
-- Only describe a player as returning from injury if an explicit injury flag exists in the data.
-- Default assumption is every listed starter goes 5+ innings unless data dictates an opener profile.
-- If a bullpen threw heavily yesterday, explicitly state how that impacts the later innings tonight.
+- Only describe a player as returning from injury if an explicit injury flag exists.
+- Default assumption is every listed starter goes 5+ innings unless opener profile is flagged.
+- If a bullpen threw heavily yesterday, explicitly state how that impacts later innings.
 
 ═══════════════════════════════════════════
 BANNED PHRASES:
@@ -202,8 +224,9 @@ STORYLINE PRIORITY: Lead with the first that genuinely applies:
 2. MLB debut flagged 
 3. Series or rivalry context with real stakes 
 4. Pitcher with real career history against this specific opponent 
-5. A hot streak running into a tough pitching matchup 
-6. Default: lead with whatever's most watchable about tonight's pitching matchup`
+5. A hitter on a notable hot or cold streak running into a relevant pitching matchup 
+6. Significant bullpen fatigue on one side
+7. Default: lead with whatever's most watchable about tonight's pitching matchup`
 
 export async function runWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
@@ -232,13 +255,12 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
   try {
     const userPrompt = buildUserPrompt(inputs)
     
-    // Configure Gemini model execution with native JSON schema constraints
-const modelInstance = genAI.getGenerativeModel({
+    const modelInstance = genAI.getGenerativeModel({
       model: MODEL,
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: narrativeSchema as any, // <--- Add "as any" here
+        responseSchema: narrativeSchema as any,
         temperature: 0.2
       }
     })
@@ -246,10 +268,8 @@ const modelInstance = genAI.getGenerativeModel({
     const result = await modelInstance.generateContent(userPrompt)
     const responseText = result.response.text()
 
-    // Safely parse guaranteed JSON structure
     const parsed = JSON.parse(responseText)
     
-    // Calculate 1.5 Flash costs accurately based on usage metadata
     const promptTokens = result.response.usageMetadata?.promptTokenCount ?? 0
     const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0
     
@@ -266,12 +286,45 @@ const modelInstance = genAI.getGenerativeModel({
       contrarian:     parsed.contrarian,
       pro_takeaways:  parsed.pro_takeaways,
       game_day_notes: parsed.game_day_notes,
+      key_matchups:   parsed.key_matchups,
+      game_flow:      parsed.game_flow,
       cost_usd:       inputCost + outputCost,
     }
   } catch (err) {
     console.error('Gemini narrative generation failed:', err)
     return null
   }
+}
+
+function buildKeyAngles(inputs: NarrativeInputs, awayIsOpener: boolean, homeIsOpener: boolean): string[] {
+  const angles: string[] = []
+  const awayP = inputs.components_raw?.away_pitcher
+  const homeP = inputs.components_raw?.home_pitcher
+  
+  if (awayIsOpener || homeIsOpener) {
+    angles.push("Opener/bulk situation active — bullpen management will decide the middle innings")
+  }
+  
+  const injuryAway = inputs.away_pitcher_injury_return
+  const injuryHome = inputs.home_pitcher_injury_return
+  if (injuryAway) angles.push(`Away pitcher returning from ${injuryAway.injury_type} — only ${injuryAway.starts_since_return} start(s) back`)
+  if (injuryHome) angles.push(`Home pitcher returning from ${injuryHome.injury_type} — only ${injuryHome.starts_since_return} start(s) back`)
+  
+  if (inputs.away_pitcher_vs_opponent_record) {
+    angles.push(`Away starter has documented history vs home lineup: ${inputs.away_pitcher_vs_opponent_record}`)
+  }
+  if (inputs.home_pitcher_vs_opponent_record) {
+    angles.push(`Home starter has documented history vs away lineup: ${inputs.home_pitcher_vs_opponent_record}`)
+  }
+  
+  if ((inputs.streaks?.home_hot_batters?.length ?? 0) > 0) {
+    angles.push(`Home has multiple hot hitters: ${inputs.streaks!.home_hot_batters.slice(0, 2).map(b => b.player_name).join(', ')}`)
+  }
+  if ((inputs.streaks?.away_hot_batters?.length ?? 0) > 0) {
+    angles.push(`Away has multiple hot hitters: ${inputs.streaks!.away_hot_batters.slice(0, 2).map(b => b.player_name).join(', ')}`)
+  }
+  
+  return angles
 }
 
 function buildUserPrompt(inputs: NarrativeInputs): string {
@@ -395,10 +448,14 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
   }
 
   const streakSection = inputs.streaks ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team) : ''
+  const keyAngles = buildKeyAngles(inputs, awayIsOpener, homeIsOpener)
+  const anglesBlock = keyAngles.length > 0 
+    ? `\n═══ KEY STORYLINES & WATCHABLE ANGLES ═══\n${keyAngles.map(a => `- ${a}`).join('\n')}\n` 
+    : ''
 
   return `GAME: ${inputs.away_team} @ ${inputs.home_team}
 VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
-MODEL READ: ${inputs.confidence_tier !== 'tossup' ? `${inputs.confidence_tier} signal toward ${winner}` : 'genuinely close'} ${seriesBlock}
+MODEL READ: ${inputs.confidence_tier !== 'tossup' ? `${inputs.confidence_tier} signal toward ${winner}` : 'genuinely close'} ${seriesBlock}${anglesBlock}
 
 ═══ PITCHING DATA ═══
 ${pitcherAnalysis(awayP, inputs.away_team, 'away')}
