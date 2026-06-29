@@ -25,11 +25,8 @@ const MLB_DIVISIONS = [
 ]
 
 const MLB_SUB_LINKS = [
-  { href: '/mlb', label: 'Home' },
-  { href: '/mlb/scores', label: 'Scores & Matchups' },
-  { href: '/fantasy', label: 'Fantasy Desk', proFeature: true },
-  { href: '/mlb/standings', label: 'Standings' },
-  { href: '/track-record', label: 'Past Games' },
+ { href: '/mlb', label: 'Today\'s Reads', icon: '⊕', pro: false, description: 'Game previews & edges' },
+  { href: '/mlb/scores', label: 'Live Scores', icon: '▸', pro: false, description: 'Full slate & scores', badge: 'LIVE' },
 ]
 
 // ─── NFL Data ─────────────────────────────────────────────────────────────────
@@ -144,11 +141,11 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
             <Link key={link.href} href={link.href} onClick={onClose}
               className="group flex items-center gap-1.5 font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
               {link.label}
-              {link.proFeature && (
-                <span className="text-[9px] font-mono uppercase tracking-widest bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-sm group-hover:bg-[#FF5722]/10 group-hover:text-[#FF5722] transition">
-                  Pro
-                </span>
-              )}
+             {link.pro && (
+  <span className="text-[9px] font-mono uppercase tracking-widest bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-sm group-hover:bg-[#FF5722]/10 group-hover:text-[#FF5722] transition">
+    Pro
+  </span>
+)}
             </Link>
           ))}
         </div>
@@ -248,8 +245,6 @@ function NFLMegaPanel({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Mobile Drawer ────────────────────────────────────────────────────────────
-
-// ─── Mobile Drawer ────────────────────────────────────────────────────────────
 // Full-screen overlay, Athletic-style. Replaces the side drawer.
 
 // ─── Menu Panel (Athletic-style) ──────────────────────────────────────────────
@@ -339,7 +334,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
               {MLB_SUB_LINKS.map(link => (
                 <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
                   {link.label}
-                  {link.proFeature && !isPro && <span style={proBadge}>PRO</span>}
+                  {link.pro && !isPro && <span style={proBadge}>PRO</span>}
                 </Link>
               ))}
               <div style={{ marginTop: 20 }}>
@@ -438,7 +433,6 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
                   color: '#8A8275', marginBottom: 12,
                 }}>QUICK LINKS</div>
                 <Link href="/tonight"       onClick={onClose} style={utilLink}>Tonight&apos;s Slate</Link>
-                <Link href="/fantasy"       onClick={onClose} style={utilLink}>Fantasy Desk</Link>
                 <Link href="/track-record"  onClick={onClose} style={utilLink}>Track Record</Link>
               </div>
 
