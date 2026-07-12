@@ -1,164 +1,124 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+/**
+ * src/components/MLBSubNav.tsx
+ *
+ * Replaces the current sub-nav strip on the MLB homepage.
+ * Only links to routes that actually exist.
+ * Designed to sit between SiteHeader and the page content.
+ *
+ * Real routes linked:
+ *   /mlb              — Today's Reads (exists)
+ *   /mlb/scores       — Live Scores (exists or stub)
+ *   /track-record     — Past Games (exists)
+ *   /fantasy          — Fantasy Desk (exists, Pro gated)
+ *   /mlb/stats        — Stats & Leaders (new StatsHub page)
+ *
+ * NOT linked (don't exist yet):
+ *   Player dashboards — build after Sep 9
+ *   Leaderboards hub  — /mlb/stats covers this for now
+ *   Stat dashboards   — future
+ */
 
-type AuthStatus = {
-  authenticated: boolean
-  is_pro: boolean
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+type NavItem = {
+  href: string
+  label: string
+  pro?: boolean
+  external?: boolean
 }
 
-const NAV_ITEMS = [
-  {
-    href: '/mlb',
-    label: 'Today\'s Reads',
-    icon: '⊕',
-    pro: false,
-    description: 'Game previews & edges',
-  },
-  {
-    href: '/mlb/scores',
-    label: 'Live Scores',
-    icon: '▸',
-    pro: false,
-    description: 'Full slate & scores',
-    badge: 'LIVE',
-  },
-  {
-    href: '/fantasy',
-    label: 'Fantasy Desk',
-    icon: '§',
-    pro: true,
-    description: 'Streamers · Movers · Sleepers',
-    badge: 'PRO',
-  },
-  {
-    href: '/track-record',
-    label: 'Past Games',
-    icon: '◷',
-    pro: false,
-    description: 'Recent results & grades',
-  },
-  {
-    href: '/mlb/articles',
-    label: 'Articles',
-    icon: '✦',
-    pro: false,
-    description: 'Analysis & deep dives',
-  },
+const MLB_NAV: NavItem[] = [
+  { href: '/mlb',          label: "Today's Reads" },
+  { href: '/mlb/scores',   label: 'Scores'        },
+  { href: '/mlb/stats',    label: 'Stats'         },
+  { href: '/track-record', label: 'Track Record'  },
+  { href: '/fantasy',      label: 'Fantasy',  pro: true },
 ]
 
-export default function MLBSubNav() {
-  const [auth, setAuth] = useState<AuthStatus>({ authenticated: false, is_pro: false })
-
-  useEffect(() => {
-    fetch('/api/auth/status')
-      .then(r => r.json())
-      .then(data => setAuth({ authenticated: data.authenticated === true, is_pro: data.is_pro === true }))
-      .catch(() => {})
-  }, [])
+export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
+  const pathname = usePathname()
 
   return (
     <>
       <style>{`
-        .subnav-scroll {
-          display: flex;
+        .mlb-subnav {
+          background: #FAF8F3;
+          border-bottom: 1px solid rgba(26,26,26,0.08);
           overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
+          -ms-overflow-style: none;
         }
-        .subnav-scroll::-webkit-scrollbar { display: none; }
-        .subnav-item {
+        .mlb-subnav::-webkit-scrollbar { display: none; }
+        .mlb-subnav-inner {
           display: flex;
           align-items: center;
-          gap: 7px;
-          padding: 0 18px;
-          height: 40px;
+          max-width: 1160px;
+          margin: 0 auto;
+          padding: 0 24px;
+          gap: 0;
           white-space: nowrap;
+        }
+        .mlb-subnav-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 16px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
           text-decoration: none;
-          border-right: 1px solid #e5e5e5;
+          color: #A3A3A3;
+          border-bottom: 2px solid transparent;
+          transition: color 0.12s, border-color 0.12s;
           position: relative;
-          transition: background 0.1s;
           flex-shrink: 0;
         }
-        .subnav-item:first-child { padding-left: 24px; }
-        .subnav-item:last-child { border-right: none; }
-        .subnav-item:hover { background: #fafafa; }
-        .subnav-item.active { background: #fff7ed; }
-        .subnav-item.locked { opacity: 0.5; cursor: default; pointer-events: none; }
+        .mlb-subnav-link:hover {
+          color: #1A1A1A;
+        }
+        .mlb-subnav-link.active {
+          color: #FF5722;
+          border-bottom-color: #FF5722;
+        }
+        .mlb-subnav-pro {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: #FF5722;
+          background: rgba(255,87,34,0.08);
+          padding: 2px 5px;
+          border-radius: 2px;
+          flex-shrink: 0;
+        }
       `}</style>
 
-      <div style={{
-        borderBottom: '1px solid #e5e5e5',
-        background: '#fff',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-      }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto' }}>
-        <div className="subnav-scroll">
-          {NAV_ITEMS.map((item) => {
-            const isLocked = item.pro && !auth.is_pro
-
-            if (isLocked) {
-              return (
-                <Link
-                  key={item.href}
-                  href="/pricing"
-                  className="subnav-item"
-                  title="Pro feature — upgrade to unlock"
-                >
-                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{item.icon}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af' }}>{item.label}</span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, color: '#fff',
-                    background: '#f97316', borderRadius: 3,
-                    padding: '1px 5px', letterSpacing: '0.3px'
-                  }}>
-                    PRO
-                  </span>
-                </Link>
-              )
-            }
+      <nav className="mlb-subnav" aria-label="MLB navigation">
+        <div className="mlb-subnav-inner">
+          {MLB_NAV.map(item => {
+            const isActive = pathname === item.href ||
+              (item.href !== '/mlb' && pathname?.startsWith(item.href))
 
             return (
-              <Link key={item.href} href={item.href} className="subnav-item">
-                <span style={{ fontSize: 11, color: '#f97316' }}>{item.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{item.label}</span>
-                {item.badge === 'LIVE' && (
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, color: '#fff',
-                    background: '#111827', borderRadius: 3,
-                    padding: '1px 5px', letterSpacing: '0.3px',
-                    animation: 'pulse 2s infinite'
-                  }}>
-                    LIVE
-                  </span>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`mlb-subnav-link${isActive ? ' active' : ''}`}
+              >
+                {item.label}
+                {item.pro && (
+                  <span className="mlb-subnav-pro">PRO</span>
                 )}
               </Link>
             )
           })}
-
-          {/* Upgrade CTA — only shown when logged in but not pro */}
-          {auth.authenticated && !auth.is_pro && (
-            <Link href="/pricing" style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '0 20px 0 16px', height: 40,
-              textDecoration: 'none', flexShrink: 0,
-              borderLeft: '1px solid #e5e5e5',
-              background: '#fff7ed',
-              marginLeft: 'auto',
-            }}>
-              <span style={{ fontSize: 11, color: '#f97316' }}>✦</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.3px' }}>
-                Upgrade to Pro
-              </span>
-            </Link>
-          )}
         </div>
-      </div>
-        </div>
-      
+      </nav>
     </>
   )
 }

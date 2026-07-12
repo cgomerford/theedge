@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { MatchupTiltData, ComponentTilt } from '@/lib/matchup-tilt';
 
 const COMPONENT_META: Array<{
@@ -18,48 +18,57 @@ const COMPONENT_META: Array<{
 ];
 
 function TiltBar({
-  tilt,
-  homeColor,
-  awayColor,
-}: {
-  tilt: number;
-  homeColor: string;
-  awayColor: string;
-}) {
-  const pct = Math.min(Math.abs(tilt) / 100, 1);
-  const isHome = tilt > 5;
-  const isAway = tilt < -5;
-  const isNeutral = !isHome && !isAway;
+  tilt, homeColor, awayColor, animationDelay = 0
+}: { tilt: number; homeColor: string; awayColor: string; animationDelay?: number }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 60 + animationDelay)
+    return () => clearTimeout(t)
+  }, [animationDelay])
+
+  const pct = Math.min(Math.abs(tilt) / 100, 1)
+  const isHome = tilt > 5
+  const isAway = tilt < -5
+  const isNeutral = !isHome && !isAway
 
   return (
     <div className="flex items-center gap-1.5 flex-1">
+      {/* Away bar — grows left */}
       <div className="flex-1 h-1.5 bg-stone-200 rounded-full flex justify-end overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full"
           style={{
-            width: isAway ? `${pct * 100}%` : '0%',
+            width: mounted && isAway ? `${pct * 100}%` : '0%',
             background: awayColor,
+            transition: mounted ? 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
           }}
         />
       </div>
+      {/* Centre dot */}
       <div
         className="w-2 h-2 rounded-full flex-shrink-0"
         style={{
           background: isNeutral ? '#A8A29E' : isHome ? homeColor : awayColor,
+          transform: mounted ? 'scale(1)' : 'scale(0)',
+          transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s',
         }}
       />
+      {/* Home bar — grows right */}
       <div className="flex-1 h-1.5 bg-stone-200 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full"
           style={{
-            width: isHome ? `${pct * 100}%` : '0%',
+            width: mounted && isHome ? `${pct * 100}%` : '0%',
             background: homeColor,
+            transition: mounted ? 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
           }}
         />
       </div>
     </div>
-  );
+  )
 }
+
 
 interface MatchupTiltProps {
   data: MatchupTiltData;

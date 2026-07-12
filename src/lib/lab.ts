@@ -63,11 +63,81 @@ export const LEAGUE_BY_TEAM_ID: Record<number, 'AL' | 'NL'> = {
   134: 'NL', 135: 'NL', 137: 'NL', 138: 'NL', 143: 'NL', 144: 'NL', 146: 'NL', 158: 'NL',
 }
 
+// Real MLB primary brand colors — same map used in LabDashboard.tsx.
+// Duplicated here rather than imported cross-component (that file doesn't
+// export it) so player/team cards can theme headers without a client-only
+// dependency. Worth consolidating into one shared file later — not urgent.
+export const TEAM_COLORS: Record<number, string> = {
+  108: '#BA0021', 109: '#A71930', 110: '#DF4601', 111: '#BD3039', 112: '#0E3386',
+  113: '#C6011F', 114: '#00385D', 115: '#333366', 116: '#0C2340', 117: '#EB6E1F',
+  118: '#004687', 119: '#005A9C', 120: '#AB0003', 121: '#002D72', 133: '#003831',
+  134: '#FDB827', 135: '#2F241D', 136: '#0C2C56', 137: '#FD5A1E', 138: '#C41E3A',
+  139: '#092C5C', 140: '#003278', 141: '#134A8E', 142: '#002B5C', 143: '#E81828',
+  144: '#CE1141', 145: '#27251F', 146: '#00A3E0', 147: '#003087', 158: '#12284B',
+}
+// Resolves a batter's current team — used for team-color theming on cards
+// and the season trend chart. Was previously duplicated inline in the
+// batter-card route; centralizing here so it's one function, not several
+// copies drifting apart.
+export async function getCurrentTeamId(personId: number): Promise<number | null> {
+  try {
+    const res = await fetch(`${MLB_API}/people/${personId}?hydrate=currentTeam`)
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.people?.[0]?.currentTeam?.id ?? null
+  } catch {
+    return null
+  }
+}
+export function teamColorById(teamId: number | null | undefined): string {
+  if (teamId == null) return '#1A1A1A'
+  return TEAM_COLORS[teamId] ?? '#1A1A1A'
+}
 function ipToOuts(ip: string | number): number {
   const [whole, frac = '0'] = String(ip).split('.')
   return parseInt(whole, 10) * 3 + parseInt(frac, 10)
 }
+export type PitcherTrendPoint = {
+  gameNumber: number
+  date: string
+  era: number | null
+  whip: number | null
+  k9: number | null
+  fip: number | null
+}
 
+export async function getPitcherSeasonProgression(id: number, season: number): Promise<PitcherTrendPoint[]> {
+  const splits = await fetchPersonGameLog(id, season, 'pitching')
+  const sorted = sortByDate(splits)
+
+  let outs = 0, er = 0, bb = 0, hits = 0, k = 0, hr = 0, hbp = 0
+
+  return sorted.map((g, i) => {
+    const st = g.stat ?? {}
+    outs += ipToOuts(st.inningsPitched ?? '0.0')
+    er += Number(st.earnedRuns ?? 0)
+    bb += Number(st.baseOnBalls ?? 0)
+    hits += Number(st.hits ?? 0)
+    k += Number(st.strikeOuts ?? 0)
+    hr += Number(st.homeRuns ?? 0)
+    hbp += Number(st.hitBatsmen ?? st.hitByPitch ?? 0)
+
+    const innings = outs / 3
+    const era = innings > 0 ? (er / innings) * 9 : null
+    const whip = innings > 0 ? (bb + hits) / innings : null
+    const k9 = innings > 0 ? (k / innings) * 9 : null
+    const fip = innings > 0 ? (13 * hr + 3 * (bb + hbp) - 2 * k) / innings + FIP_CONSTANT : null
+
+    return {
+      gameNumber: i + 1,
+      date: g.date,
+      era: era !== null ? Math.round(era * 100) / 100 : null,
+      whip: whip !== null ? Math.round(whip * 100) / 100 : null,
+      k9: k9 !== null ? Math.round(k9 * 100) / 100 : null,
+      fip: fip !== null ? Math.round(fip * 100) / 100 : null,
+    }
+  })
+}
 // ─── Player gameLogs (rolling charts) ──────────────────────────────────────
 
 async function fetchPersonGameLog(personId: number, season: number, group: 'pitching' | 'hitting') {
@@ -144,7 +214,68 @@ function rollingHitting(splits: any[], window: number, metric: 'ops' | 'slg' | '
   })
   return points.slice(-window)
 }
+export type YearMode = 'single' | 'multi' | 'career'
 
+async function fetchYearByYearHitting(id: number): Promise<any[]> {
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=hitting`)
+  if (!res.ok) throw new Error(`MLB API ${res.status}`)
+  const json = await res.json()
+  return (json.stats?.[0]?.splits ?? []).filter((s: any) => s.season)
+}
+
+async function fetchCareerHitting(id: number): Promise<any> {
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=career&group=hitting`)
+  if (!res.ok) throw new Error(`MLB API ${res.status}`)
+  const json = await res.json()
+  return json.stats?.[0]?.splits?.[0]?.stat ?? {}
+}
+
+const HITTING_SUM_KEYS = [
+  'atBats', 'hits', 'doubles', 'triples', 'homeRuns', 'baseOnBalls', 'strikeOuts',
+  'hitByPitch', 'sacFlies', 'stolenBases', 'caughtStealing', 'plateAppearances',
+  'rbi', 'runs', 'groundIntoDoublePlay', 'leftOnBase', 'totalBases',
+]
+
+function aggregateHittingCounts(statBlocks: any[]): Record<string, number> {
+  const totals: Record<string, number> = Object.fromEntries(HITTING_SUM_KEYS.map(k => [k, 0]))
+  for (const block of statBlocks) for (const k of HITTING_SUM_KEYS) totals[k] += Number(block[k] ?? 0)
+  return totals
+}
+
+// Real rate stats from summed counts — not an average of per-season rates.
+// See file header note in the chat response for why that distinction matters.
+function ratesFromCounts(t: Record<string, number>): Record<string, string> {
+  const avg = t.atBats > 0 ? t.hits / t.atBats : 0
+  const obpDenom = t.atBats + t.baseOnBalls + t.hitByPitch + t.sacFlies
+  const obp = obpDenom > 0 ? (t.hits + t.baseOnBalls + t.hitByPitch) / obpDenom : 0
+  const slg = t.atBats > 0 ? t.totalBases / t.atBats : 0
+  const babipDenom = t.atBats - t.strikeOuts - t.homeRuns + t.sacFlies
+  const babip = babipDenom > 0 ? (t.hits - t.homeRuns) / babipDenom : 0
+  const sbAttempts = t.stolenBases + t.caughtStealing
+  return {
+    avg: avg.toFixed(3), obp: obp.toFixed(3), slg: slg.toFixed(3), ops: (obp + slg).toFixed(3),
+    atBatsPerHomeRun: t.homeRuns > 0 ? (t.atBats / t.homeRuns).toFixed(1) : '—',
+    babip: babip.toFixed(3),
+    stolenBasePercentage: sbAttempts > 0 ? `${((t.stolenBases / sbAttempts) * 100).toFixed(1)}%` : '—',
+  }
+}
+
+export async function getBatterYearStats(id: number, mode: YearMode, years: number[]): Promise<SeasonStatRow[]> {
+  if (mode === 'single') {
+    return getPlayerSeasonStats('batter', id, years[0] ?? new Date().getFullYear())
+  }
+  if (mode === 'career') {
+    const stat = await fetchCareerHitting(id)
+    return BATTER_SEASON_FIELDS.map(f => ({ key: f.key, label: f.label, value: stat[f.key] !== undefined ? String(stat[f.key]) : '—' }))
+  }
+  const all = await fetchYearByYearHitting(id)
+  const selected = all.filter(s => years.includes(Number(s.season))).map(s => s.stat ?? {})
+  if (selected.length === 0) return BATTER_SEASON_FIELDS.map(f => ({ key: f.key, label: f.label, value: '—' }))
+  const counts = aggregateHittingCounts(selected)
+  const rates = ratesFromCounts(counts)
+  const merged: Record<string, string> = { ...Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, String(v)])), ...rates }
+  return BATTER_SEASON_FIELDS.map(f => ({ key: f.key, label: f.label, value: merged[f.key] ?? '—' }))
+}
 function rollingTeam(
   splits: any[], window: number, metric: 'runs_per_game' | 'team_era' | 'errors_per_game'
 ): RollingPoint[] {
@@ -163,6 +294,77 @@ function rollingTeam(
     return { date: last.date, opponent: last.opponent?.name ?? '', value: value !== null ? Math.round(value * 100) / 100 : null }
   })
   return points.slice(-window)
+}
+export type SeasonTrendPoint = {
+  gameNumber: number
+  date: string
+  avg: number | null
+  obp: number | null
+  slg: number | null
+  ops: number | null
+  hr: number   // cumulative
+  rbi: number  // cumulative
+}
+
+export async function getBatterSeasonProgression(id: number, season: number): Promise<SeasonTrendPoint[]> {
+  const splits = await fetchPersonGameLog(id, season, 'hitting')
+  const sorted = sortByDate(splits)
+
+  let ab = 0, h = 0, doubles = 0, triples = 0, hr = 0, bb = 0, hbp = 0, sf = 0, rbi = 0
+
+  return sorted.map((g, i) => {
+    const st = g.stat ?? {}
+    ab += Number(st.atBats ?? 0)
+    h += Number(st.hits ?? 0)
+    doubles += Number(st.doubles ?? 0)
+    triples += Number(st.triples ?? 0)
+    hr += Number(st.homeRuns ?? 0)
+    bb += Number(st.baseOnBalls ?? 0)
+    hbp += Number(st.hitByPitch ?? 0)
+    sf += Number(st.sacFlies ?? 0)
+    rbi += Number(st.rbi ?? 0)
+
+    const totalBases = h + doubles + 2 * triples + 3 * hr
+    const obpDenom = ab + bb + hbp + sf
+    const avg = ab > 0 ? h / ab : null
+    const obp = obpDenom > 0 ? (h + bb + hbp) / obpDenom : null
+    const slg = ab > 0 ? totalBases / ab : null
+
+    return {
+      gameNumber: i + 1,
+      date: g.date,
+      avg: avg !== null ? Math.round(avg * 1000) / 1000 : null,
+      obp: obp !== null ? Math.round(obp * 1000) / 1000 : null,
+      slg: slg !== null ? Math.round(slg * 1000) / 1000 : null,
+      ops: obp !== null && slg !== null ? Math.round((obp + slg) * 1000) / 1000 : null,
+      hr,
+      rbi,
+    }
+  })
+}
+
+// ─── Season-vs-season comparison (Lab player cards, "vs last season") ─────
+//
+// Thin wrapper around the two functions above — fetches N seasons in
+// parallel for one player and hands back each season's full game-by-game
+// progression, still indexed by gameNumber so the UI can overlay them on
+// a shared x-axis regardless of when each season actually started.
+export type SeasonProgressionSeries = {
+  season: number
+  points: PitcherTrendPoint[] | SeasonTrendPoint[]
+}
+
+export async function getSeasonProgressionCompare(
+  subjectType: 'pitcher' | 'batter', id: number, seasons: number[]
+): Promise<SeasonProgressionSeries[]> {
+  return Promise.all(
+    seasons.map(async season => ({
+      season,
+      points: subjectType === 'pitcher'
+        ? await getPitcherSeasonProgression(id, season)
+        : await getBatterSeasonProgression(id, season),
+    }))
+  )
 }
 
 export async function getRollingMetric(opts: {
@@ -190,11 +392,88 @@ export async function searchPeople(query: string) {
     id: p.id, fullName: p.fullName, primaryPosition: p.primaryPosition?.abbreviation ?? '',
   }))
 }
+// ─── Player trend (L7 vs season) ───────────────────────────────────────────
+//
+// Reuses the existing rolling-average functions rather than reimplementing
+// the stat math: "season value" is just the rolling calc with a window big
+// enough to cover every game played; "L7 value" is the same calc with
+// window=7. Both come from a single gameLog fetch.
+
+export type PlayerTrendRow = {
+  metric: MetricKey
+  label: string
+  seasonValue: number | null
+  l7Value: number | null
+  delta: number | null       // l7Value - seasonValue, in the metric's own units
+  l7Games: number             // actual games in the L7 sample — can be < 7 early in a season/callup
+  insufficientSample: boolean // true when l7Games < 3 — don't badge a trend off 1-2 games
+  direction: 'up' | 'down' | 'flat'
+}
+
+// Lower value = better performance, for these metrics.
+const LOWER_IS_BETTER: Record<'era' | 'fip' | 'whip' | 'k9' | 'ops' | 'slg' | 'obp', boolean> = {
+  era: true, fip: true, whip: true, k9: false, ops: false, slg: false, obp: false,
+}
+
+// Minimum |delta| (in the metric's own units) before we call it a real trend
+// rather than game-to-game noise. Picked to roughly match each stat's normal
+// week-to-week wobble — these are a starting point, not derived from anything.
+const TREND_EPSILON: Record<'era' | 'fip' | 'whip' | 'k9' | 'ops' | 'slg' | 'obp', number> = {
+  era: 0.05, fip: 0.05, whip: 0.03, k9: 0.3, ops: 0.015, slg: 0.010, obp: 0.010,
+}
+
+export async function getPlayerTrend(
+  subjectType: 'pitcher' | 'batter', id: number, season: number
+): Promise<PlayerTrendRow[]> {
+  const group = subjectType === 'pitcher' ? 'pitching' : 'hitting'
+  const splits = await fetchPersonGameLog(id, season, group)
+
+  const pitcherMetrics: ('era' | 'fip' | 'whip' | 'k9')[] = ['era', 'fip', 'whip', 'k9']
+  const batterMetrics: ('ops' | 'slg' | 'obp')[] = ['ops', 'slg', 'obp']
+  const metrics = subjectType === 'pitcher' ? pitcherMetrics : batterMetrics
+
+  const emptyRow = (metric: MetricKey): PlayerTrendRow => ({
+    metric, label: METRICS.find(m => m.key === metric)!.label,
+    seasonValue: null, l7Value: null, delta: null, l7Games: 0, insufficientSample: true, direction: 'flat',
+  })
+
+  if (splits.length === 0) return metrics.map(emptyRow)
+
+  const l7Games = Math.min(7, splits.length)
+
+  return metrics.map(metric => {
+    const seasonPoints = subjectType === 'pitcher'
+      ? rollingPitching(splits, splits.length, metric as 'era' | 'fip' | 'whip' | 'k9')
+      : rollingHitting(splits, splits.length, metric as 'ops' | 'slg' | 'obp')
+    const l7Points = subjectType === 'pitcher'
+      ? rollingPitching(splits, 7, metric as 'era' | 'fip' | 'whip' | 'k9')
+      : rollingHitting(splits, 7, metric as 'ops' | 'slg' | 'obp')
+
+    const seasonValue = seasonPoints[seasonPoints.length - 1]?.value ?? null
+    const l7Value = l7Points[l7Points.length - 1]?.value ?? null
+    const label = METRICS.find(m => m.key === metric)!.label
+
+    if (seasonValue === null || l7Value === null) {
+      return { metric, label, seasonValue, l7Value, delta: null, l7Games, insufficientSample: true, direction: 'flat' }
+    }
+
+    const delta = Math.round((l7Value - seasonValue) * 1000) / 1000
+    const insufficientSample = l7Games < 3
+    let direction: 'up' | 'down' | 'flat' = 'flat'
+    if (!insufficientSample && Math.abs(delta) >= TREND_EPSILON[metric]) {
+      const improving = LOWER_IS_BETTER[metric] ? delta < 0 : delta > 0
+      direction = improving ? 'up' : 'down'
+    }
+
+    return { metric, label, seasonValue, l7Value, delta, l7Games, insufficientSample, direction }
+  })
+}
 
 // ─── Player league leaders ──────────────────────────────────────────────────
 
-export const LEADER_METRICS: Record<
-  'era' | 'whip' | 'k9' | 'ops' | 'slg' | 'obp',
+export const LEADER_METRICS: Record <
+  'era' | 'whip' | 'k9' | 'ops' | 'slg' | 'obp'
+  | 'avg' | 'homeRuns' | 'rbi' | 'stolenBases' | 'hits' | 'doubles' | 'triples' | 'baseOnBalls' | 'strikeOuts' | 'totalBases',
   { label: string; group: 'pitching' | 'hitting'; leaderCategory: string }
 > = {
   era:  { label: 'ERA leaders',  group: 'pitching', leaderCategory: 'earnedRunAverage' },
@@ -203,6 +482,16 @@ export const LEADER_METRICS: Record<
   ops:  { label: 'OPS leaders',  group: 'hitting',  leaderCategory: 'onBasePlusSlugging' },
   slg:  { label: 'SLG leaders',  group: 'hitting',  leaderCategory: 'sluggingPercentage' },
   obp:  { label: 'OBP leaders',  group: 'hitting',  leaderCategory: 'onBasePercentage' },
+  avg:          { label: 'AVG leaders', group: 'hitting', leaderCategory: 'battingAverage' },
+  homeRuns:     { label: 'HR leaders',  group: 'hitting', leaderCategory: 'homeRuns' },
+  rbi:          { label: 'RBI leaders', group: 'hitting', leaderCategory: 'runsBattedIn' },
+  stolenBases:  { label: 'SB leaders',  group: 'hitting', leaderCategory: 'stolenBases' },
+  hits:         { label: 'H leaders',   group: 'hitting', leaderCategory: 'hits' },
+  doubles:      { label: '2B leaders',  group: 'hitting', leaderCategory: 'doubles' },
+  triples:      { label: '3B leaders',  group: 'hitting', leaderCategory: 'triples' },
+  baseOnBalls:  { label: 'BB leaders',  group: 'hitting', leaderCategory: 'walks' },
+  strikeOuts:   { label: 'K leaders',   group: 'hitting', leaderCategory: 'strikeouts' },
+  totalBases:   { label: 'TB leaders',  group: 'hitting', leaderCategory: 'totalBases' },
 }
 
 export type LeaderRow = {
@@ -214,6 +503,32 @@ export type LeaderRow = {
   value: number
 }
 
+// ─── Metric percentile (real rank against a real pool) ─────────────────────
+//
+// Honesty note, same spirit as the AL/NL radar above: MLB's /stats/leaders
+// endpoint only returns players who clear its IP/PA qualification threshold
+// — this is "percentile among qualified players," not literally every
+// rostered player. A player below the threshold (rookies, part-time bats,
+// recent callups) will correctly return null here rather than a fabricated
+// low percentile. The UI should treat null as "not enough playing time yet,"
+// not as a 0.
+export type PercentileResult = {
+  rank: number
+  poolSize: number
+  percentile: number // 0–100, higher = better performance
+}
+
+export async function getMetricPercentile(
+  metric: keyof typeof LEADER_METRICS, season: number, personId: number, poolSize = 150
+): Promise<PercentileResult | null> {
+  const rows = await getLeaders(metric, season, poolSize)
+  const idx = rows.findIndex(r => r.personId === personId)
+  if (idx === -1) return null
+
+  const rank = idx + 1
+  const percentile = Math.round(((rows.length - rank) / Math.max(rows.length - 1, 1)) * 100)
+  return { rank, poolSize: rows.length, percentile }
+}
 export async function getLeaders(
   metric: keyof typeof LEADER_METRICS, season: number, limit = 5
 ): Promise<LeaderRow[]> {
@@ -258,8 +573,6 @@ async function fetchAllTeamSeasonValues(metric: TeamMetric, season: number): Pro
       value = innings > 0 ? (Number(st.earnedRuns ?? 0) / innings) * 9 : 0
     }
     if (metric === 'team_ops') {
-      // Team season totals usually include a pre-computed OPS directly —
-      // fall back to computing it from raw counts if that field is absent.
       if (st.ops !== undefined) {
         value = Number(st.ops)
       } else {
@@ -344,7 +657,7 @@ const TEAM_IDS = Object.keys(LEAGUE_BY_TEAM_ID).map(Number)
 
 // Minimal id→name/abbreviation lookup so series still have labels even if a
 // team's gameLog response omits team metadata (gameLog splits sometimes do).
-const TEAM_NAMES: Record<number, { name: string; abbreviation: string }> = {
+export const TEAM_NAMES: Record<number, { name: string; abbreviation: string }> = {
   108: { name: 'Angels', abbreviation: 'LAA' }, 109: { name: 'D-backs', abbreviation: 'ARI' },
   110: { name: 'Orioles', abbreviation: 'BAL' }, 111: { name: 'Red Sox', abbreviation: 'BOS' },
   112: { name: 'Cubs', abbreviation: 'CHC' }, 113: { name: 'Reds', abbreviation: 'CIN' },
@@ -467,4 +780,51 @@ export async function getStandingsProgression(season: number, teamIds: number[])
     })
   )
   return results.filter((r): r is StandingsSeries => r !== null)
+}
+
+// ─── Season totals (for the enlarged player columns — real counting stats,
+// not just the rolling-window metrics used for trend detection) ───────────
+
+export type SeasonStatRow = { key: string; label: string; value: string }
+
+const PITCHER_SEASON_FIELDS: { key: string; label: string }[] = [
+  { key: 'wins', label: 'W' }, { key: 'losses', label: 'L' }, { key: 'saves', label: 'SV' },
+  { key: 'era', label: 'ERA' }, { key: 'whip', label: 'WHIP' },
+  { key: 'strikeOuts', label: 'K' }, { key: 'strikeoutsPer9Inn', label: 'K/9' },
+  { key: 'inningsPitched', label: 'IP' }, { key: 'baseOnBalls', label: 'BB' }, { key: 'homeRuns', label: 'HR' },
+]
+
+const BATTER_SEASON_FIELDS: { key: string; label: string }[] = [
+  { key: 'avg', label: 'AVG' }, { key: 'obp', label: 'OBP' }, { key: 'slg', label: 'SLG' }, { key: 'ops', label: 'OPS' },
+  { key: 'homeRuns', label: 'HR' }, { key: 'rbi', label: 'RBI' }, { key: 'runs', label: 'R' }, { key: 'hits', label: 'H' },
+  { key: 'doubles', label: '2B' }, { key: 'triples', label: '3B' }, { key: 'totalBases', label: 'TB' },
+  { key: 'baseOnBalls', label: 'BB' }, { key: 'strikeOuts', label: 'K' }, { key: 'hitByPitch', label: 'HBP' },
+  { key: 'stolenBases', label: 'SB' }, { key: 'caughtStealing', label: 'CS' }, { key: 'stolenBasePercentage', label: 'SB%' },
+  { key: 'atBatsPerHomeRun', label: 'AB/HR' }, { key: 'babip', label: 'BABIP' },
+  { key: 'plateAppearances', label: 'PA' }, { key: 'atBats', label: 'AB' },
+  { key: 'sacFlies', label: 'SF' }, { key: 'groundIntoDoublePlay', label: 'GIDP' }, { key: 'leftOnBase', label: 'LOB' },
+]
+export async function getPlayerSeasonStats(
+  subjectType: 'pitcher' | 'batter', id: number, season: number
+): Promise<SeasonStatRow[]> {
+  const group = subjectType === 'pitcher' ? 'pitching' : 'hitting'
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=season&group=${group}&season=${season}`)
+  if (!res.ok) throw new Error(`MLB API ${res.status}`)
+  const json = await res.json()
+  const stat = json.stats?.[0]?.splits?.[0]?.stat ?? {}
+  const fields = subjectType === 'pitcher' ? PITCHER_SEASON_FIELDS : BATTER_SEASON_FIELDS
+  return fields.map(f => ({ key: f.key, label: f.label, value: stat[f.key] !== undefined ? String(stat[f.key]) : '—' }))
+}
+
+// ─── Team roster (for the Player Browser team-filter chips) ───────────────
+
+export type RosterPlayer = { id: number; fullName: string; primaryPosition: string }
+
+export async function getTeamRoster(teamId: number): Promise<RosterPlayer[]> {
+  const res = await fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=active`)
+  if (!res.ok) throw new Error(`MLB API ${res.status}`)
+  const json = await res.json()
+  return (json.roster ?? [])
+    .map((r: any) => ({ id: r.person?.id, fullName: r.person?.fullName ?? '', primaryPosition: r.position?.abbreviation ?? '' }))
+    .filter((p: RosterPlayer) => p.id)
 }

@@ -17,7 +17,9 @@ const supa = createClient(
 export type RegressionDirection = 'rise' | 'drop'
 export type RegressionPlayerType = 'pitcher' | 'batter'
 
+
 export interface RegressionWatchRow {
+  player_id: number | null
   player_name: string
   team_short: string | null
   position: string | null
@@ -58,6 +60,7 @@ export async function getRegressionWatch(
 
     for (const r of data as any[]) {
       const row: RegressionWatchRow = {
+        player_id: r.player_id ?? null,
         player_name: r.player_name,
         team_short: r.team_short ?? null,
         position: r.position ?? null,

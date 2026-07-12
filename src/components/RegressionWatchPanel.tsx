@@ -1,6 +1,11 @@
 // src/components/RegressionWatchPanel.tsx
 import type { RegressionWatchData, RegressionWatchRow } from '@/lib/regression-watch'
 import Link from 'next/link'
+ 
+// Same pattern as BullpenPanel.tsx / MarketMovementSection.tsx — the `d_`
+// param gives Cloudinary a built-in fallback image, no onError JS needed.
+const playerHeadshotUrl = (id: number) =>
+  `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`
 
 interface RegressionWatchPanelProps {
   data: RegressionWatchData | null
@@ -25,12 +30,20 @@ function DirectionIcon({ direction }: { direction: 'rise' | 'drop' }) {
     </div>
   )
 }
-
 function PlayerRow({ row }: { row: RegressionWatchRow }) {
   const isDrop = row.direction === 'drop'
-  return (
+ 
+  const content = (
     <div className="group flex gap-3 px-4 py-2.5 border-b border-stone-100 last:border-b-0 hover:bg-stone-50/70 transition-colors">
       <DirectionIcon direction={row.direction} />
+      {row.player_id && (
+        // eslint-disable-next-line @next/next/no-img-element -- external CDN, small fixed size
+        <img
+          src={playerHeadshotUrl(row.player_id)}
+          alt=""
+          className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 bg-stone-100"
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-serif text-[13px] font-semibold text-[#1A1A1A] tracking-[-0.1px]">{row.player_name}</span>
@@ -60,8 +73,18 @@ function PlayerRow({ row }: { row: RegressionWatchRow }) {
       </div>
     </div>
   )
+ 
+  if (!row.player_id) return content
+ 
+  const subject = row.position === 'P' ? 'pitcher' : 'batter'
+  const href = `/stats/player/${row.player_id}?subject=${subject}&name=${encodeURIComponent(row.player_name)}&team=${encodeURIComponent(row.team_short ?? '')}&pos=${encodeURIComponent(row.position ?? '')}`
+ 
+  return (
+    <Link href={href} className="block">
+      {content}
+    </Link>
+  )
 }
-
 function EmptyColumn({ label }: { label: string }) {
   return <div className="px-4 py-4 text-center"><p className="font-mono text-[10px] text-stone-400">No {label} today.</p></div>
 }

@@ -25,8 +25,12 @@ const MLB_DIVISIONS = [
 ]
 
 const MLB_SUB_LINKS = [
- { href: '/mlb', label: 'Today\'s Reads', icon: '⊕', pro: false, description: 'Game previews & edges' },
-  { href: '/mlb/scores', label: 'Live Scores', icon: '▸', pro: false, description: 'Full slate & scores', badge: 'LIVE' },
+  { href: '/mlb',          label: "Today's Reads",  pro: false },
+  { href: '/mlb/scores',   label: 'Live Scores',    pro: false },
+  { href: '/lab',    label: 'Dashboard', pro: false },
+  { href: '/stats',    label: 'Stats & Leaders', pro: false  },
+  { href: '/fantasy', label: 'Fantasy',       pro: true },
+  { href: '/track-record', label: 'Track Record',   pro: false },
 ]
 
 // ─── NFL Data ─────────────────────────────────────────────────────────────────
@@ -107,10 +111,29 @@ const NFL_DIVISIONS = [
 ]
 
 const NFL_SUB_LINKS = [
-  { href: '/nfl', label: 'Home' },
-  { href: '/nfl/scores', label: 'Scores & Matchups' },
-  { href: '/nfl/standings', label: 'Standings' },
-  { href: '/nfl/schedule', label: 'Schedule' },
+  { href: '/nfl', label: 'This Week', pro: false },
+
+  { href: '/nfl/standings', label: 'Dashboard ', pro: false },
+  { href: '/nfl/schedule', label: 'Schedule', pro: false },
+  { href: '', label: 'Stats & Leaders', pro: false },
+    { href: '/fantasy', label: 'Fantasy',       pro: true },
+  { href: '/track-record', label: 'Track Record',   pro: false },
+
+]
+
+// ─── About / More Data ────────────────────────────────────────────────────────
+// Replaces four separate top-level links (About, Why the Edge, Pricing,
+// Past Games) with one "About" dropdown — same consolidation the mobile
+// drawer's "More" section already does, now mirrored on desktop instead of
+// spreading five words of nav real estate across the header. "How It Works"
+// folded in too since it was already grouped with these in the mobile
+// drawer's "More" section — keeps desktop and mobile groupings consistent.
+const ABOUT_SUB_LINKS = [
+  { href: '/about',        label: 'About' },
+  { href: '/why-edge',     label: 'Why The Edge' },
+  { href: '/how-it-works', label: 'How It Works' },
+  { href: '/pricing',      label: 'Pricing' },
+  { href: '/track-record', label: 'Past Games' },
 ]
 
 // ─── MLB Mega Panel ───────────────────────────────────────────────────────────
@@ -239,6 +262,42 @@ function NFLMegaPanel({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── About Dropdown Panel ─────────────────────────────────────────────────────
+// Deliberately narrow and anchored to the button (unlike MLB/NFL's full-width
+// mega panels, which need the width for team grids) — five short links in a
+// full-width bar would look sparse and out of place.
+
+function AboutMegaPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        minWidth: 210,
+        background: '#fff',
+        border: '1px solid #e7e5e0',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        zIndex: 50,
+      }}
+      onMouseLeave={onClose}
+    >
+      <div className="py-2">
+        {ABOUT_SUB_LINKS.map(link => (
+          <Link
+            key={link.href}
+            href={link.href}
+            onClick={onClose}
+            className="block px-4 py-2.5 font-sans text-[13px] text-stone-700 hover:text-stone-900 hover:bg-stone-50 transition whitespace-nowrap"
+          >
+            {link.label}
+          </Link>
+        ))}
       </div>
     </div>
   )
@@ -400,13 +459,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
               <div style={{ ...sectionHead, marginTop: 32 }}>
                 <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> More
               </div>
-              {[
-                { href: '/how-it-works', label: 'How It Works' },
-                { href: '/why-edge',     label: 'Why The Edge' },
-                { href: '/pricing',      label: 'Pricing' },
-                { href: '/track-record', label: 'Past Games' },
-                { href: '/about',        label: 'About' },
-              ].map(link => (
+              {ABOUT_SUB_LINKS.map(link => (
                 <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
                   {link.label}
                 </Link>
@@ -432,8 +485,9 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
                   letterSpacing: '0.16em', textTransform: 'uppercase',
                   color: '#8A8275', marginBottom: 12,
                 }}>QUICK LINKS</div>
-                <Link href="/tonight"       onClick={onClose} style={utilLink}>Tonight&apos;s Slate</Link>
-                <Link href="/track-record"  onClick={onClose} style={utilLink}>Track Record</Link>
+                <Link href="/tonight"       onClick={onClose} style={utilLink}>Tonight's Slate</Link>
+<Link href="/mlb/stats"     onClick={onClose} style={utilLink}>Stats & Leaders</Link>
+<Link href="/track-record"  onClick={onClose} style={utilLink}>Track Record</Link>
               </div>
 
               {!isLoggedIn && (
@@ -534,6 +588,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mlbOpen, setMlbOpen]       = useState(false)
   const [nflOpen, setNflOpen]       = useState(false)
+  const [aboutOpen, setAboutOpen]   = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isPro, setIsPro]           = useState(false)
 
@@ -541,6 +596,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
 
   const mlbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nflTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aboutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/status')
@@ -556,7 +612,9 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const openMlb = () => {
     if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
     if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
+    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
     setNflOpen(false)
+    setAboutOpen(false)
     setMlbOpen(true)
   }
   const closeMlb = () => {
@@ -567,11 +625,26 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const openNfl = () => {
     if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
     if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
+    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
     setMlbOpen(false)
+    setAboutOpen(false)
     setNflOpen(true)
   }
   const closeNfl = () => {
     nflTimerRef.current = setTimeout(() => setNflOpen(false), 150)
+  }
+
+  // About hover handlers
+  const openAbout = () => {
+    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
+    if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
+    if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
+    setMlbOpen(false)
+    setNflOpen(false)
+    setAboutOpen(true)
+  }
+  const closeAbout = () => {
+    aboutTimerRef.current = setTimeout(() => setAboutOpen(false), 150)
   }
 
   return (
@@ -626,10 +699,16 @@ export default function SiteHeader({ variant = 'page' }: Props) {
                   </button>
                 </div>
 
-                <Link href="/about"        className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">About</Link>
-                <Link href="/why-edge"     className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Why the Edge</Link>
-                <Link href="/pricing"      className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Pricing</Link>
-                <Link href="/track-record" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition whitespace-nowrap">Past Games</Link>
+                {/* About dropdown — replaces separate About / Why the Edge / Pricing / Past Games links */}
+                <div className="relative h-full flex items-center" onMouseEnter={openAbout} onMouseLeave={closeAbout}>
+                  <button className={`py-2 font-sans text-[14px] transition flex items-center gap-1.5 ${aboutOpen ? 'text-stone-900 font-bold' : 'text-stone-500 hover:text-stone-900'}`}>
+                    About
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
+                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {aboutOpen && <AboutMegaPanel onClose={() => setAboutOpen(false)} />}
+                </div>
               </nav>
             </div>
 

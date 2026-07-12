@@ -2,13 +2,15 @@
 
 /**
  * src/components/GamePageShell.tsx
+ *
+ * Redesigned shell — 4 tabs: The Read · Lineups · Pitching · Teams
+ * Brand tokens: Cream #FAF8F3 · Orange #FF5722 · Yellow #FDE047 · Stone Black #1A1A1A
+ * Fonts: Fraunces (serif display) · Bebas Neue (display) · JetBrains Mono (data)
  */
 
 import { useState } from 'react'
-import Link from 'next/link'
-import LiveScoreboard from './LiveScoreboard'
 
-export type GamePageTab = 'read' | 'teams' | 'plate' | 'pitching' | 'batting' | 'bullpen' | 'gmlab' | 'fantasy'
+export type GamePageTab = 'read' | 'lineups' | 'pitching' | 'teams'
 
 type LiveScoreData = {
   awayRuns: number
@@ -36,124 +38,183 @@ type GamePageShellProps = {
   isSignedIn?: boolean
   liveScore?: LiveScoreData
 
+  slotSeries?: React.ReactNode
   slotRead: React.ReactNode
-  slotTeams: React.ReactNode
-  slotPlate?: React.ReactNode
-  slotPitching: React.ReactNode
-  slotBullpen: React.ReactNode
-  slotGmlab: React.ReactNode
-  slotFantasy: React.ReactNode
-  slotBatting?: React.ReactNode
+  slotLineups?: React.ReactNode
+  slotPitching?: React.ReactNode
+  slotTeams?: React.ReactNode
 }
+// ─── Tab config ───────────────────────────────────────────────────────────────
 
-const TABS = [
-  { key: 'read'     as const, label: 'The Read',         shortLabel: 'Read',     proOnly: false },
-  { key: 'teams'    as const, label: 'Teams',            shortLabel: 'Teams',    proOnly: false },
-  { key: 'plate'    as const, label: 'Behind the Plate', shortLabel: 'Plate',    proOnly: false },
-  { key: 'pitching' as const, label: 'Pitching',         shortLabel: 'Pitching', proOnly: true  },
-  { key: 'bullpen'  as const, label: 'Bullpen',          shortLabel: 'Pen',      proOnly: true  },
-  { key: 'batting'  as const, label: 'Batting',          shortLabel: 'Batting',  proOnly: true  },
-  { key: 'gmlab'    as const, label: 'GM Lab',           shortLabel: 'Lab',      proOnly: true  },
-  { key: 'fantasy'  as const, label: 'Fantasy',          shortLabel: 'Fantasy',  proOnly: true  },
+const TABS: { key: GamePageTab; label: string; proOnly: boolean }[] = [
+  { key: 'read',     label: 'The Read',  proOnly: false },
+  { key: 'lineups',  label: 'Lineups',   proOnly: false },
+  { key: 'pitching', label: 'Pitching',  proOnly: true  },
+  { key: 'teams',    label: 'Teams',     proOnly: false },
 ]
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GamePageShell({
   homeTeam, awayTeam, homeAbbr, awayAbbr,
   homeLogoUrl, awayLogoUrl,
   gameTime, venue, isPro, isSignedIn = false,
   liveScore,
-  slotRead, slotTeams, slotPlate, slotPitching, slotBullpen, slotGmlab, slotFantasy, slotBatting,
+  slotSeries,
+  slotRead, slotLineups, slotPitching, slotTeams,
 }: GamePageShellProps) {
   const [activeTab, setActiveTab] = useState<GamePageTab>('read')
 
+  const isLive  = liveScore?.isLive  ?? false
+  const isFinal = liveScore?.isFinal ?? false
+  const showScore = isLive || isFinal
+
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen" style={{ background: '#FAF8F3' }}>
 
-      {/* ── STICKY HEADER ── */}
-      <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
+      {/* ── STICKY GAME HEADER ─────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 border-b" style={{ background: '#1A1A1A', borderColor: 'rgba(250,248,243,0.08)' }}>
 
-        {/* Logo vs logo strip */}
-        <div className="flex items-center px-3 py-2 max-w-4xl mx-auto gap-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {awayLogoUrl && (
-              <img src={awayLogoUrl} alt={awayAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-            )}
-            <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{awayAbbr}</span>
-          </div>
+        {/* Match strip */}
+        <div className="max-w-3xl mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
 
-          <div className="flex flex-col items-center shrink-0 px-1">
-            {liveScore && (liveScore.isLive || liveScore.isFinal) ? (
-              <div className="flex items-center gap-2">
-                <span className={`text-lg font-mono font-black leading-none ${liveScore.awayRuns > liveScore.homeRuns ? 'text-stone-900' : 'text-stone-400'}`}>
-                  {liveScore.awayRuns}
-                </span>
-                <span className="text-stone-300 font-mono text-xs">–</span>
-                <span className={`text-lg font-mono font-black leading-none ${liveScore.homeRuns > liveScore.awayRuns ? 'text-stone-900' : 'text-stone-400'}`}>
-                  {liveScore.homeRuns}
-                </span>
-              </div>
-            ) : (
-              <span className="text-[11px] font-serif italic text-stone-400 leading-none">at</span>
-            )}
-            <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">
-              {liveScore?.isLive
-                ? liveScore.currentInning ?? 'Live'
-                : liveScore?.isFinal
-                ? 'Final'
-                : gameTime ?? ''}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-            <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{homeAbbr}</span>
-            {homeLogoUrl && (
-              <img src={homeLogoUrl} alt={homeAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-            )}
-          </div>
-
-          <div className="ml-2 shrink-0">
-            {isPro ? (
-              <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">
-                ⊕ Pro
-              </span>
-            ) : (
-              <Link
-                href={isSignedIn ? '/pricing' : '/signup'}
-                className="text-[9px] font-mono font-bold tracking-widest uppercase text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700 transition whitespace-nowrap"
+            {/* Away team */}
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              {awayLogoUrl && (
+                <img
+                  src={awayLogoUrl}
+                  alt={awayAbbr}
+                  className="w-9 h-9 object-contain flex-shrink-0"
+                  style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }}
+                />
+              )}
+              <span
+                className="font-bold text-sm tracking-wider truncate"
+                style={{ fontFamily: "'JetBrains Mono', monospace", color: '#FAF8F3', letterSpacing: '0.05em' }}
               >
-                {isSignedIn ? 'Upgrade' : 'Sign up'}
-              </Link>
-            )}
+                {awayAbbr}
+              </span>
+            </div>
+{/* ── SERIES TRAJECTORY — shown above tab content when available ── */}
+    {/* ── SERIES TRAJECTORY ── */}
+    
+            {/* Score / time centre */}
+            <div className="flex flex-col items-center shrink-0 px-2">
+              {showScore ? (
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className="text-2xl font-bold leading-none"
+                    style={{ fontFamily: "'Bebas Neue', sans-serif", color: '#FAF8F3', letterSpacing: '0.04em' }}
+                  >
+                    {liveScore!.awayRuns}
+                  </span>
+                  <span style={{ color: 'rgba(250,248,243,0.25)', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px' }}>–</span>
+                  <span
+                    className="text-2xl font-bold leading-none"
+                    style={{ fontFamily: "'Bebas Neue', sans-serif", color: '#FAF8F3', letterSpacing: '0.04em' }}
+                  >
+                    {liveScore!.homeRuns}
+                  </span>
+                </div>
+              ) : (
+                <span
+                  className="text-sm font-bold"
+                  style={{ fontFamily: "'JetBrains Mono', monospace", color: '#FF5722', letterSpacing: '0.05em' }}
+                >
+                  {gameTime ?? 'TBD'}
+                </span>
+              )}
+
+              {/* Status line */}
+              {isLive && liveScore?.currentInning && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-widest mt-0.5"
+                  style={{ fontFamily: "'JetBrains Mono', monospace", color: '#FF5722' }}
+                >
+                  ● {liveScore.currentInning}
+                </span>
+              )}
+              {isFinal && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-widest mt-0.5"
+                  style={{ fontFamily: "'JetBrains Mono', monospace", color: 'rgba(250,248,243,0.35)' }}
+                >
+                  FINAL
+                </span>
+              )}
+              {!showScore && venue && (
+                <span
+                  className="text-[9px] uppercase tracking-widest mt-0.5 truncate max-w-[140px] text-center"
+                  style={{ fontFamily: "'JetBrains Mono', monospace", color: 'rgba(250,248,243,0.3)' }}
+                >
+                  {venue}
+                </span>
+              )}
+            </div>
+
+            {/* Home team */}
+            <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+              <span
+                className="font-bold text-sm tracking-wider truncate text-right"
+                style={{ fontFamily: "'JetBrains Mono', monospace", color: '#FAF8F3', letterSpacing: '0.05em' }}
+              >
+                {homeAbbr}
+              </span>
+              {homeLogoUrl && (
+                <img
+                  src={homeLogoUrl}
+                  alt={homeAbbr}
+                  className="w-9 h-9 object-contain flex-shrink-0"
+                  style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }}
+                />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Tab bar */}
+        {/* ── TAB BAR ────────────────────────────────────────────────────────── */}
         <div
-          className="flex overflow-x-auto scrollbar-hide max-w-4xl mx-auto border-t border-stone-100"
-          style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+          className="max-w-3xl mx-auto flex"
+          style={{ borderTop: '1px solid rgba(250,248,243,0.06)' }}
         >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key
             const isLocked = tab.proOnly && !isPro
+
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`
-                  shrink-0 px-4 py-3 text-[11px] font-mono font-bold uppercase tracking-wider
-                  transition-colors border-b-2 whitespace-nowrap
-                  ${isActive
-                    ? 'text-orange-600 border-orange-600'
-                    : isLocked
-                      ? 'text-stone-300 border-transparent hover:text-stone-400'
-                      : 'text-stone-500 border-transparent hover:text-stone-800'
-                  }
-                `}
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 transition-colors relative"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: isActive ? '#FF5722' : 'rgba(250,248,243,0.35)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
-                <span className="sm:hidden">{tab.shortLabel}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-                {tab.proOnly && (
-                  <span className="ml-1 text-[8px]">{isLocked ? '🔒' : '⊕'}</span>
+                {tab.label}
+                {isLocked && (
+                  <svg
+                    width="9" height="10" viewBox="0 0 9 10" fill="none"
+                    style={{ opacity: 0.4, flexShrink: 0 }}
+                  >
+                    <rect x="1" y="4" width="7" height="6" rx="1" fill="currentColor"/>
+                    <path d="M2.5 4V2.5a2 2 0 0 1 4 0V4" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                  </svg>
+                )}
+                {/* Active underline */}
+                {isActive && (
+                  <span
+                    className="absolute bottom-0 left-0 right-0"
+                    style={{ height: '2px', background: '#FF5722' }}
+                  />
                 )}
               </button>
             )
@@ -161,73 +222,22 @@ export default function GamePageShell({
         </div>
       </div>
 
-      {/* ── LIVE SCOREBOARD ── */}
-      {liveScore && (liveScore.isLive || liveScore.isFinal) && (
-        <LiveScoreboard
-          awayTeam={awayTeam}
-          homeTeam={homeTeam}
-          awayAbbr={awayAbbr}
-          homeAbbr={homeAbbr}
-          awayLogoUrl={awayLogoUrl ?? ''}
-          homeLogoUrl={homeLogoUrl ?? ''}
-          awayRuns={liveScore.awayRuns}
-          homeRuns={liveScore.homeRuns}
-          awayHits={liveScore.awayHits}
-          homeHits={liveScore.homeHits}
-          awayErrors={liveScore.awayErrors}
-          homeErrors={liveScore.homeErrors}
-          inningState={liveScore.inningState}
-          currentInning={liveScore.currentInning}
-          isLive={liveScore.isLive}
-          isFinal={liveScore.isFinal}
-          gameTime={gameTime}
-        />
-      )}
+{/* ── SERIES TRAJECTORY ── */}
+      {slotSeries}
 
       {/* ── TAB CONTENT ── */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         {activeTab === 'read' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotRead}</div>
         )}
-        {activeTab === 'teams' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotTeams}</div>
-        )}
-        {activeTab === 'plate' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotPlate}</div>
+        {activeTab === 'lineups' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotLineups}</div>
         )}
         {activeTab === 'pitching' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotPitching}</div>
         )}
-        {activeTab === 'bullpen' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBullpen}</div>
-        )}
-        {activeTab === 'batting' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotBatting}</div>
-        )}
-        {activeTab === 'gmlab' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {isPro ? slotGmlab : (
-              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">⊕ GM Lab</div>
-                <h2 className="font-serif font-light text-4xl text-stone-900 mb-3">Coming soon<span className="text-orange-600">.</span></h2>
-                <p className="text-stone-500 font-serif italic text-base max-w-sm leading-relaxed mb-8">
-                  Rebuilding from the ground up — deeper analysis, player-level intelligence, built for decisions not just data.
-                </p>
-                <div className="flex flex-col gap-2 w-full max-w-xs">
-                  {['Player-level fantasy ratings', 'Regression alarms & FIP vs ERA flags', 'Bullpen availability matrix', 'Front Office Memo'].map((item) => (
-                    <div key={item} className="flex items-center gap-3 text-left bg-stone-100 rounded-lg px-4 py-2.5">
-                      <span className="text-orange-400 text-xs">◎</span>
-                      <span className="text-[11px] font-mono text-stone-600">{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8">Launching in days, not weeks</p>
-              </div>
-            )}
-          </div>
-        )}
-        {activeTab === 'fantasy' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotFantasy}</div>
+        {activeTab === 'teams' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotTeams}</div>
         )}
       </div>
     </div>

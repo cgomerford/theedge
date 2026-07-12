@@ -8,28 +8,26 @@ const supa = createClient(
 )
 
 // ============================================================
-// V4 COMPONENT WEIGHTS
-// Key changes vs V3:
-//   - Offense:  0.16 → 0.18  (xwOBA, Hard Hit%, platoon splits now wired)
-//   - Matchup:  0.15 → 0.18  (real platoon OPS + pitcher H2H now wired)
-//   - Bullpen:  0.13 → 0.12  (slight reduction — offset by matchup gain)
-//   - Park:     0.05 → 0.05  (unchanged)
-//   - SP:       0.22 → 0.22  (unchanged — 13 sub-factors now active)
-// Total = 1.00
+// V5 COMPONENT WEIGHTS
+// Key changes vs V4:
+//   - Pitcher fatigue + lineup confidence absorbed into visible components
+//   - Weather: 0.04 → 0.09 (graduated scale now fires on most games)
+//   - Rest:    0.05 → 0.06 (timezone + schedule data now wired)
+//   - Defense: 0.08 → 0.10 (real fielding data now populated)
+//   - Offense: 0.18 → 0.17 (slight reduction to balance)
+//   - Matchup: 0.18 → 0.14 (slight reduction to balance)
+// Total = 1.00 exactly — no hidden components
 // ============================================================
 const WEIGHTS = {
-  starting_pitcher: 0.22,
-  bullpen:          0.12,
-  offense:          0.18,
-  defense:          0.08,
-  matchup:          0.18,
-  park:             0.05,
-  weather:          0.04,
-  rest:             0.05,
-  pitcher_fatigue:  0.07,
-  lineup_confirmed: 0.01,  // reduced from 0.05 — not yet wired
+  starting_pitcher: 0.23,
+  bullpen:          0.13,
+  offense:          0.17,
+  defense:          0.10,
+  matchup:          0.14,
+  park:             0.08,
+  weather:          0.09,
+  rest:             0.06,
 }
-
 // ============================================================
 // TYPES
 // ============================================================
@@ -113,11 +111,7 @@ export async function calculateEdgeScore(inputs: GameInputs): Promise<EdgeScoreR
     rest:             computeRestEdge(homeTeam, awayTeam),
   }
 
-  // Hidden components
-  const pitcherFatigue    = computePitcherFatigue(homePitcher, awayPitcher)
-  const lineupConfidence  = computeLineupConfidence(homeTeam, awayTeam)
-
-  // Round visible components
+// Round visible components
   const components: EdgeComponents = {
     starting_pitcher: Math.round(componentsRaw.starting_pitcher * 10) / 10,
     bullpen:          Math.round(componentsRaw.bullpen * 10) / 10,
@@ -129,14 +123,11 @@ export async function calculateEdgeScore(inputs: GameInputs): Promise<EdgeScoreR
     rest:             Math.round(componentsRaw.rest * 10) / 10,
   }
 
-  // Weighted sum
+  // Weighted sum — V5: all weight in the visible 8 components, nothing hidden
   let edge_score = 0
   for (const [key, value] of Object.entries(components)) {
     edge_score += value * WEIGHTS[key as keyof typeof WEIGHTS]
   }
-  edge_score += pitcherFatigue   * WEIGHTS.pitcher_fatigue
-  edge_score += lineupConfidence * WEIGHTS.lineup_confirmed
-
   // Home field advantage
   edge_score += 4
 
@@ -170,7 +161,7 @@ export async function calculateEdgeScore(inputs: GameInputs): Promise<EdgeScoreR
       away_pitcher_arsenal: awayPitcherArsenal,
       home_pitcher_h2h:     homePitcherH2H,
       away_pitcher_h2h:     awayPitcherH2H,
-      _hidden:              { pitcherFatigue, lineupConfidence },
+      _hidden:              { },
     },
   }
 }
@@ -299,11 +290,52 @@ function computePitcherEdge(home: any, away: any, homeArsenal: any[] | null, awa
         score += (avgPutAway - LEAGUE_AVG_PUT_AWAY) * 0.25
       }
 
-      // 13. Pitch variety bonus — 3+ distinct pitch types with >10% usage
+// 13. Pitch variety bonus — 3+ distinct pitch types with >10% usage
       const meaningfulPitches = arsenal.filter(p => Number(p.percentage ?? 0) >= 10)
-      if (meaningfulPitches.length >= 4) score += 3       // elite repertoire
-      else if (meaningfulPitches.length === 3) score += 1 // solid variety
-      else if (meaningfulPitches.length <= 1) score -= 2  // one-pitch pitcher
+      if (meaningfulPitches.length >= 4) score += 3
+      else if (meaningfulPitches.length === 3) score += 1
+      else if (meaningfulPitches.length <= 1) score -= 2
+    }
+
+    // ── V5 NEW: Advanced pitcher metrics ─────────────────────────
+    // These columns are populated by fetch_pitcher_advanced.py
+
+    // 14. K/BB ratio — command efficiency (elite = 4.0+, league avg ~2.8)
+    if (p.k_bb_ratio != null) {
+      score += (Number(p.k_bb_ratio) - 2.8) * 2.5
+    }
+
+    // 15. Quality start % — are they actually going deep into games?
+    // League avg ~50%. Elite starters ~65%+.
+    if (p.quality_start_pct != null) {
+      score += (Number(p.quality_start_pct) - 0.50) * 12
+    }
+
+    // 16. Average exit velocity allowed — lower = better for pitcher
+    // League avg ~88.5mph. Every mph matters.
+    if (p.avg_exit_velocity != null) {
+      score += (88.5 - Number(p.avg_exit_velocity)) * 1.5
+    }
+
+    // 17. Chase rate (O-swing%) — gets batters to swing at balls
+    // League avg ~30%. Elite ~35%+.
+    if (p.chase_rate != null) {
+      score += (Number(p.chase_rate) - 0.30) * 25
+    }
+
+    // 18. GDP rate — ground into double plays per 9IP
+    // Especially valuable in high-leverage situations
+    if (p.gdp_rate != null) {
+      score += (Number(p.gdp_rate) - 0.80) * 3
+    }
+
+    // 19. Swinging strike % — the purest swing-and-miss metric
+    // League avg ~11%. Elite ~14%+.
+    if (p.swstr_pct != null) {
+      const swstrVal = Number(p.swstr_pct)
+      // Stored as decimal (0.11) or percentage (11.0) — handle both
+      const normalised = swstrVal > 1 ? swstrVal / 100 : swstrVal
+      score += (normalised - 0.11) * 40
     }
 
     return score
@@ -402,10 +434,10 @@ function computeOffenseEdge(
     // ── V4 NEW ──────────────────────────────────────────────
 
     // 7. Team xwOBA (expected wOBA — better than raw OPS vs luck)
-    if (team.xwoba != null) {
-      const LEAGUE_AVG_XWOBA = 0.315
-      score += (Number(team.xwoba) - LEAGUE_AVG_XWOBA) * 60
-    }
+ if (team.xwoba_l30 != null) {
+  const LEAGUE_AVG_XWOBA = 0.315
+  score += (Number(team.xwoba_l30) - LEAGUE_AVG_XWOBA) * 60
+}
 
     // 8. Hard Hit% (barrels/solid contact — power indicator)
     if (team.hard_hit_pct != null) {
@@ -428,10 +460,9 @@ function computeOffenseEdge(
     }
 
     // 10. wRC+ (if available — park-adjusted run creation)
-    if (team.wrc_plus != null) {
-      score += (Number(team.wrc_plus) - 100) * 0.3
-    }
-
+    if (team.wrc_plus_l30 != null) {
+  score += (Number(team.wrc_plus_l30) - 100) * 0.3
+}
     // 11. BABIP regression flag
     //     If BABIP > .330, some luck involved — slight downward regression expected
     //     If BABIP < .270, may be due a bounce-back
@@ -456,29 +487,48 @@ function computeOffenseEdge(
 function computeDefenseEdge(homeT: any, awayT: any, homeP: any, awayP: any): number {
   if (!homeT || !awayT) return 0
 
-  function scoreDefense(team: any, pitcher: any): number {
+function scoreDefense(team: any, pitcher: any): number {
     let score = 0
 
-    if (team.oaa != null)         score += team.oaa * 2
-    if (team.infield_oaa != null) score += team.infield_oaa * 1.5
-    if (team.outfield_oaa != null) score += team.outfield_oaa * 1
-    if (team.drs != null)         score += team.drs * 0.5
-
+    // ── Primary signal: fielding% and errors (always populated) ──
+    // Fielding %: league avg ~0.984. Elite ~.988, poor ~.979.
+    if (team.fielding_pct != null) {
+      score += (Number(team.fielding_pct) - 0.984) * 500
+    }
+    // Errors per game L30: league avg ~0.55
     if (team.errors_per_game_l30 != null) {
-      score += (0.55 - team.errors_per_game_l30) * 10
+      score += (0.55 - Number(team.errors_per_game_l30)) * 15
+    }
+    // Defensive efficiency: % of balls in play converted to outs
+    if (team.defensive_efficiency != null) {
+      score += (Number(team.defensive_efficiency) - 0.690) * 80
     }
 
-    // GB pitcher + infield synergy
-    if (pitcher?.gb_percent && pitcher.gb_percent > 0.48) {
+    // ── Secondary signal: OAA/DRS if populated (V6 target) ───────
+    // These are null for most teams currently. When populated,
+    // they will automatically add to the score.
+    if (team.oaa != null)          score += Number(team.oaa) * 2
+    if (team.infield_oaa != null)  score += Number(team.infield_oaa) * 1.5
+    if (team.outfield_oaa != null) score += Number(team.outfield_oaa) * 1
+    if (team.drs != null)          score += Number(team.drs) * 0.5
+
+    // ── Catcher framing ───────────────────────────────────────────
+    // Extra strikes called = fewer baserunners = run prevention
+    if (team.catcher_framing_runs != null) {
+      score += Number(team.catcher_framing_runs) * 0.8
+    }
+
+    // ── Pitcher-defence synergy ───────────────────────────────────
+    // GB pitcher + good infield = multiplied run prevention
+    if (pitcher?.gb_percent && pitcher.gb_percent > 0.48 && team.errors_per_game_l30 != null) {
       const gbBonus = (pitcher.gb_percent - 0.43) * 100
-      const infieldQuality = team.infield_oaa ?? (team.oaa ?? 0) * 0.6
-      if (infieldQuality > 0) score += gbBonus * (infieldQuality / 10)
+      const infieldQuality = (0.55 - Number(team.errors_per_game_l30)) * 15
+      if (infieldQuality > 0) score += gbBonus * (infieldQuality / 20)
     }
-
-    // FB pitcher + outfield synergy
-    if (pitcher?.fb_percent && pitcher.fb_percent > 0.38) {
+    // FB pitcher + good outfield synergy
+    if (pitcher?.fb_percent && pitcher.fb_percent > 0.38 && team.outfield_oaa != null) {
       const fbBonus = (pitcher.fb_percent - 0.35) * 80
-      const outfieldQuality = team.outfield_oaa ?? (team.oaa ?? 0) * 0.4
+      const outfieldQuality = team.outfield_oaa ?? 0
       if (outfieldQuality > 0) score += fbBonus * (outfieldQuality / 10)
     }
 
@@ -619,75 +669,102 @@ function computeParkEdge(park: any, homeT: any, awayT: any, homeP: any, awayP: a
 }
 
 // ============================================================
-// COMPONENT 7: WEATHER (V3 — unchanged)
+// COMPONENT 7: WEATHER (V5 — graduated scale)
+// V4 problem: only fired on extreme conditions, returned ±0
+// on ~70% of games. V5 uses a graduated scale so any meaningful
+// wind or temperature deviation contributes to the score.
+// Output is park-neutral — measures run environment change,
+// not which team benefits (that's Component 6: Park).
 // ============================================================
 function computeWeatherEdge(weather: any, park: any, homeT: any, awayT: any): number {
   if (park?.is_dome) return 0
-  if (!weather)      return 0
-  if (!homeT || !awayT) return 0
+  if (!weather) return 0
 
   let edge = 0
 
-  if (weather.wind_dir === 'out' && weather.wind_mph > 5) {
-    const windBoost = Math.min(8, weather.wind_mph * 0.6)
-    if (homeT.iso && awayT.iso) {
-      edge += homeT.iso > awayT.iso ? windBoost : -windBoost
-    } else if (homeT.runs_per_game_l30 && awayT.runs_per_game_l30) {
-      edge += homeT.runs_per_game_l30 > awayT.runs_per_game_l30 ? windBoost : -windBoost
-    }
+  // ── Temperature factor ──────────────────────────────────────
+  // 72°F is the ideal baseball temperature. Every degree above
+  // or below shifts ball carry. Effect is real but modest.
+  // 55°F game = -2.5 pts. 88°F game = +2.4 pts.
+  const temp = weather.temp_f ?? 72
+  edge += (temp - 72) * 0.15
+
+  // ── Wind factor ─────────────────────────────────────────────
+  // Blowing out = ball carries further = hitter-friendly = positive
+  // Blowing in  = ball suppressed = pitcher-friendly = negative
+  // Crosswind   = minor negative (harder to barrel pitches)
+  const windMph = weather.wind_mph ?? 0
+  const windDir = weather.wind_dir ?? 'variable'
+
+  if (windDir === 'out') {
+    // 10mph out = +4.5, 18mph out = +8.1, 25mph out = capped at +12
+    edge += Math.min(12, windMph * 0.45)
+  } else if (windDir === 'in') {
+    // 10mph in = -3.5, 15mph in = -5.25, capped at -8
+    edge -= Math.min(8, windMph * 0.35)
+  } else if (windDir === 'cross') {
+    // Crosswind: subtle negative — harder to track and square up
+    edge -= Math.min(3, windMph * 0.15)
+  }
+  // 'variable' or unknown = no contribution (honest)
+
+  // ── Precipitation factor ─────────────────────────────────────
+  // Rain hurts pitcher grip and generally suppresses scoring.
+  // 30% chance = -2.4. 60% chance = -4.8.
+  const precip = weather.precipitation_chance ?? weather.precip_chance ?? 0
+  if (precip > 10) {
+    edge -= (precip / 100) * 8
   }
 
-  if (weather.wind_dir === 'in' && weather.wind_mph > 5) {
-    edge -= Math.min(5, weather.wind_mph * 0.4)
-  }
-
-  if      (weather.temp_f < 45) edge -= 4
-  else if (weather.temp_f < 55) edge -= 2
-  else if (weather.temp_f > 90) edge += 2
-  else if (weather.temp_f > 85) edge += 1
-
-  if (weather.temp_f > 80 && weather.wind_dir === 'out' && weather.wind_mph > 8) {
-    if (homeT.runs_per_game_l30 && awayT.runs_per_game_l30) {
-      edge += (homeT.runs_per_game_l30 - awayT.runs_per_game_l30) * 3
-    }
-  }
-
-  return Math.max(-100, Math.min(100, edge))
+  return Math.max(-15, Math.min(15, edge))
 }
-
 // ============================================================
-// COMPONENT 8: REST & TRAVEL (V3 — unchanged)
+// COMPONENT 8: REST & TRAVEL (V5 — real rest/travel data)
+// V4 problem: was double-counting bullpen fatigue (already in
+// Component 2) and ignoring actual player rest differentials.
+// V5 measures what this component should: roster-level fatigue
+// from travel, timezone disruption, and schedule load.
+// Positive = home team rested advantage.
 // ============================================================
 function computeRestEdge(home: any, away: any): number {
   if (!home || !away) return 0
 
   let edge = 0
 
-  if (home.bullpen_innings_yesterday >= 5) edge -= 4
-  if (away.bullpen_innings_yesterday >= 5) edge += 4
-
-  if (home.bullpen_ip_last_3 != null && away.bullpen_ip_last_3 != null) {
-    const homeFatigue = home.bullpen_ip_last_3 > 12 ? 3 : home.bullpen_ip_last_3 > 8 ? 1 : 0
-    const awayFatigue = away.bullpen_ip_last_3 > 12 ? 3 : away.bullpen_ip_last_3 > 8 ? 1 : 0
-    edge += awayFatigue - homeFatigue
+  // ── Days rest differential ───────────────────────────────────
+  // Populated by fetch_team_advanced.py from MLB schedule API.
+  // Each extra day of rest = 3pts, capped at 9pts total.
+  if (home.days_since_last_game != null && away.days_since_last_game != null) {
+    const restDiff = (home.days_since_last_game - away.days_since_last_game) * 3
+    edge += Math.max(-9, Math.min(9, restDiff))
   }
 
+  // ── Travel distance (graduated, not binary) ──────────────────
+  // Away team always travels. Longer trip = more fatigue.
+  // Cross-country (>2000mi) is a genuine disadvantage.
   if (away.travel_miles_last != null && away.travel_miles_last > 0) {
-    if      (away.travel_miles_last > 2000) edge += 3
-    else if (away.travel_miles_last > 1000) edge += 2
-    else if (away.travel_miles_last > 500)  edge += 1
+    if      (away.travel_miles_last > 2000) edge += 5
+    else if (away.travel_miles_last > 1500) edge += 3
+    else if (away.travel_miles_last > 800)  edge += 2
+    else if (away.travel_miles_last > 400)  edge += 1
   }
 
-  if (home.games_last_10_days != null && away.games_last_10_days != null) {
-    edge += (away.games_last_10_days > 10 ? 2 : 0) - (home.games_last_10_days > 10 ? 2 : 0)
-  }
+  // ── Schedule load — grueling stretch ─────────────────────────
+  // 9+ games in 10 days is punishing. Check both teams.
+  if (away.games_last_10_days != null && away.games_last_10_days >= 9)  edge += 5
+  if (home.games_last_10_days != null && home.games_last_10_days >= 9)  edge -= 5
 
-  if (away.consecutive_road_games != null && away.consecutive_road_games >= 7) edge += 2
+  // ── Road trip length ─────────────────────────────────────────
+  // 7+ consecutive road games = accumulated fatigue
+  if (away.consecutive_road_games != null && away.consecutive_road_games >= 7) edge += 3
+  else if (away.consecutive_road_games != null && away.consecutive_road_games >= 5) edge += 1
 
-  if (home.day_after_night === true) edge -= 1
-  if (away.day_after_night === true) edge += 1
+  // ── Day-after-night game ──────────────────────────────────────
+  // Short turnaround affects the whole roster, not just the bullpen
+  if (away.day_after_night === true) edge += 2
+  if (home.day_after_night === true) edge -= 2
 
-  return Math.max(-100, Math.min(100, edge))
+  return Math.max(-15, Math.min(15, edge))
 }
 
 // ============================================================

@@ -3,51 +3,57 @@
 /**
  * src/components/fantasy/FantasySubNav.tsx
  *
- * Persistent horizontal nav strip that sits below the masthead on every
- * fantasy page. Shows all five deep pages + the dashboard home.
- * Active page is highlighted. Scrollable on mobile.
- *
- * Usage: drop <FantasySubNav active="streamers" /> into any fantasy page
- * just below the SiteHeader, replacing the per-page masthead breadcrumb.
+ * Bold dark top nav — restyled from the original stone-50 horizontal bar
+ * to a confident, sports-app-style nav (dark background, underline active
+ * state, bold tabs) per the ESPN-inspired direction. Same NAV_ITEMS/active
+ * prop contract as before, so no other file needs to change to pick this up.
  *
  * active prop options:
- *   'home' | 'streamers' | 'platforms' | 'two-start' | 'news' | 'movers'
+ *   'home' | 'pitchers' | 'batters' | 'trends' | 'two-start' | 'platforms'
  */
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
-  { label: 'Desk',       href: '/fantasy',              key: 'home',       proOnly: false },
-  { label: 'Streamers',  href: '/fantasy/streamers',    key: 'streamers',  proOnly: true  },
-  { label: 'Platforms',  href: '/fantasy/platforms',    key: 'platforms',  proOnly: true  },
-  { label: 'Two-Start',  href: '/fantasy/two-start',    key: 'two-start',  proOnly: true  },
-  { label: 'News Wire',  href: '/fantasy/news',         key: 'news',       proOnly: false },
+  { label: 'Desk',       href: '/fantasy',           key: 'home',      proOnly: false },
+  { label: 'Pitchers',   href: '/fantasy/pitchers',  key: 'pitchers',  proOnly: true  },
+  { label: 'Batters',    href: '/fantasy/batters',   key: 'batters',   proOnly: true  }, // page not built yet — this link 404s until it exists
+  { label: 'Trends',     href: '/fantasy/trends',    key: 'trends',    proOnly: true  },
+  { label: 'Two-Start',  href: '/fantasy/two-start', key: 'two-start', proOnly: true  },
+  { label: 'Platforms',  href: '/fantasy/platforms', key: 'platforms', proOnly: true  },
 ] as const
+// News dropped from nav — /fantasy/news was cut as a standalone page per the
+// re-architecture; NewsWire stays as an inline widget on the Desk only.
+//
+// Two-Start ADDED back in — the page (/fantasy/two-start) is real and live
+// (it's in sitemap.ts alongside streamers/platforms), it was just missing
+// from this nav list, unlike News which was deliberately cut. Confirm this
+// is right if "Two-Start" isn't the label you want — I haven't seen the
+// page's own content, just inferred it belongs here from the build error
+// and the sitemap entry.
 
 type NavKey = typeof NAV_ITEMS[number]['key']
 
-export default function FantasySubNav({ active, isPro = true }: { active: NavKey; isPro?: boolean }) {
+export default function FantasySubNav({ active, isPro = false }: { active: NavKey; isPro?: boolean }) {
   return (
-    <div className="border-b border-stone-200 bg-stone-50 sticky top-0 z-30">
+    <div className="bg-[#1A1A1A] sticky top-0 z-30">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center overflow-x-auto scrollbar-hide gap-0">
+        <div className="flex items-center overflow-x-auto scrollbar-hide gap-0 h-14">
+          <span className="font-mono text-lg tracking-wide text-white pr-6 border-r border-white/15 mr-1 shrink-0 whitespace-nowrap">
+            ⊕ <span className="text-orange-500">Fantasy</span>
+          </span>
           {NAV_ITEMS.map((item) => {
             const isActive = item.key === active
             const showLock = item.proOnly && !isPro
-            // Locked links route to pricing, not the gated page
             const href = showLock ? '/pricing' : item.href
             return (
               <Link
                 key={item.key}
                 href={href}
                 className={`
-                  relative shrink-0 px-4 py-3 font-mono text-[11px] tracking-widest uppercase
-                  transition-colors whitespace-nowrap flex items-center gap-1.5
-                  ${isActive
-                    ? 'text-orange-600 font-bold'
-                    : 'text-stone-400 hover:text-stone-700'
-                  }
+                  relative shrink-0 px-4 h-14 flex items-center gap-1.5
+                  font-mono text-xs uppercase tracking-wider whitespace-nowrap transition-colors
+                  ${isActive ? 'text-white font-bold' : 'text-white/55 hover:text-white'}
                 `}
               >
                 {item.label}
@@ -58,17 +64,16 @@ export default function FantasySubNav({ active, isPro = true }: { active: NavKey
                   </svg>
                 )}
                 {isActive && (
-                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-orange-600" />
+                  <span className="absolute bottom-0 left-4 right-4 h-[3px] bg-orange-500" />
                 )}
               </Link>
             )
           })}
 
-          {/* Spacer + Pro badge */}
-          <div className="ml-auto shrink-0 pl-4 py-3">
+          <div className="ml-auto shrink-0 pl-4">
             <Link
               href="/pricing"
-              className="font-mono text-[9px] tracking-widest uppercase bg-yellow-300 text-stone-900 px-2.5 py-1 font-bold hover:bg-yellow-200 transition rounded-sm whitespace-nowrap"
+              className="font-mono text-[10px] tracking-widest uppercase bg-yellow-300 text-stone-900 px-3.5 py-2 font-bold hover:bg-yellow-200 transition whitespace-nowrap"
             >
               Pro ↗
             </Link>

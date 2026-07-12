@@ -6,7 +6,8 @@ import type { GameStreaks } from './streaks'
 
 // Initialize the Gemini Client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const MODEL = 'gemini-3.5-flash'
+// The best option for maximum cost savings on your narratives
+const MODEL = 'gemini-2.5-flash-lite'
 
 export type NarrativeInputs = {
   home_team: string
@@ -273,9 +274,9 @@ export async function generateNarrative(inputs: NarrativeInputs): Promise<Narrat
     const promptTokens = result.response.usageMetadata?.promptTokenCount ?? 0
     const outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0
     
-const inputCost  = promptTokens * 0.0000015
-const outputCost = outputTokens * 0.000009
-
+// Cost per token for gemini-2.5-flash-lite
+const inputCost  = promptTokens * 0.00000010
+const outputCost = outputTokens * 0.00000040
     return {
       summary:        parsed.summary,
       story_lead:     parsed.summary,
@@ -327,6 +328,8 @@ function buildKeyAngles(inputs: NarrativeInputs, awayIsOpener: boolean, homeIsOp
   return angles
 }
 
+// ─── Drop-in replacement for buildUserPrompt ────────────────────────────────
+ 
 function buildUserPrompt(inputs: NarrativeInputs): string {
   const { components_raw } = inputs
   const homeP = components_raw?.home_pitcher ?? null
@@ -334,58 +337,127 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
   const homeT = components_raw.home_team
   const awayT = components_raw.away_team
   const park  = components_raw.park
-
+ 
   const awayIsOpener = detectOpener(awayP)
   const homeIsOpener = detectOpener(homeP)
-
+ 
   const winner = inputs.predicted_winner === 'home' ? inputs.home_team : inputs.away_team
-
+ 
+  // ── Pitcher analysis — now passes full pitcher_stats depth ───────────────
   function pitcherAnalysis(p: any, teamName: string, side: string): string {
     if (!p) return `- ${teamName} (${side}): pitcher TBD`
-    const era = p.era ?? null
-    const fip = p.fip ?? null
-    const gap = era !== null && fip !== null ? Math.abs(era - fip).toFixed(2) : null
-    const gapNote = gap && parseFloat(gap) >= 0.5
-      ? ` | ERA vs FIP gap: ${gap} — ERA is ${era > fip ? 'HIGHER than FIP (getting unlucky, watch for him to pitch better than the ERA suggests)' : 'LOWER than FIP (results better than process so far, watch for it to even out)'}`
+ 
+    const era    = p.era    ?? null
+    const fip    = p.fip    ?? null
+    const xera   = p.xera   ?? null
+    const l3Era  = p.l3_era ?? null
+    const l3K9   = p.l3_k_per_9 ?? null
+    const l3IP   = p.l3_innings ?? null
+    const babip  = p.babip  ?? null
+    const strand = p.strand_rate ?? null
+    const chase  = p.chase_rate  ?? null
+    const swstr  = p.swstr_pct   ?? null
+    const gbRate = p.gb_rate ?? p.gb_percent ?? null
+    const hardHit = p.hard_hit_pct ?? null
+    const tto1   = p.tto1_xwoba ?? null
+    const tto2   = p.tto2_xwoba ?? null
+    const tto3   = p.tto3_xwoba ?? null
+ 
+    // ERA vs FIP gap — tells the model whether results match process
+    const gap = era !== null && fip !== null ? Math.abs(era - fip) : null
+    const gapNote = gap && gap >= 0.50
+      ? ` | ERA vs FIP gap: ${gap.toFixed(2)} — ERA is ${era! > fip! 
+          ? 'HIGHER (getting unlucky — pitch better than results, watch for improvement)' 
+          : 'LOWER (results better than process — watch for regression)'}`
       : ''
+ 
+    // xERA vs ERA — expected ERA from Statcast contact quality
+    const xeraNote = xera != null && era != null && Math.abs(era - xera) >= 0.40
+      ? ` | xERA: ${xera.toFixed(2)} (Statcast-based expected ERA from contact quality; gap of ${Math.abs(era - xera).toFixed(2)} vs actual ERA)`
+      : xera != null ? ` | xERA: ${xera.toFixed(2)}` : ''
+ 
+    // Last 3 starts — the freshest form signal
+    const recentForm = l3Era != null
+      ? ` | Last 3 starts: ${l3Era.toFixed(2)} ERA${l3IP != null ? `, ${l3IP.toFixed(1)} IP` : ''}${l3K9 != null ? `, ${l3K9.toFixed(1)} K/9` : ''}`
+      : ''
+ 
+    // Contact quality and command
+    const contactLine = [
+      babip != null  ? `BABIP: ${babip.toFixed(3)} (league avg ~.290; higher = more hits landing, lower = balls dying)` : null,
+      strand != null ? `Strand rate: ${(strand * 100).toFixed(1)}% (league avg ~72%; higher = better at escaping trouble)` : null,
+      gbRate != null ? `GB rate: ${(gbRate > 1 ? gbRate : gbRate * 100).toFixed(1)}%` : null,
+      hardHit != null ? `Hard-hit%: ${hardHit.toFixed(1)}% (balls hit 95+ mph; league avg ~36%; lower is better for pitchers)` : null,
+      chase != null  ? `Chase rate: ${chase.toFixed(1)}% (% of pitches outside zone swung at; higher = better command/deception)` : null,
+      swstr != null  ? `Whiff%: ${swstr.toFixed(1)}% (swing-and-miss rate on all pitches; >12% is above average)` : null,
+    ].filter(Boolean).join(' | ')
+ 
+    // Times through the order splits — does he fade late?
+    const ttoLine = tto1 != null && tto2 != null && tto3 != null
+      ? ` | Times through order xwOBA: 1st time ${tto1.toFixed(3)} → 2nd ${tto2.toFixed(3)} → 3rd ${tto3.toFixed(3)} (xwOBA measures expected weighted on-base; above .320 is hitter-friendly; a rising number means he fades as hitters see him more)`
+      : tto1 != null && tto2 != null
+      ? ` | Times through order: 1st time ${tto1.toFixed(3)} → 2nd ${tto2.toFixed(3)}`
+      : ''
+ 
+    // Head-to-head history
     const h2h = side === 'away' && inputs.away_pitcher_vs_opponent_record && inputs.away_pitcher_vs_opponent_era
       ? ` | Career vs ${inputs.home_team.split(' ').pop()}: ${inputs.away_pitcher_vs_opponent_record}, ${inputs.away_pitcher_vs_opponent_era} ERA`
       : side === 'home' && inputs.home_pitcher_vs_opponent_record && inputs.home_pitcher_vs_opponent_era
       ? ` | Career vs ${inputs.away_team.split(' ').pop()}: ${inputs.home_pitcher_vs_opponent_record}, ${inputs.home_pitcher_vs_opponent_era} ERA`
       : ''
+ 
+    // Last start detail
     const lastStart = side === 'away' && inputs.away_pitcher_last_start
       ? ` | Last start: ${inputs.away_pitcher_last_start}`
       : side === 'home' && inputs.home_pitcher_last_start
       ? ` | Last start: ${inputs.home_pitcher_last_start}`
       : ''
-    const openerNote = (side === 'away' ? awayIsOpener : homeIsOpener) ? `\n  ${openerLabel(p)}` : ''
-    const injuryFlag = side === 'away' ? inputs.away_pitcher_injury_return : inputs.home_pitcher_injury_return
-    const injuryNote = injuryFlag
-      ? `\n  ⚠ CONFIRMED INJURY RETURN: ${injuryFlag.injury_type}, ${injuryFlag.starts_since_return} start(s) since return. This is the ONLY injury information you have for this pitcher — do not add detail beyond this.`
+ 
+    const openerNote  = (side === 'away' ? awayIsOpener : homeIsOpener) ? `\n  ${openerLabel(p)}` : ''
+    const injuryFlag  = side === 'away' ? inputs.away_pitcher_injury_return : inputs.home_pitcher_injury_return
+    const injuryNote  = injuryFlag
+      ? `\n  ⚠ CONFIRMED INJURY RETURN: ${injuryFlag.injury_type}, ${injuryFlag.starts_since_return} start(s) since return.`
       : ''
-
+ 
     return `- ${teamName} (${side}): ${p.player_name}
-  ERA: ${era ?? 'N/A'} | FIP (luck-adjusted): ${fip ?? 'N/A'} | K/9: ${p.k_per_9 ?? 'N/A'} | BB/9: ${p.bb_per_9 ?? 'N/A'} | IP: ${p.innings_pitched ?? 0} in ${p.games_played ?? '?'} apps${gapNote}${h2h}${lastStart}${openerNote}${injuryNote}`
+  Season: ERA ${era ?? 'N/A'} | FIP ${fip ?? 'N/A'} | K/9 ${p.k_per_9 ?? 'N/A'} | BB/9 ${p.bb_per_9 ?? 'N/A'} | IP ${p.innings_pitched ?? 0} in ${p.games_played ?? '?'} apps${gapNote}${xeraNote}${recentForm}
+  Contact: ${contactLine || 'N/A'}${ttoLine}${h2h}${lastStart}${openerNote}${injuryNote}`
   }
-
+ 
+  // ── Bullpen ──────────────────────────────────────────────────────────────
   function bullpenLine(t: any, teamName: string): string {
     if (!t) return ''
     const ip = t.bullpen_innings_yesterday ?? 0
-    const taxedNote = ip >= 3 ? ` ⚠ TAXED — threw ${ip} innings yesterday, key arms may be unavailable` : ip >= 1.5 ? ` (used yesterday — ${ip} IP)` : ' (fresh)'
-    return `- ${teamName}: ERA ${t.bullpen_era?.toFixed(2) ?? 'N/A'}${taxedNote}`
+    const taxedNote = ip >= 3
+      ? ` ⚠ TAXED — threw ${ip} innings yesterday, key arms may be unavailable`
+      : ip >= 1.5 ? ` (used yesterday — ${ip} IP)` : ' (fresh)'
+    const k9 = t.bullpen_k_per_9 ?? null
+    const k9Note = k9 != null ? ` | K/9: ${k9.toFixed(1)}` : ''
+    return `- ${teamName}: ERA ${t.bullpen_era?.toFixed(2) ?? 'N/A'}${k9Note}${taxedNote}`
   }
-
+ 
+  // ── Offence ──────────────────────────────────────────────────────────────
   function offenseLine(t: any, teamName: string): string {
     if (!t) return ''
-    return `- ${teamName}: ${t.runs_per_game_l30?.toFixed(2) ?? 'N/A'} runs/game (last 30 days), OPS ${t.ops_l30 ?? 'N/A'} (OPS measures combined on-base ability and power hitting; above .750 is solid)`
+    const kPct  = t.k_pct  ?? null
+    const bbPct = t.bb_pct ?? null
+    const xwoba = t.xwoba_l30 ?? null
+    const hardHit = t.hard_hit_pct ?? null
+    const extras = [
+      kPct    != null ? `K%: ${kPct.toFixed(1)}% (strikeout rate; lower = puts more balls in play)` : null,
+      bbPct   != null ? `BB%: ${bbPct.toFixed(1)}%` : null,
+      xwoba   != null ? `xwOBA L30: ${xwoba.toFixed(3)} (expected weighted on-base from contact quality; .320+ is solid)` : null,
+      hardHit != null ? `Hard-hit%: ${hardHit.toFixed(1)}%` : null,
+    ].filter(Boolean).join(' | ')
+    return `- ${teamName}: ${t.runs_per_game_l30?.toFixed(2) ?? 'N/A'} runs/game (L30), OPS ${t.ops_l30 ?? 'N/A'}${extras ? ` | ${extras}` : ''}`
   }
-
+ 
+  // ── Defence ──────────────────────────────────────────────────────────────
   function defenseLine(t: any, teamName: string): string {
     if (!t) return `- ${teamName}: no fielding data`
     if (t.oaa != null) {
       const oaa = t.oaa
-      const desc = oaa >= 8 ? 'elite at converting batted balls into outs'
-        : oaa >= 3 ? 'above average in the field'
+      const desc = oaa >= 8  ? 'elite at converting batted balls into outs'
+        : oaa >= 3  ? 'above average in the field'
         : oaa >= -2 ? 'about average defensively'
         : oaa >= -6 ? 'below average — gives up more hits than most teams'
         : 'poor defensively — balls that should be outs tend to fall in'
@@ -394,10 +466,11 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     if (t.errors_l30 != null) return `- ${teamName}: ${t.errors_l30} errors in last 30 days`
     return `- ${teamName}: no fielding data`
   }
-
+ 
+  // ── Park ─────────────────────────────────────────────────────────────────
   function parkDescription(): string {
     if (!park) return 'No park data'
-    const hr = park.hr_factor ?? 1.0
+    const hr  = park.hr_factor  ?? 1.0
     const run = park.run_factor ?? 1.0
     if (park.is_dome) return 'Dome — no weather impact, neutral conditions'
     const hrDesc = hr >= 1.15 ? 'very home-run friendly (balls carry well here)'
@@ -410,107 +483,152 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
       : ''
     return `${inputs.venue_name}: ${hrDesc}${runDesc} (HR factor ${hr.toFixed(2)}, Run factor ${run.toFixed(2)})`
   }
-
+ 
+  // ── Weather ──────────────────────────────────────────────────────────────
   function weatherDescription(): string {
     if (inputs.is_dome || park?.is_dome) return 'Dome — no weather factor tonight.'
     const w = inputs.weather
-    if (!w) return 'No weather data available for tonight — omit the weather category from game_day_notes.'
+    if (!w) return 'No weather data available — omit weather from game_day_notes.'
     const bits: string[] = []
     bits.push(`Temp: ${w.temp_f}°F (feels like ${w.feels_like_f}°F)`)
     bits.push(`Conditions: ${w.conditions}`)
     if (w.wind_mph != null) bits.push(`Wind: ${w.wind_mph} mph from ${w.wind_direction_text ?? ''}`)
-    if (w.precipitation_chance != null) bits.push(`Precipitation chance: ${w.precipitation_chance}%`)
+    if (w.precipitation_chance != null) bits.push(`Rain chance: ${w.precipitation_chance}%`)
     if (w.cloud_cover != null) bits.push(`Cloud cover: ${w.cloud_cover}%`)
     return bits.join(' | ')
   }
-
+ 
+  // ── Platoon splits — richer format ───────────────────────────────────────
   const homeP_hand = homeP?.throws ?? null
   const awayP_hand = awayP?.throws ?? null
   const platoonLines: string[] = []
-
-  if (homeP_hand === 'L' && inputs.away_vs_lhp_record)
-    platoonLines.push(`${inputs.away_team} vs left-handed pitching (home pitcher is lefty): ${inputs.away_vs_lhp_record}`)
-  else if (homeP_hand === 'R' && inputs.away_vs_rhp_record)
-    platoonLines.push(`${inputs.away_team} vs right-handed pitching: ${inputs.away_vs_rhp_record}`)
-  if (awayP_hand === 'L' && inputs.home_vs_lhp_record)
-    platoonLines.push(`${inputs.home_team} vs left-handed pitching (away pitcher is lefty): ${inputs.home_vs_lhp_record}`)
-  else if (awayP_hand === 'R' && inputs.home_vs_rhp_record)
-    platoonLines.push(`${inputs.home_team} vs right-handed pitching: ${inputs.home_vs_rhp_record}`)
-
+ 
+  // Pull full split object not just record string so we can pass OPS + K%
+  const awayVsHand = homeP_hand === 'L' ? inputs.away_vs_lhp_record : inputs.away_vs_rhp_record
+  const homeVsHand = awayP_hand === 'L' ? inputs.home_vs_lhp_record : inputs.home_vs_rhp_record
+ 
+  if (homeP_hand && awayVsHand)
+    platoonLines.push(`${inputs.away_team} vs ${homeP_hand === 'L' ? 'left' : 'right'}-handed pitching (tonight's home starter throws ${homeP_hand}): ${awayVsHand}`)
+  if (awayP_hand && homeVsHand)
+    platoonLines.push(`${inputs.home_team} vs ${awayP_hand === 'L' ? 'left' : 'right'}-handed pitching (tonight's away starter throws ${awayP_hand}): ${homeVsHand}`)
+ 
+  // ── Series context ───────────────────────────────────────────────────────
   let seriesBlock = ''
   if (inputs.series_game_number && inputs.series_games_total) {
-    const awayW = inputs.away_series_wins ?? 0
-    const homeW = inputs.home_series_wins ?? 0
+    const awayW    = inputs.away_series_wins ?? 0
+    const homeW    = inputs.home_series_wins ?? 0
     const isRubber = inputs.series_game_number === inputs.series_games_total && awayW === homeW
     seriesBlock = `\nSERIES CONTEXT: ${isRubber
       ? `Deciding game — series tied ${awayW}-${homeW}`
-      : `Game ${inputs.series_game_number} of ${inputs.series_games_total} — ${awayW > homeW ? inputs.away_team : inputs.home_team} leads ${Math.max(awayW, homeW)}-${Math.min(awayW, homeW)}`}${inputs.series_runs_so_far ? ` | Scoring so far: ${inputs.series_runs_so_far}` : ''}`
+      : `Game ${inputs.series_game_number} of ${inputs.series_games_total} — ${awayW > homeW ? inputs.away_team : inputs.home_team} leads ${Math.max(awayW, homeW)}-${Math.min(awayW, homeW)}`
+    }${inputs.series_runs_so_far ? ` | Scoring so far: ${inputs.series_runs_so_far}` : ''}`
   }
-
-  const streakSection = inputs.streaks ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team) : ''
-  const keyAngles = buildKeyAngles(inputs, awayIsOpener, homeIsOpener)
-  const anglesBlock = keyAngles.length > 0 
-    ? `\n═══ KEY STORYLINES & WATCHABLE ANGLES ═══\n${keyAngles.map(a => `- ${a}`).join('\n')}\n` 
+ 
+  // ── Key angles ───────────────────────────────────────────────────────────
+  const keyAngles  = buildKeyAngles(inputs, awayIsOpener, homeIsOpener)
+  const anglesBlock = keyAngles.length > 0
+    ? `\n═══ KEY STORYLINES ═══\n${keyAngles.map(a => `- ${a}`).join('\n')}\n`
     : ''
-
+ 
+  const streakSection = inputs.streaks
+    ? buildStreakSection(inputs.streaks, inputs.home_team, inputs.away_team)
+    : ''
+ 
   return `GAME: ${inputs.away_team} @ ${inputs.home_team}
 VENUE: ${inputs.venue_name}${park?.is_dome ? ' (dome)' : ''}
 MODEL READ: ${inputs.confidence_tier !== 'tossup' ? `${inputs.confidence_tier} signal toward ${winner}` : 'genuinely close'} ${seriesBlock}${anglesBlock}
-
+ 
 ═══ PITCHING DATA ═══
 ${pitcherAnalysis(awayP, inputs.away_team, 'away')}
 ${pitcherAnalysis(homeP, inputs.home_team, 'home')}
-
+ 
 ═══ BULLPEN ═══
 ${bullpenLine(awayT, inputs.away_team)}
 ${bullpenLine(homeT, inputs.home_team)}
-
+ 
 ═══ OFFENCE (last 30 days) ═══
 ${offenseLine(awayT, inputs.away_team)}
 ${offenseLine(homeT, inputs.home_team)}
-
+ 
 ═══ DEFENCE ═══
 ${defenseLine(awayT, inputs.away_team)}
 ${defenseLine(homeT, inputs.home_team)}
-
+ 
 ═══ PARK ═══
 ${parkDescription()}
-
+ 
 ═══ WEATHER ═══
 ${weatherDescription()}
-
+ 
 ═══ RECORDS ═══
 - ${inputs.away_team}: ${awayT?.wins ?? '?'}-${awayT?.losses ?? '?'}
 - ${inputs.home_team}: ${homeT?.wins ?? '?'}-${homeT?.losses ?? '?'}
-
+ 
 ═══ PITCH ARSENAL ═══
 ${homeP ? `- ${homeP.player_name}: ${homeP.pitch_types ?? 'N/A'}` : ''}
 ${awayP ? `- ${awayP.player_name}: ${awayP.pitch_types ?? 'N/A'}` : ''}
-${platoonLines.length > 0 ? `\n═══ LINEUP MATCHUPS ═══\n${platoonLines.join('\n')}` : ''}
+${platoonLines.length > 0 ? `\n═══ LINEUP MATCHUPS (platoon splits) ═══\n${platoonLines.join('\n')}` : ''}
 ${streakSection}`
 }
-
-function buildStreakSection(streaks: GameStreaks, homeTeam: string, awayTeam: string): string {
-  const lines: string[] = ['', '═══ RECENT FORM ═══']
+ 
+// ─── Drop-in replacement for buildStreakSection ──────────────────────────────
+ 
+function buildStreakSection(
+  streaks: GameStreaks,
+  homeTeam: string,
+  awayTeam: string
+): string {
+  const lines: string[] = ['', '═══ RECENT FORM & HOT/COLD PLAYERS ═══']
+ 
+  // Pitcher recent form
   if (streaks.home_pitcher) {
-    const p = streaks.home_pitcher
-    const bits = []
-    if (p.last_3_era !== null) bits.push(`${p.last_3_era} ERA last 3 starts`)
-    if (p.last_3_k_per_9 !== null) bits.push(`${p.last_3_k_per_9} strikeouts per 9 innings last 3`)
-    if (p.current_scoreless_innings >= 6) bits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
-    if (bits.length > 0) lines.push(`- ${homeTeam} ${p.player_name}: ${bits.join(', ')}`)
+    const p    = streaks.home_pitcher
+    const bits: string[] = []
+    if (p.last_3_era !== null)
+      bits.push(`${p.last_3_era} ERA last 3 starts`)
+    if (p.last_3_k_per_9 !== null)
+      bits.push(`${p.last_3_k_per_9} K/9 last 3`)
+    if (p.current_scoreless_innings >= 6)
+      bits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
+    if (bits.length > 0)
+      lines.push(`- ${homeTeam} SP ${p.player_name}: ${bits.join(', ')}`)
   }
+ 
   if (streaks.away_pitcher) {
-    const p = streaks.away_pitcher
-    const bits = []
-    if (p.last_3_era !== null) bits.push(`${p.last_3_era} ERA last 3 starts`)
-    if (p.last_3_k_per_9 !== null) bits.push(`${p.last_3_k_per_9} strikeouts per 9 innings last 3`)
-    if (p.current_scoreless_innings >= 6) bits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
-    if (bits.length > 0) lines.push(`- ${awayTeam} ${p.player_name}: ${bits.join(', ')}`)
+    const p    = streaks.away_pitcher
+    const bits: string[] = []
+    if (p.last_3_era !== null)
+      bits.push(`${p.last_3_era} ERA last 3 starts`)
+    if (p.last_3_k_per_9 !== null)
+      bits.push(`${p.last_3_k_per_9} K/9 last 3`)
+    if (p.current_scoreless_innings >= 6)
+      bits.push(`${p.current_scoreless_innings} consecutive scoreless innings`)
+    if (bits.length > 0)
+      lines.push(`- ${awayTeam} SP ${p.player_name}: ${bits.join(', ')}`)
   }
-  if (streaks.home_hot_batters.length > 0)
-    lines.push(`- ${homeTeam} hot batters: ${streaks.home_hot_batters.slice(0, 2).map(b => `${b.player_name} (${b.streak_label})`).join(', ')}`)
-  if (streaks.away_hot_batters.length > 0)
-    lines.push(`- ${awayTeam} hot batters: ${streaks.away_hot_batters.slice(0, 2).map(b => `${b.player_name} (${b.streak_label})`).join(', ')}`)
+ 
+  // Hot batters — now includes OPS value for richer model callouts
+  // current_value = rolling OPS, extreme_value = recent peak/trough
+  // signal = 'heating' | 'cooling'
+  if ((streaks.home_hot_batters?.length ?? 0) > 0) {
+    const batters = streaks.home_hot_batters.slice(0, 3).map(b => {
+      const ops     = (b as any).current_value
+      const opsStr  = ops != null ? ` (.${Math.round(ops * 1000)} OPS rolling)` : ''
+      const signal  = (b as any).signal === 'cooling' ? ' — cooling off' : ' — heating up'
+      return `${b.player_name}${opsStr}${signal}`
+    })
+    lines.push(`- ${homeTeam} batters to watch: ${batters.join('; ')}`)
+  }
+ 
+  if ((streaks.away_hot_batters?.length ?? 0) > 0) {
+    const batters = streaks.away_hot_batters.slice(0, 3).map(b => {
+      const ops     = (b as any).current_value
+      const opsStr  = ops != null ? ` (.${Math.round(ops * 1000)} OPS rolling)` : ''
+      const signal  = (b as any).signal === 'cooling' ? ' — cooling off' : ' — heating up'
+      return `${b.player_name}${opsStr}${signal}`
+    })
+    lines.push(`- ${awayTeam} batters to watch: ${batters.join('; ')}`)
+  }
+ 
   return lines.length > 1 ? lines.join('\n') : ''
 }

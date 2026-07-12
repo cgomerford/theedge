@@ -12,6 +12,9 @@ import SignupForm from '@/components/SignupForm'
 import ScrollReveal from '@/components/ScrollReveal'
 import { getActiveSport, SPORT_LABELS } from '@/lib/active-sport'
 import FactorsTabs from '@/components/FactorsTabs'
+import { getCurrentSubscriber } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase'
+import { time } from 'console'
 
 export const revalidate = 1800
 
@@ -22,7 +25,6 @@ type Props = {
     error?: string
   }>
 }
-
 function timeAgo(iso: string): string {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
@@ -43,11 +45,32 @@ function tierText(tier: string) {
   if (tier === 'moderate') return 'Moderate edge'
   return 'Slight edge'
 }
-
-export default async function HomePage({ searchParams }: Props) {
+// Signed-in visitors land on their primary team's page instead of a
+// separate Dugout page — one page to build and maintain, not two that
+// drift apart every time either one gets a feature added.
+async function redirectSignedInHome() {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get('edge_session')
-  if (sessionCookie?.value) redirect('/dugout')
+  if (!sessionCookie?.value) return // anonymous visitor — cheap check, no DB call
+
+  const sub = await getCurrentSubscriber()
+  if (!sub) return
+
+  const supa = createAdminClient()
+  const { data: subscriber } = await supa
+    .from('subscribers')
+    .select('primary_team, teams')
+    .eq('id', sub.id)
+    .single()
+
+  const primarySlug = subscriber?.primary_team ?? subscriber?.teams?.[0] ?? 'phillies'
+  redirect(`/mlb/teams/${primarySlug}`)
+}
+
+// ...timeAgo, tierStyles, tierText helpers unchanged...
+
+export default async function HomePage({ searchParams }: Props) {
+  await redirectSignedInHome()
 
   const { primary: activeSport } = getActiveSport()
   const today = new Date().toISOString().split('T')[0]
@@ -345,6 +368,44 @@ export default async function HomePage({ searchParams }: Props) {
           </div>
         </section>
       </ScrollReveal>
+
+      {/* ── EXPLORE THE NUMBERS (new) ── */}
+      <ScrollReveal>
+        <section className="bg-white border-b border-stone-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-2">§ Dig into it yourself</div>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 mb-6">
+              Every stat<span className="text-[#FF5722]">.</span> Every player<span className="text-[#FF5722]">.</span> Your call<span className="text-[#FF5722]">.</span>
+            </h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+
+              <Link href="/stats" className="group block border border-stone-200 p-6 hover:border-stone-400 hover:shadow-sm transition">
+                <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#FF5722] mb-2">⊕ Player Stats</div>
+                <h3 className="font-serif text-xl font-bold text-stone-900 mb-2 group-hover:text-[#FF5722] transition">
+                  Season trend, game by game
+                </h3>
+                <p className="text-sm text-stone-500 leading-relaxed mb-4">
+                  AVG, OPS, ERA, WHIP and more — plotted across the whole season. Overlay any prior year to see the shape of a hot streak or a slow start.
+                </p>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 group-hover:text-stone-900 transition">Explore player stats →</span>
+              </Link>
+
+              <Link href="/lab" className="group block border border-stone-200 p-6 hover:border-stone-400 hover:shadow-sm transition">
+                <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#FF5722] mb-2">⊕ The Lab</div>
+                <h3 className="font-serif text-xl font-bold text-stone-900 mb-2 group-hover:text-[#FF5722] transition">
+                  Build your own comparisons
+                </h3>
+                <p className="text-sm text-stone-500 leading-relaxed mb-4">
+                  Put up to four players or two teams side by side — radar profiles, bar compares, rolling trends. The same factor counts and leans, laid out your way.
+                </p>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-stone-400 group-hover:text-stone-900 transition">Open the Lab →</span>
+              </Link>
+
+            </div>
+          </div>
+        </section>
+      </ScrollReveal>
+
       {/* ── FREE VS PRO (replaces the old "four levels" grid) ── */}
       <ScrollReveal>
         <section className="bg-white border-b border-stone-200">
@@ -462,6 +523,7 @@ export default async function HomePage({ searchParams }: Props) {
           <div className="flex flex-wrap gap-x-8 gap-y-3 mb-6 text-[10px] font-mono uppercase tracking-widest text-stone-500">
             <Link href="/mlb" className="hover:text-stone-900 transition">MLB</Link>
             <Link href="/nfl" className="hover:text-stone-900 transition">NFL</Link>
+            <Link href="/stats" className="hover:text-stone-900 transition">Stats</Link>
             <Link href="/track-record" className="hover:text-stone-900 transition">Track Record</Link>
             <Link href="/why-edge" className="hover:text-stone-900 transition">Why The Edge</Link>
             <Link href="/pricing" className="hover:text-stone-900 transition">Pricing</Link>

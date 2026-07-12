@@ -1,10 +1,3 @@
-// src/app/track-record/page.tsx
-//
-// HISTORICAL ARCHIVE PAGE
-//
-// Displays the pre-game factor analysis side-by-side with the actual final box score.
-// Uses neutral terminology ("Factor Lean") and neutral colors to maintain an objective, 
-// non-betting data terminal aesthetic.
 
 import { Metadata } from 'next'
 import Link from 'next/link'
@@ -23,44 +16,77 @@ export default async function HistoricalArchivePage() {
   const recent = await getRecentReads(50)
 
   return (
-    <main className="min-h-screen bg-[#fafaf9]">
+    <main className="min-h-screen bg-[#fafaf9] font-sans">
       <SiteHeader />
 
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-6xl mx-auto px-6 py-10 md:py-16">
         {/* ════════════════════════════════════════════════
-            HERO & DISCLAIMER
+            HERO SECTION - Like "The Stats" / Dashboard
             ════════════════════════════════════════════════ */}
-        <header className="mb-10">
-          <div className="text-[#ea580c] text-[10px] font-mono uppercase tracking-widest mb-3">
-            — Historical Data Archive
+        <header className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-[#ea580c] text-xs font-mono uppercase tracking-[3px]">THE EDGE • MLB</div>
           </div>
+          
           <h1
-            className="text-4xl md:text-5xl font-bold text-stone-900 mb-5 tracking-tight"
+            className="text-5xl md:text-6xl font-bold text-stone-900 mb-3 tracking-tighter"
             style={{ fontFamily: 'Fraunces, serif' }}
           >
             The Archive.
           </h1>
-          <p className="text-base md:text-lg text-stone-500 leading-relaxed max-w-2xl font-serif italic mb-8">
-            We don&apos;t hide our math. Below is a raw log of recent matchups, showing exactly where our 8-factor model identified a structural lean at 10:00 AM ET, side-by-side with the final box score. 
+          <p className="text-xl text-stone-600 max-w-2xl leading-tight font-light">
+            Every matchup. Every structural lean. Side by side.
           </p>
-
-          <div className="bg-stone-100 border border-stone-200 rounded-lg p-4 md:p-5">
-            <h2 className="text-[9px] font-mono text-stone-500 uppercase tracking-widest mb-1 font-bold">
-              Information Only
-            </h2>
-            <p className="text-xs text-stone-500 leading-relaxed font-serif">
-              This archive is provided for research and transparency purposes. The Edge provides statistical analysis only. We do not aggregate "win rates" because this is not a tipster service. Users bear sole responsibility for any actions taken using our historical or current data.
-            </p>
-          </div>
+          <p className="text-base text-stone-500 mt-2 max-w-xl">
+            Pre-game factor analysis compared to final outcomes. Raw transparency.
+          </p>
         </header>
 
-        {/* ════════════════════════════════════════════════
-            GAME LOGS (NEUTRAL SIDE-BY-SIDE UI)
-            ════════════════════════════════════════════════ */}
-        <section className="space-y-6 mb-12">
+        {/* Disclaimer - More subtle, like info panels in screenshots */}
+        <div className="mb-12 bg-white border border-stone-200 rounded-2xl p-6 text-sm">
+          <div className="flex items-start gap-4">
+            <div className="text-[#ea580c] mt-0.5">ⓘ</div>
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-stone-500 mb-1">RESEARCH ONLY</div>
+              <p className="text-stone-600 leading-relaxed">
+                This is a historical log of our 8-factor model. Provided for transparency and analysis. 
+                No win-rate aggregation. Users are responsible for their own decisions.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters / Controls - Inspired by screenshots */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8 items-end">
+          <div className="flex-1">
+            <div className="text-xs font-mono uppercase tracking-widest text-stone-500 mb-2">RECENT GAMES</div>
+            <div className="flex gap-2">
+              <button className="px-5 py-2.5 bg-white border border-stone-300 rounded-xl text-sm font-medium hover:border-stone-400 transition flex items-center gap-2">
+                <span>All Slates</span>
+                <span className="text-xs text-stone-400">↓</span>
+              </button>
+              <button className="px-5 py-2.5 bg-white border border-stone-300 rounded-xl text-sm font-medium hover:border-stone-400 transition">
+                Last 30 Days
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <div className="text-right">
+              <div className="text-xs font-mono uppercase tracking-widest text-stone-500">SHOWING</div>
+              <div className="text-2xl font-mono font-semibold text-stone-900">{recent.length}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* GAME LOGS - Enhanced card design */}
+        <section className="space-y-6">
           {recent.length === 0 ? (
-            <div className="text-center py-12 border border-stone-200 rounded-xl bg-white">
-              <p className="font-serif italic text-stone-400">Archive is currently building. Check back soon.</p>
+            <div className="text-center py-20 bg-white border border-stone-200 rounded-3xl">
+              <div className="mx-auto w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+                📊
+              </div>
+              <p className="font-light text-stone-400 text-lg">Archive is populating. Check back soon.</p>
             </div>
           ) : (
             recent.map((r, i) => {
@@ -74,71 +100,116 @@ export default async function HistoricalArchivePage() {
               const winnerTeam =
                 r.actual_winner === 'home' ? r.home_team : r.away_team
 
+              const isLeanHome = r.factor_lean === 'home'
+              const isWinnerHome = r.actual_winner === 'home'
+
               return (
-                <div key={`${r.game_pk}-${i}`} className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm hover:border-stone-300 transition">
-                  
-                  {/* Card Header: Matchup & Date */}
-                  <div className="bg-[#fafaf9] px-5 py-3 border-b border-stone-200 flex justify-between items-center">
-                    <span className="font-bold text-sm text-stone-900 tracking-wide">
-                      {r.away_team} <span className="text-stone-400 font-mono text-xs mx-1">@</span> {r.home_team}
-                    </span>
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-stone-400">
-                      {formatDate(r.game_date)}
-                    </span>
+                <div 
+                  key={`${r.game_pk}-${i}`} 
+                  className="bg-white border border-stone-200 rounded-3xl overflow-hidden hover:shadow-xl hover:border-stone-300 transition-all duration-200 group"
+                >
+                  {/* Header with teams and date - More prominent */}
+                  <div className="px-8 py-5 border-b border-stone-100 bg-[#fafaf9] flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 text-sm font-semibold">
+                        <span className="text-stone-900">{r.away_team}</span>
+                        <span className="text-stone-300 font-mono">@</span>
+                        <span className="text-stone-900">{r.home_team}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="font-mono text-xs uppercase tracking-widest text-stone-500">
+                        {formatDate(r.game_date)}
+                      </div>
+                      <div className="h-5 w-px bg-stone-200"></div>
+                      <div className="text-xs px-3 py-1 bg-white border border-stone-200 rounded-full font-mono text-stone-500">
+                        GAME {r.game_pk}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Card Body: Pre-Game vs Outcome */}
-                  <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-stone-200">
+                  {/* Main Content Grid */}
+                  <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-stone-100">
                     
-                    {/* Left: Pre-Game Analysis */}
-                    <div className="p-5 flex flex-col justify-center bg-white">
-                      <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
-                        Pre-Game Data
+                    {/* PRE-GAME ANALYSIS - Left Side */}
+                    <div className="p-8">
+                      <div className="uppercase text-[#ea580c] text-xs font-mono tracking-[1px] mb-4 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[#ea580c] rounded-full animate-pulse"></div>
+                        PRE-GAME 8-FACTOR MODEL
                       </div>
+                      
                       {r.factor_lean === 'split' ? (
-                        <div>
-                          <div className="text-sm font-serif font-bold text-stone-800">
-                            Factors evenly split
-                          </div>
-                          <div className="text-xs text-stone-500 mt-1 font-serif italic">
-                            No clear structural lean identified.
+                        <div className="space-y-4">
+                          <div className="text-2xl font-light text-stone-400">Balanced</div>
+                          <div className="text-stone-600">
+                            Factors were evenly split across both sides. No dominant structural lean.
                           </div>
                         </div>
                       ) : (
                         <div>
-                          <div className="text-sm font-serif font-bold text-stone-900">
-                            Majority Data Factors : <span className="text-stone-900">{leanTeam}</span>
+                          <div className="flex items-baseline gap-3 mb-1">
+                            <span className="text-4xl font-semibold text-stone-900 tracking-tighter">{leanTeam}</span>
+                            <span className="text-sm font-mono uppercase text-emerald-600">LEAN</span>
                           </div>
-                          <div className="text-xs text-stone-500 mt-1 font-serif italic">
-                            {r.lean_factors} of 8 data factors were for the {r.factor_lean} side.
+                          <div className="text-stone-500 text-sm">
+                            {r.lean_factors} of 8 data factors favored the {r.factor_lean} side
+                          </div>
+                          
+                          {/* Mini factor visualization */}
+                          <div className="mt-6 h-2 bg-stone-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                              style={{ width: `${(r.lean_factors / 8) * 100}%` }}
+                            ></div>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Right: Final Outcome */}
-                    <div className="p-5 flex flex-col justify-center bg-[#fafaf9]">
-                      <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">
-                        Final Outcome
-                      </div>
+                    {/* FINAL OUTCOME - Right Side */}
+                    <div className="p-8 bg-[#fafaf9]">
+                      <div className="uppercase text-stone-500 text-xs font-mono tracking-[1px] mb-4">FINAL BOX SCORE</div>
+                      
                       {r.away_score != null && r.home_score != null ? (
-                        <div>
-                          <div className="text-sm font-mono font-bold text-stone-900 mb-1">
-                            <span>{r.away_team} {r.away_score}</span>
-                            <span className="text-stone-300 mx-1.5">—</span>
-                            <span>{r.home_score} {r.home_team}</span>
+                        <div className="space-y-6">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                              <div className={`text-5xl font-mono font-semibold tabular-nums ${isWinnerHome ? 'text-stone-400' : 'text-stone-900'}`}>
+                                {r.away_score}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{r.away_team}</div>
+                                <div className="text-xs text-stone-500">AWAY</div>
+                              </div>
+                            </div>
+                            
+                            <div className="text-stone-300 text-4xl font-light">—</div>
+                            
+                            <div className="flex items-center gap-4 text-right">
+                              <div>
+                                <div className="text-sm font-medium">{r.home_team}</div>
+                                <div className="text-xs text-stone-500">HOME</div>
+                              </div>
+                              <div className={`text-5xl font-mono font-semibold tabular-nums ${isWinnerHome ? 'text-stone-900' : 'text-stone-400'}`}>
+                                {r.home_score}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-stone-500 font-serif italic">
-                            Winner: <span className="font-semibold text-stone-700">{winnerTeam}</span>
+                          
+                          <div className="pt-4 border-t border-stone-200">
+                            <div className="inline-flex items-center gap-2 text-sm">
+                              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">WINNER</div>
+                              <span className="font-semibold text-stone-800">{winnerTeam}</span>
+                            </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm font-serif italic text-stone-400">
-                          Game pending or postponed
+                        <div className="py-12 text-center text-stone-400 italic">
+                          Game data pending
                         </div>
                       )}
                     </div>
-
                   </div>
                 </div>
               )
@@ -146,18 +217,18 @@ export default async function HistoricalArchivePage() {
           )}
         </section>
 
-        {/* ════════════════════════════════════════════════
-            FOOTER CTA
-            ════════════════════════════════════════════════ */}
-        <div className="text-center pb-12 border-t border-stone-200 pt-10">
-          <h3 className="text-xl font-serif font-bold text-stone-900 mb-3">Stop looking backward.</h3>
-          <p className="text-stone-500 font-serif italic mb-6">See where the structural leans lie for tonight's slate.</p>
-          <Link
-            href="/mlb"
-            className="inline-block bg-[#ea580c] text-white px-8 py-3 text-[10px] font-mono uppercase tracking-widest font-bold hover:bg-orange-700 transition"
-          >
-            View Today&apos;s Games →
-          </Link>
+        {/* Footer CTA - Clean like the dashboard */}
+        <div className="mt-16 text-center">
+          <div className="inline-flex flex-col items-center">
+            <div className="text-stone-400 text-sm mb-2 tracking-widest">NEXT UP</div>
+            <Link
+              href="/mlb"
+              className="group inline-flex items-center justify-center gap-3 bg-stone-900 hover:bg-black text-white px-10 py-4 rounded-2xl text-sm font-mono uppercase tracking-[2px] transition-all active:scale-[0.985]"
+            >
+              TODAY&apos;S STRUCTURAL LEANS
+              <span className="group-hover:translate-x-1 transition">→</span>
+            </Link>
+          </div>
         </div>
       </div>
     </main>

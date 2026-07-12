@@ -3,19 +3,21 @@ export const metadata = {
   description: "Why The Edge exists, who's behind it, and what we believe about sports analytics.",
 }
 
+import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 
 export default function AboutPage() {
   return (
- <main className="min-h-screen bg-stone-50 text-stone-900">
+    <main className="min-h-screen bg-[#FAF8F3] text-stone-900">
       <SiteHeader variant="page" />
-      <div className="max-w-3xl mx-auto px-6 py-12">
-        <a href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+        <Link href="/" className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] hover:underline">
           ← Back to home
-        </a>
+        </Link>
 
-        <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mt-8 mb-12">
-          About The Edge.
+        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2">§ About</div>
+        <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mb-12">
+          About The Edge<span className="text-[#FF5722]">.</span>
         </h1>
 
         <div className="space-y-6 text-lg leading-relaxed text-stone-700 font-serif">
@@ -36,8 +38,8 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-stone-300 text-sm text-stone-500">
-          <p>Have a question, a story tip, or want to partner? <a href="mailto:hello@edgereportdaily.com" className="text-orange-600 hover:underline">hello@edgereportdaily.com</a></p>
+        <div className="mt-16 pt-8 border-t border-stone-200 text-sm text-stone-500 font-mono">
+          <p>Have a question, a story tip, or want to partner? <a href="mailto:hello@edgereportdaily.com" className="text-[#FF5722] hover:underline">hello@edgereportdaily.com</a></p>
         </div>
       </div>
     </main>

@@ -154,7 +154,7 @@ export async function getTwoStartPitchers(): Promise<TwoStartPitcher[]> {
   }
   const { data: teamStatsRows } = await supa
     .from('team_stats')
-    .select('team_name, wrc_plus, runs_per_game_l30')
+   .select('team_name, wrc_plus_l30, runs_per_game_l30')
     .in('team_name', Array.from(oppTeamNames))
   const teamStatsMap = new Map<string, any>()
   for (const row of teamStatsRows ?? []) {

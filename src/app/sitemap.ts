@@ -8,14 +8,28 @@
  *  - All 30 MLB team pages
  *  - All game preview pages for today
  *  - All game preview pages from the past 14 days (still relevant for backlinks)
+ *  - All active-roster player stat pages (30 teams' rosters)
  *
- * Re-runs on each request (cached for `revalidate` seconds).
+ * Re-runs on each request (cached for `revalidate` seconds — added below,
+ * since the player-roster section makes 30 live MLB API calls per build and
+ * rosters don't meaningfully change day to day).
+ *
  * After deploying, submit https://edgereportdaily.com/sitemap.xml to
  * Google Search Console.
+ *
+ * Honesty note on player page URLs: they include the ?subject=&name=&team=
+ * &pos= query string the page itself needs to render without an extra
+ * lookup. The page's generateMetadata sets a canonical link back to the
+ * bare /stats/player/[id] URL, so this doesn't create duplicate-content
+ * signals — Google is told which URL is authoritative even though the
+ * sitemap lists the fuller one.
  */
 
 import type { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase'
+import { getTeamRoster, TEAM_NAMES, LEAGUE_BY_TEAM_ID } from '@/lib/lab'
+
+export const revalidate = 86400 // 24h — player-roster section is 30 live API calls, don't redo that per-request
 
 const BASE_URL = 'https://edgereportdaily.com'
 
@@ -39,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/`,                   lastModified: now, changeFrequency: 'daily',  priority: 1.0 },
     { url: `${BASE_URL}/tonight`,            lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${BASE_URL}/mlb`,                lastModified: now, changeFrequency: 'daily',  priority: 0.9 },
+    { url: `${BASE_URL}/stats`,              lastModified: now, changeFrequency: 'daily',  priority: 0.8 },
     { url: `${BASE_URL}/fantasy`,            lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${BASE_URL}/fantasy/streamers`,  lastModified: now, changeFrequency: 'daily',  priority: 0.8 },
     { url: `${BASE_URL}/fantasy/platforms`,  lastModified: now, changeFrequency: 'daily',  priority: 0.8 },
@@ -90,5 +105,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('sitemap: game pages query failed', e)
   }
 
-  return [...staticPages, ...teamPages, ...gamePages]
+  // ── 4. Player stat pages (active MLB rosters, all 30 teams) ────────────────
+  // These are the deliberately-public "prove value in 5 seconds" share-card
+  // pages — see PlayerShareBuilder.tsx's own header comment. Previously
+  // absent from the sitemap entirely, meaning Google had no path to them.
+  let playerPages: MetadataRoute.Sitemap = []
+  try {
+    const teamIds = Object.keys(LEAGUE_BY_TEAM_ID).map(Number)
+    const rosterResults = await Promise.all(
+      teamIds.map(async teamId => {
+        try {
+          const roster = await getTeamRoster(teamId)
+          const teamAbbr = TEAM_NAMES[teamId]?.abbreviation ?? ''
+          return roster.map(p => ({
+            id: p.id,
+            subject: p.primaryPosition === 'P' ? 'pitcher' : 'batter',
+            name: p.fullName,
+            team: teamAbbr,
+            pos: p.primaryPosition,
+          }))
+        } catch {
+          return [] // one team's roster fetch failing shouldn't drop the other 29
+        }
+      })
+    )
+
+    playerPages = rosterResults.flat().map(p => ({
+      url: `${BASE_URL}/stats/player/${p.id}?subject=${p.subject}&name=${encodeURIComponent(p.name)}&team=${encodeURIComponent(p.team)}&pos=${encodeURIComponent(p.pos)}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.5,
+    }))
+  } catch (e) {
+    console.error('sitemap: player pages query failed', e)
+  }
+
+  return [...staticPages, ...teamPages, ...gamePages, ...playerPages]
 }

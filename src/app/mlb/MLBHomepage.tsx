@@ -3,39 +3,51 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { MLBDivisionStandings, MLBStatLeader, MLBNewsItem } from '@/lib/mlb-homepage'
-import { MLB_STAT_CATEGORIES } from '@/lib/mlb-homepage'
 import type { MLBGame } from '@/lib/mlb'
 import { slugifyGame, shortName, teamLogoUrl } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
-import MLBFantasySection from '@/components/MLBFantasySection'
 import type { FantasyPicksByType } from '@/lib/fantasy'
 import type { TeamTransaction } from '@/lib/team-transactions'
 
-// ─── Types ────────────────────────────────────────────────
+/**
+ * MLBHomepage — redesigned
+ *
+ * Brand tokens:
+ *   Cream    #FAF8F3
+ *   Orange   #FF5722
+ *   Yellow   #FDE047
+ *   Black    #1A1A1A
+ *   Muted    #A3A3A3
+ *   Border   rgba(26,26,26,0.08)
+ *
+ * Fonts (loaded globally):
+ *   Fraunces     — serif display
+ *   Bebas Neue   — display numbers
+ *   JetBrains Mono — data / labels
+ *
+ * Layout: editorial broadsheet — full-bleed game cards as hero,
+ *   standings + transactions as sidebar, news as thin strip.
+ *   Stats/leaders removed to /mlb/stats.
+ */
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 type Props = {
   standings: MLBDivisionStandings[]
-  statLeaders: Record<string, MLBStatLeader[]>
   games: MLBGame[]
   predictions: Map<number, EdgePrediction>
   news: MLBNewsItem[]
   today: string
-  fantasyPicks: FantasyPicksByType
-  fantasyIsStale: boolean
   isPro: boolean
   activeIL: TeamTransaction[]
   recentTransactions: TeamTransaction[]
+  // kept for compatibility — not rendered on homepage any more
+  statLeaders?: Record<string, MLBStatLeader[]>
+  fantasyPicks?: FantasyPicksByType
+  fantasyIsStale?: boolean
 }
 
-// ─── Helpers ──────────────────────────────────────────────
-function timeAgo(iso: string): string {
-  if (!iso) return ''
-  const diff = Date.now() - new Date(iso).getTime()
-  const h = Math.floor(diff / 3_600_000)
-  if (h < 1) return 'just now'
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatGameTime(dateStr: string): string {
   try {
@@ -52,441 +64,628 @@ function parseStreak(code: string): { type: 'W' | 'L' | null; count: number } {
   return { type: m[1] as 'W' | 'L', count: parseInt(m[2]) }
 }
 
-function streakLabel(code: string): string {
-  const { type, count } = parseStreak(code)
-  if (!type) return code || '—'
-  return `${count}-game ${type === 'W' ? 'win' : 'loss'} streak`
+function timeAgo(iso: string): string {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const h = Math.floor(diff / 3_600_000)
+  if (h < 1) return 'just now'
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
-// ─── Circular Headshot ────────────────────────────────────
-function CircularHeadshot({ src, size = 28, alt = '' }: { src: string; size?: number; alt?: string }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', overflow: 'hidden',
-      flexShrink: 0, background: '#f4f4f5', border: '1px solid #e4e4e7'
-    }}>
-      <img src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-    </div>
-  )
+// Factor count from edge score — mirrors EdgeIndicatorV6 logic
+function factorCount(pred: EdgePrediction): { count: number; total: number; winner: string } | null {
+  if (!pred?.components) return null
+  const comps = pred.components as Record<string, number>
+  const winner = pred.predicted_winner
+  const total  = Object.keys(comps).length
+  // Count any factor that leans toward the predicted winner (even marginally)
+  const count  = Object.values(comps).filter(v =>
+    winner === 'home' ? v > 0 : v < 0
+  ).length
+  return { count, total, winner }
 }
 
-// ─── Transaction badge ────────────────────────────────────
+function tierColor(tier: string | undefined): string {
+  return { strong: '#27500A', moderate: '#633806', slight: '#0C447C', tossup: '#5F5E5A' }[tier ?? ''] ?? '#5F5E5A'
+}
+function tierBg(tier: string | undefined): string {
+  return { strong: '#EAF3DE', moderate: '#FAEEDA', slight: '#E6F1FB', tossup: '#F1EFE8' }[tier ?? ''] ?? '#F1EFE8'
+}
+function tierLabel(tier: string | undefined): string {
+  return { strong: 'Strong lean', moderate: 'Moderate lean', slight: 'Slight lean', tossup: 'Toss-up' }[tier ?? ''] ?? '—'
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
 function TxBadge({ category }: { category: string }) {
-  const map: Record<string, { color: string; bg: string; border: string }> = {
-    IL:         { color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-    TRADE:      { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-    SIGNING:    { color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
-    CALLUP:     { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
-    ACTIVATION: { color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
-    OPTION:     { color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' },
-    DFA:        { color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  const map: Record<string, { color: string; bg: string }> = {
+    IL:         { color: '#b45309', bg: '#fffbeb' },
+    TRADE:      { color: '#1d4ed8', bg: '#eff6ff' },
+    SIGNING:    { color: '#15803d', bg: '#f0fdf4' },
+    CALLUP:     { color: '#7c3aed', bg: '#faf5ff' },
+    ACTIVATION: { color: '#0369a1', bg: '#f0f9ff' },
+    OPTION:     { color: '#6b7280', bg: '#f9fafb' },
+    DFA:        { color: '#dc2626', bg: '#fef2f2' },
   }
-  const s = map[category] ?? { color: '#374151', bg: '#f9fafb', border: '#e5e7eb' }
+  const s = map[category] ?? { color: '#374151', bg: '#f9fafb' }
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, color: s.color,
-      background: s.bg, border: `1px solid ${s.border}`,
-      borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0
+      fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+      color: s.color, background: s.bg,
+      borderRadius: 3, padding: '2px 5px',
+      whiteSpace: 'nowrap', flexShrink: 0,
+      fontFamily: "'JetBrains Mono', monospace",
     }}>
       {category}
     </span>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────
+// ─── Game Card ────────────────────────────────────────────────────────────────
+
+function GameCard({ game, pred }: { game: MLBGame; pred: EdgePrediction | undefined }) {
+  const slug    = slugifyGame(game)
+  const isLive  = game.status.abstractGameState === 'Live'
+  const isFinal = game.status.abstractGameState === 'Final'
+
+  const awayName = shortName(game.teams.away.team.name)
+  const homeName = shortName(game.teams.home.team.name)
+
+  const factors = pred ? factorCount(pred) : null
+  const winner  = pred?.predicted_winner === 'home' ? homeName : awayName
+
+  // Team that the model leans toward
+  const leanAbbr = pred?.predicted_winner === 'home'
+    ? game.teams.home.team.abbreviation
+    : game.teams.away.team.abbreviation
+
+  return (
+    <Link href={`/mlb/${slug}`} style={{ textDecoration: 'none', display: 'block' }}>
+      <article style={{
+        background: '#FFFFFF',
+        border: '1px solid rgba(26,26,26,0.08)',
+        padding: '16px 18px 14px',
+        cursor: 'pointer',
+        transition: 'border-color 0.15s',
+      }}>
+
+        {/* Top row — teams + time/status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+
+          {/* Away */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
+            <img
+              src={teamLogoUrl(game.teams.away.team.id)}
+              alt={game.teams.away.team.abbreviation}
+              width={24} height={24}
+              style={{ flexShrink: 0 }}
+            />
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13, fontWeight: 700, color: '#1A1A1A',
+              letterSpacing: '0.04em',
+            }}>
+              {game.teams.away.team.abbreviation}
+            </span>
+            {(isLive || isFinal) && (
+              <span style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 18, color: '#1A1A1A', letterSpacing: '0.03em',
+              }}>
+                {(game as any).teams?.away?.score ?? 0}
+              </span>
+            )}
+          </div>
+
+          {/* Centre — time or score separator */}
+          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+            {isLive ? (
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, fontWeight: 700, color: '#FF5722',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+              }}>
+                ● LIVE
+              </span>
+            ) : isFinal ? (
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 9, color: '#A3A3A3', letterSpacing: '0.08em',
+              }}>
+                FINAL
+              </span>
+            ) : (
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11, fontWeight: 600, color: '#FF5722',
+              }}>
+                {formatGameTime(game.gameDate)}
+              </span>
+            )}
+          </div>
+
+          {/* Home */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
+            {(isLive || isFinal) && (
+              <span style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 18, color: '#1A1A1A', letterSpacing: '0.03em',
+              }}>
+                {(game as any).teams?.home?.score ?? 0}
+              </span>
+            )}
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13, fontWeight: 700, color: '#1A1A1A',
+              letterSpacing: '0.04em', textAlign: 'right',
+            }}>
+              {game.teams.home.team.abbreviation}
+            </span>
+            <img
+              src={teamLogoUrl(game.teams.home.team.id)}
+              alt={game.teams.home.team.abbreviation}
+              width={24} height={24}
+              style={{ flexShrink: 0 }}
+            />
+          </div>
+        </div>
+
+        {/* Summary line */}
+        {pred?.summary ? (
+          <p style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 13, color: '#3D3D3D', lineHeight: 1.5,
+            margin: '0 0 10px',
+            fontStyle: 'italic',
+          }}>
+            {pred.summary}
+          </p>
+        ) : (
+          <p style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, color: '#A3A3A3', margin: '0 0 10px',
+          }}>
+            Preview generating…
+          </p>
+        )}
+
+        {/* Factor lean pill */}
+        {factors && pred?.confidence_tier && pred.confidence_tier !== 'tossup' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11, fontWeight: 700,
+              color: tierColor(pred.confidence_tier),
+              background: tierBg(pred.confidence_tier),
+              padding: '3px 8px', borderRadius: 3,
+              letterSpacing: '0.02em',
+            }}>
+              {factors.count} of {factors.total} lean {leanAbbr}
+            </span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, color: '#A3A3A3',
+            }}>
+              {tierLabel(pred.confidence_tier)}
+            </span>
+          </div>
+        ) : pred?.confidence_tier === 'tossup' ? (
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11, fontWeight: 700,
+            color: '#5F5E5A', background: '#F1EFE8',
+            padding: '3px 8px', borderRadius: 3,
+          }}>
+            Toss-up
+          </span>
+        ) : null}
+
+      </article>
+    </Link>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function MLBHomepage({
-  standings, statLeaders, games, predictions, news, today,
-  fantasyPicks, fantasyIsStale, isPro, activeIL, recentTransactions
+  standings, games, predictions, news, today,
+  isPro, activeIL, recentTransactions,
 }: Props) {
   const [activeLeague, setActiveLeague] = useState<'AL' | 'NL'>('AL')
-
-  const activeDivisions = standings.filter(d => d.league === activeLeague)
 
   const sortedGames = [...games].sort((a, b) =>
     new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime()
   )
 
-  const allTeams = standings.flatMap(d => d.teams.map(t => ({ ...t, division: d.division, league: d.league })))
-  const hotTeams = allTeams
-    .map(t => ({ ...t, parsed: parseStreak(t.streak) }))
-    .filter(t => t.parsed.type === 'W' && t.parsed.count >= 3)
-    .sort((a, b) => b.parsed.count - a.parsed.count)
-    .slice(0, 5)
-  const coldTeams = allTeams
-    .map(t => ({ ...t, parsed: parseStreak(t.streak) }))
-    .filter(t => t.parsed.type === 'L' && t.parsed.count >= 3)
-    .sort((a, b) => b.parsed.count - a.parsed.count)
-    .slice(0, 5)
+  const liveGames     = sortedGames.filter(g => g.status.abstractGameState === 'Live')
+  const upcomingGames = sortedGames.filter(g => g.status.abstractGameState === 'Preview')
+  const finalGames    = sortedGames.filter(g => g.status.abstractGameState === 'Final')
+
+  const activeDivisions = standings.filter(d => d.league === activeLeague)
+  const edgesReady = games.filter(g => predictions.get(g.gamePk)?.confidence_tier).length
 
   return (
-    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#fff' }}>
+    <div style={{ background: '#FAF8F3', minHeight: '100vh' }}>
 
-      {/* ── Header ── */}
-      <div style={{
-        borderBottom: '1px solid #e5e5e5', padding: '18px 24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16
-      }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '1px' }}>THE EDGE • {today}</div>
-          <h1 style={{ fontSize: 34, fontWeight: 800, color: '#111827', margin: 0, lineHeight: 1, letterSpacing: '-1px' }}>
-            MLB<span style={{ color: '#f97316' }}>.</span>
-          </h1>
-        </div>
-        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {[
-            { value: games.length, label: 'GAMES TODAY' },
-            { value: games.filter(g => predictions.get(g.gamePk)?.edge_score != null).length, label: 'EDGES' },
-            { value: games.filter(g => !predictions.get(g.gamePk)?.edge_score).length, label: 'PENDING' },
-          ].map((stat, i) => (
-            <div key={i} style={{ textAlign: 'center', minWidth: 70 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#111827' }}>{stat.value}</div>
-              <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2, letterSpacing: '0.5px' }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-        
-      </div>
-
-      {/* ══════════════════════════════════════════════════════
-          PREVIEWS (3/4) + NEWS (1/4)
-      ══════════════════════════════════════════════════════ */}
       <style>{`
-        .top-section-grid {
+        .mlb-layout {
           display: grid;
           grid-template-columns: 1fr;
-          border-bottom: 1px solid #e5e5e5;
+          max-width: 1160px;
+          margin: 0 auto;
+          padding: 0 16px;
+          gap: 0;
         }
-        @media (min-width: 768px) {
-          .top-section-grid { grid-template-columns: 3fr 1fr; }
+        @media (min-width: 960px) {
+          .mlb-layout {
+            grid-template-columns: 1fr 320px;
+            padding: 0 24px;
+            gap: 0 32px;
+          }
         }
-        .previews-grid {
+        .game-card-grid {
           display: grid;
           grid-template-columns: 1fr;
           gap: 1px;
-          background: #f4f4f5;
-        }
-        @media (min-width: 768px) {
-          .previews-grid { grid-template-columns: 1fr 1fr; }
-        }
-      `}</style>
-      <div className="top-section-grid">
-
-        {/* PREVIEWS */}
-        <div style={{ borderRight: '1px solid #e5e5e5' }}>
-          <div style={{
-            padding: '12px 20px', borderBottom: '1px solid #e5e5e5',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            background: '#fafafa'
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>
-              § PREVIEWS • {games.length} GAMES
-            </span>
-       <Link href="/mlb/scores" style={{ fontSize: 11, color: '#6b7280', textDecoration: 'none' }}>Full slate →</Link>
-          </div>
-          <div className="previews-grid">
-            {sortedGames.map((game) => {
-              const slug = slugifyGame(game)
-              const pred = predictions.get(game.gamePk)
-              const isLive = game.status.abstractGameState === 'Live'
-              const isFinal = game.status.abstractGameState === 'Final'
-              return (
-                <Link key={game.gamePk} href={`/mlb/${slug}`} style={{
-                  display: 'block', padding: '14px 18px',
-                  background: '#fff', textDecoration: 'none', borderBottom: '1px solid #f4f4f5'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <img src={teamLogoUrl(game.teams.away.team.id)} alt="" width={18} height={18} />
-                    <span style={{ fontSize: 10, color: '#9ca3af' }}>@</span>
-                    <img src={teamLogoUrl(game.teams.home.team.id)} alt="" width={18} height={18} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
-                      {game.teams.away.team.abbreviation} @ {game.teams.home.team.abbreviation}
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: isLive ? '#f97316' : '#6b7280', fontWeight: isLive ? 600 : 400 }}>
-                      {isLive ? 'LIVE' : isFinal ? 'Final' : formatGameTime(game.gameDate)}
-                    </span>
-                  </div>
-                  {pred?.summary ? (
-                    <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.45, margin: 0 }}>{pred.summary}</p>
-                  ) : (
-                    <p style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>Preview generating…</p>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* NEWS */}
-        <div style={{ background: '#fafafa' }}>
-          <div style={{ padding: '12px 20px', borderBottom: '1px solid #e5e5e5' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>§ AROUND THE LEAGUE</span>
-          </div>
-          <div style={{ padding: '4px 16px' }}>
-            {news.slice(0, 8).map((item, index) => (
-              <a key={index} href={item.link} target="_blank" rel="noopener noreferrer" style={{
-                display: 'flex', gap: 10, padding: '11px 0',
-                borderBottom: index < 7 ? '1px solid #f3f4f6' : 'none', textDecoration: 'none'
-              }}>
-                <div style={{ width: 52, height: 52, flexShrink: 0, background: '#FAF8F3', borderRadius: 6, overflow: 'hidden' }}>
-                  {item.image && <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, color: '#111827', lineHeight: 1.35, marginBottom: 3 }}>{item.headline}</div>
-                  <div style={{ fontSize: 10, color: '#6b7280' }}>{timeAgo(item.published)}</div>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════
-          STATS + STANDINGS
-      ══════════════════════════════════════════════════════ */}
-      <style>{`
-        .stats-standings-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 28px;
-          padding: 28px 24px;
-          background: #fff;
-        }
-        @media (min-width: 900px) {
-          .stats-standings-grid { grid-template-columns: 3fr 2fr; }
-        }
-      `}</style>
-      <div className="stats-standings-grid">
-
-        {/* STATS */}
-        <div>
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>PITCHING LEADERS</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: '#f4f4f5', borderRadius: 10, overflow: 'hidden', marginBottom: 28 }}>
-            {MLB_STAT_CATEGORIES.filter(c => c.group === 'pitching').map((cat) => (
-              <div key={cat.slug} style={{ background: '#fff', padding: '12px 14px' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#f97316', marginBottom: 10, letterSpacing: '0.3px' }}>{cat.label}</div>
-                {(statLeaders[cat.slug] ?? []).slice(0, 3).map((leader, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0', borderTop: i > 0 ? '1px solid #f4f4f5' : 'none' }}>
-                    <CircularHeadshot src={leader.headshot} size={26} alt={leader.name} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{leader.name}</div>
-                      <div style={{ fontSize: 10.5, color: '#6b7280' }}>{leader.teamAbbr}</div>
-                    </div>
-                    <div style={{ fontSize: 15.5, fontWeight: 700, color: i === 0 ? '#f97316' : '#111827', fontFeatureSettings: '"tnum"' }}>
-                      {leader.statValue}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>BATTING LEADERS</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', background: '#f4f4f5', borderRadius: 10, overflow: 'hidden' }}>
-            {MLB_STAT_CATEGORIES.filter(c => c.group === 'batting').map((cat) => (
-              <div key={cat.slug} style={{ background: '#fff', padding: '12px 14px' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#f97316', marginBottom: 10, letterSpacing: '0.3px' }}>{cat.label}</div>
-                {(statLeaders[cat.slug] ?? []).slice(0, 3 ).map((leader, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0', borderTop: i > 0 ? '1px solid #f4f4f5' : 'none' }}>
-                    <CircularHeadshot src={leader.headshot} size={26} alt={leader.name} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{leader.name}</div>
-                      <div style={{ fontSize: 10.5, color: '#6b7280' }}>{leader.teamAbbr}</div>
-                    </div>
-                    <div style={{ fontSize: 15.5, fontWeight: 700, color: i === 0 ? '#f97316' : '#111827', fontFeatureSettings: '"tnum"' }}>
-                      {leader.statValue}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* STANDINGS */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>STANDINGS</span>
-            <div style={{ display: 'flex', background: '#f4f4f5', borderRadius: 999, padding: 3 }}>
-              {(['AL', 'NL'] as const).map(l => (
-                <button key={l} onClick={() => setActiveLeague(l)} style={{
-                  fontSize: 11, padding: '5px 18px', border: 'none',
-                  background: activeLeague === l ? '#111827' : 'transparent',
-                  color: activeLeague === l ? '#fff' : '#6b7280',
-                  borderRadius: 999, cursor: 'pointer', fontWeight: 600, transition: 'all 0.15s ease'
-                }}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 12, overflow: 'hidden' }}>
-            {activeDivisions.length > 0 ? activeDivisions.map((div, idx) => (
-              <div key={idx} style={{ borderBottom: idx < activeDivisions.length - 1 ? '1px solid #f4f4f5' : 'none' }}>
-                <div style={{ padding: '10px 16px', background: '#fafafa', fontSize: 11.5, fontWeight: 700, color: '#374151' }}>
-                  {div.division.replace(/^(AL|NL)\s+/, '')}
-                </div>
-                {div.teams.map((team, i) => {
-                  const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
-                  return (
-                    <Link key={i} href={`/mlb/teams/${teamSlug}`} style={{
-                      display: 'flex', alignItems: 'center', padding: '9px 16px',
-                      textDecoration: 'none', borderTop: '1px solid #f4f4f5',
-                      background: i === 0 ? '#fffbeb' : '#fff'
-                    }}>
-                      <div style={{ width: 22, fontSize: 12, color: i === 0 ? '#f97316' : '#9ca3af', fontWeight: 600 }}>{i + 1}</div>
-                      <img src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`} alt="" width={18} height={18} style={{ marginRight: 10 }} />
-                      <span style={{ flex: 1, fontSize: 13.5, color: '#111827', fontWeight: i === 0 ? 600 : 400 }}>
-                        {team.name.split(' ').slice(-1)[0]}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', width: 28, textAlign: 'right' }}>{team.wins}</span>
-                      <span style={{ fontSize: 13, color: '#6b7280', width: 28, textAlign: 'center' }}>{team.losses}</span>
-                      <span style={{ fontSize: 12, color: '#6b7280', width: 30, textAlign: 'right' }}>{team.gb}</span>
-                    </Link>
-                  )
-                })}
-              </div>
-            )) : (
-              <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Standings unavailable</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════
-          THINGS YOU MAY HAVE MISSED
-      ══════════════════════════════════════════════════════ */}
-      <div style={{ borderTop: '3px solid #111827' }} />
-      <style>{`
-        .missed-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
+          background: rgba(26,26,26,0.06);
         }
         @media (min-width: 640px) {
-          .missed-grid { grid-template-columns: 1fr 1fr; }
+          .game-card-grid { grid-template-columns: 1fr 1fr; }
         }
-        @media (min-width: 1024px) {
-          .missed-grid { grid-template-columns: 1fr 1fr 1fr; }
+        article:hover {
+          border-color: rgba(255,87,34,0.3) !important;
         }
       `}</style>
-      <div style={{ padding: '32px 24px 40px', background: '#fafafa' }}>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '1px', marginBottom: 4 }}>
-            § THE EDGE
-          </div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111827', margin: 0, letterSpacing: '-0.5px' }}>
-            Things You May Have Missed
-          </h2>
-        </div>
 
-        <div className="missed-grid">
+      {/* ── PAGE HEADER ─────────────────────────────────────────────────────── */}
+      <div style={{
+        borderBottom: '1px solid rgba(26,26,26,0.08)',
+        background: '#FAF8F3',
+      }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '20px 24px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
 
-          {/* INJURY REPORT */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px', marginBottom: 10 }}>
-              INJURY REPORT
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
-              {activeIL.length === 0 ? (
-                <div style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>No active IL placements.</div>
-              ) : activeIL.slice(0, 8).map((tx, i) => (
-                <div key={tx.transaction_id} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  borderBottom: i < Math.min(activeIL.length, 8) - 1 ? '1px solid #f9f9f9' : 'none'
-                }}>
-                  {tx.team_id && (
-                    <img src={`https://www.mlbstatic.com/team-logos/${tx.team_id}.svg`} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
-                  )}
-                  <CircularHeadshot
-                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
-                    size={28} alt={tx.player_name}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827' }}>{tx.player_name}</div>
-                    <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{tx.injury_reason ?? tx.team_name ?? '—'}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap' }}>
-                    {tx.il_days ? `IL-${tx.il_days}` : 'IL'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* TRANSACTIONS */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px' }}>TRANSACTIONS</span>
-              <span style={{ fontSize: 10, color: '#9ca3af' }}>Last 5 days</span>
-            </div>
-            <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
-              {recentTransactions.length === 0 ? (
-                <div style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>No recent transactions.</div>
-              ) : recentTransactions.slice(0, 8).map((tx, i) => (
-                <div key={tx.transaction_id} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                  borderBottom: i < Math.min(recentTransactions.length, 8) - 1 ? '1px solid #f9f9f9' : 'none'
-                }}>
-                  {(tx.team_id ?? tx.to_team_id) && (
-                    <img src={`https://www.mlbstatic.com/team-logos/${tx.team_id ?? tx.to_team_id}.svg`} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
-                  )}
-                  <CircularHeadshot
-                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${tx.player_id}/headshot/67/current`}
-                    size={28} alt={tx.player_name}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#111827' }}>{tx.player_name}</div>
-                    <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{tx.team_name ?? tx.to_team_name ?? '—'}</div>
-                  </div>
-                  <TxBadge category={tx.category} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* STREAKS */}
-          {(hotTeams.length > 0 || coldTeams.length > 0) && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.5px', marginBottom: 10 }}>
-                STREAKS
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#FF5722',
+                letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4,
+              }}>
+                § MLB · {today}
               </div>
-              <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: 10, overflow: 'hidden' }}>
-                {[...hotTeams, ...coldTeams].map((team, i) => {
-                  const isHot = team.parsed.type === 'W'
-                  const total = hotTeams.length + coldTeams.length
-                  return (
-                    <div key={team.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                      borderBottom: i < total - 1 ? '1px solid #f9f9f9' : 'none'
-                    }}>
-                      <img src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`} alt="" width={20} height={20} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{team.name.split(' ').slice(-1)[0]}</div>
-                        <div style={{ fontSize: 11, color: '#6b7280' }}>{streakLabel(team.streak)}</div>
-                      </div>
-                      <span style={{
-                        fontSize: 12, fontWeight: 700,
-                        color: isHot ? '#16a34a' : '#dc2626',
-                        background: isHot ? '#f0fdf4' : '#fef2f2',
-                        border: `1px solid ${isHot ? '#bbf7d0' : '#fecaca'}`,
-                        borderRadius: 6, padding: '2px 8px'
-                      }}>
-                        {isHot ? 'W' : 'L'}{team.parsed.count}
-                      </span>
-                    </div>
-                  )
-                })}
+              <h1 style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: 28, fontWeight: 800, color: '#1A1A1A',
+                margin: 0, lineHeight: 1.1, letterSpacing: '-0.5px',
+              }}>
+                Today's Games
+              </h1>
+            </div>
+
+            {/* Quick stats */}
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
+              {[
+                { value: games.length,  label: 'games' },
+                { value: edgesReady,    label: 'edges ready' },
+                { value: liveGames.length, label: 'live now' },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: 'right' }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 26, color: s.label === 'live now' && s.value > 0 ? '#FF5722' : '#1A1A1A',
+                    lineHeight: 1,
+                  }}>
+                    {s.value}
+                  </div>
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 9, color: '#A3A3A3', letterSpacing: '0.07em',
+                    textTransform: 'uppercase',
+                  }}>
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MAIN LAYOUT ─────────────────────────────────────────────────────── */}
+      <div className="mlb-layout" style={{ paddingTop: 24, paddingBottom: 48 }}>
+
+        {/* LEFT — game cards */}
+        <div>
+
+          {/* Live games first */}
+          {liveGames.length > 0 && (
+            <section style={{ marginBottom: 28 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+              }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10, fontWeight: 700, color: '#FF5722',
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                }}>
+                  ● Live
+                </span>
               </div>
+              <div className="game-card-grid">
+                {liveGames.map(g => (
+                  <GameCard key={g.gamePk} game={g} pred={predictions.get(g.gamePk)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Upcoming */}
+          {upcomingGames.length > 0 && (
+            <section style={{ marginBottom: 28 }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#A3A3A3',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                marginBottom: 10,
+              }}>
+                § Upcoming — {upcomingGames.length} games
+              </div>
+              <div className="game-card-grid">
+                {upcomingGames.map(g => (
+                  <GameCard key={g.gamePk} game={g} pred={predictions.get(g.gamePk)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Final */}
+          {finalGames.length > 0 && (
+            <section style={{ marginBottom: 28 }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#A3A3A3',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                marginBottom: 10,
+              }}>
+                § Final
+              </div>
+              <div className="game-card-grid">
+                {finalGames.map(g => (
+                  <GameCard key={g.gamePk} game={g} pred={predictions.get(g.gamePk)} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {games.length === 0 && (
+            <div style={{
+              padding: '48px 24px', textAlign: 'center',
+              fontFamily: "'Fraunces', serif",
+              color: '#A3A3A3', fontStyle: 'italic', fontSize: 16,
+            }}>
+              No games scheduled today.
             </div>
           )}
 
+          {/* News strip */}
+          {news.length > 0 && (
+            <section style={{ marginTop: 8 }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#A3A3A3',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                marginBottom: 10,
+              }}>
+                § Around the league
+              </div>
+              <div style={{
+                background: '#FFFFFF',
+                border: '1px solid rgba(26,26,26,0.08)',
+              }}>
+                {news.slice(0, 6).map((item, i) => (
+                  <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" style={{
+                    display: 'flex', gap: 12, padding: '12px 16px',
+                    borderBottom: i < 5 ? '1px solid rgba(26,26,26,0.05)' : 'none',
+                    textDecoration: 'none',
+                  }}>
+                    {item.image && (
+                      <div style={{
+                        width: 44, height: 44, flexShrink: 0,
+                        background: '#F5F1E8', overflow: 'hidden',
+                      }}>
+                        <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "'Fraunces', serif",
+                        fontSize: 13, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 3,
+                      }}>
+                        {item.headline}
+                      </div>
+                      <div style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 9, color: '#A3A3A3', textTransform: 'uppercase', letterSpacing: '0.05em',
+                      }}>
+                        {timeAgo(item.published)}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
-      </div>
 
-          
+        {/* RIGHT SIDEBAR ─────────────────────────────────────────────────── */}
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+          {/* Standings */}
+          <section>
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', marginBottom: 10,
+            }}>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#A3A3A3',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+              }}>
+                § Standings
+              </span>
+              <div style={{ display: 'flex', background: 'rgba(26,26,26,0.06)', borderRadius: 2, padding: 2 }}>
+                {(['AL', 'NL'] as const).map(l => (
+                  <button key={l} onClick={() => setActiveLeague(l)} style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 10, fontWeight: 700, padding: '4px 12px',
+                    border: 'none', cursor: 'pointer', borderRadius: 2,
+                    background: activeLeague === l ? '#1A1A1A' : 'transparent',
+                    color: activeLeague === l ? '#FAF8F3' : '#A3A3A3',
+                    letterSpacing: '0.06em',
+                    transition: 'all 0.12s',
+                  }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background: '#FFFFFF', border: '1px solid rgba(26,26,26,0.08)' }}>
+              {activeDivisions.map((div, dIdx) => (
+                <div key={dIdx}>
+                  {/* Division header */}
+                  <div style={{
+                    padding: '7px 12px',
+                    background: '#F5F1E8',
+                    borderBottom: '1px solid rgba(26,26,26,0.06)',
+                    borderTop: dIdx > 0 ? '2px solid rgba(26,26,26,0.08)' : 'none',
+                  }}>
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 9, fontWeight: 700, color: '#A3A3A3',
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                    }}>
+                      {div.division.replace(/^(AL|NL)\s+/, '')}
+                    </span>
+                  </div>
+                  {div.teams.map((team, tIdx) => {
+                    const teamSlug = findTeamByName(team.name)?.slug ?? team.abbreviation.toLowerCase()
+                    const isFirst  = tIdx === 0
+                    return (
+                      <Link key={tIdx} href={`/mlb/teams/${teamSlug}`} style={{
+                        display: 'flex', alignItems: 'center',
+                        padding: '8px 12px', textDecoration: 'none',
+                        borderBottom: '1px solid rgba(26,26,26,0.04)',
+                        background: isFirst ? 'rgba(255,87,34,0.03)' : '#FFFFFF',
+                      }}>
+                        <span style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 10, color: isFirst ? '#FF5722' : '#A3A3A3',
+                          fontWeight: isFirst ? 700 : 400, width: 16, flexShrink: 0,
+                        }}>
+                          {tIdx + 1}
+                        </span>
+                        <img
+                          src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`}
+                          alt="" width={16} height={16}
+                          style={{ marginRight: 8, flexShrink: 0 }}
+                        />
+                        <span style={{
+                          fontFamily: "'Fraunces', serif",
+                          flex: 1, fontSize: 13, color: '#1A1A1A',
+                          fontWeight: isFirst ? 600 : 400,
+                        }}>
+                          {team.name.split(' ').slice(-1)[0]}
+                        </span>
+                        <span style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 11, fontWeight: 600, color: '#1A1A1A', width: 24, textAlign: 'right',
+                        }}>
+                          {team.wins}
+                        </span>
+                        <span style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 11, color: '#A3A3A3', width: 24, textAlign: 'center',
+                        }}>
+                          {team.losses}
+                        </span>
+                        <span style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 10, color: '#A3A3A3', width: 28, textAlign: 'right',
+                        }}>
+                          {team.gb}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {/* Link to stats hub */}
+            <Link href="/mlb/stats" style={{
+              display: 'block', marginTop: 8,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10, fontWeight: 700, color: '#FF5722',
+              letterSpacing: '0.06em', textDecoration: 'none',
+              textAlign: 'right',
+            }}>
+              League leaders & stats →
+            </Link>
+          </section>
+
+          {/* Transactions */}
+          {(activeIL.length > 0 || recentTransactions.length > 0) && (
+            <section>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10, fontWeight: 700, color: '#A3A3A3',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                marginBottom: 10,
+              }}>
+                § Transactions
+              </div>
+              <div style={{ background: '#FFFFFF', border: '1px solid rgba(26,26,26,0.08)' }}>
+                {[...activeIL.slice(0, 3), ...recentTransactions.slice(0, 5)].slice(0, 7).map((tx, i, arr) => (
+                  <div key={tx.transaction_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '9px 12px',
+                    borderBottom: i < arr.length - 1 ? '1px solid rgba(26,26,26,0.04)' : 'none',
+                  }}>
+                    {(tx.team_id ?? tx.to_team_id) && (
+                      <img
+                        src={`https://www.mlbstatic.com/team-logos/${tx.team_id ?? tx.to_team_id}.svg`}
+                        alt="" width={16} height={16} style={{ flexShrink: 0 }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "'Fraunces', serif",
+                        fontSize: 12, fontWeight: 600, color: '#1A1A1A',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {tx.player_name}
+                      </div>
+                      {tx.injury_reason && (
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 9, color: '#A3A3A3',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {tx.injury_reason}
+                        </div>
+                      )}
+                    </div>
+                    <TxBadge category={tx.category} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+        </aside>
+      </div>
     </div>
   )
 }

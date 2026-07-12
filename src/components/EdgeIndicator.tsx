@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 
-// ============================================================
-// TYPES
-// ============================================================
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type EdgeComponents = {
   starting_pitcher: number
   bullpen: number
@@ -16,1208 +15,782 @@ type EdgeComponents = {
   rest: number
 }
 
-export type EdgeIndicatorProps = {
+export type EdgeIndicatorV6Props = {
   edge_score: number
   predicted_winner: 'home' | 'away'
   confidence_tier: 'strong' | 'moderate' | 'slight' | 'tossup'
   components: EdgeComponents
+  components_raw?: any
   home_team: string
   away_team: string
-  components_raw?: any
   home_team_abbr?: string
   away_team_abbr?: string
+  home_primary_color?: string | null
+  away_primary_color?: string | null
   updated_at: string
   lineups_confirmed?: boolean
   is_pro?: boolean
-  context_tags?: Partial<Record<keyof EdgeComponents, string>>
-  llm_summary?: string | null
   llm_narrative?: string | null
-  // Pro-only narrative variant
   llm_narrative_pro?: string | null
-  // Pro-only structured takeaways
   pro_takeaways?: Array<{ stat: string; text: string; edge: 'home' | 'away' | 'neutral' }> | null
-  drilldown?: {
-    away_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
-    home_pitcher?: { name: string; era: string; whip: string; k_per_9: string } | null
-    away_form?: {
-      last_10_wins: number
-      last_10_losses: number
-      bullpen_era: number | null
-      bullpen_ip_yesterday: number | null
-      bullpen_wpa_li?: number | null
-      closer_available?: boolean | null
-      setup1_available?: boolean | null
-      setup2_available?: boolean | null
-    } | null
-    home_form?: {
-      last_10_wins: number
-      last_10_losses: number
-      bullpen_era: number | null
-      bullpen_ip_yesterday: number | null
-      bullpen_wpa_li?: number | null
-      closer_available?: boolean | null
-      setup1_available?: boolean | null
-      setup2_available?: boolean | null
-    } | null
-  }
 }
 
-// ============================================================
-// COMPONENT ORDER + METADATA
-// ============================================================
-const COMPONENT_ORDER: (keyof EdgeComponents)[] = [
-  'starting_pitcher',
-  'bullpen',
-  'offense',
-  'defense',
-  'matchup',
-  'park',
-  'weather',
-  'rest',
+// ─── Static constants ────────────────────────────────────────────────────────
+
+const SAND = '#F5F0E8'
+const MIST = '#E8E2D8'
+
+// ─── Factor metadata ──────────────────────────────────────────────────────────
+
+const FACTOR_META: Record<keyof EdgeComponents, { label: string; proTeaser: string }> = {
+  starting_pitcher: { label: 'Starting pitcher', proTeaser: 'xERA · chase rate · TTO splits · K/BB · quality starts' },
+  bullpen:          { label: 'Bullpen',           proTeaser: 'Availability matrix · ERA · fatigue tracker · strand %' },
+  offense:          { label: 'Offense',           proTeaser: 'xwOBA · hard hit% · ISO · K% · BB% · sprint speed' },
+  defense:          { label: 'Defense',           proTeaser: 'OAA by zone · errors/G · sprint speed · catcher framing' },
+  matchup:          { label: 'Pitch matchup',     proTeaser: 'Arsenal whiff% vs lineup · platoon OPS splits' },
+  park:             { label: 'Park factor',       proTeaser: 'HR factor by handedness · altitude · tonight\'s wind' },
+  weather:          { label: 'Weather',           proTeaser: 'Wind carry · temperature effect · dome/open analysis' },
+  rest:             { label: 'Rest & travel',     proTeaser: 'Days rest · road trip length · schedule density' },
+}
+
+const FACTOR_ORDER: (keyof EdgeComponents)[] = [
+  'starting_pitcher', 'bullpen', 'offense', 'defense',
+  'matchup', 'park', 'weather', 'rest',
 ]
 
-const COMPONENT_META: Record<
-  keyof EdgeComponents,
-  { label: string; subtitle: string; weight: string; pro_teaser: string }
-> = {
-  starting_pitcher: {
-    label: 'Starting Pitcher',
-    subtitle: 'xFIP- adjusted',
-    weight: '25%',
-    pro_teaser: 'Pitch arsenal · last 5 starts · hot zone alignment',
-  },
-  bullpen: {
-    label: 'Bullpen',
-    subtitle: 'WPA/LI + availability',
-    weight: '15%',
-    pro_teaser: 'Availability tracker · pitch counts L3 · leverage rankings',
-  },
-  offense: {
-    label: 'Offense',
-    subtitle: 'wRC+ last 30 days',
-    weight: '12%',
-    pro_teaser: 'L30 OPS deltas · hot/cold batters · vs LHP/RHP splits',
-  },
-  defense: {
-    label: 'Defense',
-    subtitle: 'OAA + DRS combined',
-    weight: '8%',
-    pro_teaser: 'DRS leaders · OAA by position · error trends',
-  },
-  matchup: {
-    label: 'Matchup',
-    subtitle: 'Pitcher arsenal vs lineup',
-    weight: '10%',
-    pro_teaser: 'BvP records · vulnerability zones · lineup hot zones',
-  },
-  park: {
-    label: 'Park Factor',
-    subtitle: '3-yr HR + run factor',
-    weight: '8%',
-    pro_teaser: '30-day trends · wind impact · HR factor by handedness',
-  },
-  weather: {
-    label: 'Weather',
-    subtitle: 'Wind + temp impact',
-    weight: '5%',
-    pro_teaser: 'Hour-by-hour · wind direction · dome adjustments',
-  },
-  rest: {
-    label: 'Rest & Travel',
-    subtitle: 'Bullpen usage + days rest',
-    weight: '3%',
-    pro_teaser: 'Travel miles · time zones crossed · L7 days game log',
-  },
+const RADAR_LABELS: Record<keyof EdgeComponents, string> = {
+  starting_pitcher: 'SP', bullpen: 'Pen', offense: 'Off', defense: 'Def',
+  matchup: 'Mtch', park: 'Park', weather: 'Wx', rest: 'Rest',
 }
 
-// First two components are visible on free tier
-const FREE_COMPONENTS: (keyof EdgeComponents)[] = ['starting_pitcher', 'bullpen']
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// ============================================================
-// SUMMARY FALLBACK (if no LLM summary)
-// ============================================================
-function generateSummary(
-  components: EdgeComponents,
-  confidence: 'strong' | 'moderate' | 'slight' | 'tossup',
-  winnerName: string
-): string {
-  if (confidence === 'tossup') return 'Effectively a coin flip — components cancel out.'
+function toPct(score: number, forHome: boolean): number {
+  if (score === 0) return 50
+  const abs     = Math.abs(score)
+  const winning = Math.min(97, 50 + abs * 0.55)
+  const losing  = Math.max(13, 50 - abs * 0.45)
+  return forHome ? (score > 0 ? winning : losing) : (score < 0 ? winning : losing)
+}
 
-  const tierWord = { strong: 'Significant', moderate: 'Moderate', slight: 'Slight' }[confidence]
+function f2(v: any): string { const n = parseFloat(v); return isNaN(n) ? '–' : n.toFixed(2) }
+function f1(v: any): string { const n = parseFloat(v); return isNaN(n) ? '–' : n.toFixed(1) }
+function pct(v: any): string {
+  const n = parseFloat(v)
+  if (isNaN(n)) return '–'
+  return n > 1 ? `${n.toFixed(1)}%` : `${(n * 100).toFixed(1)}%`
+}
+function sign(v: any): string {
+  const n = parseInt(v)
+  if (isNaN(n)) return '–'
+  return n >= 0 ? `+${n}` : `${n}`
+}
+function timeAgo(ts: string): string {
+  const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`
+}
+function tierLabel(t: string) {
+  return { strong: 'Strong lean', moderate: 'Moderate lean', slight: 'Slight lean', tossup: 'Toss-up' }[t] ?? t
+}
+function tierColor(t: string) {
+  return { strong: '#27500A', moderate: '#633806', slight: '#0C447C', tossup: '#5F5E5A' }[t] ?? '#5F5E5A'
+}
+function tierBg(t: string) {
+  return { strong: '#EAF3DE', moderate: '#FAEEDA', slight: '#E6F1FB', tossup: '#F1EFE8' }[t] ?? '#F1EFE8'
+}
+function pctColor(p: number) {
+  if (p >= 80) return '#27500A'; if (p >= 60) return '#185FA5'
+  if (p <= 25) return '#791F1F'; if (p <= 40) return '#633806'
+  return '#5F5E5A'
+}
+function pctBg(p: number) {
+  if (p >= 80) return '#EAF3DE'; if (p >= 60) return '#E6F1FB'
+  if (p <= 25) return '#FCEBEB'; if (p <= 40) return '#FAEEDA'
+  return '#F1EFE8'
+}
+function daysSince(dateStr: string | null | undefined): string {
+  if (!dateStr) return '–'
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+  return diff === 0 ? 'Today' : diff === 1 ? '1 day' : `${diff} days`
+}
+function daysSinceNum(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+}
+function windLabel(dir: string | null | undefined): string {
+  if (!dir) return '–'
+  if (dir === 'out') return 'Blowing out ↑ (hitter-friendly)'
+  if (dir === 'in')  return 'Blowing in ↓ (pitcher-friendly)'
+  if (dir === 'cross' || dir === 'crosswind') return 'Crosswind ↔'
+  return dir
+}
+function tempNote(f: number | null | undefined): string {
+  if (f == null) return ''
+  if (f >= 85) return 'Hot — ball carries well'
+  if (f >= 75) return 'Warm — near neutral'
+  if (f <= 50) return 'Cold — ball dies'
+  if (f <= 60) return 'Cool — slight suppression'
+  return 'Neutral'
+}
+function parkLabel(hr: number | null | undefined, run: number | null | undefined): string {
+  if (hr == null && run == null) return 'Park data unavailable'
+  const hrN = hr ?? 1.0; const runN = run ?? 1.0
+  if (hrN >= 1.10 && runN >= 1.05) return '🔴 Hitter-friendly — balls fly here'
+  if (hrN >= 1.05) return '🟠 Slight HR boost vs neutral'
+  if (hrN <= 0.90 && runN <= 0.95) return '🟢 Pitcher-friendly — runs suppressed'
+  if (hrN <= 0.95) return '🟡 Slight HR suppression'
+  return '⚪ Neutral park — no significant factor bias'
+}
 
-  const sorted = COMPONENT_ORDER.map((key) => ({
-    key,
-    abs: Math.abs(components[key]),
-  }))
-    .filter((c) => c.abs >= 3)
-    .sort((a, b) => b.abs - a.abs)
+// ─── Edge summary ─────────────────────────────────────────────────────────────
+
+function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLeans: number, tier: string) {
+  const topFactors = FACTOR_ORDER
+    .filter(k => Math.abs(components[k]) > 5)
+    .sort((a, b) => Math.abs(components[b]) - Math.abs(components[a]))
     .slice(0, 3)
 
-  if (sorted.length === 0) return `${tierWord} edge to ${winnerName}.`
+  const phrases: Partial<Record<keyof EdgeComponents, string>> = {
+    starting_pitcher: 'starting pitching edge',
+    bullpen: 'bullpen advantage',
+    offense: 'offensive output edge',
+    defense: 'defensive edge',
+    matchup: 'pitch matchup advantage',
+    park: 'park factor tilt',
+    weather: 'weather conditions',
+    rest: 'rest and travel edge',
+  }
 
-  const labels = sorted.map((c) => COMPONENT_META[c.key].label.toLowerCase())
-  if (labels.length === 1) return `${tierWord} statistical advantage on ${labels[0]}.`
-  if (labels.length === 2)
-    return `${tierWord} statistical advantage across ${labels[0]} and ${labels[1]}.`
-  return `${tierWord} statistical advantage across ${labels[0]}, ${labels[1]}, and ${labels[2]}.`
+  const factors = topFactors
+    .filter(k => {
+      const s = components[k]
+      return (winner === 'home' && s > 5) || (winner !== 'home' && s < -5)
+    })
+    .map(k => phrases[k] ?? FACTOR_META[k].label)
+
+  const headlines: Record<string, string> = {
+    strong:   `${winnerLeans} of 8 factors clearly favour ${winner}`,
+    moderate: `${winnerLeans} of 8 factors lean ${winner}`,
+    slight:   `A slim lean toward ${winner}`,
+    tossup:   'The data is split',
+  }
+  const bodies: Record<string, string> = {
+    strong:   `The data points clearly to ${winner} tonight. Multiple high-weight factors align.`,
+    moderate: `${winner} holds a meaningful advantage across multiple factors.`,
+    slight:   `The factors are close but not equal — ${winner} has the marginal edge.`,
+    tossup:   'Both teams have genuine edges in different areas. Context decides this one.',
+  }
+
+  return { headline: headlines[tier] ?? headlines.slight, body: bodies[tier] ?? '', factors }
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-function formatTimeAgo(timestamp: string): string {
-  const updated = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - updated.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}hr ago`
-  return `${Math.floor(diffHr / 24)}d ago`
-}
+// ─── StatRow ──────────────────────────────────────────────────────────────────
 
-function availabilityDot(val: boolean | null | undefined): string {
-  if (val === null || val === undefined) return '–'
-  return val ? '●' : '○'
-}
-
-function fatigueLabel(ip: number | null | undefined): string {
-  if (ip === null || ip === undefined) return '–'
-  if (ip >= 5) return 'Gassed'
-  if (ip >= 3) return 'Taxed'
-  if (ip >= 1) return 'Used'
-  return 'Fresh'
-}
-
-function fatigueColorClass(ip: number | null | undefined): string {
-  if (ip === null || ip === undefined) return 'text-[#A3A3A3]'
-  if (ip >= 5) return 'text-red-600 font-bold'
-  if (ip >= 3) return 'text-orange-500'
-  return 'text-green-700'
-}
-
-// ============================================================
-// MINI BAR — horizontal bar centered at zero
-// ============================================================
-function ComponentBar({ value }: { value: number }) {
-  const absValue = Math.abs(value)
-  const isHome = value >= 0
-  const barWidthPct = Math.min(50, (absValue / 50) * 50)
-  const barColor = absValue >= 15 ? '#FF5722' : absValue >= 5 ? '#FFAA88' : '#D4D4D4'
-
+function StatRow({ label, away, home, note, awayBetter, homeBetter, awayColor, homeColor }: {
+  label: string; away: string; home: string
+  note?: string; awayBetter?: boolean; homeBetter?: boolean
+  awayColor: string; homeColor: string
+}) {
   return (
-    <div className="relative h-6 bg-[#E5E5E5] rounded flex-1">
-      {/* Center line */}
-      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-[#A3A3A3]/40" />
-      {absValue >= 0.5 && (
-        <div
-          className="absolute top-0 bottom-0 rounded transition-all duration-500 ease-out"
-          style={{
-            backgroundColor: barColor,
-            width: `${barWidthPct}%`,
-            left: isHome ? '50%' : `${50 - barWidthPct}%`,
-          }}
-        />
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr auto 1fr',
+      alignItems: 'center', gap: 8,
+      padding: '7px 0', borderBottom: '0.5px solid var(--border)',
+      fontSize: 11,
+    }}>
+      <span style={{
+        fontFamily: 'var(--font-mono)', fontWeight: awayBetter ? 600 : 400,
+        color: awayBetter ? awayColor : 'var(--text-primary)', textAlign: 'right',
+      }}>
+        {away}
+      </span>
+      <span style={{ textAlign: 'center', minWidth: 100 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>{label}</span>
+        {note && <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{note}</span>}
+      </span>
+      <span style={{
+        fontFamily: 'var(--font-mono)', fontWeight: homeBetter ? 600 : 400,
+        color: homeBetter ? homeColor : 'var(--text-primary)',
+      }}>
+        {home}
+      </span>
+    </div>
+  )
+}
+
+function DrillSection({ title }: { title: string }) {
+  return (
+    <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.07em', color: '#888', padding: '8px 0 2px', fontWeight: 600 }}>
+      {title}
+    </div>
+  )
+}
+
+// ─── ProDrillDown ─────────────────────────────────────────────────────────────
+
+function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor }: {
+  factorKey: keyof EdgeComponents; raw: any
+  awayAbbr: string; homeAbbr: string
+  awayColor: string; homeColor: string
+}) {
+  const ap = raw?.away_pitcher
+  const hp = raw?.home_pitcher
+  const at = raw?.away_team
+  const ht = raw?.home_team
+  const w  = raw?.weather
+  const pk = raw?.park
+
+  const lo = (a: any, b: any) => a != null && b != null && parseFloat(a) < parseFloat(b)
+  const hi = (a: any, b: any) => a != null && b != null && parseFloat(a) > parseFloat(b)
+  const SR = (props: Omit<Parameters<typeof StatRow>[0], 'awayColor' | 'homeColor'>) =>
+    <StatRow {...props} awayColor={awayColor} homeColor={homeColor} />
+
+  if (factorKey === 'starting_pitcher') return (
+    <div>
+      <DrillSection title="Results" />
+      <SR label="ERA (season)" note="lower = better" away={f2(ap?.era)} home={f2(hp?.era)} awayBetter={lo(ap?.era, hp?.era)} homeBetter={lo(hp?.era, ap?.era)} />
+      <SR label="FIP" note="defence-independent" away={f2(ap?.fip)} home={f2(hp?.fip)} awayBetter={lo(ap?.fip, hp?.fip)} homeBetter={lo(hp?.fip, ap?.fip)} />
+      <SR label="xERA" note="Statcast expected" away={f2(ap?.xera)} home={f2(hp?.xera)} awayBetter={lo(ap?.xera, hp?.xera)} homeBetter={lo(hp?.xera, ap?.xera)} />
+      <SR label="WHIP" away={f2(ap?.whip)} home={f2(hp?.whip)} awayBetter={lo(ap?.whip, hp?.whip)} homeBetter={lo(hp?.whip, ap?.whip)} />
+      <SR label="L3 ERA" note="recent form" away={f2(ap?.l3_era)} home={f2(hp?.l3_era)} awayBetter={lo(ap?.l3_era, hp?.l3_era)} homeBetter={lo(hp?.l3_era, ap?.l3_era)} />
+      <DrillSection title="Command" />
+      <SR label="K/9" away={f1(ap?.k_per_9)} home={f1(hp?.k_per_9)} awayBetter={hi(ap?.k_per_9, hp?.k_per_9)} homeBetter={hi(hp?.k_per_9, ap?.k_per_9)} />
+      <SR label="BB/9" note="lower = better" away={f1(ap?.bb_per_9)} home={f1(hp?.bb_per_9)} awayBetter={lo(ap?.bb_per_9, hp?.bb_per_9)} homeBetter={lo(hp?.bb_per_9, ap?.bb_per_9)} />
+      <SR label="Chase rate" note="O-swing%; higher = wins for pitcher" away={pct(ap?.chase_rate)} home={pct(hp?.chase_rate)} awayBetter={hi(ap?.chase_rate, hp?.chase_rate)} homeBetter={hi(hp?.chase_rate, ap?.chase_rate)} />
+      <SR label="Whiff%" away={pct(ap?.whiff_pct)} home={pct(hp?.whiff_pct)} awayBetter={hi(ap?.whiff_pct, hp?.whiff_pct)} homeBetter={hi(hp?.whiff_pct, ap?.whiff_pct)} />
+      <DrillSection title="Contact quality against" />
+      <SR label="Hard hit%" note="EV≥95mph; lower = better" away={pct(ap?.hard_hit_pct)} home={pct(hp?.hard_hit_pct)} awayBetter={lo(ap?.hard_hit_pct, hp?.hard_hit_pct)} homeBetter={lo(hp?.hard_hit_pct, ap?.hard_hit_pct)} />
+      <SR label="Barrel%" note="lower = better" away={pct(ap?.barrel_pct)} home={pct(hp?.barrel_pct)} awayBetter={lo(ap?.barrel_pct, hp?.barrel_pct)} homeBetter={lo(hp?.barrel_pct, ap?.barrel_pct)} />
+      <DrillSection title="Workload" />
+      <SR label="Days rest" away={ap?.days_rest != null ? `${ap.days_rest}d` : '–'} home={hp?.days_rest != null ? `${hp.days_rest}d` : '–'} awayBetter={hi(ap?.days_rest, hp?.days_rest)} homeBetter={hi(hp?.days_rest, ap?.days_rest)} />
+      <SR label="GB%" note="groundball rate" away={ap?.gb_rate != null ? `${Number(ap.gb_rate).toFixed(1)}%` : '–'} home={hp?.gb_rate != null ? `${Number(hp.gb_rate).toFixed(1)}%` : '–'} />
+      {(ap?.tto1_xwoba != null || hp?.tto1_xwoba != null || ap?.tto1_era != null) && (
+        <>
+          <DrillSection title="Times through order (xwOBA)" />
+          <SR label="1st time" away={f2(ap?.tto1_xwoba ?? ap?.tto1_era)} home={f2(hp?.tto1_xwoba ?? hp?.tto1_era)} awayBetter={lo(ap?.tto1_xwoba ?? ap?.tto1_era, hp?.tto1_xwoba ?? hp?.tto1_era)} homeBetter={lo(hp?.tto1_xwoba ?? hp?.tto1_era, ap?.tto1_xwoba ?? ap?.tto1_era)} />
+          <SR label="2nd time" away={f2(ap?.tto2_xwoba ?? ap?.tto2_era)} home={f2(hp?.tto2_xwoba ?? hp?.tto2_era)} awayBetter={lo(ap?.tto2_xwoba ?? ap?.tto2_era, hp?.tto2_xwoba ?? hp?.tto2_era)} homeBetter={lo(hp?.tto2_xwoba ?? hp?.tto2_era, ap?.tto2_xwoba ?? ap?.tto2_era)} />
+          <SR label="3rd time" note="fade risk" away={f2(ap?.tto3_xwoba ?? ap?.tto3_era)} home={f2(hp?.tto3_xwoba ?? hp?.tto3_era)} awayBetter={lo(ap?.tto3_xwoba ?? ap?.tto3_era, hp?.tto3_xwoba ?? hp?.tto3_era)} homeBetter={lo(hp?.tto3_xwoba ?? hp?.tto3_era, ap?.tto3_xwoba ?? ap?.tto3_era)} />
+        </>
       )}
     </div>
   )
-}
 
-// ============================================================
-// FACTOR CARD — one cell in the dropdown grid
-// ============================================================
-function FactorCard({
-  label,
-  awayValue,
-  homeValue,
-  edge,
-  awayAbbr,
-  homeAbbr,
-}: {
-  label: string
-  awayValue: React.ReactNode
-  homeValue: React.ReactNode
-  edge?: string
-  awayAbbr?: string
-  homeAbbr?: string
-}) {
-  return (
-    <div className="bg-white border border-[#1A1A1A]/10 rounded-lg p-3">
-      <div className="text-[9px] font-mono uppercase tracking-wider text-[#A3A3A3] mb-2">{label}</div>
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-xs text-[#1A1A1A]">
-          {awayAbbr && (
-            <span className="text-[9px] font-mono text-[#A3A3A3] mr-1">{awayAbbr}</span>
-          )}
-          {awayValue}
-        </div>
-        <div className="text-[10px] font-mono text-[#A3A3A3]">vs</div>
-        <div className="text-xs text-[#1A1A1A]">
-          {homeValue}
-          {homeAbbr && (
-            <span className="text-[9px] font-mono text-[#A3A3A3] ml-1">{homeAbbr}</span>
-          )}
-        </div>
+  if (factorKey === 'bullpen') {
+    const fatigueLabel = (ip: any) => {
+      const n = parseFloat(ip)
+      if (isNaN(n)) return '–'
+      if (n >= 5) return 'Gassed 🔴'; if (n >= 3) return 'Taxed 🟠'
+      if (n >= 1) return 'Used 🟡'; return 'Fresh 🟢'
+    }
+    const dot = (v: boolean | null | undefined) => v == null ? '–' : v ? '● Available' : '○ Unavailable'
+    return (
+      <div>
+        <DrillSection title="Quality" />
+        <SR label="Bullpen ERA" note="lower = better" away={f2(at?.bullpen_era)} home={f2(ht?.bullpen_era)} awayBetter={lo(at?.bullpen_era, ht?.bullpen_era)} homeBetter={lo(ht?.bullpen_era, at?.bullpen_era)} />
+        <SR label="K/9 (pen)" away={f1(at?.bullpen_k_per_9)} home={f1(ht?.bullpen_k_per_9)} awayBetter={hi(at?.bullpen_k_per_9, ht?.bullpen_k_per_9)} homeBetter={hi(ht?.bullpen_k_per_9, at?.bullpen_k_per_9)} />
+        <SR label="HR/9 (pen)" note="lower = better" away={f1(at?.bullpen_hr_per_9)} home={f1(ht?.bullpen_hr_per_9)} awayBetter={lo(at?.bullpen_hr_per_9, ht?.bullpen_hr_per_9)} homeBetter={lo(ht?.bullpen_hr_per_9, at?.bullpen_hr_per_9)} />
+        <DrillSection title="Fatigue" />
+        <SR label="IP yesterday" away={at?.bullpen_innings_yesterday != null ? `${f1(at.bullpen_innings_yesterday)} IP` : '–'} home={ht?.bullpen_innings_yesterday != null ? `${f1(ht.bullpen_innings_yesterday)} IP` : '–'} awayBetter={lo(at?.bullpen_innings_yesterday, ht?.bullpen_innings_yesterday)} homeBetter={lo(ht?.bullpen_innings_yesterday, at?.bullpen_innings_yesterday)} />
+        <SR label="IP last 3 days" away={at?.bullpen_ip_last_3 != null ? `${f1(at.bullpen_ip_last_3)} IP` : '–'} home={ht?.bullpen_ip_last_3 != null ? `${f1(ht.bullpen_ip_last_3)} IP` : '–'} awayBetter={lo(at?.bullpen_ip_last_3, ht?.bullpen_ip_last_3)} homeBetter={lo(ht?.bullpen_ip_last_3, at?.bullpen_ip_last_3)} />
+        <SR label="Status" away={fatigueLabel(at?.bullpen_innings_yesterday)} home={fatigueLabel(ht?.bullpen_innings_yesterday)} />
+        <DrillSection title="Availability" />
+        <SR label="Closer" away={dot(at?.closer_available)} home={dot(ht?.closer_available)} />
+        <SR label="Setup arm 1" away={dot(at?.setup1_available)} home={dot(ht?.setup1_available)} />
+        <SR label="Setup arm 2" away={dot(at?.setup2_available)} home={dot(ht?.setup2_available)} />
       </div>
-      {edge && (
-        <div className="text-[9px] font-mono text-[#FF5722] mt-1.5 leading-tight">{edge}</div>
+    )
+  }
+
+  if (factorKey === 'offense') return (
+    <div>
+      <DrillSection title="Recent form" />
+      <SR label="R/game (L30)" away={f1(at?.runs_per_game_l30)} home={f1(ht?.runs_per_game_l30)} awayBetter={hi(at?.runs_per_game_l30, ht?.runs_per_game_l30)} homeBetter={hi(ht?.runs_per_game_l30, at?.runs_per_game_l30)} />
+      <SR label="OPS (L30)" away={f2(at?.ops_l30)} home={f2(ht?.ops_l30)} awayBetter={hi(at?.ops_l30, ht?.ops_l30)} homeBetter={hi(ht?.ops_l30, at?.ops_l30)} />
+      <SR label="ISO (power)" note=".150 = avg" away={at?.iso != null ? f2(at.iso) : '–'} home={ht?.iso != null ? f2(ht.iso) : '–'} awayBetter={hi(at?.iso, ht?.iso)} homeBetter={hi(ht?.iso, at?.iso)} />
+      <SR label="K%" note="lower = better contact" away={pct(at?.k_pct)} home={pct(ht?.k_pct)} awayBetter={lo(at?.k_pct, ht?.k_pct)} homeBetter={lo(ht?.k_pct, at?.k_pct)} />
+      <SR label="BB%" note="8.5% = avg" away={pct(at?.bb_pct)} home={pct(ht?.bb_pct)} awayBetter={hi(at?.bb_pct, ht?.bb_pct)} homeBetter={hi(ht?.bb_pct, at?.bb_pct)} />
+      <DrillSection title="Contact quality" />
+      <SR label="xwOBA" note=".315 = avg (luck-adjusted)" away={at?.xwoba != null ? f2(at.xwoba) : '–'} home={ht?.xwoba != null ? f2(ht.xwoba) : '–'} awayBetter={hi(at?.xwoba, ht?.xwoba)} homeBetter={hi(ht?.xwoba, at?.xwoba)} />
+      <SR label="Hard hit%" note="EV≥95mph; 36% = avg" away={pct(at?.hard_hit_pct)} home={pct(ht?.hard_hit_pct)} awayBetter={hi(at?.hard_hit_pct, ht?.hard_hit_pct)} homeBetter={hi(ht?.hard_hit_pct, at?.hard_hit_pct)} />
+      <SR label="Chase rate" note="lower = more patient" away={pct(at?.chase_rate)} home={pct(ht?.chase_rate)} awayBetter={lo(at?.chase_rate, ht?.chase_rate)} homeBetter={lo(ht?.chase_rate, at?.chase_rate)} />
+      <SR label="SB%" away={pct(at?.stolen_base_pct)} home={pct(ht?.stolen_base_pct)} awayBetter={hi(at?.stolen_base_pct, ht?.stolen_base_pct)} homeBetter={hi(ht?.stolen_base_pct, at?.stolen_base_pct)} />
+    </div>
+  )
+
+  if (factorKey === 'defense') return (
+    <div>
+      <DrillSection title="Outs above average" />
+      <SR label="OAA (total)" note="0 = avg; + = elite" away={sign(at?.oaa)} home={sign(ht?.oaa)} awayBetter={hi(at?.oaa, ht?.oaa)} homeBetter={hi(ht?.oaa, at?.oaa)} />
+      <SR label="Errors/game (L30)" note="lower = cleaner" away={f2(at?.errors_per_game_l30)} home={f2(ht?.errors_per_game_l30)} awayBetter={lo(at?.errors_per_game_l30, ht?.errors_per_game_l30)} homeBetter={lo(ht?.errors_per_game_l30, at?.errors_per_game_l30)} />
+    </div>
+  )
+
+  if (factorKey === 'matchup') {
+    const awayArsenal: any[] = raw?.away_pitcher_arsenal ?? []
+    const homeArsenal: any[] = raw?.home_pitcher_arsenal ?? []
+    const bestPitch = (arsenal: any[]) =>
+      [...arsenal].sort((a, b) => (b.whiff_percent ?? b.whiff_pct ?? 0) - (a.whiff_percent ?? a.whiff_pct ?? 0))[0]
+    const aBest = bestPitch(awayArsenal)
+    const hBest = bestPitch(homeArsenal)
+    return (
+      <div>
+        <DrillSection title="Platoon splits" />
+        <SR label="vs LHB avg" note="pitcher vs lefties" away={f2(ap?.vs_lhb_baa)} home={f2(hp?.vs_lhb_baa)} awayBetter={lo(ap?.vs_lhb_baa, hp?.vs_lhb_baa)} homeBetter={lo(hp?.vs_lhb_baa, ap?.vs_lhb_baa)} />
+        <SR label="vs RHB avg" note="pitcher vs righties" away={f2(ap?.vs_rhb_baa)} home={f2(hp?.vs_rhb_baa)} awayBetter={lo(ap?.vs_rhb_baa, hp?.vs_rhb_baa)} homeBetter={lo(hp?.vs_rhb_baa, ap?.vs_rhb_baa)} />
+        <SR label="GB%" note="groundball rate" away={ap?.gb_rate != null ? `${Number(ap.gb_rate).toFixed(1)}%` : '–'} home={hp?.gb_rate != null ? `${Number(hp.gb_rate).toFixed(1)}%` : '–'} />
+        {(aBest || hBest) && (
+          <>
+            <DrillSection title="Best pitch tonight (whiff%)" />
+            <SR
+              label="Weapon"
+              away={aBest ? `${aBest.pitch_name ?? aBest.pitch_type} ${pct(aBest.whiff_percent ?? aBest.whiff_pct)}` : '–'}
+              home={hBest ? `${hBest.pitch_name ?? hBest.pitch_type} ${pct(hBest.whiff_percent ?? hBest.whiff_pct)}` : '–'}
+              awayBetter={hi(aBest?.whiff_percent ?? aBest?.whiff_pct, hBest?.whiff_percent ?? hBest?.whiff_pct)}
+              homeBetter={hi(hBest?.whiff_percent ?? hBest?.whiff_pct, aBest?.whiff_percent ?? aBest?.whiff_pct)}
+            />
+          </>
+        )}
+      </div>
+    )
+  }
+
+  if (factorKey === 'park') return (
+    <div>
+      <div style={{ background: '#F0EDE8', borderRadius: 6, padding: '8px 10px', fontSize: 11, color: '#3D3830', margin: '4px 0 8px', lineHeight: 1.55 }}>
+        {parkLabel(pk?.hr_factor, pk?.run_factor)}
+        {pk?.is_dome ? ' · Dome — weather irrelevant tonight.' : ''}
+        {!pk?.is_dome && w?.wind_dir ? ` · Wind ${windLabel(w.wind_dir)}${w.wind_mph ? ` at ${w.wind_mph} mph` : ''}.` : ''}
+      </div>
+      <DrillSection title="Park factors (3-year avg)" />
+      <SR label="HR factor" note=">1.0 = more HRs" away={pk?.hr_factor ? f2(pk.hr_factor) : '–'} home="park avg" />
+      <SR label="Run factor" note=">1.0 = more runs" away={pk?.run_factor ? f2(pk.run_factor) : '–'} home="park avg" />
+      <SR label="Altitude" away={pk?.altitude_feet != null ? `${Number(pk.altitude_feet).toLocaleString()} ft` : '–'} home="—" />
+      {pk?.hr_factor_rhb != null && <SR label="HR factor (RHB)" note="righties" away={f2(pk.hr_factor_rhb)} home="park avg" />}
+      {pk?.hr_factor_lhb != null && <SR label="HR factor (LHB)" note="lefties" away={f2(pk.hr_factor_lhb)} home="park avg" />}
+      <DrillSection title="Tonight at this park" />
+      <SR label="Wind direction" away={w?.wind_dir ? windLabel(w.wind_dir) : pk?.is_dome ? 'Dome — N/A' : '–'} home={w?.wind_mph != null ? `${w.wind_mph} mph` : '–'} />
+      <SR label="Temperature" away={w?.temp_f != null ? `${Math.round(w.temp_f)}°F / ${Math.round((w.temp_f - 32) * 5/9)}°C` : pk?.is_dome ? 'Controlled' : '–'} home={w?.temp_f != null ? tempNote(w.temp_f) : '–'} />
+    </div>
+  )
+
+  if (factorKey === 'weather') return (
+    <div>
+      {pk?.is_dome ? (
+        <div style={{ fontSize: 11, color: '#5F5E5A', background: '#F5F0E8', borderRadius: 6, padding: '9px 11px', lineHeight: 1.5 }}>
+          🏟 Dome venue — temperature, wind and precipitation have <strong>no effect</strong> on this game.
+        </div>
+      ) : w == null ? (
+        <div style={{ fontSize: 11, color: '#5F5E5A', background: '#F5F0E8', borderRadius: 6, padding: '9px 11px' }}>
+          Weather data not yet available. Check back closer to first pitch.
+        </div>
+      ) : (
+        <>
+          <DrillSection title="Conditions at first pitch" />
+          <SR label="Temperature" away={`${Math.round(w.temp_f)}°F / ${Math.round((w.temp_f - 32) * 5/9)}°C`} home={tempNote(w.temp_f)} />
+          <SR label="Wind speed" away={w.wind_mph != null ? `${w.wind_mph} mph` : '–'} home="—" />
+          <SR label="Wind direction" note="relative to CF" away={windLabel(w.wind_dir)} home="—" />
+          <DrillSection title="What this means tonight" />
+          <div style={{ fontSize: 11, color: '#3D3830', background: '#F0EDE8', borderRadius: 6, padding: '9px 11px', lineHeight: 1.6 }}>
+            {w.wind_dir === 'out' && (w.wind_mph ?? 0) >= 10
+              ? `💨 Wind out at ${w.wind_mph} mph — fly balls carry significantly further. HR factors amplified.`
+              : w.wind_dir === 'in' && (w.wind_mph ?? 0) >= 10
+              ? `💨 Wind in at ${w.wind_mph} mph — outfield fly balls die. Pitchers benefit, hitters struggle for extra bases.`
+              : w.wind_dir === 'cross'
+              ? `↔ Crosswind at ${w.wind_mph ?? '?'} mph — no clear HR effect but affects swing mechanics slightly.`
+              : (w.temp_f ?? 70) >= 85
+              ? `🌡 Hot at ${Math.round(w.temp_f)}°F — ball carries well in warm air. Slight offensive boost.`
+              : (w.temp_f ?? 70) <= 50
+              ? `🥶 Cold at ${Math.round(w.temp_f)}°F — ball doesn't carry. Suppresses HR and extra-base hits.`
+              : `Conditions are broadly neutral — no significant weather edge tonight.`
+            }
+          </div>
+        </>
       )}
     </div>
   )
-}
 
-// ============================================================
-// DROPDOWN CONTENT — per-component factor grids
-// ============================================================
-function DropdownContent({
-  componentKey,
-  props,
-  homeAbbr,
-  awayAbbr,
-  isPro,
-}: {
-  componentKey: keyof EdgeComponents
-  props: EdgeIndicatorProps
-  homeAbbr: string
-  awayAbbr: string
-  isPro: boolean
-}) {
-  const raw = props.components_raw
-  const dd = props.drilldown
-  const meta = COMPONENT_META[componentKey]
-
-  // Pro teaser shown at bottom of each locked-data section
-  const ProTeaser = () => (
-    <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-[#FF5722]/5 border border-dashed border-[#FF5722]/25 rounded-md">
-      <span className="text-[#FF5722] text-[10px] font-mono">⊕</span>
-      <span className="text-[10px] font-mono text-[#FF5722]/70">{meta.pro_teaser}</span>
+  if (factorKey === 'rest') return (
+    <div>
+      <DrillSection title="Schedule load" />
+      <SR
+        label="Last game"
+        away={daysSince(at?.last_game_date)}
+        home={daysSince(ht?.last_game_date)}
+        awayBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && an > hn })()} 
+        homeBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && hn > an })()} 
+        note="more rest = fresher"
+      />
+      <SR label="Games (last 10 days)" note="schedule density" away={at?.games_last_10_days != null ? String(at.games_last_10_days) : '–'} home={ht?.games_last_10_days != null ? String(ht.games_last_10_days) : '–'} awayBetter={lo(at?.games_last_10_days, ht?.games_last_10_days)} homeBetter={lo(ht?.games_last_10_days, at?.games_last_10_days)} />
+      <SR label="Day after night?" away={at?.day_after_night ? 'Yes ⚠' : 'No'} home={ht?.day_after_night ? 'Yes ⚠' : 'No'} awayBetter={!at?.day_after_night && ht?.day_after_night} homeBetter={!ht?.day_after_night && at?.day_after_night} />
+      <DrillSection title="Travel (away team)" />
+      <SR label="Road trip games" note="consecutive away" away={at?.consecutive_road_games != null ? `${at.consecutive_road_games}g` : '–'} home="Home" awayBetter={false} homeBetter={(at?.consecutive_road_games ?? 0) >= 4} />
+      <SR label="Miles (last trip)" note="away team" away={at?.travel_miles_last != null && at.travel_miles_last > 0 ? `${Math.round(at.travel_miles_last).toLocaleString()} mi` : '–'} home="Home" />
     </div>
   )
 
-  // ── STARTING PITCHER ──────────────────────────────────────
-  if (componentKey === 'starting_pitcher') {
-    const ap = dd?.away_pitcher
-    const hp = dd?.home_pitcher
-    const rawAP = raw?.away_pitcher
-    const rawHP = raw?.home_pitcher
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="xFIP-"
-            awayValue={
-              <span className="font-mono font-bold">
-                {rawAP?.xfip_minus ?? '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono font-bold text-[#FF5722]">
-                {rawHP?.xfip_minus ?? '–'}
-              </span>
-            }
-            awayAbbr={awayAbbr}
-            homeAbbr={homeAbbr}
-            edge={
-              rawAP?.xfip_minus && rawHP?.xfip_minus
-                ? `${Math.abs(rawAP.xfip_minus - rawHP.xfip_minus).toFixed(0)} pt gap`
-                : undefined
-            }
-          />
-          <FactorCard
-            label="ERA (season)"
-            awayValue={<span className="font-mono font-bold">{ap?.era ?? '–'}</span>}
-            homeValue={<span className="font-mono font-bold">{hp?.era ?? '–'}</span>}
-          />
-          <FactorCard
-            label="K/9"
-            awayValue={<span className="font-mono font-bold">{ap?.k_per_9 ?? '–'}</span>}
-            homeValue={<span className="font-mono font-bold">{hp?.k_per_9 ?? '–'}</span>}
-          />
-          <FactorCard
-            label="WHIP"
-            awayValue={<span className="font-mono font-bold">{ap?.whip ?? '–'}</span>}
-            homeValue={<span className="font-mono font-bold">{hp?.whip ?? '–'}</span>}
-          />
-          {(rawAP?.last_3_era !== undefined || rawHP?.last_3_era !== undefined) && (
-            <FactorCard
-              label="Last 3 starts ERA"
-              awayValue={
-                <span className="font-mono font-bold">
-                  {rawAP?.last_3_era ?? '–'}
-                </span>
-              }
-              homeValue={
-                <span className="font-mono font-bold">
-                  {rawHP?.last_3_era ?? '–'}
-                </span>
-              }
-            />
-          )}
-          {(rawAP?.innings_pitched !== undefined || rawHP?.innings_pitched !== undefined) && (
-            <FactorCard
-              label="IP (season)"
-              awayValue={<span className="font-mono font-bold">{rawAP?.innings_pitched ?? '–'}</span>}
-              homeValue={<span className="font-mono font-bold">{rawHP?.innings_pitched ?? '–'}</span>}
-            />
-          )}
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── BULLPEN ───────────────────────────────────────────────
-  if (componentKey === 'bullpen') {
-    const af = dd?.away_form
-    const hf = dd?.home_form
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="Bullpen ERA (L30)"
-            awayValue={
-              <span className="font-mono font-bold">
-                {af?.bullpen_era?.toFixed(2) ?? '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono font-bold">
-                {hf?.bullpen_era?.toFixed(2) ?? '–'}
-              </span>
-            }
-            awayAbbr={awayAbbr}
-            homeAbbr={homeAbbr}
-          />
-          <FactorCard
-            label="IP yesterday"
-            awayValue={
-              <span className={`font-mono font-bold ${fatigueColorClass(af?.bullpen_ip_yesterday)}`}>
-                {af?.bullpen_ip_yesterday !== null && af?.bullpen_ip_yesterday !== undefined
-                  ? `${af.bullpen_ip_yesterday} IP`
-                  : '–'}
-              </span>
-            }
-            homeValue={
-              <span className={`font-mono font-bold ${fatigueColorClass(hf?.bullpen_ip_yesterday)}`}>
-                {hf?.bullpen_ip_yesterday !== null && hf?.bullpen_ip_yesterday !== undefined
-                  ? `${hf.bullpen_ip_yesterday} IP`
-                  : '–'}
-              </span>
-            }
-            edge={
-              af?.bullpen_ip_yesterday !== undefined && hf?.bullpen_ip_yesterday !== undefined
-                ? `${fatigueLabel(af?.bullpen_ip_yesterday)} vs ${fatigueLabel(hf?.bullpen_ip_yesterday)}`
-                : undefined
-            }
-          />
-
-          {/* Closer availability */}
-          {(af?.closer_available !== undefined || hf?.closer_available !== undefined) && (
-            <FactorCard
-              label="Closer available"
-              awayValue={
-                <span
-                  className={`font-mono font-bold text-base ${
-                    af?.closer_available ? 'text-green-700' : 'text-red-500'
-                  }`}
-                >
-                  {availabilityDot(af?.closer_available)}
-                </span>
-              }
-              homeValue={
-                <span
-                  className={`font-mono font-bold text-base ${
-                    hf?.closer_available ? 'text-green-700' : 'text-red-500'
-                  }`}
-                >
-                  {availabilityDot(hf?.closer_available)}
-                </span>
-              }
-            />
-          )}
-
-          {/* Setup arm availability */}
-          {(af?.setup1_available !== undefined || hf?.setup1_available !== undefined) && (
-            <FactorCard
-              label="Setup arms"
-              awayValue={
-                <span className="font-mono text-xs">
-                  {availabilityDot(af?.setup1_available)} {availabilityDot(af?.setup2_available)}
-                </span>
-              }
-              homeValue={
-                <span className="font-mono text-xs">
-                  {availabilityDot(hf?.setup1_available)} {availabilityDot(hf?.setup2_available)}
-                </span>
-              }
-            />
-          )}
-
-          {/* WPA/LI */}
-          {(af?.bullpen_wpa_li !== undefined || hf?.bullpen_wpa_li !== undefined) && (
-            <FactorCard
-              label="WPA/LI"
-              awayValue={
-                <span className="font-mono font-bold">
-                  {af?.bullpen_wpa_li?.toFixed(2) ?? '–'}
-                </span>
-              }
-              homeValue={
-                <span className="font-mono font-bold">
-                  {hf?.bullpen_wpa_li?.toFixed(2) ?? '–'}
-                </span>
-              }
-            />
-          )}
-        </div>
-        <div className="text-[9px] font-mono text-[#A3A3A3] pt-0.5">
-          ● Available · ○ Unavailable
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── OFFENSE ───────────────────────────────────────────────
-  if (componentKey === 'offense') {
-    const af = dd?.away_form
-    const hf = dd?.home_form
-    const awayT = raw?.away_team
-    const homeT = raw?.home_team
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="wRC+ (L30)"
-            awayValue={<span className="font-mono font-bold">{awayT?.wrc_plus_l30 ?? '–'}</span>}
-            homeValue={<span className="font-mono font-bold">{homeT?.wrc_plus_l30 ?? '–'}</span>}
-            awayAbbr={awayAbbr}
-            homeAbbr={homeAbbr}
-            edge="100 = league avg, higher = better"
-          />
-          <FactorCard
-            label="L10 record"
-            awayValue={
-              <span className="font-mono font-bold">
-                {af ? `${af.last_10_wins}-${af.last_10_losses}` : '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono font-bold">
-                {hf ? `${hf.last_10_wins}-${hf.last_10_losses}` : '–'}
-              </span>
-            }
-          />
-          {(awayT?.runs_per_game_l30 !== undefined || homeT?.runs_per_game_l30 !== undefined) && (
-            <FactorCard
-              label="R/game (L30)"
-              awayValue={<span className="font-mono font-bold">{awayT?.runs_per_game_l30?.toFixed(1) ?? '–'}</span>}
-              homeValue={<span className="font-mono font-bold">{homeT?.runs_per_game_l30?.toFixed(1) ?? '–'}</span>}
-            />
-          )}
-          {(awayT?.ops_l30 !== undefined || homeT?.ops_l30 !== undefined) && (
-            <FactorCard
-              label="OPS (L30)"
-              awayValue={<span className="font-mono font-bold">{awayT?.ops_l30?.toFixed(3) ?? '–'}</span>}
-              homeValue={<span className="font-mono font-bold">{homeT?.ops_l30?.toFixed(3) ?? '–'}</span>}
-            />
-          )}
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── DEFENSE ───────────────────────────────────────────────
-  if (componentKey === 'defense') {
-    const awayT = raw?.away_team
-    const homeT = raw?.home_team
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="OAA rank"
-            awayValue={<span className="font-mono font-bold">{awayT?.oaa_rank ? `#${awayT.oaa_rank}` : '–'}</span>}
-            homeValue={<span className="font-mono font-bold">{homeT?.oaa_rank ? `#${homeT.oaa_rank}` : '–'}</span>}
-            awayAbbr={awayAbbr}
-            homeAbbr={homeAbbr}
-          />
-          <FactorCard
-            label="DRS (season)"
-            awayValue={
-              <span className="font-mono font-bold">
-                {awayT?.drs !== undefined ? (awayT.drs >= 0 ? `+${awayT.drs}` : `${awayT.drs}`) : '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono font-bold">
-                {homeT?.drs !== undefined ? (homeT.drs >= 0 ? `+${homeT.drs}` : `${homeT.drs}`) : '–'}
-              </span>
-            }
-          />
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── MATCHUP ───────────────────────────────────────────────
-  if (componentKey === 'matchup') {
-    const rawAP = raw?.away_pitcher
-    const rawHP = raw?.home_pitcher
-    const awayT = raw?.away_team
-    const homeT = raw?.home_team
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          {(rawAP?.primary_pitch_whiff_pct !== undefined || rawHP?.primary_pitch_whiff_pct !== undefined) && (
-            <FactorCard
-              label="Primary pitch whiff%"
-              awayValue={
-                <span className="font-mono font-bold">
-                  {rawAP?.primary_pitch_whiff_pct !== undefined
-                    ? `${(rawAP.primary_pitch_whiff_pct * 100).toFixed(0)}%`
-                    : '–'}
-                </span>
-              }
-              homeValue={
-                <span className="font-mono font-bold">
-                  {rawHP?.primary_pitch_whiff_pct !== undefined
-                    ? `${(rawHP.primary_pitch_whiff_pct * 100).toFixed(0)}%`
-                    : '–'}
-                </span>
-              }
-              awayAbbr={awayAbbr}
-              homeAbbr={homeAbbr}
-            />
-          )}
-          {(awayT?.k_rate_vs_rp !== undefined || homeT?.k_rate_vs_rp !== undefined) && (
-            <FactorCard
-              label={`Lineup K% vs ${raw?.home_pitcher?.throws === 'L' ? 'LHP' : 'RHP'}`}
-              awayValue={
-                <span className="font-mono font-bold">
-                  {awayT?.k_rate_vs_rp !== undefined
-                    ? `${(awayT.k_rate_vs_rp * 100).toFixed(1)}%`
-                    : '–'}
-                </span>
-              }
-              homeValue={
-                <span className="font-mono font-bold">
-                  {homeT?.k_rate_vs_rp !== undefined
-                    ? `${(homeT.k_rate_vs_rp * 100).toFixed(1)}%`
-                    : '–'}
-                </span>
-              }
-            />
-          )}
-        </div>
-        {/* Always show Pro teaser for matchup — most data is Pro-gated */}
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── PARK FACTOR ───────────────────────────────────────────
-  if (componentKey === 'park') {
-    const park = raw?.park
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="HR factor (3yr)"
-            awayValue={<span className="font-mono font-bold">{park?.hr_factor?.toFixed(2) ?? '–'}</span>}
-            homeValue={<span />}
-            edge={
-              park?.hr_factor !== undefined
-                ? park.hr_factor > 1.05
-                  ? 'Hitter-friendly park'
-                  : park.hr_factor < 0.95
-                  ? 'Pitcher-friendly park'
-                  : 'Neutral park'
-                : undefined
-            }
-          />
-          <FactorCard
-            label="Run factor (3yr)"
-            awayValue={<span className="font-mono font-bold">{park?.run_factor?.toFixed(2) ?? '–'}</span>}
-            homeValue={<span />}
-          />
-          <FactorCard
-            label="Is dome"
-            awayValue={
-              <span className="font-mono font-bold">
-                {park?.is_dome === true ? 'Yes — weather immune' : 'No — open air'}
-              </span>
-            }
-            homeValue={<span />}
-          />
-          {park?.factor_rhb !== undefined && (
-            <FactorCard
-              label="HR factor (RHB)"
-              awayValue={<span className="font-mono font-bold">{park.factor_rhb?.toFixed(2) ?? '–'}</span>}
-              homeValue={<span />}
-            />
-          )}
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── WEATHER ───────────────────────────────────────────────
-  if (componentKey === 'weather') {
-    const weather = raw?.weather
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="Wind"
-            awayValue={
-              <span className="font-mono font-bold">
-                {weather?.wind_speed !== undefined
-                  ? `${weather.wind_speed} mph`
-                  : '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono text-xs text-[#A3A3A3]">
-                {weather?.wind_direction ?? ''}
-              </span>
-            }
-          />
-          <FactorCard
-            label="Temperature"
-            awayValue={
-              <span className="font-mono font-bold">
-                {weather?.temp_f !== undefined
-                  ? `${weather.temp_f}°F / ${Math.round((weather.temp_f - 32) * 5 / 9)}°C`
-                  : '–'}
-              </span>
-            }
-            homeValue={<span />}
-          />
-          <FactorCard
-            label="Precipitation"
-            awayValue={
-              <span className="font-mono font-bold">
-                {weather?.precip_chance !== undefined
-                  ? `${weather.precip_chance}% chance`
-                  : '–'}
-              </span>
-            }
-            homeValue={<span />}
-          />
-          {weather?.humidity !== undefined && (
-            <FactorCard
-              label="Humidity"
-              awayValue={<span className="font-mono font-bold">{weather.humidity}%</span>}
-              homeValue={<span />}
-            />
-          )}
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // ── REST & TRAVEL ─────────────────────────────────────────
-  if (componentKey === 'rest') {
-    const restData = raw?.rest
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <FactorCard
-            label="Days rest"
-            awayValue={
-              <span className="font-mono font-bold">
-                {restData?.away_days_rest !== undefined ? `${restData.away_days_rest}d` : '–'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono font-bold">
-                {restData?.home_days_rest !== undefined ? `${restData.home_days_rest}d` : '–'}
-              </span>
-            }
-            awayAbbr={awayAbbr}
-            homeAbbr={homeAbbr}
-          />
-          <FactorCard
-            label="Travel"
-            awayValue={
-              <span className="font-mono font-bold text-xs">
-                {restData?.away_travel_note ?? 'No travel data'}
-              </span>
-            }
-            homeValue={
-              <span className="font-mono text-xs text-[#A3A3A3]">
-                Home
-              </span>
-            }
-          />
-          {(restData?.away_games_l7 !== undefined || restData?.home_games_l7 !== undefined) && (
-            <FactorCard
-              label="Games (L7 days)"
-              awayValue={<span className="font-mono font-bold">{restData?.away_games_l7 ?? '–'}</span>}
-              homeValue={<span className="font-mono font-bold">{restData?.home_games_l7 ?? '–'}</span>}
-            />
-          )}
-        </div>
-        {!isPro && <ProTeaser />}
-      </div>
-    )
-  }
-
-  // Fallback: shouldn't reach here
-  return null
+  return <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 0' }}>Detailed data available with Pro.</div>
 }
 
-// ============================================================
-// COMPONENT ROW — one of the 8 factors
-// ============================================================
-type ComponentRowProps = {
-  componentKey: keyof EdgeComponents
-  index: number
-  value: number
-  homeAbbr: string
-  awayAbbr: string
-  locked: boolean
-  proTeaser: string
-  edgeIndicatorProps: EdgeIndicatorProps
-  isPro: boolean
+// ─── RadarChart ───────────────────────────────────────────────────────────────
+
+function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor }: {
+  components: EdgeComponents; homeAbbr: string; awayAbbr: string
+  awayColor: string; homeColor: string
+}) {
+  const VB = 200; const CX = VB / 2; const CY = VB / 2
+  const RADIUS = 60; const LABEL_R = RADIUS + 18
+
+  function spokePoint(i: number, r: number): [number, number] {
+    const a = (i / 8) * 2 * Math.PI - Math.PI / 2
+    return [CX + r * Math.cos(a), CY + r * Math.sin(a)]
+  }
+  function polygon(forHome: boolean): string {
+    return FACTOR_ORDER.map((key, i) => {
+      const [x, y] = spokePoint(i, Math.max(5, toPct(components[key], forHome) / 100 * RADIUS))
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    }).join(' ')
+  }
+
+  return (
+    <svg width="160" height="160" viewBox={`0 0 ${VB} ${VB}`}
+      role="img" aria-label={`Radar comparing ${awayAbbr} and ${homeAbbr}`}
+      style={{ display: 'block', flexShrink: 0 }}>
+      {[0.25, 0.5, 0.75, 1].map((p, ri) => (
+        <polygon key={ri}
+          points={FACTOR_ORDER.map((_, i) => { const [x, y] = spokePoint(i, p * RADIUS); return `${x.toFixed(1)},${y.toFixed(1)}` }).join(' ')}
+          fill="none" stroke={MIST} strokeWidth={ri === 3 ? 1 : 0.6} />
+      ))}
+      {FACTOR_ORDER.map((_, i) => { const [x, y] = spokePoint(i, RADIUS); return <line key={i} x1={CX} y1={CY} x2={x} y2={y} stroke={MIST} strokeWidth="0.6" /> })}
+      <polygon points={polygon(false)} fill={awayColor} fillOpacity={0.12} stroke={awayColor} strokeWidth={2} strokeLinejoin="round" />
+      <polygon points={polygon(true)}  fill={homeColor} fillOpacity={0.12} stroke={homeColor} strokeWidth={2} strokeLinejoin="round" />
+      {FACTOR_ORDER.map((key, i) => {
+        const [x, y] = spokePoint(i, LABEL_R)
+        return <text key={key} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize="9" fontFamily="var(--font-mono)" fill="#888780">{RADAR_LABELS[key]}</text>
+      })}
+      {/* Legend */}
+      <line x1="12" y1="180" x2="28" y2="180" stroke={awayColor} strokeWidth="2.5" strokeLinecap="round"/>
+      <text x="32" y="180" dominantBaseline="middle" fontSize="8" fontFamily="var(--font-mono)" fill={awayColor}>{awayAbbr}</text>
+      <line x1="12" y1="192" x2="28" y2="192" stroke={homeColor} strokeWidth="2.5" strokeLinecap="round"/>
+      <text x="32" y="192" dominantBaseline="middle" fontSize="8" fontFamily="var(--font-mono)" fill={homeColor}>{homeAbbr}</text>
+    </svg>
+  )
 }
 
-function ComponentRow({
-  componentKey,
-  index,
-  value,
-  homeAbbr,
-  awayAbbr,
-  locked,
-  proTeaser,
-  edgeIndicatorProps,
-  isPro,
-}: ComponentRowProps) {
+// ─── FactorBar ────────────────────────────────────────────────────────────────
+
+function FactorBar({ factorKey, score, homeAbbr, awayAbbr, isPro, raw, awayColor, homeColor }: {
+  factorKey: keyof EdgeComponents; score: number
+  homeAbbr: string; awayAbbr: string; isPro: boolean; raw: any
+  awayColor: string; homeColor: string
+}) {
   const [expanded, setExpanded] = useState(false)
-  const meta = COMPONENT_META[componentKey]
-  const absValue = Math.abs(value)
-  const valueColor = absValue >= 5 ? '#FF5722' : '#A3A3A3'
-  const displayValue = absValue < 0.5 ? '±0' : `${value >= 0 ? '+' : ''}${Math.round(value)}`
+  const meta     = FACTOR_META[factorKey]
+  const homePct  = toPct(score, true)
+  const awayPct  = toPct(score, false)
+  const homeWins = score > 5
+  const awayWins = score < -5
+  const clamp    = (v: number) => Math.max(3, Math.min(97, v))
+  const homePos  = clamp(homePct)
+  const awayPos  = clamp(awayPct)
 
-  if (locked) {
-    return (
-      <div className="group flex items-center gap-3 py-3 opacity-60 cursor-default">
-        <div className="w-6 text-[10px] font-mono text-[#FF5722]/40 text-right flex-shrink-0">
-          {String(index + 1).padStart(2, '0')}
+  // Darken a hex colour slightly for the dot border
+  const darken = (hex: string) => hex  // keep simple — border uses same color at lower opacity
+
+  return (
+    <div style={{ borderBottom: '0.5px solid var(--border)' }}>
+      <div onClick={() => setExpanded(!expanded)} style={{
+        display: 'grid', gridTemplateColumns: '1fr 130px 68px 18px',
+        alignItems: 'center', gap: 8,
+        padding: '11px 0', cursor: 'pointer', userSelect: 'none' as const,
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+          {meta.label}
         </div>
-        <div className="w-32 flex-shrink-0">
-          <div className="text-sm font-medium text-[#1A1A1A]">{meta.label}</div>
-          <div className="text-[9px] font-mono uppercase text-[#A3A3A3] tracking-wider mt-0.5">
-            {meta.subtitle}
+
+        {/* Dual track — away on top, home below */}
+        <div style={{ position: 'relative', overflow: 'visible' }}>
+          {/* Away track */}
+          <div style={{ position: 'relative', height: 5, marginBottom: 5, overflow: 'visible' }}>
+            <div style={{ position: 'absolute', inset: 0, background: MIST, borderRadius: 3 }} />
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${awayPos}%`, background: awayColor, opacity: awayWins ? 1 : 0.3, borderRadius: 3 }} />
+            <div style={{
+              position: 'absolute', left: `${awayPos}%`, top: '50%',
+              transform: 'translate(-50%,-50%)', width: 11, height: 11, borderRadius: '50%',
+              background: awayWins ? awayColor : '#C0B8AD',
+              border: `2px solid ${awayWins ? awayColor : '#9A9288'}`,
+              boxShadow: awayWins ? `0 0 0 3px ${awayColor}33` : 'none',
+              zIndex: 2,
+            }} />
+          </div>
+          {/* Home track */}
+          <div style={{ position: 'relative', height: 5, overflow: 'visible' }}>
+            <div style={{ position: 'absolute', inset: 0, background: MIST, borderRadius: 3 }} />
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${homePos}%`, background: homeColor, opacity: homeWins ? 1 : 0.3, borderRadius: 3 }} />
+            <div style={{
+              position: 'absolute', left: `${homePos}%`, top: '50%',
+              transform: 'translate(-50%,-50%)', width: 11, height: 11, borderRadius: '50%',
+              background: homeWins ? homeColor : '#C0B8AD',
+              border: `2px solid ${homeWins ? homeColor : '#9A9288'}`,
+              boxShadow: homeWins ? `0 0 0 3px ${homeColor}33` : 'none',
+              zIndex: 2,
+            }} />
           </div>
         </div>
-        <div className="flex-1 flex items-center gap-2 bg-[#1A1A1A]/5 rounded px-3 py-2 border border-dashed border-[#1A1A1A]/15">
-          <svg className="w-3 h-3 text-[#FF5722] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span className="text-[10px] font-mono text-[#1A1A1A]/50 italic truncate">{proTeaser}</span>
-          <span className="ml-auto flex-shrink-0 text-[9px] font-bold tracking-widest uppercase bg-[#FF5722]/10 text-[#FF5722] px-2 py-0.5 rounded">
-            Pro
+
+        {/* Percentile pills */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+          <span style={{ display: 'inline-block', minWidth: 24, textAlign: 'center', fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 500, color: pctColor(awayPct), background: pctBg(awayPct), padding: '2px 5px', borderRadius: 4 }}>
+            {Math.round(awayPct)}
+          </span>
+          <span style={{ fontSize: 9, color: '#B0A898' }}>|</span>
+          <span style={{ display: 'inline-block', minWidth: 24, textAlign: 'center', fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 500, color: pctColor(homePct), background: pctBg(homePct), padding: '2px 5px', borderRadius: 4 }}>
+            {Math.round(homePct)}
           </span>
         </div>
-      </div>
-    )
-  }
 
-  return (
-    <div className="border-b border-[#1A1A1A]/8 last:border-0">
-      {/* Header row — always clickable */}
-      <div
-        className="flex items-center gap-3 py-3 cursor-pointer hover:bg-[#1A1A1A]/[0.02] rounded transition-colors -mx-1 px-1"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="w-6 text-[10px] font-mono text-[#FF5722] text-right flex-shrink-0">
-          {String(index + 1).padStart(2, '0')}
-        </div>
-        <div className="w-32 flex-shrink-0">
-          <div className="text-sm font-medium text-[#1A1A1A]">{meta.label}</div>
-          <div className="text-[9px] font-mono uppercase text-[#A3A3A3] tracking-wider mt-0.5">
-            {meta.subtitle}
-          </div>
-        </div>
-        <ComponentBar value={value} />
-        <div className="w-10 text-right font-bold text-sm flex-shrink-0" style={{ color: valueColor }}>
-          {displayValue}
-        </div>
         {/* Chevron */}
-        <div className="flex-shrink-0 w-4 h-4 text-[#A3A3A3] flex items-center justify-center">
-          <svg
-            className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 12 12"
-          >
-            <path d="M2 4l4 4 4-4" />
-          </svg>
+        <div style={{ textAlign: 'center', color: '#A0998E', fontSize: 12 }}>
+          {expanded ? '▲' : '▼'}
         </div>
       </div>
 
-      {/* Dropdown */}
+      {/* Expanded drill-down */}
       {expanded && (
-        <div className="bg-[#F5F1E8] -mx-4 px-4 py-4 border-t border-[#1A1A1A]/8 mb-1">
-          <DropdownContent
-            componentKey={componentKey}
-            props={edgeIndicatorProps}
-            homeAbbr={homeAbbr}
-            awayAbbr={awayAbbr}
-            isPro={isPro}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ============================================================
-// TAB TYPE
-// ============================================================
-type Tab = 'components' | 'read' | 'record'
-
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
-export default function EdgeIndicator(props: EdgeIndicatorProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('components')
-  const isPro = props.is_pro ?? false
-
-  const winnerName = props.predicted_winner === 'home' ? props.home_team : props.away_team
-  const homeAbbr = props.home_team_abbr ?? props.home_team.slice(0, 3).toUpperCase()
-  const awayAbbr = props.away_team_abbr ?? props.away_team.slice(0, 3).toUpperCase()
-  const winnerAbbr = props.predicted_winner === 'home' ? homeAbbr : awayAbbr
-
-  const summary = props.llm_summary ?? generateSummary(props.components, props.confidence_tier, winnerName)
-
-  // Slider: map -100→+100 to 0%→100%
-  const sliderPosition = 50 + props.edge_score / 2
-  const sliderPositionClamped = Math.max(2, Math.min(98, sliderPosition))
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'components', label: 'Components' },
-    { key: 'read', label: 'The Read' },
-    { key: 'record', label: 'Track Record' },
-  ]
-
-  return (
-    <div className="my-6 rounded-lg overflow-hidden border border-[#1A1A1A]/10">
-      {/* =====================================================
-          HERO PANEL (BLACK)
-          ===================================================== */}
-      <div className="bg-[#1A1A1A] text-[#FAF8F3] p-6 md:p-8">
-        {/* Top label row */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <span className="text-[#FF5722] text-[11px] font-mono font-bold uppercase tracking-widest">
-              ⊕ The Edge Indicator · V3
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {props.lineups_confirmed ? (
-              <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-[#FDE047] border border-[#FDE047]/40 bg-[#FDE047]/10 px-2.5 py-1 rounded">
-                ✓ Lineups Confirmed
-              </span>
-            ) : (
-              <span className="text-[9px] font-mono text-[#A3A3A3] tracking-wider uppercase">
-                Projected Lineups
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Matchup + score */}
-        <div className="flex items-center justify-between mb-5">
-          {/* Away team */}
-          <div className="flex-1 text-center">
-            <div
-              className="text-5xl md:text-6xl font-bold leading-none tracking-tight"
-              style={{ fontFamily: 'Bebas Neue, sans-serif' }}
-            >
-              {awayAbbr}
-            </div>
-            <div className="text-[10px] font-mono text-[#A3A3A3] tracking-wider mt-1">
-              {props.away_team}
-            </div>
-          </div>
-
-          {/* Score */}
-          <div className="text-center px-4">
-            <div
-              className="text-5xl md:text-6xl font-bold leading-none tracking-tight"
-              style={{
-                fontFamily: 'Bebas Neue, sans-serif',
-                color: '#FDE047',
-              }}
-            >
-              {props.edge_score >= 0 ? '+' : ''}
-              {Math.round(props.edge_score)}
-            </div>
-            <div className="text-[9px] font-mono text-[#A3A3A3] tracking-widest uppercase mt-1">
-              {winnerAbbr} edge
-            </div>
-          </div>
-
-          {/* Home team */}
-          <div className="flex-1 text-center">
-            <div
-              className="text-5xl md:text-6xl font-bold leading-none tracking-tight"
-              style={{
-                fontFamily: 'Bebas Neue, sans-serif',
-                color: props.predicted_winner === 'home' ? '#FDE047' : '#FAF8F3',
-              }}
-            >
-              {homeAbbr}
-            </div>
-            <div className="text-[10px] font-mono text-[#A3A3A3] tracking-wider mt-1">
-              {props.home_team}
-            </div>
-          </div>
-        </div>
-
-        {/* Slider */}
-        <div className="mb-4">
-          <div className="relative h-1.5 bg-white/10 rounded-full">
-            {/* Fill from center toward winner */}
-            <div
-              className="absolute top-0 bottom-0 bg-[#FF5722] rounded-full"
-              style={
-                props.predicted_winner === 'home'
-                  ? { left: '50%', right: `${100 - sliderPositionClamped}%` }
-                  : { left: `${sliderPositionClamped}%`, right: '50%' }
-              }
-            />
-            {/* Marker dot */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-[#FDE047] rounded-full shadow"
-              style={{ left: `${sliderPositionClamped}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-[9px] font-mono text-[#A3A3A3] mt-2 tracking-wider">
-            <span>{awayAbbr} edge</span>
-            <span>Neutral</span>
-            <span>{homeAbbr} edge</span>
-          </div>
-        </div>
-
-        {/* Summary line */}
-        <p
-          className="text-sm text-[#FAF8F3]/80 leading-relaxed border-t border-white/10 pt-4"
-          style={{ fontFamily: 'Fraunces, serif' }}
-        >
-          {summary}
-        </p>
-      </div>
-
-      {/* =====================================================
-          TAB BAR
-          ===================================================== */}
-      <div className="flex bg-[#FAF8F3] border-b border-[#1A1A1A]/10">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-3 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
-              activeTab === tab.key
-                ? 'text-[#FF5722] border-b-2 border-[#FF5722] -mb-px'
-                : 'text-[#A3A3A3] hover:text-[#1A1A1A]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* =====================================================
-          TAB: COMPONENTS
-          ===================================================== */}
-      {activeTab === 'components' && (
-        <div className="bg-[#FAF8F3]">
-          <div className="px-4 pt-3 pb-1">
-            <div className="text-[9px] font-mono uppercase text-[#A3A3A3] tracking-widest mb-3">
-              — Eight Components · Click any row to expand factors
-            </div>
-          </div>
-
-          <div className="px-4">
-            {COMPONENT_ORDER.map((key, index) => {
-              const isFree = FREE_COMPONENTS.includes(key)
-              const showLocked = !isFree && !isPro
-              const isFirstLocked = key === COMPONENT_ORDER[FREE_COMPONENTS.length]
-
-              return (
-                <div key={key}>
-                  {/* Free tier divider */}
-                  {isFirstLocked && !isPro && (
-                    <div className="flex items-center gap-3 my-4 opacity-80">
-                      <div className="flex-1 h-px bg-[#FF5722]/25" />
-                      <span className="text-[9px] font-mono uppercase tracking-widest text-[#FF5722]/80 font-bold">
-                        ⊕ Free tier ends here
-                      </span>
-                      <div className="flex-1 h-px bg-[#FF5722]/25" />
-                    </div>
-                  )}
-                  <ComponentRow
-                    componentKey={key}
-                    index={index}
-                    value={props.components[key]}
-                    homeAbbr={homeAbbr}
-                    awayAbbr={awayAbbr}
-                    locked={showLocked}
-                    proTeaser={COMPONENT_META[key].pro_teaser}
-                    edgeIndicatorProps={props}
-                    isPro={isPro}
-                  />
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Weight legend */}
-          <div className="px-4 py-3 border-t border-[#1A1A1A]/8 mt-2">
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {COMPONENT_ORDER.map((key) => (
-                <span key={key} className="text-[9px] font-mono text-[#A3A3A3]">
-                  {COMPONENT_META[key].label.split(' ')[0]} {COMPONENT_META[key].weight}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Pro upsell (free users) */}
-          {!isPro && (
-            <div className="mx-4 mb-4 bg-[#1A1A1A] text-[#FAF8F3] rounded-lg p-5">
-              <div className="text-[#FDE047] text-[10px] font-mono uppercase tracking-widest mb-2">
-                ⊕ Pro Tier · £4/mo · £40/yr · Founding 100
+        <div style={{ background: SAND, margin: '0 -16px', padding: '10px 16px 12px', borderTop: '0.5px solid var(--border)' }}>
+          {isPro ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, padding: '0 0 6px', borderBottom: '0.5px solid var(--border)', marginBottom: 2 }}>
+                <span style={{ fontSize: 9, color: awayColor, fontFamily: 'var(--font-mono)', fontWeight: 700, textAlign: 'right' }}>{awayAbbr}</span>
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', minWidth: 100 }}>stat</span>
+                <span style={{ fontSize: 9, color: homeColor, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{homeAbbr}</span>
               </div>
-              <p className="text-base font-bold mb-1" style={{ fontFamily: 'Fraunces, serif' }}>
-                Unlock all 8 components.
-              </p>
-              <p className="text-xs text-[#FAF8F3]/70 mb-4 leading-relaxed">
-                Full smart-friend narrative. All component factors. Bullpen fatigue tracker. Fantasy takeaways.
-              </p>
-              <a
-                href="/pricing"
-                className="inline-block bg-[#FDE047] text-[#1A1A1A] font-bold text-xs uppercase tracking-wider px-5 py-2.5 hover:bg-[#FAF8F3] transition-colors"
-              >
-                Get notified when Pro launches June 1 →
+              <ProDrillDown factorKey={factorKey} raw={raw} awayAbbr={awayAbbr} homeAbbr={homeAbbr} awayColor={awayColor} homeColor={homeColor} />
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: '#888', marginBottom: 2, fontWeight: 600 }}>⊕ Pro — full drill-down</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{meta.proTeaser}</div>
+              </div>
+              <a href="/pricing" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: '5px 12px', background: '#1A1A1A', color: '#FDE047', borderRadius: 6, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+                Unlock →
               </a>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-          {/* Footer timestamp */}
-          <div className="px-4 pb-4 text-[9px] font-mono uppercase text-[#A3A3A3] text-center tracking-wider">
-            Updated {formatTimeAgo(props.updated_at)} · Information only · No betting advice
-          </div>
+// ─── EdgePanel ────────────────────────────────────────────────────────────────
+
+function EdgePanel({ components, predicted_winner, confidence_tier, homeAbbr, awayAbbr, winnerLeans, pro_takeaways, isPro, lineups_confirmed, updated_at, awayColor, homeColor }: {
+  components: EdgeComponents; predicted_winner: string; confidence_tier: string
+  homeAbbr: string; awayAbbr: string; winnerLeans: number
+  pro_takeaways?: Array<{ stat: string; text: string; edge: 'home' | 'away' | 'neutral' }> | null
+  isPro: boolean; lineups_confirmed?: boolean; updated_at: string
+  awayColor: string; homeColor: string
+}) {
+  const winner      = predicted_winner === 'home' ? homeAbbr : awayAbbr
+  const winnerColor = predicted_winner === 'home' ? homeColor : awayColor
+  const summary     = buildEdgeSummary(components, winner, winnerLeans, confidence_tier)
+
+  return (
+    <div style={{ padding: '14px 14px 0', display: 'flex', flexDirection: 'column' as const, gap: 14, height: '100%' }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: winnerColor, marginBottom: 4, lineHeight: 1.3 }}>
+          {summary.headline}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+          {summary.body}
+        </div>
+      </div>
+
+      {summary.factors.length > 0 && (
+        <div>
+          <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.07em', color: 'var(--text-muted)', marginBottom: 6 }}>Key factors</div>
+          {summary.factors.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              <span style={{ flexShrink: 0, marginTop: 2, width: 6, height: 6, borderRadius: '50%', background: winnerColor, display: 'inline-block' }} />
+              {f}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* =====================================================
-          TAB: THE READ
-          ===================================================== */}
-      {activeTab === 'read' && (
-        <div className="bg-[#FAF8F3]">
-          {isPro ? (
-            /* PRO: full narrative */
-            <div className="p-6 space-y-6">
-              <div>
-                <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-wider mb-3">
-                  — The Read
-                </div>
-                <p className="text-base text-[#1A1A1A] leading-relaxed" style={{ fontFamily: 'Fraunces, serif' }}>
-                  {props.llm_narrative_pro ?? props.llm_narrative}
-                </p>
-              </div>
+      <div style={{ background: SAND, borderRadius: 8, padding: '9px 10px' }}>
+        <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.07em', color: 'var(--text-muted)', marginBottom: 5 }}>How to read this</div>
+        <div style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          Each bar shows where both teams rank for that factor. Coloured dots mark the stronger team. Numbers are relative percentile ranks.
+        </div>
+      </div>
 
-              {/* Pro takeaways */}
-              {props.pro_takeaways && props.pro_takeaways.length > 0 && (
-                <div>
-                  <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-wider mb-3">
-                    — Pro Takeaways
-                  </div>
-                  <div className="space-y-2">
-                    {props.pro_takeaways.map((t, i) => (
-                      <div key={i} className="bg-[#F5F1E8] border border-[#1A1A1A]/8 rounded-lg p-3">
-                        <div className="text-[9px] font-mono text-[#A3A3A3] uppercase tracking-wider mb-1">
-                          {t.stat}
-                        </div>
-                        <div className="text-sm text-[#1A1A1A]">{t.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {isPro && pro_takeaways && pro_takeaways.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+          <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.07em', color: 'var(--text-muted)' }}>Pro takeaways</div>
+          {pro_takeaways.map((t, i) => (
+            <div key={i} style={{ background: SAND, borderRadius: 7, padding: '8px 10px', borderLeft: `2px solid ${t.edge === 'home' ? homeColor : t.edge === 'away' ? awayColor : '#888780'}` }}>
+              <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.06em', color: 'var(--text-muted)', marginBottom: 3 }}>{t.stat}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-primary)' }}>{t.text}</div>
             </div>
-          ) : (
-            /* FREE: teaser + paywall */
-            <div className="p-6">
-              <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-wider mb-3">
-                — The Read · <span className="text-[#1A1A1A]/30">⊕ Pro</span>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 'auto', paddingTop: 10, paddingBottom: 12, borderTop: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+        <span>Updated {timeAgo(updated_at)}</span>
+        {lineups_confirmed && (
+          <span style={{ padding: '2px 7px', borderRadius: 20, background: '#EAF3DE', color: '#27500A', fontWeight: 500 }}>✓ Confirmed</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
+  const isPro       = props.is_pro === true
+  const homeAbbr    = props.home_team_abbr ?? props.home_team.slice(0, 3).toUpperCase()
+  const awayAbbr    = props.away_team_abbr ?? props.away_team.slice(0, 3).toUpperCase()
+
+  // Team colours — use team primaries, fall back to brand defaults
+  const awayCOLOR   = props.away_primary_color ?? '#b9d01f'
+  const homeCOLOR   = props.home_primary_color ?? '#d212c2'
+
+  const winner      = props.predicted_winner === 'home' ? homeAbbr : awayAbbr
+  const sliderPct   = Math.max(3, Math.min(97, 50 + props.edge_score / 2))
+  const homeLeans   = FACTOR_ORDER.filter(k => props.components[k] > 5).length
+  const awayLeans   = FACTOR_ORDER.filter(k => props.components[k] < -5).length
+  const winnerLeans = props.predicted_winner === 'home' ? homeLeans : awayLeans
+  const winnerColor = props.predicted_winner === 'home' ? homeCOLOR : awayCOLOR
+  const raw         = props.components_raw
+
+  return (
+    <div style={{ borderRadius: 16, overflow: 'hidden', border: '0.5px solid var(--border)', background: 'var(--surface-2)' }}>
+
+      {/* Hero */}
+      <div style={{ background: SAND, padding: '16px 16px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-.3px' }}>
+            <span style={{ color: props.predicted_winner === 'away' ? awayCOLOR : 'var(--text-primary)' }}>{awayAbbr}</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 14, margin: '0 6px' }}>at</span>
+            <span style={{ color: props.predicted_winner === 'home' ? homeCOLOR : 'var(--text-primary)' }}>{homeAbbr}</span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 500, padding: '4px 10px', borderRadius: 20, background: tierBg(props.confidence_tier), color: tierColor(props.confidence_tier) }}>
+            {tierLabel(props.confidence_tier)}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <RadarChart components={props.components} homeAbbr={homeAbbr} awayAbbr={awayAbbr} awayColor={awayCOLOR} homeColor={homeCOLOR} />
+          <div style={{ flex: 1 }}>
+            <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Data factors lean</div>
+              <div style={{ fontSize: 24, fontWeight: 500, color: winnerColor }}>
+                {winnerLeans}
+                <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/8</span>
+                <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>{winner}</span>
               </div>
-              {/* Show blurred first sentence if we have the narrative */}
-              {props.llm_narrative && (
-                <p
-                  className="text-sm text-[#1A1A1A]/40 leading-relaxed mb-4 select-none"
-                  style={{ fontFamily: 'Fraunces, serif', filter: 'blur(3px)' }}
-                >
-                  {props.llm_narrative.slice(0, 160)}...
-                </p>
-              )}
-              <div className="bg-[#1A1A1A]/[0.03] border border-dashed border-[#1A1A1A]/15 rounded-lg p-5">
-                <p className="text-sm text-[#1A1A1A]/60 mb-3" style={{ fontFamily: 'Fraunces, serif' }}>
-                  The full smart-friend analysis — pitching, bullpen, form, and the tactical angle — unlocks with Pro.
-                </p>
-                <a
-                  href="/pricing"
-                  className="inline-block bg-[#1A1A1A] text-[#FDE047] font-bold text-xs uppercase tracking-wider px-4 py-2 hover:bg-[#FF5722] hover:text-white transition-colors"
-                >
-                  See Pro pricing →
-                </a>
+            </div>
+            {/* Slider */}
+            <div style={{ position: 'relative', height: 6, background: MIST, borderRadius: 3 }}>
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0, borderRadius: 3,
+                background: winnerColor,
+                ...(props.predicted_winner === 'home'
+                  ? { left: '50%', right: `${100 - sliderPct}%` }
+                  : { left: `${sliderPct}%`, right: '50%' })
+              }} />
+              <div style={{ position: 'absolute', top: '50%', left: `${sliderPct}%`, transform: 'translate(-50%,-50%)', width: 14, height: 14, borderRadius: '50%', background: '#FDE047', border: '2px solid rgba(0,0,0,.15)', boxShadow: `0 0 0 3px ${winnerColor}44` }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: awayCOLOR, fontWeight: 600 }}>{awayAbbr}</span>
+              <span>Neutral</span>
+              <span style={{ color: homeCOLOR, fontWeight: 600 }}>{homeAbbr}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Section headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)' }}>
+        <div style={{ padding: '9px 16px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888', borderRight: '0.5px solid var(--border)', borderBottom: '2px solid #E0D8CE' }}>
+          Factors
+        </div>
+        <div style={{ padding: '9px 14px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888', borderBottom: '2px solid transparent' }}>
+          The edge
+        </div>
+      </div>
+
+      {/* Main body */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px' }}>
+
+        {/* Left — factors */}
+        <div style={{ padding: '0 16px', borderRight: '0.5px solid var(--border)' }}>
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 68px 18px', gap: 8, padding: '7px 0 6px', borderBottom: '0.5px solid var(--border)', alignItems: 'center' }}>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Factor</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 18, height: 3, background: awayCOLOR, borderRadius: 2, flexShrink: 0 }} />
+                <span style={{ fontSize: 8, color: awayCOLOR, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{awayAbbr}</span>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 18, height: 3, background: homeCOLOR, borderRadius: 2, flexShrink: 0 }} />
+                <span style={{ fontSize: 8, color: homeCOLOR, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{homeAbbr}</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', textAlign: 'right' }}>{awayAbbr} | {homeAbbr}</div>
+            <div />
+          </div>
+
+          {FACTOR_ORDER.map((key) => (
+            <FactorBar key={key} factorKey={key} score={props.components[key]}
+              homeAbbr={homeAbbr} awayAbbr={awayAbbr} isPro={isPro} raw={raw}
+              awayColor={awayCOLOR} homeColor={homeCOLOR} />
+          ))}
+
+          <div style={{ height: 4 }} />
+
+          {!isPro && (
+            <div style={{ margin: '4px 0 14px', background: '#1A1A1A', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, color: '#FDE047', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', marginBottom: 5 }}>⊕ Pro · £4/mo founding rate</div>
+              <div style={{ fontSize: 12, color: 'rgba(250,248,243,.8)', lineHeight: 1.5, marginBottom: 8 }}>
+                Full drill-down on every factor — every stat behind the bars.
+              </div>
+              <a href="/pricing" style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, padding: '6px 14px', background: '#FDE047', color: '#1A1A1A', borderRadius: 6, textDecoration: 'none' }}>
+                See Pro pricing →
+              </a>
             </div>
           )}
         </div>
-      )}
 
-      {/* =====================================================
-          TAB: TRACK RECORD
-          ===================================================== */}
-      {activeTab === 'record' && (
-        <div className="bg-[#FAF8F3] p-6">
-          <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-wider mb-4">
-            — Track Record
-          </div>
-          <p className="text-sm text-[#1A1A1A]/60 leading-relaxed" style={{ fontFamily: 'Fraunces, serif' }}>
-            Full prediction history with win/loss accuracy is on our public Track Record page. We grade every call and hide nothing.
-          </p>
-          <a
-            href="/track-record"
-            className="inline-block mt-4 text-[#FF5722] text-xs font-mono uppercase tracking-wider underline underline-offset-4 hover:text-[#1A1A1A] transition-colors"
-          >
-            View full track record →
-          </a>
-        </div>
-      )}
+        {/* Right — edge panel */}
+        <EdgePanel
+          components={props.components}
+          predicted_winner={props.predicted_winner}
+          confidence_tier={props.confidence_tier}
+          homeAbbr={homeAbbr} awayAbbr={awayAbbr}
+          winnerLeans={winnerLeans}
+          pro_takeaways={props.pro_takeaways}
+          isPro={isPro}
+          lineups_confirmed={props.lineups_confirmed}
+          updated_at={props.updated_at}
+          awayColor={awayCOLOR}
+          homeColor={homeCOLOR}
+        />
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '8px 16px', borderTop: '0.5px solid var(--border)', background: SAND, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>⊕ The Edge · Information only · Not betting advice</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Percentile ranks vs MLB this season</span>
+      </div>
     </div>
   )
 }
