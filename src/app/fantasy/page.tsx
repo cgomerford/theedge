@@ -12,7 +12,7 @@ import { getFantasyPicks, type FantasyPick } from '@/lib/fantasy'
 import { getOwnershipByMlbIds, getOwnershipByNames } from '@/lib/fantasy-ownership'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
-import FantasyHub from './FantasyHub'
+import FantasyHub from './Fantasyhub'
 
 export const dynamic = 'force-dynamic'
 
