@@ -24,6 +24,15 @@ export type OwnershipRow = {
   percent_owned: number | null
 }
 
+export type OwnershipChange = {
+  espn_player_id: number
+  full_name:       string
+  mlb_player_id:   number | null
+  current:         number
+  previous:        number
+  delta:           number
+}
+
 /**
  * Look up ownership for picks that already have an mlb_player_id.
  * Direct indexed match — cheap, exact.
@@ -92,4 +101,70 @@ export async function getOwnershipByNames(
     }
   }
   return result
+}
+
+/**
+ * Compute week-over-week ownership change (risers/fallers) by diffing
+ * today's fantasy_ownership snapshot against a fantasy_ownership_history
+ * row from `daysAgo` days back.
+ *
+ * Filters out noise: both current AND previous ownership must be ≥1%,
+ * and the absolute delta must clear `minDelta` percentage points.
+ *
+ * Note: this reads from fantasy_ownership_history, so it returns nothing
+ * useful until the cron has been running for at least `daysAgo` days —
+ * expected empty state early on, not a bug.
+ */
+export async function getOwnershipTrend(opts: {
+  daysAgo?: number
+  minDelta?: number
+  limit?: number
+} = {}): Promise<{ risers: OwnershipChange[]; fallers: OwnershipChange[] }> {
+  const { daysAgo = 7, minDelta = 2, limit = 50 } = opts
+  const supa = createAdminClient()
+
+  const past = new Date()
+  past.setUTCDate(past.getUTCDate() - daysAgo)
+  const pastStr = past.toISOString().split('T')[0]
+
+  const [{ data: current }, { data: pastData }] = await Promise.all([
+    supa
+      .from('fantasy_ownership')
+      .select('espn_player_id, mlb_player_id, full_name, percent_owned')
+      .not('percent_owned', 'is', null),
+    supa
+      .from('fantasy_ownership_history')
+      .select('espn_player_id, percent_owned')
+      .eq('snapshot_date', pastStr),
+  ])
+
+  const pastMap = new Map<number, number>()
+  for (const r of pastData ?? []) {
+    pastMap.set(r.espn_player_id, Number(r.percent_owned))
+  }
+
+  const changes: OwnershipChange[] = []
+  for (const r of current ?? []) {
+    const prev = pastMap.get(r.espn_player_id)
+    if (prev == null) continue
+    const curr = Number(r.percent_owned)
+    if (curr < 1 && prev < 1) continue
+    const delta = curr - prev
+    if (Math.abs(delta) < minDelta) continue
+    changes.push({
+      espn_player_id: r.espn_player_id,
+      full_name:      r.full_name,
+      mlb_player_id:  r.mlb_player_id,
+      current:        curr,
+      previous:       prev,
+      delta,
+    })
+  }
+
+  changes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+
+  return {
+    risers:  changes.filter(c => c.delta > 0).slice(0, limit),
+    fallers: changes.filter(c => c.delta < 0).slice(0, limit),
+  }
 }
