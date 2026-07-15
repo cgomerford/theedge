@@ -5,6 +5,9 @@
     {"path": "/api/cron/log-predictions",       "schedule": "5 5,10,14,17,20,23 * * *"},
     {"path": "/api/cron/refresh-lineups",       "schedule": "0 14,17,20,23 * * *"},
     {"path": "/api/cron/grade-predictions",     "schedule": "0 9 * * *"},
-    {"path": "/api/cron/send-daily-brief",      "schedule": "0 12 * * *"}
+    {"path": "/api/cron/send-daily-brief",      "schedule": "0 12 * * *"},
+    {"path": "/api/cron/fetch-fantasy-ownership",
+      "schedule": "0 13 * * *"
+    }
   ]
 }
