@@ -73,19 +73,40 @@ export async function getSeriesGames(
       // This handles the case where tonight's game isn't in the series window yet
       return allGames.map((g, i) => buildResult(g, i + 1, tonightGamePk, awayTeamId))
     }
+const tonightRaw = allGames[tonightIdx]
+    // Was `?? 3` — a dangerous fallback since 3 is ALSO a real, common series
+    // length, so a missing seriesStatus.totalGames field silently truncated
+    // every 4+ game series to 3 with no error, no wrong-looking output.
+    // Confirmed 2026-07-13: this is why a real 5-game series only ever
+    // showed 3 games, everywhere from SeriesTrajectory's "Best of 3" label
+    // to the pitch-hover date window being 3 days short.
+    //
+    // Real fix: when the API doesn't say the series length, don't guess a
+    // number — use a CONSECUTIVE run of games between these two teams
+    // around tonight's game instead. A break of 2+ days between games
+    // against this opponent means a new series (accounts for a team
+    // playing someone else in between, or an off-day boundary).
+    const seriesTotal: number | null = tonightRaw.seriesStatus?.totalGames ?? null
+    const tonightGameNum: number | null = tonightRaw.seriesStatus?.gameNumber ?? null
 
-    const tonightRaw = allGames[tonightIdx]
-    const seriesTotal: number = tonightRaw.seriesStatus?.totalGames ?? 3
-    const tonightGameNum: number = tonightRaw.seriesStatus?.gameNumber ?? 1
+    console.log('[series-games] seriesTotal (from API):', seriesTotal, 'tonightGameNum:', tonightGameNum)
 
-    console.log('[series-games] seriesTotal:', seriesTotal, 'tonightGameNum:', tonightGameNum)
-
-    // Slice just this series
-    const seriesStart = Math.max(0, tonightIdx - (tonightGameNum - 1))
-    const seriesSlice = allGames.slice(seriesStart, seriesStart + seriesTotal)
+    let seriesSlice: any[]
+    if (seriesTotal !== null && tonightGameNum !== null) {
+      const seriesStart = Math.max(0, tonightIdx - (tonightGameNum - 1))
+      seriesSlice = allGames.slice(seriesStart, seriesStart + seriesTotal)
+    } else {
+      // Walk outward from tonight's game while consecutive dates keep
+      // matching this same pair of teams — no guessed length involved.
+      let start = tonightIdx
+      while (start > 0 && daysBetween(allGames[start - 1].officialDate, allGames[start].officialDate) <= 2) start--
+      let end = tonightIdx
+      while (end < allGames.length - 1 && daysBetween(allGames[end].officialDate, allGames[end + 1].officialDate) <= 2) end++
+  seriesSlice = allGames.slice(start, end + 1)
+      console.log('[series-games] no seriesStatus — inferred', seriesSlice.length, 'games via consecutive-date walk')
+    }
 
     return seriesSlice.map((g, i) => buildResult(g, i + 1, tonightGamePk, awayTeamId))
-
   } catch (err) {
     console.error('[getSeriesGames]', err)
     return []
@@ -120,4 +141,10 @@ function offsetDate(base: string, days: number): string {
   const d = new Date(base + 'T12:00:00Z')
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
+}
+
+function daysBetween(a: string, b: string): number {
+  const da = new Date(a + 'T12:00:00Z').getTime()
+  const db = new Date(b + 'T12:00:00Z').getTime()
+  return Math.abs(db - da) / (1000 * 60 * 60 * 24)
 }

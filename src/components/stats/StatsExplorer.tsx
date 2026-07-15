@@ -288,12 +288,12 @@ function StatsGrid({
                   <Headshot id={p.id} name={p.name} color={color} size={30} />
                 </div>
                 <div className="min-w-0">
-                  <Link
-                    href={`/stats/player/${p.id}?subject=${subject}&name=${encodeURIComponent(p.name)}&team=${p.team}&pos=${p.pos}`}
-                    className="font-serif font-semibold text-[13px] text-stone-900 truncate hover:text-[#FF5722] transition-colors block"
-                  >
-                    {p.name}
-                  </Link>
+                 <Link
+  href={`/mlb/players/${p.id}`}
+  className="font-serif font-semibold text-[13px] text-stone-900 truncate hover:text-[#FF5722] transition-colors block"
+>
+  {p.name}
+</Link>
                   <div className="text-[10px] text-stone-500 font-mono">{p.team} · {p.pos}{p.age ? ` · ${p.age}y` : ''}</div>
                 </div>
               </div>
@@ -325,8 +325,14 @@ function StatsGrid({
     </div>
   )
 }
-
-export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; isSignedIn: boolean }) {
+// Pro gating removed from this page entirely (2026-07-14) — every category,
+// full compare limit, and every chart mode are open regardless of isPro.
+// isPro kept in the prop signature (unused below) rather than touching
+// every call site that passes it in from page.tsx.
+export default function StatsExplorer({ isSignedIn }: { isPro?: boolean; isSignedIn: boolean }) {
+  // TEMP: Pro gates disabled site-wide until Stripe activation goes live.
+  // Revert: delete this line, rename `_isPro` back to `isPro` in the params above.
+  const isPro = true
   const [subject, setSubject] = useState<SubjectType>('batter')
   const [season, setSeason] = useState(new Date().getFullYear())
   const [teamSlug, setTeamSlug] = useState<string>('')
@@ -382,9 +388,15 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
         return
       }
 
-      setLoading(true)
+     setLoading(true)
+      // teamId is deliberately NOT sent here. Percentiles need the full
+      // league pool in memory at all times — filtering server-side by team
+      // silently turned "90th percentile" into "best of the ~13 players
+      // left after filtering" (confirmed 2026-07-12: Bryce Harper showing
+      // 100 percentile on a 3-player filtered Phillies view). Team and
+      // position are both client-side filters over the same full pool now
+      // — see visibleRows/percentiles below.
       const params = new URLSearchParams({ subject, season: String(season) })
-      if (teamId) params.set('teamId', String(teamId))
       try {
         const res = await fetch(`/api/stats/players?${params}`)
         const json = await res.json()
@@ -399,10 +411,10 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
     const t = setTimeout(run, subject === 'batter' && search ? 300 : 0)
     return () => { cancelled = true; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, season, teamId, search])
-
-  const visibleRows = useMemo(() => {
+  }, [subject, season, search])
+ const visibleRows = useMemo(() => {
     let r = rows
+    if (teamId) r = r.filter(p => p.teamId === teamId)
     if (positions.size > 0) r = r.filter(p => positions.has(p.pos))
     r = [...r].sort((a, b) => {
       const av = a.stats[sortKey], bv = b.stats[sortKey]
@@ -411,8 +423,7 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
       return sortDir === 'asc' ? an - bn : bn - an
     })
     return r
-  }, [rows, positions, sortKey, sortDir])
-
+  }, [rows, teamId, positions, sortKey, sortDir])
   function toggleSort(col: StatColumn) {
     if (sortKey === col.key) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -491,14 +502,22 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
 
   const rollableCols = cat.cols.filter(c => ROLLING_COMPATIBLE[c.key])
 
+ // Always computed against the FULL fetched pool (`rows`), never against
+  // the filtered/displayed set (`visibleRows`). Team/position filters
+  // change what's on screen, not what "90th percentile" means — same
+  // convention Savant uses (percentile is always vs. the whole qualified
+  // league, regardless of which leaderboard view you're filtering to).
+  // Known remaining narrow-pool case: batter name search only returns a
+  // handful of matches, so percentile there is still low-sample — pre-
+  // existing limitation of search mode, not something this change touches.
   const percentiles = useMemo(() => {
     const map = new Map<number, Map<string, number>>()
-    if (visibleRows.length < 2) return map
+    if (rows.length < 2) return map
     for (const col of cat.cols) {
-      const vals = visibleRows.map(r => r.stats[col.key]).filter((v): v is number => v !== null && v !== undefined)
+      const vals = rows.map(r => r.stats[col.key]).filter((v): v is number => v !== null && v !== undefined)
       if (vals.length < 2) continue
       const sorted = [...vals].sort((a, b) => a - b)
-      for (const row of visibleRows) {
+      for (const row of rows) {
         const v = row.stats[col.key]
         if (v === null || v === undefined) continue
         let rank = sorted.filter(x => x <= v).length / sorted.length
@@ -509,13 +528,11 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
       }
     }
     return map
-  }, [visibleRows, cat])
+  }, [rows, cat])
 
-  const ROW_LIMIT = 25
-  const COMPARE_LIMIT = isPro ? 6 : 2
+ const ROW_LIMIT = 25
+  const COMPARE_LIMIT = 6
   const displayRows = visibleRows.slice(0, ROW_LIMIT)
-  const [upgradeReason, setUpgradeReason] = useState<string | null>(null)
-
   function percentileColor(pct: number): string {
     if (pct >= 90) return '#FF5722'
     if (pct >= 70) return '#C2622A'
@@ -618,21 +635,18 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {cats.map(c => {
-          const locked = !isPro && c.key !== 'overview'
-          return (
-            <button
-              key={c.key}
-              onClick={() => locked ? setUpgradeReason(`${c.label} stats`) : setCategory(c.key)}
-              className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-full border transition ${
-                category === c.key ? 'bg-[#1A1A1A] text-yellow-300 border-[#1A1A1A]' : 'bg-white text-stone-500 border-stone-300 hover:border-stone-900'
-              }`}
-            >
-              {c.label}{locked && ' 🔒'}
-            </button>
-          )
-        })}
+<div className="flex flex-wrap gap-1.5 mb-4">
+        {cats.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setCategory(c.key)}
+            className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-full border transition ${
+              category === c.key ? 'bg-[#1A1A1A] text-yellow-300 border-[#1A1A1A]' : 'bg-white text-stone-500 border-stone-300 hover:border-stone-900'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       {error && <p className="text-sm text-red-600 font-mono mt-4">{error}</p>}
@@ -706,21 +720,18 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
           </p>
 
           <div className="border border-stone-200 bg-white p-4 rounded-xl shadow-sm flex flex-wrap items-end gap-4 mb-4">
-            <div className="flex bg-stone-100 p-1 rounded-full">
-              {(['scatter', 'trend', 'career'] as ChartMode[]).map(m => {
-                const locked = !isPro && m !== 'scatter'
-                return (
-                  <button
-                    key={m}
-                    onClick={() => locked ? setUpgradeReason(m === 'trend' ? 'Trend charts' : 'Career mode') : setChartMode(m)}
-                    className={`font-mono text-[10.5px] uppercase px-3.5 py-2 rounded-full transition ${
-                      chartMode === m ? 'bg-[#1A1A1A] text-yellow-300' : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                  >
-                    {m === 'scatter' ? 'Scatter' : m === 'trend' ? 'Trend (10gm)' : 'Career'}{locked && ' 🔒'}
-                  </button>
-                )
-              })}
+        <div className="flex bg-stone-100 p-1 rounded-full">
+              {(['scatter', 'trend', 'career'] as ChartMode[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setChartMode(m)}
+                  className={`font-mono text-[10.5px] uppercase px-3.5 py-2 rounded-full transition ${
+                    chartMode === m ? 'bg-[#1A1A1A] text-yellow-300' : 'text-stone-500 hover:text-stone-900'
+                  }`}
+                >
+                  {m === 'scatter' ? 'Scatter' : m === 'trend' ? 'Trend (10gm)' : 'Career'}
+                </button>
+              ))}
             </div>
 
             {chartMode === 'scatter' && (
@@ -797,26 +808,7 @@ export default function StatsExplorer({ isPro, isSignedIn }: { isPro: boolean; i
         </div>
       )}
 
-      {upgradeReason && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-start justify-center pt-24 px-4" onClick={() => setUpgradeReason(null)}>
-          <div className="bg-[#FAF8F3] border border-[#1A1A1A] rounded-2xl max-w-sm w-full p-7 shadow-2xl text-center" onClick={e => e.stopPropagation()}>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">⊕ Pro feature</div>
-            <h3 className="text-2xl font-serif font-bold mb-3">{upgradeReason} is Pro</h3>
-            <p className="font-serif text-sm text-stone-600 mb-6">
-              Free gets Overview stats, 2-player Compare, and Scatter charts. Pro unlocks every category, up to 6 players in Compare, and Trend/Career charts.
-            </p>
-            <Link
-              href="/pricing"
-              className="block font-mono text-[10px] uppercase tracking-widest bg-[#1A1A1A] text-[#FAF8F3] px-4 py-3 rounded-lg hover:bg-[#FF5722] transition mb-3"
-            >
-              See Pro →
-            </Link>
-            <button onClick={() => setUpgradeReason(null)} className="font-mono text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-700">
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
+    
 
       {helpOpen && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-start justify-center pt-24 px-4" onClick={() => setHelpOpen(false)}>

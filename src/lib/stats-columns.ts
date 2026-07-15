@@ -33,11 +33,41 @@ export type StatCategory = {
   cols: StatColumn[]
 }
 
-const pct = (v: number) => `${(v * 100).toFixed(1)}%` // MLB API / Supabase store these as 0-1 decimals, not 0-100
-const pct100 = (v: number) => `${v.toFixed(1)}%`       // Savant CSV fields already come as 0-100
+// Confirmed 2026-07-12: pitcher_stats percent fields (hard_hit_pct, barrel_pct,
+// chase_rate, swstr_pct, and the Command/Batted-ball tabs) are ALL stored
+// 0-100, same convention as the Savant CSVs — not 0-1. `pct` is currently
+// unused as a result; kept in case a future field genuinely is 0-1 scale,
+// but don't reach for it without checking the actual stored value first.
+const pct = (v: number) => `${(v * 100).toFixed(1)}%`
+const pct100 = (v: number) => `${v.toFixed(1)}%`
 const rate3 = (v: number) => v.toFixed(3).replace(/^0/, '')
 const rate2 = (v: number) => v.toFixed(2)
 const rate1 = (v: number) => v.toFixed(1)
+
+export const STAT_GLOSSARY: Record<string, string> = {
+  ops: 'On-base % + Slugging % — quick overall offensive measure',
+  iso: 'Isolated power — SLG minus AVG, raw extra-base-hit power',
+  babip: 'Batting average on balls in play — luck/defense-adjusted contact quality',
+  xwoba: 'Expected weighted on-base average — quality of contact, luck-stripped',
+  xba: 'Expected batting average, from exit velocity + launch angle',
+  xslg: 'Expected slugging, from exit velocity + launch angle',
+  barrel_pct: '% of batted balls hit with ideal exit velocity + launch angle combo',
+  hard_hit_pct: '% of batted balls hit 95+ mph off the bat',
+  sweet_spot_pct: '% of batted balls in the launch-angle range that produces hits',
+  whip: 'Walks + hits per inning pitched — baserunners allowed',
+  fip: 'Fielding-independent pitching — ERA estimate from K/BB/HR alone',
+  xera: 'Expected ERA, from quality of contact allowed',
+  xwoba_allowed: 'Expected wOBA allowed — quality of contact against, luck-stripped',
+  swstr_pct: 'Swinging strike % — whiffs per pitch thrown',
+  chase_rate: '% of pitches outside the zone that batters swing at',
+  k_bb_ratio: 'Strikeouts per walk — command + stuff combined',
+  quality_start_pct: '% of starts with 6+ IP and 3 or fewer earned runs',
+  hr_per_fb: '% of fly balls allowed that leave the park',
+  era_minus: 'ERA relative to league average, park-adjusted — 100 is average, lower is better',
+  fip_minus: 'FIP relative to league average, park-adjusted — 100 is average, lower is better',
+  xfip_minus: 'xFIP relative to league average, park-adjusted — 100 is average, lower is better',
+  war: 'Wins Above Replacement — FanGraphs-sourced, likely blank for most players (see file note)',
+}
 
 // ── BATTER ──────────────────────────────────────────────────────────────
 // Overview: getBatterSeasonStats() (live MLB API, per-player)
@@ -109,16 +139,16 @@ export const PITCHER_CATEGORIES: StatCategory[] = [
       { key: 'fip', label: 'FIP', format: rate2, higherIsBetter: false },
     ],
   },
-  {
+{
     key: 'statcast', label: 'Statcast',
     cols: [
       { key: 'avg_exit_velocity', label: 'Avg EV agn', format: rate1, higherIsBetter: false },
-      { key: 'hard_hit_pct', label: 'HardHit% agn', format: pct, higherIsBetter: false },
-      { key: 'barrel_pct', label: 'Barrel% agn', format: pct, higherIsBetter: false },
+      { key: 'hard_hit_pct', label: 'HardHit% agn', format: pct100, higherIsBetter: false },
+      { key: 'barrel_pct', label: 'Barrel% agn', format: pct100, higherIsBetter: false },
       { key: 'xera', label: 'xERA', format: rate2, higherIsBetter: false },
       { key: 'xwoba_allowed', label: 'xwOBA agn', format: rate3, higherIsBetter: false },
-      { key: 'swstr_pct', label: 'SwStr%', format: pct },
-      { key: 'chase_rate', label: 'Chase%', format: pct },
+      { key: 'swstr_pct', label: 'SwStr%', format: pct100 },
+      { key: 'chase_rate', label: 'Chase%', format: pct100 },
     ],
   },
   {
@@ -127,20 +157,20 @@ export const PITCHER_CATEGORIES: StatCategory[] = [
       { key: 'k_per_9', label: 'K/9', format: rate1 },
       { key: 'bb_per_9', label: 'BB/9', format: rate1, higherIsBetter: false },
       { key: 'k_bb_ratio', label: 'K/BB', format: rate2 },
-      { key: 'first_pitch_strike_pct', label: 'F-Strike%', format: pct },
-      { key: 'zone_contact_rate', label: 'Zone Contact%', format: pct },
-      { key: 'quality_start_pct', label: 'QS%', format: pct },
+      { key: 'first_pitch_strike_pct', label: 'F-Strike%', format: pct100 },
+      { key: 'zone_contact_rate', label: 'Zone Contact%', format: pct100 },
+      { key: 'quality_start_pct', label: 'QS%', format: pct100 },
     ],
   },
   {
     key: 'batted_ball', label: 'Batted ball',
     cols: [
-      { key: 'gb_rate', label: 'GB%', format: pct },
-      { key: 'line_drive_pct', label: 'LD%', format: pct },
-      { key: 'flyball_pct', label: 'FB%', format: pct },
-      { key: 'hr_per_fb', label: 'HR/FB', format: pct },
-      { key: 'soft_contact_pct', label: 'Soft%', format: pct },
-      { key: 'hard_contact_pct', label: 'Hard%', format: pct, higherIsBetter: false },
+      { key: 'gb_rate', label: 'GB%', format: pct100 },
+      { key: 'line_drive_pct', label: 'LD%', format: pct100 },
+      { key: 'flyball_pct', label: 'FB%', format: pct100 },
+      { key: 'hr_per_fb', label: 'HR/FB', format: pct100 },
+      { key: 'soft_contact_pct', label: 'Soft%', format: pct100 },
+      { key: 'hard_contact_pct', label: 'Hard%', format: pct100, higherIsBetter: false },
     ],
   },
   {

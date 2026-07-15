@@ -48,15 +48,33 @@ type EspnPlayer = {
   ownership?: { percentOwned?: number }
 }
 
+// ESPN caps the response at 50 players unless you explicitly ask for more
+// via this header. limit is set high enough to cover the full MLB player
+// pool (~1500-2000 rostered + free agents combined).
+const FANTASY_FILTER = JSON.stringify({
+  players: {
+    limit: 3000,
+    sortPercOwned: { sortAsc: false, sortPriority: 1 },
+  },
+})
+
+async function fetchEspnPlayersForYear(year: number): Promise<EspnPlayer[]> {
+  const res = await fetch(ESPN_URL(year), {
+    headers: { 'X-Fantasy-Filter': FANTASY_FILTER },
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!res.ok) throw new Error(`ESPN ${res.status}`)
+  const json = await res.json()
+  if (!Array.isArray(json)) throw new Error(`ESPN returned non-array: ${typeof json}`)
+  return json
+}
+
 async function fetchEspnPlayers(): Promise<EspnPlayer[]> {
   console.log(`[fantasy-ownership] Fetching ESPN ownership (${CURRENT_YEAR})...`)
 
   let players: EspnPlayer[] = []
   try {
-    const res = await fetch(ESPN_URL(CURRENT_YEAR), { signal: AbortSignal.timeout(30_000) })
-    if (!res.ok) throw new Error(`ESPN ${res.status}`)
-    const json = await res.json()
-    if (Array.isArray(json) && json.length > 0) players = json
+    players = await fetchEspnPlayersForYear(CURRENT_YEAR)
   } catch (e) {
     console.error(`[fantasy-ownership] Current year fetch failed:`, e)
   }
@@ -64,11 +82,7 @@ async function fetchEspnPlayers(): Promise<EspnPlayer[]> {
   // Fallback to previous year if current is empty (early offseason)
   if (players.length === 0) {
     console.log(`[fantasy-ownership] Empty — falling back to ${CURRENT_YEAR - 1}`)
-    const res = await fetch(ESPN_URL(CURRENT_YEAR - 1), { signal: AbortSignal.timeout(30_000) })
-    if (!res.ok) throw new Error(`ESPN fallback ${res.status}`)
-    const json = await res.json()
-    if (!Array.isArray(json)) throw new Error(`ESPN returned non-array: ${typeof json}`)
-    players = json
+    players = await fetchEspnPlayersForYear(CURRENT_YEAR - 1)
   }
 
   console.log(`[fantasy-ownership] Received ${players.length} players`)

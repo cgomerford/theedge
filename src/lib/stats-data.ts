@@ -149,11 +149,14 @@ async function getLeagueWidePositions(): Promise<Map<number, string>> {
 }
 
 export async function getAllBattersSeasonTable(season: number): Promise<StatsRow[]> {
-  // limit=1000 — MLB carries a hitting line for every player who's batted
-  // that season, which can run past the ~500 "not all batters present" was
-  // hitting. totalSplits (confirmed present on this endpoint from the
-  // pitcher_stats curl check) tells us if even 1000 wasn't enough.
-  const url = `${MLB_API}/stats?stats=season&group=hitting&sportId=1&season=${season}&limit=1000`
+// limit=1000 covers volume; playerPool=ALL is the one that actually
+  // matters — without it this endpoint silently restricts to "qualified"
+  // batters only (confirmed 2026-07-12: totalSplits self-reported 148,
+  // matching splits.length exactly — the API wasn't truncating a bigger
+  // result, it was filtering to the qualified pool *before* counting).
+  // Same class of bug as the team-grades.ts roster-grade fix earlier this
+  // session, hitting a second endpoint independently.
+  const url = `${MLB_API}/stats?stats=season&group=hitting&sportId=1&season=${season}&limit=1000&playerPool=ALL`
   const [json, positions] = await Promise.all([
     safeFetchJson<any>(url),
     getLeagueWidePositions(),
@@ -190,7 +193,13 @@ export async function getAllBattersSeasonTable(season: number): Promise<StatsRow
         home_runs: st.homeRuns ?? null, rbi: st.rbi ?? null, stolen_bases: st.stolenBases ?? null,
         iso: (num(st.slg) !== null && num(st.avg) !== null) ? Math.round(((num(st.slg) as number) - (num(st.avg) as number)) * 1000) / 1000 : null,
         babip: num(st.babip),
-        walks: st.baseOnBalls ?? null, strikeouts: st.strikeOuts ?? null,
+    walks: st.baseOnBalls ?? null, strikeouts: st.strikeOuts ?? null,
+     // Derived directly from PA already in this row — no separate Savant
+        // fetch needed. Matches Savant's own definition (BB or K / PA).
+        // Stored 0-100 to match pct100 in stats-columns.ts (same convention
+        // as every other percent field in this table) — NOT 0-1.
+        bb_pct: st.plateAppearances ? Math.round((Number(st.baseOnBalls ?? 0) / st.plateAppearances) * 1000) / 10 : null,
+        k_pct: st.plateAppearances ? Math.round((Number(st.strikeOuts ?? 0) / st.plateAppearances) * 1000) / 10 : null,
         ...sc,
       },
     }
@@ -228,14 +237,35 @@ function parseCSVLine(line: string): string[] {
 
 // Fetch the Savant percentile CSV once, return every player's row keyed by
 // MLBAM id. Replaces N redundant CSV downloads with 1 for a team of N.
-export async function getBatterStatcastBatch(
-  playerIds: number[]
-): Promise<Map<number, BatterStatcast>> {
-  const season = new Date().getFullYear()
-  const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=batter&year=${season}&csv=true`
-  const out = new Map<number, BatterStatcast>()
-  const wanted = new Set(playerIds)
+// Fetch the Savant percentile CSV once, return every player's row keyed by
+// MLBAM id. Replaces N redundant CSV downloads with 1 for a team of N.
+// The old single-CSV version pulled from percentile-rankings — which
+// returns PERCENTILE RANKS (0-100), not raw stat values. That's why
+// Alonso's "xBA" showed 76.000 instead of ~.280 (see chat 2026-07-12).
+// This version merges two SEPARATE raw-value leaderboards instead, by
+// player_id: expected_statistics (xBA/xSLG/xwOBA) and statcast (Avg/Max
+// EV, Barrel%, HardHit%, Sweet Spot%). min=1, not "Qualified" — matches
+// the playerPool=ALL fix on the MLB-API side, every batter with at least
+// one batted ball, not just qualified regulars.
+//
+// KNOWN GAP: k_pct, bb_pct, sprint_speed are NOT sourced here. The old
+// code pulled them from percentile-rankings too, meaning those were also
+// silently percentile ranks mislabeled as raw K%/BB%/sprint speed, not
+// just xBA/xSLG/xwOBA. K%/BB% should be computed from strikeouts/walks/pa
+// already present in this file's season-stats fetch instead of re-hitting
+// Savant for them. Sprint speed needs a third leaderboard
+// (baseballsavant.mlb.com/leaderboard/sprint_speed) — deliberately left
+// null rather than faked; wire it up as a separate pass if/when it matters.
+function blankStatcast(): BatterStatcast {
+  return {
+    xba: null, xslg: null, xwoba: null,
+    barrel_pct: null, hard_hit_pct: null, sweet_spot_pct: null,
+    avg_exit_velocity: null, max_exit_velocity: null,
+    sprint_speed: null, k_pct: null, bb_pct: null,
+  }
+}
 
+async function fetchSavantCSV(url: string): Promise<{ headers: string[]; lines: string[] } | null> {
   try {
     const res = await fetch(url, {
       cache: 'no-store',
@@ -244,52 +274,94 @@ export async function getBatterStatcastBatch(
         'Accept': 'text/csv,*/*',
       },
     })
-    console.log(`[stats-data] Statcast batch: status ${res.status}`)
-    if (!res.ok) return out
-
+    if (!res.ok) {
+      console.error(`[stats-data] Savant CSV fetch failed: ${res.status} — ${url}`)
+      return null
+    }
     const text = await res.text()
     const lines = text.trim().split('\n')
-    if (lines.length < 2) return out
-
+    if (lines.length < 2) return null
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''))
-    console.log('[stats-data] Statcast batch: headers found —', headers.slice(0, 20))
-    const idIdx = headers.findIndex(h => h === 'player_id' || h === 'playerid' || h === 'mlbam_id')
-    if (idIdx === -1) {
-      console.error('[stats-data] Statcast batch: no player_id column in headers:', headers)
-      return out
-    }
+    return { headers, lines }
+  } catch (err) {
+    console.error('[stats-data] Savant CSV fetch threw:', err)
+    return null
+  }
+}
 
+export async function getBatterStatcastBatch(
+  playerIds: number[]
+): Promise<Map<number, BatterStatcast>> {
+  const season = new Date().getFullYear()
+  const wanted = new Set(playerIds)
+  const out = new Map<number, BatterStatcast>()
+
+const [expected, exitVelo, sprint] = await Promise.all([
+    fetchSavantCSV(`https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=${season}&position=&team=&min=1&csv=true`),
+    fetchSavantCSV(`https://baseballsavant.mlb.com/leaderboard/statcast?type=batter&year=${season}&position=&team=&min=1&csv=true`),
+    fetchSavantCSV(`https://baseballsavant.mlb.com/leaderboard/sprint_speed?year=${season}&position=&team=&csv=true`),
+  ])
+
+  console.log(`[stats-data] Statcast: expected_statistics ${expected ? 'ok, ' + (expected.lines.length - 1) + ' rows' : 'FAILED'}`)
+  console.log(`[stats-data] Statcast: exit velo/barrels ${exitVelo ? 'ok, ' + (exitVelo.lines.length - 1) + ' rows' : 'FAILED'}`)
+  console.log(`[stats-data] Statcast: sprint speed ${sprint ? 'ok, ' + (sprint.lines.length - 1) + ' rows' : 'FAILED'}`)
+  if (expected) {
+    const idIdx = expected.headers.indexOf('player_id')
     const get = (cells: string[], key: string): number | null => {
-      const idx = headers.indexOf(key)
+      const idx = expected.headers.indexOf(key)
       if (idx === -1) return null
       const val = parseFloat(cells[idx])
       return isNaN(val) ? null : val
     }
-
-    let matched = 0
-    for (let i = 1; i < lines.length; i++) {
-      const cells = parseCSVLine(lines[i]).map(c => c.replace(/"/g, ''))
+    for (let i = 1; i < expected.lines.length; i++) {
+      const cells = parseCSVLine(expected.lines[i]).map(c => c.replace(/"/g, ''))
       const id = Number(cells[idIdx])
       if (!wanted.has(id)) continue
-      matched++
       out.set(id, {
-        xba: get(cells, 'xba'),
-        xslg: get(cells, 'xslg'),
-        xwoba: get(cells, 'xwoba'),
-        barrel_pct: get(cells, 'brl_percent') ?? get(cells, 'barrel_batted_rate'),
-        hard_hit_pct: get(cells, 'hard_hit_percent'),
-        sweet_spot_pct: get(cells, 'sweet_spot_percent'),
-        avg_exit_velocity: get(cells, 'exit_velocity_avg') ?? get(cells, 'avg_hit_speed'),
-        max_exit_velocity: get(cells, 'max_hit_speed'),
-        sprint_speed: get(cells, 'sprint_speed'),
-        k_pct: get(cells, 'k_percent'),
-        bb_pct: get(cells, 'bb_percent'),
+        ...(out.get(id) ?? blankStatcast()),
+        xba: get(cells, 'est_ba'),
+        xslg: get(cells, 'est_slg'),
+        xwoba: get(cells, 'est_woba'),
       })
     }
-    console.log(`[stats-data] Statcast batch: matched ${matched} of ${wanted.size} requested players`)
-  } catch (err) {
-    console.error('[stats-data] Statcast batch fetch failed:', err)
   }
+
+  if (exitVelo) {
+    const idIdx = exitVelo.headers.indexOf('player_id')
+    const get = (cells: string[], key: string): number | null => {
+      const idx = exitVelo.headers.indexOf(key)
+      if (idx === -1) return null
+      const val = parseFloat(cells[idx])
+      return isNaN(val) ? null : val
+    }
+    for (let i = 1; i < exitVelo.lines.length; i++) {
+      const cells = parseCSVLine(exitVelo.lines[i]).map(c => c.replace(/"/g, ''))
+      const id = Number(cells[idIdx])
+      if (!wanted.has(id)) continue
+      out.set(id, {
+        ...(out.get(id) ?? blankStatcast()),
+        avg_exit_velocity: get(cells, 'avg_hit_speed'),
+        max_exit_velocity: get(cells, 'max_hit_speed'),
+        barrel_pct: get(cells, 'brl_percent'),
+        hard_hit_pct: get(cells, 'ev95percent'),
+        sweet_spot_pct: get(cells, 'anglesweetspotpercent'),
+      })
+    }
+  }
+
+ if (sprint) {
+    const idIdx = sprint.headers.indexOf('player_id')
+    const speedIdx = sprint.headers.indexOf('sprint_speed')
+    for (let i = 1; i < sprint.lines.length; i++) {
+      const cells = parseCSVLine(sprint.lines[i]).map(c => c.replace(/"/g, ''))
+      const id = Number(cells[idIdx])
+      if (!wanted.has(id)) continue
+      const val = parseFloat(cells[speedIdx])
+      out.set(id, { ...(out.get(id) ?? blankStatcast()), sprint_speed: isNaN(val) ? null : val })
+    }
+  }
+
+  console.log(`[stats-data] Statcast: merged data for ${out.size} of ${wanted.size} requested players`)
   return out
 }
 

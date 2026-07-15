@@ -19,9 +19,13 @@ const ANIMATION_STYLES = `
 export default async function LiveTicker() {
   const games = await getTodayTickerGames()
 
+// Was bg-stone-900 — same near-black as the game header directly below it,
+  // with no real visual break between them. Moved to the light page surface
+  // so this reads as a quiet utility strip, not a second dark hero
+  // (2026-07-13, third round of "still too much black" feedback).
   if (games.length === 0) {
     return (
-      <div className="bg-stone-900 text-stone-400 py-3 px-6 text-center text-xs font-mono uppercase tracking-widest">
+      <div className="bg-[#FAF8F3] text-stone-400 py-2.5 px-6 text-center text-xs font-mono uppercase tracking-widest border-b border-stone-200">
         No games scheduled today
       </div>
     )
@@ -31,19 +35,26 @@ export default async function LiveTicker() {
   const ticker = [...games, ...games]
 
   return (
-    <div className="bg-stone-900 text-stone-100 overflow-hidden border-b border-stone-800 relative">
+<div className="bg-[#FAF8F3] text-stone-900 overflow-hidden border-b border-stone-200">
       <style dangerouslySetInnerHTML={{ __html: ANIMATION_STYLES }} />
 
-      {/* "MLB Today" label on left */}
-      <div className="absolute left-0 top-0 bottom-0 z-10 bg-orange-600 text-white px-4 flex items-center text-[10px] font-mono uppercase tracking-widest font-bold">
-        MLB · Today
-      </div>
+      {/* Inner max-w-6xl wrapper — was `absolute left-0`, pinned to the
+          literal browser edge regardless of viewport width, while every
+          other section on the page aligns to a centered max-w container.
+          On anything wider than ~1152px the ticker badge sat further left
+          than the game header below it. This ties them to the same edge
+          (2026-07-13). Outer bg-stone-900 stays full-bleed on purpose —
+          only the content inside needs to align, not the background. */}
+      <div className="max-w-6xl mx-auto relative">
+     <div className="absolute left-4 top-0 bottom-0 z-10 bg-[#1A1A1A] text-white px-4 flex items-center text-[10px] font-mono uppercase tracking-widest font-bold">
+          MLB · Today
+        </div>
 
-      {/* Scrolling track */}
-      <div className="flex ticker-track py-3 pl-32 pr-6 whitespace-nowrap">
-        {ticker.map((g, i) => (
-          <TickerItem key={`${g.slug}-${i}`} game={g} />
-        ))}
+        <div className="flex ticker-track py-3 pl-36 pr-6 whitespace-nowrap">
+          {ticker.map((g, i) => (
+            <TickerItem key={`${g.slug}-${i}`} game={g} />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -65,9 +76,9 @@ function TickerItem({ game }: { game: TickerGame }) {
     game.gameTime
 
   return (
-    <Link
+ <Link
       href={`/mlb/${game.slug}`}
-      className="inline-flex items-center gap-3 px-5 mr-2 hover:bg-stone-800 transition-colors"
+      className="inline-flex items-center gap-3 px-5 mr-2 hover:bg-stone-100 transition-colors"
     >
       {/* Away */}
       <span className="inline-flex items-center gap-1.5">

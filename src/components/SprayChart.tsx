@@ -105,10 +105,12 @@ function Field() {
       <rect x="149" y="150" width="6" height="6" rx="1" fill="#1A1A1A" transform="rotate(45 152 153)"/>
       {/* Home plate */}
       <polygon points="110,200 106,195 108,189 112,189 114,195" fill="#1A1A1A"/>
-      {/* Labels */}
-      <text x="110" y="45" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Centre field</text>
-      <text x="30" y="130" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Left</text>
-      <text x="190" y="130" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Right</text>
+{/* Labels — moved to the outer arc edge (was y=45, sitting directly in
+          the shallow-to-mid outfield zone where most batted-ball dots land,
+          overlapping the data — 2026-07-14 fix) */}
+      <text x="110" y="14" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Centre field</text>
+      <text x="22" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Left</text>
+      <text x="198" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Right</text>
     </g>
   )
 }
@@ -228,7 +230,7 @@ export default function SprayChart({
           </div>
         )}
 
-        <svg viewBox="0 0 220 200" style={{ width: '100%', display: 'block' }}>
+      <svg viewBox="0 0 220 220" style={{ width: '100%', display: 'block' }}>
           <Field />
 
           {!loading && !isEmpty && displayed.map((b, i) => {

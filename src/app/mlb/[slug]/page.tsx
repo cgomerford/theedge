@@ -1,45 +1,152 @@
 import {
-  getScheduleForDate, slugifyGame, shortName, getPitcherRecentStarts, getPitcherSeasonStats, getGameWeather,
-  pitchColor, getTeamForm, describeTeamForm, teamLogoUrl, playerHeadshotUrl, getPitchMix, type MLBGame
+  getScheduleForDate, slugifyGame, teamLogoUrl, playerHeadshotUrl, getPitcherSeasonStats, getTeamForm, type MLBGame
 } from '@/lib/mlb'
-import { getVenueInfo, describeWindImpact } from '@/lib/venues'
-import WeatherIcon from '@/components/WeatherIcon'
-import WindArrow from '@/components/WindArrow'
+import { getDivisionStandings, getLeagueStandings } from '@/lib/standings'
+import StandingsCard from '@/components/StandingsCard'
+import RaceForOctober from '@/components/RaceForOctober'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
-import SeriesTrajectory from '@/components/SeriesTrajectory'
-import { getSeriesGames } from '@/lib/series-games'
-import type { SeriesGameResult } from '@/lib/series-games'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import { getEdgePrediction } from '@/lib/edge-fetch'
-import LineupCard from '@/components/LineupCard'
-import { getProjectedLineup } from '@/lib/lineups'
-import Contrarian from '@/components/Contrarian'
 import { findTeamByName } from '@/lib/teams'
-import { getBatterHotZones, getPitcherHotZones } from '@/lib/hot-zones'
-import { getPitcherZoneArsenal, getMostDangerousBat, type PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
-import TaleOfTheTape, { type PitcherOption, type BatterOption } from '@/components/TaleOfTheTape'
-import type { BullpenData } from '@/components/BullpenPanel'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
-import { buildMatchupTiltData } from '@/lib/matchup-tilt'
-import type { ComponentsRaw, ComponentScores } from '@/lib/matchup-tilt'
 import ScrollProgress from '@/components/ScrollProgress'
-import ProLockOverlay from '@/components/ProLockOverlay'
-import { getInlineCalibration } from '@/lib/track-record'
-import { getSeriesContext } from '@/lib/series-context'
-import { getTeamTransactions } from '@/lib/team-transactions'
-import PitchingLabContent from '@/components/PitchingLabContent'
+import { buildStoryLeadSlide, LOCKED_SLIDES } from '@/lib/story-slides'
+import { getProjectedLineup } from '@/lib/lineups'
+import LineupCompare from '@/components/LineupCompare'
+import TeamIntelExtras from '@/components/TeamIntelExtras'
+import PitchingTab from '@/components/PitchingTab'
+import { getPitcherStatsFull, getPitchMovementFromDB } from '@/lib/pitcher-full-stats'
+import { getTeamILList, getTeamTransactions } from '@/lib/team-transactions'
+import { getAffiliateStandouts } from '@/lib/team-minors'
+import { getHotColdStreaks } from '@/lib/hot-cold'
+import HotColdStreaks from '@/components/HotColdStreaks'
 import BullpenPanel from '@/components/BullpenPanel'
 import { getBullpenData } from '@/lib/bullpen'
 import EdgeIndicator from '@/components/EdgeIndicator'
-import { scoreStreamer } from '@/lib/streamer'
-import type { StreamerInput } from '@/lib/streamer'
-
+import Contrarian from '@/components/Contrarian'
+import SeriesTrajectory from '@/components/SeriesTrajectory'
+import { getSeriesGames } from '@/lib/series-games'
+import type { SeriesGameResult } from '@/lib/series-games'
+import SeriesMomentum from '@/components/SeriesMomentum'
+import SeriesCarousel from '@/components/SeriesCarousel'
+import SeriesPredictions from '@/components/SeriesPredictions'
+import SeriesPlayerStats from '@/components/SeriesPlayerStats'
+import { getSeriesBattingStats } from '@/lib/series-stats'
+import { getSeriesInningMomentum } from '@/lib/series-momentum'
 export const revalidate = 60
 
 type Props = { params: Promise<{ slug: string }> }
+
+// ── Wireframe stub — every section not bolted on yet renders through this,
+// so it's obvious at a glance what's real vs. placeholder, and swapping one
+// out is a single find/replace rather than hunting through a large file. ──
+function TrendsCard({
+  awayAbbr, homeAbbr, awayForm, homeForm,
+}: {
+  awayAbbr: string
+  homeAbbr: string
+  awayForm: any
+  homeForm: any
+}) {
+  if (!awayForm && !homeForm) {
+    return <Stub label="Trends" note="Form data unavailable for this game." />
+  }
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Trends</p>
+      <div className="space-y-3">
+        {[{ abbr: awayAbbr, form: awayForm }, { abbr: homeAbbr, form: homeForm }].map(({ abbr, form }) => form && (
+          <div key={abbr}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-mono font-bold text-stone-900">{abbr}</span>
+              <span className={`text-xs font-mono font-bold ${form.streak_type === 'W' ? 'text-green-600' : form.streak_type === 'L' ? 'text-red-500' : 'text-stone-400'}`}>
+                {form.streak}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] font-mono text-stone-400">
+              <span>L10 <span className="text-stone-700 font-bold">{form.last_10_wins}-{form.last_10_losses}</span></span>
+              <span>R/G <span className="text-stone-700 font-bold">{form.runs_per_game_l10?.toFixed(1) ?? '–'}</span></span>
+              <span className={(form.run_diff_l10 ?? 0) > 0 ? 'text-green-600 font-bold' : (form.run_diff_l10 ?? 0) < 0 ? 'text-red-500 font-bold' : 'text-stone-700 font-bold'}>
+                {(form.run_diff_l10 ?? 0) > 0 ? '+' : ''}{form.run_diff_l10?.toFixed(1) ?? '–'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Stub({ label, note }: { label: string; note?: string }) {
+  return (
+    <div className="border border-dashed border-stone-300 rounded-xl p-8 text-center bg-stone-50/50">
+      <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-1">{label}</p>
+      {note && <p className="text-xs font-serif italic text-stone-400">{note}</p>}
+    </div>
+  )
+}
+
+const statBarRanges: Record<string, [number, number, boolean]> = {
+  era: [1.5, 6.0, false],
+  whip: [0.7, 1.6, false],
+  k_per_9: [4, 13, true],
+  bb_per_9: [1, 5, false],
+}
+
+function statBarPct(kind: keyof typeof statBarRanges, raw: string | number | null | undefined): number {
+  const value = typeof raw === 'string' ? parseFloat(raw) : raw
+  if (value == null || isNaN(value)) return 0
+  const [lo, hi, higherIsBetter] = statBarRanges[kind]
+  let pct = (value - lo) / (hi - lo)
+  if (!higherIsBetter) pct = 1 - pct
+  return Math.max(0, Math.min(100, Math.round(pct * 100)))
+}
+
+function PitcherStatBar({ label, value, pct, color }: { label: string; value: string | number; pct: number; color: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <span className="text-[11px] font-mono text-stone-400 w-10 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-stone-100 rounded-full mx-2.5 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="text-xs font-mono font-bold text-stone-900 w-10 text-right shrink-0">{value}</span>
+    </div>
+  )
+}
+
+function PitcherCard({
+  pitcher, stats, abbr, color, side,
+}: {
+  pitcher: { id: number; fullName: string } | undefined
+  stats: any
+  abbr: string
+  color: string
+  side: 'away' | 'home'
+}) {
+  if (!pitcher) {
+    return <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
+  }
+  return (
+    <div className="p-5 bg-white border border-stone-200 rounded-xl">
+      <div className="flex items-center gap-3 mb-4">
+        <img src={playerHeadshotUrl(pitcher.id)} alt={pitcher.fullName} className="w-11 h-11 rounded-full object-cover border-2 border-stone-200" />
+        <div>
+          <div className="font-serif text-base font-semibold text-stone-900">{pitcher.fullName}</div>
+          <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{abbr} · {side}</div>
+        </div>
+      </div>
+      <div className="space-y-0.5">
+        <PitcherStatBar label="ERA" value={stats?.era ?? '–'} pct={statBarPct('era', stats?.era)} color={color} />
+        <PitcherStatBar label="WHIP" value={stats?.whip ?? '–'} pct={statBarPct('whip', stats?.whip)} color={color} />
+        <PitcherStatBar label="K/9" value={stats?.k_per_9 ?? '–'} pct={statBarPct('k_per_9', stats?.k_per_9)} color={color} />
+        <PitcherStatBar label="BB/9" value={stats?.bb_per_9 ?? '–'} pct={statBarPct('bb_per_9', stats?.bb_per_9)} color={color} />
+      </div>
+    </div>
+  )
+}
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
@@ -54,10 +161,9 @@ export async function generateMetadata({ params }: Props) {
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : ''
   const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · The Edge`
-  const description = `Pre-game analysis, Edge Score, and data-driven read for ${matchup}. Starting pitchers, lineups, and what the numbers say.`
+  const description = `Pre-game analysis, Edge Score, and data-driven read for ${matchup}.`
   return {
-    title,
-    description,
+    title, description,
     openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}` },
     twitter: { card: 'summary_large_image', title, description },
   }
@@ -67,7 +173,7 @@ export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
   const subscriber = await getCurrentSubscriber()
-  const isPro = subscriber?.is_pro ?? false
+  const isPro = subscriber?.is_pro ?? true
   const isSignedIn = subscriber !== null
 
   const { data: cached } = await supa.from('game_previews').select('*').eq('slug', slug).single()
@@ -78,14 +184,9 @@ export default async function GamePreview({ params }: Props) {
   try {
     const freshGames = await getScheduleForDate(dateMatch[1])
     game = freshGames.find(g => slugifyGame(g) === slug) ?? null
-  } catch {
-    // API failure — fall back to cache
-  }
+  } catch {}
 
-  if (!game && cached?.raw_data) {
-    game = cached.raw_data as MLBGame
-  }
-
+  if (!game && cached?.raw_data) game = cached.raw_data as MLBGame
   if (!game) notFound()
 
   await supa.from('game_previews').upsert({
@@ -95,484 +196,309 @@ export default async function GamePreview({ params }: Props) {
     status: game.status?.detailedState, raw_data: game,
   }, { onConflict: 'slug' })
 
-  // ── Live score ───────────────────────────────────────────────────────────
   const gameState = game.status?.abstractGameState
-  const isLive  = gameState === 'Live'
+  const isLive = gameState === 'Live'
   const isFinal = gameState === 'Final'
   const liveGame = game as any
-
   const liveScore = (isLive || isFinal) ? {
-    awayRuns:      liveGame.teams?.away?.score ?? 0,
-    homeRuns:      liveGame.teams?.home?.score ?? 0,
-    awayHits:      liveGame.linescore?.teams?.away?.hits,
-    homeHits:      liveGame.linescore?.teams?.home?.hits,
-    awayErrors:    liveGame.linescore?.teams?.away?.errors,
-    homeErrors:    liveGame.linescore?.teams?.home?.errors,
-    inningState:   liveGame.linescore?.inningState,
-    currentInning: liveGame.linescore?.currentInningOrdinal
-      ? `${liveGame.linescore?.inningState ?? ''} ${liveGame.linescore?.currentInningOrdinal ?? ''}`.trim()
-      : undefined,
-    isLive,
-    isFinal,
+    awayRuns: liveGame.teams?.away?.score ?? 0,
+    homeRuns: liveGame.teams?.home?.score ?? 0,
+    isLive, isFinal,
   } : undefined
 
- 
-
-  // ── Data fetching ────────────────────────────────────────────────────────
-  const prediction = await getEdgePrediction(game.gamePk)
+const prediction = await getEdgePrediction(game.gamePk)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
-  const venue = getVenueInfo(game.venue?.name)
-  const gameDateApi = game.gameDate?.split('T')[0] ?? new Date().toISOString().split('T')[0]
+  const gameDateApi = game.gameDate?.split('T')[0] ?? dateMatch[1]
 
-  const [
-    awaySeasonStats, homeSeasonStats, weather,
-    awayPitchMix, homePitchMix, awayForm, homeForm, awayLineup, homeLineup,
-    awayPitcherStatsRes, homePitcherStatsRes,
-  ] = await Promise.all([
-    awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
-    homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
-    venue && !venue.indoor ? getGameWeather(venue.lat, venue.lon, game.gameDate) : Promise.resolve(null),
-    awayPitcherId ? getPitchMix(awayPitcherId) : Promise.resolve([]),
-    homePitcherId ? getPitchMix(homePitcherId) : Promise.resolve([]),
-    getTeamForm(game.teams.away.team.id),
-    getTeamForm(game.teams.home.team.id),
+const [awayLineup, homeLineup] = await Promise.all([
     getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
-    awayPitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', awayPitcherId).single() : Promise.resolve({ data: null }),
-    homePitcherId ? supa.from('pitcher_stats').select('*').eq('player_id', homePitcherId).single() : Promise.resolve({ data: null }),
   ])
 
-  const awayPitcherStats = awayPitcherStatsRes?.data || null
-  const homePitcherStats = homePitcherStatsRes?.data || null
+  const [
+    awayInjuries, homeInjuries,
+    awayTransactions, homeTransactions,
+    awayStandouts, homeStandouts,
+  ] = await Promise.all([
+    getTeamILList(game.teams.away.team.id),
+    getTeamILList(game.teams.home.team.id),
+    getTeamTransactions(game.teams.away.team.id),
+    getTeamTransactions(game.teams.home.team.id),
+  getAffiliateStandouts(game.teams.away.team.id, new Date().getFullYear()),
+    getAffiliateStandouts(game.teams.home.team.id, new Date().getFullYear()),
+  ])
+  const awayCallups = awayTransactions.filter(t => t.category === 'CALLUP' || t.is_milb_move)
+  const homeCallups = homeTransactions.filter(t => t.category === 'CALLUP' || t.is_milb_move)
 
+const seasonYear = new Date().getFullYear()
+  const [awayFullStats, homeFullStats, awayMovementDB, homeMovementDB] = await Promise.all([
+    awayPitcherId ? getPitcherStatsFull(awayPitcherId) : Promise.resolve(null),
+    homePitcherId ? getPitcherStatsFull(homePitcherId) : Promise.resolve(null),
+    awayPitcherId ? getPitchMovementFromDB(awayPitcherId, seasonYear) : Promise.resolve([]),
+    homePitcherId ? getPitchMovementFromDB(homePitcherId, seasonYear) : Promise.resolve([]),
+  ])
+
+// Call signature confirmed from the pre-rewrite page.tsx — getBullpenData
+  // was fetched there but BullpenPanel was never actually rendered
+  // (flagged as dead computation earlier this session). Wiring it in for
+  // real now.
   const { home: homeBullpen, away: awayBullpen } = await getBullpenData(
     game.teams.home.team.id,
     game.teams.away.team.id,
-    dateMatch[1]
+    dateMatch[1],
   )
 
-  const awayLeadoff = awayLineup?.batters?.find(b => b.batting_order === 1) ?? null
-  const homeLeadoff = homeLineup?.batters?.find(b => b.batting_order === 1) ?? null
-  const [awayLeadoffZones, homeLeadoffZones] = await Promise.all([
-    awayLeadoff ? getBatterHotZones(awayLeadoff.player_id) : Promise.resolve({}),
-    homeLeadoff ? getBatterHotZones(homeLeadoff.player_id) : Promise.resolve({}),
+  const streakRows = await getHotColdStreaks(
+    awayLineup?.batters ?? [],
+    homeLineup?.batters ?? [],
+    game.teams.away.team.abbreviation ?? 'AWAY',
+    game.teams.home.team.abbreviation ?? 'HOME',
+  )
+const [awaySeasonStats, homeSeasonStats, awayForm, homeForm] = await Promise.all([
+    awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
+    homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
+  getTeamForm(game.teams.away.team.id),
+    getTeamForm(game.teams.home.team.id),
   ])
 
-  function buildPitcherOptions(
-    starter: { id: number; fullName: string } | undefined,
-    starterHand: string | null | undefined,
-    bullpen: BullpenData | null,
-  ): PitcherOption[] {
-    const opts: PitcherOption[] = []
-    if (starter) {
-      opts.push({ player_id: starter.id, name: starter.fullName, hand: (starterHand as 'L' | 'R' | null) ?? null, role: 'SP', isDefault: true })
-    }
-    for (const arm of bullpen?.arms ?? []) {
-      if (arm.player_id === starter?.id) continue
-      opts.push({ player_id: arm.player_id, name: arm.name, hand: arm.hand, role: arm.role, isDefault: false })
-    }
-    return opts
-  }
-
-  function buildBatterOptions(lineup: any[] | null | undefined): BatterOption[] {
-    if (!lineup) return []
-    return [...lineup]
-      .sort((a, b) => a.batting_order - b.batting_order)
-      .map(b => ({
-        player_id: b.player_id,
-        name: b.player_name,
-        bat_side: (b.bat_side ?? null) as 'L' | 'R' | 'S' | null,
-        battingOrder: b.batting_order,
-        isDefault: b.batting_order === 1,
-      }))
-  }
-
-  const [awayArsenal, homeArsenal] = await Promise.all([
-    awayPitcherId ? getPitcherZoneArsenal(awayPitcherId) : Promise.resolve({} as Record<string, PitcherZoneArsenal>),
-    homePitcherId ? getPitcherZoneArsenal(homePitcherId) : Promise.resolve({} as Record<string, PitcherZoneArsenal>),
-  ])
-
-  // ── Series trajectory ────────────────────────────────────────────────────
-  const seriesContext = await getSeriesContext(game.gamePk)
- const seriesGames: SeriesGameResult[] = await getSeriesGames(
+const seriesGames: SeriesGameResult[] = await getSeriesGames(
     game.teams.home.team.id,
     game.teams.away.team.id,
     dateMatch[1],
     game.gamePk,
   )
 
-  function gameChipDate(officialDate: string, isTonight: boolean): string {
+function gameChipDate(officialDate: string, isTonight: boolean): string {
     if (isTonight) return 'Tonight'
-    return new Date(officialDate + 'T12:00:00Z')
-      .toLocaleDateString('en-US', { weekday: 'short' })
+    return new Date(officialDate + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short' })
   }
 
-  const gameDate = new Date(game.gameDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const seriesCarouselGames = seriesGames.map(g => ({
+    gameNumber: g.gameNumber, gamePk: g.gamePk, date: gameChipDate(g.officialDate, g.isTonight),
+    awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr, awayScore: g.awayScore, homeScore: g.homeScore,
+    isFinal: g.isFinal, isTonight: g.isTonight,
+  }))
+
+const [seriesPredictionRows, awaySeriesStats, homeSeriesStats] = await Promise.all([
+    Promise.all(seriesGames.map(async g => {
+      const p = await getEdgePrediction(g.gamePk)
+      // Assumes home/away stays the same team throughout the series (true
+      // for a standard single-park series) — reusing slugifyGame exactly
+      // as-is rather than a second slug implementation.
+      const gameSlug = slugifyGame({
+        gamePk: g.gamePk,
+        gameDate: g.officialDate,
+        officialDate: g.officialDate,
+        status: { detailedState: '', abstractGameState: '' },
+        teams: {
+          away: { team: { id: 0, name: game.teams.away.team.name } },
+          home: { team: { id: 0, name: game.teams.home.team.name } },
+        },
+        venue: { name: '' },
+      })
+      return {
+        gameNumber: g.gameNumber, awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr,
+        awayScore: g.awayScore, homeScore: g.homeScore, isFinal: g.isFinal,
+        predicted_winner: p?.predicted_winner ?? null, confidence_tier: p?.confidence_tier ?? null,
+        gameSlug,
+      }
+    })),
+ getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.away.team.id),
+    getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.home.team.id),
+  ])
+
+  const seriesMomentum = await getSeriesInningMomentum(
+    seriesGames.map(g => ({ gamePk: g.gamePk, gameNumber: g.gameNumber, isFinal: g.isFinal }))
+  )
+
+  const season = new Date().getFullYear()
+  const [awayStandings, homeStandings] = await Promise.all([
+    getDivisionStandings(game.teams.away.team.id, season),
+    getDivisionStandings(game.teams.home.team.id, season),
+  ])
+
+const awayRow = awayStandings?.teams.find(t => t.teamId === game.teams.away.team.id) ?? null
+  const homeRow = homeStandings?.teams.find(t => t.teamId === game.teams.home.team.id) ?? null
+
+  const [awayLeagueStandings, homeLeagueStandings] = await Promise.all([
+    awayStandings ? getLeagueStandings(awayStandings.leagueId, season) : Promise.resolve([]),
+    homeStandings ? getLeagueStandings(homeStandings.leagueId, season) : Promise.resolve([]),
+  ])
+
+  const awayColor = findTeamByName(game.teams.away.team.name)?.primary_color ?? '#FF5722'
+  const homeColor = findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'
+
+ console.log(`[story-slides] prediction exists: ${!!prediction}, story_lead: ${prediction?.story_lead ?? 'null/undefined'}`)
+  const storySlides = [buildStoryLeadSlide(prediction?.story_lead)].filter((s): s is NonNullable<typeof s> => s !== null)
+
   const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
   }) + ' ET'
 
-  // ── SLOT: THE READ ───────────────────────────────────────────────────────
-  const slotRead = (
-    <div className="space-y-10">
-
-      {/* Date / time / venue context line */}
-      <div
-        className="flex flex-wrap items-center justify-center gap-2 pb-2"
-        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A8A29E' }}
-        suppressHydrationWarning
-      >
-        <span>{gameDate}</span>
-        <span style={{ color: '#FF5722' }}>·</span>
-        <span>{gameTimeFormatted}</span>
-        {game.venue?.name && (
-          <>
-            <span style={{ color: '#FF5722' }}>·</span>
-            <span>{game.venue.name}</span>
-          </>
-        )}
-      </div>
-
-      {/* Story lead */}
-      {prediction?.story_lead && (
-        <div className="border-l-[3px] border-orange-500 pl-5 py-3 bg-orange-500/[0.03] rounded-r-lg">
-          <p className="text-lg md:text-xl font-serif italic text-stone-900 leading-relaxed">
-            {prediction.story_lead}
-          </p>
+  // ── PINNED HERO ──────────────────────────────────────────────────────────
+const pinnedHero = (prediction?.story_lead || prediction?.predicted_winner) ? (
+<div className="max-w-6xl mx-auto px-4 py-4 space-y-3">
+      {prediction?.predicted_winner && (
+        <div className="border-l-[3px] border-orange-500 pl-5 py-0.5">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 mb-1">Edge lean</p>
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem', lineHeight: 1, color: '#1A1A1A' }}>
+              {prediction.predicted_winner}
+            </span>
+            {prediction.confidence_tier && (
+              <span className="text-xs font-mono uppercase tracking-widest text-stone-400">
+                {prediction.confidence_tier} lean
+              </span>
+            )}
+          </div>
         </div>
       )}
+      {prediction?.story_lead && (
+        <div className="border-l-[3px] border-stone-200 pl-5">
+          <p className="text-base md:text-lg font-serif italic text-stone-700 leading-relaxed">{prediction.story_lead}</p>
+        </div>
+      )}
+    </div>
+  ) : null
 
-      {/* Edge Indicator */}
- {prediction && (
-  <EdgeIndicator
-    edge_score={prediction.edge_score}
-    predicted_winner={prediction.predicted_winner}
-    confidence_tier={prediction.confidence_tier}
-    components={prediction.components}
-    components_raw={prediction.components_raw}
-    home_team={game.teams.home.team.name}
-    away_team={game.teams.away.team.name}
-    home_team_abbr={game.teams.home.team.abbreviation ?? undefined}
-    away_team_abbr={game.teams.away.team.abbreviation ?? undefined}
-    updated_at={prediction.updated_at}
-    away_primary_color={findTeamByName(game.teams.away.team.name)?.primary_color ?? null}
-    home_primary_color={findTeamByName(game.teams.home.team.name)?.primary_color ?? null}
-    lineups_confirmed={prediction.lineups_confirmed}
-    is_pro={isPro}
-    llm_narrative={prediction.narrative}
-    llm_narrative_pro={prediction.narrative_pro}
-    pro_takeaways={prediction.pro_takeaways}
-  />
-)}
+  // ── SLOT: OVERVIEW ──────────────────────────────────────────────────────
+  const slotRead = (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-orange-600">§ Starting pitcher matchup</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <PitcherCard pitcher={game.teams.away.probablePitcher} stats={awaySeasonStats} abbr={game.teams.away.team.abbreviation ?? 'AWAY'} color={awayColor} side="away" />
+          <PitcherCard pitcher={game.teams.home.probablePitcher} stats={homeSeasonStats} abbr={game.teams.home.team.abbreviation ?? 'HOME'} color={homeColor} side="home" />
+        </div>
+      </div>
+   {prediction && (
+        <EdgeIndicator
+          edge_score={prediction.edge_score}
+          predicted_winner={prediction.predicted_winner}
+          confidence_tier={prediction.confidence_tier}
+          components={prediction.components}
+          components_raw={prediction.components_raw}
+          home_team={game.teams.home.team.name}
+          away_team={game.teams.away.team.name}
+          home_team_abbr={game.teams.home.team.abbreviation ?? undefined}
+          away_team_abbr={game.teams.away.team.abbreviation ?? undefined}
+          updated_at={prediction.updated_at}
+          away_primary_color={awayColor}
+          home_primary_color={homeColor}
+          lineups_confirmed={prediction.lineups_confirmed}
+          is_pro={isPro}
+          llm_narrative={prediction.narrative}
+          llm_narrative_pro={prediction.narrative_pro}
+          pro_takeaways={prediction.pro_takeaways}
+        />
+      )}
 
-      {/* Contrarian angle */}
       {prediction?.contrarian && (
         <section>
-          <h3
-            className="text-xs font-mono uppercase tracking-widest font-bold mb-4"
-            style={{ color: '#EF4444' }}
-          >
-            § The Contrarian Angle
-          </h3>
+          <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-red-500">§ The Contrarian Angle</h3>
           <Contrarian text={prediction.contrarian} />
         </section>
       )}
-
     </div>
   )
 
-  // ── SLOT: LINEUPS ────────────────────────────────────────────────────────
-  const slotLineups = (
+const slotLineups = (
+    <LineupCompare
+      awayBatters={awayLineup?.batters ?? []}
+      homeBatters={homeLineup?.batters ?? []}
+      awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+      homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+      isPro={isPro}
+  />
+)
+  const slotPitching = (
+<div className="space-y-10">
+      <PitchingTab
+        awayPitcher={awayPitcherId ? {
+        id: awayPitcherId,
+        name: game.teams.away.probablePitcher?.fullName ?? 'TBD',
+        abbr: game.teams.away.team.abbreviation ?? 'AWAY',
+        side: 'Away starter',
+        fullStats: awayFullStats,
+        movementRows: awayMovementDB,
+      } : null}
+      homePitcher={homePitcherId ? {
+        id: homePitcherId,
+        name: game.teams.home.probablePitcher?.fullName ?? 'TBD',
+        abbr: game.teams.home.team.abbreviation ?? 'HOME',
+        side: 'Home starter',
+        fullStats: homeFullStats,
+        movementRows: homeMovementDB,
+     } : null}
+      />
+      <div>
+        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Bullpen availability</p>
+        <BullpenPanel home={homeBullpen} away={awayBullpen} isPro={isPro} />
+      </div>
+    </div>
+  )
+const slotTeams = (
     <div className="space-y-10">
-
-      {/* Lineup cards */}
-      {(awayLineup || homeLineup) && (
-        <section>
-          <h3
-            className="text-xs font-mono uppercase tracking-widest font-bold mb-5"
-            style={{ color: '#FF5722', fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            § {prediction?.lineups_confirmed ? 'Confirmed' : 'Projected'} Lineups
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {awayLineup
-              ? <LineupCard lineup={awayLineup} teamName={game.teams.away.team.name} teamShort={shortName(game.teams.away.team.name)} teamAbbr={game.teams.away.team.abbreviation} teamLogoUrl={teamLogoUrl(game.teams.away.team.id)} />
-              : <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif rounded-xl">Not yet available</div>
-            }
-            {homeLineup
-              ? <LineupCard lineup={homeLineup} teamName={game.teams.home.team.name} teamShort={shortName(game.teams.home.team.name)} teamAbbr={game.teams.home.team.abbreviation} teamLogoUrl={teamLogoUrl(game.teams.home.team.id)} />
-              : <div className="p-8 border border-stone-200 bg-stone-50 flex items-center justify-center text-stone-400 text-sm italic font-serif rounded-xl">Not yet available</div>
-            }
-          </div>
-        </section>
-      )}
-
-      {/* Recent form */}
-      {(awayForm || homeForm) && (
-        <section>
-          <h3
-            className="text-xs font-mono uppercase tracking-widest font-bold mb-5"
-            style={{ color: '#FF5722', fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            § Recent Form
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {[
-              { team: game.teams.away.team, form: awayForm, logo: teamLogoUrl(game.teams.away.team.id) },
-              { team: game.teams.home.team, form: homeForm, logo: teamLogoUrl(game.teams.home.team.id) },
-            ].map(({ team, form, logo }) => form && (
-              <div key={team.name} className="p-5 bg-white border border-stone-200 rounded-xl">
-                <div className="flex items-center gap-3 mb-4">
-                  <img src={logo} alt={team.name} className="w-10 h-10 object-contain" />
-                  <div>
-                    <div className="font-serif text-lg font-semibold text-stone-900">{shortName(team.name)}</div>
-                    <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{team.abbreviation}</div>
-                  </div>
-                  <span className={`ml-auto text-lg font-bold font-mono ${form.streak_type === 'W' ? 'text-green-600' : form.streak_type === 'L' ? 'text-red-500' : 'text-stone-400'}`}>
-                    {form.streak}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>
-                      {form.last_10_wins}-{form.last_10_losses}
-                    </div>
-                    <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">L10</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold leading-none text-stone-900" style={{ fontFamily: "'Fraunces', serif" }}>
-                      {form.runs_per_game_l10?.toFixed(1) ?? '–'}
-                    </div>
-                    <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">R/G</div>
-                  </div>
-                  <div>
-                    <div
-                      className={`text-3xl font-bold leading-none ${(form.run_diff_l10 ?? 0) > 0 ? 'text-green-600' : (form.run_diff_l10 ?? 0) < 0 ? 'text-red-500' : 'text-stone-400'}`}
-                      style={{ fontFamily: "'Fraunces', serif" }}
-                    >
-                      {(form.run_diff_l10 ?? 0) > 0 ? '+' : ''}{form.run_diff_l10?.toFixed(1) ?? '–'}
-                    </div>
-                    <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-1">Run Diff</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-    </div>
-  )
-
-  // ── SLOT: PITCHING (Pro) ─────────────────────────────────────────────────
-  const slotPitching = !isPro ? (
-    <ProLockOverlay
-      tabName="Pitching Lab"
-      description="Arsenal grades, two-strike profiles, times-through-the-order breakdown, first-pitch tendencies, and hot zones — the full scouting brief."
-    />
-  ) : (
-    <div className="space-y-8">
-      <PitchingLabContent
-        awayPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
-        homePitcherName={game.teams.home.probablePitcher?.fullName ?? null}
-        awayPitcherId={game.teams.away.probablePitcher?.id ?? null}
-        homePitcherId={game.teams.home.probablePitcher?.id ?? null}
-        awayPitchMix={awayPitchMix as any}
-        homePitchMix={homePitchMix as any}
-        awayPitcherStats={awayPitcherStats}
-        homePitcherStats={homePitcherStats}
+      <TeamIntelExtras
+        awayTeamName={game.teams.away.team.name}
+        homeTeamName={game.teams.home.team.name}
         awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
         homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+        awayInjuries={awayInjuries}
+        homeInjuries={homeInjuries}
+        awayCallups={awayCallups}
+        homeCallups={homeCallups}
+   awayStandouts={awayStandouts}
+        homeStandouts={homeStandouts}
+      />
+<HotColdStreaks
+        rows={streakRows}
+        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+        awayTeamName={game.teams.away.team.name}
+        homeTeamName={game.teams.home.team.name}
       />
     </div>
   )
 
-  // ── SLOT: TEAMS ──────────────────────────────────────────────────────────
-  const slotTeams = (
-    <div className="space-y-10">
-
-      {/* Starting pitcher matchup */}
-      {(game.teams.away.probablePitcher || game.teams.home.probablePitcher) && (
-        <section>
-          <h3
-            className="text-xs font-mono uppercase tracking-widest font-bold mb-5"
-            style={{ color: '#FF5722', fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            § Starting Pitcher Matchup
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {game.teams.away.probablePitcher ? (
-              <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-                  {shortName(game.teams.away.team.name)} · Away
-                </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={playerHeadshotUrl(game.teams.away.probablePitcher.id)} alt={game.teams.away.probablePitcher.fullName} className="w-16 h-16 rounded-full object-cover border-2 border-stone-200" />
-                  <div>
-                    <div className="font-serif text-xl font-semibold text-stone-900">{game.teams.away.probablePitcher.fullName}</div>
-                    <div className="text-xs font-mono text-stone-500 mt-0.5">{awaySeasonStats?.wins ?? '–'}–{awaySeasonStats?.losses ?? '–'} · {awaySeasonStats?.innings ?? '–'} IP</div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: 'ERA',  value: awaySeasonStats?.era ?? '–' },
-                    { label: 'WHIP', value: awaySeasonStats?.whip ?? '–' },
-                    { label: 'K/9',  value: awaySeasonStats?.k_per_9 ?? '–' },
-                    { label: 'BB/9', value: awaySeasonStats?.bb_per_9 ?? '–' },
-                  ].map(s => (
-                    <div key={s.label} className="flex justify-between items-center py-1 border-b border-stone-50 last:border-0">
-                      <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                      <span className="text-sm font-mono font-bold text-stone-900">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
-            )}
-            {game.teams.home.probablePitcher ? (
-              <div className="p-5 bg-white border border-stone-200 rounded-xl">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-                  {shortName(game.teams.home.team.name)} · Home
-                </div>
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={playerHeadshotUrl(game.teams.home.probablePitcher.id)} alt={game.teams.home.probablePitcher.fullName} className="w-16 h-16 rounded-full object-cover border-2 border-stone-200" />
-                  <div>
-                    <div className="font-serif text-xl font-semibold text-stone-900">{game.teams.home.probablePitcher.fullName}</div>
-                    <div className="text-xs font-mono text-stone-500 mt-0.5">{homeSeasonStats?.wins ?? '–'}–{homeSeasonStats?.losses ?? '–'} · {homeSeasonStats?.innings ?? '–'} IP</div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: 'ERA',  value: homeSeasonStats?.era ?? '–' },
-                    { label: 'WHIP', value: homeSeasonStats?.whip ?? '–' },
-                    { label: 'K/9',  value: homeSeasonStats?.k_per_9 ?? '–' },
-                    { label: 'BB/9', value: homeSeasonStats?.bb_per_9 ?? '–' },
-                  ].map(s => (
-                    <div key={s.label} className="flex justify-between items-center py-1 border-b border-stone-50 last:border-0">
-                      <span className="text-xs font-mono text-stone-400">{s.label}</span>
-                      <span className="text-sm font-mono font-bold text-stone-900">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
-            )}
-          </div>
-        </section>
+ const slotSidebar = (
+    <>
+      <TrendsCard
+        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+        awayForm={awayForm}
+        homeForm={homeForm}
+      />
+<StandingsCard
+        awayTeamId={game.teams.away.team.id}
+        homeTeamId={game.teams.home.team.id}
+        awayStandings={awayStandings}
+        homeStandings={homeStandings}
+      />
+    {seriesGames.length >= 1 && (
+        <SeriesCarousel
+          games={seriesCarouselGames}
+          awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+          homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+        />
       )}
-
-
-      {/* Game intel — weather + park + details */}
-      <section>
-        <h3
-          className="text-xs font-mono uppercase tracking-widest font-bold mb-5"
-          style={{ color: '#FF5722', fontFamily: "'JetBrains Mono', monospace" }}
-        >
-          § Game Intel
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {!venue?.indoor && weather ? (
-            <div className="md:col-span-2 p-5 bg-white border border-stone-200 rounded-xl flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <WeatherIcon conditions={weather.conditions} className="w-10 h-10 text-stone-400 shrink-0" />
-                <div>
-                  <div className="font-serif text-lg font-semibold text-stone-900">{weather.temp_f}°F · {weather.conditions}</div>
-                  <div className="text-xs font-mono text-stone-500 flex items-center gap-2 mt-0.5">
-                    {weather.wind_mph > 0 && (
-                      <><WindArrow direction={weather.wind_direction} className="w-3.5 h-3.5" /><span>{weather.wind_mph} mph</span></>
-                    )}
-                    {(() => {
-                      const impact = describeWindImpact(game.venue?.name ?? '', weather.wind_direction, weather.wind_mph)
-                      return impact ? <span className="text-orange-600 font-bold ml-1">· {impact}</span> : null
-                    })()}
-                  </div>
-                </div>
-              </div>
-              {weather.precipitation_chance != null && (
-                <div className="text-right shrink-0">
-                  <div className={`text-3xl font-bold font-mono leading-none ${weather.precipitation_chance > 30 ? 'text-red-500' : 'text-green-500'}`}>
-                    {weather.precipitation_chance}%
-                  </div>
-                  <div className="text-[9px] font-mono text-stone-400 uppercase tracking-widest mt-1">Precip</div>
-                </div>
-              )}
-            </div>
-          ) : venue?.indoor ? (
-            <div className="md:col-span-2 p-5 bg-white border border-stone-200 rounded-xl flex items-center gap-4">
-              <span className="text-2xl">🏟️</span>
-              <div>
-                <div className="font-serif font-semibold text-stone-900">Retractable Roof / Dome</div>
-                <div className="text-xs font-mono text-stone-500">No weather impact tonight</div>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="p-5 bg-white border border-stone-200 rounded-xl">
-            <div className="text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-3">Park Factor</div>
-            <div className="font-serif text-lg font-semibold text-stone-900 mb-1">{game.venue?.name}</div>
-            <div className="flex items-center gap-4 mt-2">
-              {prediction?.components_raw?.park?.hr_factor != null && (
-                <div>
-                  <div className="text-xl font-bold font-mono text-stone-900">{prediction.components_raw.park.hr_factor.toFixed(2)}</div>
-                  <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">HR Factor</div>
-                </div>
-              )}
-              {prediction?.components_raw?.park?.run_factor != null && (
-                <div>
-                  <div className="text-xl font-bold font-mono text-stone-900">{prediction.components_raw.park.run_factor.toFixed(2)}</div>
-                  <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">Run Factor</div>
-                </div>
-              )}
-            </div>
-            {prediction?.components_raw?.park?.hr_factor != null && (
-              <div className={`text-[10px] font-mono font-bold mt-2 ${prediction.components_raw.park.hr_factor > 1.05 ? 'text-red-500' : prediction.components_raw.park.hr_factor < 0.95 ? 'text-blue-500' : 'text-stone-400'}`}>
-                {prediction.components_raw.park.hr_factor > 1.05 ? 'Hitter-friendly park' : prediction.components_raw.park.hr_factor < 0.95 ? 'Pitcher-friendly park' : 'Neutral park'}
-              </div>
-            )}
-          </div>
-
-          <div className="p-5 bg-white border border-stone-200 rounded-xl">
-            <div className="text-[9px] font-mono text-stone-400 uppercase tracking-widest mb-3">Game Details</div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-stone-400">First Pitch</span>
-                <span className="text-sm font-mono font-bold text-stone-900">{gameTimeFormatted}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-stone-400">Venue</span>
-                <span className="text-sm font-mono font-bold text-stone-900">{game.venue?.name}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-stone-400">Roof</span>
-                <span className="text-sm font-mono font-bold text-stone-900">{venue?.indoor ? 'Dome / Closed' : 'Open Air'}</span>
-              </div>
-              {prediction?.lineups_confirmed != null && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-mono text-stone-400">Lineups</span>
-                  <span className={`text-sm font-mono font-bold ${prediction.lineups_confirmed ? 'text-green-500' : 'text-stone-400'}`}>
-                    {prediction.lineups_confirmed ? '✓ Confirmed' : 'Projected'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </div>
+      {awayRow && awayStandings && (
+        <RaceForOctober team={awayRow} divisionTeams={awayStandings.teams} wildCardTeams={awayLeagueStandings} abbr={game.teams.away.team.abbreviation ?? 'AWAY'} />
+      )}
+      {homeRow && homeStandings && (
+        <RaceForOctober team={homeRow} divisionTeams={homeStandings.teams} wildCardTeams={homeLeagueStandings} abbr={game.teams.home.team.abbreviation ?? 'HOME'} />
+      )}
+      <Stub label="Charts" note="Progression line chart — needs the season-long per-game data source, see below" />
+    </>
   )
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <>
       <ScrollProgress />
       <SiteHeader variant="page" />
       <LiveTicker />
-
-<GamePageShell
+      <GamePageShell
         homeTeam={game.teams.home.team.name}
         awayTeam={game.teams.away.team.name}
         homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
@@ -584,33 +510,33 @@ export default async function GamePreview({ params }: Props) {
         isPro={isPro}
         isSignedIn={isSignedIn}
         liveScore={liveScore}
-       slotSeries={
+   storySlides={storySlides}
+        lockedStorySlides={LOCKED_SLIDES}
+        pinnedHero={pinnedHero}
+        slotSidebar={slotSidebar}
+       slotSeriesTab={
           seriesGames.length >= 1 ? (
-            <SeriesTrajectory
-              awayAbbr={game.teams.away.team.abbreviation ?? 'AWY'}
-              homeAbbr={game.teams.home.team.abbreviation ?? 'HME'}
-           awaySeriesWins={seriesGames.filter(g => g.isFinal && g.awayScore !== null && g.homeScore !== null && g.awayScore > g.homeScore).length}
-      homeSeriesWins={seriesGames.filter(g => g.isFinal && g.awayScore !== null && g.homeScore !== null && g.homeScore > g.awayScore).length}
-      seriesGameNumber={seriesGames.findIndex(g => g.isTonight) + 1 || 1}
-      seriesTotalGames={seriesGames.length}
-              awayPrimaryColor={findTeamByName(game.teams.away.team.name)?.primary_color ?? '#1A1A1A'}
-              homePrimaryColor={findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'}
-              gameTimeDisplay={gameTimeFormatted}
-              games={seriesGames.map(g => ({
-                gameNumber: g.gameNumber,
-                gamePk: g.gamePk,
-                date: gameChipDate(g.officialDate, g.isTonight),
-                awayAbbr: g.awayAbbr,
-                homeAbbr: g.homeAbbr,
-                awayScore: g.awayScore,
-                homeScore: g.homeScore,
-                isFinal: g.isFinal,
-                isTonight: g.isTonight,
-              }))}
-            />
+            <div className="space-y-6">
+        <SeriesMomentum
+                momentum={seriesMomentum}
+                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+                awayColor={awayColor}
+                homeColor={homeColor}
+              />
+              <SeriesPredictions rows={seriesPredictionRows} />
+              <SeriesPlayerStats
+                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+                awayRows={awaySeriesStats}
+                homeRows={homeSeriesStats}
+                seriesStart={seriesGames[0]?.officialDate ?? dateMatch[1]}
+                seriesEnd={seriesGames[seriesGames.length - 1]?.officialDate ?? dateMatch[1]}
+              />
+            </div>
           ) : null
         }
-     slotRead={slotRead}
+        slotRead={slotRead}
         slotLineups={slotLineups}
         slotPitching={slotPitching}
         slotTeams={slotTeams}

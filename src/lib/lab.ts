@@ -216,7 +216,7 @@ function rollingHitting(splits: any[], window: number, metric: 'ops' | 'slg' | '
 }
 export type YearMode = 'single' | 'multi' | 'career'
 
-async function fetchYearByYearHitting(id: number): Promise<any[]> {
+export async function fetchYearByYearHitting(id: number): Promise<any[]> {
   const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=hitting`)
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
@@ -804,6 +804,47 @@ const BATTER_SEASON_FIELDS: { key: string; label: string }[] = [
   { key: 'plateAppearances', label: 'PA' }, { key: 'atBats', label: 'AB' },
   { key: 'sacFlies', label: 'SF' }, { key: 'groundIntoDoublePlay', label: 'GIDP' }, { key: 'leftOnBase', label: 'LOB' },
 ]
+export type CareerSeasonRow = { season: number; teamName?: string; stats: SeasonStatRow[] }
+
+// Year-by-year table — one row per real season, straight from MLB's
+// yearByYear endpoint. No aggregation needed: each split IS a complete,
+// real single-season stat block (same shape getPlayerSeasonStats already
+// trusts for the current season), just for a prior year instead.
+export async function getBatterCareerTable(id: number): Promise<CareerSeasonRow[]> {
+  const splits = await fetchYearByYearHitting(id)
+  return splits.map((s: any) => ({
+    season: Number(s.season),
+    teamName: s.team?.name,
+    stats: BATTER_SEASON_FIELDS.map(f => ({
+      key: f.key, label: f.label,
+      value: s.stat?.[f.key] !== undefined ? String(s.stat[f.key]) : '—',
+    })),
+  })).sort((a, b) => b.season - a.season)
+}
+
+// Pitcher equivalent — same endpoint pattern as fetchYearByYearHitting
+// above (group=pitching instead of hitting), no fetchYearByYearPitching
+// existed before this. Mirrors a proven-working pattern exactly, not a
+// new guess.
+async function fetchYearByYearPitching(id: number): Promise<any[]> {
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=pitching`)
+  if (!res.ok) throw new Error(`MLB API ${res.status}`)
+  const json = await res.json()
+  return (json.stats?.[0]?.splits ?? []).filter((s: any) => s.season)
+}
+
+export async function getPitcherCareerTable(id: number): Promise<CareerSeasonRow[]> {
+  const splits = await fetchYearByYearPitching(id)
+  return splits.map((s: any) => ({
+    season: Number(s.season),
+    teamName: s.team?.name,
+    stats: PITCHER_SEASON_FIELDS.map(f => ({
+      key: f.key, label: f.label,
+      value: s.stat?.[f.key] !== undefined ? String(s.stat[f.key]) : '—',
+    })),
+  })).sort((a, b) => b.season - a.season)
+}
+
 export async function getPlayerSeasonStats(
   subjectType: 'pitcher' | 'batter', id: number, season: number
 ): Promise<SeasonStatRow[]> {

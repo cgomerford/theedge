@@ -69,6 +69,12 @@ type PitchingLabContentProps = {
   homeAbbr: string
   // Hot zone slot passed through as ReactNode
   hotZoneSlot?: React.ReactNode
+  // Per-pitcher extra content (e.g. movement chart, usage-by-hand) — renders
+  // inside that pitcher's own column, right after their PitcherBlock, so a
+  // side-by-side layout stays side-by-side instead of splitting into a
+  // separate full-width section below (2026-07-13 fix).
+  awayExtra?: React.ReactNode
+  homeExtra?: React.ReactNode
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -651,7 +657,6 @@ function PitcherBlock({
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-
 export default function PitchingLabContent({
   awayPitcherName,
   homePitcherName,
@@ -664,6 +669,8 @@ export default function PitchingLabContent({
   awayAbbr,
   homeAbbr,
   hotZoneSlot,
+  awayExtra,
+  homeExtra,
 }: PitchingLabContentProps) {
   const hasAway = awayPitcherName && awayPitchMix.length > 0
   const hasHome = homePitcherName && homePitchMix.length > 0
@@ -693,10 +700,15 @@ export default function PitchingLabContent({
         </div>
       )}
 
-      <div className="space-y-16">
-        {/* Away pitcher */}
+ {/* True side-by-side grid — was a vertical stack (away section, full
+          divider, home section) with Movement & Usage bolted on separately
+          below in its own two-column grid. Now one grid, one column per
+          pitcher, everything for that pitcher — arsenal, two-strike, TTO,
+          first-pitch, and whatever's passed via awayExtra/homeExtra —
+          stays inside their own column top to bottom. */}
+      <div className="grid md:grid-cols-2 gap-8">
         {hasAway && (
-          <section>
+          <section className="md:pr-8 md:border-r md:border-stone-200">
             <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-6">
               § {awayPitcherName} — {awayAbbr} Starter
             </h3>
@@ -708,15 +720,10 @@ export default function PitchingLabContent({
               abbr={awayAbbr}
               label="Away Starter"
             />
+            {awayExtra && <div className="mt-8">{awayExtra}</div>}
           </section>
         )}
 
-        {/* Divider between pitchers */}
-        {hasAway && hasHome && (
-          <div className="border-t-2 border-stone-200" />
-        )}
-
-        {/* Home pitcher */}
         {hasHome && (
           <section>
             <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-6">
@@ -730,19 +737,20 @@ export default function PitchingLabContent({
               abbr={homeAbbr}
               label="Home Starter"
             />
-          </section>
-        )}
-
-        {/* Hot Zones — passed through from page.tsx */}
-        {hotZoneSlot && (
-          <section>
-            <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
-              § Hot Zones
-            </h3>
-            {hotZoneSlot}
+            {homeExtra && <div className="mt-8">{homeExtra}</div>}
           </section>
         )}
       </div>
+
+      {/* Hot Zones stays full-width below both columns, not per-pitcher */}
+      {hotZoneSlot && (
+        <section className="mt-12">
+          <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
+            § Hot Zones
+          </h3>
+          {hotZoneSlot}
+        </section>
+      )}
 
     </div>
   )

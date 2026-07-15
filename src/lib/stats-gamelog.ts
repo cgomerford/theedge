@@ -25,6 +25,7 @@ async function safeFetchJson<T>(url: string): Promise<T | null> {
 export type BatterGame = {
   date: string
   opponent: string
+  isHome: boolean
   ab: number; h: number; doubles: number; triples: number; hr: number
   rbi: number; bb: number; so: number; sb: number; hbp: number; sf: number; pa: number
 }
@@ -32,7 +33,8 @@ export type BatterGame = {
 export type PitcherGame = {
   date: string
   opponent: string
-  ip: number // true fractional innings (5.2 IP notation → 5.667), not the raw MLB string
+  isHome: boolean
+  ip: number
   er: number; h: number; bb: number; so: number; hr: number
 }
 
@@ -52,9 +54,10 @@ export async function getBatterGameLog(playerId: number, season: number): Promis
   const json = await safeFetchJson<any>(url)
   const splits = json?.stats?.[0]?.splits ?? []
   return splits.map((s: any): BatterGame => ({
-    date: s.date,
-    opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
-    ab: s.stat?.atBats ?? 0,
+  date: s.date,
+  opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
+  isHome: !!s.isHome,
+  ab: s.stat?.atBats ?? 0,
     h: s.stat?.hits ?? 0,
     doubles: s.stat?.doubles ?? 0,
     triples: s.stat?.triples ?? 0,
@@ -76,6 +79,7 @@ export async function getPitcherGameLog(playerId: number, season: number): Promi
   return splits.map((s: any): PitcherGame => ({
     date: s.date,
     opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
+    isHome: !!s.isHome,
     ip: parseInningsPitched(s.stat?.inningsPitched),
     er: s.stat?.earnedRuns ?? 0,
     h: s.stat?.hits ?? 0,
