@@ -111,7 +111,7 @@ async function fetchMonthlyHitting(playerId: number, season: number): Promise<Sp
     const monthNames = ['', 'Jan', 'Feb', 'March/April', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']
     return splits
       .map((s: any) => {
-       const pa = Number(stat.plateAppearances ?? stat.atBats ?? 0)
+       const pa = Number(s.stat?.plateAppearances ?? s.stat?.atBats ?? 0)
 if (pa < MIN_SAMPLE_PA) return null
         return {
           label: monthNames[s.month] ?? `Month ${s.month}`,

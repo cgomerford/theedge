@@ -1,22 +1,28 @@
 'use client'
 
-/**
- * src/components/fantasy/FantasySubNav.tsx
- *
- * Rebuilt for the ground-up fantasy IA. Persistent horizontal nav strip
- * below the masthead on every fantasy page. Scrollable on mobile.
- *
- *   <FantasySubNav active="start-sit" isPro={isPro} />
- *
- * active prop options:
- *   'home' | 'start-sit' | 'trending' | 'yesterday' | 'prospects'
- *   | 'trade-desk' | 'streamers' | 'two-start' | 'news'
- */
+ //**
+ //src/components/fantasy/FantasySubNav.tsx
+  //*
+  //* Persistent horizontal nav strip below the masthead on every fantasy page.
+  //* Matches confirmed pages on disk (verified via `ls src/app/fantasy/*/page.tsx`
+  //* on 2026-07-16): home, pitchers, platforms, prospects, start-sit, streamers,
+  //* trade-desk, trending, trends, two-start, yesterday.
+  //*
+  //* NOTE: 'batters' and 'news' were removed — the pitchers page footer links
+  //* to /fantasy/batters and /fantasy/news, but neither directory exists on
+  //* disk. Those links will 404 until those pages are built; add the keys
+  // back here once they exist.
+  //*
+ //  <FantasySubNav active="start-sit" isPro={isPro} />
+ 
 
 import Link from 'next/link'
 
 const NAV_ITEMS = [
   { label: 'Desk',        href: '/fantasy',              key: 'home',       proOnly: false },
+  { label: 'Pitchers',    href: '/fantasy/pitchers',     key: 'pitchers',   proOnly: true  },
+  { label: 'Platforms',   href: '/fantasy/platforms',    key: 'platforms',  proOnly: true  },
+  { label: 'Trends',      href: '/fantasy/trends',       key: 'trends',     proOnly: true  },
   { label: 'Start/Sit',   href: '/fantasy/start-sit',    key: 'start-sit',  proOnly: true  },
   { label: 'Trending',    href: '/fantasy/trending',     key: 'trending',   proOnly: true  },
   { label: 'Yesterday',   href: '/fantasy/yesterday',    key: 'yesterday',  proOnly: false },
@@ -24,7 +30,6 @@ const NAV_ITEMS = [
   { label: 'Trade Desk',  href: '/fantasy/trade-desk',   key: 'trade-desk', proOnly: true  },
   { label: 'Streamers',   href: '/fantasy/streamers',    key: 'streamers',  proOnly: true  },
   { label: 'Two-Start',   href: '/fantasy/two-start',    key: 'two-start',  proOnly: true  },
-  { label: 'News Wire',   href: '/fantasy/news',         key: 'news',       proOnly: false },
 ] as const
 
 type NavKey = typeof NAV_ITEMS[number]['key']

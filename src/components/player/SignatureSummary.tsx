@@ -30,10 +30,10 @@ export default function SignatureSummary({
             whiff_pct: p.whiff_pct,
             k_bb_pct: p.k_bb_pct,
             ranks: {
-              xera: p.ranks.xera,
-              whiff_pct: p.ranks.whiff_pct,
+            xera: p.ranks.xera ?? undefined,
+  whiff_pct: p.ranks.whiff_pct ?? undefined,
               // K-BB% doesn't have its own Savant rank; use k_pct as proxy signal
-              k_bb_pct: p.ranks.k_pct,
+              k_bb_pct: p.ranks.k_pct ?? undefined,
             },
           })
           setDials(sig.dials)

@@ -2,12 +2,11 @@
 // Matches the padlock-icon convention already used in LineupCard.tsx
 // (currentColor stroke, small viewBox) rather than introducing emoji or a
 // new icon library dependency.
-
+import type { ReactElement } from 'react'
 export type StoryIconKey = 'story' | 'bullpen' | 'arsenal' | 'park' | 'trending'
 
 const STROKE = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.4 } as const
-
-export const STORY_ICONS: Record<StoryIconKey, JSX.Element> = {
+export const STORY_ICONS: Record<StoryIconKey, ReactElement> = {
   story: (
     <svg width="18" height="18" viewBox="0 0 20 20" {...STROKE}>
       <path d="M4 15c0-2.5 1.8-4 4-4h4c2.2 0 4 1.5 4 4" strokeLinecap="round" />

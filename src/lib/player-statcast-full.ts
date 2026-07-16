@@ -226,12 +226,19 @@ export interface PitchInArsenal {
   pitch_type: string
   pitch_name: string
   usage_pct: number | null
-  velocity: number | null
-  spin_rate: number | null
-  vertical_break: number | null
-  horizontal_break: number | null
+  velocity: number | null           // not pulled from pitch-arsenal-stats — always null for now
+  spin_rate: number | null          // not pulled from pitch-arsenal-stats — always null for now
+  vertical_break: number | null     // not pulled from pitch-arsenal-stats — always null for now
+  horizontal_break: number | null   // not pulled from pitch-arsenal-stats — always null for now
   whiff_pct: number | null
   put_away_pct: number | null
+  k_pct: number | null
+  ba_against: number | null
+  slg_against: number | null
+  woba_against: number | null
+  xba_against: number | null
+  xslg_against: number | null
+  hard_hit_pct: number | null
   xwoba: number | null
   run_value_per_100: number | null
 }
@@ -336,22 +343,26 @@ export async function getPitcherStatcastFull(playerId: number, season = SEASON):
     const idIdx = arsenal.headers.findIndex(h => h === 'player_id')
     for (const row of arsenal.rows) {
       if (row[idIdx] !== target) continue
-      out.arsenal.push({
-        pitch_type: row[arsenal.headers.indexOf('pitch_type')] ?? '',
-        pitch_name: row[arsenal.headers.indexOf('pitch_name')] ?? '',
-        usage_pct: num(row, arsenal.headers, 'pitch_usage'),
-        whiff_pct: num(row, arsenal.headers, 'whiff_percent'),
-        put_away_pct: num(row, arsenal.headers, 'put_away'),
-        k_pct: num(row, arsenal.headers, 'k_percent'),
-        ba_against: num(row, arsenal.headers, 'ba'),
-        slg_against: num(row, arsenal.headers, 'slg'),
-        woba_against: num(row, arsenal.headers, 'woba'),
-        xba_against: num(row, arsenal.headers, 'est_ba'),
-        xslg_against: num(row, arsenal.headers, 'est_slg'),
-        xwoba: num(row, arsenal.headers, 'est_woba'),
-        hard_hit_pct: num(row, arsenal.headers, 'hard_hit_percent'),
-        run_value_per_100: num(row, arsenal.headers, 'run_value_per_100'),
-      })
+     out.arsenal.push({
+  pitch_type: row[arsenal.headers.indexOf('pitch_type')] ?? '',
+  pitch_name: row[arsenal.headers.indexOf('pitch_name')] ?? '',
+  usage_pct: num(row, arsenal.headers, 'pitch_usage'),
+  velocity: null,          // not on pitch-arsenal-stats leaderboard
+  spin_rate: null,         // not on pitch-arsenal-stats leaderboard
+  vertical_break: null,    // not on pitch-arsenal-stats leaderboard
+  horizontal_break: null,  // not on pitch-arsenal-stats leaderboard
+  whiff_pct: num(row, arsenal.headers, 'whiff_percent'),
+  put_away_pct: num(row, arsenal.headers, 'put_away'),
+  k_pct: num(row, arsenal.headers, 'k_percent'),
+  ba_against: num(row, arsenal.headers, 'ba'),
+  slg_against: num(row, arsenal.headers, 'slg'),
+  woba_against: num(row, arsenal.headers, 'woba'),
+  xba_against: num(row, arsenal.headers, 'est_ba'),
+  xslg_against: num(row, arsenal.headers, 'est_slg'),
+  xwoba: num(row, arsenal.headers, 'est_woba'),
+  hard_hit_pct: num(row, arsenal.headers, 'hard_hit_percent'),
+  run_value_per_100: num(row, arsenal.headers, 'run_value_per_100'),
+})
     }
     out.arsenal.sort((a, b) => (b.usage_pct ?? 0) - (a.usage_pct ?? 0))
   }
