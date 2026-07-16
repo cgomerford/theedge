@@ -6,7 +6,21 @@ const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
+// ============================================================
+// SHARED: percentage normalizer
+// Some pitcher_stats/team_stats columns store percentages as
+// decimals (0.376) and some as whole numbers (37.6) — inconsistent
+// across scripts written at different times. Every formula below
+// that compares a "_pct" or "_percent" or "_rate" field against a
+// decimal threshold (e.g. 0.30) MUST pass it through this first,
+// or a whole-number-stored field silently inflates the score by
+// ~100x and swamps every other signal. Safe to apply even to
+// fields that are already correctly stored as decimals — it's a
+// no-op for anything already under 1.
+// ============================================================
+function normPct(v: number): number {
+  return v > 1 ? v / 100 : v
+}
 // ============================================================
 // V5 COMPONENT WEIGHTS
 // Key changes vs V4:
@@ -213,9 +227,9 @@ function computePitcherEdge(home: any, away: any, homeArsenal: any[] | null, awa
       score += (p.l3_k_per_9 - p.k_per_9) * 2
     }
 
-    // 8. GB%
+   // 8. GB%
     if (p.gb_percent != null) {
-      score += (p.gb_percent - 0.43) * 15
+      score += (normPct(p.gb_percent) - 0.43) * 15
     }
 
     // ── V4 NEW: Arsenal-level metrics ──────────────────────
@@ -317,10 +331,10 @@ function computePitcherEdge(home: any, away: any, homeArsenal: any[] | null, awa
       score += (88.5 - Number(p.avg_exit_velocity)) * 1.5
     }
 
-    // 17. Chase rate (O-swing%) — gets batters to swing at balls
+// 17. Chase rate (O-swing%) — gets batters to swing at balls
     // League avg ~30%. Elite ~35%+.
     if (p.chase_rate != null) {
-      score += (Number(p.chase_rate) - 0.30) * 25
+      score += (normPct(p.chase_rate) - 0.30) * 25
     }
 
     // 18. GDP rate — ground into double plays per 9IP
@@ -415,14 +429,14 @@ function computeOffenseEdge(
       score += (team.iso - 0.150) * 30
     }
 
-    // 4. K%
+// 4. K%
     if (team.k_pct != null) {
-      score += (0.225 - team.k_pct) * 20
+      score += (0.225 - normPct(team.k_pct)) * 20
     }
 
     // 5. BB%
     if (team.bb_pct != null) {
-      score += (team.bb_pct - 0.085) * 25
+      score += (normPct(team.bb_pct) - 0.085) * 25
     }
 
     // 6. SB success rate
@@ -518,16 +532,15 @@ function scoreDefense(team: any, pitcher: any): number {
       score += Number(team.catcher_framing_runs) * 0.8
     }
 
-    // ── Pitcher-defence synergy ───────────────────────────────────
-    // GB pitcher + good infield = multiplied run prevention
-    if (pitcher?.gb_percent && pitcher.gb_percent > 0.48 && team.errors_per_game_l30 != null) {
-      const gbBonus = (pitcher.gb_percent - 0.43) * 100
+   // GB pitcher + good infield = multiplied run prevention
+    if (pitcher?.gb_percent && normPct(pitcher.gb_percent) > 0.48 && team.errors_per_game_l30 != null) {
+      const gbBonus = (normPct(pitcher.gb_percent) - 0.43) * 100
       const infieldQuality = (0.55 - Number(team.errors_per_game_l30)) * 15
       if (infieldQuality > 0) score += gbBonus * (infieldQuality / 20)
     }
     // FB pitcher + good outfield synergy
-    if (pitcher?.fb_percent && pitcher.fb_percent > 0.38 && team.outfield_oaa != null) {
-      const fbBonus = (pitcher.fb_percent - 0.35) * 80
+    if (pitcher?.fb_percent && normPct(pitcher.fb_percent) > 0.38 && team.outfield_oaa != null) {
+      const fbBonus = (normPct(pitcher.fb_percent) - 0.35) * 80
       const outfieldQuality = team.outfield_oaa ?? 0
       if (outfieldQuality > 0) score += fbBonus * (outfieldQuality / 10)
     }
@@ -566,9 +579,9 @@ function computeMatchupEdge(
       advantage += (pitcher.k_per_9 - 8.5) * 2
     }
 
-    // 2. GB% vs opposing contact style
+ // 2. GB% vs opposing contact style
     if (pitcher?.gb_percent && offense?.ops_l30) {
-      const gbEdge = pitcher.gb_percent - 0.43
+      const gbEdge = normPct(pitcher.gb_percent) - 0.43
       if (gbEdge > 0) advantage += gbEdge * 20
     }
 
