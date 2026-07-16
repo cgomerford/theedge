@@ -1,7 +1,12 @@
 // src/lib/email/blocks/matchup-tilt.ts
 //
 // Editorial cream-on-cream Matchup Tilt panel for the daily brief.
-// Replaces the old dark-box version at src/lib/matchup-tilt-email.ts.
+// Rewritten to mirror the live page's EdgeIndicator/FactorBar visual
+// language: a hero lean headline ("3 of 8 factors clearly favour PHI")
+// and a proportional two-tone bar per factor, not just a dot.
+//
+// Signature unchanged from the previous version — game-card.ts does not
+// need to change to pick this up.
 //
 // The home/away swap bug came from emails.ts passing positional args in
 // the wrong order. This file is typed strictly: it only takes
@@ -29,10 +34,18 @@ const EDGE_TIGHT = 5   // within ±5 → EVEN
 const EDGE_LIGHT = 20  // 5–20 → SLIGHT
 const EDGE_HEAVY = 50  // ≥50 → ↑↑
 
-// Neutral dot colour (for components within EDGE_TIGHT of zero)
 const NEUTRAL_DOT = '#C7C2B6'
+const TRACK_BG = '#EDE8DC'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function escapeHtml(s: string | null | undefined): string {
+  if (!s) return ''
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
 
 /**
  * Edge label for one row, e.g. "PHI EDGE ↑↑" or "EVEN".
@@ -55,9 +68,27 @@ function edgeLabel(
 }
 
 /**
- * Eight factor dots, one per component, coloured by which side that
- * component tilts toward.
+ * Proportional two-tone bar for one factor — email-safe version of the
+ * live page's FactorBar slider. Table cells with percentage widths render
+ * reliably across Gmail, Apple Mail, and Outlook (unlike CSS flex/grid).
+ * tilt=0 → 50/50 split. tilt=±100 → clamped 6/94 split.
  */
+function factorBar(tilt: number, home: { primaryColor: string }, away: { primaryColor: string }): string {
+  const homePct = Math.max(6, Math.min(94, 50 + tilt * 0.44))
+  const awayPct = 100 - homePct
+  const homeOpacity = tilt > EDGE_TIGHT ? 1 : 0.35
+  const awayOpacity = tilt < -EDGE_TIGHT ? 1 : 0.35
+
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+    <tr>
+      <td width="${awayPct.toFixed(1)}%" style="height:6px;background:${away.primaryColor};opacity:${awayOpacity};font-size:0;line-height:0;">&nbsp;</td>
+      <td width="${homePct.toFixed(1)}%" style="height:6px;background:${home.primaryColor};opacity:${homeOpacity};font-size:0;line-height:0;">&nbsp;</td>
+    </tr>
+  </table>`
+}
+
+/** Eight compact dots — quick-glance overview above the detailed rows. */
 function factorDots(data: MatchupTiltData): string {
   const cells = COMPONENTS.map(({ key }) => {
     const tilt = data.components[key].tilt
@@ -83,6 +114,28 @@ function holdsCount(data: MatchupTiltData): { homeCount: number; awayCount: numb
   }
 }
 
+/**
+ * "3 of 8 factors clearly favour PHI" — same language and threshold
+ * logic as EdgeIndicator.tsx's buildEdgeSummary() on the live page.
+ * This is the hook: the single line most likely to make someone click
+ * through to the full preview.
+ */
+function leanHeadline(data: MatchupTiltData): string {
+  const { home, away } = data
+  const { homeCount, awayCount } = holdsCount(data)
+
+  if (homeCount === awayCount) {
+    return `<span style="font-family:${FONTS.serif};font-style:italic;font-size:17px;color:${COLORS.muted};">The data is split — dig into the factors below.</span>`
+  }
+
+  const leanTeam = homeCount > awayCount ? home : away
+  const leanCount = Math.max(homeCount, awayCount)
+  const color = homeCount > awayCount ? home.primaryColor : away.primaryColor
+  const strength = leanCount >= 6 ? 'clearly favour' : leanCount >= 4 ? 'lean' : 'slightly lean'
+
+  return `<span style="font-family:${FONTS.serif};font-style:italic;font-weight:600;font-size:17px;color:${color};">${leanCount} of 8 factors ${strength} ${escapeHtml(leanTeam.abbr)}</span>`
+}
+
 // ─── Main render ──────────────────────────────────────────────────────────────
 
 /**
@@ -94,12 +147,10 @@ export function matchupTiltBlock(data: MatchupTiltData): string {
   const { home, away, components } = data
   const { homeCount, awayCount } = holdsCount(data)
 
-  // Component rows: label (left), edge label (right), italic summary beneath,
-  // hairline between rows (skipped on first row).
   const rows = COMPONENTS.map(({ key, label }, idx) => {
     const comp = components[key]
     return `
-    <tr><td style="padding:12px 0;${idx > 0 ? `border-top:1px solid ${COLORS.rowDivider};` : ''}">
+    <tr><td style="padding:14px 0;${idx > 0 ? `border-top:1px solid ${COLORS.rowDivider};` : ''}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="font-family:${FONTS.mono};font-size:11px;font-weight:700;color:${COLORS.ink};letter-spacing:0.04em;">
@@ -109,7 +160,10 @@ export function matchupTiltBlock(data: MatchupTiltData): string {
             ${edgeLabel(comp.tilt, home, away)}
           </td>
         </tr>
-        <tr><td colspan="2" style="padding-top:6px;font-family:${FONTS.serif};font-style:italic;font-size:14px;color:${COLORS.body};line-height:1.5;">
+        <tr><td colspan="2" style="padding:8px 0 6px;">
+          ${factorBar(comp.tilt, home, away)}
+        </td></tr>
+        <tr><td colspan="2" style="font-family:${FONTS.serif};font-style:italic;font-size:14px;color:${COLORS.body};line-height:1.5;">
           ${escapeHtml(comp.summary)}
         </td></tr>
       </table>
@@ -121,7 +175,7 @@ export function matchupTiltBlock(data: MatchupTiltData): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${COLORS.ink};border-bottom:1px solid ${COLORS.ink};">
 
       <!-- Tilt header: kicker left, holds-count right -->
-      <tr><td style="padding:20px 0 4px;">
+      <tr><td style="padding:20px 0 2px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;">
@@ -136,12 +190,17 @@ export function matchupTiltBlock(data: MatchupTiltData): string {
         </table>
       </td></tr>
 
-      <!-- Factor dots -->
-      <tr><td style="padding:14px 0 18px;" align="center">
+      <!-- Hero lean headline -->
+      <tr><td style="padding:6px 0 16px;">
+        ${leanHeadline(data)}
+      </td></tr>
+
+      <!-- Factor dots — quick overview -->
+      <tr><td style="padding:0 0 18px;" align="center">
         ${factorDots(data)}
       </td></tr>
 
-      <!-- Component rows -->
+      <!-- Component rows — label, bar, summary -->
       ${rows}
 
       <!-- Trailing breathing room before the bottom hairline -->
@@ -149,14 +208,4 @@ export function matchupTiltBlock(data: MatchupTiltData): string {
 
     </table>
   </td></tr>`
-}
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
-
-function escapeHtml(s: string | null | undefined): string {
-  if (!s) return ''
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
 }
