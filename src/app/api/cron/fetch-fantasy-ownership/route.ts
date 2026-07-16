@@ -25,7 +25,8 @@ const ESPN_URL = (year: number) =>
   `https://lm-api-reads.fantasy.espn.com/apis/v3/games/flb/seasons/${year}/players?view=players_wl`
 
 const BATCH_SIZE = 500
-const MLB_LOOKUP_CONCURRENCY = 8
+// Increased from 8 to 15 to safely speed up initial DB seeding
+const MLB_LOOKUP_CONCURRENCY = 15 
 
 // ─── Auth (same pattern as every other cron route) ────────────────────────────
 
@@ -85,7 +86,12 @@ async function fetchEspnPlayers(): Promise<EspnPlayer[]> {
     players = await fetchEspnPlayersForYear(CURRENT_YEAR - 1)
   }
 
-  console.log(`[fantasy-ownership] Received ${players.length} players`)
+  // DEFENSIVE FIX: ESPN sometimes ignores the X-Fantasy-Filter limit and dumps 20k+ players.
+  // We sort in-memory by ownership and enforce the 3,000 limit so we don't blow up Vercel limits.
+  players.sort((a, b) => (b.ownership?.percentOwned ?? 0) - (a.ownership?.percentOwned ?? 0))
+  players = players.slice(0, 3000)
+
+  console.log(`[fantasy-ownership] Received ${players.length} players (Enforced limit)`)
   return players
 }
 
