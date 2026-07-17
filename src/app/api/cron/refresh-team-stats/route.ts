@@ -136,7 +136,8 @@ export async function GET(request: Request) {
 async function fetchTeamStats(teamId: number, teamName: string) {
   try {
     const today_str = new Date().toISOString().split('T')[0]
-const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+ const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().split('T')[0]
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
