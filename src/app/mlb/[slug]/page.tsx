@@ -1,5 +1,5 @@
 import {
-  getScheduleForDate, slugifyGame, teamLogoUrl, playerHeadshotUrl, getPitcherSeasonStats, getTeamForm, type MLBGame
+  getScheduleForDate, slugifyGame, teamLogoUrl, getTeamForm, type MLBGame
 } from '@/lib/mlb'
 import { getDivisionStandings, getLeagueStandings } from '@/lib/standings'
 import StandingsCard from '@/components/StandingsCard'
@@ -7,13 +7,18 @@ import RaceForOctober from '@/components/RaceForOctober'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
+import { getTopBatterStreaks, getPitcherTrend } from '@/lib/streaks'
+import { getLineupSpray } from '@/lib/batter-spray' 
 import LiveTicker from '@/components/LiveTicker'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import { findTeamByName } from '@/lib/teams'
+import { getPitchVelocityRanges } from '@/lib/pitch-velocity'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
+import { getUpcomingGameUmpire, getUmpireSeasonProfile } from '@/lib/umpire-scouting'
+import { getSeasonGamePks } from '@/lib/bullpen-usage'
+
 import ScrollProgress from '@/components/ScrollProgress'
-import { buildStoryLeadSlide, LOCKED_SLIDES } from '@/lib/story-slides'
 import { getProjectedLineup } from '@/lib/lineups'
 import LineupCompare from '@/components/LineupCompare'
 import TeamIntelExtras from '@/components/TeamIntelExtras'
@@ -27,7 +32,6 @@ import BullpenPanel from '@/components/BullpenPanel'
 import { getBullpenData } from '@/lib/bullpen'
 import EdgeIndicator from '@/components/EdgeIndicator'
 import Contrarian from '@/components/Contrarian'
-import SeriesTrajectory from '@/components/SeriesTrajectory'
 import { getSeriesGames } from '@/lib/series-games'
 import type { SeriesGameResult } from '@/lib/series-games'
 import SeriesMomentum from '@/components/SeriesMomentum'
@@ -36,27 +40,44 @@ import SeriesPredictions from '@/components/SeriesPredictions'
 import SeriesPlayerStats from '@/components/SeriesPlayerStats'
 import { getSeriesBattingStats } from '@/lib/series-stats'
 import { getSeriesInningMomentum } from '@/lib/series-momentum'
+import { getPitcherHotZones, getBatterHotZones } from '@/lib/hot-zones'
+import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
+import ScoutReportTab from '@/components/ScoutReportTab'
+import {
+  buildScoutReport,
+  type ScoutInputs,
+  type TransactionForScout,
+  type ArsenalPitch,
+} from '@/lib/scout'
+
+async function getActiveRosterIds(teamId: number): Promise<Set<number>> {
+  try {
+    const res = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=Active`, {
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return new Set()
+    const data = await res.json()
+    return new Set((data.roster ?? []).map((r: any) => r.person?.id).filter(Boolean))
+  } catch {
+    return new Set()
+  }
+}
 export const revalidate = 60
 
 type Props = { params: Promise<{ slug: string }> }
 
-// ── Wireframe stub — every section not bolted on yet renders through this,
-// so it's obvious at a glance what's real vs. placeholder, and swapping one
-// out is a single find/replace rather than hunting through a large file. ──
-function TrendsCard({
-  awayAbbr, homeAbbr, awayForm, homeForm,
-}: {
-  awayAbbr: string
-  homeAbbr: string
-  awayForm: any
-  homeForm: any
+const MAX_W = 1440
+const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
+
+// ─── Sidebar cards ────────────────────────────────────────────────────────────
+
+function TrendsCard({ awayAbbr, homeAbbr, awayForm, homeForm }: {
+  awayAbbr: string; homeAbbr: string; awayForm: any; homeForm: any
 }) {
-  if (!awayForm && !homeForm) {
-    return <Stub label="Trends" note="Form data unavailable for this game." />
-  }
+  if (!awayForm && !homeForm) return <Stub label="Team Forms" note="Form data unavailable for this game." />
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4">
-      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Trends</p>
+      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Team Forms</p>
       <div className="space-y-3">
         {[{ abbr: awayAbbr, form: awayForm }, { abbr: homeAbbr, form: homeForm }].map(({ abbr, form }) => form && (
           <div key={abbr}>
@@ -82,71 +103,14 @@ function TrendsCard({
 
 function Stub({ label, note }: { label: string; note?: string }) {
   return (
-    <div className="border border-dashed border-stone-300 rounded-xl p-8 text-center bg-stone-50/50">
+    <div className="border border-dashed border-stone-300 rounded-xl p-6 text-center bg-stone-50/50 h-full flex flex-col items-center justify-center">
       <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-1">{label}</p>
-      {note && <p className="text-xs font-serif italic text-stone-400">{note}</p>}
+      {note && <p className="text-[10px] font-serif italic text-stone-400 leading-snug">{note}</p>}
     </div>
   )
 }
 
-const statBarRanges: Record<string, [number, number, boolean]> = {
-  era: [1.5, 6.0, false],
-  whip: [0.7, 1.6, false],
-  k_per_9: [4, 13, true],
-  bb_per_9: [1, 5, false],
-}
-
-function statBarPct(kind: keyof typeof statBarRanges, raw: string | number | null | undefined): number {
-  const value = typeof raw === 'string' ? parseFloat(raw) : raw
-  if (value == null || isNaN(value)) return 0
-  const [lo, hi, higherIsBetter] = statBarRanges[kind]
-  let pct = (value - lo) / (hi - lo)
-  if (!higherIsBetter) pct = 1 - pct
-  return Math.max(0, Math.min(100, Math.round(pct * 100)))
-}
-
-function PitcherStatBar({ label, value, pct, color }: { label: string; value: string | number; pct: number; color: string }) {
-  return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-[11px] font-mono text-stone-400 w-10 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 bg-stone-100 rounded-full mx-2.5 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="text-xs font-mono font-bold text-stone-900 w-10 text-right shrink-0">{value}</span>
-    </div>
-  )
-}
-
-function PitcherCard({
-  pitcher, stats, abbr, color, side,
-}: {
-  pitcher: { id: number; fullName: string } | undefined
-  stats: any
-  abbr: string
-  color: string
-  side: 'away' | 'home'
-}) {
-  if (!pitcher) {
-    return <div className="p-8 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-center text-stone-400 text-sm italic font-serif">Pitcher TBD</div>
-  }
-  return (
-    <div className="p-5 bg-white border border-stone-200 rounded-xl">
-      <div className="flex items-center gap-3 mb-4">
-        <img src={playerHeadshotUrl(pitcher.id)} alt={pitcher.fullName} className="w-11 h-11 rounded-full object-cover border-2 border-stone-200" />
-        <div>
-          <div className="font-serif text-base font-semibold text-stone-900">{pitcher.fullName}</div>
-          <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{abbr} · {side}</div>
-        </div>
-      </div>
-      <div className="space-y-0.5">
-        <PitcherStatBar label="ERA" value={stats?.era ?? '–'} pct={statBarPct('era', stats?.era)} color={color} />
-        <PitcherStatBar label="WHIP" value={stats?.whip ?? '–'} pct={statBarPct('whip', stats?.whip)} color={color} />
-        <PitcherStatBar label="K/9" value={stats?.k_per_9 ?? '–'} pct={statBarPct('k_per_9', stats?.k_per_9)} color={color} />
-        <PitcherStatBar label="BB/9" value={stats?.bb_per_9 ?? '–'} pct={statBarPct('bb_per_9', stats?.bb_per_9)} color={color} />
-      </div>
-    </div>
-  )
-}
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
@@ -169,6 +133,8 @@ export async function generateMetadata({ params }: Props) {
   }
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function GamePreview({ params }: Props) {
   const { slug } = await params
   const supa = createAdminClient()
@@ -185,7 +151,6 @@ export default async function GamePreview({ params }: Props) {
     const freshGames = await getScheduleForDate(dateMatch[1])
     game = freshGames.find(g => slugifyGame(g) === slug) ?? null
   } catch {}
-
   if (!game && cached?.raw_data) game = cached.raw_data as MLBGame
   if (!game) notFound()
 
@@ -206,70 +171,129 @@ export default async function GamePreview({ params }: Props) {
     isLive, isFinal,
   } : undefined
 
-const prediction = await getEdgePrediction(game.gamePk)
+  // ── Umpire scouting ──────────────────────────────────────────────────────
+  // FIXED: this previously landed at module scope (outside this function)
+  // referencing undefined `gamePk`/`homeTeamId`/`season` — that's what threw
+  // "gamePk is not defined". Correct call uses the real values now that
+  // `game` is loaded: game.gamePk and game.teams.home.team.id.
+  //
+  // Both calls hit the live MLB feed for every game in this team's season
+  // (see the perf note in lib/umpire-scouting.ts) — real cost on a page
+  // that's otherwise already fetching a lot. If this page feels slow after
+  // wiring this in, that's the first place to look; a cron-precomputed
+  // version is the long-term fix, same recommendation as bullpen-usage.ts.
+  const umpireSeasonYear = new Date().getFullYear()
+  const umpireName = await getUpcomingGameUmpire(game.gamePk)
+  const umpireSeasonGamePks = umpireName ? await getSeasonGamePks(game.teams.home.team.id, umpireSeasonYear) : []
+  const umpireProfile = umpireName ? await getUmpireSeasonProfile(umpireName, umpireSeasonGamePks) : null
+
+  // ── Data fetching (unchanged from previous rev) ─────────────────────────
+  const prediction = await getEdgePrediction(game.gamePk)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const gameDateApi = game.gameDate?.split('T')[0] ?? dateMatch[1]
+const [awayStreakData, homeStreakData, awayPitcherTrend, homePitcherTrend] = await Promise.all([
+  getTopBatterStreaks(game.teams.away.team.id),
+  getTopBatterStreaks(game.teams.home.team.id),
+  awayPitcherId ? getPitcherTrend(awayPitcherId, game.teams.away.probablePitcher?.fullName ?? '') : Promise.resolve(null),
+  homePitcherId ? getPitcherTrend(homePitcherId, game.teams.home.probablePitcher?.fullName ?? '') : Promise.resolve(null),
+])
 
-const [awayLineup, homeLineup] = await Promise.all([
+const awayLiteralBatters = [...awayStreakData.hot, ...awayStreakData.cold]
+const homeLiteralBatters = [...homeStreakData.hot, ...homeStreakData.cold]
+  const [awayLineup, homeLineup] = await Promise.all([
     getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
   ])
 
-  const [
+const [
     awayInjuries, homeInjuries,
     awayTransactions, homeTransactions,
     awayStandouts, homeStandouts,
+    awayActiveRosterIds, homeActiveRosterIds,
   ] = await Promise.all([
     getTeamILList(game.teams.away.team.id),
     getTeamILList(game.teams.home.team.id),
     getTeamTransactions(game.teams.away.team.id),
     getTeamTransactions(game.teams.home.team.id),
-  getAffiliateStandouts(game.teams.away.team.id, new Date().getFullYear()),
+    getAffiliateStandouts(game.teams.away.team.id, new Date().getFullYear()),
     getAffiliateStandouts(game.teams.home.team.id, new Date().getFullYear()),
+    getActiveRosterIds(game.teams.away.team.id),
+    getActiveRosterIds(game.teams.home.team.id),
   ])
-  const awayCallups = awayTransactions.filter(t => t.category === 'CALLUP' || t.is_milb_move)
-  const homeCallups = homeTransactions.filter(t => t.category === 'CALLUP' || t.is_milb_move)
+  const awayCallups = awayTransactions.filter((t: any) => t.category === 'CALLUP' || t.is_milb_move)
+  const homeCallups = homeTransactions.filter((t: any) => t.category === 'CALLUP' || t.is_milb_move)
 
-const seasonYear = new Date().getFullYear()
+  const seasonYear = new Date().getFullYear()
   const [awayFullStats, homeFullStats, awayMovementDB, homeMovementDB] = await Promise.all([
     awayPitcherId ? getPitcherStatsFull(awayPitcherId) : Promise.resolve(null),
     homePitcherId ? getPitcherStatsFull(homePitcherId) : Promise.resolve(null),
     awayPitcherId ? getPitchMovementFromDB(awayPitcherId, seasonYear) : Promise.resolve([]),
     homePitcherId ? getPitchMovementFromDB(homePitcherId, seasonYear) : Promise.resolve([]),
   ])
+const [awayPitcherHotZones, homePitcherHotZones, awayPitcherArsenalZones, homePitcherArsenalZones] = await Promise.all([
+    awayPitcherId ? getPitcherHotZones(awayPitcherId) : Promise.resolve({}),
+    homePitcherId ? getPitcherHotZones(homePitcherId) : Promise.resolve({}),
+    awayPitcherId ? getPitcherZoneArsenal(awayPitcherId) : Promise.resolve({}),
+    homePitcherId ? getPitcherZoneArsenal(homePitcherId) : Promise.resolve({}),
+  ])
+const [awayPitcherVelocityRanges, homePitcherVelocityRanges] = await Promise.all([
+    awayPitcherId ? getPitchVelocityRanges(awayPitcherId) : Promise.resolve({}),
+    homePitcherId ? getPitchVelocityRanges(homePitcherId) : Promise.resolve({}),
+  ])
+  const awayPitcherThrows = (((awayFullStats as any)?.throws) ?? 'R') as 'L' | 'R'
+  const homePitcherThrows = (((homeFullStats as any)?.throws) ?? 'R') as 'L' | 'R'
 
-// Call signature confirmed from the pre-rewrite page.tsx — getBullpenData
-  // was fetched there but BullpenPanel was never actually rendered
-  // (flagged as dead computation earlier this session). Wiring it in for
-  // real now.
+   const awayPitcherTTO = awayFullStats ? {
+    tto1_woba: (awayFullStats as any).tto1_woba ?? null, tto2_woba: (awayFullStats as any).tto2_woba ?? null, tto3_woba: (awayFullStats as any).tto3_woba ?? null,
+    tto1_pa: (awayFullStats as any).tto1_pa ?? null, tto2_pa: (awayFullStats as any).tto2_pa ?? null, tto3_pa: (awayFullStats as any).tto3_pa ?? null,
+  } : null
+  const homePitcherTTO = homeFullStats ? {
+    tto1_woba: (homeFullStats as any).tto1_woba ?? null, tto2_woba: (homeFullStats as any).tto2_woba ?? null, tto3_woba: (homeFullStats as any).tto3_woba ?? null,
+    tto1_pa: (homeFullStats as any).tto1_pa ?? null, tto2_pa: (homeFullStats as any).tto2_pa ?? null, tto3_pa: (homeFullStats as any).tto3_pa ?? null,
+  } : null
   const { home: homeBullpen, away: awayBullpen } = await getBullpenData(
-    game.teams.home.team.id,
-    game.teams.away.team.id,
-    dateMatch[1],
+    game.teams.home.team.id, game.teams.away.team.id, dateMatch[1],
   )
 
   const streakRows = await getHotColdStreaks(
-    awayLineup?.batters ?? [],
-    homeLineup?.batters ?? [],
+    awayLineup?.batters ?? [], homeLineup?.batters ?? [],
     game.teams.away.team.abbreviation ?? 'AWAY',
     game.teams.home.team.abbreviation ?? 'HOME',
   )
-const [awaySeasonStats, homeSeasonStats, awayForm, homeForm] = await Promise.all([
-    awayPitcherId ? getPitcherSeasonStats(awayPitcherId) : Promise.resolve(null),
-    homePitcherId ? getPitcherSeasonStats(homePitcherId) : Promise.resolve(null),
-  getTeamForm(game.teams.away.team.id),
+
+  const awayLineupBatterIds: number[] = (awayLineup?.batters ?? []).map((b: any) => b?.player_id).filter(Boolean)
+  const homeLineupBatterIds: number[] = (homeLineup?.batters ?? []).map((b: any) => b?.player_id).filter(Boolean)
+const [awayLineupSpray, homeLineupSpray] = await Promise.all([
+    getLineupSpray(awayLineupBatterIds),
+    getLineupSpray(homeLineupBatterIds),
+  ])
+  const [awayLineupZonesArr, homeLineupZonesArr] = await Promise.all([
+    Promise.all(awayLineupBatterIds.map((id: number) => getBatterHotZones(id))),
+    Promise.all(homeLineupBatterIds.map((id: number) => getBatterHotZones(id))),
+  ])
+
+  const awayLineupZones = awayLineupBatterIds.map((id: number, i: number) => ({
+    playerId: id,
+    playerName: (awayLineup?.batters?.[i] as any)?.player_name ?? 'Unknown',
+    zones: awayLineupZonesArr[i],
+  }))
+  const homeLineupZones = homeLineupBatterIds.map((id: number, i: number) => ({
+    playerId: id,
+    playerName: (homeLineup?.batters?.[i] as any)?.player_name ?? 'Unknown',
+    zones: homeLineupZonesArr[i],
+  }))
+
+  const [awayForm, homeForm] = await Promise.all([
+    getTeamForm(game.teams.away.team.id),
     getTeamForm(game.teams.home.team.id),
   ])
 
-const seriesGames: SeriesGameResult[] = await getSeriesGames(
-    game.teams.home.team.id,
-    game.teams.away.team.id,
-    dateMatch[1],
-    game.gamePk,
+  const seriesGames: SeriesGameResult[] = await getSeriesGames(
+    game.teams.home.team.id, game.teams.away.team.id, dateMatch[1], game.gamePk,
   )
 
-function gameChipDate(officialDate: string, isTonight: boolean): string {
+  function gameChipDate(officialDate: string, isTonight: boolean): string {
     if (isTonight) return 'Tonight'
     return new Date(officialDate + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short' })
   }
@@ -280,20 +304,15 @@ function gameChipDate(officialDate: string, isTonight: boolean): string {
     isFinal: g.isFinal, isTonight: g.isTonight,
   }))
 
-const [seriesPredictionRows, awaySeriesStats, homeSeriesStats] = await Promise.all([
+  const [seriesPredictionRows, awaySeriesStats, homeSeriesStats] = await Promise.all([
     Promise.all(seriesGames.map(async g => {
       const p = await getEdgePrediction(g.gamePk)
-      // Assumes home/away stays the same team throughout the series (true
-      // for a standard single-park series) — reusing slugifyGame exactly
-      // as-is rather than a second slug implementation.
       const gameSlug = slugifyGame({
-        gamePk: g.gamePk,
-        gameDate: g.officialDate,
-        officialDate: g.officialDate,
+        gamePk: g.gamePk, gameDate: g.officialDate, officialDate: g.officialDate,
         status: { detailedState: '', abstractGameState: '' },
         teams: {
-          away: { team: { id: 0, name: game.teams.away.team.name } },
-          home: { team: { id: 0, name: game.teams.home.team.name } },
+          away: { team: { id: 0, name: game!.teams.away.team.name } },
+          home: { team: { id: 0, name: game!.teams.home.team.name } },
         },
         venue: { name: '' },
       })
@@ -304,7 +323,7 @@ const [seriesPredictionRows, awaySeriesStats, homeSeriesStats] = await Promise.a
         gameSlug,
       }
     })),
- getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.away.team.id),
+    getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.away.team.id),
     getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.home.team.id),
   ])
 
@@ -317,62 +336,317 @@ const [seriesPredictionRows, awaySeriesStats, homeSeriesStats] = await Promise.a
     getDivisionStandings(game.teams.away.team.id, season),
     getDivisionStandings(game.teams.home.team.id, season),
   ])
-
-const awayRow = awayStandings?.teams.find(t => t.teamId === game.teams.away.team.id) ?? null
-  const homeRow = homeStandings?.teams.find(t => t.teamId === game.teams.home.team.id) ?? null
-
+  const awayRow = awayStandings?.teams.find(t => t.teamId === game!.teams.away.team.id) ?? null
+  const homeRow = homeStandings?.teams.find(t => t.teamId === game!.teams.home.team.id) ?? null
   const [awayLeagueStandings, homeLeagueStandings] = await Promise.all([
     awayStandings ? getLeagueStandings(awayStandings.leagueId, season) : Promise.resolve([]),
     homeStandings ? getLeagueStandings(homeStandings.leagueId, season) : Promise.resolve([]),
   ])
 
-  const awayColor = findTeamByName(game.teams.away.team.name)?.primary_color ?? '#FF5722'
-  const homeColor = findTeamByName(game.teams.home.team.name)?.primary_color ?? '#1A1A1A'
-
- console.log(`[story-slides] prediction exists: ${!!prediction}, story_lead: ${prediction?.story_lead ?? 'null/undefined'}`)
-  const storySlides = [buildStoryLeadSlide(prediction?.story_lead)].filter((s): s is NonNullable<typeof s> => s !== null)
+  const awayTeamMeta = findTeamByName(game.teams.away.team.name)
+  const homeTeamMeta = findTeamByName(game.teams.home.team.name)
+  const awayColor = awayTeamMeta?.primary_color ?? '#FF5722'
+  const homeColor = homeTeamMeta?.primary_color ?? '#1A1A1A'
+  const awaySlug = (awayTeamMeta as any)?.slug ?? undefined
+  const homeSlug = (homeTeamMeta as any)?.slug ?? undefined
 
   const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
   }) + ' ET'
 
+  // ── Scout Report inputs ─────────────────────────────────────────────────
+  const _scoutSeason = new Date().getFullYear()
+  const [awayArsenalRes, homeArsenalRes] = await Promise.all([
+    awayPitcherId
+      ? supa.from('pitch_arsenals')
+          .select('pitch_type, pitch_name, percentage, count, avg_velocity, whiff_percent, put_away_percent, est_woba, hard_hit_percent, ba_against')
+          .eq('player_id', awayPitcherId).eq('season', _scoutSeason)
+          .order('percentage', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    homePitcherId
+     ? supa.from('pitch_arsenals')
+          .select('pitch_type, pitch_name, percentage, count, avg_velocity, whiff_percent, put_away_percent, est_woba, hard_hit_percent, ba_against')
+          .eq('player_id', homePitcherId).eq('season', _scoutSeason)
+          .order('percentage', { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ])
+  const _awayArsenal: ArsenalPitch[] = (awayArsenalRes?.data ?? []) as ArsenalPitch[]
+  const _homeArsenal: ArsenalPitch[] = (homeArsenalRes?.data ?? []) as ArsenalPitch[]
+
+  const _projectedPlayerIds = new Set<number>(
+    [
+      ...(awayLineup?.batters?.map((b: any) => b?.player_id) ?? []),
+      ...(homeLineup?.batters?.map((b: any) => b?.player_id) ?? []),
+      awayPitcherId, homePitcherId,
+    ].filter((id): id is number => typeof id === 'number' && id > 0)
+  )
+  const _scoutTransactions: TransactionForScout[] = [
+    ...(awayTransactions ?? []), ...(homeTransactions ?? []),
+  ].map((t: any) => ({
+    player_name: t.player_name ?? '', category: t.category ?? '', type_code: t.type_code ?? '',
+    description: t.description ?? '', transaction_date: t.transaction_date ?? '',
+    il_days: t.il_days ?? null, injury_reason: t.injury_reason ?? null,
+    affects_tonight: _projectedPlayerIds.has(t.player_id ?? -1),
+  }))
+
+  const _awayAbbr = game.teams.away.team.abbreviation ?? 'AWAY'
+  const _homeAbbr = game.teams.home.team.abbreviation ?? 'HOME'
+  const _tonightIdx = seriesGames.findIndex(g => g.isTonight)
+  const _seriesGameNumber = _tonightIdx >= 0
+    ? seriesGames[_tonightIdx].gameNumber
+    : (seriesGames[seriesGames.length - 1]?.gameNumber ?? null)
+  const _finishedGames = seriesGames.filter(g => g.isFinal)
+  const _awayWins = _finishedGames.filter(g => (g.awayScore ?? 0) > (g.homeScore ?? 0)).length
+  const _homeWins = _finishedGames.filter(g => (g.homeScore ?? 0) > (g.awayScore ?? 0)).length
+  const _seriesStanding = _finishedGames.length === 0
+    ? null
+    : _awayWins > _homeWins
+      ? `${_awayAbbr} leads ${_awayWins}-${_homeWins}`
+      : _homeWins > _awayWins
+        ? `${_homeAbbr} leads ${_homeWins}-${_awayWins}`
+        : `Series tied ${_awayWins}-${_homeWins}`
+
+  const _teamRaw: any = prediction?.components_raw
+
+  const _formDate = new Date().toISOString().split('T')[0]
+  const _awayTeamShort = game.teams.away.team.name
+  const _homeTeamShort = game.teams.home.team.name
+
+  const [_awayFormRes, _homeFormRes] = await Promise.all([
+    supa.from('player_form_signals')
+      .select('player_id, player_name, team_name, player_type, signal, signal_quality, metric, current_value, extreme_value, magnitude, trend, avg, rbi, runs, walks, games')
+      .eq('computed_date', _formDate).eq('player_type', 'batter')
+      .ilike('team_name', `%${_awayTeamShort.split(' ').slice(-1)[0]}%`)
+      .order('magnitude', { ascending: false }).limit(3),
+    supa.from('player_form_signals')
+      .select('player_id, player_name, team_name, player_type, signal, signal_quality, metric, current_value, extreme_value, magnitude, trend, avg, rbi, runs, walks, games')
+      .eq('computed_date', _formDate).eq('player_type', 'batter')
+      .ilike('team_name', `%${_homeTeamShort.split(' ').slice(-1)[0]}%`)
+      .order('magnitude', { ascending: false }).limit(3),
+  ])
+
+  const _awayFormData = _awayFormRes?.data?.length
+    ? _awayFormRes.data
+    : (await supa.from('player_form_signals')
+        .select('player_id, player_name, team_name, player_type, signal, signal_quality, metric, current_value, extreme_value, magnitude, trend, avg, rbi, runs, walks, games')
+        .lt('computed_date', _formDate).eq('player_type', 'batter')
+        .ilike('team_name', `%${_awayTeamShort.split(' ').slice(-1)[0]}%`)
+        .order('computed_date', { ascending: false })
+        .order('magnitude', { ascending: false }).limit(3)).data ?? []
+
+  const _homeFormData = _homeFormRes?.data?.length
+    ? _homeFormRes.data
+    : (await supa.from('player_form_signals')
+        .select('player_id, player_name, team_name, player_type, signal, signal_quality, metric, current_value, extreme_value, magnitude, trend, avg, rbi, runs, walks, games')
+        .lt('computed_date', _formDate).eq('player_type', 'batter')
+        .ilike('team_name', `%${_homeTeamShort.split(' ').slice(-1)[0]}%`)
+        .order('computed_date', { ascending: false })
+        .order('magnitude', { ascending: false }).limit(3)).data ?? []
+
+const _toHotStreak = (row: any): import('@/lib/scout').HotStreakPlayer => ({
+    player_id: row.player_id, player_name: row.player_name, team_abbr: row.team_name ?? '',
+    player_type: row.player_type, signal: row.signal,
+    signal_quality: row.signal_quality, metric: row.metric,
+    current_value: Number(row.current_value), extreme_value: Number(row.extreme_value),
+    magnitude: Number(row.magnitude),
+    recentGameLog: Array.isArray(row.trend) ? row.trend.map(Number) : undefined,
+    avg: row.avg != null ? Number(row.avg) : undefined,
+    rbi: row.rbi != null ? Number(row.rbi) : undefined,
+    runs: row.runs != null ? Number(row.runs) : undefined,
+    walks: row.walks != null ? Number(row.walks) : undefined,
+    games: row.games != null ? Number(row.games) : undefined,
+  })
+
+ const _awayInjuredIds = new Set((awayInjuries ?? []).map((i: any) => i.player_id).filter(Boolean))
+  const _homeInjuredIds = new Set((homeInjuries ?? []).map((i: any) => i.player_id).filter(Boolean))
+
+function dedupeByPlayerId(rows: ReturnType<typeof _toHotStreak>[]) {
+    const byId = new Map<number, ReturnType<typeof _toHotStreak>>()
+    for (const r of rows) {
+      const existing = byId.get(r.player_id)
+      if (!existing || r.magnitude > existing.magnitude) byId.set(r.player_id, r)
+    }
+    return Array.from(byId.values())
+  }
+
+// Fail OPEN, not closed: an empty roster set almost always means the
+  // Stats API fetch failed (a real active roster has 26+ players), not that
+  // zero players are active. Using .has() against an empty set unconditionally
+  // was silently excluding every streak for that team on any fetch hiccup —
+  // exactly what produced the TOR/PHI asymmetry.
+  const awayRosterCheckAvailable = awayActiveRosterIds.size > 0
+  const homeRosterCheckAvailable = homeActiveRosterIds.size > 0
+
+  const _awayHotStreaks = dedupeByPlayerId(
+    (_awayFormData ?? [])
+      .map(_toHotStreak)
+      .filter(s => !_awayInjuredIds.has(s.player_id) && (!awayRosterCheckAvailable || awayActiveRosterIds.has(s.player_id)))
+  )
+  const _homeHotStreaks = dedupeByPlayerId(
+    (_homeFormData ?? [])
+      .map(_toHotStreak)
+      .filter(s => !_homeInjuredIds.has(s.player_id) && (!homeRosterCheckAvailable || homeActiveRosterIds.has(s.player_id)))
+  )
+  const scoutInputs: ScoutInputs = {
+    homeAbbr: _homeAbbr, awayAbbr: _awayAbbr,
+    homeTeamName: game.teams.home.team.name, awayTeamName: game.teams.away.team.name,
+    awayPitcher: (awayPitcherId && awayFullStats) ? {
+      player_id: awayPitcherId,
+      player_name: game.teams.away.probablePitcher?.fullName ?? '',
+      throws: ((awayFullStats as any).throws ?? null) as 'L' | 'R' | null,
+      era: (awayFullStats as any).era ?? null, fip: (awayFullStats as any).fip ?? null,
+    l3_era: (awayFullStats as any).l3_era ?? null,
+      whip: (awayFullStats as any).whip ?? null,
+      k_per_9: (awayFullStats as any).k_per_9 ?? null,
+      bb_per_9: (awayFullStats as any).bb_per_9 ?? null,
+      first_pitch_strike_pct: (awayFullStats as any).first_pitch_strike_pct ?? null,
+      first_pitch_mix: (awayFullStats as any).first_pitch_mix ?? null,
+      two_strike_mix: (awayFullStats as any).two_strike_mix ?? null,
+        tto1_woba: (awayFullStats as any).tto1_woba ?? null,
+      tto2_woba: (awayFullStats as any).tto2_woba ?? null,
+      tto3_woba: (awayFullStats as any).tto3_woba ?? null,
+      tto1_pa: (awayFullStats as any).tto1_pa ?? null,
+      tto2_pa: (awayFullStats as any).tto2_pa ?? null,
+      tto3_pa: (awayFullStats as any).tto3_pa ?? null,
+      arsenal: _awayArsenal, season_pitches_thrown: null,
+    } : null,
+    homePitcher: (homePitcherId && homeFullStats) ? {
+      player_id: homePitcherId,
+      player_name: game.teams.home.probablePitcher?.fullName ?? '',
+      throws: ((homeFullStats as any).throws ?? null) as 'L' | 'R' | null,
+      era: (homeFullStats as any).era ?? null, fip: (homeFullStats as any).fip ?? null,
+      l3_era: (awayFullStats as any).l3_era ?? null,
+      whip: (awayFullStats as any).whip ?? null,
+      k_per_9: (awayFullStats as any).k_per_9 ?? null,
+      bb_per_9: (awayFullStats as any).bb_per_9 ?? null,
+      first_pitch_strike_pct: (awayFullStats as any).first_pitch_strike_pct ?? null,
+      first_pitch_mix: (homeFullStats as any).first_pitch_mix ?? null,
+      two_strike_mix: (homeFullStats as any).two_strike_mix ?? null,
+         tto1_woba: (awayFullStats as any).tto1_woba ?? null,
+      tto2_woba: (awayFullStats as any).tto2_woba ?? null,
+      tto3_woba: (awayFullStats as any).tto3_woba ?? null,
+      tto1_pa: (awayFullStats as any).tto1_pa ?? null,
+      tto2_pa: (awayFullStats as any).tto2_pa ?? null,
+      tto3_pa: (awayFullStats as any).tto3_pa ?? null,
+      arsenal: _homeArsenal, season_pitches_thrown: null,
+    } : null,
+    awayTeamStats: _teamRaw?.away_team ? {
+      team_abbr: _awayAbbr, team_name: game.teams.away.team.name,
+      runs_per_game_l30: _teamRaw.away_team.runs_per_game_l30 ?? null,
+      ops_l30: _teamRaw.away_team.ops_l30 ?? null, iso: _teamRaw.away_team.iso ?? null,
+      k_pct: _teamRaw.away_team.k_pct ?? null, bb_pct: _teamRaw.away_team.bb_pct ?? null,
+      xwoba: _teamRaw.away_team.xwoba ?? null, hard_hit_pct: _teamRaw.away_team.hard_hit_pct ?? null,
+      chase_pct_vs_rhp: _teamRaw.away_team.chase_pct_vs_rhp ?? null,
+      chase_pct_vs_lhp: _teamRaw.away_team.chase_pct_vs_lhp ?? null,
+      chase_pct_rank_mlb: _teamRaw.away_team.chase_pct_rank_mlb ?? null,
+      first_pitch_swing_pct: _teamRaw.away_team.first_pitch_swing_pct ?? null,
+      first_pitch_swing_rank_mlb: _teamRaw.away_team.first_pitch_swing_rank_mlb ?? null,
+      two_strike_k_pct: _teamRaw.away_team.two_strike_k_pct ?? null,
+      two_strike_whiff_vs_breaking: _teamRaw.away_team.two_strike_whiff_vs_breaking ?? null,
+      hotStreaks: _awayHotStreaks,
+    } : null,
+    homeTeamStats: _teamRaw?.home_team ? {
+      team_abbr: _homeAbbr, team_name: game.teams.home.team.name,
+      runs_per_game_l30: _teamRaw.home_team.runs_per_game_l30 ?? null,
+      ops_l30: _teamRaw.home_team.ops_l30 ?? null, iso: _teamRaw.home_team.iso ?? null,
+      k_pct: _teamRaw.home_team.k_pct ?? null, bb_pct: _teamRaw.home_team.bb_pct ?? null,
+      xwoba: _teamRaw.home_team.xwoba ?? null, hard_hit_pct: _teamRaw.home_team.hard_hit_pct ?? null,
+      chase_pct_vs_rhp: _teamRaw.home_team.chase_pct_vs_rhp ?? null,
+      chase_pct_vs_lhp: _teamRaw.home_team.chase_pct_vs_lhp ?? null,
+      chase_pct_rank_mlb: _teamRaw.home_team.chase_pct_rank_mlb ?? null,
+      first_pitch_swing_pct: _teamRaw.home_team.first_pitch_swing_pct ?? null,
+      first_pitch_swing_rank_mlb: _teamRaw.home_team.first_pitch_swing_rank_mlb ?? null,
+      two_strike_k_pct: _teamRaw.home_team.two_strike_k_pct ?? null,
+      two_strike_whiff_vs_breaking: _teamRaw.home_team.two_strike_whiff_vs_breaking ?? null,
+    hotStreaks: _homeHotStreaks,
+    } : null,
+    awayBullpen: awayBullpen ? {
+      team_abbr: _awayAbbr, team_name: game.teams.away.team.name,
+      innings_yesterday: _teamRaw?.away_team?.bullpen_innings_yesterday ?? null,
+      ip_last_3: _teamRaw?.away_team?.bullpen_ip_last_3 ?? null,
+      closer_available: _teamRaw?.away_team?.closer_available ?? null,
+      setup1_available: _teamRaw?.away_team?.setup1_available ?? null,
+      setup2_available: _teamRaw?.away_team?.setup2_available ?? null,
+      bullpen_era: _teamRaw?.away_team?.bullpen_era ?? null,
+      depth_arm_l3_era: null, depth_arm_name: null,
+    } : null,
+    homeBullpen: homeBullpen ? {
+      team_abbr: _homeAbbr, team_name: game.teams.home.team.name,
+      innings_yesterday: _teamRaw?.home_team?.bullpen_innings_yesterday ?? null,
+      ip_last_3: _teamRaw?.home_team?.bullpen_ip_last_3 ?? null,
+      closer_available: _teamRaw?.home_team?.closer_available ?? null,
+      setup1_available: _teamRaw?.home_team?.setup1_available ?? null,
+      setup2_available: _teamRaw?.home_team?.setup2_available ?? null,
+      bullpen_era: _teamRaw?.home_team?.bullpen_era ?? null,
+      depth_arm_l3_era: null, depth_arm_name: null,
+    } : null,
+    transactions: _scoutTransactions,
+    weather: null,
+    park: _teamRaw?.park ? {
+      venue_name: game.venue?.name ?? '',
+      hr_factor: _teamRaw.park.hr_factor ?? null,
+      doubles_factor: null,
+      runs_factor: _teamRaw.park.run_factor ?? null,
+    } : null,
+    series: _seriesGameNumber != null ? {
+      seriesGameNumber: _seriesGameNumber,
+      seriesTotalGames: seriesGames.length,
+      standing: _seriesStanding,
+      homeDayAfterNight: _teamRaw?.home_team?.day_after_night ?? null,
+      awayDayAfterNight: _teamRaw?.away_team?.day_after_night ?? null,
+    } : null,
+  }
+
+  const _awayStreakBatterIds = _awayHotStreaks.filter(s => s.player_type === 'batter').map(s => s.player_id)
+  const _homeStreakBatterIds = _homeHotStreaks.filter(s => s.player_type === 'batter').map(s => s.player_id)
+
+  const [_awayBatterZonesArr, _homeBatterZonesArr] = await Promise.all([
+    Promise.all(_awayStreakBatterIds.map(id => getBatterHotZones(id))),
+    Promise.all(_homeStreakBatterIds.map(id => getBatterHotZones(id))),
+  ])
+  const _awayBatterZonesMap = new Map(_awayStreakBatterIds.map((id, i) => [id, _awayBatterZonesArr[i]]))
+  const _homeBatterZonesMap = new Map(_homeStreakBatterIds.map((id, i) => [id, _homeBatterZonesArr[i]]))
+
+  const awayStreaksWithZones = _awayHotStreaks.map(s => ({ ...s, zones: _awayBatterZonesMap.get(s.player_id) }))
+  const homeStreaksWithZones = _homeHotStreaks.map(s => ({ ...s, zones: _homeBatterZonesMap.get(s.player_id) }))  
+  const scoutReport = buildScoutReport(scoutInputs)
+
   // ── PINNED HERO ──────────────────────────────────────────────────────────
-const pinnedHero = (prediction?.story_lead || prediction?.predicted_winner) ? (
-<div className="max-w-6xl mx-auto px-4 py-4 space-y-3">
-      {prediction?.predicted_winner && (
-        <div className="border-l-[3px] border-orange-500 pl-5 py-0.5">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 mb-1">Edge lean</p>
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem', lineHeight: 1, color: '#1A1A1A' }}>
-              {prediction.predicted_winner}
-            </span>
-            {prediction.confidence_tier && (
-              <span className="text-xs font-mono uppercase tracking-widest text-stone-400">
-                {prediction.confidence_tier} lean
+  const pinnedHero = (prediction?.story_lead || prediction?.predicted_winner) ? (
+    <div className="px-4 py-4" style={centered}>
+      <div className="space-y-3">
+        {prediction?.predicted_winner && (
+          <div className="border-l-[3px] border-orange-500 pl-5 py-0.5">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 mb-1">Edge lean</p>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem', lineHeight: 1, color: '#1A1A1A' }}>
+                {prediction.predicted_winner}
               </span>
-            )}
+              {prediction.confidence_tier && (
+                <span className="text-xs font-mono uppercase tracking-widest text-stone-400">
+                  {prediction.confidence_tier} lean
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      {prediction?.story_lead && (
-        <div className="border-l-[3px] border-stone-200 pl-5">
-          <p className="text-base md:text-lg font-serif italic text-stone-700 leading-relaxed">{prediction.story_lead}</p>
-        </div>
-      )}
+        )}
+        {prediction?.story_lead && (
+          <div className="border-l-[3px] border-stone-200 pl-5">
+            <p className="text-base md:text-lg font-serif italic text-stone-700 leading-relaxed">{prediction.story_lead}</p>
+          </div>
+        )}
+      </div>
     </div>
   ) : null
 
-  // ── SLOT: OVERVIEW ──────────────────────────────────────────────────────
+  // ── SLOT: READ (Edge Indicator is the whole thing) ──────────────────────
+  // The duplicated pitcher card block above the indicator has been dropped —
+  // the Edge Indicator's own hero communicates the matchup, and deep pitcher
+  // stats live in Pitching Lab. If you want the ERA/WHIP/K9/BB9 bar cards
+  // back, they belong on the Pitching Lab tab, not stacked on top of this.
   const slotRead = (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-orange-600">§ Starting pitcher matchup</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <PitcherCard pitcher={game.teams.away.probablePitcher} stats={awaySeasonStats} abbr={game.teams.away.team.abbreviation ?? 'AWAY'} color={awayColor} side="away" />
-          <PitcherCard pitcher={game.teams.home.probablePitcher} stats={homeSeasonStats} abbr={game.teams.home.team.abbreviation ?? 'HOME'} color={homeColor} side="home" />
-        </div>
-      </div>
-   {prediction && (
+      {prediction && (
         <EdgeIndicator
           edge_score={prediction.edge_score}
           predicted_winner={prediction.predicted_winner}
@@ -387,13 +661,16 @@ const pinnedHero = (prediction?.story_lead || prediction?.predicted_winner) ? (
           away_primary_color={awayColor}
           home_primary_color={homeColor}
           lineups_confirmed={prediction.lineups_confirmed}
+          home_team_id={game.teams.home.team.id}
+          away_team_id={game.teams.away.team.id}
+          away_team_slug={awaySlug}
+          home_team_slug={homeSlug}
           is_pro={isPro}
           llm_narrative={prediction.narrative}
           llm_narrative_pro={prediction.narrative_pro}
           pro_takeaways={prediction.pro_takeaways}
         />
       )}
-
       {prediction?.contrarian && (
         <section>
           <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-red-500">§ The Contrarian Angle</h3>
@@ -403,34 +680,64 @@ const pinnedHero = (prediction?.story_lead || prediction?.predicted_winner) ? (
     </div>
   )
 
-const slotLineups = (
-    <LineupCompare
-      awayBatters={awayLineup?.batters ?? []}
-      homeBatters={homeLineup?.batters ?? []}
-      awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-      homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-      isPro={isPro}
-  />
-)
+  // ── SLOT: SCOUT ───────────────────────────────────────────────────────────
+const slotScout = (
+    <ScoutReportTab
+      report={scoutReport}
+      homeAbbr={_homeAbbr}
+      umpireName={umpireName}
+      umpireProfile={umpireProfile}
+      awayPitcherHotZones={awayPitcherHotZones}
+      homePitcherHotZones={homePitcherHotZones}
+      awayPitcherArsenalZones={awayPitcherArsenalZones}
+      homePitcherArsenalZones={homePitcherArsenalZones}
+      awayPitcherId={awayPitcherId}
+      homePitcherId={homePitcherId}
+      awayPitcherTTO={awayPitcherTTO}
+      homePitcherTTO={homePitcherTTO}
+      awayLiteralBatters={awayLiteralBatters}
+homeLiteralBatters={homeLiteralBatters}
+awayPitcherTrend={awayPitcherTrend}
+homePitcherTrend={homePitcherTrend}
+      awayBatterStreaks={awayStreaksWithZones}
+      homeBatterStreaks={homeStreaksWithZones}
+awayLineupSpray={awayLineupSpray}
+      homeLineupSpray={homeLineupSpray}
+      awayLineupSize={awayLineupBatterIds.length}
+      homeLineupSize={homeLineupBatterIds.length}
+      awayLineupZones={awayLineupZones}
+      homeLineupZones={homeLineupZones}
+      awayPitcherThrows={awayPitcherThrows}
+      homePitcherThrows={homePitcherThrows}
+      awayAbbr={_awayAbbr}
+      homeName={game.teams.home.team.name}
+      awayName={game.teams.away.team.name}
+      homeColor={homeColor}
+      awayColor={awayColor}
+      homeTeamId={game.teams.home.team.id}
+      awayTeamId={game.teams.away.team.id}
+      awayPitcherName={game.teams.away.probablePitcher?.fullName ?? 'TBD'}
+      homePitcherName={game.teams.home.probablePitcher?.fullName ?? 'TBD'}
+    
+    />
+  )
+
+  // ── SLOT: PITCHING LAB (bullpen folded in) ──────────────────────────────
   const slotPitching = (
-<div className="space-y-10">
+    <div className="space-y-10">
       <PitchingTab
         awayPitcher={awayPitcherId ? {
-        id: awayPitcherId,
-        name: game.teams.away.probablePitcher?.fullName ?? 'TBD',
-        abbr: game.teams.away.team.abbreviation ?? 'AWAY',
-        side: 'Away starter',
-        fullStats: awayFullStats,
-        movementRows: awayMovementDB,
-      } : null}
-      homePitcher={homePitcherId ? {
-        id: homePitcherId,
-        name: game.teams.home.probablePitcher?.fullName ?? 'TBD',
-        abbr: game.teams.home.team.abbreviation ?? 'HOME',
-        side: 'Home starter',
-        fullStats: homeFullStats,
-        movementRows: homeMovementDB,
-     } : null}
+          id: awayPitcherId,
+          name: game.teams.away.probablePitcher?.fullName ?? 'TBD',
+          abbr: game.teams.away.team.abbreviation ?? 'AWAY',
+          side: 'Away starter', fullStats: awayFullStats, movementRows: awayMovementDB,
+        } : null}
+        homePitcher={homePitcherId ? {
+          id: homePitcherId,
+          name: game.teams.home.probablePitcher?.fullName ?? 'TBD',
+          abbr: game.teams.home.team.abbreviation ?? 'HOME',
+          side: 'Home starter', fullStats: homeFullStats, movementRows: homeMovementDB,
+        } : null}
       />
       <div>
         <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Bullpen availability</p>
@@ -438,58 +745,73 @@ const slotLineups = (
       </div>
     </div>
   )
-const slotTeams = (
+
+  // ── SLOT: TEAMS (lineups + hot/cold folded in) ──────────────────────────
+  const slotTeams = (
     <div className="space-y-10">
       <TeamIntelExtras
-        awayTeamName={game.teams.away.team.name}
-        homeTeamName={game.teams.home.team.name}
-        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-        awayInjuries={awayInjuries}
-        homeInjuries={homeInjuries}
-        awayCallups={awayCallups}
-        homeCallups={homeCallups}
-   awayStandouts={awayStandouts}
-        homeStandouts={homeStandouts}
+        awayTeamName={game.teams.away.team.name} homeTeamName={game.teams.home.team.name}
+        awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
+        awayInjuries={awayInjuries} homeInjuries={homeInjuries}
+        awayCallups={awayCallups} homeCallups={homeCallups}
+        awayStandouts={awayStandouts} homeStandouts={homeStandouts}
       />
-<HotColdStreaks
-        rows={streakRows}
-        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-        awayTeamName={game.teams.away.team.name}
-        homeTeamName={game.teams.home.team.name}
+      <div>
+        <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-orange-600">§ Projected lineups</h3>
+        <LineupCompare
+          awayBatters={awayLineup?.batters ?? []} homeBatters={homeLineup?.batters ?? []}
+          awayAbbr={_awayAbbr} homeAbbr={_homeAbbr} isPro={isPro}
+        />
+      </div>
+      <HotColdStreaks
+        rows={streakRows} awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
+        awayTeamName={game.teams.away.team.name} homeTeamName={game.teams.home.team.name}
       />
     </div>
   )
 
- const slotSidebar = (
+  // ── SLOT: SERIES (conditional) ──────────────────────────────────────────
+  const slotSeriesTab = seriesGames.length >= 1 ? (
+    <div className="space-y-6">
+      <SeriesMomentum
+        momentum={seriesMomentum} awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
+        awayColor={awayColor} homeColor={homeColor}
+      />
+      <SeriesPredictions rows={seriesPredictionRows} />
+      <SeriesPlayerStats
+        awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
+        awayRows={awaySeriesStats} homeRows={homeSeriesStats}
+        gamePks={seriesGames.map(g => g.gamePk)}
+      />
+    </div>
+  ) : undefined
+
+  // ── SIDEBAR (wireframe order: Series → Team Forms → Standings+Chart → Race for October) ──
+  const slotSidebar = (
     <>
-      <TrendsCard
-        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-        awayForm={awayForm}
-        homeForm={homeForm}
-      />
-<StandingsCard
-        awayTeamId={game.teams.away.team.id}
-        homeTeamId={game.teams.home.team.id}
-        awayStandings={awayStandings}
-        homeStandings={homeStandings}
-      />
-    {seriesGames.length >= 1 && (
+      {seriesGames.length >= 1 && (
         <SeriesCarousel
           games={seriesCarouselGames}
-          awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-          homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
+          awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
         />
       )}
+
+      <TrendsCard
+        awayAbbr={_awayAbbr} homeAbbr={_homeAbbr}
+        awayForm={awayForm} homeForm={homeForm}
+      />
+
+     <StandingsCard
+        awayTeamId={game.teams.away.team.id} homeTeamId={game.teams.home.team.id}
+        awayStandings={awayStandings} homeStandings={homeStandings}
+      />
+
       {awayRow && awayStandings && (
-        <RaceForOctober team={awayRow} divisionTeams={awayStandings.teams} wildCardTeams={awayLeagueStandings} abbr={game.teams.away.team.abbreviation ?? 'AWAY'} />
+        <RaceForOctober team={awayRow} divisionTeams={awayStandings.teams} wildCardTeams={awayLeagueStandings} abbr={_awayAbbr} />
       )}
       {homeRow && homeStandings && (
-        <RaceForOctober team={homeRow} divisionTeams={homeStandings.teams} wildCardTeams={homeLeagueStandings} abbr={game.teams.home.team.abbreviation ?? 'HOME'} />
+        <RaceForOctober team={homeRow} divisionTeams={homeStandings.teams} wildCardTeams={homeLeagueStandings} abbr={_homeAbbr} />
       )}
-      <Stub label="Charts" note="Progression line chart — needs the season-long per-game data source, see below" />
     </>
   )
 
@@ -499,47 +821,19 @@ const slotTeams = (
       <SiteHeader variant="page" />
       <LiveTicker />
       <GamePageShell
-        homeTeam={game.teams.home.team.name}
-        awayTeam={game.teams.away.team.name}
-        homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-        awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
+        homeTeam={game.teams.home.team.name} awayTeam={game.teams.away.team.name}
+        homeAbbr={_homeAbbr} awayAbbr={_awayAbbr}
         homeLogoUrl={teamLogoUrl(game.teams.home.team.id)}
         awayLogoUrl={teamLogoUrl(game.teams.away.team.id)}
-        gameTime={gameTimeFormatted}
-        venue={game.venue?.name}
-        isPro={isPro}
-        isSignedIn={isSignedIn}
-        liveScore={liveScore}
-   storySlides={storySlides}
-        lockedStorySlides={LOCKED_SLIDES}
+        gameTime={gameTimeFormatted} venue={game.venue?.name}
+        isPro={isPro} isSignedIn={isSignedIn} liveScore={liveScore}
         pinnedHero={pinnedHero}
         slotSidebar={slotSidebar}
-       slotSeriesTab={
-          seriesGames.length >= 1 ? (
-            <div className="space-y-6">
-        <SeriesMomentum
-                momentum={seriesMomentum}
-                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-                awayColor={awayColor}
-                homeColor={homeColor}
-              />
-              <SeriesPredictions rows={seriesPredictionRows} />
-              <SeriesPlayerStats
-                awayAbbr={game.teams.away.team.abbreviation ?? 'AWAY'}
-                homeAbbr={game.teams.home.team.abbreviation ?? 'HOME'}
-                awayRows={awaySeriesStats}
-                homeRows={homeSeriesStats}
-                seriesStart={seriesGames[0]?.officialDate ?? dateMatch[1]}
-                seriesEnd={seriesGames[seriesGames.length - 1]?.officialDate ?? dateMatch[1]}
-              />
-            </div>
-          ) : null
-        }
         slotRead={slotRead}
-        slotLineups={slotLineups}
+        slotScout={slotScout}
         slotPitching={slotPitching}
         slotTeams={slotTeams}
+        slotSeriesTab={slotSeriesTab}
       />
     </>
   )

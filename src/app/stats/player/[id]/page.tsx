@@ -1,3 +1,4 @@
+ //typescriptreact
 // src/app/stats/player/[id]/page.tsx
 //
 // Deliberately PUBLIC — this is the page every share-card tweet links to.
@@ -12,7 +13,7 @@
 // generateMetadata replaces what used to be a static `metadata` export —
 // every player now gets a real title/description instead of the same
 // generic "Player Stat Line" for all ~780 rostered players. Falls back to
-// a generic description if the stats fetch fails; never blocks the page.
+//a generic description if the stats fetch fails; never blocks the page.
 
 import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
@@ -77,4 +78,4 @@ export default async function PlayerSharePage({ params, searchParams }: PageProp
       />
     </main>
   )
-}
+} 

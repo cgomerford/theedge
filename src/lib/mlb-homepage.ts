@@ -89,14 +89,16 @@ export type MLBTeamLeader = {
 // ─── Constants ────────────────────────────────────────────
 
 export const MLB_STAT_CATEGORIES: MLBStatCategory[] = [
-  { slug: 'battingAverage',   label: 'AVG',   group: 'batting'  },
-  { slug: 'homeRuns',         label: 'HR',    group: 'batting'  },
-  { slug: 'rbi',              label: 'RBI',   group: 'batting'  },
-  { slug: 'stolenBases',      label: 'SB',    group: 'batting'  },
-  { slug: 'earnedRunAverage', label: 'ERA',   group: 'pitching' },
-  { slug: 'strikeOuts',       label: 'SO',    group: 'pitching' },
-  { slug: 'wins',             label: 'Wins',  group: 'pitching' },
-  { slug: 'saves',            label: 'Saves', group: 'pitching' },
+  { slug: 'battingAverage',              label: 'AVG',  group: 'batting'  },
+  { slug: 'homeRuns',                    label: 'HR',   group: 'batting'  },
+  { slug: 'rbi',                         label: 'RBI',  group: 'batting'  },
+  { slug: 'stolenBases',                 label: 'SB',   group: 'batting'  },
+  { slug: 'onBasePlusSlugging',          label: 'OPS',  group: 'batting'  },
+  { slug: 'earnedRunAverage',            label: 'ERA',  group: 'pitching' },
+  { slug: 'strikeOuts',                  label: 'SO',   group: 'pitching' },
+  { slug: 'walksAndHitsPerInningPitched',label: 'WHIP', group: 'pitching' },
+  { slug: 'wins',                        label: 'W',    group: 'pitching' },
+  { slug: 'saves',                       label: 'SV',   group: 'pitching' },
 ]
 
 const TEAM_LEADER_CATS: { cat: string; label: string; group: 'batting' | 'pitching' }[] = [

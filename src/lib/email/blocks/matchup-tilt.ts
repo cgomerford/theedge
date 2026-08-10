@@ -1,131 +1,61 @@
 // src/lib/email/blocks/matchup-tilt.ts
 //
-// Editorial cream-on-cream Matchup Tilt panel for the daily brief.
-// Rewritten to mirror the live page's EdgeIndicator/FactorBar visual
-// language: a hero lean headline ("3 of 8 factors clearly favour PHI")
-// and a proportional two-tone bar per factor, not just a dot.
+// CONDENSED for daily brief — replaces the previous full 8-factor,
+// all-subfactors version. That version was technically correct but never
+// matched the agreed design (see chat mockup): a short Edge Indicator
+// (lean headline + tilt bar + team logos) plus a 3-line "Scout Report"
+// teaser and a CTA to read the full breakdown on the site. Long-form
+// factor-by-factor detail stays on the live game page — email is meant to
+// stay narrative and light per the brand voice rules, not reproduce the
+// whole Scout Report tab.
 //
-// Signature unchanged from the previous version — game-card.ts does not
-// need to change to pick this up.
-//
-// The home/away swap bug came from emails.ts passing positional args in
-// the wrong order. This file is typed strictly: it only takes
-// MatchupTiltData, which has explicit `home` and `away` keys, so the
-// caller cannot misorder them.
+// Scout Report lines are NOT new invented copy — they reuse the same
+// per-factor `summary` strings already computed in buildMatchupTiltData
+// (pitchingSummary/bullpenSummary/etc in matchup-tilt.ts), picking the 3
+// factors with the strongest |tilt| as the most decision-relevant ones to
+// surface. Real analysis, not placeholder text.
 
 import type { MatchupTiltData } from '@/lib/matchup-tilt'
-import { COLORS, FONTS } from '../layout'
+import { COLORS, FONTS, SITE_URL } from '../layout'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+const COMPONENT_LABELS: Record<keyof MatchupTiltData['components'], string> = {
+  pitching: 'Pitching',
+  bullpen: 'Bullpen',
+  offense: 'Batting',
+  matchup: 'Matchup',
+  park: 'Park',
+  weather: 'Weather',
+  defense: 'Defense',
+  rest: 'Rest',
+}
 
-const COMPONENTS: Array<{ key: keyof MatchupTiltData['components']; label: string }> = [
-  { key: 'pitching', label: 'Starting Pitching' },
-  { key: 'bullpen',  label: 'Bullpen' },
-  { key: 'offense',  label: 'Offensive Form' },
-  { key: 'matchup',  label: 'Pitch Matchups' },
-  { key: 'park',     label: 'Park Factor' },
-  { key: 'weather',  label: 'Weather' },
-  { key: 'defense',  label: 'Defense' },
-  { key: 'rest',     label: 'Rest & Travel' },
-]
-
-// Tilt thresholds — keep aligned with /lib/matchup-tilt.ts
-const EDGE_TIGHT = 5   // within ±5 → EVEN
-const EDGE_LIGHT = 20  // 5–20 → SLIGHT
-const EDGE_HEAVY = 50  // ≥50 → ↑↑
-
-const NEUTRAL_DOT = '#C7C2B6'
-const TRACK_BG = '#EDE8DC'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const EDGE_TIGHT = 5
+const EDGE_LIGHT = 20
+const EDGE_HEAVY = 50
 
 function escapeHtml(s: string | null | undefined): string {
   if (!s) return ''
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
 }
 
-/**
- * Edge label for one row, e.g. "PHI EDGE ↑↑" or "EVEN".
- * Positive tilt = home edge. Negative tilt = away edge.
- */
-function edgeLabel(
-  tilt: number,
-  home: { abbr: string; primaryColor: string },
-  away: { abbr: string; primaryColor: string },
-): string {
-  if (Math.abs(tilt) <= EDGE_TIGHT) {
-    return `<span style="font-family:${FONTS.mono};font-size:10px;color:${COLORS.muted};letter-spacing:0.04em;">EVEN</span>`
-  }
-  const isHome = tilt > 0
-  const abbr = isHome ? home.abbr : away.abbr
-  const color = isHome ? home.primaryColor : away.primaryColor
-  const mag = Math.abs(tilt)
-  const strength = mag >= EDGE_HEAVY ? 'EDGE ↑↑' : mag >= EDGE_LIGHT ? 'EDGE ↑' : 'SLIGHT'
-  return `<span style="font-family:${FONTS.mono};font-size:11px;font-weight:700;color:${color};letter-spacing:0.06em;">${abbr} ${strength}</span>`
+function teamLogoUrl(teamId: number | null | undefined): string | null {
+  return teamId ? `https://www.mlbstatic.com/team-logos/${teamId}.svg` : null
 }
 
-/**
- * Proportional two-tone bar for one factor — email-safe version of the
- * live page's FactorBar slider. Table cells with percentage widths render
- * reliably across Gmail, Apple Mail, and Outlook (unlike CSS flex/grid).
- * tilt=0 → 50/50 split. tilt=±100 → clamped 6/94 split.
- */
-function factorBar(tilt: number, home: { primaryColor: string }, away: { primaryColor: string }): string {
-  const homePct = Math.max(6, Math.min(94, 50 + tilt * 0.44))
-  const awayPct = 100 - homePct
-  const homeOpacity = tilt > EDGE_TIGHT ? 1 : 0.35
-  const awayOpacity = tilt < -EDGE_TIGHT ? 1 : 0.35
-
-  return `
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
-    <tr>
-      <td width="${awayPct.toFixed(1)}%" style="height:6px;background:${away.primaryColor};opacity:${awayOpacity};font-size:0;line-height:0;">&nbsp;</td>
-      <td width="${homePct.toFixed(1)}%" style="height:6px;background:${home.primaryColor};opacity:${homeOpacity};font-size:0;line-height:0;">&nbsp;</td>
-    </tr>
-  </table>`
-}
-
-/** Eight compact dots — quick-glance overview above the detailed rows. */
-function factorDots(data: MatchupTiltData): string {
-  const cells = COMPONENTS.map(({ key }) => {
-    const tilt = data.components[key].tilt
-    const color =
-      tilt > EDGE_TIGHT ? data.home.primaryColor :
-      tilt < -EDGE_TIGHT ? data.away.primaryColor :
-      NEUTRAL_DOT
-    return `<td width="14" align="center" style="padding:0 3px;"><div style="width:9px;height:9px;border-radius:50%;background:${color};font-size:0;line-height:0;">&nbsp;</div></td>`
-  }).join('')
-
-  return `
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-    <tr>${cells}</tr>
-  </table>`
-}
-
-/** Counts how many components tilt to each side (within EDGE_TIGHT = neutral). */
 function holdsCount(data: MatchupTiltData): { homeCount: number; awayCount: number } {
-  const tilts = COMPONENTS.map(({ key }) => data.components[key].tilt)
+  const tilts = Object.values(data.components).map(c => c.tilt)
   return {
     homeCount: tilts.filter(t => t > EDGE_TIGHT).length,
     awayCount: tilts.filter(t => t < -EDGE_TIGHT).length,
   }
 }
 
-/**
- * "3 of 8 factors clearly favour PHI" — same language and threshold
- * logic as EdgeIndicator.tsx's buildEdgeSummary() on the live page.
- * This is the hook: the single line most likely to make someone click
- * through to the full preview.
- */
-function leanHeadline(data: MatchupTiltData): string {
+function leanHeadline(data: MatchupTiltData): { text: string; color: string } {
   const { home, away } = data
   const { homeCount, awayCount } = holdsCount(data)
 
   if (homeCount === awayCount) {
-    return `<span style="font-family:${FONTS.serif};font-style:italic;font-size:17px;color:${COLORS.muted};">The data is split — dig into the factors below.</span>`
+    return { text: 'The data is split — dig into the factors on the site.', color: COLORS.muted }
   }
 
   const leanTeam = homeCount > awayCount ? home : away
@@ -133,79 +63,88 @@ function leanHeadline(data: MatchupTiltData): string {
   const color = homeCount > awayCount ? home.primaryColor : away.primaryColor
   const strength = leanCount >= 6 ? 'clearly favour' : leanCount >= 4 ? 'lean' : 'slightly lean'
 
-  return `<span style="font-family:${FONTS.serif};font-style:italic;font-weight:600;font-size:17px;color:${color};">${leanCount} of 8 factors ${strength} ${escapeHtml(leanTeam.abbr)}</span>`
+  return { text: `${leanCount} of 8 factors ${strength} ${leanTeam.abbr}`, color }
 }
 
-// ─── Main render ──────────────────────────────────────────────────────────────
+/** Top 3 factors by |tilt| — the most decision-relevant, for the Scout Report teaser. */
+function topFactors(data: MatchupTiltData): Array<{ label: string; summary: string }> {
+  const entries = (Object.keys(data.components) as Array<keyof MatchupTiltData['components']>)
+    .map(key => ({ key, label: COMPONENT_LABELS[key], ...data.components[key] }))
+    .sort((a, b) => Math.abs(b.tilt) - Math.abs(a.tilt))
+  return entries.slice(0, 3).map(e => ({ label: e.label, summary: e.summary }))
+}
 
-/**
- * Renders the Matchup Tilt panel as one or more <tr> rows.
- * Designed to be concatenated into the daily-brief body alongside other
- * row helpers from layout.ts. Self-pads to the 40px brief gutter.
- */
-export function matchupTiltBlock(data: MatchupTiltData): string {
-  const { home, away, components } = data
+export function matchupTiltBlock(data: MatchupTiltData, previewSlug: string): string {
+  const { home, away } = data
+  const homeLogo = teamLogoUrl(home.teamId)
+  const awayLogo = teamLogoUrl(away.teamId)
   const { homeCount, awayCount } = holdsCount(data)
+  const homePct = Math.max(6, Math.min(94, 50 + (homeCount - awayCount) * (44 / 8)))
+  const awayPct = 100 - homePct
+  const lean = leanHeadline(data)
+  const factors = topFactors(data)
+  const reportUrl = `${SITE_URL}/mlb/${previewSlug}`
 
-  const rows = COMPONENTS.map(({ key, label }, idx) => {
-    const comp = components[key]
-    return `
-    <tr><td style="padding:14px 0;${idx > 0 ? `border-top:1px solid ${COLORS.rowDivider};` : ''}">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="font-family:${FONTS.mono};font-size:11px;font-weight:700;color:${COLORS.ink};letter-spacing:0.04em;">
-            ${label}
-          </td>
-          <td align="right">
-            ${edgeLabel(comp.tilt, home, away)}
-          </td>
-        </tr>
-        <tr><td colspan="2" style="padding:8px 0 6px;">
-          ${factorBar(comp.tilt, home, away)}
-        </td></tr>
-        <tr><td colspan="2" style="font-family:${FONTS.serif};font-style:italic;font-size:14px;color:${COLORS.body};line-height:1.5;">
-          ${escapeHtml(comp.summary)}
-        </td></tr>
-      </table>
-    </td></tr>`
-  }).join('')
-
-  return `
-  <tr><td class="brief-pad" style="padding:0 40px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${COLORS.ink};border-bottom:1px solid ${COLORS.ink};">
-
-      <!-- Tilt header: kicker left, holds-count right -->
-      <tr><td style="padding:20px 0 2px;">
+  // ── Condensed Edge Indicator ──
+  const indicator = `
+  <tr><td class="brief-pad" style="padding:20px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${COLORS.ink};">
+      <tr><td style="padding:14px 18px;">
+        <div style="font-family:${FONTS.mono};font-size:9px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;margin-bottom:10px;">
+          ⊕ Edge Indicator
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;margin-bottom:8px;">
+          <tr>
+            <td width="${awayPct.toFixed(1)}%" style="height:8px;background:${away.primaryColor};font-size:0;line-height:0;">&nbsp;</td>
+            <td width="${homePct.toFixed(1)}%" style="height:8px;background:${home.primaryColor};font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+        </table>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;">
-              § Matchup Tilt
-            </td>
-            <td align="right" style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.12em;color:${COLORS.muted};text-transform:uppercase;">
-              <span style="color:${away.primaryColor};font-weight:700;">${escapeHtml(away.abbr)} hold ${awayCount}</span>
-              &nbsp;·&nbsp;
-              <span style="color:${home.primaryColor};font-weight:700;">${escapeHtml(home.abbr)} hold ${homeCount}</span>
+            <td>
+              ${awayLogo ? `<img src="${awayLogo}" width="16" height="16" alt="${escapeHtml(away.abbr)}" style="display:inline-block;vertical-align:middle;margin-right:6px;">` : ''}
+              <span style="font-family:${FONTS.mono};font-size:12px;font-weight:700;color:${lean.color};">${escapeHtml(lean.text)}</span>
+              ${homeLogo ? `<img src="${homeLogo}" width="16" height="16" alt="${escapeHtml(home.abbr)}" style="display:inline-block;vertical-align:middle;margin-left:6px;">` : ''}
             </td>
           </tr>
         </table>
       </td></tr>
-
-      <!-- Hero lean headline -->
-      <tr><td style="padding:6px 0 16px;">
-        ${leanHeadline(data)}
-      </td></tr>
-
-      <!-- Factor dots — quick overview -->
-      <tr><td style="padding:0 0 18px;" align="center">
-        ${factorDots(data)}
-      </td></tr>
-
-      <!-- Component rows — label, bar, summary -->
-      ${rows}
-
-      <!-- Trailing breathing room before the bottom hairline -->
-      <tr><td style="padding-bottom:6px;font-size:0;line-height:0;">&nbsp;</td></tr>
-
     </table>
   </td></tr>`
+
+  // ── Scout Report teaser ──
+  const factorRows = factors.map((f, i) => `
+    <tr><td style="padding:6px 0;${i > 0 ? `border-top:1px solid ${COLORS.rowDivider};` : ''}font-family:${FONTS.serif};font-size:13px;color:${COLORS.ink};line-height:1.5;">
+      <strong>${escapeHtml(f.label)} —</strong> ${escapeHtml(f.summary)}
+    </td></tr>`).join('')
+
+  const scoutReport = `
+  <tr><td class="brief-pad" style="padding:16px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${COLORS.ink};">
+      <tr><td style="padding:16px 18px 4px;">
+        <div style="font-family:${FONTS.mono};font-size:9px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;">
+          § Scout Report
+        </div>
+      </td></tr>
+      <tr><td style="padding:8px 18px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${factorRows}
+        </table>
+      </td></tr>
+      <tr><td style="padding:12px 18px 18px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="background:${COLORS.ink};">
+            <a href="${reportUrl}" style="display:block;padding:11px 20px;font-family:${FONTS.mono};font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:${COLORS.cream};text-decoration:none;">
+              Read the full Scout Report →
+            </a>
+          </td></tr>
+        </table>
+        <div style="font-family:${FONTS.serif};font-style:italic;font-size:11px;color:${COLORS.muted};margin-top:8px;">
+          Pitch location grids, hot zones, and the full breakdown are on the site.
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>`
+
+  return indicator + scoutReport
 }

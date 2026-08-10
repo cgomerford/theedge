@@ -8,6 +8,8 @@ import { aggregateGameStreaks } from '@/lib/streaks'
 import type { GameStreaks } from '@/lib/streaks'
 import { generateFantasyCards } from '@/lib/fantasy-cards'
 import type { FantasyCards } from '@/lib/fantasy-cards'
+import { getVenueInfo, classifyWindDirection } from '@/lib/venues'
+import { getGameWeather } from '@/lib/mlb'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -89,12 +91,37 @@ export async function GET(request: Request) {
           return
         }
 
+        // ── Weather — V2: was never wired up, calculateEdgeScore always
+        // got inputs.weather === undefined, so computeWeatherEdge always
+        // returned 0. Skipped entirely for indoor venues (dome games are
+        // scored 0 either way inside computeWeatherEdge's own park.is_dome
+        // check — no reason to hit Open-Meteo for those).
+        let weatherInput: { temp_f: number; wind_mph: number; wind_dir: string; precipitation_chance?: number } | undefined = undefined
+
+        const venueInfo = getVenueInfo(game.venue?.name)
+        if (venueInfo && !venueInfo.indoor) {
+          try {
+            const weather = await getGameWeather(venueInfo.lat, venueInfo.lon, game.gameDate)
+            if (weather) {
+              weatherInput = {
+                temp_f: weather.temp_f,
+                wind_mph: weather.wind_mph,
+                wind_dir: classifyWindDirection(game.venue?.name ?? '', weather.wind_direction, weather.wind_mph),
+                precipitation_chance: weather.precipitation_chance,
+              }
+            }
+          } catch (err) {
+            console.error(`Weather fetch failed for game ${game.gamePk}:`, err)
+          }
+        }
+
         const result = await calculateEdgeScore({
           home_team_id:    game.teams.home.team.id,
           away_team_id:    game.teams.away.team.id,
           home_pitcher_id: game.teams.home.probablePitcher?.id ?? null,
           away_pitcher_id: game.teams.away.probablePitcher?.id ?? null,
           venue_name:      game.venue?.name ?? '',
+          weather:         weatherInput,
         })
 
         let streaks: GameStreaks | null = null

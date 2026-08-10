@@ -199,3 +199,49 @@ export function buildPitcherSignature(inputs: PitcherInputs): SignatureSummary {
 // Cache key: `player-oneline:${playerId}:${YYYY-Www}`. Regen weekly.
 // Prompt: pass the dials array + season line, ask for one sentence ≤90 chars,
 // same voice rules as narrative.ts. Store in Supabase `player_oneline_cache`.
+// ─── Full percentile list (StatsPercentilesRail) ──────────────────────────
+//
+// EXTENDED 2026-08: dialsForPosition() above deliberately curates only 3
+// dials per position — a "signature," not the full picture. This is the
+// SEPARATE full list for the Stats/Percentiles rail, covering everything
+// player-statcast-full.ts's `ranks` object provides.
+//
+// DIRECTION NOTE: Savant's percentile-rankings endpoint returns ranks
+// already direction-corrected — higher percentile = better performance
+// for every field, even ones where the raw stat is "lower is better" (a
+// pitcher's Hard-Hit% ALLOWED shows a HIGH percentile when he allows hard
+// contact rarely). Confirmed against a real player's live Savant page
+// (see chat) — Hard-Hit% at 90/"great" only makes sense under this rule.
+// No manual inversion applied to any field below.
+//
+// NOTE: the chase_pct dial in buildBatterDials() above DOES manually
+// invert (100 - raw) — that's existing behavior from before this list was
+// added, not touched here. Worth a second look given this finding, but
+// that's a separate change from what was asked for.
+
+export interface StatcastPercentileRow {
+  key: string
+  label: string
+  percentile: number | null
+}
+
+const BATTER_RANK_LABELS: Record<string, string> = {
+  xwoba: 'xwOBA', xba: 'xBA', xslg: 'xSLG',
+  barrel_pct: 'Barrel%', hard_hit_pct: 'Hard-Hit%', chase_pct: 'Chase%',
+  whiff_pct: 'Whiff%', sprint_speed: 'Sprint', exit_velocity: 'Exit Velo',
+  k_pct: 'K%', bb_pct: 'BB%',
+}
+
+const PITCHER_RANK_LABELS: Record<string, string> = {
+  xera: 'xERA', xba: 'xBA', xslg: 'xSLG', xwoba: 'xwOBA',
+  fastball_velo: 'Fastball Velo', whiff_pct: 'Whiff%', k_pct: 'K%', bb_pct: 'BB%',
+  barrel_pct: 'Barrel%', hard_hit_pct: 'Hard-Hit%', gb_pct: 'GB%', extension: 'Extension',
+}
+
+export function buildBatterPercentileList(ranks: Record<string, number | null>): StatcastPercentileRow[] {
+  return Object.entries(BATTER_RANK_LABELS).map(([key, label]) => ({ key, label, percentile: ranks[key] ?? null }))
+}
+
+export function buildPitcherPercentileList(ranks: Record<string, number | null>): StatcastPercentileRow[] {
+  return Object.entries(PITCHER_RANK_LABELS).map(([key, label]) => ({ key, label, percentile: ranks[key] ?? null }))
+}

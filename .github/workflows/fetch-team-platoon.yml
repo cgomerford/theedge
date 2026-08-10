@@ -1,0 +1,23 @@
+name: fetch-team-platoon
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # weekly, same slot as hot-zones/pitcher-splits — platoon splits move slowly
+  workflow_dispatch:
+
+jobs:
+  fetch-platoon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch team platoon splits
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_team_platoon.py

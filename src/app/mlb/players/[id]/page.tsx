@@ -17,6 +17,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
+  
   const data = await getPlayerPageData(Number(id))
   if (!data) return { title: 'Player · The Edge' }
   const { identity } = data
@@ -27,7 +28,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function PlayerPage({ params }: Props) {
+export default async function PlayerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
   const { id } = await params
   const playerId = Number(id)
   if (!playerId) notFound()

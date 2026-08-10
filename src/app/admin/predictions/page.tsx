@@ -3,7 +3,7 @@ import { getRecentReads } from '@/lib/track-record'
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 import ShareButton from './ShareButton'
-import { buildTweetText, buildReplyText } from '@/lib/share-text'
+import { buildGameSnip,  } from '@/lib/share-text'
 
 export const metadata = {
   title: 'Predictions Explorer · Admin',
@@ -222,11 +222,7 @@ const actualTeamName = p.actual_winner === 'home' ? p.home_team : p.actual_winne
 {p.outcome_matched === null && <span className="text-stone-400 text-xs">—</span>}
                         </td>
                        <td className="p-3 text-right">
-                          <ShareButton
-                            tweetText={buildTweetText(p)}
-                            replyText={buildReplyText(p)}
-                            imageUrl={`/api/share-card/${p.game_pk}`}
-                          />
+                     
                         </td>
                       </tr>
                     )

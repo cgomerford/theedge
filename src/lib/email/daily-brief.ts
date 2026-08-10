@@ -3,25 +3,10 @@
 // Daily brief email template — editorial Monocle/FT briefing style.
 // One email per subscriber, all their teams' games stacked.
 //
-// Usage in the cron route:
-//
-//   import { buildDailyBrief } from '@/lib/email/daily-brief'
-//
-//   const email = buildDailyBrief({
-//     recipientEmail,
-//     preferencesToken,
-//     games,
-//     teamShortNames,
-//     isPro,
-//   })
-//
-//   await resend.emails.send({
-//     from: 'The Edge <hello@edgereportdaily.com>',
-//     to: recipientEmail,
-//     subject: email.subject,
-//     html: email.html,
-//     text: email.text,
-//   })
+// EXTENDED 2026-08: buildSubject() rewritten to lead with the actual
+// matchup and start time, plus a 2-factor teaser pulled from the same
+// component tilt scores (ctx.components) that drive the Scout Report
+// block in the email body — real analysis, not new/placeholder copy.
 
 import {
   wrapEmail,
@@ -35,17 +20,14 @@ import {
   FONTS,
 } from './layout'
 import { gameCardBlock, type BriefGameContext } from './blocks/game-card'
+import type { ComponentScores } from '@/lib/matchup-tilt'
 
-// Re-export so the cron route only needs one import path
 export type { BriefGameContext } from './blocks/game-card'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DailyBriefInput {
   recipientEmail: string
   preferencesToken: string
   games: BriefGameContext[]
-  /** Short display names of the subscriber's followed teams, e.g. ["Phillies", "Mets"] */
   teamShortNames: string[]
   isPro?: boolean
 }
@@ -56,34 +38,70 @@ interface DailyBriefOutput {
   text: string
 }
 
+// ─── Subject-line factor teaser ────────────────────────────────────────────
+//
+// Reuses ComponentScores' own key names (matchup-tilt.ts) — NOT the same
+// key set as MatchupTiltData.components in email/blocks/matchup-tilt.ts
+// (that one renames starting_pitcher → pitching for display). Separate
+// small map here rather than importing that one, since the keys genuinely
+// differ and importing would be misleading.
+
+const SUBJECT_FACTOR_LABELS: Record<keyof ComponentScores, string> = {
+  starting_pitcher: 'Pitching',
+  bullpen: 'Bullpen',
+  offense: 'Batting',
+  defense: 'Defense',
+  matchup: 'Matchup',
+  park: 'Park',
+  weather: 'Weather',
+  rest: 'Rest',
+}
+
+function topFactorLabels(scores: ComponentScores, count: number): string[] {
+  const entries = Object.entries(scores) as [keyof ComponentScores, number][]
+  return entries
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, count)
+    .map(([key]) => SUBJECT_FACTOR_LABELS[key])
+}
+
 // ─── Subject line builder ─────────────────────────────────────────────────────
 
-function buildSubject(
-  teamLabel: string,
-  games: BriefGameContext[],
-): string {
-  // Find the strongest non-tossup game for a subject-line kicker
-  const strongest = games
-    .filter(g => g.edge_score !== null && g.confidence_tier !== 'tossup')
-    .sort((a, b) => Math.abs(b.edge_score ?? 0) - Math.abs(a.edge_score ?? 0))[0]
-
-  if (!strongest) {
+function buildSubject(teamLabel: string, games: BriefGameContext[]): string {
+  if (games.length === 0) {
     return `${teamLabel} tonight · The Edge`
   }
 
-  const tierWord =
-    strongest.confidence_tier === 'strong' ? 'Strong'
-    : strongest.confidence_tier === 'moderate' ? 'Moderate'
-    : 'Slight'
+  // Same "most decisive game" selection as before — prefers a real edge
+  // over a tossup — falls back to the first game if none qualify, so the
+  // subject still shows a real matchup instead of the generic fallback.
+  const strongest =
+    games
+      .filter(g => g.edge_score !== null && g.confidence_tier !== 'tossup')
+      .sort((a, b) => Math.abs(b.edge_score ?? 0) - Math.abs(a.edge_score ?? 0))[0]
+    ?? games[0]
 
-  const winnerName =
-    strongest.predicted_winner === 'home'
-      ? strongest.game.teams.home.team.name
-      : strongest.game.teams.away.team.name
+  const awayName = strongest.game.teams.away.team.name
+  const homeName = strongest.game.teams.home.team.name
+  const awayShort = awayName.split(' ').pop() ?? awayName
+  const homeShort = homeName.split(' ').pop() ?? homeName
 
-  const winnerShort = winnerName.split(' ').pop() ?? winnerName
+  const gameTime = new Date(strongest.game.gameDate).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  })
 
-  return `${teamLabel} tonight · ${tierWord} edge to ${winnerShort} · The Edge`
+  let factorStr = ''
+  if (strongest.components) {
+    const labels = topFactorLabels(strongest.components, 2)
+    if (labels.length > 0) {
+      const winnerShort = strongest.predicted_winner === 'home' ? homeShort : awayShort
+      factorStr = ` · ${labels.join(' & ')} lean ${winnerShort}`
+    }
+  }
+
+  return `${awayShort} vs ${homeShort} · ${gameTime}${factorStr} · The Edge`
 }
 
 // ─── Team label ───────────────────────────────────────────────────────────────
@@ -180,28 +198,21 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBriefOutput {
   const gameCount = games.length
   const gameCountText = gameCount === 1 ? '§ One game tonight' : `§ ${gameCount} games tonight`
 
-  // ── Assemble HTML body as concatenated <tr> rows ──
-
   const bodyParts: string[] = []
 
-  // Masthead
   bodyParts.push(masthead(dateStr))
   bodyParts.push(hairline())
 
-  // Editorial headline + italic dek
   bodyParts.push(editorialHeadline({
     title: `Five-minute brief for ${teamLabel}.`,
     dek: 'Statcast, advanced metrics, and the matchups that actually matter. Information only\u00A0— no\u00A0advice.',
   }))
 
-  // Hairline + game count
   bodyParts.push(hairline())
   bodyParts.push(kicker(gameCountText, { color: COLORS.orange, padTop: 24, padBottom: 0 }))
 
-  // Game cards — separated by hairlines when there's more than one
   games.forEach((ctx, idx) => {
     if (idx > 0) {
-      // Spacer + hairline between games
       bodyParts.push(`<tr><td style="padding-top:40px;font-size:0;line-height:0;">&nbsp;</td></tr>`)
       bodyParts.push(hairline())
       bodyParts.push(`<tr><td style="padding-top:8px;font-size:0;line-height:0;">&nbsp;</td></tr>`)
@@ -209,29 +220,23 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBriefOutput {
     bodyParts.push(gameCardBlock(ctx, { isPro }))
   })
 
-  // Bottom spacing before footer hairline
   bodyParts.push(`<tr><td style="padding-top:40px;font-size:0;line-height:0;">&nbsp;</td></tr>`)
   bodyParts.push(hairline())
 
-  // Footer
   bodyParts.push(briefFooter({ preferencesUrl, unsubscribeUrl }))
 
-  // ── Subject ──
   const subject = buildSubject(teamLabel, games)
 
-  // ── Preheader (inbox preview text) ──
   const firstGame = games[0]
   const preheader = firstGame?.llm_summary
     ?? `${gameCount} game${gameCount === 1 ? '' : 's'} for ${teamLabel} tonight.`
 
-  // ── Wrap in full HTML document ──
   const html = wrapEmail({
     title: `The Edge — Daily Briefing — ${dateStr}`,
     preheader,
     body: bodyParts.join(''),
   })
 
-  // ── Plain text ──
   const text = buildPlainText(teamLabel, games, preferencesUrl, unsubscribeUrl)
 
   return { subject, html, text }

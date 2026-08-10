@@ -1,0 +1,23 @@
+name: fetch-team-pull-tendency
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'  # weekly, same day as hot-zones/pitcher-splits/team-platoon
+  workflow_dispatch:
+
+jobs:
+  fetch-pull-tendency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch team pull tendency
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_team_pull_tendency.py

@@ -1,27 +1,18 @@
 """
 scripts/fetch_pitcher_full_profile.py
 
-Single consolidated pitcher-data pull, replacing:
-  - fetch_pitch_arsenals.py
-  - fetch_pitch_velocity_movement.py
-  - fetch_pitcher_tto_splits.py
+Single consolidated pitcher-data pull for TTO splits, two-strike mix, and
+first-pitch tendencies — pulled from one raw pitch-by-pitch dataset per
+pitcher so these three stay in sync with each other.
 
-Why consolidate: those three scripts each called pybaseball separately,
-meaning pitch_arsenals and pitcher_stats could be built from data pulled
-at different times, with different date windows, and drift out of sync
-with each other — likely why the pitching page's numbers were unreliable.
-This script pulls ONE raw pitch-by-pitch dataset per pitcher (full season)
-and computes usage/velo/movement/whiff for pitch_arsenals AND
-TTO/two-strike/first-pitch for pitcher_stats from that same dataset.
+NOTE: This script does NOT write to pitch_arsenals. That table is owned
+solely by fetch_pitch_arsenals.py (v2, Savant CSV direct — confirmed
+accurate against the live Savant page 2026-07-13). Duplicating arsenal
+computation here would recreate a two-writer collision on pitch_arsenals.
 
-Deliberately NOT computing hard_hit%/est_woba/put_away%/run_value here —
-those are pulled live, per-page-load, from Savant's pitch-arsenal-stats
-CSV endpoint (confirmed accurate 2026-07-13, see /api/pitcher-arsenal).
-Duplicating that computation in Python risks reintroducing the exact
-accuracy drift this consolidation is meant to fix. Division of labor:
-this script owns what can ONLY come from a season-long cron (TTO,
-movement physics), the live endpoint owns outcome stats that benefit
-from being always-current.
+Run frequency: weekly (scheduled via weekly-pitcher-splits.yml) — this
+data doesn't shift fast enough to need daily refresh, and the per-pitcher
+pybaseball pull is too slow/rate-limit-prone to run daily anyway.
 """
 import os
 import sys
@@ -52,50 +43,12 @@ PITCH_NAMES = {
     'KN': 'Knuckleball', 'EP': 'Eephus',
 }
 
-SWING_DESCS = {'swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'hit_into_play', 'missed_bunt', 'foul_bunt'}
-WHIFF_DESCS = {'swinging_strike', 'swinging_strike_blocked', 'missed_bunt'}
 PA_EVENTS = {
     'single', 'double', 'triple', 'home_run', 'walk', 'intent_walk', 'hit_by_pitch',
     'strikeout', 'strikeout_double_play', 'field_out', 'force_out',
     'grounded_into_double_play', 'double_play', 'triple_play',
     'fielders_choice', 'fielders_choice_out', 'sac_fly', 'sac_bunt', 'other_out',
 }
-
-
-def compute_arsenal(df: pd.DataFrame) -> 'list[dict]':
-    """Usage%, avg velo, avg movement, whiff% per pitch type — for pitch_arsenals."""
-    rows = []
-    df = df[df['pitch_type'].notna() & (df['pitch_type'] != '')]
-    total = len(df)
-    if total == 0:
-        return rows
-
-    swings = df[df['description'].isin(SWING_DESCS)]
-    whiffs = df[df['description'].isin(WHIFF_DESCS)]
-    swing_counts = swings.groupby('pitch_type').size()
-    whiff_counts = whiffs.groupby('pitch_type').size()
-
-    for pitch_type, group in df.groupby('pitch_type'):
-        count = len(group)
-        pct = round((count / total) * 100, 1)
-        avg_velo = group['release_speed'].mean()
-        avg_h = group['pfx_x'].mean()
-        avg_v = group['pfx_z'].mean()
-        n_swings = swing_counts.get(pitch_type, 0)
-        n_whiffs = whiff_counts.get(pitch_type, 0)
-        whiff_rate = round((n_whiffs / n_swings) * 100, 1) if n_swings > 0 else None
-
-        rows.append({
-            'pitch_type': pitch_type,
-            'pitch_name': PITCH_NAMES.get(pitch_type, pitch_type),
-            'count': count,
-            'percentage': pct,
-            'avg_velocity': round(float(avg_velo), 1) if pd.notna(avg_velo) else None,
-            'avg_h_break': round(float(avg_h) * 12, 1) if pd.notna(avg_h) else None,
-            'avg_v_break': round(float(avg_v) * 12, 1) if pd.notna(avg_v) else None,
-            'whiff_rate': whiff_rate,
-        })
-    return rows
 
 
 def compute_tto(df: pd.DataFrame) -> 'dict | None':
@@ -143,6 +96,7 @@ def compute_tto(df: pd.DataFrame) -> 'dict | None':
             'xwoba': round(d['xwoba_sum'] / d['xwoba_n'], 3) if d['xwoba_n'] > 0 else None,
         }
     return result
+
 
 def compute_two_strike_mix(df: pd.DataFrame) -> 'dict | None':
     df = df[df['pitch_type'].notna() & (df['pitch_type'] != '')]
@@ -206,21 +160,13 @@ def main():
         progress = f'[{i+1}/{len(pitchers)}]'
 
         try:
-         df = statcast_pitcher(season_start, today, player_id=player_id)
+            df = statcast_pitcher(season_start, today, player_id=player_id)
             if df is None or df.empty or len(df) < 100:
                 print(f'  {progress} {name}: skip ({len(df) if df is not None else 0} pitches)')
                 continue
             unique_games = df['game_pk'].nunique() if 'game_pk' in df.columns else '?'
             print(f'    {name}: {len(df)} pitches across {unique_games} games (expect ~{p.get("starts", "?")} starts)')
 
-            # 1. Arsenal + movement → pitch_arsenals
-            arsenal_rows = compute_arsenal(df)
-            for row in arsenal_rows:
-                row.update({'player_id': player_id, 'player_name': name, 'season': season})
-            if arsenal_rows:
-                supa.table('pitch_arsenals').upsert(arsenal_rows, on_conflict='player_id,season,pitch_type').execute()
-
-            # 2. TTO + two-strike + first-pitch → pitcher_stats
             tto = compute_tto(df)
             two_strike = compute_two_strike_mix(df)
             fp_pct, fp_mix = compute_first_pitch(df)
@@ -243,7 +189,7 @@ def main():
             if len(update) > 1:
                 supa.table('pitcher_stats').update(update).eq('player_id', player_id).execute()
 
-            print(f'  {progress} {name}: ✓ {len(arsenal_rows)} pitch types, TTO={bool(tto)}, 2K={bool(two_strike)}')
+            print(f'  {progress} {name}: ✓ TTO={bool(tto)}, 2K={bool(two_strike)}, FP={fp_pct is not None}')
             time.sleep(1.5)
 
         except Exception as e:

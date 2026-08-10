@@ -8,6 +8,7 @@ on:
 jobs:
   fetch-splits:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -15,8 +16,21 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install pybaseball supabase python-dotenv requests pandas
-      - name: Fetch pitcher TTO + two-strike splits
+
+      - name: Fetch pitcher two-strike + first-pitch splits
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python scripts/fetch_pitcher_tto_splits.py
+        run: python scripts/fetch_pitcher_full_profile.py
+
+      - name: Fetch pitcher batted-ball profiles
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_pitcher_batted_ball.py
+
+      - name: Fetch pitcher TTO splits (MLB Stats API, self-verified vs real battersFaced)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_pitcher_tto_splits_v2.py

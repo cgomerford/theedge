@@ -1,0 +1,23 @@
+name: fetch-team-defense
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # daily, 07:00 UTC — after the 05:00 team-stats/pitcher-stats chain, ahead of the 09:00 grade-predictions and 12:00 daily brief
+  workflow_dispatch:
+
+jobs:
+  fetch-team-defense:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch team defense (real OAA)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_team_defense.py

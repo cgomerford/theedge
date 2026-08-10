@@ -1,126 +1,135 @@
-import type { ProjectedLineup } from '@/lib/lineups'
+'use client'
+
+// src/components/LineupCard.tsx
+//
+// Toggle card: Confirmed lineup (as posted by MLB, once available) vs.
+// Optimized lineup — now built from each player's ACTUAL performance by
+// lineup slot this season (see lib/lineup-optimizer.ts ->
+// optimizeLineupBySlotHistory, sourced from lib/lineup-slot-stats.ts),
+// not an abstract textbook heuristic. The `reason` string on each row
+// tells you exactly why they're slotted where they are.
+
+import { useState } from 'react'
+import type { ConfirmedLineupEntry, OptimizedLineupEntry } from '@/lib/lineup-optimizer'
+
+function headshotUrl(personId: number): string {
+  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${personId}/headshot/67/current`
+}
 
 type Props = {
-  lineup: ProjectedLineup
-  teamName: string
-  teamShort: string
-  teamAbbr?: string
-  teamLogoUrl?: string | null
+  teamColor: string
+  confirmed: ConfirmedLineupEntry[] | null
+  optimizedVsRHP: OptimizedLineupEntry[]
+  optimizedVsLHP: OptimizedLineupEntry[]
 }
 
-export default function LineupCard({ lineup, teamName, teamShort, teamAbbr, teamLogoUrl }: Props)  {
-  // Empty state
-  if (lineup.source === 'unavailable' || lineup.batters.length === 0) {
-    return (
-      <div className="bg-white border border-stone-200 rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          {teamLogoUrl && (
-            <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={teamLogoUrl} alt={teamShort} className="max-w-full max-h-full object-contain" />
-            </div>
-          )}
-          <h3 className="text-lg font-serif font-bold text-stone-900">{teamShort}</h3>
-        </div>
-        <p className="text-sm text-stone-500 italic">
-          Lineup not yet available.
-        </p>
-      </div>
-    )
-  }
+export default function LineupCard({ teamColor, confirmed, optimizedVsRHP, optimizedVsLHP }: Props) {
+  const [mode, setMode] = useState<'confirmed' | 'optimized'>(confirmed ? 'confirmed' : 'optimized')
+  const [throwsHand, setThrowsHand] = useState<'R' | 'L'>('R')
 
-  // Status pill
-  const statusLabel = lineup.source === 'confirmed' 
-    ? 'Confirmed today'
-    : `Based on ${formatDate(lineup.game_date_used)}`
-  
-  const statusColor = lineup.source === 'confirmed' 
-    ? 'text-green-700 bg-green-50 border-green-200'
-    : 'text-stone-600 bg-stone-50 border-stone-200'
+  const optimizedRows = throwsHand === 'R' ? optimizedVsRHP : optimizedVsLHP
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-stone-200 bg-stone-50">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {teamLogoUrl && (
-              <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={teamLogoUrl} alt={teamShort} className="max-w-full max-h-full object-contain" />
-              </div>
-            )}
-            <div className="min-w-0">
-             <h3 className="text-base md:text-lg font-serif font-bold text-stone-900">
-  <span className="md:hidden">{teamAbbr ?? teamShort}</span>
-  <span className="hidden md:inline">{teamShort}</span>
-</h3>
-<div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">
-  Lineup · 9 batters
-</div>
-            </div>
-          </div>
-          <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-1 border rounded whitespace-nowrap ${statusColor}`}>
-            {statusLabel}
-          </span>
+    <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1eee6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700 }}>Lineup</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => setMode('confirmed')}
+            style={{
+              fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 7,
+              border: `1px solid ${mode === 'confirmed' ? teamColor : '#e7e2d8'}`,
+              background: mode === 'confirmed' ? teamColor : '#fff',
+              color: mode === 'confirmed' ? '#fff' : '#8a8275',
+              cursor: 'pointer', fontWeight: 700,
+            }}
+          >
+            Confirmed
+          </button>
+          <button
+            onClick={() => setMode('optimized')}
+            style={{
+              fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 7,
+              border: `1px solid ${mode === 'optimized' ? teamColor : '#e7e2d8'}`,
+              background: mode === 'optimized' ? teamColor : '#fff',
+              color: mode === 'optimized' ? '#fff' : '#8a8275',
+              cursor: 'pointer', fontWeight: 700,
+            }}
+          >
+            Optimized
+          </button>
         </div>
       </div>
 
-      {/* Batting order */}
-      <div className="divide-y divide-stone-100">
-        {lineup.batters.map((batter) => (
-          <div key={batter.player_id} className="px-5 py-3 flex items-center gap-4 hover:bg-stone-50 transition">
-            <div className="w-6 text-stone-400 font-mono text-sm flex-shrink-0">
-              {batter.batting_order}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-serif font-semibold text-stone-900 text-sm md:text-base truncate">
-                {batter.player_name}
+      {mode === 'optimized' && (
+        <div style={{ padding: '10px 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: '#8a8275', textTransform: 'uppercase', letterSpacing: '.08em' }}>vs</span>
+          <button
+            onClick={() => setThrowsHand('R')}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
+              border: `1px solid ${throwsHand === 'R' ? teamColor : '#e7e2d8'}`,
+              background: throwsHand === 'R' ? `${teamColor}14` : '#fff',
+              color: throwsHand === 'R' ? teamColor : '#8a8275', cursor: 'pointer',
+            }}
+          >
+            RHP
+          </button>
+          <button
+            onClick={() => setThrowsHand('L')}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
+              border: `1px solid ${throwsHand === 'L' ? teamColor : '#e7e2d8'}`,
+              background: throwsHand === 'L' ? `${teamColor}14` : '#fff',
+              color: throwsHand === 'L' ? teamColor : '#8a8275', cursor: 'pointer',
+            }}
+          >
+            LHP
+          </button>
+        </div>
+      )}
+
+      <div style={{ padding: '10px 0' }}>
+        {mode === 'confirmed' ? (
+          confirmed && confirmed.length > 0 ? (
+            confirmed.map(row => (
+              <div key={row.playerId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 20px' }}>
+                <span style={{ width: 18, fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
+                <img src={headshotUrl(row.playerId)} alt="" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#f1eee6' }} />
+                <span style={{ fontSize: 13, color: '#1A1A1A', flex: 1 }}>{row.playerName}</span>
+                <span style={{ fontSize: 10, color: '#a89e8c', textTransform: 'uppercase' }}>{row.position}</span>
               </div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">
-                {batter.position}
-              </div>
-            </div>
-            <div className="flex gap-3 md:gap-4 text-right flex-shrink-0">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">AVG</div>
-                <div className="font-mono text-sm text-stone-900 tabular-nums">
-                  {batter.season_avg !== null ? batter.season_avg.toFixed(3) : '---'}
+            ))
+          ) : (
+            <p style={{ padding: '20px', fontSize: 12, color: '#a89e8c', fontStyle: 'italic' }}>
+              Lineup not posted yet — MLB typically confirms 60-90 minutes before first pitch. Check the Optimized view in the meantime.
+            </p>
+          )
+        ) : (
+          optimizedRows.length > 0 ? (
+            optimizedRows.map(row => (
+              <div key={row.playerId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 20px' }}>
+                <span style={{ width: 18, fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
+                <img src={headshotUrl(row.playerId)} alt="" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#f1eee6' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: '#1A1A1A' }}>{row.playerName}</div>
+                  <div style={{ fontSize: 9, color: '#a89e8c' }}>{row.reason}</div>
                 </div>
               </div>
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500">OPS</div>
-                <div className="font-mono text-sm text-stone-900 tabular-nums">
-                  {batter.season_ops !== null ? batter.season_ops.toFixed(3) : '---'}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+            ))
+          ) : (
+            <p style={{ padding: '20px', fontSize: 12, color: '#a89e8c', fontStyle: 'italic' }}>Not enough slot history yet to build an optimized order.</p>
+          )
+        )}
       </div>
 
-      {/* Pro tease footer */}
-      <div className="px-5 py-3 border-t border-stone-100 bg-stone-50">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-stone-500 flex items-center gap-2">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-          </svg>
-          Pro: hot zones · L5 splits · vs RHP/LHP
+      {mode === 'optimized' && (
+        <div style={{ padding: '0 20px 14px' }}>
+          <p style={{ fontSize: 9, color: '#c4bcac' }}>
+            Ordered by each player&apos;s own AVG/OBP/SLG/OPS in the slot they&apos;ve actually hit best in this season — not a textbook formula. Greedy assignment, not a guaranteed global optimum.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   )
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T00:00:00')
-  const today = new Date()
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-  
-  // If it was yesterday, say "yesterday's game"
-  if (d.toDateString() === yesterday.toDateString()) return "yesterday's game"
-  
-  // Otherwise short date format
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + " game"
 }

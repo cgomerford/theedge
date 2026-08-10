@@ -1,5 +1,14 @@
 'use client'
 
+// src/components/SeriesPlayerStats.tsx
+//
+// 2026-08-09: seriesStart/seriesEnd replaced with gamePks — the hover
+// chart underneath (PlayerPitchHover -> series-pitches.ts) moved from a
+// Savant date-range CSV search (confirmed returning zero rows for real
+// players/real dates) to MLB's own live feed for the exact games of the
+// series. No more date-range ambiguity — this component now just passes
+// through the real gamePks it's given.
+
 import Link from 'next/link'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import type { SeriesBatterLine } from '@/lib/series-stats'
@@ -9,7 +18,7 @@ import PlayerPitchHover from './PlayerPitchHover'
 // (/stats/player/[id]?subject=batter&name=...&team=...) — same
 // destination page, same query convention, no new routing invented.
 
-function StatTable({ abbr, rows, seriesStart, seriesEnd }: { abbr: string; rows: SeriesBatterLine[]; seriesStart: string; seriesEnd: string }) {
+function StatTable({ abbr, rows, gamePks }: { abbr: string; rows: SeriesBatterLine[]; gamePks: number[] }) {
   const withAtBats = rows.filter(r => r.ab > 0)
   if (withAtBats.length === 0) return <p className="text-xs font-serif italic text-stone-400 py-2">No batting data yet.</p>
   return (
@@ -30,7 +39,7 @@ function StatTable({ abbr, rows, seriesStart, seriesEnd }: { abbr: string; rows:
           {withAtBats.map(r => (
             <tr key={r.playerId} className="border-b border-stone-50 last:border-0">
          <td className="py-1.5">
-                <PlayerPitchHover playerId={r.playerId} playerName={r.name} seriesStart={seriesStart} seriesEnd={seriesEnd}>
+                <PlayerPitchHover playerId={r.playerId} playerName={r.name} gamePks={gamePks}>
                   <Link
                     href={`/stats/player/${r.playerId}?subject=batter&name=${encodeURIComponent(r.name)}&team=${abbr}`}
                     className="flex items-center gap-2 hover:text-orange-600 transition"
@@ -61,20 +70,19 @@ function StatTable({ abbr, rows, seriesStart, seriesEnd }: { abbr: string; rows:
   )
 }
 export default function SeriesPlayerStats({
-  awayAbbr, homeAbbr, awayRows, homeRows, seriesStart, seriesEnd,
+  awayAbbr, homeAbbr, awayRows, homeRows, gamePks,
 }: {
   awayAbbr: string
   homeAbbr: string
   awayRows: SeriesBatterLine[]
   homeRows: SeriesBatterLine[]
-  seriesStart: string
-  seriesEnd: string
+  gamePks: number[]
 }) {
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-5">
       <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Player stats this series</p>
-      <StatTable abbr={awayAbbr} rows={awayRows} seriesStart={seriesStart} seriesEnd={seriesEnd} />
-      <StatTable abbr={homeAbbr} rows={homeRows} seriesStart={seriesStart} seriesEnd={seriesEnd} />
+      <StatTable abbr={awayAbbr} rows={awayRows} gamePks={gamePks} />
+      <StatTable abbr={homeAbbr} rows={homeRows} gamePks={gamePks} />
     </div>
   )
 }

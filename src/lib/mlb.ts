@@ -59,7 +59,7 @@ export async function getScheduleForDate(date: string): Promise<MLBGame[]> {
 }
 
 export async function getTodayTickerGames(): Promise<TickerGame[]> {
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   const games = await getScheduleForDate(today)
 
   return games.map((g) => {

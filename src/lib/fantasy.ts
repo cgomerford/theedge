@@ -1,3 +1,4 @@
+//typescript
 /**
  * src/lib/fantasy.ts
  *

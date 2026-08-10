@@ -1,6 +1,6 @@
 // src/lib/matchup-tilt.ts
 //
-// Types and data builder for the Matchup Tilt V3 model.
+// Types and data builder for the Matchup Tilt model.
 // Reads directly from the components_raw shape already stored by edge.ts:
 //
 //   components_raw: {
@@ -10,7 +10,8 @@
 //     away_team:    <team_stats row>,
 //     park:         <park factor object>,
 //     weather:      { temp_f, wind_mph, wind_dir },
-//     _hidden:      { pitcherFatigue, lineupConfidence },
+//     home_platoon: <team_platoon_splits row>,
+//     away_platoon: <team_platoon_splits row>,
 //   }
 //
 // And reads tilt values from edge_predictions.components (the 8 component scores).
@@ -18,8 +19,10 @@
 // Used by:
 //   - mlb/[slug]/page.tsx  → builds MatchupTiltData for the <MatchupTilt /> component
 //   - emails.ts            → builds MatchupTiltData for the email block
-
-// ─── What's stored in edge_predictions.components_raw ─────────────────────────
+//
+// EXTENDED 2026-08: MatchupTiltData.home/away gained an optional `teamId`
+// field, used by the email block to render team logos. Optional so the
+// live-page caller (which doesn't currently pass it) doesn't break.
 
 export interface ComponentsRaw {
   home_pitcher: any | null;
@@ -28,10 +31,10 @@ export interface ComponentsRaw {
   away_team: any | null;
   park: any | null;
   weather?: { temp_f: number; wind_mph: number; wind_dir: string } | null;
+  home_platoon?: any | null;
+  away_platoon?: any | null;
   _hidden?: { pitcherFatigue: number; lineupConfidence: number };
 }
-
-// ─── What's stored in edge_predictions.components (the tilt values) ───────────
 
 export interface ComponentScores {
   starting_pitcher: number;
@@ -43,8 +46,6 @@ export interface ComponentScores {
   weather: number;
   rest: number;
 }
-
-// ─── What the React component renders ─────────────────────────────────────────
 
 export interface SubFactor {
   label: string;
@@ -61,8 +62,8 @@ export interface ComponentTilt {
 }
 
 export interface MatchupTiltData {
-  home: { abbr: string; name: string; primaryColor: string; stats?: any };
-  away: { abbr: string; name: string; primaryColor: string; stats?: any };
+  home: { abbr: string; name: string; primaryColor: string; teamId?: number | null; stats?: any };
+  away: { abbr: string; name: string; primaryColor: string; teamId?: number | null; stats?: any };
   venue: string;
   gameTime: string;
   components: {
@@ -77,8 +78,6 @@ export interface MatchupTiltData {
   };
 }
 
-// ─── Display helpers ──────────────────────────────────────────────────────────
-
 function fmt(val: any, decimals = 2): string {
   if (val == null || val === undefined || isNaN(val)) return '—';
   return Number(val).toFixed(decimals);
@@ -87,7 +86,6 @@ function fmt(val: any, decimals = 2): string {
 function fmtPct(val: any): string {
   if (val == null || val === undefined || isNaN(val)) return '—';
   const n = Number(val);
-  // Handle both 0.225 and 22.5 formats
   if (n < 1) return `${(n * 100).toFixed(1)}%`;
   return `${n.toFixed(1)}%`;
 }
@@ -106,8 +104,6 @@ function windDescription(weather?: { temp_f: number; wind_mph: number; wind_dir:
     : weather.wind_dir ?? 'variable';
   return `${weather.wind_mph} mph ${dir}`;
 }
-
-// ─── Summary generators (free-tier one-liners) ───────────────────────────────
 
 function isOpener(p: any): boolean {
   if (!p) return false
@@ -135,6 +131,7 @@ function pitchingSummary(
   const other  = tilt > 0 ? awayName : homeName
   return `${leader} holds the pitching edge tonight vs ${other}`
 }
+
 function bullpenSummary(
   ht: any, at: any, tilt: number, homeAbbr: string, awayAbbr: string,
 ): string {
@@ -179,7 +176,7 @@ function defenseSummary(
 ): string {
   if (Math.abs(tilt) < 5) return 'Defences evenly matched';
   const leader = tilt > 0 ? homeAbbr : awayAbbr;
-  return `${leader} holds the defensive edge`;
+  return `${leader} holds the batted-ball & defensive edge`;
 }
 
 function restSummary(
@@ -190,18 +187,6 @@ function restSummary(
   return `${advantage} side better rested`;
 }
 
-// ─── Main builder ─────────────────────────────────────────────────────────────
-
-/**
- * Builds MatchupTiltData from the raw prediction data.
- *
- * @param raw       - edge_predictions.components_raw (the full DB rows stored by edge.ts)
- * @param scores    - edge_predictions.components (the 8 tilt values, -100 to +100)
- * @param home      - { abbr, name, primaryColor, stats? }
- * @param away      - { abbr, name, primaryColor, stats? }
- * @param venue     - venue name
- * @param gameTime  - formatted game time string
- */
 export function buildMatchupTiltData(
   raw: ComponentsRaw,
   scores: ComponentScores,
@@ -210,14 +195,15 @@ export function buildMatchupTiltData(
   venue: string,
   gameTime: string,
 ): MatchupTiltData {
-  
-  // Merge live database stats (if provided via page.tsx) with the cached Python prediction payload
+
   const hp = { ...(raw.home_pitcher || {}), ...(home.stats || {}) };
   const ap = { ...(raw.away_pitcher || {}), ...(away.stats || {}) };
   const ht = raw.home_team;
   const at = raw.away_team;
   const park = raw.park;
   const weather = raw.weather;
+  const hPlatoon = raw.home_platoon;
+  const aPlatoon = raw.away_platoon;
 
   return {
     home,
@@ -226,300 +212,99 @@ export function buildMatchupTiltData(
     gameTime,
     components: {
 
-      // ── Starting Pitching ──────────────────────────────────────────────
       pitching: {
         tilt: scores.starting_pitcher,
         summary: pitchingSummary(hp, ap, scores.starting_pitcher, home.abbr, away.abbr),
         subfactors: [
-          {
-            label: 'ERA',
-            home: fmt(hp?.era),
-            away: fmt(ap?.era),
-            homeWins: (hp?.era ?? 99) < (ap?.era ?? 99),
-            note: 'lower = better',
-          },
-          {
-            label: 'FIP',
-            home: fmt(hp?.fip),
-            away: fmt(ap?.fip),
-            homeWins: (hp?.fip ?? 99) < (ap?.fip ?? 99),
-            note: 'defense-independent',
-          },
-          {
-            label: 'L3 ERA (recent form)',
-            home: fmt(hp?.l3_era),
-            away: fmt(ap?.l3_era),
-            homeWins: (hp?.l3_era ?? 99) < (ap?.l3_era ?? 99),
-          },
-          {
-            label: 'K/9',
-            home: fmt(hp?.k_per_9, 1),
-            away: fmt(ap?.k_per_9, 1),
-            homeWins: (hp?.k_per_9 ?? 0) > (ap?.k_per_9 ?? 0),
-            note: 'higher = better',
-          },
-          {
-            label: 'BB/9',
-            home: fmt(hp?.bb_per_9, 1),
-            away: fmt(ap?.bb_per_9, 1),
-            homeWins: (hp?.bb_per_9 ?? 99) < (ap?.bb_per_9 ?? 99),
-            note: 'lower = better',
-          },
-          {
-            label: 'WHIP',
-            home: fmt(hp?.whip),
-            away: fmt(ap?.whip),
-            homeWins: (hp?.whip ?? 99) < (ap?.whip ?? 99),
-          },
+          { label: 'ERA', home: fmt(hp?.era), away: fmt(ap?.era), homeWins: (hp?.era ?? 99) < (ap?.era ?? 99), note: 'lower = better' },
+          { label: 'FIP', home: fmt(hp?.fip), away: fmt(ap?.fip), homeWins: (hp?.fip ?? 99) < (ap?.fip ?? 99), note: 'defense-independent' },
+          { label: 'L3 ERA (recent form)', home: fmt(hp?.l3_era), away: fmt(ap?.l3_era), homeWins: (hp?.l3_era ?? 99) < (ap?.l3_era ?? 99) },
+          { label: 'K/9', home: fmt(hp?.k_per_9, 1), away: fmt(ap?.k_per_9, 1), homeWins: (hp?.k_per_9 ?? 0) > (ap?.k_per_9 ?? 0), note: 'higher = better' },
+          { label: 'BB/9', home: fmt(hp?.bb_per_9, 1), away: fmt(ap?.bb_per_9, 1), homeWins: (hp?.bb_per_9 ?? 99) < (ap?.bb_per_9 ?? 99), note: 'lower = better' },
+          { label: 'WHIP', home: fmt(hp?.whip), away: fmt(ap?.whip), homeWins: (hp?.whip ?? 99) < (ap?.whip ?? 99) },
         ],
       },
 
-      // ── Bullpen ────────────────────────────────────────────────────────
       bullpen: {
         tilt: scores.bullpen,
         summary: bullpenSummary(ht, at, scores.bullpen, home.abbr, away.abbr),
         subfactors: [
-          {
-            label: 'Bullpen ERA',
-            home: fmt(ht?.bullpen_era),
-            away: fmt(at?.bullpen_era),
-            homeWins: (ht?.bullpen_era ?? 99) < (at?.bullpen_era ?? 99),
-          },
-          {
-            label: 'Bullpen K/9',
-            home: fmt(ht?.bullpen_k_per_9, 1),
-            away: fmt(at?.bullpen_k_per_9, 1),
-            homeWins: (ht?.bullpen_k_per_9 ?? 0) > (at?.bullpen_k_per_9 ?? 0),
-          },
-          {
-            label: 'IP yesterday',
-            home: fmt(ht?.bullpen_innings_yesterday, 1),
-            away: fmt(at?.bullpen_innings_yesterday, 1),
-            homeWins: (ht?.bullpen_innings_yesterday ?? 99) < (at?.bullpen_innings_yesterday ?? 99),
-            note: 'lower = fresher',
-          },
-          {
-            label: 'IP last 3 days',
-            home: fmt(ht?.bullpen_ip_last_3, 1),
-            away: fmt(at?.bullpen_ip_last_3, 1),
-            homeWins: (ht?.bullpen_ip_last_3 ?? 99) < (at?.bullpen_ip_last_3 ?? 99),
-          },
-          {
-            label: 'Closer available',
-            home: ht?.closer_available === false ? 'No' : ht?.closer_available === true ? 'Yes' : '—',
-            away: at?.closer_available === false ? 'No' : at?.closer_available === true ? 'Yes' : '—',
-            homeWins: ht?.closer_available !== false,
-          },
+          { label: 'Bullpen ERA', home: fmt(ht?.bullpen_era), away: fmt(at?.bullpen_era), homeWins: (ht?.bullpen_era ?? 99) < (at?.bullpen_era ?? 99) },
+          { label: 'Bullpen K/9', home: fmt(ht?.bullpen_k_per_9, 1), away: fmt(at?.bullpen_k_per_9, 1), homeWins: (ht?.bullpen_k_per_9 ?? 0) > (at?.bullpen_k_per_9 ?? 0) },
+          { label: 'IP yesterday', home: fmt(ht?.bullpen_innings_yesterday, 1), away: fmt(at?.bullpen_innings_yesterday, 1), homeWins: (ht?.bullpen_innings_yesterday ?? 99) < (at?.bullpen_innings_yesterday ?? 99), note: 'lower = fresher' },
+          { label: 'IP last 3 days', home: fmt(ht?.bullpen_ip_last_3, 1), away: fmt(at?.bullpen_ip_last_3, 1), homeWins: (ht?.bullpen_ip_last_3 ?? 99) < (at?.bullpen_ip_last_3 ?? 99) },
+          { label: 'Closer available', home: ht?.closer_available === false ? 'No' : ht?.closer_available === true ? 'Yes' : '—', away: at?.closer_available === false ? 'No' : at?.closer_available === true ? 'Yes' : '—', homeWins: ht?.closer_available !== false },
         ],
       },
 
-      // ── Offensive Form ─────────────────────────────────────────────────
       offense: {
         tilt: scores.offense,
         summary: offenseSummary(ht, at, scores.offense, home.abbr, away.abbr),
         subfactors: [
-          {
-            label: 'R/G (L30)',
-            home: fmt(ht?.runs_per_game_l30, 1),
-            away: fmt(at?.runs_per_game_l30, 1),
-            homeWins: (ht?.runs_per_game_l30 ?? 0) > (at?.runs_per_game_l30 ?? 0),
-          },
-          {
-            label: 'OPS (L30)',
-            home: ht?.ops_l30 != null ? `.${Math.round(ht.ops_l30 * 1000)}` : '—',
-            away: at?.ops_l30 != null ? `.${Math.round(at.ops_l30 * 1000)}` : '—',
-            homeWins: (ht?.ops_l30 ?? 0) > (at?.ops_l30 ?? 0),
-          },
-          {
-            label: 'ISO (power)',
-            home: ht?.iso != null ? `.${Math.round(ht.iso * 1000)}` : '—',
-            away: at?.iso != null ? `.${Math.round(at.iso * 1000)}` : '—',
-            homeWins: (ht?.iso ?? 0) > (at?.iso ?? 0),
-          },
-          {
-            label: 'K%',
-            home: fmtPct(ht?.k_pct),
-            away: fmtPct(at?.k_pct),
-            homeWins: (ht?.k_pct ?? 99) < (at?.k_pct ?? 99),
-            note: 'lower = better',
-          },
-          {
-            label: 'BB%',
-            home: fmtPct(ht?.bb_pct),
-            away: fmtPct(at?.bb_pct),
-            homeWins: (ht?.bb_pct ?? 0) > (at?.bb_pct ?? 0),
-            note: 'higher = better',
-          },
+          { label: 'R/G (L30)', home: fmt(ht?.runs_per_game_l30, 1), away: fmt(at?.runs_per_game_l30, 1), homeWins: (ht?.runs_per_game_l30 ?? 0) > (at?.runs_per_game_l30 ?? 0) },
+          { label: 'OPS (L30)', home: ht?.ops_l30 != null ? `.${Math.round(ht.ops_l30 * 1000)}` : '—', away: at?.ops_l30 != null ? `.${Math.round(at.ops_l30 * 1000)}` : '—', homeWins: (ht?.ops_l30 ?? 0) > (at?.ops_l30 ?? 0) },
+          { label: 'ISO (power)', home: ht?.iso != null ? `.${Math.round(ht.iso * 1000)}` : '—', away: at?.iso != null ? `.${Math.round(at.iso * 1000)}` : '—', homeWins: (ht?.iso ?? 0) > (at?.iso ?? 0) },
+          { label: 'K%', home: fmtPct(ht?.k_pct), away: fmtPct(at?.k_pct), homeWins: (ht?.k_pct ?? 99) < (at?.k_pct ?? 99), note: 'lower = better' },
+          { label: 'BB%', home: fmtPct(ht?.bb_pct), away: fmtPct(at?.bb_pct), homeWins: (ht?.bb_pct ?? 0) > (at?.bb_pct ?? 0), note: 'higher = better' },
         ],
       },
 
-      // ── Pitch Matchups ─────────────────────────────────────────────────
       matchup: {
         tilt: scores.matchup,
         summary: matchupSummary(hp, ap, scores.matchup),
         subfactors: [
-          {
-            label: 'GB% (groundball rate)',
-            home: hp?.gb_rate != null ? `${Number(hp.gb_rate).toFixed(1)}%` : '—',
-            away: ap?.gb_rate != null ? `${Number(ap.gb_rate).toFixed(1)}%` : '—',
-            homeWins: (hp?.gb_rate ?? 0) > (ap?.gb_rate ?? 0),
-            note: 'higher = more GBs',
-          },
-          {
-            label: 'vs LHB (batting avg)',
-            home: hp?.vs_lhb_baa != null ? `.${Math.round(hp.vs_lhb_baa * 1000)}` : '—',
-            away: ap?.vs_lhb_baa != null ? `.${Math.round(ap.vs_lhb_baa * 1000)}` : '—',
-            homeWins: (hp?.vs_lhb_baa ?? 1) < (ap?.vs_lhb_baa ?? 1),
-            note: 'lower = better',
-          },
-          {
-            label: 'vs RHB (batting avg)',
-            home: hp?.vs_rhb_baa != null ? `.${Math.round(hp.vs_rhb_baa * 1000)}` : '—',
-            away: ap?.vs_rhb_baa != null ? `.${Math.round(ap.vs_rhb_baa * 1000)}` : '—',
-            homeWins: (hp?.vs_rhb_baa ?? 1) < (ap?.vs_rhb_baa ?? 1),
-            note: 'lower = better',
-          },
-          {
-            label: 'L3 K/9 (recent)',
-            home: fmt(hp?.l3_k_per_9, 1),
-            away: fmt(ap?.l3_k_per_9, 1),
-            homeWins: (hp?.l3_k_per_9 ?? 0) > (ap?.l3_k_per_9 ?? 0),
-            note: 'higher = better',
-          },
+          { label: 'vs LHB (batting avg)', home: hp?.vs_lhb_baa != null ? `.${Math.round(hp.vs_lhb_baa * 1000)}` : '—', away: ap?.vs_lhb_baa != null ? `.${Math.round(ap.vs_lhb_baa * 1000)}` : '—', homeWins: (hp?.vs_lhb_baa ?? 1) < (ap?.vs_lhb_baa ?? 1), note: 'lower = better' },
+          { label: 'vs RHB (batting avg)', home: hp?.vs_rhb_baa != null ? `.${Math.round(hp.vs_rhb_baa * 1000)}` : '—', away: ap?.vs_rhb_baa != null ? `.${Math.round(ap.vs_rhb_baa * 1000)}` : '—', homeWins: (hp?.vs_rhb_baa ?? 1) < (ap?.vs_rhb_baa ?? 1), note: 'lower = better' },
+          { label: 'L3 K/9 (recent)', home: fmt(hp?.l3_k_per_9, 1), away: fmt(ap?.l3_k_per_9, 1), homeWins: (hp?.l3_k_per_9 ?? 0) > (ap?.l3_k_per_9 ?? 0), note: 'higher = better' },
         ],
       },
 
-      // ── Park Factor ────────────────────────────────────────────────────
       park: {
         tilt: scores.park,
         summary: parkSummary(park, weather),
         subfactors: [
-          {
-            label: 'HR factor',
-            home: fmt(park?.hr_factor),
-            away: '—',
-            homeWins: (park?.hr_factor ?? 1) > 1,
-            note: '>1 = more HRs',
-          },
-          {
-            label: 'Run factor',
-            home: fmt(park?.run_factor),
-            away: '—',
-            homeWins: (park?.run_factor ?? 1) > 1,
-            note: '>1 = more runs',
-          },
-          {
-            label: 'Dome',
-            home: park?.is_dome ? 'Yes' : 'No',
-            away: '—',
-            homeWins: false,
-          },
-          {
-            label: 'Wind',
-            home: windDescription(weather),
-            away: '—',
-            homeWins: weather?.wind_dir === 'out',
-          },
+          { label: 'HR factor', home: fmt(park?.hr_factor), away: '—', homeWins: (park?.hr_factor ?? 1) > 1, note: '>1 = more HRs' },
+          { label: 'Run factor', home: fmt(park?.run_factor), away: '—', homeWins: (park?.run_factor ?? 1) > 1, note: '>1 = more runs' },
+          { label: 'Dome', home: park?.is_dome ? 'Yes' : 'No', away: '—', homeWins: false },
+          { label: 'Wind', home: windDescription(weather), away: '—', homeWins: weather?.wind_dir === 'out' },
         ],
       },
 
-      // ── Weather ────────────────────────────────────────────────────────
       weather: {
         tilt: scores.weather,
         summary: weatherSummary(weather, park),
         subfactors: [
-          {
-            label: 'Temperature',
-            home: weather?.temp_f != null ? `${fmt(weather.temp_f, 0)}°F` : '—',
-            away: '—',
-            homeWins: (weather?.temp_f ?? 70) > 65,
-          },
-          {
-            label: 'Wind',
-            home: windDescription(weather),
-            away: '—',
-            homeWins: weather?.wind_dir !== 'in',
-          },
-          {
-            label: 'Wind speed',
-            home: weather?.wind_mph != null ? `${weather.wind_mph} mph` : '—',
-            away: '—',
-            homeWins: (weather?.wind_mph ?? 0) < 10,
-          },
+          { label: 'Temperature', home: weather?.temp_f != null ? `${fmt(weather.temp_f, 0)}°F` : '—', away: '—', homeWins: (weather?.temp_f ?? 70) > 65 },
+          { label: 'Wind', home: windDescription(weather), away: '—', homeWins: weather?.wind_dir !== 'in' },
+          { label: 'Wind speed', home: weather?.wind_mph != null ? `${weather.wind_mph} mph` : '—', away: '—', homeWins: (weather?.wind_mph ?? 0) < 10 },
         ],
       },
 
-      // ── Defense ────────────────────────────────────────────────────────
       defense: {
         tilt: scores.defense,
         summary: defenseSummary(ht, at, scores.defense, home.abbr, away.abbr),
         subfactors: [
-          {
-            label: 'OAA (outs above avg)',
-            home: signed(ht?.oaa),
-            away: signed(at?.oaa),
-            homeWins: (ht?.oaa ?? 0) > (at?.oaa ?? 0),
-          },
-          {
-            label: 'DRS (def. runs saved)',
-            home: signed(ht?.drs),
-            away: signed(at?.drs),
-            homeWins: (ht?.drs ?? 0) > (at?.drs ?? 0),
-          },
-          {
-            label: 'Errors/G (L30)',
-            home: fmt(ht?.errors_per_game_l30),
-            away: fmt(at?.errors_per_game_l30),
-            homeWins: (ht?.errors_per_game_l30 ?? 99) < (at?.errors_per_game_l30 ?? 99),
-            note: 'lower = better',
-          },
-          {
-            label: 'Infield OAA',
-            home: signed(ht?.infield_oaa),
-            away: signed(at?.infield_oaa),
-            homeWins: (ht?.infield_oaa ?? 0) > (at?.infield_oaa ?? 0),
-          },
-          {
-            label: 'Outfield OAA',
-            home: signed(ht?.outfield_oaa),
-            away: signed(at?.outfield_oaa),
-            homeWins: (ht?.outfield_oaa ?? 0) > (at?.outfield_oaa ?? 0),
-          },
+          { label: 'Fielding %', home: ht?.fielding_pct != null ? Number(ht.fielding_pct).toFixed(3) : '—', away: at?.fielding_pct != null ? Number(at.fielding_pct).toFixed(3) : '—', homeWins: (ht?.fielding_pct ?? 0) > (at?.fielding_pct ?? 0), note: '.984 = avg' },
+          { label: 'Defensive efficiency', home: ht?.defensive_efficiency != null ? Number(ht.defensive_efficiency).toFixed(3) : '—', away: at?.defensive_efficiency != null ? Number(at.defensive_efficiency).toFixed(3) : '—', homeWins: (ht?.defensive_efficiency ?? 0) > (at?.defensive_efficiency ?? 0), note: 'BIP converted to outs' },
+          { label: 'Errors/G (L30)', home: fmt(ht?.errors_per_game_l30), away: fmt(at?.errors_per_game_l30), homeWins: (ht?.errors_per_game_l30 ?? 99) < (at?.errors_per_game_l30 ?? 99), note: 'lower = better' },
+          { label: 'Catcher framing', home: signed(ht?.catcher_framing_runs), away: signed(at?.catcher_framing_runs), homeWins: (ht?.catcher_framing_runs ?? 0) > (at?.catcher_framing_runs ?? 0), note: 'runs above avg' },
+          { label: 'OAA (outs above avg)', home: signed(ht?.oaa), away: signed(at?.oaa), homeWins: (ht?.oaa ?? 0) > (at?.oaa ?? 0) },
+          { label: 'Infield OAA', home: signed(ht?.infield_oaa), away: signed(at?.infield_oaa), homeWins: (ht?.infield_oaa ?? 0) > (at?.infield_oaa ?? 0) },
+          { label: 'Outfield OAA', home: signed(ht?.outfield_oaa), away: signed(at?.outfield_oaa), homeWins: (ht?.outfield_oaa ?? 0) > (at?.outfield_oaa ?? 0) },
+          { label: 'GB% (batting team)', home: ht?.gb_percent_batting != null ? fmtPct(ht.gb_percent_batting) : '—', away: at?.gb_percent_batting != null ? fmtPct(at.gb_percent_batting) : '—', homeWins: false, note: 'V6 — collides with opposing pitcher GB%' },
+          { label: 'OAA — RF / LF', home: (ht?.oaa_rf != null || ht?.oaa_lf != null) ? `${signed(ht?.oaa_rf)} / ${signed(ht?.oaa_lf)}` : '—', away: (at?.oaa_rf != null || at?.oaa_lf != null) ? `${signed(at?.oaa_rf)} / ${signed(at?.oaa_lf)}` : '—', homeWins: false, note: 'V6 — positional exploit target' },
+          { label: 'Pull% (LHB / RHB)', home: hPlatoon ? `${hPlatoon?.pull_pct_lhb ?? '—'} / ${hPlatoon?.pull_pct_rhb ?? '—'}` : '—', away: aPlatoon ? `${aPlatoon?.pull_pct_lhb ?? '—'} / ${aPlatoon?.pull_pct_rhb ?? '—'}` : '—', homeWins: false, note: 'V6 — opposing lineup pull tendency' },
         ],
       },
 
-      // ── Rest & Travel ──────────────────────────────────────────────────
       rest: {
         tilt: scores.rest,
         summary: restSummary(ht, at, scores.rest, home.abbr, away.abbr),
         subfactors: [
-          {
-            label: 'Travel (last leg)',
-            home: 'Home',
-            away: at?.travel_miles_last != null && at.travel_miles_last > 0
-              ? `${at.travel_miles_last} mi`
-              : 'Home',
-            homeWins: (at?.travel_miles_last ?? 0) > 0,
-          },
-          {
-            label: 'Games in last 10 days',
-            home: fmt(ht?.games_last_10_days, 0),
-            away: fmt(at?.games_last_10_days, 0),
-            homeWins: (ht?.games_last_10_days ?? 99) < (at?.games_last_10_days ?? 99),
-          },
-          {
-            label: 'Consecutive road G',
-            home: '—',
-            away: at?.consecutive_road_games != null ? `${at.consecutive_road_games}` : '—',
-            homeWins: (at?.consecutive_road_games ?? 0) >= 5,
-            note: 'away fatigue',
-          },
-          {
-            label: 'Day after night game',
-            home: ht?.day_after_night ? 'Yes' : 'No',
-            away: at?.day_after_night ? 'Yes' : 'No',
-            homeWins: !ht?.day_after_night,
-          },
+          { label: 'Travel (last leg)', home: 'Home', away: at?.travel_miles_last != null && at.travel_miles_last > 0 ? `${at.travel_miles_last} mi` : 'Home', homeWins: (at?.travel_miles_last ?? 0) > 0 },
+          { label: 'Games in last 10 days', home: fmt(ht?.games_last_10_days, 0), away: fmt(at?.games_last_10_days, 0), homeWins: (ht?.games_last_10_days ?? 99) < (at?.games_last_10_days ?? 99) },
+          { label: 'Consecutive road G', home: '—', away: at?.consecutive_road_games != null ? `${at.consecutive_road_games}` : '—', homeWins: (at?.consecutive_road_games ?? 0) >= 5, note: 'away fatigue' },
+          { label: 'Day after night game', home: ht?.day_after_night ? 'Yes' : 'No', away: at?.day_after_night ? 'Yes' : 'No', homeWins: !ht?.day_after_night },
         ],
       },
 

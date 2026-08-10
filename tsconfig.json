@@ -28,7 +28,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
-, "src/app/api/debug-auth"  ],
-  "exclude": ["node_modules"]
+    "**/*.mts",
+    "src/app/api/debug-auth"
+  ],
+  "exclude": ["node_modules", "scripts", "src/components/dashboard/PlayerCompareView.tsx", "src/components/InningPitcherRunsChart.tsx"]
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { teamLogoUrl, playerHeadshotUrl } from '@/lib/mlb'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,19 @@ type EdgeComponents = {
   park: number
   weather: number
   rest: number
+}
+
+export type FormResult = 'W' | 'L'
+
+export type TrendPoint = { date: string; edge_score: number }
+
+// Per-stat season-history arrays, oldest → newest. Optional and additive —
+// nothing renders differently until a real query populates this on
+// `components_raw.trends`. Keys are a subset of stats we currently drill
+// into (era, bullpen_era, ops_l30, oaa); add more as the data exists.
+export type StatTrendSet = {
+  away?: Partial<Record<string, number[]>>
+  home?: Partial<Record<string, number[]>>
 }
 
 export type EdgeIndicatorV6Props = {
@@ -33,6 +47,25 @@ export type EdgeIndicatorV6Props = {
   llm_narrative?: string | null
   llm_narrative_pro?: string | null
   pro_takeaways?: Array<{ stat: string; text: string; edge: 'home' | 'away' | 'neutral' }> | null
+
+  // ── New, all optional — component degrades gracefully without them ──────
+  home_team_id?: number | null
+  away_team_id?: number | null
+  // Real route slugs, e.g. "guardians" for /mlb/teams/guardians. Pass these
+  // from the parent (findTeamByName or similar) — the fallback slugifier
+  // below only handles single-word nicknames correctly.
+  home_team_slug?: string | null
+  away_team_slug?: string | null
+  team_page_href?: (teamId: number, slug?: string | null) => string
+  player_page_href?: (playerId: number) => string
+  form?: {
+    away: { results: FormResult[]; record: string }
+    home: { results: FormResult[]; record: string }
+  } | null
+  // Rolling Edge Score history for the predicted winner's team, oldest first.
+  // Real source: historical edge_predictions rows — this component doesn't
+  // fetch, so the parent page/route needs to query and pass this in.
+  trend?: TrendPoint[] | null
 }
 
 // ─── Static constants ────────────────────────────────────────────────────────
@@ -40,17 +73,92 @@ export type EdgeIndicatorV6Props = {
 const SAND = '#F5F0E8'
 const MIST = '#E8E2D8'
 
+// ─── Shared responsive + hover CSS ──────────────────────────────────────────
+// Fixed pixel-width grid columns (220px, 130px, 68px, 18px) don't shrink on
+// narrow viewports when set via inline style — inline styles can't respond
+// to media queries, only real CSS can. These classes replace the previous
+// inline gridTemplateColumns on the two-column body/header rows and the
+// factor row, with breakpoints that collapse/shrink them instead of forcing
+// horizontal scroll.
+//
+// Also holds the pure-CSS hover reveals for Tip, SparkTip, headshots, and
+// team logos — same pattern throughout: opacity 0 → 1 on :hover, no JS
+// needed for the reveal itself.
+
+const RESPONSIVE_CSS = `
+  .edge-tip:hover .edge-tip-bubble { opacity: 1; }
+  .edge-spark:hover .edge-spark-bubble { opacity: 1; }
+
+  .edge-headshot-link:hover .edge-headshot-img { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.22); }
+  .edge-headshot-link:hover .edge-view-tag { opacity: 1; transform: translateY(0); }
+  .edge-headshot-img { transition: transform .18s ease, box-shadow .18s ease; }
+  .edge-view-tag { opacity: 0; transform: translateY(-3px); transition: .16s ease; pointer-events: none; }
+
+  .edge-logo-link:hover .edge-logo-img { transform: scale(1.08); filter: drop-shadow(0 4px 10px rgba(0,0,0,.18)); }
+  .edge-logo-img { transition: transform .18s ease, filter .18s ease; }
+
+  .edge-head-grid, .edge-body-grid { display: grid; grid-template-columns: 1fr 220px; }
+  .edge-head-left { border-right: 0.5px solid var(--border); border-bottom: 2px solid #E0D8CE; }
+  .edge-head-right { border-bottom: 2px solid transparent; }
+  .edge-factors-col { border-right: 0.5px solid var(--border); }
+
+  .edge-factor-row, .edge-factor-header-row {
+    display: grid; grid-template-columns: 1fr 130px 68px 18px; gap: 8px; align-items: center;
+  }
+
+  @media (max-width: 720px) {
+    .edge-head-grid, .edge-body-grid { grid-template-columns: 1fr; }
+    .edge-head-left, .edge-factors-col { border-right: none; border-bottom: 0.5px solid var(--border); }
+  }
+
+  @media (max-width: 480px) {
+    .edge-factor-row, .edge-factor-header-row { grid-template-columns: 1fr 84px 46px 16px; gap: 6px; }
+  }
+`
+
 // ─── Factor metadata ──────────────────────────────────────────────────────────
 
-const FACTOR_META: Record<keyof EdgeComponents, { label: string; proTeaser: string }> = {
-  starting_pitcher: { label: 'Starting pitcher', proTeaser: 'xERA · chase rate · TTO splits · K/BB · quality starts' },
-  bullpen:          { label: 'Bullpen',           proTeaser: 'Availability matrix · ERA · fatigue tracker · strand %' },
-  offense:          { label: 'Offense',           proTeaser: 'xwOBA · hard hit% · ISO · K% · BB% · sprint speed' },
-  defense:          { label: 'Defense',           proTeaser: 'OAA by zone · errors/G · sprint speed · catcher framing' },
-  matchup:          { label: 'Pitch matchup',     proTeaser: 'Arsenal whiff% vs lineup · platoon OPS splits' },
-  park:             { label: 'Park factor',       proTeaser: 'HR factor by handedness · altitude · tonight\'s wind' },
-  weather:          { label: 'Weather',           proTeaser: 'Wind carry · temperature effect · dome/open analysis' },
-  rest:             { label: 'Rest & travel',     proTeaser: 'Days rest · road trip length · schedule density' },
+const FACTOR_META: Record<keyof EdgeComponents, { label: string; description: string; proTeaser: string }> = {
+  starting_pitcher: {
+    label: 'Starting pitcher',
+    description: 'Compares tonight\'s starters — command, contact quality allowed, and recent form. Historically one of the largest single-game edges in the model.',
+    proTeaser: 'xERA · chase rate · TTO splits · K/BB · quality starts',
+  },
+  bullpen: {
+    label: 'Bullpen',
+    description: 'Relief corps quality and fatigue — who\'s fresh, who\'s gassed, and how each pen\'s stuff plays in relief innings tonight.',
+    proTeaser: 'Availability matrix · ERA · fatigue tracker · strand %',
+  },
+  offense: {
+    label: 'Offense',
+    description: 'Team hitting output and contact quality over the last 30 games, adjusted for the strength of opponents faced.',
+    proTeaser: 'xwOBA · hard hit% · ISO · K% · BB% · sprint speed',
+  },
+  defense: {
+    label: 'Batted-ball & defense',
+    description: 'Fielding quality and outs above average, weighted toward how well each defense matches tonight\'s likely contact profile.',
+    proTeaser: 'Fielding% · OAA by zone · GB-collision · pull-side exploit · catcher framing',
+  },
+  matchup: {
+    label: 'Platoon & pitch-type',
+    description: 'Hitter-vs-arsenal history — platoon splits and how tonight\'s lineup has handled this pitcher\'s primary pitches specifically.',
+    proTeaser: 'Arsenal whiff% vs lineup · platoon OPS splits · H2H history',
+  },
+  park: {
+    label: 'Park factor',
+    description: 'How tonight\'s ballpark plays for home runs and run scoring, split by batter handedness where it matters.',
+    proTeaser: 'HR factor by handedness · altitude · tonight\'s wind',
+  },
+  weather: {
+    label: 'Weather',
+    description: 'Temperature and wind effects on ball flight tonight. Usually a small factor unless conditions are extreme.',
+    proTeaser: 'Wind carry · temperature effect · dome/open analysis',
+  },
+  rest: {
+    label: 'Rest & travel',
+    description: 'Days of rest and travel load for both teams — fatigue compounds over a long homestand or road trip.',
+    proTeaser: 'Days rest · road trip length · schedule density',
+  },
 }
 
 const FACTOR_ORDER: (keyof EdgeComponents)[] = [
@@ -145,6 +253,15 @@ function parkLabel(hr: number | null | undefined, run: number | null | undefined
   return '⚪ Neutral park — no significant factor bias'
 }
 
+// Best-effort fallback only — correctly handles single-word nicknames
+// (Guardians, Yankees, Dodgers) but NOT multi-word ones (Red Sox, Blue Jays,
+// White Sox). Pass home_team_slug/away_team_slug explicitly to avoid this
+// entirely; this exists so links don't silently 404 to nothing while that's
+// being wired up.
+function fallbackTeamSlug(name: string): string {
+  return name.trim().split(' ').pop()?.toLowerCase() ?? name.toLowerCase()
+}
+
 // ─── Edge summary ─────────────────────────────────────────────────────────────
 
 function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLeans: number, tier: string) {
@@ -157,8 +274,8 @@ function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLean
     starting_pitcher: 'starting pitching edge',
     bullpen: 'bullpen advantage',
     offense: 'offensive output edge',
-    defense: 'defensive edge',
-    matchup: 'pitch matchup advantage',
+    defense: 'batted-ball & defensive edge',
+    matchup: 'platoon & pitch-type advantage',
     park: 'park factor tilt',
     weather: 'weather conditions',
     rest: 'rest and travel edge',
@@ -187,12 +304,86 @@ function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLean
   return { headline: headlines[tier] ?? headlines.slight, body: bodies[tier] ?? '', factors }
 }
 
+// ─── Tip ──────────────────────────────────────────────────────────────────────
+
+function Tip({ text }: { text: string }) {
+  return (
+    <span className="edge-tip" style={{ position: 'relative', display: 'inline-block', marginLeft: 4, cursor: 'help' }}>
+      <span style={{ borderBottom: '1px dotted var(--text-muted)' }}>ⓘ</span>
+      <span className="edge-tip-bubble" style={{
+        position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+        transform: 'translateX(-50%)', width: 190, background: '#1A1A1A',
+        color: '#FAF8F3', fontSize: 10, lineHeight: 1.5, padding: '7px 9px',
+        borderRadius: 6, opacity: 0, pointerEvents: 'none' as const,
+        transition: 'opacity 140ms ease', zIndex: 20,
+        boxShadow: '0 8px 20px -6px rgba(0,0,0,0.35)',
+      }}>
+        {text}
+      </span>
+    </span>
+  )
+}
+
+// ─── Spark / SparkTip ─────────────────────────────────────────────────────────
+// Pure SVG sparkline + a hover popover, same reveal mechanism as Tip (CSS
+// opacity, no JS state). Renders nothing if fewer than 2 points — callers
+// don't need to guard, the component degrades on its own.
+
+function Spark({ data, color, w = 120, h = 34, pad = 3 }: { data: number[]; color: string; w?: number; h?: number; pad?: number }) {
+  if (!data || data.length < 2) return null
+  const min = Math.min(...data), max = Math.max(...data)
+  const range = (max - min) || 1
+  const step = (w - pad * 2) / (data.length - 1)
+  const path = data.map((v, i) => {
+    const x = pad + i * step
+    const y = h - pad - ((v - min) / range) * (h - pad * 2)
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const lastX = w - pad
+  const lastY = h - pad - ((data[data.length - 1] - min) / range) * (h - pad * 2)
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
+      <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r={3} fill={color} />
+    </svg>
+  )
+}
+
+function SparkTip({ value, series, color, sampleLabel = 'Season trend' }: {
+  value: string; series?: number[] | null; color: string; sampleLabel?: string
+}) {
+  if (!series || series.length < 2) return <>{value}</>
+  return (
+    <span className="edge-spark" style={{ position: 'relative', display: 'inline-block', cursor: 'help', borderBottom: `1px dotted ${color}` }}>
+      {value}
+      <span className="edge-spark-bubble" style={{
+        position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+        transform: 'translateX(-50%)', width: 140, background: '#1A1A1A',
+        color: '#FAF8F3', padding: '8px 9px 6px', borderRadius: 6,
+        opacity: 0, pointerEvents: 'none' as const, transition: 'opacity 140ms ease',
+        zIndex: 30, boxShadow: '0 10px 24px -8px rgba(0,0,0,0.5)', textAlign: 'left',
+      }}>
+        <span style={{ fontSize: 8.5, letterSpacing: '.05em', textTransform: 'uppercase' as const, color: 'rgba(250,248,243,.6)', display: 'block', marginBottom: 4 }}>
+          {sampleLabel}
+        </span>
+        <Spark data={series} color={color} />
+      </span>
+    </span>
+  )
+}
+
 // ─── StatRow ──────────────────────────────────────────────────────────────────
 
-function StatRow({ label, away, home, note, awayBetter, homeBetter, awayColor, homeColor }: {
+function StatRow({
+  label, away, home, note, tip, awayBetter, homeBetter, awayColor, homeColor,
+  awaySeries, homeSeries, seriesLabel,
+}: {
   label: string; away: string; home: string
-  note?: string; awayBetter?: boolean; homeBetter?: boolean
+  note?: string; tip?: string; awayBetter?: boolean; homeBetter?: boolean
   awayColor: string; homeColor: string
+  // Optional — oldest→newest values for the season-trend hover popover.
+  // No-op until a real data source populates these (see StatTrendSet).
+  awaySeries?: number[] | null; homeSeries?: number[] | null; seriesLabel?: string
 }) {
   return (
     <div style={{
@@ -205,17 +396,19 @@ function StatRow({ label, away, home, note, awayBetter, homeBetter, awayColor, h
         fontFamily: 'var(--font-mono)', fontWeight: awayBetter ? 600 : 400,
         color: awayBetter ? awayColor : 'var(--text-primary)', textAlign: 'right',
       }}>
-        {away}
+        <SparkTip value={away} series={awaySeries} color={awayColor} sampleLabel={seriesLabel} />
       </span>
       <span style={{ textAlign: 'center', minWidth: 100 }}>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>{label}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>
+          {label}{tip && <Tip text={tip} />}
+        </span>
         {note && <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{note}</span>}
       </span>
       <span style={{
         fontFamily: 'var(--font-mono)', fontWeight: homeBetter ? 600 : 400,
         color: homeBetter ? homeColor : 'var(--text-primary)',
       }}>
-        {home}
+        <SparkTip value={home} series={homeSeries} color={homeColor} sampleLabel={seriesLabel} />
       </span>
     </div>
   )
@@ -242,6 +435,13 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
   const ht = raw?.home_team
   const w  = raw?.weather
   const pk = raw?.park
+  const ap6 = raw?.away_platoon
+  const hp6 = raw?.home_platoon
+  // Optional season-trend arrays — see StatTrendSet. Undefined until the
+  // parent page queries a rolling-history source and passes it through
+  // components_raw.trends; every consumer below degrades to plain values.
+  const trendsAway = raw?.trends?.away ?? {}
+  const trendsHome = raw?.trends?.home ?? {}
 
   const lo = (a: any, b: any) => a != null && b != null && parseFloat(a) < parseFloat(b)
   const hi = (a: any, b: any) => a != null && b != null && parseFloat(a) > parseFloat(b)
@@ -251,7 +451,12 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
   if (factorKey === 'starting_pitcher') return (
     <div>
       <DrillSection title="Results" />
-      <SR label="ERA (season)" note="lower = better" away={f2(ap?.era)} home={f2(hp?.era)} awayBetter={lo(ap?.era, hp?.era)} homeBetter={lo(hp?.era, ap?.era)} />
+      <SR
+        label="ERA (season)" note="lower = better"
+        away={f2(ap?.era)} home={f2(hp?.era)}
+        awayBetter={lo(ap?.era, hp?.era)} homeBetter={lo(hp?.era, ap?.era)}
+        awaySeries={trendsAway.era} homeSeries={trendsHome.era} seriesLabel="ERA · season trend"
+      />
       <SR label="FIP" note="defence-independent" away={f2(ap?.fip)} home={f2(hp?.fip)} awayBetter={lo(ap?.fip, hp?.fip)} homeBetter={lo(hp?.fip, ap?.fip)} />
       <SR label="xERA" note="Statcast expected" away={f2(ap?.xera)} home={f2(hp?.xera)} awayBetter={lo(ap?.xera, hp?.xera)} homeBetter={lo(hp?.xera, ap?.xera)} />
       <SR label="WHIP" away={f2(ap?.whip)} home={f2(hp?.whip)} awayBetter={lo(ap?.whip, hp?.whip)} homeBetter={lo(hp?.whip, ap?.whip)} />
@@ -289,7 +494,12 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
     return (
       <div>
         <DrillSection title="Quality" />
-        <SR label="Bullpen ERA" note="lower = better" away={f2(at?.bullpen_era)} home={f2(ht?.bullpen_era)} awayBetter={lo(at?.bullpen_era, ht?.bullpen_era)} homeBetter={lo(ht?.bullpen_era, at?.bullpen_era)} />
+        <SR
+          label="Bullpen ERA" note="lower = better"
+          away={f2(at?.bullpen_era)} home={f2(ht?.bullpen_era)}
+          awayBetter={lo(at?.bullpen_era, ht?.bullpen_era)} homeBetter={lo(ht?.bullpen_era, at?.bullpen_era)}
+          awaySeries={trendsAway.bullpen_era} homeSeries={trendsHome.bullpen_era} seriesLabel="Bullpen ERA · trend"
+        />
         <SR label="K/9 (pen)" away={f1(at?.bullpen_k_per_9)} home={f1(ht?.bullpen_k_per_9)} awayBetter={hi(at?.bullpen_k_per_9, ht?.bullpen_k_per_9)} homeBetter={hi(ht?.bullpen_k_per_9, at?.bullpen_k_per_9)} />
         <SR label="HR/9 (pen)" note="lower = better" away={f1(at?.bullpen_hr_per_9)} home={f1(ht?.bullpen_hr_per_9)} awayBetter={lo(at?.bullpen_hr_per_9, ht?.bullpen_hr_per_9)} homeBetter={lo(ht?.bullpen_hr_per_9, at?.bullpen_hr_per_9)} />
         <DrillSection title="Fatigue" />
@@ -308,12 +518,17 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
     <div>
       <DrillSection title="Recent form" />
       <SR label="R/game (L30)" away={f1(at?.runs_per_game_l30)} home={f1(ht?.runs_per_game_l30)} awayBetter={hi(at?.runs_per_game_l30, ht?.runs_per_game_l30)} homeBetter={hi(ht?.runs_per_game_l30, at?.runs_per_game_l30)} />
-      <SR label="OPS (L30)" away={f2(at?.ops_l30)} home={f2(ht?.ops_l30)} awayBetter={hi(at?.ops_l30, ht?.ops_l30)} homeBetter={hi(ht?.ops_l30, at?.ops_l30)} />
+      <SR
+        label="OPS (L30)"
+        away={f2(at?.ops_l30)} home={f2(ht?.ops_l30)}
+        awayBetter={hi(at?.ops_l30, ht?.ops_l30)} homeBetter={hi(ht?.ops_l30, at?.ops_l30)}
+        awaySeries={trendsAway.ops_l30} homeSeries={trendsHome.ops_l30} seriesLabel="OPS · rolling L30"
+      />
       <SR label="ISO (power)" note=".150 = avg" away={at?.iso != null ? f2(at.iso) : '–'} home={ht?.iso != null ? f2(ht.iso) : '–'} awayBetter={hi(at?.iso, ht?.iso)} homeBetter={hi(ht?.iso, at?.iso)} />
       <SR label="K%" note="lower = better contact" away={pct(at?.k_pct)} home={pct(ht?.k_pct)} awayBetter={lo(at?.k_pct, ht?.k_pct)} homeBetter={lo(ht?.k_pct, at?.k_pct)} />
       <SR label="BB%" note="8.5% = avg" away={pct(at?.bb_pct)} home={pct(ht?.bb_pct)} awayBetter={hi(at?.bb_pct, ht?.bb_pct)} homeBetter={hi(ht?.bb_pct, at?.bb_pct)} />
       <DrillSection title="Contact quality" />
-      <SR label="xwOBA" note=".315 = avg (luck-adjusted)" away={at?.xwoba != null ? f2(at.xwoba) : '–'} home={ht?.xwoba != null ? f2(ht.xwoba) : '–'} awayBetter={hi(at?.xwoba, ht?.xwoba)} homeBetter={hi(ht?.xwoba, at?.xwoba)} />
+      <SR label="xwOBA" tip="Expected weighted on-base average — strips out defense/luck, based on exit velocity and launch angle." note=".315 = avg (luck-adjusted)" away={at?.xwoba_l30 != null ? f2(at.xwoba_l30) : '–'} home={ht?.xwoba_l30 != null ? f2(ht.xwoba_l30) : '–'} awayBetter={hi(at?.xwoba_l30, ht?.xwoba_l30)} homeBetter={hi(ht?.xwoba_l30, at?.xwoba_l30)} />
       <SR label="Hard hit%" note="EV≥95mph; 36% = avg" away={pct(at?.hard_hit_pct)} home={pct(ht?.hard_hit_pct)} awayBetter={hi(at?.hard_hit_pct, ht?.hard_hit_pct)} homeBetter={hi(ht?.hard_hit_pct, at?.hard_hit_pct)} />
       <SR label="Chase rate" note="lower = more patient" away={pct(at?.chase_rate)} home={pct(ht?.chase_rate)} awayBetter={lo(at?.chase_rate, ht?.chase_rate)} homeBetter={lo(ht?.chase_rate, at?.chase_rate)} />
       <SR label="SB%" away={pct(at?.stolen_base_pct)} home={pct(ht?.stolen_base_pct)} awayBetter={hi(at?.stolen_base_pct, ht?.stolen_base_pct)} homeBetter={hi(ht?.stolen_base_pct, at?.stolen_base_pct)} />
@@ -322,9 +537,25 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
 
   if (factorKey === 'defense') return (
     <div>
-      <DrillSection title="Outs above average" />
-      <SR label="OAA (total)" note="0 = avg; + = elite" away={sign(at?.oaa)} home={sign(ht?.oaa)} awayBetter={hi(at?.oaa, ht?.oaa)} homeBetter={hi(ht?.oaa, at?.oaa)} />
+      <DrillSection title="Fielding quality" />
+      <SR label="Fielding %" note=".984 = avg" away={at?.fielding_pct != null ? Number(at.fielding_pct).toFixed(3) : '–'} home={ht?.fielding_pct != null ? Number(ht.fielding_pct).toFixed(3) : '–'} awayBetter={hi(at?.fielding_pct, ht?.fielding_pct)} homeBetter={hi(ht?.fielding_pct, at?.fielding_pct)} />
+      <SR label="Defensive efficiency" tip="Share of balls in play converted to outs — the whole staff's team defense, not just OAA." note="balls in play converted to outs" away={at?.defensive_efficiency != null ? Number(at.defensive_efficiency).toFixed(3) : '–'} home={ht?.defensive_efficiency != null ? Number(ht.defensive_efficiency).toFixed(3) : '–'} awayBetter={hi(at?.defensive_efficiency, ht?.defensive_efficiency)} homeBetter={hi(ht?.defensive_efficiency, at?.defensive_efficiency)} />
       <SR label="Errors/game (L30)" note="lower = cleaner" away={f2(at?.errors_per_game_l30)} home={f2(ht?.errors_per_game_l30)} awayBetter={lo(at?.errors_per_game_l30, ht?.errors_per_game_l30)} homeBetter={lo(ht?.errors_per_game_l30, at?.errors_per_game_l30)} />
+      <SR label="Catcher framing" note="runs above avg; higher = better" away={sign(at?.catcher_framing_runs)} home={sign(ht?.catcher_framing_runs)} awayBetter={hi(at?.catcher_framing_runs, ht?.catcher_framing_runs)} homeBetter={hi(ht?.catcher_framing_runs, at?.catcher_framing_runs)} />
+      <DrillSection title="Outs above average" />
+      <SR
+        label="OAA (total)" note="0 = avg; + = elite"
+        away={sign(at?.oaa)} home={sign(ht?.oaa)}
+        awayBetter={hi(at?.oaa, ht?.oaa)} homeBetter={hi(ht?.oaa, at?.oaa)}
+        awaySeries={trendsAway.oaa} homeSeries={trendsHome.oaa} seriesLabel="OAA · season cumulative"
+      />
+      <SR label="Infield OAA" away={sign(at?.infield_oaa)} home={sign(ht?.infield_oaa)} awayBetter={hi(at?.infield_oaa, ht?.infield_oaa)} homeBetter={hi(ht?.infield_oaa, at?.infield_oaa)} />
+      <SR label="Outfield OAA" away={sign(at?.outfield_oaa)} home={sign(ht?.outfield_oaa)} awayBetter={hi(at?.outfield_oaa, ht?.outfield_oaa)} homeBetter={hi(ht?.outfield_oaa, at?.outfield_oaa)} />
+      <DrillSection title="Batted-ball synergy (V6)" />
+      <SR label="GB% (batting team)" note="collision with opposing pitcher's GB%" away={at?.gb_percent_batting != null ? pct(at.gb_percent_batting) : '–'} home={ht?.gb_percent_batting != null ? pct(ht.gb_percent_batting) : '–'} />
+      <SR label="OAA — RF" note="targeted by LHB pull tendency" away={at?.oaa_rf != null ? sign(at.oaa_rf) : '–'} home={ht?.oaa_rf != null ? sign(ht.oaa_rf) : '–'} awayBetter={hi(at?.oaa_rf, ht?.oaa_rf)} homeBetter={hi(ht?.oaa_rf, at?.oaa_rf)} />
+      <SR label="OAA — LF" note="targeted by RHB pull tendency" away={at?.oaa_lf != null ? sign(at.oaa_lf) : '–'} home={ht?.oaa_lf != null ? sign(ht.oaa_lf) : '–'} awayBetter={hi(at?.oaa_lf, ht?.oaa_lf)} homeBetter={hi(ht?.oaa_lf, at?.oaa_lf)} />
+      <SR label="Pull% (LHB / RHB)" note="lineup handedness pull tendency" away={ap6 ? `${ap6?.pull_pct_lhb ?? '–'} / ${ap6?.pull_pct_rhb ?? '–'}` : '–'} home={hp6 ? `${hp6?.pull_pct_lhb ?? '–'} / ${hp6?.pull_pct_rhb ?? '–'}` : '–'} />
     </div>
   )
 
@@ -340,7 +571,6 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
         <DrillSection title="Platoon splits" />
         <SR label="vs LHB avg" note="pitcher vs lefties" away={f2(ap?.vs_lhb_baa)} home={f2(hp?.vs_lhb_baa)} awayBetter={lo(ap?.vs_lhb_baa, hp?.vs_lhb_baa)} homeBetter={lo(hp?.vs_lhb_baa, ap?.vs_lhb_baa)} />
         <SR label="vs RHB avg" note="pitcher vs righties" away={f2(ap?.vs_rhb_baa)} home={f2(hp?.vs_rhb_baa)} awayBetter={lo(ap?.vs_rhb_baa, hp?.vs_rhb_baa)} homeBetter={lo(hp?.vs_rhb_baa, ap?.vs_rhb_baa)} />
-        <SR label="GB%" note="groundball rate" away={ap?.gb_rate != null ? `${Number(ap.gb_rate).toFixed(1)}%` : '–'} home={hp?.gb_rate != null ? `${Number(hp.gb_rate).toFixed(1)}%` : '–'} />
         {(aBest || hBest) && (
           <>
             <DrillSection title="Best pitch tonight (whiff%)" />
@@ -435,10 +665,13 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
 }
 
 // ─── RadarChart ───────────────────────────────────────────────────────────────
+// V2: now sized for a full-width standalone section rather than squeezed
+// into the hero row — dimensions bumped from 160 to 220, everything else
+// (math, legend) unchanged.
 
-function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor }: {
+function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor, size = 220 }: {
   components: EdgeComponents; homeAbbr: string; awayAbbr: string
-  awayColor: string; homeColor: string
+  awayColor: string; homeColor: string; size?: number
 }) {
   const VB = 200; const CX = VB / 2; const CY = VB / 2
   const RADIUS = 60; const LABEL_R = RADIUS + 18
@@ -455,7 +688,7 @@ function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor }: {
   }
 
   return (
-    <svg width="160" height="160" viewBox={`0 0 ${VB} ${VB}`}
+    <svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}
       role="img" aria-label={`Radar comparing ${awayAbbr} and ${homeAbbr}`}
       style={{ display: 'block', flexShrink: 0 }}>
       {[0.25, 0.5, 0.75, 1].map((p, ri) => (
@@ -470,15 +703,121 @@ function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor }: {
         const [x, y] = spokePoint(i, LABEL_R)
         return <text key={key} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" fontSize="9" fontFamily="var(--font-mono)" fill="#888780">{RADAR_LABELS[key]}</text>
       })}
-      {/* Legend */}
-      <line x1="12" y1="180" x2="28" y2="180" stroke={awayColor} strokeWidth="2.5" strokeLinecap="round"/>
-      <text x="32" y="180" dominantBaseline="middle" fontSize="8" fontFamily="var(--font-mono)" fill={awayColor}>{awayAbbr}</text>
-      <line x1="12" y1="192" x2="28" y2="192" stroke={homeColor} strokeWidth="2.5" strokeLinecap="round"/>
-      <text x="32" y="192" dominantBaseline="middle" fontSize="8" fontFamily="var(--font-mono)" fill={homeColor}>{homeAbbr}</text>
     </svg>
   )
 }
 
+// ─── EdgeTrendChart ─────────────────────────────────────────────────────────
+
+function EdgeTrendChart({ points, color }: { points: TrendPoint[]; color: string }) {
+  if (!points || points.length < 2) return null
+  const W = 640, H = 70, PAD = 6
+  const values = points.map(p => p.edge_score)
+  const min = Math.min(...values, -10), max = Math.max(...values, 10)
+  const range = max - min || 1
+  const xStep = (W - PAD * 2) / (points.length - 1)
+  const yFor = (v: number) => H - PAD - ((v - min) / range) * (H - PAD * 2)
+  const zeroY = yFor(0)
+  const coords = points.map((p, i) => [PAD + i * xStep, yFor(p.edge_score)] as [number, number])
+  const path = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      <line x1={0} y1={zeroY} x2={W} y2={zeroY} stroke={MIST} strokeWidth={1} strokeDasharray="3,4" />
+      <path d={path} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      {coords.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i === coords.length - 1 ? 3.5 : 2.2}
+          fill={color} stroke={i === coords.length - 1 ? '#fff' : 'none'} strokeWidth={i === coords.length - 1 ? 1 : 0} />
+      ))}
+    </svg>
+  )
+}
+
+// ─── FormStrip ────────────────────────────────────────────────────────────────
+
+function FormStrip({ abbr, color, results, record }: {
+  abbr: string; color: string; results: FormResult[]; record: string
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color, width: 30 }}>{abbr}</span>
+      <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' as const }}>
+        {results.map((r, i) => (
+          <span key={i} style={{
+            width: 18, height: 18, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 8, fontWeight: 700,
+            background: r === 'W' ? `${color}22` : MIST,
+            color: r === 'W' ? color : 'var(--text-muted)',
+            border: `1px solid ${r === 'W' ? `${color}55` : 'var(--border)'}`,
+          }}>{r}</span>
+        ))}
+      </div>
+      <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', width: 36, textAlign: 'right' }}>{record}</span>
+    </div>
+  )
+}
+
+// ─── ProbablePitcherRow ──────────────────────────────────────────────────────
+
+function ProbablePitcherRow({ pitcher, abbr, color, align, playerPageHref }: {
+  pitcher: any; abbr: string; color: string; align: 'left' | 'right'
+  playerPageHref: (id: number) => string
+}) {
+  if (!pitcher?.player_id) return null
+  const flexDir = align === 'right' ? 'row-reverse' : 'row'
+  return (
+    <a href={playerPageHref(pitcher.player_id)} className="edge-headshot-link" style={{
+      display: 'flex', flexDirection: flexDir as any, alignItems: 'center', gap: 8,
+      textDecoration: 'none', flex: 1, minWidth: 0, position: 'relative',
+    }}>
+      <img
+        className="edge-headshot-img"
+        src={playerHeadshotUrl(pitcher.player_id)}
+        alt={pitcher.player_name ?? 'Pitcher'}
+        style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: MIST, border: '1px solid var(--border)', flexShrink: 0 }}
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: align === 'right' ? 'flex-end' : 'flex-start', minWidth: 0 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{pitcher.player_name ?? '—'}</span>
+        <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color, fontWeight: 700, letterSpacing: '.03em' }}>{abbr}{pitcher.era != null ? ` · ${f2(pitcher.era)} ERA` : ''}</span>
+      </div>
+      <span className="edge-view-tag" style={{
+        position: 'absolute', bottom: -13, [align === 'right' ? 'right' : 'left']: 0,
+        fontSize: 8, letterSpacing: '.05em', color: '#FF5722', fontWeight: 700, whiteSpace: 'nowrap' as const,
+      }}>
+        VIEW PROFILE →
+      </span>
+    </a>
+  )
+}
+function FactorLabelTip({ label, description }: { label: string; description: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+      onClick={(e) => e.stopPropagation()}
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'help', minWidth: 0 }}
+    >
+      <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+        borderBottom: '1px dotted var(--text-muted)',
+      }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>ⓘ</span>
+      {show && (
+     <span style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          width: 220, background: '#1A1A1A', color: '#FAF8F3', fontSize: 10.5, lineHeight: 1.55,
+          padding: '9px 11px', borderRadius: 6, zIndex: 50, pointerEvents: 'none' as const,
+          boxShadow: '0 8px 20px -6px rgba(0,0,0,0.35)',
+        }}>
+          {description}
+        </span>
+      )}
+    </span>
+  )
+}
 // ─── FactorBar ────────────────────────────────────────────────────────────────
 
 function FactorBar({ factorKey, score, homeAbbr, awayAbbr, isPro, raw, awayColor, homeColor }: {
@@ -486,7 +825,11 @@ function FactorBar({ factorKey, score, homeAbbr, awayAbbr, isPro, raw, awayColor
   homeAbbr: string; awayAbbr: string; isPro: boolean; raw: any
   awayColor: string; homeColor: string
 }) {
-  const [expanded, setExpanded] = useState(false)
+  // `pinned` = click-to-toggle (works on touch, sticks until tapped again).
+  // `hovering` = desktop mouseenter/mouseleave, purely additive — never
+  // fires on touch devices, so mobile behaviour is unchanged.
+const [pinned, setPinned] = useState(false)
+  const expanded = pinned
   const meta     = FACTOR_META[factorKey]
   const homePct  = toPct(score, true)
   const awayPct  = toPct(score, false)
@@ -496,18 +839,11 @@ function FactorBar({ factorKey, score, homeAbbr, awayAbbr, isPro, raw, awayColor
   const homePos  = clamp(homePct)
   const awayPos  = clamp(awayPct)
 
-  // Darken a hex colour slightly for the dot border
-  const darken = (hex: string) => hex  // keep simple — border uses same color at lower opacity
-
   return (
-    <div style={{ borderBottom: '0.5px solid var(--border)' }}>
-      <div onClick={() => setExpanded(!expanded)} style={{
-        display: 'grid', gridTemplateColumns: '1fr 130px 68px 18px',
-        alignItems: 'center', gap: 8,
-        padding: '11px 0', cursor: 'pointer', userSelect: 'none' as const,
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-          {meta.label}
+ <div style={{ borderBottom: '0.5px solid var(--border)' }}>
+      <div onClick={() => setPinned(!pinned)} className="edge-factor-row" style={{ padding: '11px 0', cursor: 'pointer', userSelect: 'none' as const }}>
+    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <FactorLabelTip label={meta.label} description={meta.description} />
         </div>
 
         {/* Dual track — away on top, home below */}
@@ -557,7 +893,7 @@ function FactorBar({ factorKey, score, homeAbbr, awayAbbr, isPro, raw, awayColor
         </div>
       </div>
 
-      {/* Expanded drill-down */}
+      {/* Expanded drill-down — opens on hover (desktop) or click-pin (any device) */}
       {expanded && (
         <div style={{ background: SAND, margin: '0 -16px', padding: '10px 16px 12px', borderTop: '0.5px solid var(--border)' }}>
           {isPro ? (
@@ -658,7 +994,6 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
   const homeAbbr    = props.home_team_abbr ?? props.home_team.slice(0, 3).toUpperCase()
   const awayAbbr    = props.away_team_abbr ?? props.away_team.slice(0, 3).toUpperCase()
 
-  // Team colours — use team primaries, fall back to brand defaults
   const awayCOLOR   = props.away_primary_color ?? '#b9d01f'
   const homeCOLOR   = props.home_primary_color ?? '#d212c2'
 
@@ -670,70 +1005,132 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
   const winnerColor = props.predicted_winner === 'home' ? homeCOLOR : awayCOLOR
   const raw         = props.components_raw
 
+  // Player route is unambiguous — /mlb/players/[id] (plural). Team route
+  // needs a slug, not the numeric ID, so we resolve it from the explicit
+  // *_team_slug prop first and only fall back to a best-effort guess.
+  const awaySlug   = props.away_team_slug ?? fallbackTeamSlug(props.away_team)
+  const homeSlug   = props.home_team_slug ?? fallbackTeamSlug(props.home_team)
+  const teamHref   = props.team_page_href   ?? ((_id: number, slug?: string | null) => `/mlb/teams/${slug ?? ''}`)
+  const playerHref = props.player_page_href ?? ((id: number) => `/mlb/players/${id}`)
+
   return (
     <div style={{ borderRadius: 16, overflow: 'hidden', border: '0.5px solid var(--border)', background: 'var(--surface-2)' }}>
+      <style>{RESPONSIVE_CSS}</style>
 
       {/* Hero */}
       <div style={{ background: SAND, padding: '16px 16px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-.3px' }}>
-            <span style={{ color: props.predicted_winner === 'away' ? awayCOLOR : 'var(--text-primary)' }}>{awayAbbr}</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 14, margin: '0 6px' }}>at</span>
-            <span style={{ color: props.predicted_winner === 'home' ? homeCOLOR : 'var(--text-primary)' }}>{homeAbbr}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {props.away_team_id != null && (
+              <a href={teamHref(props.away_team_id, awaySlug)} className="edge-logo-link" style={{ display: 'block', flexShrink: 0 }} title={`Open ${props.away_team}`}>
+                <img className="edge-logo-img" src={teamLogoUrl(props.away_team_id)} alt={props.away_team} style={{ width: 22, height: 22, display: 'block' }} />
+              </a>
+            )}
+            <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-.3px', whiteSpace: 'nowrap' as const }}>
+              <span style={{ color: props.predicted_winner === 'away' ? awayCOLOR : 'var(--text-primary)' }}>{awayAbbr}</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 14, margin: '0 6px' }}>at</span>
+              <span style={{ color: props.predicted_winner === 'home' ? homeCOLOR : 'var(--text-primary)' }}>{homeAbbr}</span>
+            </div>
+            {props.home_team_id != null && (
+              <a href={teamHref(props.home_team_id, homeSlug)} className="edge-logo-link" style={{ display: 'block', flexShrink: 0 }} title={`Open ${props.home_team}`}>
+                <img className="edge-logo-img" src={teamLogoUrl(props.home_team_id)} alt={props.home_team} style={{ width: 22, height: 22, display: 'block' }} />
+              </a>
+            )}
           </div>
-          <span style={{ fontSize: 10, fontWeight: 500, padding: '4px 10px', borderRadius: 20, background: tierBg(props.confidence_tier), color: tierColor(props.confidence_tier) }}>
+          <span style={{ fontSize: 10, fontWeight: 500, padding: '4px 10px', borderRadius: 20, background: tierBg(props.confidence_tier), color: tierColor(props.confidence_tier), flexShrink: 0 }}>
             {tierLabel(props.confidence_tier)}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <RadarChart components={props.components} homeAbbr={homeAbbr} awayAbbr={awayAbbr} awayColor={awayCOLOR} homeColor={homeCOLOR} />
-          <div style={{ flex: 1 }}>
-            <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Data factors lean</div>
-              <div style={{ fontSize: 24, fontWeight: 500, color: winnerColor }}>
-                {winnerLeans}
-                <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/8</span>
-                <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>{winner}</span>
-              </div>
-            </div>
-            {/* Slider */}
-            <div style={{ position: 'relative', height: 6, background: MIST, borderRadius: 3 }}>
-              <div style={{
-                position: 'absolute', top: 0, bottom: 0, borderRadius: 3,
-                background: winnerColor,
-                ...(props.predicted_winner === 'home'
-                  ? { left: '50%', right: `${100 - sliderPct}%` }
-                  : { left: `${sliderPct}%`, right: '50%' })
-              }} />
-              <div style={{ position: 'absolute', top: '50%', left: `${sliderPct}%`, transform: 'translate(-50%,-50%)', width: 14, height: 14, borderRadius: '50%', background: '#FDE047', border: '2px solid rgba(0,0,0,.15)', boxShadow: `0 0 0 3px ${winnerColor}44` }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
-              <span style={{ color: awayCOLOR, fontWeight: 600 }}>{awayAbbr}</span>
-              <span>Neutral</span>
-              <span style={{ color: homeCOLOR, fontWeight: 600 }}>{homeAbbr}</span>
-            </div>
+        <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 12px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Data factors lean</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: winnerColor }}>
+            {winnerLeans}
+            <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/8</span>
+            <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>{winner}</span>
+          </div>
+        </div>
+        {/* Slider */}
+        <div style={{ position: 'relative', height: 6, background: MIST, borderRadius: 3 }}>
+          <div style={{
+            position: 'absolute', top: 0, bottom: 0, borderRadius: 3,
+            background: winnerColor,
+            ...(props.predicted_winner === 'home'
+              ? { left: '50%', right: `${100 - sliderPct}%` }
+              : { left: `${sliderPct}%`, right: '50%' })
+          }} />
+          <div style={{ position: 'absolute', top: '50%', left: `${sliderPct}%`, transform: 'translate(-50%,-50%)', width: 14, height: 14, borderRadius: '50%', background: '#FDE047', border: '2px solid rgba(0,0,0,.15)', boxShadow: `0 0 0 3px ${winnerColor}44` }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-muted)', marginTop: 5, fontFamily: 'var(--font-mono)' }}>
+          <span style={{ color: awayCOLOR, fontWeight: 600 }}>{awayAbbr}</span>
+          <span>Neutral</span>
+          <span style={{ color: homeCOLOR, fontWeight: 600 }}>{homeAbbr}</span>
+        </div>
+      </div>
+
+      {/* Eight Factors · Shape — full-width standalone section */}
+      <div style={{ padding: '16px 16px 14px', borderBottom: '0.5px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888' }}>Eight Factors</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Shape</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+          <RadarChart components={props.components} homeAbbr={homeAbbr} awayAbbr={awayAbbr} awayColor={awayCOLOR} homeColor={homeCOLOR} size={220} />
+          <div style={{ display: 'flex', gap: 18, marginTop: 10 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'var(--font-mono)', color: awayCOLOR, fontWeight: 700 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: awayCOLOR, display: 'inline-block' }} />{props.away_team}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'var(--font-mono)', color: homeCOLOR, fontWeight: 700 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: homeCOLOR, display: 'inline-block' }} />{props.home_team}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Section headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)' }}>
-        <div style={{ padding: '9px 16px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888', borderRight: '0.5px solid var(--border)', borderBottom: '2px solid #E0D8CE' }}>
+      {/* Probable pitchers — no-ops if absent */}
+      {(raw?.away_pitcher?.player_id || raw?.home_pitcher?.player_id) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '0.5px solid var(--border)' }}>
+          <ProbablePitcherRow pitcher={raw?.away_pitcher} abbr={awayAbbr} color={awayCOLOR} align="left" playerPageHref={playerHref} />
+          <span style={{ color: 'var(--text-muted)', fontSize: 10, flexShrink: 0 }}>vs</span>
+          <ProbablePitcherRow pitcher={raw?.home_pitcher} abbr={homeAbbr} color={homeCOLOR} align="right" playerPageHref={playerHref} />
+        </div>
+      )}
+
+      {/* Edge Trend — no-ops without props.trend */}
+      {props.trend && props.trend.length >= 2 && (
+        <div style={{ padding: '12px 16px 4px', borderBottom: '0.5px solid var(--border)' }}>
+          <div style={{ fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: '.07em', color: 'var(--text-muted)', marginBottom: 6 }}>
+            Edge trend · last {props.trend.length} games
+          </div>
+          <EdgeTrendChart points={props.trend} color={winnerColor} />
+        </div>
+      )}
+
+      {/* Last 10 Form — no-ops without props.form */}
+      {props.form && (
+        <div style={{ padding: '2px 16px', borderBottom: '0.5px solid var(--border)' }}>
+          <FormStrip abbr={awayAbbr} color={awayCOLOR} results={props.form.away.results} record={props.form.away.record} />
+          <FormStrip abbr={homeAbbr} color={homeCOLOR} results={props.form.home.results} record={props.form.home.record} />
+        </div>
+      )}
+
+      {/* Section headers — responsive via .edge-head-grid */}
+      <div className="edge-head-grid" style={{ background: 'var(--surface-2)', borderBottom: '0.5px solid var(--border)' }}>
+        <div className="edge-head-left" style={{ padding: '9px 16px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888' }}>
           Factors
         </div>
-        <div style={{ padding: '9px 14px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888', borderBottom: '2px solid transparent' }}>
+        <div className="edge-head-right" style={{ padding: '9px 14px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888' }}>
           The edge
         </div>
       </div>
 
-      {/* Main body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px' }}>
+      {/* Main body — responsive via .edge-body-grid */}
+      <div className="edge-body-grid">
 
         {/* Left — factors */}
-        <div style={{ padding: '0 16px', borderRight: '0.5px solid var(--border)' }}>
+        <div className="edge-factors-col" style={{ padding: '0 16px', minWidth: 0 }}>
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 68px 18px', gap: 8, padding: '7px 0 6px', borderBottom: '0.5px solid var(--border)', alignItems: 'center' }}>
+          <div className="edge-factor-header-row" style={{ padding: '7px 0 6px', borderBottom: '0.5px solid var(--border)' }}>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Factor</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -787,7 +1184,7 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '8px 16px', borderTop: '0.5px solid var(--border)', background: SAND, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '8px 16px', borderTop: '0.5px solid var(--border)', background: SAND, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 4 }}>
         <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>⊕ The Edge · Information only · Not betting advice</span>
         <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Percentile ranks vs MLB this season</span>
       </div>

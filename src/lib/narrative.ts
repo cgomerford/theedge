@@ -357,7 +357,7 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
     const strand = p.strand_rate ?? null
     const chase  = p.chase_rate  ?? null
     const swstr  = p.swstr_pct   ?? null
-    const gbRate = p.gb_rate ?? p.gb_percent ?? null
+   const gbRate = p.gb_percent ?? p.gb_rate ?? null
     const hardHit = p.hard_hit_pct ?? null
     const tto1   = p.tto1_xwoba ?? null
     const tto2   = p.tto2_xwoba ?? null
@@ -424,17 +424,24 @@ function buildUserPrompt(inputs: NarrativeInputs): string {
   }
  
   // ── Bullpen ──────────────────────────────────────────────────────────────
-  function bullpenLine(t: any, teamName: string): string {
-    if (!t) return ''
-    const ip = t.bullpen_innings_yesterday ?? 0
-    const taxedNote = ip >= 3
-      ? ` ⚠ TAXED — threw ${ip} innings yesterday, key arms may be unavailable`
-      : ip >= 1.5 ? ` (used yesterday — ${ip} IP)` : ' (fresh)'
-    const k9 = t.bullpen_k_per_9 ?? null
-    const k9Note = k9 != null ? ` | K/9: ${k9.toFixed(1)}` : ''
-    return `- ${teamName}: ERA ${t.bullpen_era?.toFixed(2) ?? 'N/A'}${k9Note}${taxedNote}`
-  }
- 
+ // ── Format innings as baseball notation (X.1 = X⅓, X.2 = X⅔ — NOT decimal tenths) ──
+function formatIP(ip: number): string {
+  const whole = Math.floor(ip)
+  const outs = Math.round((ip - whole) * 3)
+  return outs === 3 ? `${whole + 1}.0` : `${whole}.${outs}`
+}
+
+// ── Bullpen ──────────────────────────────────────────────────────────────
+function bullpenLine(t: any, teamName: string): string {
+  if (!t) return ''
+  const ip = t.bullpen_innings_yesterday ?? 0
+  const taxedNote = ip >= 3
+    ? ` ⚠ TAXED — threw ${formatIP(ip)} innings yesterday, key arms may be unavailable`
+    : ip >= 1.5 ? ` (used yesterday — ${formatIP(ip)} IP)` : ' (fresh)'
+  const k9 = t.bullpen_k_per_9 ?? null
+  const k9Note = k9 != null ? ` | K/9: ${k9.toFixed(1)}` : ''
+  return `- ${teamName}: ERA ${t.bullpen_era?.toFixed(2) ?? 'N/A'}${k9Note}${taxedNote}`
+}
   // ── Offence ──────────────────────────────────────────────────────────────
   function offenseLine(t: any, teamName: string): string {
     if (!t) return ''

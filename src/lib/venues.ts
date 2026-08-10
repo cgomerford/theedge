@@ -126,3 +126,25 @@ export function describeWindImpact(
   }
   return `Crosswind across the diamond`
 }
+
+// Same geometry as describeWindImpact() above, but returns the
+// categorical value computeWeatherEdge (src/lib/edge.ts) actually
+// scores against, instead of a display string.
+export function classifyWindDirection(
+  venueName: string,
+  windFromDirection: number,
+  windMph: number
+): 'out' | 'in' | 'cross' | 'variable' {
+  if (windMph < 5) return 'variable'  // negligible — same threshold as describeWindImpact
+
+  const cfBearing = STADIUM_ORIENTATION[venueName]
+  if (cfBearing === undefined) return 'variable'  // indoor park, or venue not mapped
+
+  const windToDir = (windFromDirection + 180) % 360
+  let diff = Math.abs(windToDir - cfBearing)
+  if (diff > 180) diff = 360 - diff
+
+  if (diff <= 60) return 'out'
+  if (diff >= 120) return 'in'
+  return 'cross'
+}

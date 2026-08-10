@@ -49,15 +49,23 @@ function parseInningsPitched(raw: string | number | undefined): number {
   return w + f
 }
 
+// src/lib/stats-gamelog.ts — only the changed lines
+
 export async function getBatterGameLog(playerId: number, season: number): Promise<BatterGame[]> {
   const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${season}`
   const json = await safeFetchJson<any>(url)
   const splits = json?.stats?.[0]?.splits ?? []
+  // CORRECTED 2026-08: MLB's gameLog endpoint returns splits OLDEST-FIRST
+  // already (verified via direct curl against statsapi.mlb.com — see chat).
+  // The previous .reverse() here was flipping correctly-ordered data into
+  // reverse-chronological order, which silently fed WindowCompareTab's
+  // "last N games" slice the EARLIEST N games instead, and made Season
+  // Progression's cumulative chart plot backwards. No reversal needed.
   return splits.map((s: any): BatterGame => ({
-  date: s.date,
-  opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
-  isHome: !!s.isHome,
-  ab: s.stat?.atBats ?? 0,
+    date: s.date,
+    opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
+    isHome: !!s.isHome,
+    ab: s.stat?.atBats ?? 0,
     h: s.stat?.hits ?? 0,
     doubles: s.stat?.doubles ?? 0,
     triples: s.stat?.triples ?? 0,
@@ -69,13 +77,14 @@ export async function getBatterGameLog(playerId: number, season: number): Promis
     hbp: s.stat?.hitByPitch ?? 0,
     sf: s.stat?.sacFlies ?? 0,
     pa: s.stat?.plateAppearances ?? 0,
-  })).reverse() // gameLog comes newest-first from MLB; reverse so index 0 = earliest
+  }))
 }
 
 export async function getPitcherGameLog(playerId: number, season: number): Promise<PitcherGame[]> {
   const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=pitching&season=${season}`
   const json = await safeFetchJson<any>(url)
   const splits = json?.stats?.[0]?.splits ?? []
+  // Same correction as getBatterGameLog above — no .reverse() needed.
   return splits.map((s: any): PitcherGame => ({
     date: s.date,
     opponent: s.opponent?.abbreviation ?? s.opponent?.name ?? '—',
@@ -86,7 +95,7 @@ export async function getPitcherGameLog(playerId: number, season: number): Promi
     bb: s.stat?.baseOnBalls ?? 0,
     so: s.stat?.strikeOuts ?? 0,
     hr: s.stat?.homeRuns ?? 0,
-  })).reverse()
+  }))
 }
 
 export type BattingAgg = {

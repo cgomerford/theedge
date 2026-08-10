@@ -1,141 +1,41 @@
-import type { RecentRead } from '@/lib/track-record'
+// ─── Per-game snip — one Edge-model card for a specific game ────────────────
+// buildSnips() above operates once-daily across the whole slate (picks a
+// single "top" read). This is the missing per-game version — same public-
+// safe rules (no raw Edge Score, "N of 8 factors" framing only, link
+// omitted from the body per the eotd footnote's reach rationale), hard-
+// capped at SNIP_CHAR_TARGET so it's always safe to paste as-is.
+
 import { shareDisplayName } from '@/lib/teams'
+import type { TodaysRead, Snip } from '@/lib/admin-dashboard'
+const SNIP_CHAR_TARGET = 400
 
-const SITE_URL = 'https://edgereportdaily.com'
+export function buildGameSnip(read: TodaysRead): Snip {
+  const hashtag = '#' + shareDisplayName(read.lean_team).replace(/\s+/g, '')
 
-function teamSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
+  const header     = `\u2295 THE EDGE`
+  const factorLine = `${read.factor_count} of 8 factors lean ${read.lean_team} tonight vs ${read.other_team}.`
+  const closer     = `Not a tip \u2014 just where the data points.`
+  const tags       = `#MLB ${hashtag}`
 
-function shortName(name: string): string {
-  return shareDisplayName(name)
-}
+  // Everything except the narrative line is fixed-length — truncate only
+  // the story_lead/summary text to hit the character target, never the
+  // factor line, closer, or hashtags.
+  const fixedLen = [header, '', factorLine, '', '', '', closer, '', tags].join('\n').length
 
-function teamHashtag(name: string): string {
-  return '#' + shortName(name)
-}
+  const narrativeSource =
+    read.story_lead?.trim() || read.summary?.trim() || `The biggest tilt is ${read.dominant_factor}.`
+  const budget = Math.max(20, SNIP_CHAR_TARGET - fixedLen)
+  const narrative = narrativeSource.length > budget
+    ? narrativeSource.slice(0, budget - 1).replace(/\s+\S*$/, '') + '\u2026'
+    : narrativeSource
 
-function gameSlug(p: RecentRead): string {
-  return `${teamSlug(p.away_team)}-vs-${teamSlug(p.home_team)}-${p.game_date}`
-}
+  const body = [header, '', factorLine, '', narrative, '', closer, '', tags].join('\n')
 
-function gameUrl(p: RecentRead): string {
-  return `${SITE_URL}/mlb/${gameSlug(p)}`
-}
-
-function scoreText(p: RecentRead): string | null {
-  if (p.home_score === null || p.away_score === null) return null
-  const homeShort = shortName(p.home_team)
-  const awayShort = shortName(p.away_team)
-  if (p.home_score > p.away_score) {
-    return `${homeShort} ${p.home_score}, ${awayShort} ${p.away_score}`
+  return {
+    id: `game-${read.game_pk}`,
+    title: `\u2295 Edge \u2014 ${read.matchup}`,
+    why: `${body.length} chars \u00b7 link in first reply`,
+    body,
+    footnote: 'No score, no link in the post. Drop edgereportdaily.com in your FIRST REPLY \u2014 in-post links cut reach 50\u201390%.',
   }
-  return `${awayShort} ${p.away_score}, ${homeShort} ${p.home_score}`
-}
-
-function resultGlyph(matched: boolean | null): string {
-  if (matched === true) return '✓'
-  if (matched === false) return '✗'
-  return ''
-}
-
-function leanLabel(p: RecentRead): string {
-  if (p.factor_lean === 'split') return 'Split'
-  const team = p.factor_lean === 'home' ? p.home_team : p.away_team
-  return shortName(team)
-}
-
-function factorStr(p: RecentRead): string {
-  return `${p.lean_factors}/${p.total_factors} factors`
-}
-
-// ─── Tweet — broadcast, ≤280 chars ───────────────────────────────────────────
-
-export function buildTweetText(p: RecentRead): string {
-  const awayShort = shortName(p.away_team)
-  const homeShort = shortName(p.home_team)
-  const lean = leanLabel(p)
-  const factors = factorStr(p)
-  const score = scoreText(p)
-  const glyph = resultGlyph(p.outcome_matched)
-  const url = gameUrl(p)
-  const hashtag = p.factor_lean !== 'split' ? teamHashtag(p.factor_lean === 'home' ? p.home_team : p.away_team) : '#MLB'
-
-  if (p.outcome_matched === true) {
-    return [
-      `The Edge model called this one ✓`,
-      ``,
-      `${awayShort} @ ${homeShort} · ${factors} leaning ${lean}`,
-      `Result: ${score} ${glyph}`,
-      ``,
-      url,
-      ``,
-      `#MLB ${hashtag}`,
-    ].join('\n')
-  }
-
-  if (p.outcome_matched === false) {
-    return [
-      `The Edge model missed this one.`,
-      ``,
-      `${awayShort} @ ${homeShort} · predicted ${lean} (${factors})`,
-      `Result: ${score} ✗`,
-      ``,
-      `Every call, every result — public:`,
-      url,
-      ``,
-      `#MLB`,
-    ].join('\n')
-  }
-
-  // Ungraded — pre-game
-  return [
-    `Tonight's Edge:`,
-    ``,
-    `${awayShort} @ ${homeShort} · ${factors} leaning ${lean}`,
-    ``,
-    url,
-    ``,
-    `#MLB ${hashtag}`,
-  ].join('\n')
-}
-
-// ─── Reply — longer, contextual ──────────────────────────────────────────────
-
-export function buildReplyText(p: RecentRead): string {
-  const lean = leanLabel(p)
-  const factors = factorStr(p)
-  const score = scoreText(p)
-  const glyph = resultGlyph(p.outcome_matched)
-  const url = gameUrl(p)
-
-  if (p.outcome_matched === true) {
-    return [
-      `The Edge Report predicted this one pre-game.`,
-      ``,
-      `→ Factor lean: ${lean} (${factors})`,
-      `→ Final: ${score} ${glyph}`,
-      ``,
-      `Full pre-game breakdown: ${url}`,
-    ].join('\n')
-  }
-
-  if (p.outcome_matched === false) {
-    return [
-      `Edge Report had this one wrong — own the misses.`,
-      ``,
-      `→ Predicted: ${lean} (${factors})`,
-      `→ Actual: ${score}`,
-      ``,
-      `Every call, every result, public track record: ${url}`,
-    ].join('\n')
-  }
-
-  return [
-    `Tonight's Edge Report analysis:`,
-    ``,
-    `→ Factor lean: ${lean} (${factors})`,
-    ``,
-    `Full breakdown — pitchers, weather, lineup form: ${url}`,
-  ].join('\n')
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const SEASON = 2026
 
@@ -11,6 +12,7 @@ const supa = createClient(
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+export const maxDuration = 300 // this route does per-reliever fetches per team — test actual runtime, adjust per your Vercel plan's ceiling
 
 // ============================================================
 // Convert "5.1" IP string to decimal (5.1 → 5.333)
@@ -31,6 +33,13 @@ function toBaseballIP(decimalIP: number): number {
   const outs = Math.round((decimalIP - full) * 3)
   return parseFloat(`${full}.${outs}`)
 }
+
+// ============================================================
+// Reliever classification — matches scripts/fetch_bullpen_availability.py
+// so "who counts as a reliever" is the same definition everywhere in the app
+// ============================================================
+const RELIEVER_START_RATIO = 0.3
+const MIN_APPEARANCES = 3
 
 // ============================================================
 // VENUE COORDINATES for travel distance calculation
@@ -131,13 +140,15 @@ export async function GET(request: Request) {
 }
 
 // ============================================================
-// MAIN TEAM FETCH — V3: expanded with sub-factors
+// MAIN TEAM FETCH — V5: adds fielding_pct (was fetched but never
+// saved — see Defense audit) and defensive_efficiency (computable
+// from MLB API team pitching totals, doesn't actually need FanGraphs
+// the way the old comment assumed)
 // ============================================================
 async function fetchTeamStats(teamId: number, teamName: string) {
   try {
     const today_str = new Date().toISOString().split('T')[0]
- const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
+    const thirty_days_ago = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString().split('T')[0]
     const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -163,7 +174,6 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       runs_per_game_l30 = gamesPlayed > 0 ? Math.round((runs / gamesPlayed) * 100) / 100 : null
       ops_l30 = stat.ops ? parseFloat(stat.ops) : null
 
-      // V3: New offensive sub-factors
       const atBats = parseInt(stat.atBats ?? '0')
       const plateAppearances = parseInt(stat.plateAppearances ?? '0')
       const strikeOuts = parseInt(stat.strikeOuts ?? '0')
@@ -181,33 +191,24 @@ async function fetchTeamStats(teamId: number, teamName: string) {
         : null
     }
 
-    // ── 2. Season pitching stats (bullpen proxy) ─────────────
-    const pitchingUrl = `${MLB_API}/teams/${teamId}/stats?stats=season&group=pitching&season=${SEASON}`
-    const pitchingRes = await fetch(pitchingUrl)
-    const pitchingData = pitchingRes.ok ? await pitchingRes.json() : null
+    // ── 2. Real bullpen-only quality ──────────────────────────
+    const bullpenQuality = await fetchBullpenQuality(teamId)
 
-    let bullpen_era: number | null = null
-    let bullpen_k_per_9: number | null = null
-    let bullpen_hr_per_9: number | null = null
+    // ── 2b. Team-wide season pitching totals — V5 new, used ONLY
+    // for defensive_efficiency below. Separate from bullpenQuality's
+    // per-reliever roster sweep since DER needs whole-staff totals
+    // (starters included), not reliever-only numbers.
+    const defensiveEfficiency = await fetchDefensiveEfficiency(teamId)
 
-    for (const block of pitchingData?.stats ?? []) {
-      const split = block.splits?.[0]
-      if (!split) continue
-      const stat = split.stat ?? {}
-      bullpen_era = stat.era ? parseFloat(stat.era) : null
-      // These are team-wide pitching stats (includes starters) — imperfect but directionally right
-      bullpen_k_per_9 = stat.strikeoutsPer9Inn ? parseFloat(stat.strikeoutsPer9Inn) : null
-      bullpen_hr_per_9 = stat.homeRunsPer9 ? parseFloat(stat.homeRunsPer9) : null
-    }
-
-    // ── 3. Season fielding stats → OAA, DRS, errors ─────────
+    // ── 3. Fielding stats: errors AND fielding_pct (V5: fielding_pct
+    // was fetched here since V3 but never saved to the return row —
+    // see Defense audit)
     const fieldingUrl = `${MLB_API}/teams/${teamId}/stats?stats=season&group=fielding&season=${SEASON}`
     const fieldingRes = await fetch(fieldingUrl)
     const fieldingData = fieldingRes.ok ? await fieldingRes.json() : null
 
-    let oaa: number | null = null
     let errors_per_game_l30: number | null = null
-
+    let fielding_pct: number | null = null
     for (const block of fieldingData?.stats ?? []) {
       const split = block.splits?.[0]
       if (!split) continue
@@ -215,16 +216,13 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       const gp = parseInt(stat.gamesPlayed ?? '0')
       const errors = parseInt(stat.errors ?? '0')
       errors_per_game_l30 = gp > 0 ? Math.round((errors / gp) * 100) / 100 : null
-      // MLB API doesn't expose OAA directly — we estimate from fielding pct
-      // OAA needs Baseball Savant; this is a proxy
-      const fpct = stat.fielding ? parseFloat(stat.fielding) : null
-      if (fpct !== null) {
-        // Convert fielding pct to OAA-like scale: .985 avg → 0, .990 → +5, .975 → -10
-        oaa = Math.round((fpct - 0.985) * 1000)
-      }
+      fielding_pct = stat.fielding ? parseFloat(stat.fielding) : null
     }
 
-    // ── 4. Yesterday's bullpen usage (existing logic) ────────
+    // ── 3b. Real Statcast OAA ──────────────────────────────────
+    const defense = await fetchDefenseData(teamId)
+
+    // ── 4. Yesterday's bullpen usage (fatigue tracking) ──────
     const yesterdayUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${twoDaysAgo}&endDate=${yesterday}&hydrate=team`
     const yesterdayRes = await fetch(yesterdayUrl)
     const yesterdayData = yesterdayRes.ok ? await yesterdayRes.json() : null
@@ -241,18 +239,14 @@ async function fetchTeamStats(teamId: number, teamName: string) {
         if (g.status?.abstractGameState !== 'Final') continue
         last_game_date = g.officialDate ?? g.gameDate?.split('T')[0] ?? null
 
-        // Check if last game was a night game and today is a day game
         const gameTime = g.gameDate ? new Date(g.gameDate) : null
         if (gameTime) {
           const hourUTC = gameTime.getUTCHours()
-          // Night game = started after 22:00 UTC (6pm ET) 
-          // This is approximate but catches most cases
           if (hourUTC >= 22 || hourUTC < 2) {
-            day_after_night = true // flag it, page logic can check if today's game is a day game
+            day_after_night = true
           }
         }
 
-        // Fetch boxscore for bullpen usage
         const bullpenData = await fetchBullpenInnings(teamId, g.gamePk)
         bullpen_innings_yesterday = bullpenData.bullpen_ip
         closer_available = bullpenData.closer_available
@@ -261,15 +255,13 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       }
     }
 
-    // ── 5. Schedule-based rest/travel (V3 new) ───────────────
-    // Count games in last 10 days
+    // ── 5. Schedule-based rest/travel ────────────────────────
     const schedUrl = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${tenDaysAgo}&endDate=${today_str}`
     const schedRes = await fetch(schedUrl)
     const schedData = schedRes.ok ? await schedRes.json() : null
 
     let games_last_10_days = 0
     let consecutive_road_games = 0
-    let previous_venue_team_id: number | null = null
 
     const recentGames: Array<{ date: string; homeTeamId: number; awayTeamId: number }> = []
 
@@ -287,18 +279,16 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       }
     }
 
-    // Count consecutive road games (most recent backwards)
     const sortedRecent = recentGames.sort((a, b) => b.date.localeCompare(a.date))
     for (const g of sortedRecent) {
-      if (g.homeTeamId === teamId) break // was at home, streak ends
+      if (g.homeTeamId === teamId) break
       consecutive_road_games++
     }
 
-    // Travel distance from last game's venue to today's venue
     let travel_miles_last: number | null = null
     if (sortedRecent.length > 0) {
       const lastGame = sortedRecent[0]
-      const lastVenueTeamId = lastGame.homeTeamId // games are played at home team's venue
+      const lastVenueTeamId = lastGame.homeTeamId
       const lastCoords = VENUE_COORDS[lastVenueTeamId]
       const homeCoords = VENUE_COORDS[teamId]
       if (lastCoords && homeCoords && lastVenueTeamId !== teamId) {
@@ -309,8 +299,7 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       }
     }
 
-    // ── 6. Bullpen L3 days IP (V3 new) ───────────────────────
-    // Sum bullpen innings over last 3 days from schedule
+    // ── 6. Bullpen L3 days IP ────────────────────────────────
     let bullpen_ip_last_3 = 0
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const sched3Url = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${threeDaysAgo}&endDate=${yesterday}&hydrate=team`
@@ -330,43 +319,49 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       team_name: teamName,
       season: SEASON,
 
-      // Offense (V2 + V3 expanded)
+      // Offense
       runs_per_game_l30,
       ops_l30,
-      wrc_plus_l30: null, // needs FanGraphs — keep null for now
-      woba_l30: null,     // needs FanGraphs — keep null for now
+      wrc_plus_l30: null, // still needs FanGraphs
+      woba_l30: null,     // still needs FanGraphs
       wrc_plus_vs_lhp: null,
       wrc_plus_vs_rhp: null,
-      k_pct,              // V3 new
-      bb_pct,             // V3 new
-      iso,                // V3 new
-      stolen_base_pct,    // V3 new
+      k_pct,
+      bb_pct,
+      iso,
+      stolen_base_pct,
 
-      // Defense (V3 — was placeholder)
-      oaa,                // V3: now populated (proxy from fielding pct)
-      drs: null,          // needs FanGraphs
-      defensive_efficiency: null,
-      infield_oaa: null,  // needs Baseball Savant positional breakdown
-      outfield_oaa: null, // needs Baseball Savant positional breakdown
-      errors_per_game_l30, // V3 new
+      // Defense — V5: fielding_pct now actually saved, defensive_efficiency
+      // now computed from MLB API rather than left as a permanent
+      // "needs FanGraphs" null
+      oaa: defense.oaa,
+      drs: null, // still genuinely needs FanGraphs — no free equivalent
+      defensive_efficiency: defensiveEfficiency,
+      infield_oaa: defense.infield_oaa,
+      outfield_oaa: defense.outfield_oaa,
+      oaa_lf: defense.oaa_lf,
+      oaa_cf: defense.oaa_cf,
+      oaa_rf: defense.oaa_rf,
+      errors_per_game_l30,
+      fielding_pct,
 
-      // Bullpen (V2 + V3 expanded)
-      bullpen_era,
+      // Bullpen
+      bullpen_era: bullpenQuality.bullpen_era,
       bullpen_wpa_li: null,
       bullpen_innings_yesterday: Math.round(bullpen_innings_yesterday * 10) / 10,
-      bullpen_ip_last_3: Math.round(bullpen_ip_last_3 * 10) / 10, // V3 new
-      bullpen_k_per_9,    // V3 new
-      bullpen_hr_per_9,   // V3 new
+      bullpen_ip_last_3: Math.round(bullpen_ip_last_3 * 10) / 10,
+      bullpen_k_per_9: bullpenQuality.bullpen_k_per_9,
+      bullpen_hr_per_9: bullpenQuality.bullpen_hr_per_9,
       closer_available,
       setup1_available,
       setup2_available,
 
-      // Rest / Travel (V2 + V3 expanded)
+      // Rest / Travel
       last_game_date,
       consecutive_road_games,
-      games_last_10_days,    // V3 new
-      travel_miles_last,     // V3 new
-      day_after_night,       // V3 new
+      games_last_10_days,
+      travel_miles_last,
+      day_after_night,
 
       updated_at: new Date().toISOString(),
     }
@@ -377,7 +372,143 @@ async function fetchTeamStats(teamId: number, teamName: string) {
 }
 
 // ============================================================
-// Fetch real bullpen innings from boxscore (unchanged from V2)
+// V5 NEW: Defensive Efficiency Ratio — % of batted balls in play
+// converted to outs. Standard formula: 1 - (H - HR) / (BF - BB - HBP - K - HR).
+// Uses team-wide season pitching totals (starters + relievers, unlike
+// fetchBullpenQuality which is reliever-only) — needs the WHOLE staff's
+// balls-in-play to represent team defense, not just bullpen innings.
+// Doesn't require FanGraphs — computable from MLB Stats API alone;
+// the old "needs FanGraphs" comment on this field was wrong, not just
+// outdated.
+// ============================================================
+async function fetchDefensiveEfficiency(teamId: number): Promise<number | null> {
+  try {
+    const url = `${MLB_API}/teams/${teamId}/stats?stats=season&group=pitching&season=${SEASON}`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    const stat = data?.stats?.[0]?.splits?.[0]?.stat
+    if (!stat) return null
+
+    const battersFaced = parseInt(stat.battersFaced ?? '0')
+    const baseOnBalls = parseInt(stat.baseOnBalls ?? '0')
+    const hitBatsmen = parseInt(stat.hitBatsmen ?? '0')
+    const strikeOuts = parseInt(stat.strikeOuts ?? '0')
+    const homeRuns = parseInt(stat.homeRuns ?? '0')
+    const hits = parseInt(stat.hits ?? '0')
+
+    const ballsInPlay = battersFaced - baseOnBalls - hitBatsmen - strikeOuts - homeRuns
+    if (ballsInPlay <= 0) return null
+
+    const der = 1 - (hits - homeRuns) / ballsInPlay
+    return Math.round(der * 1000) / 1000
+  } catch (err) {
+    console.error(`Defensive efficiency fetch failed for team ${teamId}:`, err)
+    return null
+  }
+}
+
+// ============================================================
+// Real Statcast OAA — reads what fetch_team_defense.py wrote
+// ============================================================
+async function fetchDefenseData(teamId: number): Promise<{
+  oaa: number | null
+  infield_oaa: number | null
+  outfield_oaa: number | null
+  oaa_lf: number | null
+  oaa_cf: number | null
+  oaa_rf: number | null
+}> {
+  const { data, error } = await supa
+    .from('team_defense')
+    .select('oaa, infield_oaa, outfield_oaa, oaa_lf, oaa_cf, oaa_rf')
+    .eq('team_id', teamId)
+    .eq('season', SEASON)
+    .single()
+
+  if (error || !data) {
+    return { oaa: null, infield_oaa: null, outfield_oaa: null, oaa_lf: null, oaa_cf: null, oaa_rf: null }
+  }
+  return {
+    oaa: data.oaa ?? null,
+    infield_oaa: data.infield_oaa ?? null,
+    outfield_oaa: data.outfield_oaa ?? null,
+    oaa_lf: data.oaa_lf ?? null,
+    oaa_cf: data.oaa_cf ?? null,
+    oaa_rf: data.oaa_rf ?? null,
+  }
+}
+
+// ============================================================
+// Real reliever-only bullpen quality — classification matches
+// scripts/fetch_bullpen_availability.py
+// ============================================================
+async function fetchBullpenQuality(teamId: number): Promise<{
+  bullpen_era: number | null
+  bullpen_k_per_9: number | null
+  bullpen_hr_per_9: number | null
+}> {
+  try {
+    const rosterUrl = `${MLB_API}/teams/${teamId}/roster?rosterType=active`
+    const rosterRes = await fetch(rosterUrl)
+    if (!rosterRes.ok) return { bullpen_era: null, bullpen_k_per_9: null, bullpen_hr_per_9: null }
+    const roster = (await rosterRes.json()).roster ?? []
+    const pitchers = roster.filter((p: any) => p.position?.abbreviation === 'P')
+
+    const pitcherStats = await Promise.all(
+      pitchers.map(async (p: any) => {
+        const pid = p.person?.id
+        if (!pid) return null
+        try {
+          const statsUrl = `${MLB_API}/people/${pid}/stats?stats=season&group=pitching&season=${SEASON}`
+          const statsRes = await fetch(statsUrl)
+          if (!statsRes.ok) return null
+          const splits = (await statsRes.json()).stats?.[0]?.splits ?? []
+          if (!splits.length) return null
+          return splits[0].stat ?? null
+        } catch {
+          return null
+        }
+      })
+    )
+
+    let totalER = 0
+    let totalOuts = 0
+    let totalSO = 0
+    let totalHR = 0
+
+    for (const stat of pitcherStats) {
+      if (!stat) continue
+      const games = parseInt(stat.gamesPlayed ?? '0')
+      const starts = parseInt(stat.gamesStarted ?? '0')
+      if (games < MIN_APPEARANCES) continue
+      const ratio = games > 0 ? starts / games : 0
+      if (ratio >= RELIEVER_START_RATIO) continue
+
+      totalER += parseInt(stat.earnedRuns ?? '0')
+      totalSO += parseInt(stat.strikeOuts ?? '0')
+      totalHR += parseInt(stat.homeRuns ?? '0')
+      totalOuts += parseInnings(stat.inningsPitched ?? '0') * 3
+    }
+
+    if (totalOuts <= 0) {
+      return { bullpen_era: null, bullpen_k_per_9: null, bullpen_hr_per_9: null }
+    }
+
+    const ip = totalOuts / 3
+    return {
+      bullpen_era: parseFloat(((totalER * 9) / ip).toFixed(2)),
+      bullpen_k_per_9: parseFloat(((totalSO * 9) / ip).toFixed(2)),
+      bullpen_hr_per_9: parseFloat(((totalHR * 9) / ip).toFixed(2)),
+    }
+  } catch (err) {
+    console.error(`Bullpen quality fetch failed for team ${teamId}:`, err)
+    return { bullpen_era: null, bullpen_k_per_9: null, bullpen_hr_per_9: null }
+  }
+}
+
+// ============================================================
+// Fetch real bullpen innings from boxscore
 // ============================================================
 async function fetchBullpenInnings(teamId: number, gamePk: number): Promise<{
   bullpen_ip: number

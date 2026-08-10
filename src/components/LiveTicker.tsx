@@ -60,6 +60,23 @@ export default async function LiveTicker() {
   )
 }
 
+function formatTickerTime(raw: string): string {
+  // If it's already a clean time string, return it; otherwise parse and reformat in ET
+  try {
+    // raw may be an ISO string or already formatted
+    const d = new Date(raw)
+    if (isNaN(d.getTime())) return raw  // already a display string like "7:10 PM"
+    return d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/New_York',
+    }) + ' ET'
+  } catch {
+    return raw
+  }
+}
+
 function TickerItem({ game }: { game: TickerGame }) {
   const isFinal = game.status === 'final'
   const isLive = game.status === 'live'
@@ -70,10 +87,11 @@ function TickerItem({ game }: { game: TickerGame }) {
     isFinal ? 'text-stone-400' :
     'text-orange-400'
 
-  const statusLabel =
-    isLive ? '● LIVE' :
-    isFinal ? 'FINAL' :
-    game.gameTime
+// REPLACE with:
+const statusLabel =
+  isLive ? '● LIVE' :
+  isFinal ? 'FINAL' :
+  formatTickerTime(game.gameTime)
 
   return (
  <Link

@@ -1,48 +1,78 @@
 // Real TTO/two-strike/first-pitch data + movement physics, straight from
 // Supabase — populated by fetch_pitcher_tto_splits.py and
-// fetch_pitch_arsenals.py / fetch_pitch_velocity_movement.py. Replaces the
-// toPitcherStatsShape() stub in page.tsx, which only ever had
-// era/k_per_9/bb_per_9 and left TTO/two-strike/first-pitch permanently
-// showing "not yet available" — that data existed the whole time, just
-// wasn't being queried (2026-07-14).
+// fetch_pitch_arsenals.py / fetch_pitch_velocity_movement.py.
+//
+// 2026-08-09: tto1_era/tto2_era/tto3_era removed from this file's scope.
+// Those columns were confirmed to hold xwOBA values mislabeled as ERA,
+// computed by a pybaseball/Statcast pipeline found to undercount plate
+// appearances by ~30%+ league-wide. Replaced by tto1_woba/tto2_woba/
+// tto3_woba, populated by fetch_pitcher_tto_splits_v2.py, which sources
+// from MLB Stats API play-by-play and self-verifies against each
+// pitcher's real season battersFaced before writing anything. A null
+// tto*_woba here means either the pitcher hasn't been processed yet by
+// the new script, or their computed PA didn't reconcile closely enough
+// with the real battersFaced to trust — not a display bug.
+//
+// Also 2026-08-09: Postgres `numeric` columns come back from Supabase/
+// PostgREST as JSON strings, not JS numbers (precision-preservation
+// behavior) — every field here is explicitly coerced with Number()
+// below. Without this, anything downstream calling .toFixed() on these
+// values throws at runtime (confirmed on tto1_woba: chart looked "empty"
+// but was actually crashing before render, with real data sitting in
+// Supabase the whole time).
 
 import { createAdminClient } from '@/lib/supabase'
-// TTO (tto1_era/tto2_era/tto3_era), two_strike_mix, and first_pitch_mix
-// deliberately NOT selected below — confirmed 2026-07-14 systemically
-// undercounting plate appearances by ~30%+ league-wide (Dustin May: 259
-// TTO-tracked PA vs MLB API's real battersFaced of 389; league-wide
-// 40,568 total_tto_pa against 12,144 games_played is far below plausible).
-// Root cause traced to pybaseball's statcast_pitcher() pull or the TTO
-// bucketing logic — not yet fixed. Showing these numbers with confident
-// formatting while ~1/3 of real PA are silently missing would violate the
-// data-honesty convention this whole build follows elsewhere (see
-// stats-data.ts's "never fabricate what you don't have"). Re-add once the
-// undercount is fixed and re-verified against MLB's real battersFaced.
 export type PitcherStatsFull = {
   era: number | null
+  whip: number | null
   fip: number | null
   k_per_9: number | null
   bb_per_9: number | null
   l3_era: number | null
+  tto1_woba: number | null
+  tto2_woba: number | null
+  tto3_woba: number | null
+  tto1_pa: number | null
+  tto2_pa: number | null
+  tto3_pa: number | null
+  tto_verified_at: string | null
+}
+
+function toNum(v: unknown): number | null {
+  if (v == null) return null
+  if (typeof v === 'number') return Number.isNaN(v) ? null : v
+  const n = Number(v)
+  return Number.isNaN(n) ? null : n
 }
 
 export async function getPitcherStatsFull(playerId: number): Promise<PitcherStatsFull | null> {
   const supa = createAdminClient()
-  // TEMP: select('*') to see the table's REAL column names — tto1_era etc.
-  // don't exist despite fetch_pitcher_tto_splits.py writing to them, meaning
-  // either the migration never ran or the script's been silently failing.
-  // Revert to a real column list once confirmed (2026-07-14).
-const { data, error } = await supa
+  const { data, error } = await supa
     .from('pitcher_stats')
-    .select('era, fip, k_per_9, bb_per_9, l3_era')
+    .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')
     .eq('player_id', playerId)
     .single()
   if (error || !data) {
     console.error('[pitcher-full-stats] query failed:', error?.message)
     return null
   }
-  console.log('[pitcher-full-stats] REAL columns on pitcher_stats:', Object.keys(data))
-  return data as unknown as PitcherStatsFull
+
+  const d = data as any
+  return {
+  era: toNum(d.era),
+    whip: toNum(d.whip),
+    fip: toNum(d.fip),
+    k_per_9: toNum(d.k_per_9),
+    bb_per_9: toNum(d.bb_per_9),
+    l3_era: toNum(d.l3_era),
+    tto1_woba: toNum(d.tto1_woba),
+    tto2_woba: toNum(d.tto2_woba),
+    tto3_woba: toNum(d.tto3_woba),
+    tto1_pa: toNum(d.tto1_pa),
+    tto2_pa: toNum(d.tto2_pa),
+    tto3_pa: toNum(d.tto3_pa),
+    tto_verified_at: d.tto_verified_at ?? null,
+  }
 }
 
 export type PitchMovementRow = {
@@ -67,10 +97,6 @@ export async function getPitchMovementFromDB(playerId: number, season: number): 
     return []
   }
   if (!Array.isArray(data)) {
-    // Was `!data` only — a truthy non-array response (object, single row,
-    // unexpected shape) slipped past that check and crashed on .map()
-    // (confirmed 2026-07-14: "data.map is not a function"). Logging the
-    // real shape instead of guessing at why.
     console.error('[pitcher-full-stats] movement query returned non-array data:', JSON.stringify(data)?.slice(0, 300))
     return []
   }

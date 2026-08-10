@@ -1,4 +1,9 @@
 // src/app/fantasy/trending/TrendingBoard.tsx
+//
+// Change vs prior version: every FantasyPickRow now routes to the player
+// deep-dive page (linkTo="player" fromBoard="trending"). Ownership change
+// rows also link into the deep-dive so clicking any name here always
+// lands on a page that answers "why is this happening".
 
 import Link from 'next/link'
 import type { FantasyPick } from '@/lib/fantasy'
@@ -33,7 +38,13 @@ function ModelPickList({ picks, ownershipByPickId, emptyLabel }: {
   return (
     <div>
       {picks.map(p => (
-        <FantasyPickRow key={p.id} pick={p} ownership={ownershipByPickId[p.id] ?? null} />
+        <FantasyPickRow
+          key={p.id}
+          pick={p}
+          ownership={ownershipByPickId[p.id] ?? null}
+          linkTo="player"
+          fromBoard="trending"
+        />
       ))}
     </div>
   )
@@ -42,7 +53,7 @@ function ModelPickList({ picks, ownershipByPickId, emptyLabel }: {
 function OwnershipChangeRow({ change, direction }: { change: OwnershipChange; direction: 'up' | 'down' }) {
   const color = direction === 'up' ? 'text-green-600' : 'text-red-500'
   const arrow = direction === 'up' ? '▲' : '▼'
-  return (
+  const inner = (
     <div className="flex items-center gap-4 py-3.5 border-b border-stone-100 last:border-0">
       {change.mlb_player_id ? (
         <PlayerHeadshot playerId={change.mlb_player_id} size={80} className="w-11 h-11 object-cover border border-stone-200 shrink-0" />
@@ -60,6 +71,14 @@ function OwnershipChangeRow({ change, direction }: { change: OwnershipChange; di
       </div>
     </div>
   )
+  return change.mlb_player_id ? (
+    <Link
+      href={`/fantasy/player/${change.mlb_player_id}?from=trending`}
+      className="block hover:bg-stone-50 -mx-2 px-2 transition"
+    >
+      {inner}
+    </Link>
+  ) : inner
 }
 
 export default function TrendingBoard({ modelUp, modelDown, ownershipByPickId, ownershipTrend, forDate, isStale }: Props) {
@@ -82,6 +101,10 @@ export default function TrendingBoard({ modelUp, modelDown, ownershipByPickId, o
             </span>
           )}
         </div>
+        <p className="font-serif italic text-sm text-stone-500 mt-3 max-w-2xl leading-relaxed">
+          Every name here opens into a full deep-dive — radar of Statcast shape, OPS trend, splits table,
+          and the plain-English read on why the trend is happening.
+        </p>
       </div>
 
       {/* ── Model signals ─────────────────────────────────────────── */}

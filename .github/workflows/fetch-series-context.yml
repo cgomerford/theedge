@@ -1,0 +1,23 @@
+name: fetch-series-context
+
+on:
+  schedule:
+    - cron: '30 4 * * *'  # daily, ahead of the 05:00 UTC Vercel prediction chain
+  workflow_dispatch:
+
+jobs:
+  fetch-series-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch series context
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_series_context.py

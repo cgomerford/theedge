@@ -11,16 +11,28 @@ export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Start/Sit & Waiver Wire · The Edge Fantasy Desk',
-  description: "Today's streamer starts and waiver-wire targets, with real ESPN ownership so you know what's actually available.",
+  description:
+    "Today's streamer starts and waiver-wire targets — signal-scored with real ESPN ownership so you know what's actually available.",
 }
 
-async function withOwnership(picks: FantasyPick[]) {
-  const mlbIds = picks.map(p => p.player_id).filter((id): id is number => id != null)
-  const names = picks.filter(p => p.player_id == null).map(p => p.player_name)
+// ─── Ownership resolver ───────────────────────────────────────────────────────
+// Merges both lookup paths (by MLB ID and by name fallback) into a single
+// pick-id → percent_owned map the board can consume directly.
+
+async function resolveOwnership(picks: FantasyPick[]) {
+  const mlbIds = picks
+    .map(p => p.player_id)
+    .filter((id): id is number => id != null)
+
+  const names = picks
+    .filter(p => p.player_id == null)
+    .map(p => p.player_name)
+
   const [byId, byName] = await Promise.all([
     getOwnershipByMlbIds(mlbIds),
     getOwnershipByNames(names),
   ])
+
   const map: Record<number, number | null> = {}
   for (const p of picks) {
     map[p.id] = p.player_id
@@ -30,18 +42,20 @@ async function withOwnership(picks: FantasyPick[]) {
   return map
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function StartSitPage() {
   const [subscriber, { picks, forDate, isStale }] = await Promise.all([
     getCurrentSubscriber(),
     getFantasyPicks(),
   ])
-  const isPro = subscriber?.is_pro ?? false
 
+  const isPro = subscriber?.is_pro ?? false
   const allPicks = [...picks.streamer, ...picks.sleeper]
-  const ownershipByPickId = await withOwnership(allPicks)
+  const ownershipByPickId = await resolveOwnership(allPicks)
 
   return (
-    <main className="min-h-screen bg-[#FAF8F3] text-[#1A1A1A]">
+    <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
       <SiteHeader variant="page" />
       <FantasySubNav active="start-sit" isPro={isPro} />
       <StartSitBoard

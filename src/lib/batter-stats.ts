@@ -19,9 +19,9 @@ export type BatterStatcast = {
 }
 
 export type BatterSplits = {
-  last_7:  { avg: string; obp: string; slg: string; ops: string; pa: number } | null
-  last_14: { avg: string; obp: string; slg: string; ops: string; pa: number } | null
-  last_30: { avg: string; obp: string; slg: string; ops: string; pa: number } | null
+  last_7:  { avg: string; obp: string; slg: string; ops: string; pa: number; runs: number; rbi: number; walks: number; games: number } | null
+  last_14: { avg: string; obp: string; slg: string; ops: string; pa: number; runs: number; rbi: number; walks: number; games: number } | null
+  last_30: { avg: string; obp: string; slg: string; ops: string; pa: number; runs: number; rbi: number; walks: number; games: number } | null
   vs_lhp:  { avg: string; obp: string; slg: string; ops: string; pa: number } | null
   vs_rhp:  { avg: string; obp: string; slg: string; ops: string; pa: number } | null
 }
@@ -122,7 +122,7 @@ export async function getBatterSplits(
   const date30  = fmt(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000))
 
   // Fetch byDateRange stats — more reliable than sitCodes
-  async function fetchDateRange(startDate: string, endDate: string) {
+ async function fetchDateRange(startDate: string, endDate: string) {
     try {
       const url = `${MLB_API}/people/${playerId}/stats?stats=byDateRange&group=hitting&startDate=${startDate}&endDate=${endDate}&season=${season}`
       const res = await fetch(url, { cache: 'no-store' })
@@ -131,11 +131,15 @@ export async function getBatterSplits(
       const s = data.stats?.[0]?.splits?.[0]?.stat
       if (!s) return null
       return {
-        avg: s.avg              ?? '—',
-        obp: s.obp              ?? '—',
-        slg: s.slg              ?? '—',
-        ops: s.ops              ?? '—',
-        pa:  s.plateAppearances ?? 0,
+        avg:   s.avg              ?? '—',
+        obp:   s.obp              ?? '—',
+        slg:   s.slg              ?? '—',
+        ops:   s.ops              ?? '—',
+        pa:    s.plateAppearances ?? 0,
+        runs:  s.runs             ?? 0,
+        rbi:   s.rbi              ?? 0,
+        walks: s.baseOnBalls      ?? 0,
+        games: s.gamesPlayed      ?? 0,
       }
     } catch {
       return null

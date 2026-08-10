@@ -1,7 +1,14 @@
 // src/app/fantasy/prospects/page.tsx
+//
+// Change vs prior version: pre-resolves each unique team_name to a MiLB
+// team_id so ProspectsBoard can render a working link to the roster page.
+// This is a one-off lookup per page render (~5-15 teams) hitting a
+// 24h-cached endpoint — negligible cost, closes the "clicking does
+// nothing" gap.
 
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getFantasyPicks } from '@/lib/fantasy'
+import { resolveTeamNameMap } from '@/lib/fantasy-minors'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
 import ProspectsBoard from './ProspectsBoard'
@@ -31,11 +38,20 @@ export default async function ProspectsPage() {
     .map(([team, prospects]) => ({ team, prospects }))
     .sort((a, b) => a.team.localeCompare(b.team))
 
+  // Resolve team names → MiLB team ids for the roster links
+  const teamNames = grouped.map(g => g.team).filter(n => n !== 'Unaffiliated')
+  const teamIdByName = await resolveTeamNameMap(teamNames)
+
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-[#1A1A1A]">
       <SiteHeader variant="page" />
       <FantasySubNav active="prospects" isPro={isPro} />
-      <ProspectsBoard grouped={grouped} forDate={forDate} isStale={isStale} />
+      <ProspectsBoard
+        grouped={grouped}
+        teamIdByName={teamIdByName}
+        forDate={forDate}
+        isStale={isStale}
+      />
     </main>
   )
 }

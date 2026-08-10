@@ -34,9 +34,14 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 async function safeFetchJson<T>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url, { cache: 'no-store' })
-    if (!res.ok) return null
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      console.error(`[stats-data] fetch failed: ${res.status} ${res.statusText} — ${url}`, body.slice(0, 300))
+      return null
+    }
     return (await res.json()) as T
-  } catch {
+  } catch (err) {
+    console.error(`[stats-data] fetch threw for ${url}:`, err)
     return null
   }
 }

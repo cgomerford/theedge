@@ -37,7 +37,7 @@ function TeamStreakColumn({ teamName, rows }: { teamName: string; rows: StreakRo
                   <span className="text-[9px] font-mono text-stone-400">{r.position}</span>
                 </div>
                 <div className="text-[10px] font-mono text-stone-400">
-                  L7: <span className="text-stone-700 font-bold">{r.last7Ops.toFixed(3)}</span> vs season <span className="text-stone-700 font-bold">{r.seasonOps.toFixed(3)}</span> ({r.pa} PA)
+                  {r.window}: <span className="text-stone-700 font-bold">{r.windowOps.toFixed(3)}</span> vs season <span className="text-stone-700 font-bold">{r.seasonOps.toFixed(3)}</span> ({r.pa} PA)
                 </div>
               </div>
               <span className={`font-mono text-xs font-bold shrink-0 ${hot ? 'text-green-600' : 'text-red-500'}`}>
@@ -64,13 +64,13 @@ export default function HotColdStreaks({
   const homeRows = rows.filter(r => r.teamAbbr === homeAbbr)
 
   if (awayRows.length === 0 && homeRows.length === 0) {
-    return <p className="text-xs font-serif italic text-stone-400 py-4">No streaks meeting the sample floor (10+ PA in last 7 days) right now.</p>
+    return <p className="text-xs font-serif italic text-stone-400 py-4">No streaks meeting the sample floor (10+ PA in last 7 days, or 18+ in last 14) right now.</p>
   }
 
   return (
     <div className="p-5 bg-white border border-stone-200 rounded-xl">
       <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-1">Streaks to notice</p>
-      <p className="text-[10px] font-mono text-stone-400 mb-4">Last 7 days vs. season OPS — up to 5 per team</p>
+      <p className="text-[10px] font-mono text-stone-400 mb-4">Last 7 days (or 14, when noted) vs. season OPS — up to 5 per team</p>
       <div className="grid md:grid-cols-2 gap-6">
         <TeamStreakColumn teamName={awayTeamName} rows={awayRows} />
         <TeamStreakColumn teamName={homeTeamName} rows={homeRows} />

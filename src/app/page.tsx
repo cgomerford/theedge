@@ -14,6 +14,7 @@ import { getActiveSport, SPORT_LABELS } from '@/lib/active-sport'
 import FactorsTabs from '@/components/FactorsTabs'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase'
+import type { Prospect } from '@/app/mlb/MLBHomepage'
 import { time } from 'console'
 
 export const revalidate = 1800
@@ -84,13 +85,26 @@ export default async function HomePage({ searchParams }: Props) {
 
   const topEdges = games
     .map(game => ({ game, pred: predictions.get(game.gamePk) }))
-    .filter(({ pred }) => pred && pred.confidence_tier !== 'tossup' && pred.summary)
+    .filter(({ pred }) => pred != null)
     .sort((a, b) => Math.abs(b.pred!.edge_score) - Math.abs(a.pred!.edge_score))
-    .slice(0, 5)
 
   const featuredEdge = topEdges[0] ?? null
-  const sideEdges    = topEdges.slice(1, 5)
+  const sideEdges = topEdges.slice(1, 5)
 
+  const displayGame = featuredEdge ?? {
+    game: [...games].sort((a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime())[0] ?? null,
+    pred: null,
+  }
+
+  const SLATE_VISIBLE = 5
+  const edgesPublished = topEdges.length > 0
+const allSlateGames = [...games]
+  .map(game => ({ game, pred: predictions.get(game.gamePk) ?? null }))
+  .sort((a, b) => new Date(a.game.gameDate).getTime() - new Date(b.game.gameDate).getTime())
+
+const slateGames = allSlateGames.slice(0, SLATE_VISIBLE)
+const slateTotal = allSlateGames.length
+const slateHidden = slateTotal - slateGames.length
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900 font-sans selection:bg-orange-200">
       <SiteHeader variant="home" />
@@ -142,48 +156,114 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
 
             {/* Right — featured edge, floating card over the photo */}
-            <div className="hidden md:flex flex-col justify-center py-24 pl-10">
-              {featuredEdge ? (
-                <div>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-stone-200 mb-4">⊕ Featured Matchup</div>
-                  <Link
-                    href={`/mlb/${slugifyGame(featuredEdge.game)}`}
-                    className="block bg-[#FAF8F3]/97 backdrop-blur-sm border border-stone-200 p-6 hover:border-stone-400 hover:shadow-xl transition group"
-                  >
-                    <div className="flex items-center gap-3 mb-4">
-                      <img src={teamLogoUrl(featuredEdge.game.teams.away.team.id)} alt="" className="w-8 h-8 object-contain" />
-                      <span className="font-serif text-lg font-bold">{shortName(featuredEdge.game.teams.away.team.name)}</span>
-                      <span className="text-stone-300 font-mono">@</span>
-                      <img src={teamLogoUrl(featuredEdge.game.teams.home.team.id)} alt="" className="w-8 h-8 object-contain" />
-                      <span className="font-serif text-lg font-bold">{shortName(featuredEdge.game.teams.home.team.name)}</span>
-                    </div>
-                    {featuredEdge.pred!.story_lead ? (
-                      <p className="font-serif italic text-stone-700 leading-relaxed text-[15px] line-clamp-4 mb-5">
-                        {featuredEdge.pred!.story_lead}
-                      </p>
-                    ) : featuredEdge.pred!.summary ? (
-                      <p className="font-serif italic text-stone-700 leading-relaxed text-[15px] line-clamp-4 mb-5">
-                        &ldquo;{featuredEdge.pred!.summary}&rdquo;
-                      </p>
-                    ) : null}
-                    <div className="flex justify-between items-center text-[10px] font-mono text-stone-400 pt-4 border-t border-stone-100">
-                      <span>{new Date(featuredEdge.game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET</span>
-                      <span className="text-[#FF5722] group-hover:text-stone-900 transition">Full read →</span>
-                    </div>
-                  </Link>
-                  {games.length > 0 && (
-                    <Link href="/mlb" className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-[#FDE047] hover:text-white transition mt-4">
-                      See all {games.length} games tonight →
-                    </Link>
-                  )}
+{/* Right — featured edge card, centred */}
+<div className="hidden md:flex flex-col justify-center py-24 pl-10">
+  {displayGame.game && (() => {
+    const { game, pred } = displayGame
+    const awayName = shortName(game.teams.away.team.name)
+    const homeName = shortName(game.teams.home.team.name)
+    const gameTime = new Date(game.gameDate).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
+    }) + ' ET'
+
+    // Factor language — never expose raw score
+    const factorCount = pred ? Object.values(pred.components).filter(v => v > 0).length : null
+    const totalFactors = pred ? Object.values(pred.components).length : 8
+    const winnerName = pred
+      ? (pred.predicted_winner === 'home' ? homeName : awayName)
+      : null
+    const tierLabel =
+      pred?.confidence_tier === 'strong'   ? 'Strong edge' :
+      pred?.confidence_tier === 'moderate' ? 'Moderate edge' :
+      pred?.confidence_tier === 'slight'   ? 'Slight edge' :
+      pred?.confidence_tier === 'tossup'   ? 'Toss-up' : null
+
+    return (
+      <Link
+        href={`/mlb/${slugifyGame(game)}`}
+        className="block bg-[#FAF8F3]/97 backdrop-blur-sm border border-stone-200 p-6 hover:border-stone-400 hover:shadow-xl transition group"
+      >
+        {/* Header */}
+        <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-4">
+          § Featured matchup · {gameTime}
+        </div>
+
+        {/* Teams */}
+        <div className="flex items-center gap-3 mb-5">
+          <img src={teamLogoUrl(game.teams.away.team.id)} alt="" className="w-9 h-9 object-contain" />
+          <span className="font-serif text-xl font-bold text-stone-900">{awayName}</span>
+          <span className="text-stone-300 font-mono text-sm">@</span>
+          <img src={teamLogoUrl(game.teams.home.team.id)} alt="" className="w-9 h-9 object-contain" />
+          <span className="font-serif text-xl font-bold text-stone-900">{homeName}</span>
+        </div>
+
+        {pred ? (
+          <>
+            {/* Factor language */}
+            {winnerName && factorCount !== null && (
+              <div className="mb-4">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-1">
+                  The data says
                 </div>
-              ) : (
-                <div className="text-center bg-[#FAF8F3]/95 backdrop-blur-sm p-8 border border-stone-200">
-                  <p className="font-serif text-stone-400 italic mb-4">Today&apos;s edges publish at 10am ET</p>
-                  <Link href="/mlb" className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">View MLB hub →</Link>
+                <div className="font-serif text-lg font-bold text-stone-900">
+                  {factorCount} of {totalFactors} factors lean{' '}
+                  <span className="text-[#FF5722]">{winnerName}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Tier badge */}
+            {tierLabel && (
+              <div className={`inline-block text-[9px] font-mono uppercase tracking-widest px-2.5 py-1 mb-5 border ${
+                pred.confidence_tier === 'strong'   ? 'text-[#FF5722] border-orange-200 bg-orange-50' :
+                pred.confidence_tier === 'moderate' ? 'text-yellow-700 border-yellow-200 bg-yellow-50' :
+                pred.confidence_tier === 'tossup'   ? 'text-stone-500 border-stone-200 bg-stone-50' :
+                                                      'text-stone-600 border-stone-200 bg-stone-50'
+              }`}>
+                {tierLabel}
+              </div>
+            )}
+
+            {/* Top component driver */}
+            {(() => {
+              const comps = pred.components
+              const labels: Record<string, string> = {
+                starting_pitcher: 'Starting pitcher',
+                bullpen: 'Bullpen',
+                offense: 'Offense',
+                defense: 'Defense',
+                matchup: 'Matchup',
+                park: 'Park factor',
+                weather: 'Weather',
+                rest: 'Rest',
+              }
+              const topKey = Object.entries(comps)
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0]
+              if (!topKey) return null
+              const [key, val] = topKey
+              const favours = val > 0 ? homeName : awayName
+              return (
+                <div className="text-[11px] font-mono text-stone-400 mb-5">
+                  Top factor: <span className="text-stone-700">{labels[key] ?? key}</span>
+                  {' '}leans <span className="text-stone-700">{favours}</span>
+                </div>
+              )
+            })()}
+          </>
+        ) : (
+          <div className="text-[11px] font-mono uppercase tracking-widest text-stone-300 mb-5">
+            Edge read coming · 10am ET
+          </div>
+        )}
+
+        <div className="flex justify-between items-center text-[10px] font-mono text-stone-400 pt-4 border-t border-stone-100">
+          <span>{gameTime}</span>
+          <span className="text-[#FF5722] group-hover:text-stone-900 transition">Full read →</span>
+        </div>
+      </Link>
+    )
+  })()}
+</div>
           </div>
         </div>
       </section>
@@ -283,47 +363,86 @@ export default async function HomePage({ searchParams }: Props) {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
             <div className="grid md:grid-cols-2 gap-8">
 
-              {/* LEFT — Tonight's edges */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">§ MLB · Tonight&apos;s reads</div>
-                  <Link href="/mlb" className="text-[10px] font-mono uppercase tracking-widest text-stone-400 hover:text-stone-900 transition">Full slate →</Link>
-                </div>
-                <div className="space-y-2">
-                  {topEdges.map(({ game, pred }) => (
-                    <Link
-                      key={game.gamePk}
-                      href={`/mlb/${slugifyGame(game)}`}
-                      className="flex items-start gap-3 bg-white border border-stone-200 p-4 hover:border-stone-400 hover:shadow-sm transition group"
-                    >
-                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                        <img src={teamLogoUrl(game.teams.away.team.id)} alt="" className="w-5 h-5 object-contain" />
-                        <img src={teamLogoUrl(game.teams.home.team.id)} alt="" className="w-5 h-5 object-contain" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="font-serif text-sm font-bold">{shortName(game.teams.away.team.name)}</span>
-                          <span className="text-stone-300 font-mono text-xs">@</span>
-                          <span className="font-serif text-sm font-bold">{shortName(game.teams.home.team.name)}</span>
-                        </div>
-                        {pred!.summary && (
-                          <p className="text-[11px] font-serif italic text-stone-500 line-clamp-2 leading-relaxed">
-                            &ldquo;{pred!.summary}&rdquo;
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-[9px] font-mono text-stone-300 shrink-0 mt-0.5">
-                        {new Date(game.gameDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })}
-                      </div>
-                    </Link>
-                  ))}
-                  {topEdges.length === 0 && (
-                    <div className="bg-white border border-stone-200 p-6 text-center">
-                      <p className="font-serif italic text-stone-400 text-sm">Today&apos;s edges publish at 10am ET</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+{/* LEFT — Tonight's edges */}
+<div>
+  <div className="flex items-center justify-between mb-4">
+    <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">
+      § MLB · Tonight's edges
+    </div>
+    <Link href="/mlb" className="text-[10px] font-mono uppercase tracking-widest text-stone-400 hover:text-stone-900 transition">Full slate →</Link>
+  </div>
+  <div className="space-y-2">
+    {slateGames.map(({ game, pred }) => {
+      const homeName = shortName(game.teams.home.team.name)
+      const awayName = shortName(game.teams.away.team.name)
+      const winnerName = pred
+        ? (pred.predicted_winner === 'home' ? homeName : awayName)
+        : null
+      const factorCount = pred
+        ? Object.values(pred.components).filter(v => v > 0).length
+        : null
+      const total = pred
+        ? Object.values(pred.components).length
+        : 8
+
+      return (
+        <Link
+          key={game.gamePk}
+          href={`/mlb/${slugifyGame(game)}`}
+          className="flex items-start gap-3 bg-white border border-stone-200 p-4 hover:border-stone-400 hover:shadow-sm transition group"
+        >
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+            <img src={teamLogoUrl(game.teams.away.team.id)} alt="" className="w-5 h-5 object-contain" />
+            <img src={teamLogoUrl(game.teams.home.team.id)} alt="" className="w-5 h-5 object-contain" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-serif text-sm font-bold">{awayName}</span>
+              <span className="text-stone-300 font-mono text-xs">@</span>
+              <span className="font-serif text-sm font-bold">{homeName}</span>
+            </div>
+          {pred && winnerName && factorCount !== null ? (
+  <div>
+    <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-0.5">
+      The data says
+    </p>
+    <p className="font-serif text-sm font-bold text-stone-900">
+      {factorCount} of {total} factors lean{' '}
+      <span className="text-[#FF5722]">{winnerName}</span>
+    </p>
+  </div>
+) : (
+  <p className="text-[11px] font-mono uppercase tracking-widest text-stone-300">
+    Edge read coming
+  </p>
+)}
+          </div>
+          <div className="text-[9px] font-mono text-stone-300 shrink-0 mt-0.5">
+            {new Date(game.gameDate).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              timeZone: 'America/New_York',
+            })}
+          </div>
+        </Link>
+      )
+    })}
+  </div>
+
+  {slateHidden > 0 && (
+    <div className="mt-3 flex items-center justify-between">
+      <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400">
+        Showing {slateGames.length} of {slateTotal} games today
+      </p>
+      <Link
+        href="/mlb"
+        className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] hover:text-stone-900 transition"
+      >
+        See all →
+      </Link>
+    </div>
+  )}
+</div>
 
               {/* RIGHT — News */}
               {news.length > 0 && (

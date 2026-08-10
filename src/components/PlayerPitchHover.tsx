@@ -1,5 +1,12 @@
 'use client'
 
+// src/components/PlayerPitchHover.tsx
+//
+// 2026-08-09: switched from seriesStart/seriesEnd date range to gamePks —
+// see series-pitches.ts and the API route for why (Savant date-range
+// search was returning zero rows for real players/real dates; moved to
+// MLB's own live feed for the exact games instead).
+
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PitchLocationChart from './PitchLocationChart'
@@ -9,12 +16,11 @@ const DEBOUNCE_MS = 300
 const cache = new Map<string, PitchRecord[]>() // module-level — persists across hovers in the same session, not re-fetched on repeat hover
 
 export default function PlayerPitchHover({
-  playerId, playerName, seriesStart, seriesEnd, children,
+  playerId, playerName, gamePks, children,
 }: {
   playerId: number
   playerName: string
-  seriesStart: string
-  seriesEnd: string
+  gamePks: number[]
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -22,7 +28,7 @@ export default function PlayerPitchHover({
   const [pitches, setPitches] = useState<PitchRecord[] | null>(null)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const cacheKey = `${playerId}-${seriesStart}-${seriesEnd}`
+  const cacheKey = `${playerId}-${gamePks.join(',')}`
 
   function handleEnter(e: React.MouseEvent<HTMLElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -37,7 +43,7 @@ export default function PlayerPitchHover({
       }
       setLoading(true)
       try {
-        const res = await fetch(`/api/series-pitches?batterId=${playerId}&start=${seriesStart}&end=${seriesEnd}`)
+        const res = await fetch(`/api/series-pitches?batterId=${playerId}&gamePks=${gamePks.join(',')}`)
         const json = await res.json()
         const rows: PitchRecord[] = json.pitches ?? []
         cache.set(cacheKey, rows)
