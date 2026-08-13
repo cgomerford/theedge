@@ -314,6 +314,7 @@ export async function recordToWebm(opts: RecordOptions): Promise<Blob> {
   canvas.height = CANVAS.h
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas 2D context unavailable')
+  const ctx2d: CanvasRenderingContext2D = ctx   // <-- add this line
 
   const previewCtx = opts.previewCanvas?.getContext('2d') ?? null
 
@@ -335,7 +336,7 @@ export async function recordToWebm(opts: RecordOptions): Promise<Blob> {
   await new Promise<void>(resolve => {
     function tick() {
       const elapsed = performance.now() - start
-      opts.drawFrame(ctx, elapsed)
+      opts.drawFrame(ctx2d, elapsed)   // <-- use ctx2d, not ctx
       if (previewCtx && opts.previewCanvas) {
         previewCtx.clearRect(0, 0, opts.previewCanvas.width, opts.previewCanvas.height)
         previewCtx.drawImage(canvas, 0, 0, opts.previewCanvas.width, opts.previewCanvas.height)
@@ -381,10 +382,10 @@ export async function transcodeWebmToMp4(webmBlob: Blob, onProgress?: (pct: numb
     ffmpeg.on('progress', ({ progress }) => onProgress(Math.min(100, Math.round(progress * 100))))
   }
 
-  await ffmpeg.writeFile('input.webm', await fetchFile(webmBlob))
-  await ffmpeg.exec(['-i', 'input.webm', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', 'output.mp4'])
-  const data = await ffmpeg.readFile('output.mp4')
-  return new Blob([data as Uint8Array], { type: 'video/mp4' })
+ const data = await ffmpeg.readFile('output.mp4') as Uint8Array
+const buf = new ArrayBuffer(data.byteLength)
+new Uint8Array(buf).set(data)
+return new Blob([buf], { type: 'video/mp4' })
 }
 
 export { CANVAS }

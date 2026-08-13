@@ -81,7 +81,10 @@ export async function captureStoryToMp4(opts: CaptureStoryOptions): Promise<Blob
     'output.mp4',
   ])
 
-  const data = await ffmpeg.readFile('output.mp4')
+const data = await ffmpeg.readFile('output.mp4') as Uint8Array
+  const buf = new ArrayBuffer(data.byteLength)
+  new Uint8Array(buf).set(data)
+
   opts.onProgress?.(100)
-  return new Blob([data as Uint8Array], { type: 'video/mp4' })
+  return new Blob([buf], { type: 'video/mp4' })
 }

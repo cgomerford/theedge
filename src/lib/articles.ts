@@ -49,8 +49,7 @@ export interface Article {
 export type ArticleSummary = Omit<Article, 'body'>;
 
 const SUMMARY_COLUMNS =
-  'id, title, slug, excerpt, hero_image, team_tags, sport, author, status, published_at, created_at, updated_at';
-
+  'id, title, slug, excerpt, hero_image, team_tags, sport, author, status, published_at, created_at, updated_at, subject_player_id, subject_player_name';
 /**
  * Homepage "Latest from The Edge" module.
  */
