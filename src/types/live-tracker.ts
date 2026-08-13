@@ -116,3 +116,63 @@ export interface YesterdayStatsPayload {
   gamesMissing: number         // games that couldn't be aggregated (no cache, feed unavailable, etc.)
   nuggets: StatNugget[]        // capped at 30, see compileYesterdayStats()
 }
+
+// ── Top-3-per-category digest (the A4 printout / PDF export feature) ─────
+//
+// Distinct from StatNugget above: that's a flat capped-at-30 list tuned for
+// tweet drafting. This is a FIXED set of 20 categories, always exactly
+// (up to) 3 entries each, built for the printable stat sheet in
+// /admin/yesterday-stats. A category with zero qualifying performances
+// still appears in the payload with entries: [] — the sheet renders an
+// explicit "no qualifying performance" state for it rather than omitting
+// the slot, so the print grid never reflows.
+
+export type Top3StatCategory =
+  | 'fastest-pitch'
+  | 'hardest-hit'
+  | 'longest-hr'
+  | 'most-strikeouts'
+  | 'best-swstr-pct'
+  | 'multi-hr'
+  | 'best-starter-line'
+  | 'highest-spin'
+  | 'sharpest-break'
+  | 'longest-at-bat'
+  | 'most-patient'
+  | 'biggest-inning'
+  | 'blowout-margin'
+  | 'most-rbi'
+  | 'most-stolen-bases'
+  | 'most-extra-base-hits'
+  | 'starter-strike-pct'
+  | 'most-bullpen-innings'
+  | 'hardest-hit-team'
+  | 'most-pitches-starter'
+
+export interface Top3Entry {
+  rank: 1 | 2 | 3
+  /** null for team-level categories (biggest-inning, blowout-margin,
+   *  most-bullpen-innings, hardest-hit-team) — those render a team logo
+   *  instead of a headshot, never a fabricated player attribution. */
+  playerId: number | null
+  playerName: string | null
+  teamId: number | null
+  teamAbbr: string | null
+  opponentAbbr: string | null
+  value: string      // formatted display value, e.g. "101.4 mph", "4.2 IP"
+  detail: string      // short supporting context, e.g. "7th inning" or "vs PHI"
+  gameSlug: string
+}
+
+export interface Top3Category {
+  category: Top3StatCategory
+  label: string           // display label, e.g. "Fastest Pitch"
+  entries: Top3Entry[]    // 0-3, always sorted rank 1→3. Never padded to reach 3.
+}
+
+export interface Top3StatsPayload {
+  date: string
+  gamesIncluded: number
+  gamesMissing: number
+  categories: Top3Category[]   // fixed order, always all 20, even when a category has 0 entries
+}

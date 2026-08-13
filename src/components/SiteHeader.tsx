@@ -129,13 +129,13 @@ const NFL_SUB_LINKS = [
 // folded in too since it was already grouped with these in the mobile
 // drawer's "More" section — keeps desktop and mobile groupings consistent.
 const ABOUT_SUB_LINKS = [
+  { href: '/articles',     label: 'Articles' },
   { href: '/about',        label: 'About' },
   { href: '/why-edge',     label: 'Why The Edge' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/pricing',      label: 'Pricing' },
   { href: '/track-record', label: 'Past Games' },
 ]
-
 // ─── MLB Mega Panel ───────────────────────────────────────────────────────────
 
 function MLBMegaPanel({ onClose }: { onClose: () => void }) {
@@ -698,6 +698,11 @@ export default function SiteHeader({ variant = 'page' }: Props) {
                     </svg>
                   </button>
                 </div>
+
+{/* Articles — standalone link, not a dropdown */}
+                <Link href="/articles" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition">
+                  Articles
+                </Link>
 
                 {/* About dropdown — replaces separate About / Why the Edge / Pricing / Past Games links */}
                 <div className="relative h-full flex items-center" onMouseEnter={openAbout} onMouseLeave={closeAbout}>

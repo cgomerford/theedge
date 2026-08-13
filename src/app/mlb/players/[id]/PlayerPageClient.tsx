@@ -63,6 +63,8 @@ import SprayChart from '@/components/SprayChart'
 import StrikeZoneHeatMap from '@/components/StrikeZoneHeatMap'
 import PitcherPercentileStrip from '@/components/stats/PitcherPercentileStrip'
 import LastFiveStarts from '@/components/stats/LastFiveStarts'
+import PitcherAdvancedLab from '@/components/PitcherAdvancedLab'
+import BatterAdvancedLab from '@/components/BatterAdvancedLab'
 
 function headshotUrl(id: number) {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/w_300,q_100/v1/people/${id}/headshot/67/current`
@@ -567,8 +569,8 @@ function BioTab({ data }: { data: PlayerPageData }) {
 
 // NOTE: 'window' removed as its own section — Custom Window is now folded
 // into the Form tab, per the wireframe.
-type BatterSection = 'career' | 'form' | 'spray' | 'zones' | 'advanced' | 'defense' | 'bio'
-type PitcherSection = 'career' | 'form' | 'percentiles' | 'starts' | 'bio'
+type BatterSection = 'career' | 'form' | 'spray' | 'zones' | 'advanced' | 'defense' | 'lab' | 'bio'
+type PitcherSection = 'career' | 'form' | 'percentiles' | 'starts' | 'lab' | 'bio'
 
 export default function PlayerPageClient({ data }: { data: PlayerPageData }) {
   const { identity } = data
@@ -788,11 +790,13 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   const batterTabs: { key: BatterSection; label: string }[] = [
     { key: 'career', label: 'Career' }, { key: 'form', label: 'Form' },
     { key: 'spray', label: 'Spray chart' }, { key: 'zones', label: 'Hot zones' },
-    { key: 'advanced', label: 'Total stats' }, { key: 'defense', label: 'Defense' }, { key: 'bio', label: 'Bio' },
+    { key: 'advanced', label: 'Total stats' }, { key: 'defense', label: 'Defense' },
+    { key: 'lab', label: 'Pro Lab' }, { key: 'bio', label: 'Bio' },
   ]
   const pitcherTabs: { key: PitcherSection; label: string }[] = [
     { key: 'career', label: 'Career' }, { key: 'form', label: 'Form' },
-    { key: 'percentiles', label: 'Percentiles' }, { key: 'starts', label: 'Last 5 starts' }, { key: 'bio', label: 'Bio' },
+    { key: 'percentiles', label: 'Percentiles' }, { key: 'starts', label: 'Last 5 starts' },
+    { key: 'lab', label: 'Pro Lab' }, { key: 'bio', label: 'Bio' },
   ]
   const tabs = subject === 'batter' ? batterTabs : pitcherTabs
 
@@ -958,12 +962,14 @@ return (
                     <StrikeZoneHeatMap playerId={identity.id} playerName={identity.fullName} stand={identity.batSide === 'S' ? null : identity.batSide} isPro={true} />
                   )}
                   {subject === 'batter' && section === 'defense' && <DefensePanel fielding={batterFielding} oaa={batterOaa} />}
+                  {subject === 'batter' && section === 'lab' && <BatterAdvancedLab batterId={identity.id} />}
                   {section === 'bio' && <BioTab data={data} />}
 
                   {subject === 'pitcher' && section === 'percentiles' && percentiles && (
                     <PitcherPercentileStrip stats={percentiles.stats} qualified={percentiles.qualified} />
                   )}
                   {subject === 'pitcher' && section === 'starts' && <LastFiveStarts starts={recentStarts} />}
+                  {subject === 'pitcher' && section === 'lab' && <PitcherAdvancedLab pitcherId={identity.id} />}
                 </motion.div>
               </div>
 

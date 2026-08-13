@@ -13,6 +13,12 @@
 // (colorForPitcherMetric, formatMetric, ZONE_LABELS) since those are
 // formatting logic, not UI — "build new, separate" was about not reusing
 // the existing chart components themselves.
+//
+// 2026-08-11: added `compact` prop for the admin Scout Stories slideshow
+// (340px-wide story frame) — full-size /mlb/[slug] rendering is untouched
+// unless compact is explicitly passed. Also added a staggered tile-entrance
+// animation on the zone grid (diagonal wave, "settles into place" easing)
+// so the grid assembles itself instead of just popping in.
 
 import { useState } from 'react'
 import type { PitcherHotZones, ZoneCell } from '@/lib/hot-zones'
@@ -28,14 +34,35 @@ type Props = {
   color: string
   hotZones: Record<string, PitcherHotZones>
   arsenal: Record<string, PitcherZoneArsenal>
+  compact?: boolean
 }
 
 const SPLIT_LABELS: Record<Split, string> = { all: 'All', vs_lhb: 'vs LHB', vs_rhb: 'vs RHB' }
 const METRIC_LABELS: Record<Metric, string> = { usage_pct: 'Usage %', ba_against: 'BA against', whiff_pct: 'Whiff %' }
 
-function ZoneGrid({ zones, metric }: { zones: Record<string, ZoneCell>; metric: Metric }) {
+function ZoneGrid({ zones, metric, compact }: { zones: Record<string, ZoneCell>; metric: Metric; compact?: boolean }) {
   return (
-    <div className="grid grid-cols-3 gap-1 w-full max-w-[220px] mx-auto">
+    <div
+      className="zone-grid grid grid-cols-3 mx-auto"
+      style={{ gap: compact ? 3 : 4, maxWidth: compact ? 150 : 220 }}
+    >
+      <style jsx>{`
+        @keyframes tileIn {
+          0% { opacity: 0; transform: scale(0.3) rotate(-35deg) translateY(6px); }
+          60% { opacity: 1; transform: scale(1.08) rotate(6deg) translateY(0); }
+          100% { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
+        }
+        .zone-cell { animation: tileIn 420ms cubic-bezier(.34,1.56,.64,1) both; }
+        .zone-cell:nth-child(1) { animation-delay: 0ms; }
+        .zone-cell:nth-child(2) { animation-delay: 70ms; }
+        .zone-cell:nth-child(3) { animation-delay: 140ms; }
+        .zone-cell:nth-child(4) { animation-delay: 70ms; }
+        .zone-cell:nth-child(5) { animation-delay: 140ms; }
+        .zone-cell:nth-child(6) { animation-delay: 210ms; }
+        .zone-cell:nth-child(7) { animation-delay: 140ms; }
+        .zone-cell:nth-child(8) { animation-delay: 210ms; }
+        .zone-cell:nth-child(9) { animation-delay: 280ms; }
+      `}</style>
       {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(z => {
         const cell = zones[z]
         const value = cell?.[metric] ?? null
@@ -43,13 +70,13 @@ function ZoneGrid({ zones, metric }: { zones: Record<string, ZoneCell>; metric: 
         return (
           <div
             key={z}
-            className={`aspect-square rounded-md flex flex-col items-center justify-center ${colorForPitcherMetric(value, metric)} border border-white/40`}
+            className={`zone-cell aspect-square rounded-md flex flex-col items-center justify-center ${colorForPitcherMetric(value, metric)} border border-white/40`}
             title={ZONE_LABELS[z]}
           >
-            <span className="text-[11px] font-mono font-bold text-stone-900/80">
+            <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
               {formatMetric(value, metric === 'ba_against' ? 'ba' : 'pct')}
             </span>
-            <span className="text-[8px] font-mono text-stone-900/50">n={sample}</span>
+            <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>n={sample}</span>
           </div>
         )
       })}
@@ -57,7 +84,7 @@ function ZoneGrid({ zones, metric }: { zones: Record<string, ZoneCell>; metric: 
   )
 }
 
-export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, arsenal }: Props) {
+export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, arsenal, compact }: Props) {
   const [split, setSplit] = useState<Split>('all')
   const [metric, setMetric] = useState<Metric>('usage_pct')
 
@@ -65,11 +92,14 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
   const arsenalForSplit = arsenal[split]
   const availableSplits = (['all', 'vs_lhb', 'vs_rhb'] as Split[]).filter(s => hotZones[s])
 
+  const pad = compact ? 'p-2.5' : 'p-4'
+  const padB = compact ? 'p-2.5' : 'p-6'
+
   if (!zonesForSplit && !arsenalForSplit) {
     return (
-      <div className="bg-white rounded-xl border border-stone-200 p-6 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-1">{abbr} · {pitcherName}</p>
-        <p className="text-sm font-serif italic text-stone-400">Location data not yet available.</p>
+      <div className={`bg-white rounded-xl border border-stone-200 text-center ${padB}`}>
+        <p className={`font-mono uppercase tracking-widest text-stone-400 mb-1 ${compact ? 'text-[8px]' : 'text-[10px]'}`}>{abbr} · {pitcherName}</p>
+        <p className={`font-serif italic text-stone-400 ${compact ? 'text-xs' : 'text-sm'}`}>Location data not yet available.</p>
       </div>
     )
   }
@@ -82,10 +112,10 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-      <div className="p-4 border-b border-stone-100 flex items-center justify-between flex-wrap gap-2">
+      <div className={`border-b border-stone-100 flex items-center justify-between flex-wrap gap-2 ${pad}`}>
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400">{abbr} · SP</p>
-          <p className="font-serif text-base font-semibold text-stone-900">{pitcherName}</p>
+          <p className={`font-mono uppercase tracking-widest text-stone-400 ${compact ? 'text-[8px]' : 'text-[9px]'}`}>{abbr} · SP</p>
+          <p className={`font-serif font-semibold text-stone-900 ${compact ? 'text-sm' : 'text-base'}`}>{pitcherName}</p>
         </div>
         {availableSplits.length > 1 && (
           <div className="flex gap-1 bg-stone-100 rounded-lg p-0.5">
@@ -93,9 +123,9 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
               <button
                 key={s}
                 onClick={() => setSplit(s)}
-                className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider rounded-md transition ${
-                  split === s ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'
-                }`}
+                className={`font-mono uppercase tracking-wider rounded-md transition ${
+                  compact ? 'px-1.5 py-0.5 text-[8px]' : 'px-2.5 py-1 text-[10px]'
+                } ${split === s ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
               >
                 {SPLIT_LABELS[s]}
               </button>
@@ -104,32 +134,32 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
         )}
       </div>
 
-      <div className="p-4">
+      <div className={pad}>
         {zonesForSplit ? (
           <>
-            <div className="flex gap-1 justify-center mb-3">
+            <div className={`flex gap-1 justify-center ${compact ? 'mb-2' : 'mb-3'}`}>
               {(['usage_pct', 'ba_against', 'whiff_pct'] as Metric[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setMetric(m)}
-                  className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider rounded border ${
-                    metric === m ? 'border-orange-400 text-orange-600 bg-orange-50' : 'border-stone-200 text-stone-400'
-                  }`}
+                  className={`font-mono uppercase tracking-wider rounded border ${
+                    compact ? 'px-1.5 py-0.5 text-[7px]' : 'px-2 py-0.5 text-[9px]'
+                  } ${metric === m ? 'border-orange-400 text-orange-600 bg-orange-50' : 'border-stone-200 text-stone-400'}`}
                 >
                   {METRIC_LABELS[m]}
                 </button>
               ))}
             </div>
-            <ZoneGrid zones={zonesForSplit.zones} metric={metric} />
+            <ZoneGrid zones={zonesForSplit.zones} metric={metric} compact={compact} />
             {(zonesForSplit.go_to_zone_label || zonesForSplit.weak_zone_label) && (
-              <div className="mt-3 text-center space-y-0.5">
+              <div className={`text-center space-y-0.5 ${compact ? 'mt-2' : 'mt-3'}`}>
                 {zonesForSplit.go_to_zone_label && (
-                  <p className="text-[11px] font-mono text-stone-600">
+                  <p className={`font-mono text-stone-600 ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
                     Lives: <span className="font-bold text-stone-900">{zonesForSplit.go_to_zone_label}</span>
                   </p>
                 )}
                 {zonesForSplit.weak_zone_label && (
-                  <p className="text-[11px] font-mono text-stone-600">
+                  <p className={`font-mono text-stone-600 ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
                     Vulnerable: <span className="font-bold text-red-600">{zonesForSplit.weak_zone_label}</span>
                   </p>
                 )}
@@ -141,7 +171,7 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
         )}
       </div>
 
-      {pitchList.length > 0 && (
+      {pitchList.length > 0 && !compact && (
         <div className="border-t border-stone-100">
           <table className="w-full text-[11px] font-mono">
             <thead>
@@ -163,6 +193,16 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pitchList.length > 0 && compact && (
+        <div className="border-t border-stone-100 px-2.5 py-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
+          {pitchList.slice(0, 3).map(([code, p]) => (
+            <span key={code} className="text-[8px] font-mono text-stone-600">
+              <span className="font-semibold text-stone-800">{p.pitch_name ?? code}</span> {p.usage_pct?.toFixed(0) ?? '—'}%
+            </span>
+          ))}
         </div>
       )}
     </div>

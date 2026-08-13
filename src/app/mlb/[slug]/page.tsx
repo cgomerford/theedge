@@ -48,6 +48,8 @@ import {
   type ScoutInputs,
   type TransactionForScout,
   type ArsenalPitch,
+  type BatterPitchSplitForScout,
+  type LineupBatterForScout,
 } from '@/lib/scout'
 
 async function getActiveRosterIds(teamId: number): Promise<Set<number>> {
@@ -172,16 +174,6 @@ export default async function GamePreview({ params }: Props) {
   } : undefined
 
   // ── Umpire scouting ──────────────────────────────────────────────────────
-  // FIXED: this previously landed at module scope (outside this function)
-  // referencing undefined `gamePk`/`homeTeamId`/`season` — that's what threw
-  // "gamePk is not defined". Correct call uses the real values now that
-  // `game` is loaded: game.gamePk and game.teams.home.team.id.
-  //
-  // Both calls hit the live MLB feed for every game in this team's season
-  // (see the perf note in lib/umpire-scouting.ts) — real cost on a page
-  // that's otherwise already fetching a lot. If this page feels slow after
-  // wiring this in, that's the first place to look; a cron-precomputed
-  // version is the long-term fix, same recommendation as bullpen-usage.ts.
   const umpireSeasonYear = new Date().getFullYear()
   const umpireName = await getUpcomingGameUmpire(game.gamePk)
   const umpireSeasonGamePks = umpireName ? await getSeasonGamePks(game.teams.home.team.id, umpireSeasonYear) : []
@@ -373,6 +365,59 @@ const [awayLineupSpray, homeLineupSpray] = await Promise.all([
   const _awayArsenal: ArsenalPitch[] = (awayArsenalRes?.data ?? []) as ArsenalPitch[]
   const _homeArsenal: ArsenalPitch[] = (homeArsenalRes?.data ?? []) as ArsenalPitch[]
 
+  // ── Zone Clash: lineup vs. opposing pitcher's arsenal ────────────────────
+  // Reuses awayLineupBatterIds/homeLineupBatterIds (already computed above
+  // from the existing getProjectedLineup() call) — deliberately NOT a new
+  // lineup fetch. Runs off the predicted lineup, not requiring
+  // lineups_confirmed (confirmed fine by George). Joins against
+  // batter_pitch_type_splits (scripts/fetch_batter_pitch_splits.py, sourced
+  // from Baseball Savant's Pitch Arsenal Stats leaderboard, batter mode).
+  const _allZoneClashIds = [...new Set([...awayLineupBatterIds, ...homeLineupBatterIds])]
+
+  const { data: _pitchSplitRows } = _allZoneClashIds.length > 0
+    ? await supa.from('batter_pitch_type_splits')
+        .select('player_id, pitch_type, pitch_name, pa, ba, whiff_percent, est_woba, hard_hit_percent')
+        .in('player_id', _allZoneClashIds)
+    : { data: [] as any[] }
+
+  // Supabase numeric columns return as strings — explicit Number() coercion,
+  // same rule as everywhere else in this codebase.
+  const _splitsByPlayer = new Map<number, BatterPitchSplitForScout[]>()
+  for (const row of (_pitchSplitRows ?? [])) {
+    const list = _splitsByPlayer.get(row.player_id) ?? []
+    list.push({
+      pitch_type: row.pitch_type,
+      pitch_name: row.pitch_name ?? null,
+      pa: row.pa != null ? Number(row.pa) : null,
+      ba: row.ba != null ? Number(row.ba) : null,
+      whiff_percent: row.whiff_percent != null ? Number(row.whiff_percent) : null,
+      est_woba: row.est_woba != null ? Number(row.est_woba) : null,
+      hard_hit_percent: row.hard_hit_percent != null ? Number(row.hard_hit_percent) : null,
+    })
+    _splitsByPlayer.set(row.player_id, list)
+  }
+
+  // Batting order = array index + 1 — same assumption already relied on
+  // elsewhere on this page (awayLineupZones/homeLineupZones map the same
+  // way against awayLineup.batters / homeLineup.batters by index).
+  function _buildLineupForScout(batters: any[] | undefined): LineupBatterForScout[] {
+    return (batters ?? [])
+      .map((b: any, i: number) => {
+        const playerId = b?.player_id
+        if (!playerId) return null
+        return {
+          player_id: playerId,
+          player_name: b?.player_name ?? 'Unknown',
+          batting_order: i + 1,
+          splits: _splitsByPlayer.get(playerId) ?? [],
+        }
+      })
+      .filter((b): b is LineupBatterForScout => b !== null)
+  }
+
+  const _awayLineupForScout = _buildLineupForScout(awayLineup?.batters)
+  const _homeLineupForScout = _buildLineupForScout(homeLineup?.batters)
+
   const _projectedPlayerIds = new Set<number>(
     [
       ...(awayLineup?.batters?.map((b: any) => b?.player_id) ?? []),
@@ -469,11 +514,6 @@ function dedupeByPlayerId(rows: ReturnType<typeof _toHotStreak>[]) {
     return Array.from(byId.values())
   }
 
-// Fail OPEN, not closed: an empty roster set almost always means the
-  // Stats API fetch failed (a real active roster has 26+ players), not that
-  // zero players are active. Using .has() against an empty set unconditionally
-  // was silently excluding every streak for that team on any fetch hiccup —
-  // exactly what produced the TOR/PHI asymmetry.
   const awayRosterCheckAvailable = awayActiveRosterIds.size > 0
   const homeRosterCheckAvailable = homeActiveRosterIds.size > 0
 
@@ -595,6 +635,8 @@ function dedupeByPlayerId(rows: ReturnType<typeof _toHotStreak>[]) {
       homeDayAfterNight: _teamRaw?.home_team?.day_after_night ?? null,
       awayDayAfterNight: _teamRaw?.away_team?.day_after_night ?? null,
     } : null,
+    awayLineup: _awayLineupForScout,
+    homeLineup: _homeLineupForScout,
   }
 
   const _awayStreakBatterIds = _awayHotStreaks.filter(s => s.player_type === 'batter').map(s => s.player_id)
@@ -640,10 +682,6 @@ function dedupeByPlayerId(rows: ReturnType<typeof _toHotStreak>[]) {
   ) : null
 
   // ── SLOT: READ (Edge Indicator is the whole thing) ──────────────────────
-  // The duplicated pitcher card block above the indicator has been dropped —
-  // the Edge Indicator's own hero communicates the matchup, and deep pitcher
-  // stats live in Pitching Lab. If you want the ERA/WHIP/K9/BB9 bar cards
-  // back, they belong on the Pitching Lab tab, not stacked on top of this.
   const slotRead = (
     <div className="space-y-8">
       {prediction && (

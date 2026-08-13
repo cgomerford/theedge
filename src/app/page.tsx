@@ -14,6 +14,7 @@ import { getActiveSport, SPORT_LABELS } from '@/lib/active-sport'
 import FactorsTabs from '@/components/FactorsTabs'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase'
+import ArticlesTeaser from '@/components/ArticlesTeaser'
 import type { Prospect } from '@/app/mlb/MLBHomepage'
 import { time } from 'console'
 
@@ -487,7 +488,14 @@ const slateHidden = slateTotal - slateGames.length
           </div>
         </section>
       </ScrollReveal>
-
+{/* ── ARTICLES ── */}
+      <ScrollReveal>
+        <section className="bg-[#FAF8F3] border-b border-stone-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <ArticlesTeaser />
+          </div>
+        </section>
+      </ScrollReveal>
       {/* ── EXPLORE THE NUMBERS (new) ── */}
       <ScrollReveal>
         <section className="bg-white border-b border-stone-200">

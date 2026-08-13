@@ -33,6 +33,7 @@ export type ScoutExpandKind =
   | 'transaction-card'
   | 'weather-vector'
   | 'park-factor'
+  | 'lineup-arsenal'
   | null
 
 export type ScoutExpand = {
@@ -242,6 +243,49 @@ export type ParkForScout = {
   runs_factor?: number | null
 } | null
 
+// ─── Lineup vs. pitch-type splits (Zone Clash) ─────────────────────────────────
+//
+// Sourced from batter_pitch_type_splits (scripts/fetch_batter_pitch_splits.py,
+// which pulls Baseball Savant's Pitch Arsenal Stats leaderboard, batter mode)
+// joined against game_lineups (src/app/api/cron/lineup-refresh/route.ts).
+// Both fields verified via curl 2026-08-12 — see script header comments.
+
+export type BatterPitchSplitForScout = {
+  pitch_type: string
+  pitch_name: string | null
+  pa: number | null
+  ba: number | null
+  whiff_percent: number | null
+  est_woba: number | null
+  hard_hit_percent: number | null
+}
+
+export type LineupBatterForScout = {
+  player_id: number
+  player_name: string
+  batting_order: number // 1-9, from game_lineups (array index + 1 at write time)
+  splits: BatterPitchSplitForScout[]
+}
+
+export type LineupArsenalPayload = {
+  pitcherName: string
+  pitchType: string
+  pitchName: string
+  pitchUsage: number | null
+  lineupBlendedBa: number | null
+  lineupBlendedWhiff: number | null
+  lineupBlendedWoba: number | null
+  totalPa: number
+  batters: {
+    name: string
+    battingOrder: number
+    pa: number
+    ba: number | null
+    whiff_percent: number | null
+    est_woba: number | null
+  }[]
+}
+
 export type ScoutInputs = {
   homeAbbr: string
   awayAbbr: string
@@ -257,6 +301,13 @@ export type ScoutInputs = {
   weather: WeatherForScout | null
   park: ParkForScout
   series: SeriesForScout | null
+  // Zone Clash — optional so callers that haven't wired lineup/split fetching
+  // yet degrade gracefully (buildLineupArsenalRows returns [] on null/empty,
+  // same empty-state-beats-fabrication rule as everything else in this file).
+  // homeLineup = home team's batters (faces awayPitcher).
+  // awayLineup = away team's batters (faces homePitcher).
+  homeLineup?: LineupBatterForScout[] | null
+  awayLineup?: LineupBatterForScout[] | null
 }
 
 // ─── Per-team targets ────────────────────────────────────────────────────────
@@ -946,6 +997,160 @@ function buildPitcherRows(
 }
 
 // ─────────────────────────────────────────────────────────────────────
+//  ZONE CLASH — lineup vs. opposing pitcher's specific arsenal
+// ─────────────────────────────────────────────────────────────────────
+//
+// Closes the gap documented in model.md Component 5: "have pitcher
+// arsenal, missing lineup vulnerability." Joins the pitcher's real
+// weapons (>=12% usage — same "primary pitch" bar buildPitcherRows
+// already uses) against each lineup batter's actual BA/whiff/xwOBA vs
+// that specific pitch type.
+//
+// Two outputs from one pass:
+//   1. A single blended headline row — usage-weighted-by-PA across the
+//      whole lineup for whichever pitch shows the most extreme edge
+//      (either direction) vs. league-average xwOBA. One row, same
+//      "most game-relevant single fact" principle as buildHeadlineRead
+//      in narrative.ts — we don't dump every pitch's blend into the
+//      report, just the one that matters most tonight.
+//   2. Per-batter drill-down data (top 4 in the order, gated at
+//      MIN_PA_DRILLDOWN) carried in the row's `expand` payload for the
+//      UI to render as individual lines — not separate ScoutRows, to
+//      avoid one team's lineup depth crowding out the 5-row batting
+//      section cap with near-duplicate pitch-type facts.
+//
+// Runs off the probable/predicted starter's season arsenal — does NOT
+// require lineups_confirmed. Confirmed by George: fine to show this
+// pre-confirmation, same as the rest of the pitching arsenal analysis.
+
+const ZONE_CLASH_MIN_USAGE = 12       // % — matches "primary pitch" bar elsewhere in this file
+const ZONE_CLASH_MIN_PA_BLEND = 8     // per-batter PA floor to count toward the lineup blend
+const ZONE_CLASH_MIN_PA_DRILLDOWN = 15 // higher bar for citing one specific batter by name
+const LEAGUE_AVG_XWOBA_PITCH = 0.315  // same constant used in edge.ts / compute_regression_watch.py — keep in sync
+const ZONE_CLASH_XWOBA_THRESHOLD = 0.028 // minimum deviation from league avg to be worth surfacing
+
+type PitchBlend = {
+  pitch_type: string
+  pitch_name: string
+  usage: number | null
+  blendedBa: number | null
+  blendedWhiff: number | null
+  blendedWoba: number | null
+  totalPa: number
+  batters: LineupArsenalPayload['batters']
+}
+
+function buildLineupArsenalRows(
+  lineup: LineupBatterForScout[] | null | undefined,
+  pitcher: PitcherForScout | null,
+  ownAbbr: string,
+  oppAbbr: string,
+  homeAbbr: string,
+): ScoutRow[] {
+  if (!lineup || lineup.length === 0 || !pitcher) return []
+
+  const leanPos = ownLean(ownAbbr, homeAbbr) // "own" here = the batting team
+  const leanNeg: ScoutLean = leanPos === 'home' ? 'away' : 'home'
+
+  const arsenal = dedupeArsenal(pitcher.arsenal)
+  const realWeapons = arsenal.filter(p => (normPct(p.percentage) ?? 0) >= ZONE_CLASH_MIN_USAGE)
+  if (realWeapons.length === 0) return []
+
+  const blends: PitchBlend[] = []
+
+  for (const pitch of realWeapons) {
+    let sumBaWeighted = 0, sumBaPa = 0
+    let sumWhiffWeighted = 0, sumWhiffPa = 0
+    let sumWobaWeighted = 0, sumWobaPa = 0
+    let totalPa = 0
+    const batterLines: LineupArsenalPayload['batters'] = []
+
+    for (const batter of lineup) {
+      const split = batter.splits.find(s => s.pitch_type === pitch.pitch_type)
+      if (!split || split.pa == null || split.pa < ZONE_CLASH_MIN_PA_BLEND) continue
+
+      totalPa += split.pa
+      if (split.ba != null) { sumBaWeighted += split.ba * split.pa; sumBaPa += split.pa }
+      if (split.whiff_percent != null) { sumWhiffWeighted += split.whiff_percent * split.pa; sumWhiffPa += split.pa }
+      if (split.est_woba != null) { sumWobaWeighted += split.est_woba * split.pa; sumWobaPa += split.pa }
+
+      // Drill-down: only the top 4 in the order, only with a real individual sample.
+      if (batter.batting_order <= 4 && split.pa >= ZONE_CLASH_MIN_PA_DRILLDOWN) {
+        batterLines.push({
+          name: batter.player_name,
+          battingOrder: batter.batting_order,
+          pa: split.pa,
+          ba: split.ba,
+          whiff_percent: split.whiff_percent,
+          est_woba: split.est_woba,
+        })
+      }
+    }
+
+    if (totalPa === 0) continue
+
+    blends.push({
+      pitch_type: pitch.pitch_type,
+      pitch_name: pitch.pitch_name,
+      usage: normPct(pitch.percentage),
+      blendedBa: sumBaPa > 0 ? sumBaWeighted / sumBaPa : null,
+      blendedWhiff: sumWhiffPa > 0 ? sumWhiffWeighted / sumWhiffPa : null,
+      blendedWoba: sumWobaPa > 0 ? sumWobaWeighted / sumWobaPa : null,
+      totalPa,
+      batters: batterLines.sort((a, b) => a.battingOrder - b.battingOrder),
+    })
+  }
+
+  if (blends.length === 0) return []
+
+  // Pick the single most extreme pitch by deviation from league-average
+  // xwOBA — one headline fact, not one row per pitch type.
+  const scored = blends
+    .filter(b => b.blendedWoba != null)
+    .map(b => ({ b, diff: (b.blendedWoba as number) - LEAGUE_AVG_XWOBA_PITCH }))
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+
+  const top = scored[0]
+  if (!top || Math.abs(top.diff) < ZONE_CLASH_XWOBA_THRESHOLD) return []
+
+  const { b: blend, diff } = top
+  const crushing = diff > 0
+  const wobaStr = fmtAvg(blend.blendedWoba as number)
+  const baStr = blend.blendedBa != null ? fmtAvg(blend.blendedBa) : null
+  const whiffStr = blend.blendedWhiff != null ? blend.blendedWhiff.toFixed(1) : null
+  const pitchLabel = (blend.pitch_name ?? blend.pitch_type).toLowerCase()
+
+  const line = crushing
+    ? `Lineup mashes the ${pitchLabel}: ${wobaStr} xwOBA${baStr ? `, ${baStr} AVG` : ''}${whiffStr ? `, ${whiffStr}% whiff` : ''} across ${blend.totalPa} PA — and ${pitcher.player_name} throws it ${blend.usage != null ? `${blend.usage.toFixed(0)}%` : 'often'} of the time.`
+    : `Lineup struggles vs the ${pitchLabel}: ${wobaStr} xwOBA${baStr ? `, ${baStr} AVG` : ''}${whiffStr ? `, ${whiffStr}% whiff` : ''} across ${blend.totalPa} PA — a real weapon for ${pitcher.player_name}.`
+
+  const payload: LineupArsenalPayload = {
+    pitcherName: pitcher.player_name,
+    pitchType: blend.pitch_type,
+    pitchName: blend.pitch_name ?? blend.pitch_type,
+    pitchUsage: blend.usage,
+    lineupBlendedBa: blend.blendedBa,
+    lineupBlendedWhiff: blend.blendedWhiff,
+    lineupBlendedWoba: blend.blendedWoba,
+    totalPa: blend.totalPa,
+    batters: blend.batters,
+  }
+
+  return [{
+    id: `batting-${ownAbbr}-zone-clash-${blend.pitch_type}`,
+    section: 'batting',
+    subsection: `vs ${pitcher.player_name}'s ${pitchLabel}`,
+    line,
+    highlight: wobaStr,
+    lean: crushing ? leanPos : leanNeg,
+    leanLabel: crushing ? `${ownAbbr} +` : `${oppAbbr} +`,
+    sampleTag: `n=${blend.totalPa} PA · Baseball Savant`,
+    weight: crushing ? 94 : 90,
+    expand: { kind: 'lineup-arsenal', data: payload },
+  }]
+}
+
+// ─────────────────────────────────────────────────────────────────────
 //  SECTION 2 · BATTING — return all candidates
 // ─────────────────────────────────────────────────────────────────────
 
@@ -1530,24 +1735,32 @@ function buildBattingRows(inputs: ScoutInputs): {
   const awayCore = buildTeamBattingRows(inputs.awayTeamStats, inputs.homePitcher, inputs.awayAbbr, inputs.homeAbbr, inputs.homeAbbr)
   const homeCore = buildTeamBattingRows(inputs.homeTeamStats, inputs.awayPitcher, inputs.homeAbbr, inputs.awayAbbr, inputs.homeAbbr)
 
+  // Zone Clash — away lineup faces homePitcher, home lineup faces awayPitcher.
+  // Returns [] cleanly if lineup/split data isn't wired for this game yet.
+  const awayZoneClash = buildLineupArsenalRows(inputs.awayLineup, inputs.homePitcher, inputs.awayAbbr, inputs.homeAbbr, inputs.homeAbbr)
+  const homeZoneClash = buildLineupArsenalRows(inputs.homeLineup, inputs.awayPitcher, inputs.homeAbbr, inputs.awayAbbr, inputs.homeAbbr)
+
+  const awayCombined = [...awayCore, ...awayZoneClash]
+  const homeCombined = [...homeCore, ...homeZoneClash]
+
   // If a team is short of 5, pull from that team's offense pool as pad.
   const padAway = () => {
-    if (awayCore.length >= PER_TEAM_TARGETS.batting) return []
+    if (awayCombined.length >= PER_TEAM_TARGETS.batting) return []
     const offense = buildTeamOffenseRows(inputs.awayTeamStats, inputs.awayAbbr, inputs.homeAbbr, inputs.homeAbbr)
     return offense
       .map(r => ({ ...r, section: 'batting' as ScoutSection, id: `pad-${r.id}` }))
-      .slice(0, PER_TEAM_TARGETS.batting - awayCore.length)
+      .slice(0, PER_TEAM_TARGETS.batting - awayCombined.length)
   }
   const padHome = () => {
-    if (homeCore.length >= PER_TEAM_TARGETS.batting) return []
+    if (homeCombined.length >= PER_TEAM_TARGETS.batting) return []
     const offense = buildTeamOffenseRows(inputs.homeTeamStats, inputs.homeAbbr, inputs.awayAbbr, inputs.homeAbbr)
     return offense
       .map(r => ({ ...r, section: 'batting' as ScoutSection, id: `pad-${r.id}` }))
-      .slice(0, PER_TEAM_TARGETS.batting - homeCore.length)
+      .slice(0, PER_TEAM_TARGETS.batting - homeCombined.length)
   }
 
-  const awayFull = [...awayCore, ...padAway()].sort((a, b) => b.weight - a.weight)
-  const homeFull = [...homeCore, ...padHome()].sort((a, b) => b.weight - a.weight)
+  const awayFull = [...awayCombined, ...padAway()].sort((a, b) => b.weight - a.weight)
+  const homeFull = [...homeCombined, ...padHome()].sort((a, b) => b.weight - a.weight)
 
   return {
     awayRows: selectPerTeamSection(awayFull, PER_TEAM_TARGETS.batting),

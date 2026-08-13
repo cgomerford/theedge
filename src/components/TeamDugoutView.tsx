@@ -3,7 +3,7 @@
   import { useState } from 'react'
   import PlayerGradeDetailModal from './PlayerGradeDetailModal'
   import Link from 'next/link'
-
+import TeamArticles from './TeamArticles'
   import type { TeamTransaction } from '@/lib/team-transactions'
   import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
   import type { Team } from '@/lib/teams'
@@ -556,7 +556,7 @@
             )}
           </div>
 
-          {/* RIGHT STICKY SIDEBAR */}
+ {/* RIGHT STICKY SIDEBAR */}
           <div style={{ position: 'sticky', top: 16, alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700, marginBottom: 4 }}>Season rolling trend</div>
@@ -566,6 +566,7 @@
               <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700, marginBottom: 10 }}>Standings</div>
               <StandingsChart defaultDivision={`${team.league} ${team.division}`} />
             </div>
+            <TeamArticles teamCode={team.abbrev} />
           </div>
         </div>
 

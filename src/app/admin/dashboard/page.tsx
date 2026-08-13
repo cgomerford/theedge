@@ -1,30 +1,3 @@
-// src/app/admin/dashboard/page.tsx
-//
-// ADMIN DASHBOARD
-//
-// Internal-only. Guarded by middleware.ts (basic auth over /admin/*).
-// Server component — fetches with the service-role client, passes only
-// plain serialisable data down to the client SnipStudio / StatCardPanel.
-//
-// Optional query param for backfill / inspection:
-//   /admin/dashboard?date=YYYY-MM-DD   (sets "today's slate"; perf = day before)
-//
-// REVISION NOTE (2026-06-24): initial build.
-// REVISION NOTE (2026-06-24): added Player Stat Cards section — image
-// export tool for player-level stats (streaks, ERA trends, H2H), separate
-// from Snip Studio's team-level X-post drafts. Fetched outside the main
-// Promise.all since getTodaysStatCardData fans out per-game roster +
-// gamelog calls and is meaningfully slower than the other two queries;
-// kept separate so a slow/failed card fetch can't block the rest of the
-// page. See src/lib/admin-dashboard-cards.ts for the data layer.
-// REVISION NOTE (2026-06-25): added Pre-Game Data Room section — rolling
-// OPS/ERA/errors + rule-based "interesting takes" pulled straight from the
-// MLB Stats API (no edge_predictions dependency, no new table). Unlike the
-// stat cards, this one fetches CLIENT-SIDE and lazily per selected game
-// (AdminDataRoomSection → /api/admin/data-room/[gamePk]) — a 15-game slate
-// fanning out 6+ API calls per team isn't something the server render
-// should ever wait on. See src/lib/pregame-stats.ts + pregame-takes.ts.
-
 import {
   getDailyPerformance,
   getTodaysReads,
@@ -32,9 +5,11 @@ import {
   etDate,
 } from '@/lib/admin-dashboard'
 import { getTodaysStatCardData } from '@/lib/admin-dashboard-cards'
+import { getScoutReportBundle } from '@/lib/scout-bundle'
 import SnipStudio from '@/app/admin/dashboard/SnipStudio'
 import StatCardPanel from '@/app/admin/cards/StatCardPanel'
 import AdminDataRoomSection from '@/components/admin/AdminDataRoomSection'
+import AllGamesStorySlideshow from '@/components/admin/AllGamesStorySlideshow'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,7 +21,6 @@ export default async function AdminDashboard({
   const { date } = await searchParams
   const slateDate = date || etDate(0)
 
-  // perf date = the day before the slate date
   const perfDate = (() => {
     const d = new Date(`${slateDate}T12:00:00`)
     d.setDate(d.getDate() - 1)
@@ -57,12 +31,50 @@ export default async function AdminDashboard({
     getDailyPerformance(perfDate),
     getTodaysReads(slateDate),
   ])
+
+  // Build a real Scout Report per game, in-process — no network hop, no
+  // dead deployment to 404 against. See src/lib/scout-bundle.ts.
+  const gamesWithReports = await Promise.all(
+    reads.map(async (r) => {
+      const bundle = await getScoutReportBundle(r.game_pk)
+
+      const parts = r.matchup.split(/@|vs/i).map((s) => s.trim())
+      const awayAbbr = parts[0] || 'AWAY'
+      const homeAbbr = parts[1] || 'HOME'
+
+      if (!bundle) {
+        // Degrade to matchup-name-only — same fallback shape as before,
+        // so AllGamesStorySlideshow's "no data" slides still render sanely
+        // instead of crashing on undefined fields.
+        return {
+          ...r,
+          report: null,
+          awayAbbr, homeAbbr,
+          awayName: awayAbbr, homeName: homeAbbr,
+          awayColor: '#FF5722', homeColor: '#1A1A1A',
+          awayPitcherName: 'TBD', homePitcherName: 'TBD',
+          awayPitcherHotZones: {}, homePitcherHotZones: {},
+          awayPitcherArsenalZones: {}, homePitcherArsenalZones: {},
+          awayLineupZones: [], homeLineupZones: [],
+          awayLineupSpray: [], homeLineupSpray: [],
+          awayPitcherTTO: null, homePitcherTTO: null,
+          awayPitcherThrows: 'R' as const, homePitcherThrows: 'R' as const,
+          awayLineupSize: 0, homeLineupSize: 0,
+        }
+      }
+
+      return { ...r, ...bundle }
+    })
+  )
+
   const snips = await buildSnips(reads, perf)
   const cardData = await getTodaysStatCardData(slateDate)
 
   const fmtDate = (s: string) =>
     new Date(`${s}T12:00:00`).toLocaleDateString('en-GB', {
-      weekday: 'short', day: 'numeric', month: 'short',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
     })
 
   return (
@@ -72,19 +84,24 @@ export default async function AdminDashboard({
       <div className="wrap">
         {/* TOP BAR */}
         <div className="topbar">
-          <div className="brand"><span className="mark">⊕</span> THE EDGE <span className="sub">/ admin</span></div>
+          <div className="brand">
+            <span className="mark">⊕</span> THE EDGE <span className="sub">/ admin</span>
+          </div>
           <div className="topmeta">Slate {fmtDate(slateDate)}</div>
         </div>
 
         {/* ── YESTERDAY ───────────────────────────── */}
         <section className="sec">
           <div className="sechead">
-            <span className="glyph">§</span><h2>Yesterday&rsquo;s performance</h2>
+            <span className="glyph">§</span>
+            <h2>Yesterday&rsquo;s performance</h2>
             <span className="tag">{fmtDate(perf.date)} · internal</span>
           </div>
 
           {perf.graded === 0 ? (
-            <div className="empty">No graded games for {fmtDate(perf.date)} yet — the grading cron may still be running.</div>
+            <div className="empty">
+              No graded games for {fmtDate(perf.date)} yet — the grading cron may still be running.
+            </div>
           ) : (
             <div className="yday">
               <div className="record">
@@ -93,15 +110,25 @@ export default async function AdminDashboard({
               </div>
               <div className="ydstats">
                 <div className="stat">
-                  <div className="n">{perf.alignment_percent != null ? `${Math.round(perf.alignment_percent)}%` : '—'}</div>
+                  <div className="n">
+                    {perf.alignment_percent != null
+                      ? `${Math.round(perf.alignment_percent)}%`
+                      : '—'}
+                  </div>
                   <div className="l">alignment (n={perf.graded})</div>
                 </div>
                 <div className="stat">
-                  <div className="n">{perf.strong_hit} / {perf.strong_total}</div>
+                  <div className="n">
+                    {perf.strong_hit} / {perf.strong_total}
+                  </div>
                   <div className="l">strong leans hit</div>
                 </div>
                 <div className="stat">
-                  <div className="n">{perf.avg_factors_on_wins != null ? `${perf.avg_factors_on_wins.toFixed(1)}/8` : '—'}</div>
+                  <div className="n">
+                    {perf.avg_factors_on_wins != null
+                      ? `${perf.avg_factors_on_wins.toFixed(1)}/8`
+                      : '—'}
+                  </div>
                   <div className="l">avg factors aligned on wins</div>
                 </div>
                 <div className="stat">
@@ -110,8 +137,18 @@ export default async function AdminDashboard({
                 </div>
                 {(perf.best || perf.worst) && (
                   <div className="extremes">
-                    {perf.best && <div><span className="ok">BEST ⊕</span> {perf.best.matchup} {perf.best.factor_count}/8 — {perf.best.detail}</div>}
-                    {perf.worst && <div><span className="miss">MISS ⊕</span> {perf.worst.matchup} {perf.worst.factor_count}/8 — {perf.worst.detail}</div>}
+                    {perf.best && (
+                      <div>
+                        <span className="ok">BEST ⊕</span> {perf.best.matchup}{' '}
+                        {perf.best.factor_count}/8 — {perf.best.detail}
+                      </div>
+                    )}
+                    {perf.worst && (
+                      <div>
+                        <span className="miss">MISS ⊕</span> {perf.worst.matchup}{' '}
+                        {perf.worst.factor_count}/8 — {perf.worst.detail}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -122,7 +159,8 @@ export default async function AdminDashboard({
         {/* ── TODAY'S READS ───────────────────────── */}
         <section className="sec">
           <div className="sechead">
-            <span className="glyph">§</span><h2>Today&rsquo;s reads</h2>
+            <span className="glyph">§</span>
+            <h2>Today&rsquo;s reads</h2>
             <span className="tag">ranked by lean strength</span>
           </div>
 
@@ -130,17 +168,24 @@ export default async function AdminDashboard({
             <div className="empty">No reads generated for {fmtDate(slateDate)} yet.</div>
           ) : (
             reads.map((r, i) => (
-              <div key={r.game_pk} className={`read${i === 0 && !r.near_split ? ' top' : ''}`}>
+              <div
+                key={r.game_pk}
+                className={`read${i === 0 && !r.near_split ? ' top' : ''}`}
+              >
                 <div className="rank">{i + 1}</div>
                 <div>
                   <div className="matchup">{r.matchup}</div>
                   <div className="submeta">
-                    {i === 0 && !r.near_split && <span className="star">★ Edge of the Day candidate · </span>}
+                    {i === 0 && !r.near_split && (
+                      <span className="star">★ Edge of the Day candidate · </span>
+                    )}
                     led by {r.dominant_factor}
                     {' · '}
-                    {r.lineups_confirmed
-                      ? <span className="lin-ok">✓ lineups confirmed</span>
-                      : <span className="lin-wait">⧗ lineups pending</span>}
+                    {r.lineups_confirmed ? (
+                      <span className="lin-ok">✓ lineups confirmed</span>
+                    ) : (
+                      <span className="lin-wait">⧗ lineups pending</span>
+                    )}
                   </div>
                 </div>
                 <div className="edge">
@@ -152,10 +197,25 @@ export default async function AdminDashboard({
           )}
         </section>
 
+        {/* ── SCOUT STORIES ─────────────────────────── */}
+        <section className="sec">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Scout Stories</h2>
+            <span className="tag">real report sections · animated · 9:16</span>
+          </div>
+
+          <AllGamesStorySlideshow
+            games={gamesWithReports}
+            slateDate={slateDate}
+          />
+        </section>
+
         {/* ── PRE-GAME DATA ROOM ──────────────────── */}
         <section className="sec">
           <div className="sechead">
-            <span className="glyph">§</span><h2>Pre-game data room</h2>
+            <span className="glyph">§</span>
+            <h2>Pre-game data room</h2>
             <span className="tag">rolling stats · MLB Stats API · raw model OK here</span>
           </div>
           <AdminDataRoomSection
@@ -169,27 +229,22 @@ export default async function AdminDashboard({
         {/* ── PLAYER STAT CARDS ───────────────────── */}
         <section className="sec">
           <div className="sechead">
-            <span className="glyph">§</span><h2>Player stat cards</h2>
+            <span className="glyph">§</span>
+            <h2>Player stat cards</h2>
             <span className="tag">image export · player-level, not model output</span>
           </div>
           <StatCardPanel data={cardData} />
         </section>
 
         <div className="footnote">
-          ⊕ Internal tool — guarded, not indexed. The <b>Yesterday</b> box is your honest scoreboard (your eyes only).
-          The <b>Pre-game Data Room</b> is raw research — rolling OPS/ERA/errors and rule-based takes off live MLB data,
-          meant to be read and then fed into a Read; nothing in it is public-facing copy.
-          Everything in <b>Snip studio</b> is public-safe: voice runs through the banned-word rule, links stay out of post bodies,
-          and the Track Record post uses neutral &ldquo;alignment&rdquo; framing. Verify any <b>[bracketed]</b> field before posting.
-          <b>Player stat cards</b> are plain numbers off MLB&rsquo;s own data — no model lean, no Edge Score — but still drop the
-          link in your first reply, not the post, same as everything else here.
+          ⊕ Internal tool — guarded, not indexed. The <b>Yesterday</b> box is your honest
+          scoreboard (your eyes only).
         </div>
       </div>
     </main>
   )
 }
 
-// ─── Styles (plain CSS — avoids Tailwind v4 / Turbopack responsive issues) ─────
 const css = `
 .admin{background:#FAF8F3;color:#1A1A1A;font-family:'JetBrains Mono',ui-monospace,monospace;min-height:100vh;padding:0 16px 80px}
 .admin .wrap{max-width:880px;margin:0 auto}

@@ -259,10 +259,27 @@ export interface DaySlateGame {
   inning: number | null
   inningHalf: 'top' | 'bottom' | null
 }
+// ── Minor-league slate fetch — same shape as getGamesForDate, parameterized
+// by sportId. UNVERIFIED: these sportId values follow the documented MLB
+// Stats API convention (also used, with the identical caveat, in
+// scripts/fetch_player_form.py's MILB_AAA_SPORT_ID). Neither has been
+// curl-tested against a live response from where this was written — run
+// one real date through getMinorLeagueGamesForDate before trusting it in
+// the yesterday-stats pipeline. If it returns an empty array on a date you
+// know had games, this is the first place to check.
+//
+// teamAbbr() lookup is MLB-specific (30 franchise codes) — for a MiLB team
+// id it won't find a match and falls through to the API's own
+// `abbreviation` field, same fallback path getGamesForDate already uses
+// below. That's expected, not a bug: MiLB abbreviations just come straight
+// from the API instead of the static table.
+export const SPORT_ID_MLB = 1
+export const SPORT_ID_AAA = 11
+export const SPORT_ID_AA = 12
 
-export async function getGamesForDate(date: string): Promise<DaySlateGame[]> {
+export async function getGamesForDateAndLevel(date: string, sportId: number): Promise<DaySlateGame[]> {
   try {
-    const url = `${STATS_API_V1}/schedule?sportId=1&date=${date}&hydrate=team,linescore`
+    const url = `${STATS_API_V1}/schedule?sportId=${sportId}&date=${date}&hydrate=team,linescore`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) return []
     const data = await res.json()
@@ -277,11 +294,6 @@ export async function getGamesForDate(date: string): Promise<DaySlateGame[]> {
           status: g.status?.abstractGameState ?? 'Preview',
           homeTeamId,
           awayTeamId,
-          // static table first — the schedule endpoint's team objects don't
-          // reliably include `abbreviation` without exact hydration params,
-          // so don't depend on that; only fall back to the API's own value
-          // for a team id this table doesn't recognize (e.g. an All-Star
-          // team or a new expansion franchise before the table's updated)
           homeAbbr: teamAbbr(homeTeamId, g.teams?.home?.team?.abbreviation),
           awayAbbr: teamAbbr(awayTeamId, g.teams?.away?.team?.abbreviation),
           homeScore: g.teams?.home?.score ?? g.linescore?.teams?.home?.runs ?? 0,
@@ -296,6 +308,14 @@ export async function getGamesForDate(date: string): Promise<DaySlateGame[]> {
     return []
   }
 }
+
+/** getGamesForDate(date) is unchanged and still MLB-only (sportId=1) —
+ *  it's a thin wrapper over the function above now, purely so existing
+ *  callers don't need to change. */
+export async function getGamesForDate(date: string): Promise<DaySlateGame[]> {
+  return getGamesForDateAndLevel(date, SPORT_ID_MLB)
+}
+
 
 export async function getDoubleheaderGames(
   date: string,
@@ -329,3 +349,4 @@ export async function getDoubleheaderGames(
     return []
   }
 }
+

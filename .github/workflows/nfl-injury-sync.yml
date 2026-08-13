@@ -1,0 +1,39 @@
+name: NFL injury report sync
+
+on:
+  schedule:
+    # Twice daily through the pre-season / off-season (injury news is
+    # slower-moving here). Tighten this once the regular season starts —
+    # Wed/Thu/Fri practice reports and Sunday-morning inactives are the
+    # moments that actually matter, so a 4-6x/day cadence in-season would
+    # serve the Scout Report and any gameday content much better than
+    # this twice-daily off-season default.
+    - cron: '0 11 * * *'   # 11:00 UTC / ~7am ET
+    - cron: '0 21 * * *'   # 21:00 UTC / ~5pm ET
+  workflow_dispatch:
+    # Manual trigger from the GitHub Actions UI — useful for testing
+
+jobs:
+  sync-injuries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run fetch_nfl_transactions.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_nfl_transactions.py
