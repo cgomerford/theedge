@@ -3,39 +3,22 @@
 // Intended to run on a Vercel cron (e.g. every 15 min during game windows).
 // For each game that finished today and hasn't been emailed yet:
 //   1. fetch the live feed, confirm it's Final
-//   2. aggregate → PostgameReport
-//   3. cache it in game_postgame_reports
-//   4. build + send the email via Resend to active subscribers
-//   5. stamp emailed_at so it isn't sent twice
-//
-// ASSUMPTIONS TO VERIFY — I don't have your subscribers table schema or
-// Resend send helper in front of me, so both are stubbed with the shape
-// implied by your architecture notes (Resend for email, Supabase for
-// storage). Swap in the real table name / column names / send helper.
-//
-// Vercel cron wiring (add to vercel.json, not written here since I don't
-// have your current vercel.json):
-//   { "path": "/api/cron/postgame-emails", "schedule": "*/15 6-8 * * *" }
-// (schedule is UTC — adjust the hour window to cover your typical first
-// pitch → last final window)
-
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase'
 import { getLiveFeed, getDoubleheaderGames } from '@/lib/mlb-live-feed'
 import { aggregateGameFeed } from '@/lib/postgame-aggregate'
 import { buildPostgameReportEmail } from '@/lib/email/templates/postgame-report'
 
-const supa = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
 export async function GET(req: Request) {
-  // Vercel cron requests carry this header — reject anything else so the
-  // route can't be hit publicly to spam-trigger emails.
   const authHeader = req.headers.get('authorization')
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
+  const supa = createAdminClient()
+
   const today = new Date().toISOString().slice(0, 10)
+  // ...rest of the function unchanged, just remove the old top-level `const supa = createClient(...)` line
 
   // Pull today's scheduled games that we know about via game_previews
   // (already populated by the game page / your existing schedule sync).
