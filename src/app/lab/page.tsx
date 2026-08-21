@@ -27,7 +27,7 @@ export default async function LabPage() {
   const subscriber = await getCurrentSubscriber()
   if (!subscriber) redirect('/?error=signin_required')
 
-  return (
+return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">

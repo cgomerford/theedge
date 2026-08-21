@@ -1,6 +1,5 @@
 // src/app/stats/page.tsx
 
-import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import StatsExplorer from '@/components/stats/StatsExplorer'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -19,17 +18,20 @@ export default async function StatsPage() {
     )
   }
 
+  // Public page — no sign-in required, same pattern as
+  // /stats/player/[id]/page.tsx. isPro/isSignedIn passed through so
+  // StatsExplorer gates its own Pro-only content internally.
   const subscriber = await getCurrentSubscriber()
-  if (!subscriber) redirect('/?error=signin_required')
 
   // isPro must never default to true — same rule as everywhere else in this
   // codebase, after the live isPro-leak bug. ?? false, not ?? true.
   const isPro = subscriber?.is_pro ?? false
+  const isSignedIn = !!subscriber
 
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader />
-      <StatsExplorer isPro={isPro} isSignedIn={true} />
+      <StatsExplorer isPro={isPro} isSignedIn={isSignedIn} />
     </main>
   )
 }
