@@ -306,7 +306,7 @@ export type ScoutInputs = {
   // same empty-state-beats-fabrication rule as everything else in this file).
   // homeLineup = home team's batters (faces awayPitcher).
   // awayLineup = away team's batters (faces homePitcher).
-  homeLineup?: LineupBatterForScout[] | null
+homeLineup?: LineupBatterForScout[] | null
   awayLineup?: LineupBatterForScout[] | null
 }
 
@@ -1822,9 +1822,11 @@ function buildMoveRows(inputs: ScoutInputs): ScoutRow[] {
 //  SECTION 6 · SITUATION
 // ─────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────
+//  SECTION 6 · SITUATION
+// ─────────────────────────────────────────────────────────────────────
 function buildSituationRows(inputs: ScoutInputs): ScoutRow[] {
   const rows: ScoutRow[] = []
-
   if (inputs.park) {
     const hr = inputs.park.hr_factor
     const dbl = inputs.park.doubles_factor

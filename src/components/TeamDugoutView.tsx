@@ -3,7 +3,6 @@
   import { useState } from 'react'
   import PlayerGradeDetailModal from './PlayerGradeDetailModal'
   import Link from 'next/link'
-import TeamArticles from './TeamArticles'
   import type { TeamTransaction } from '@/lib/team-transactions'
   import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
   import type { Team } from '@/lib/teams'
@@ -43,6 +42,7 @@ import TeamArticles from './TeamArticles'
     grades: Record<number, PlayerGrade>
     schedule: ScheduleRow[]
     minors: AffiliateStandout[]
+    articlesSlot: React.ReactNode
     rollingSeries: Record<TeamMetric, RollingPoint[]>
 
     // ── NEW props ──
@@ -330,7 +330,7 @@ import TeamArticles from './TeamArticles'
 
   export default function TeamDugoutView({
     team, mlbId, record, nextGame, leaders, news, composition, rankings, moves, ilList, roster, grades, schedule, minors, rollingSeries,
-    confirmedLineup, optimizedLineupVsRHP, optimizedLineupVsLHP, bullpenReport, last7DaysWorkload,
+    confirmedLineup, optimizedLineupVsRHP,articlesSlot, optimizedLineupVsLHP, bullpenReport, last7DaysWorkload,
   }: Props) {
     const battingLeaders = leaders.filter(l => l.category === 'batting')
     const pitchingLeaders = leaders.filter(l => l.category === 'pitching')
@@ -566,7 +566,7 @@ import TeamArticles from './TeamArticles'
               <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700, marginBottom: 10 }}>Standings</div>
               <StandingsChart defaultDivision={`${team.league} ${team.division}`} />
             </div>
-            <TeamArticles teamCode={team.abbrev} />
+            {articlesSlot}
           </div>
         </div>
 

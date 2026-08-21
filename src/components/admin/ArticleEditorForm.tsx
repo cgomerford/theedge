@@ -56,10 +56,48 @@ export default function ArticleEditorForm({ initialArticle }: ArticleEditorFormP
   const [errorMsg, setErrorMsg] = useState('');
   const [chartModalOpen, setChartModalOpen] = useState(false);
 
-  const editor = useEditor({
+const editor = useEditor({
     extensions: [StarterKit, Image, Link.configure({ openOnClick: false })],
     content: '',
     immediatelyRender: false,
+    editorProps: {
+      handlePaste(view, event) {
+        const items = event.clipboardData?.items
+        if (!items) return false
+
+        const imageItem = Array.from(items).find(item => item.type.startsWith('image/'))
+        if (!imageItem) return false // let Tiptap handle normal text paste
+
+        const file = imageItem.getAsFile()
+        if (!file) return false
+
+        event.preventDefault()
+
+        ;(async () => {
+          try {
+            const formData = new FormData()
+            formData.append('file', file, file.name || 'pasted-image.png')
+
+            const res = await fetch('/api/admin/upload', { method: 'POST', body: formData })
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}))
+              throw new Error(body.error ?? 'Upload failed')
+            }
+
+            const { url } = await res.json()
+            const { schema } = view.state
+            const node = schema.nodes.image.create({ src: url })
+            const transaction = view.state.tr.replaceSelectionWith(node)
+            view.dispatch(transaction)
+          } catch (err) {
+            console.error('Pasted image upload failed:', err)
+            window.alert(err instanceof Error ? err.message : 'Image paste failed — try again.')
+          }
+        })()
+
+        return true // we've handled this paste
+      },
+    },
   });
 
   useEffect(() => {

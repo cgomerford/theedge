@@ -1,7 +1,44 @@
 // MLB Stats API — official, free, no API key needed
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+
+// ─── Shared fetch helper — timeout + single retry on transient network errors ──
+//
+// Distinguishes two failure modes:
+//   1. Thrown network error (ECONNRESET, DNS blip, TLS handshake dropped,
+//      AbortSignal timeout) — genuinely transient, worth one retry.
+//   2. A response that came back but with a bad status (404, 500, etc.) —
+//      NOT retried. That's a real answer from the server, not a network
+//      hiccup, and hammering it again won't change the outcome.
+//
+// Callers still get a Response back on success, or the underlying error
+// thrown on final failure — existing try/catch blocks in this file work
+// unchanged.
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  { timeoutMs = 10000, retries = 1 }: { timeoutMs?: number; retries?: number } = {},
+): Promise<Response> {
+  let lastErr: unknown = null
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) })
+      return res // got a response — success or real HTTP error, either way don't retry
+    } catch (err) {
+      lastErr = err
+      if (attempt < retries) {
+        // Short backoff before the one retry — gives a transient blip a moment to clear
+        await new Promise(r => setTimeout(r, 400))
+        continue
+      }
+    }
+  }
+
+  throw lastErr
+}
 
 export type MLBGame = {
   gamePk: number
@@ -42,10 +79,12 @@ export type TickerGame = {
 }
 
 // Get the MLB schedule for a specific date (format: 'YYYY-MM-DD')
-export async function getScheduleForDate(date: string): Promise<MLBGame[]> {
+// Wrapped in cache() — if multiple components on the same page ask for the
+// same date within one render, this collapses them into a single real fetch.
+export const getScheduleForDate = cache(async (date: string): Promise<MLBGame[]> => {
   const url = `${MLB_API}/schedule?sportId=1&date=${date}&hydrate=team,probablePitcher,linescore`
   try {
-    const res = await fetch(url, { next: { revalidate: 1800 } })
+    const res = await fetchWithRetry(url, { next: { revalidate: 1800 } })
     if (!res.ok) {
       console.error('MLB schedule fetch failed:', res.status)
       return []
@@ -56,7 +95,7 @@ export async function getScheduleForDate(date: string): Promise<MLBGame[]> {
     console.error('MLB fetch error:', err)
     return []
   }
-}
+})
 
 export async function getTodayTickerGames(): Promise<TickerGame[]> {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -162,15 +201,15 @@ export type PitcherSeasonStats = {
   losses: number
 }
 
-export async function getPitcherRecentStarts(
+export const getPitcherRecentStarts = cache(async (
   playerId: number,
   limit: number = 5
-): Promise<PitcherGameLog[]> {
+): Promise<PitcherGameLog[]> => {
   const season = new Date().getFullYear()
   const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=pitching&season=${season}`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const res = await fetchWithRetry(url, { next: { revalidate: 3600 } })
     if (!res.ok) return []
     const data = await res.json()
     const games = data.stats?.[0]?.splits ?? []
@@ -190,16 +229,16 @@ export async function getPitcherRecentStarts(
     console.error('Pitcher game log fetch failed:', err)
     return []
   }
-}
+})
 
-export async function getPitcherSeasonStats(
+export const getPitcherSeasonStats = cache(async (
   playerId: number
-): Promise<PitcherSeasonStats | null> {
+): Promise<PitcherSeasonStats | null> => {
   const season = new Date().getFullYear()
   const url = `${MLB_API}/people/${playerId}/stats?stats=season&group=pitching&season=${season}`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const res = await fetchWithRetry(url, { next: { revalidate: 3600 } })
     if (!res.ok) return null
     const data = await res.json()
     const stats = data.stats?.[0]?.splits?.[0]?.stat
@@ -221,10 +260,19 @@ export async function getPitcherSeasonStats(
     console.error('Pitcher season stats fetch failed:', err)
     return null
   }
-}
+})
 
 // =====================================================
 // WEATHER — Open-Meteo (free, no API key needed)
+//
+// 2026-08-20: refactored to extract the raw Open-Meteo hourly fetch into
+// its own cache()-wrapped helper (fetchOpenMeteoHourly), keyed only on
+// lat/lon (not game time), so getGameRainOutlook below can reuse the
+// SAME underlying data getGameWeather already fetches, instead of firing
+// a second identical request to Open-Meteo. getGameWeather's own
+// signature, return shape, and behavior are UNCHANGED — the daily-brief
+// email pipeline (src/app/api/cron/send-daily-brief/route.ts) depends on
+// its existing GameWeather shape and this doesn't touch that.
 // =====================================================
 
 export type GameWeather = {
@@ -256,53 +304,136 @@ function describeConditions(weatherCode: number): string {
   return 'Unknown'
 }
 
-export async function getGameWeather(
-  lat: number,
-  lon: number,
-  gameTimeUTC: string
-): Promise<GameWeather | null> {
+type OpenMeteoHourly = {
+  time: string[]
+  temperature_2m: number[]
+  apparent_temperature: number[]
+  precipitation_probability: number[]
+  cloud_cover: number[]
+  wind_speed_10m: number[]
+  wind_direction_10m: number[]
+  weather_code: number[]
+} | null
+
+// Raw fetch, shared by getGameWeather and getGameRainOutlook. Keyed only
+// on lat/lon — forecast_days=3 covers any reasonable game time, so both
+// callers hit the exact same cached response regardless of what specific
+// gameTimeUTC they're each looking for within it.
+const fetchOpenMeteoHourly = cache(async (lat: number, lon: number): Promise<OpenMeteoHourly> => {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability,cloud_cover,wind_speed_10m,wind_direction_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=3&timezone=auto`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const res = await fetchWithRetry(url, { next: { revalidate: 3600 } })
     if (!res.ok) {
       console.error('Open-Meteo fetch failed:', res.status)
       return null
     }
     const data = await res.json()
-
     const hourly = data.hourly
     if (!hourly || !hourly.time) return null
-
-    const gameTime = new Date(gameTimeUTC).getTime()
-    let closestIndex = 0
-    let smallestDiff = Infinity
-    for (let i = 0; i < hourly.time.length; i++) {
-      const hourTime = new Date(hourly.time[i]).getTime()
-      const diff = Math.abs(hourTime - gameTime)
-      if (diff < smallestDiff) {
-        smallestDiff = diff
-        closestIndex = i
-      }
-    }
-
-    const windDir = hourly.wind_direction_10m[closestIndex] ?? 0
-
-    return {
-      temp_f: Math.round(hourly.temperature_2m[closestIndex] ?? 0),
-      feels_like_f: Math.round(hourly.apparent_temperature[closestIndex] ?? 0),
-      wind_mph: Math.round(hourly.wind_speed_10m[closestIndex] ?? 0),
-      wind_direction: windDir,
-      wind_direction_text: describeWindDirection(windDir),
-      precipitation_chance: Math.round(hourly.precipitation_probability[closestIndex] ?? 0),
-      cloud_cover: Math.round(hourly.cloud_cover[closestIndex] ?? 0),
-      conditions: describeConditions(hourly.weather_code[closestIndex] ?? 0),
-    }
+    return hourly as OpenMeteoHourly
   } catch (err) {
     console.error('Weather fetch error:', err)
     return null
   }
+})
+
+export const getGameWeather = cache(async (
+  lat: number,
+  lon: number,
+  gameTimeUTC: string
+): Promise<GameWeather | null> => {
+  const hourly = await fetchOpenMeteoHourly(lat, lon)
+  if (!hourly) return null
+
+  const gameTime = new Date(gameTimeUTC).getTime()
+  let closestIndex = 0
+  let smallestDiff = Infinity
+  for (let i = 0; i < hourly.time.length; i++) {
+    const hourTime = new Date(hourly.time[i]).getTime()
+    const diff = Math.abs(hourTime - gameTime)
+    if (diff < smallestDiff) {
+      smallestDiff = diff
+      closestIndex = i
+    }
+  }
+
+  const windDir = hourly.wind_direction_10m[closestIndex] ?? 0
+
+  return {
+    temp_f: Math.round(hourly.temperature_2m[closestIndex] ?? 0),
+    feels_like_f: Math.round(hourly.apparent_temperature[closestIndex] ?? 0),
+    wind_mph: Math.round(hourly.wind_speed_10m[closestIndex] ?? 0),
+    wind_direction: windDir,
+    wind_direction_text: describeWindDirection(windDir),
+    precipitation_chance: Math.round(hourly.precipitation_probability[closestIndex] ?? 0),
+    cloud_cover: Math.round(hourly.cloud_cover[closestIndex] ?? 0),
+    conditions: describeConditions(hourly.weather_code[closestIndex] ?? 0),
+  }
+})
+
+// ── NEW: hourly rain outlook across the rough span of a game ─────────────
+//
+// Reuses fetchOpenMeteoHourly (same cached data getGameWeather already
+// pulls, no second API call). Returns precip probability for each hour
+// from first pitch through roughly the expected end of the game.
+//
+// ESTIMATED INNING CAVEAT — read before trusting this at face value:
+// Open-Meteo has no concept of "inning," obviously. estimatedInning below
+// is a rough mapping using ~3 innings per hour of elapsed game time (i.e.
+// a ~3-hour 9-inning game), which is a reasonable average pace but NOT
+// this specific game's actual pace — a pitchers' duel or a bullpen game
+// with lots of pitching changes will run slower than this estimate, a
+// crisp game faster. Labelled as an estimate wherever this is displayed,
+// not asserted as precise. Real, unaltered data is the clock time and
+// the precipitation probability; the inning number is the approximation.
+export type RainOutlookHour = {
+  clockTime: string        // e.g. "7:00 PM" — real, local to the venue (Open-Meteo timezone=auto)
+  precipChance: number     // real, from Open-Meteo
+  estimatedInning: number | null  // approximate — see caveat above
 }
+
+export type RainOutlook = {
+  hours: RainOutlookHour[]
+  rainLikely: boolean               // true if any hour hits the 50%+ threshold
+  firstRainHour: RainOutlookHour | null
+}
+
+const RAIN_LIKELY_THRESHOLD = 50
+const INNINGS_PER_HOUR_ESTIMATE = 3 // ~3hr per 9-inning game, average pace — not this game's actual pace
+
+export const getGameRainOutlook = cache(async (
+  lat: number,
+  lon: number,
+  gameTimeUTC: string,
+  hoursSpan: number = 4,
+): Promise<RainOutlook | null> => {
+  const hourly = await fetchOpenMeteoHourly(lat, lon)
+  if (!hourly) return null
+
+  const gameTime = new Date(gameTimeUTC).getTime()
+  let startIdx = hourly.time.findIndex(t => new Date(t).getTime() >= gameTime)
+  if (startIdx === -1) startIdx = 0
+
+  const hours: RainOutlookHour[] = []
+  for (let i = startIdx; i < Math.min(startIdx + hoursSpan, hourly.time.length); i++) {
+    const elapsedHours = i - startIdx
+    const estimatedInning = Math.min(9, Math.floor(elapsedHours * INNINGS_PER_HOUR_ESTIMATE) + 1)
+    hours.push({
+      clockTime: new Date(hourly.time[i]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      precipChance: Math.round(hourly.precipitation_probability[i] ?? 0),
+      estimatedInning,
+    })
+  }
+
+  const firstRainHour = hours.find(h => h.precipChance >= RAIN_LIKELY_THRESHOLD) ?? null
+
+  return {
+    hours,
+    rainLikely: firstRainHour !== null,
+    firstRainHour,
+  }
+})
 
 // =====================================================
 // PITCH MIX — read from Supabase (populated daily by Python cron)
@@ -379,7 +510,7 @@ export type TeamForm = {
   trend: 'hot' | 'cold' | 'mixed'
 }
 
-export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
+export const getTeamForm = cache(async (teamId: number): Promise<TeamForm | null> => {
   const today = new Date().toISOString().split('T')[0]
   // 21-day window guarantees ~18 scheduled games — enough buffer for postponements + off-days
   const windowStart = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -390,8 +521,8 @@ export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
 
   try {
     const [schedRes, standRes] = await Promise.all([
-      fetch(scheduleUrl, { next: { revalidate: 1800 } }),
-      fetch(standingsUrl, { next: { revalidate: 1800 } }),
+      fetchWithRetry(scheduleUrl, { next: { revalidate: 1800 } }),
+      fetchWithRetry(standingsUrl, { next: { revalidate: 1800 } }),
     ])
 
     if (!schedRes.ok) return null
@@ -490,7 +621,7 @@ export async function getTeamForm(teamId: number): Promise<TeamForm | null> {
     console.error('Team form fetch error:', err)
     return null
   }
-}
+})
 
 // Generate a one-sentence narrative about a team's form
 export function describeTeamForm(form: TeamForm, shortName: string): string {

@@ -169,21 +169,19 @@ function drawFallbackBadge(ctx: CanvasRenderingContext2D, initials: string, cx: 
   ctx.restore()
 }
 
-// ── Single-stat reveal (default ~5000ms) ────────────────────────────────
+// ── Content-only drawer (no background) — used by both single & reel ──
 
-export function drawSingleStatFrame(
+function drawSingleStatContent(
   ctx: CanvasRenderingContext2D,
   item: VideoStatItem,
   image: LoadedItemImage,
   elapsedMs: number,
 ) {
-  drawBackground(ctx)
-  drawBrandBar(ctx, windowProgress(elapsedMs, 0, 400))
-
   const cx = CANVAS.w / 2
   const badgeCy = 640
   const badgeR = 220
 
+  // Badge
   const badgeScale = 0.6 + 0.4 * windowProgress(elapsedMs, 200, 900, easeOutBack)
   const badgeAlpha = windowProgress(elapsedMs, 200, 700)
   ctx.save()
@@ -200,6 +198,7 @@ export function drawSingleStatFrame(
   }
   ctx.restore()
 
+  // Name + sub
   const nameY = 1000
   const nameAlpha = windowProgress(elapsedMs, 700, 1100)
   const nameShift = 30 * (1 - windowProgress(elapsedMs, 700, 1100))
@@ -211,16 +210,19 @@ export function drawSingleStatFrame(
   ctx.fillText(item.playerName ?? item.teamAbbr ?? '', cx, nameY + nameShift)
   ctx.fillStyle = COLORS.gray
   ctx.font = `700 26px "${FONTS.mono}"`
-  const sub = [item.teamAbbr, item.opponentAbbr ? `vs ${item.opponentAbbr}` : null].filter(Boolean).join('  ·  ')
+  const sub = [item.teamAbbr, item.opponentAbbr ? `vs ${item.opponentAbbr}` : null]
+    .filter(Boolean)
+    .join('  ·  ')
   ctx.fillText(sub.toUpperCase(), cx, nameY + 46 + nameShift)
   ctx.restore()
 
   // Big number count-up
   const { num, prefix, suffix } = parseNumericValue(item.value)
   const numT = windowProgress(elapsedMs, 1100, 2400)
-  const displayValue = num != null
-    ? `${prefix}${(num * numT).toFixed(num % 1 !== 0 ? 1 : 0)}${suffix}`
-    : item.value
+  const displayValue =
+    num != null
+      ? `${prefix}${(num * numT).toFixed(num % 1 !== 0 ? 1 : 0)}${suffix}`
+      : item.value
   ctx.save()
   ctx.globalAlpha = windowProgress(elapsedMs, 1100, 1500)
   ctx.textAlign = 'center'
@@ -253,13 +255,26 @@ export function drawSingleStatFrame(
   ctx.textAlign = 'left'
 }
 
-// ── Multi-stat reel — fixed slot per item, cross-fade at boundaries ─────
+// ── Single-stat reveal (default ~5000ms) ────────────────────────────────
+
+export function drawSingleStatFrame(
+  ctx: CanvasRenderingContext2D,
+  item: VideoStatItem,
+  image: LoadedItemImage,
+  elapsedMs: number,
+) {
+  drawBackground(ctx)
+  drawBrandBar(ctx, windowProgress(elapsedMs, 0, 400))
+  drawSingleStatContent(ctx, item, image, elapsedMs)
+}
+
+// ── Multi-stat reel — fixed slot per item, proper cross-fade ──────────
 
 export interface ReelConfig {
   items: VideoStatItem[]
   images: LoadedItemImage[]      // parallel array, same order as items
-  slotMs: number                 // duration per item, e.g. 3000
-  crossfadeMs: number            // e.g. 300
+  slotMs: number                 // duration per item, e.g. 3200
+  crossfadeMs: number            // e.g. 500
 }
 
 export function reelDurationMs(cfg: ReelConfig): number {
@@ -267,30 +282,45 @@ export function reelDurationMs(cfg: ReelConfig): number {
 }
 
 export function drawReelFrame(ctx: CanvasRenderingContext2D, cfg: ReelConfig, elapsedMs: number) {
-  const idx = Math.min(cfg.items.length - 1, Math.floor(elapsedMs / cfg.slotMs))
+  const n = cfg.items.length
+  const idx = Math.min(n - 1, Math.floor(elapsedMs / cfg.slotMs))
   const localMs = elapsedMs - idx * cfg.slotMs
 
-  drawSingleStatFrame(ctx, cfg.items[idx], cfg.images[idx], Math.min(localMs, cfg.slotMs - cfg.crossfadeMs))
-
-  // Cross-fade the NEXT item in over the tail of this slot
   const fadeStart = cfg.slotMs - cfg.crossfadeMs
-  if (localMs > fadeStart && idx + 1 < cfg.items.length) {
-    const fadeT = clamp01((localMs - fadeStart) / cfg.crossfadeMs)
+  const inCrossfade = localMs > fadeStart && idx + 1 < n
+  const fadeT = inCrossfade ? clamp01((localMs - fadeStart) / cfg.crossfadeMs) : 0
+
+  // Background + brand only once (critical for alpha blending to work)
+  drawBackground(ctx)
+  drawBrandBar(ctx, 1)
+
+  // Current card (fades out)
+  const currentElapsed = Math.min(localMs, fadeStart)
+  ctx.save()
+  ctx.globalAlpha = 1 - fadeT
+  drawSingleStatContent(ctx, cfg.items[idx], cfg.images[idx], currentElapsed)
+  ctx.restore()
+
+  // Next card (starts its own entrance animation while fading in)
+  if (inCrossfade) {
+    // Small head-start so the badge is already beginning to appear
+    const nextElapsed = 150 + fadeT * 1600
     ctx.save()
     ctx.globalAlpha = fadeT
-    drawSingleStatFrame(ctx, cfg.items[idx + 1], cfg.images[idx + 1], 1600) // start next item already "settled"
+    drawSingleStatContent(ctx, cfg.items[idx + 1], cfg.images[idx + 1], nextElapsed)
     ctx.restore()
   }
 
   // Progress dots
   ctx.save()
   const dotY = 160
-  const totalW = cfg.items.length * 24
+  const totalW = n * 24
   const startX = CANVAS.w / 2 - totalW / 2
-  for (let i = 0; i < cfg.items.length; i++) {
-    ctx.fillStyle = i === idx ? COLORS.orange : `${COLORS.gray}66`
+  for (let i = 0; i < n; i++) {
+    const isActive = i === idx || (inCrossfade && i === idx + 1 && fadeT > 0.45)
+    ctx.fillStyle = isActive ? COLORS.orange : `${COLORS.gray}66`
     ctx.beginPath()
-    ctx.arc(startX + i * 24 + 8, dotY, i === idx ? 7 : 5, 0, Math.PI * 2)
+    ctx.arc(startX + i * 24 + 8, dotY, isActive ? 7 : 5, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.restore()
@@ -314,7 +344,7 @@ export async function recordToWebm(opts: RecordOptions): Promise<Blob> {
   canvas.height = CANVAS.h
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas 2D context unavailable')
-  const ctx2d: CanvasRenderingContext2D = ctx   // <-- add this line
+  const ctx2d: CanvasRenderingContext2D = ctx
 
   const previewCtx = opts.previewCanvas?.getContext('2d') ?? null
 
@@ -336,7 +366,7 @@ export async function recordToWebm(opts: RecordOptions): Promise<Blob> {
   await new Promise<void>(resolve => {
     function tick() {
       const elapsed = performance.now() - start
-      opts.drawFrame(ctx2d, elapsed)   // <-- use ctx2d, not ctx
+      opts.drawFrame(ctx2d, elapsed)
       if (previewCtx && opts.previewCanvas) {
         previewCtx.clearRect(0, 0, opts.previewCanvas.width, opts.previewCanvas.height)
         previewCtx.drawImage(canvas, 0, 0, opts.previewCanvas.width, opts.previewCanvas.height)
@@ -354,8 +384,6 @@ export async function recordToWebm(opts: RecordOptions): Promise<Blob> {
   return blob
 }
 
-// ── Transcode WebM → MP4 via ffmpeg.wasm (single-threaded, no COOP/COEP) ─
-// ── Add this new export, and replace the body of transcodeWebmToMp4 to use it ──
 // ── Transcode WebM → MP4 via ffmpeg.wasm (single-threaded, no COOP/COEP) ─
 
 /** Shared ffmpeg.wasm loader — single-threaded core, no COOP/COEP headers
@@ -378,14 +406,28 @@ export async function loadFFmpegInstance() {
 
 export async function transcodeWebmToMp4(webmBlob: Blob, onProgress?: (pct: number) => void): Promise<Blob> {
   const { ffmpeg, fetchFile } = await loadFFmpegInstance()
+
+  ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message))
+
   if (onProgress) {
     ffmpeg.on('progress', ({ progress }) => onProgress(Math.min(100, Math.round(progress * 100))))
   }
 
- const data = await ffmpeg.readFile('output.mp4') as Uint8Array
-const buf = new ArrayBuffer(data.byteLength)
-new Uint8Array(buf).set(data)
-return new Blob([buf], { type: 'video/mp4' })
+  await ffmpeg.writeFile('input.webm', await fetchFile(webmBlob))
+
+  await ffmpeg.exec([
+    '-i', 'input.webm',
+    '-c:v', 'libx264',
+    '-preset', 'fast',
+    '-pix_fmt', 'yuv420p',
+    '-movflags', '+faststart',
+    'output.mp4',
+  ])
+
+  const data = await ffmpeg.readFile('output.mp4') as Uint8Array
+  const buf = new ArrayBuffer(data.byteLength)
+  new Uint8Array(buf).set(data)
+  return new Blob([buf], { type: 'video/mp4' })
 }
 
 export { CANVAS }

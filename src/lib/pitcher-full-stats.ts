@@ -13,6 +13,13 @@
 // the new script, or their computed PA didn't reconcile closely enough
 // with the real battersFaced to trust — not a display bug.
 //
+// 2026-08-20: added tto1_avg/tto2_avg/tto3_avg — same reconciled buckets
+// as the wOBA fields, AVG computed from the same verified hit/AB counts
+// (see fetch_pitcher_tto_splits_v2.py). Requires the accompanying
+// migration (tto1_avg/tto2_avg/tto3_avg columns on pitcher_stats) to
+// have been run, or these come back null (honest — not yet populated,
+// not a bug).
+//
 // Also 2026-08-09: Postgres `numeric` columns come back from Supabase/
 // PostgREST as JSON strings, not JS numbers (precision-preservation
 // behavior) — every field here is explicitly coerced with Number()
@@ -32,6 +39,9 @@ export type PitcherStatsFull = {
   tto1_woba: number | null
   tto2_woba: number | null
   tto3_woba: number | null
+  tto1_avg: number | null
+  tto2_avg: number | null
+  tto3_avg: number | null
   tto1_pa: number | null
   tto2_pa: number | null
   tto3_pa: number | null
@@ -49,7 +59,7 @@ export async function getPitcherStatsFull(playerId: number): Promise<PitcherStat
   const supa = createAdminClient()
   const { data, error } = await supa
     .from('pitcher_stats')
-    .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')
+    .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_avg, tto2_avg, tto3_avg, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')
     .eq('player_id', playerId)
     .single()
   if (error || !data) {
@@ -68,6 +78,9 @@ export async function getPitcherStatsFull(playerId: number): Promise<PitcherStat
     tto1_woba: toNum(d.tto1_woba),
     tto2_woba: toNum(d.tto2_woba),
     tto3_woba: toNum(d.tto3_woba),
+    tto1_avg: toNum(d.tto1_avg),
+    tto2_avg: toNum(d.tto2_avg),
+    tto3_avg: toNum(d.tto3_avg),
     tto1_pa: toNum(d.tto1_pa),
     tto2_pa: toNum(d.tto2_pa),
     tto3_pa: toNum(d.tto3_pa),

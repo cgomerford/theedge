@@ -1,24 +1,34 @@
 'use client'
-
 // src/components/TTOFatigueChart.tsx
 //
 // The Scout Report's signature visual — "does this pitcher fall apart late."
 //
-// 2026-08-09: rescaled from ERA to wOBA. Uses tto1_woba/tto2_woba/tto3_woba
-// + PA counts from pitcher-full-stats.ts, sourced from
-// fetch_pitcher_tto_splits_v2.py (MLB Stats API play-by-play, self-verified
-// against real battersFaced — see that script's header comment for why the
-// old tto1_era/tto2_era/tto3_era fields were retired).
+// 2026-08-20: switched from wOBA to AVG (your call) — now reads
+// tto1_avg/tto2_avg/tto3_avg from pitcher-full-stats.ts, populated by
+// fetch_pitcher_tto_splits_v2.py using the same reconciled hit/AB counts
+// already verified against real season battersFaced (same script, same
+// trust level as the wOBA fields it sits alongside — see that script's
+// header for the reconciliation methodology).
 //
-// wOBA scale: league average sits ~.310-.320. Lower is better for a
-// pitcher (less damage allowed). Color thresholds and delta cutoffs below
-// are reasonable starting estimates — worth recalibrating once a real
-// spread of pitchers has been processed by the new script.
+// SCALE CHANGE — AVG and wOBA are NOT on the same numeric range, so
+// every threshold below is recalibrated, not just relabeled:
+//   - League-average AVG against sits ~.245-.250 (vs wOBA's ~.310-.320)
+//   - AVG has no extra-base-hit weighting, so it swings less per PA than
+//     wOBA does — a .030 AVG jump across TTO splits is a real signal on
+//     this scale, where a .030 wOBA jump was borderline noise
+//   - Color thresholds (avgColor) and headline delta cutoffs below are
+//     reasonable starting estimates for THIS scale, same caveat as the
+//     original wOBA version had — worth recalibrating once a full
+//     season's spread of pitchers has run through the AVG-scale version.
+//
+// 2026-08-09: (superseded) originally rescaled from ERA to wOBA — see
+// git history / fetch_pitcher_tto_splits_v2.py header for why the old
+// tto1_era/tto2_era/tto3_era fields were retired in that pass.
 
 type TTOData = {
-  tto1_woba: number | null
-  tto2_woba: number | null
-  tto3_woba: number | null
+  tto1_avg: number | null
+  tto2_avg: number | null
+  tto3_avg: number | null
   tto1_pa: number | null
   tto2_pa: number | null
   tto3_pa: number | null
@@ -30,14 +40,18 @@ type Props = {
   tto: TTOData | null
 }
 
-function wobaColor(woba: number): string {
-  if (woba <= 0.290) return '#16a34a'
-  if (woba <= 0.340) return '#ca8a04'
+function avgColor(avg: number): string {
+  if (avg <= 0.220) return '#16a34a'
+  if (avg <= 0.260) return '#ca8a04'
   return '#dc2626'
 }
 
+function fmtAvg(v: number): string {
+  return v.toFixed(3).replace(/^0/, '')
+}
+
 export default function TTOFatigueChart({ pitcherName, abbr, tto }: Props) {
-  if (!tto || tto.tto1_woba == null || tto.tto2_woba == null || tto.tto3_woba == null) {
+  if (!tto || tto.tto1_avg == null || tto.tto2_avg == null || tto.tto3_avg == null) {
     return (
       <div className="bg-white rounded-xl border border-stone-200 p-6 text-center">
         <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-1">{abbr} · {pitcherName}</p>
@@ -47,31 +61,32 @@ export default function TTOFatigueChart({ pitcherName, abbr, tto }: Props) {
   }
 
   const points = [
-    { label: '1st', woba: tto.tto1_woba, pa: tto.tto1_pa },
-    { label: '2nd', woba: tto.tto2_woba, pa: tto.tto2_pa },
-    { label: '3rd', woba: tto.tto3_woba, pa: tto.tto3_pa },
+    { label: '1st', avg: tto.tto1_avg, pa: tto.tto1_pa },
+    { label: '2nd', avg: tto.tto2_avg, pa: tto.tto2_pa },
+    { label: '3rd', avg: tto.tto3_avg, pa: tto.tto3_pa },
   ]
 
-  // wOBA floor/ceiling for the y-axis — wide enough to hold realistic
-  // outcomes (elite suppression ~.250, disaster outing ~.450+) without
-  // every pitcher's line looking flat.
-  const minWoba = Math.min(0.250, ...points.map(p => p.woba))
-  const maxWoba = Math.max(0.450, ...points.map(p => p.woba))
-  const range = maxWoba - minWoba
+  // AVG floor/ceiling for the y-axis — wide enough to hold realistic
+  // outcomes (elite suppression ~.180, disaster outing ~.350+) without
+  // every pitcher's line looking flat. Narrower than the old wOBA range
+  // since AVG itself has a narrower realistic spread.
+  const minAvg = Math.min(0.150, ...points.map(p => p.avg))
+  const maxAvg = Math.max(0.350, ...points.map(p => p.avg))
+  const range = maxAvg - minAvg
+
   const W = 260, H = 150, PAD_X = 36, PAD_TOP = 20, PAD_BOTTOM = 34
   const plotH = H - PAD_TOP - PAD_BOTTOM
   const xFor = (i: number) => PAD_X + (i * (W - PAD_X * 2)) / 2
-  const yFor = (woba: number) => PAD_TOP + plotH - ((woba - minWoba) / range) * plotH
-
-  const coords = points.map((p, i) => [xFor(i), yFor(p.woba)] as [number, number])
+  const yFor = (avg: number) => PAD_TOP + plotH - ((avg - minAvg) / range) * plotH
+  const coords = points.map((p, i) => [xFor(i), yFor(p.avg)] as [number, number])
   const linePath = coords.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
   const areaPath = `${linePath} L${coords[2][0]},${PAD_TOP + plotH} L${coords[0][0]},${PAD_TOP + plotH} Z`
 
-  const delta = tto.tto3_woba - tto.tto1_woba
+  const delta = tto.tto3_avg - tto.tto1_avg
   const headline =
-    delta >= 0.050 ? `Falls off hard the 3rd time through — wOBA jumps ${delta.toFixed(3)}.`
-    : delta >= 0.025 ? `Fades some the 3rd time through — up ${delta.toFixed(3)}.`
-    : delta <= -0.035 ? `Gets stronger deep into starts — wOBA drops ${Math.abs(delta).toFixed(3)}.`
+    delta >= 0.035 ? `Falls off hard the 3rd time through — AVG jumps ${fmtAvg(delta)}.`
+    : delta >= 0.018 ? `Fades some the 3rd time through — up ${fmtAvg(delta)}.`
+    : delta <= -0.025 ? `Gets stronger deep into starts — AVG drops ${fmtAvg(Math.abs(delta))}.`
     : `Holds steady across the order.`
 
   const gradId = `tto-grad-${abbr}-${pitcherName.replace(/\s+/g, '')}`
@@ -97,9 +112,9 @@ export default function TTOFatigueChart({ pitcherName, abbr, tto }: Props) {
           <path d={linePath} fill="none" stroke="#44403c" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           {coords.map(([x, y], i) => (
             <g key={i}>
-              <circle cx={x} cy={y} r={5} fill={wobaColor(points[i].woba)} stroke="#fff" strokeWidth={2} />
+              <circle cx={x} cy={y} r={5} fill={avgColor(points[i].avg)} stroke="#fff" strokeWidth={2} />
               <text x={x} y={y - 12} textAnchor="middle" fontSize="11" fontFamily="monospace" fontWeight={700} fill="#292524">
-                {points[i].woba.toFixed(3)}
+                {fmtAvg(points[i].avg)}
               </text>
               <text x={x} y={H - PAD_BOTTOM + 16} textAnchor="middle" fontSize="9" fontFamily="monospace" fill="#a8a29e">
                 {points[i].label}

@@ -28,19 +28,29 @@ const HIGH_VALUE_CATEGORIES = ['IL', 'ACTIVATION', 'CALLUP', 'OPTION', 'DFA', 'R
 
 export async function getTeamTransactions(
   teamId: number,
-  days: number = 14
+  days: number = 14,
+  asOfDate?: string, // 'YYYY-MM-DD' — the game/slate date to anchor the window to.
+  // Defaults to real-world "now" so every existing caller (the live
+  // /mlb/[slug] page, which always wants "as of right now") is unaffected.
+  // Added 2026-08-20 — this function previously had NO way to anchor to
+  // anything but Date.now(), which is correct for a live game but wrong
+  // for the admin dashboard's date-picker: browsing a past slate showed
+  // whatever transactions happened in the N days before you happened to
+  // be LOOKING at the dashboard, not the N days before that game was
+  // actually played.
 ): Promise<TeamTransaction[]> {
   const supa = createAdminClient()
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  const anchor = asOfDate ? new Date(`${asOfDate}T12:00:00`) : new Date()
+  const since = new Date(anchor.getTime() - days * 24 * 60 * 60 * 1000)
     .toISOString()
     .split('T')[0]
-
   const { data, error } = await supa
     .from('team_transactions')
     .select('transaction_id, player_id, player_name, category, type_code, il_days, injury_reason, description, transaction_date, from_team_id, from_team_name, from_affiliate_level, to_team_id, to_team_name, to_affiliate_level, is_milb_move')
     .eq('team_id', teamId)
     .in('category', HIGH_VALUE_CATEGORIES)
     .gte('transaction_date', since)
+    .lte('transaction_date', asOfDate ?? new Date().toISOString().split('T')[0]) // also cap the UPPER bound — without this, browsing a past date would still show future transactions relative to that game
     .order('transaction_date', { ascending: false })
     .limit(20)
 

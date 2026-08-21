@@ -31,6 +31,8 @@ const MLB_SUB_LINKS = [
   { href: '/stats',    label: 'Stats & Leaders', pro: false  },
   { href: '/fantasy', label: 'Fantasy',       pro: true },
   { href: '/track-record', label: 'Track Record',   pro: false },
+  {href: '/articles', label: 'Articles'},
+   {href: '/mlb/leaders', label: 'Leaders'}
 ]
 
 // ─── NFL Data ─────────────────────────────────────────────────────────────────

@@ -13,11 +13,16 @@
 // can't silently fabricate it — this mirrors the same discipline applied
 // to narrative.ts after the injury-hallucination fix. Don't loosen a
 // prop to `any` to "just get a number in there."
+//
+// WATERMARK (new): every template now accepts an optional `watermark`
+// prop and forwards it to CardStage. It's a diagonal, repeated, low-opacity
+// overlay across the full card — not just the small always-on footer text
+// at the bottom, which is easy to crop out of a screenshot. Toggle lives
+// in StatCardPanel.tsx's controls row.
 // ────────────────────────────────────────────────────────────────────────
 
 import { forwardRef } from 'react'
 
-// ── Brand tokens (mirrors voice-and-brand.md — keep in sync if it changes) ──
 const COLORS = {
   cream:  '#FAF8F3',
   orange: '#FF5722',
@@ -25,6 +30,8 @@ const COLORS = {
   stone:  '#1A1A1A',
   gray:   '#A3A3A3',
   line:   '#E2DCCF',
+  gradeA: '#15803D', // green — not in the core palette, used only for grade badges
+  gradeF: '#DC2626', // red — same
 } as const
 
 export type AspectRatio = 'square' | 'landscape'
@@ -34,18 +41,16 @@ const DIMENSIONS: Record<AspectRatio, { w: number; h: number }> = {
   landscape: { w: 1200, h: 675 },
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// STAGE — shared brand chrome every card type renders inside
-// ════════════════════════════════════════════════════════════════════════
 type StageProps = {
   aspect: AspectRatio
-  kicker: string          // e.g. "§ HOT STREAK"
+  kicker: string
   children: React.ReactNode
-  footerNote?: string      // small print bottom-right, e.g. team abbr + date
+  footerNote?: string
+  watermark?: boolean
 }
 
 export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardStage(
-  { aspect, kicker, children, footerNote },
+  { aspect, kicker, children, footerNote, watermark = false },
   ref
 ) {
   const { w, h } = DIMENSIONS[aspect]
@@ -64,10 +69,8 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
         fontFamily: 'var(--font-inter), Inter, sans-serif',
       }}
     >
-      {/* Top accent bar */}
       <div style={{ height: 8, width: '100%', background: COLORS.orange, flexShrink: 0 }} />
 
-      {/* Header */}
       <div
         style={{
           padding: aspect === 'square' ? '40px 56px 0' : '32px 48px 0',
@@ -102,7 +105,6 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
         </div>
       </div>
 
-      {/* Content area — each template fills this */}
       <div
         style={{
           flex: 1,
@@ -116,7 +118,6 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
         {children}
       </div>
 
-      {/* Footer */}
       <div
         style={{
           padding: aspect === 'square' ? '0 56px 36px' : '0 48px 28px',
@@ -150,11 +151,44 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
           </div>
         )}
       </div>
+
+      {watermark && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignContent: 'center',
+            justifyContent: 'center',
+            gap: aspect === 'square' ? 44 : 36,
+            transform: 'rotate(-22deg) scale(1.3)',
+            pointerEvents: 'none',
+            overflow: 'hidden',
+          }}
+        >
+          {Array.from({ length: 16 }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                fontFamily: 'var(--font-jetbrains), monospace',
+                fontSize: aspect === 'square' ? 26 : 22,
+                letterSpacing: '0.15em',
+                color: COLORS.stone,
+                opacity: 0.07,
+                whiteSpace: 'nowrap',
+                textTransform: 'uppercase',
+                fontWeight: 700,
+              }}
+            >
+              ⊕ EDGEREPORTDAILY.COM
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 })
-
-// ── Shared sub-pieces used across templates ──────────────────────────────
 
 function BigStat({ value, label }: { value: string; label: string }) {
   return (
@@ -260,27 +294,22 @@ function SupportRow({ items }: { items: { label: string; value: string }[] }) {
   )
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// TEMPLATE 1 — HOT STREAK (batter)
-// Source: BatterStreak (src/lib/streaks.ts) — on_base_streak, hit_streak,
-// last_5_avg, last_5_obp, hits_last_10. All fields below are required,
-// nothing inferred.
-// ════════════════════════════════════════════════════════════════════════
 export type HotStreakCardProps = {
   player_name: string
   team_abbr: string
   position?: string | null
-  headline_value: string   // e.g. "9" — the streak length, caller decides which streak to lead with
-  headline_label: string   // e.g. "GAME ON-BASE STREAK" or "GAME HIT STREAK"
+  headline_value: string
+  headline_label: string
   last_5_avg?: number | null
   last_5_obp?: number | null
   hits_last_10?: number | null
   aspect: AspectRatio
-  date_label: string        // e.g. "Jun 24"
+  date_label: string
+  watermark?: boolean
 }
 
 export const HotStreakCard = forwardRef<HTMLDivElement, HotStreakCardProps>(function HotStreakCard(
-  { player_name, team_abbr, position, headline_value, headline_label, last_5_avg, last_5_obp, hits_last_10, aspect, date_label },
+  { player_name, team_abbr, position, headline_value, headline_label, last_5_avg, last_5_obp, hits_last_10, aspect, date_label, watermark },
   ref
 ) {
   const support = [
@@ -290,7 +319,7 @@ export const HotStreakCard = forwardRef<HTMLDivElement, HotStreakCardProps>(func
   ].filter(Boolean) as { label: string; value: string }[]
 
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ Hot Streak" footerNote={`${team_abbr} · ${date_label}`}>
+    <CardStage ref={ref} aspect={aspect} kicker="§ Hot Streak" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position={position} />
       <BigStat value={headline_value} label={headline_label} />
       {support.length > 0 && <SupportRow items={support} />}
@@ -298,25 +327,21 @@ export const HotStreakCard = forwardRef<HTMLDivElement, HotStreakCardProps>(func
   )
 })
 
-// ════════════════════════════════════════════════════════════════════════
-// TEMPLATE 2 — PITCHER TREND
-// Source: PitcherTrend (src/lib/streaks.ts) — last_3_era, last_3_k_per_9,
-// last_3_bb_per_9, current_scoreless_innings, hr_allowed_last_3.
-// ════════════════════════════════════════════════════════════════════════
 export type PitcherTrendCardProps = {
   player_name: string
   team_abbr: string
-  headline_value: string    // e.g. "1.42" (ERA) or "14.2" (scoreless innings) — caller decides the lead stat
-  headline_label: string    // e.g. "ERA · LAST 3 STARTS" or "CONSECUTIVE SCORELESS INNINGS"
+  headline_value: string
+  headline_label: string
   last_3_k_per_9?: number | null
   last_3_bb_per_9?: number | null
   hr_allowed_last_3?: number | null
   aspect: AspectRatio
   date_label: string
+  watermark?: boolean
 }
 
 export const PitcherTrendCard = forwardRef<HTMLDivElement, PitcherTrendCardProps>(function PitcherTrendCard(
-  { player_name, team_abbr, headline_value, headline_label, last_3_k_per_9, last_3_bb_per_9, hr_allowed_last_3, aspect, date_label },
+  { player_name, team_abbr, headline_value, headline_label, last_3_k_per_9, last_3_bb_per_9, hr_allowed_last_3, aspect, date_label, watermark },
   ref
 ) {
   const support = [
@@ -326,7 +351,7 @@ export const PitcherTrendCard = forwardRef<HTMLDivElement, PitcherTrendCardProps
   ].filter(Boolean) as { label: string; value: string }[]
 
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ On The Mound" footerNote={`${team_abbr} · ${date_label}`}>
+    <CardStage ref={ref} aspect={aspect} kicker="§ On The Mound" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position="P" />
       <BigStat value={headline_value} label={headline_label} />
       {support.length > 0 && <SupportRow items={support} />}
@@ -334,28 +359,23 @@ export const PitcherTrendCard = forwardRef<HTMLDivElement, PitcherTrendCardProps
   )
 })
 
-// ════════════════════════════════════════════════════════════════════════
-// TEMPLATE 3 — HEAD TO HEAD
-// Source: the *_pitcher_vs_opponent_record / _era fields already threaded
-// through NarrativeInputs in narrative.ts. Record string passed through
-// as-is (e.g. "4-1") — no parsing/inference of win-loss meaning here.
-// ════════════════════════════════════════════════════════════════════════
 export type HeadToHeadCardProps = {
   player_name: string
   team_abbr: string
   opponent_abbr: string
-  record: string      // e.g. "4-1"
-  era: string         // e.g. "2.59" — passed as string since source data is string-typed
+  record: string
+  era: string
   aspect: AspectRatio
   date_label: string
+  watermark?: boolean
 }
 
 export const HeadToHeadCard = forwardRef<HTMLDivElement, HeadToHeadCardProps>(function HeadToHeadCard(
-  { player_name, team_abbr, opponent_abbr, record, era, aspect, date_label },
+  { player_name, team_abbr, opponent_abbr, record, era, aspect, date_label, watermark },
   ref
 ) {
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ History Says" footerNote={`${team_abbr} vs ${opponent_abbr} · ${date_label}`}>
+    <CardStage ref={ref} aspect={aspect} kicker="§ History Says" footerNote={`${team_abbr} vs ${opponent_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position="P" />
       <BigStat value={record} label={`CAREER VS ${opponent_abbr}`} />
       <SupportRow items={[{ label: 'ERA · CAREER VS OPP', value: era }]} />
@@ -363,14 +383,112 @@ export const HeadToHeadCard = forwardRef<HTMLDivElement, HeadToHeadCardProps>(fu
   )
 })
 
-// ════════════════════════════════════════════════════════════════════════
-// REGISTRY — the picker UI (StatCardPanel.tsx) reads this list. Add new
-// card types here once a new template exists above; nothing else to wire.
-// ════════════════════════════════════════════════════════════════════════
+// TEMPLATE 4 — PERFORMANCE GRADE (new)
+export type PerformanceGradeCardProps = {
+  player_name: string
+  team_abbr: string
+  position?: string | null
+  role: 'batter' | 'pitcher'
+  line: string
+  grade: string
+  score: number
+  aspect: AspectRatio
+  date_label: string
+  watermark?: boolean
+}
+
+function gradeColor(grade: string): string {
+  if (grade.startsWith('A')) return COLORS.gradeA
+  if (grade.startsWith('B')) return COLORS.stone
+  if (grade.startsWith('C')) return COLORS.orange
+  return COLORS.gradeF
+}
+
+export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeCardProps>(function PerformanceGradeCard(
+  { player_name, team_abbr, position, role, line, grade, score, aspect, date_label, watermark },
+  ref
+) {
+  const badgeColor = gradeColor(grade)
+  return (
+    <CardStage
+      ref={ref}
+      aspect={aspect}
+      kicker="§ Graded Performance"
+      footerNote={`${team_abbr} · ${date_label}`}
+      watermark={watermark}
+    >
+      <PlayerName name={player_name} team={team_abbr} position={position ?? (role === 'pitcher' ? 'P' : undefined)} />
+
+      <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            display: 'inline-block',
+            fontFamily: 'var(--font-bebas), sans-serif',
+            fontSize: 148,
+            lineHeight: 1,
+            color: badgeColor,
+            border: `6px solid ${badgeColor}`,
+            padding: '4px 36px',
+            letterSpacing: '0.01em',
+          }}
+        >
+          {grade}
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--font-jetbrains), monospace',
+            fontSize: 16,
+            letterSpacing: '0.12em',
+            color: COLORS.orange,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            marginTop: 14,
+          }}
+        >
+          {role === 'batter' ? 'Total Bases Score' : 'Game Score'}: {score.toFixed(1)}
+        </div>
+      </div>
+
+      <div
+        style={{
+          textAlign: 'center',
+          marginTop: 32,
+          paddingTop: 24,
+          borderTop: `1px solid ${COLORS.line}`,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'var(--font-jetbrains), monospace',
+            fontSize: 22,
+            fontWeight: 700,
+            color: COLORS.stone,
+          }}
+        >
+          {line}
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--font-jetbrains), monospace',
+            fontSize: 12,
+            letterSpacing: '0.1em',
+            color: COLORS.gray,
+            textTransform: 'uppercase',
+            marginTop: 6,
+          }}
+        >
+          The Line
+        </div>
+      </div>
+    </CardStage>
+  )
+})
+
 export const CARD_REGISTRY = [
-  { id: 'hot_streak',     label: 'Hot Streak (batter)' },
-  { id: 'pitcher_trend',  label: 'Pitcher Trend' },
-  { id: 'head_to_head',   label: 'Head to Head' },
+  { id: 'hot_streak',        label: 'Hot Streak (batter)' },
+  { id: 'pitcher_trend',     label: 'Pitcher Trend' },
+  { id: 'head_to_head',      label: 'Head to Head' },
+  { id: 'performance_grade', label: 'Graded Performance (yesterday)' },
 ] as const
 
 export type CardTypeId = typeof CARD_REGISTRY[number]['id']

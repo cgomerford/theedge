@@ -187,7 +187,8 @@ export async function getBatterVsPitcher(
   pitcherId: number
 ): Promise<BatterVsPitcher | null> {
   try {
-    const url = `${MLB_API}/people/${batterId}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherId}`
+    // src/lib/batter-stats.ts — getBatterVsPitcher
+const url = `${MLB_API}/people/${batterId}/stats?stats=vsPlayerTotal&group=hitting&opposingPlayerId=${pitcherId}`
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) return null
     const data = await res.json()

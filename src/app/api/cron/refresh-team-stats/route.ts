@@ -140,10 +140,15 @@ export async function GET(request: Request) {
 }
 
 // ============================================================
-// MAIN TEAM FETCH — V5: adds fielding_pct (was fetched but never
-// saved — see Defense audit) and defensive_efficiency (computable
-// from MLB API team pitching totals, doesn't actually need FanGraphs
-// the way the old comment assumed)
+// MAIN TEAM FETCH — V6: adds RISP efficiency (season-wide avg/OPS
+// with runners in scoring position, via sitCodes=risp — curl-verified
+// against the real endpoint before writing this, same standard hitting
+// stat block used everywhere else, avg/ops come back as quoted strings
+// same as the L30 hitting block above, so same parseFloat() coercion).
+// V5 added fielding_pct (was fetched but never saved — see Defense
+// audit) and defensive_efficiency (computable from MLB API team
+// pitching totals, doesn't actually need FanGraphs the way the old
+// comment assumed).
 // ============================================================
 async function fetchTeamStats(teamId: number, teamName: string) {
   try {
@@ -190,6 +195,13 @@ async function fetchTeamStats(teamId: number, teamName: string) {
         ? Math.round((stolenBases / (stolenBases + caughtStealing)) * 1000) / 1000
         : null
     }
+
+    // ── 1b. RISP efficiency — V6 new. Season-wide, not L30 — sitCodes
+    // combined with byDateRange isn't a combo worth trusting without
+    // separately curl-verifying it returns the filtered split rather
+    // than silently ignoring sitCodes, so this stays season=season for
+    // now, same as bullpen quality and defensive efficiency below.
+    const rispStats = await fetchRispStats(teamId)
 
     // ── 2. Real bullpen-only quality ──────────────────────────
     const bullpenQuality = await fetchBullpenQuality(teamId)
@@ -331,6 +343,10 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       iso,
       stolen_base_pct,
 
+      // Situational — V6 new
+      risp_avg: rispStats.risp_avg,
+      risp_ops: rispStats.risp_ops,
+
       // Defense — V5: fielding_pct now actually saved, defensive_efficiency
       // now computed from MLB API rather than left as a permanent
       // "needs FanGraphs" null
@@ -368,6 +384,38 @@ async function fetchTeamStats(teamId: number, teamName: string) {
   } catch (err) {
     console.error(`Team stats fetch failed for ${teamName}:`, err)
     return null
+  }
+}
+
+// ============================================================
+// V6 NEW: RISP (runners in scoring position) team hitting efficiency.
+// Curl-verified against the live endpoint before writing this —
+// GET /teams/{id}/stats?stats=season&group=hitting&sitCodes=risp&season=YYYY
+// returns the same standard hitting stat block as every other hitting
+// call in this file (avg/ops as quoted strings), just filtered to PAs
+// with a runner on 2nd and/or 3rd. Season-wide only for now — see the
+// note above fetchTeamStats about not trusting sitCodes+byDateRange
+// without separately verifying that combination.
+// ============================================================
+async function fetchRispStats(teamId: number): Promise<{
+  risp_avg: number | null
+  risp_ops: number | null
+}> {
+  try {
+    const url = `${MLB_API}/teams/${teamId}/stats?stats=season&group=hitting&sitCodes=risp&season=${SEASON}`
+    const res = await fetch(url)
+    if (!res.ok) return { risp_avg: null, risp_ops: null }
+    const data = await res.json()
+    const stat = data?.stats?.[0]?.splits?.[0]?.stat
+    if (!stat) return { risp_avg: null, risp_ops: null }
+
+    return {
+      risp_avg: stat.avg ? parseFloat(stat.avg) : null,
+      risp_ops: stat.ops ? parseFloat(stat.ops) : null,
+    }
+  } catch (err) {
+    console.error(`RISP stats fetch failed for team ${teamId}:`, err)
+    return { risp_avg: null, risp_ops: null }
   }
 }
 

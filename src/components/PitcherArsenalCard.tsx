@@ -1,3 +1,4 @@
+// src/components/PitcherArsenalCard.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -44,7 +45,7 @@ function PitcherHeaderStats({ stats }: { stats: PitcherStatsFull | null }) {
     <div className="bg-white border border-stone-200 rounded-xl p-4 mb-6">
       <div className="grid grid-cols-3 gap-x-5 gap-y-3">
         <HeaderStatBar label="ERA" value={stats?.era ?? null} pct={statBarPct('era', stats?.era ?? null)} />
-<HeaderStatBar label="WHIP" value={stats?.k_per_9 != null ? null : null} pct={0} />
+        <HeaderStatBar label="WHIP" value={stats?.whip ?? null} pct={statBarPct('whip', stats?.whip ?? null)} />
         <HeaderStatBar label="K/9" value={stats?.k_per_9 ?? null} pct={statBarPct('k_per_9', stats?.k_per_9 ?? null)} />
         <HeaderStatBar label="BB/9" value={stats?.bb_per_9 ?? null} pct={statBarPct('bb_per_9', stats?.bb_per_9 ?? null)} />
         <HeaderStatBar label="FIP" value={stats?.fip ?? null} pct={statBarPct('fip', stats?.fip ?? null)} />
@@ -67,12 +68,8 @@ function StatCell({ label, value, format, highlight }: { label: string; value: n
 }
 
 function PitchRow({ row }: { row: ArsenalRow }) {
-  // Savant's pitch-arsenal-stats CSV stores whiff_percent, k_percent,
-  // put_away, hard_hit_percent on a 0-100 scale (24.4 = 24.4%), NOT 0-1.
-  // pitch_usage is the one field that IS 0-1 (0.377 = 37.7%). Same class
-  // of bug as the pitcher pct vs pct100 formatter fix earlier this session.
-  const pct100 = (v: number) => `${v.toFixed(1)}%`         // already 0-100
-  const pctFrom01 = (v: number) => `${(v * 100).toFixed(1)}%`  // 0-1 → percent
+  const pct100 = (v: number) => `${v.toFixed(1)}%`
+  const pctFrom01 = (v: number) => `${(v * 100).toFixed(1)}%`
   const rate = (v: number) => v.toFixed(3).replace(/^0/, '')
   const rv = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}`
 
@@ -86,7 +83,7 @@ function PitchRow({ row }: { row: ArsenalRow }) {
         <span className="font-serif font-semibold text-base text-stone-900">{row.pitchName}</span>
         <span className="text-[10px] font-mono text-stone-400 ml-auto">{row.pitches} pitches · {pct100(row.usage)} usage</span>
       </div>
-<div className="grid grid-cols-4 md:grid-cols-7 gap-4">
+      <div className="grid grid-cols-4 md:grid-cols-7 gap-4">
         <StatCell label="Whiff%" value={row.whiffPct} format={pct100} highlight={whiffHigh ? 'good' : 'neutral'} />
         <StatCell label="Put away" value={row.putAway} format={pct100} />
         <StatCell label="K%" value={row.kPct} format={pct100} />
@@ -135,7 +132,7 @@ export default function PitcherArsenalCard({
           alt={pitcherName}
           className="w-14 h-14 rounded-full object-cover border-2 border-stone-200"
         />
-    <div>
+        <div>
           <div className="font-serif font-semibold text-xl text-stone-900">{pitcherName}</div>
           <div className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{abbr} · {side}</div>
         </div>

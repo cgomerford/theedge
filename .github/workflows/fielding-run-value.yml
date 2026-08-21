@@ -1,0 +1,32 @@
+name: Fetch Fielding Run Value
+
+on:
+  schedule:
+    # Weekly — Monday 6:15 UTC, staggered 15 min after hot-zones.yml (6:00)
+    # so the two don't hit Statcast/Savant at the same moment.
+    - cron: '15 6 * * 1'
+  workflow_dispatch: {}   # manual trigger from the Actions tab, for testing
+
+jobs:
+  fetch-frv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests supabase python-dotenv
+
+      - name: Run fielding run value fetcher
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_fielding_run_value.py

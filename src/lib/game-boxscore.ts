@@ -5,6 +5,7 @@
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 export type BoxScoreBatter = {
+  id: number
   name: string
   position: string
   battingOrder: number    // 100, 200 ... 900 (MLB API format)
@@ -22,6 +23,7 @@ export type BoxScoreBatter = {
 }
 
 export type BoxScorePitcher = {
+  id: number
   name: string
   ip: string
   h: number
@@ -39,6 +41,7 @@ export type BoxScorePitcher = {
 export type BoxScoreTeam = {
   teamName: string
   abbr: string
+  teamId: number
   score: number
   hits: number
   errors: number
@@ -49,6 +52,7 @@ export type BoxScoreTeam = {
 export type GameBoxScore = {
   gamePk: number
   isFinal: boolean
+  gameDate: string   // 'YYYY-MM-DD' — needed downstream for bullpen_availability lookups
   away: BoxScoreTeam
   home: BoxScoreTeam
   decisions?: {
@@ -69,14 +73,13 @@ export async function getGameBoxScore(gamePk: number): Promise<GameBoxScore | nu
     const home = parseTeam(data.teams?.home)
     if (!away || !home) return null
 
-    // Win/loss/save decisions
-    const decisions = data.info
-      ? undefined
-      : undefined // decisions come from the feed endpoint — skip for now
+    // Win/loss/save decisions — skipped, come from the feed endpoint not boxscore
+    const gameDate: string = data.gameDate ?? new Date().toISOString().slice(0, 10)
 
     return {
       gamePk,
       isFinal: true,
+      gameDate,
       away,
       home,
     }
@@ -91,6 +94,7 @@ function parseTeam(raw: any): BoxScoreTeam | null {
 
   const teamName: string = raw.team?.name ?? ''
   const abbr: string = raw.team?.abbreviation ?? ''
+  const teamId: number = raw.team?.id ?? 0
   const score: number = raw.teamStats?.batting?.runs ?? 0
   const hits: number = raw.teamStats?.batting?.hits ?? 0
   const errors: number = raw.teamStats?.fielding?.errors ?? 0
@@ -104,6 +108,7 @@ function parseTeam(raw: any): BoxScoreTeam | null {
       const s = p.stats?.batting ?? {}
       const season = p.seasonStats?.batting ?? {}
       return {
+        id: p.person?.id ?? 0,
         name: formatName(p.person?.fullName ?? ''),
         position: p.position?.abbreviation ?? '—',
         battingOrder: parseInt(p.battingOrder),
@@ -130,6 +135,7 @@ function parseTeam(raw: any): BoxScoreTeam | null {
       const s = p.stats?.pitching ?? {}
       const season = p.seasonStats?.pitching ?? {}
       return {
+        id,
         name: formatName(p.person?.fullName ?? ''),
         ip:   s.inningsPitched  ?? '0.0',
         h:    s.hits            ?? 0,
@@ -146,7 +152,7 @@ function parseTeam(raw: any): BoxScoreTeam | null {
     })
     .filter(Boolean) as BoxScorePitcher[]
 
-  return { teamName, abbr, score, hits, errors, batters, pitchers }
+  return { teamName, abbr, teamId, score, hits, errors, batters, pitchers }
 }
 
 // "José Rodríguez" → "J. Rodríguez"

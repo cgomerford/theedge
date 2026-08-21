@@ -15,14 +15,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import LiveScoreboard from './LiveScoreboard'
 
 export type GamePageTab =
-  | 'read' | 'scout' | 'pitching' | 'batting' | 'teams' | 'series' | 'fantasy'
-
+  | 'read' | 'scout' | 'pitching' | 'batting' | 'teams' | 'keyplayers' | 'series' | 'fantasy'
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
 
@@ -48,17 +47,19 @@ type GamePageShellProps = {
   slotPitching: React.ReactNode
   slotBatting?: React.ReactNode
   slotTeams: React.ReactNode
+  slotKeyPlayers: React.ReactNode 
   slotSeriesTab?: React.ReactNode
   slotFantasy?: React.ReactNode
 }
 
 const TABS: { key: GamePageTab; label: string; proOnly: boolean }[] = [
-  { key: 'read',     label: 'Edge Indicator', proOnly: false },
-  { key: 'scout',    label: 'Scout Report',   proOnly: false },
-  { key: 'pitching', label: 'Pitching Lab',   proOnly: true  },
-  { key: 'batting',  label: 'Batting Lab',    proOnly: true  },
-  { key: 'teams',    label: 'Teams',          proOnly: false },
-  { key: 'fantasy',  label: 'Fantasy',        proOnly: true  },
+  { key: 'read',       label: 'Edge Indicator', proOnly: false },
+  { key: 'scout',      label: 'Scout Report',   proOnly: false },
+  { key: 'pitching',   label: 'Pitching Lab',   proOnly: true  },
+  { key: 'batting',    label: 'Batting Lab',    proOnly: true  },
+  { key: 'teams',      label: 'Teams',          proOnly: false },
+  { key: 'keyplayers', label: 'Key Players',    proOnly: false },
+  { key: 'fantasy',    label: 'Fantasy',        proOnly: true  },
 ]
 
 function ComingSoon({ label, items }: { label: string; items: string[] }) {
@@ -89,11 +90,12 @@ export default function GamePageShell({
   liveScore,
   pinnedHero,
   slotSidebar,
-  slotRead, slotScout, slotPitching, slotBatting, slotTeams, slotSeriesTab, slotFantasy,
+    slotRead, slotScout, slotPitching, slotBatting, slotTeams, slotKeyPlayers, slotSeriesTab, slotFantasy,
 }: GamePageShellProps) {
   const hasSeries = slotSeriesTab != null
+  const fantasyTab = TABS.find(t => t.key === 'fantasy')!
   const tabs = hasSeries
-    ? [...TABS.slice(0, 5), { key: 'series' as const, label: 'Series', proOnly: false }, TABS[5]]
+    ? [...TABS.filter(t => t.key !== 'fantasy'), { key: 'series' as const, label: 'Series', proOnly: false }, fantasyTab]
     : TABS
   const validTabKeys = new Set<GamePageTab>(tabs.map(t => t.key))
 
@@ -103,7 +105,23 @@ export default function GamePageShell({
     if (t && validTabKeys.has(t as GamePageTab)) return t as GamePageTab
     return 'read'
   })()
-  const [activeTab, setActiveTab] = useState<GamePageTab>(initialTab)
+ const [activeTab, setActiveTab] = useState<GamePageTab>(initialTab)
+
+  // Sync activeTab when the URL's ?tab= param changes from elsewhere in
+  // the tree (e.g. a future "view in Pitching Lab" link from inside Scout
+  // Report). useState's initializer only runs once on mount, so without
+  // this, a client-side link to a new ?tab= value updates the URL but
+  // never actually switches the visible tab — same component instance,
+  // no remount, no re-read of the param.
+  useEffect(() => {
+    const t = searchParams?.get('tab')
+    if (t && validTabKeys.has(t as GamePageTab) && t !== activeTab) {
+      setActiveTab(t as GamePageTab)
+    } else if (!t && activeTab !== 'read') {
+      setActiveTab('read')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // Scout Report gets the full width — sidebar drops entirely rather than
   // sitting there empty next to a report that wants the room.
@@ -268,6 +286,9 @@ export default function GamePageShell({
             )}
             {activeTab === 'teams' && (
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotTeams}</div>
+            )}
+            {activeTab === 'keyplayers' && (
+              <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotKeyPlayers}</div>
             )}
             {activeTab === 'series' && hasSeries && (
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">{slotSeriesTab}</div>

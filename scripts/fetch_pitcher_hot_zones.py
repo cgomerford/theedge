@@ -2,21 +2,43 @@
 scripts/fetch_pitcher_hot_zones.py
 
 Fetches Statcast pitch-by-pitch data for every active MLB pitcher
-and aggregates into a 3x3 heatmap (9 zones) showing:
-  - Where they live (usage % per zone)
-  - Where they get hit (BA against per zone)
-  - Where they get whiffs (whiff % per zone)
+and aggregates into:
+  1. A heatmap (usage/BA-against/whiff by zone) -> pitcher_hot_zones
+  2. A per-pitch-type zone breakdown -> pitcher_zone_arsenal
+  3. NEW 2026-08-20: count-tendency (most-used pitch + location per
+     ball-strike count) -> pitcher_count_tendency
+  4. NEW 2026-08-20: pitch sequencing (what's thrown next after each
+     pitch type, within the same at-bat) -> pitcher_pitch_sequencing
 
-Stores results in `pitcher_hot_zones` table.
-Three rows per pitcher: 'all', 'vs_lhb', 'vs_rhb'.
+All four are computed from the SAME statcast_pitcher() pull per pitcher
+— no extra Savant request added for the two new tables, same discipline
+as lib/game-feed.ts's shared-fetch fix for the season-walk duplication
+found earlier this week.
 
-ALSO stores a per-pitch-type breakdown in `pitcher_zone_arsenal` from the
-SAME pull (no extra Statcast request) — powers the Tale of the Tape arsenal
-toggle. Same keys, same swing/whiff/event logic.
+Three rows per pitcher per table: 'all', 'vs_lhb', 'vs_rhb'.
+
+2026-08-20: zones 11-14 (Statcast's four out-of-zone "chase" quadrants —
+11=up/in, 12=up/away, 13=down/in, 14=down/away) are now stored as their
+OWN zone keys instead of being collapsed into their nearest in-zone
+corner. go_to_zone_label/weak_zone_label logic stays scoped to the 1-9
+core zones only — chase-zone tendency is a different question, not
+folded into those two labels.
+
+SEQUENCING ASSUMPTION — not independently curl/script-verified the way
+balls/strikes/at_bat_number/pitch_number were: this assumes 'game_pk' is
+also a real column in statcast_pitcher()'s output, needed so pitches are
+only chained within the same at-bat of the SAME game (at_bat_number
+resets every game, isn't globally unique across a season). It's as
+standard a Statcast column as the ones already confirmed, but given
+p_throws/game_date both needed real checking earlier this week rather
+than assumption, aggregate_sequencing() below fails SAFE — returns {}
+rather than crashing — if game_pk isn't present, so a wrong assumption
+here degrades gracefully instead of breaking the whole script run.
 
 Runs once a week via GitHub Actions.
 
-Companion to fetch_batter_hot_zones.py — same zone layout.
+Companion to fetch_batter_hot_zones.py — same core zone layout (batter
+script not yet updated for 11-14 or the two new tables).
 """
 import os
 import sys
@@ -40,19 +62,20 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
-# ─── Zone normalization (same as batter script) ──────────────────────────────
-ZONE_COLLAPSE = {11: 1, 12: 3, 13: 7, 14: 9}
+# ─── Zone set — core 1-9 PLUS chase quadrants 11-14, no longer collapsed ──────
+CORE_ZONES = list(range(1, 10))
+CHASE_ZONES = [11, 12, 13, 14]
+ALL_ZONES = CORE_ZONES + CHASE_ZONES
 
 ZONE_LABELS = {
     1: 'high inside',   2: 'high middle',   3: 'high outside',
     4: 'middle inside', 5: 'middle middle', 6: 'middle outside',
     7: 'low inside',    8: 'low middle',    9: 'low outside',
+    11: 'chase up/in',  12: 'chase up/away',
+    13: 'chase down/in', 14: 'chase down/away',
 }
 
-
-# ─── Pitch-type config (for the zone-arsenal sibling table) ──────────────────
-# Human labels for Statcast pitch_type codes. Anything not mapped falls back
-# to the raw code so a new/rare pitch still shows rather than silently dropping.
+# ─── Pitch-type config ────────────────────────────────────────────────────────
 PITCH_NAME = {
     'FF': '4-seam',   'SI': 'Sinker',    'FC': 'Cutter',
     'SL': 'Slider',   'ST': 'Sweeper',   'SV': 'Slurve',
@@ -61,36 +84,32 @@ PITCH_NAME = {
     'EP': 'Eephus',   'KN': 'Knuckleball','SC': 'Screwball',
 }
 
-# A pitch type must clear this many pitches in a split to be stored at all.
 MIN_PITCHES_PER_TYPE = 50
-# A zone within a kept pitch under this gets flagged low_sample (faded in UI),
-# but is NOT dropped — the 3x3 grid always stays whole.
 MIN_PITCHES_PER_ZONE = 15
+
+# NEW — thresholds for the two new tables
+VALID_COUNTS = [f'{b}-{s}' for b in range(4) for s in range(3)]  # '0-0' .. '3-2', 12 combos
+MIN_COUNT_SAMPLE = 15       # min pitches thrown IN a given count to trust that count's tendency
+MIN_SEQUENCING_SAMPLE = 20  # min times a pitch type was followed by another, to trust its "next pitch" tendency
 
 
 def normalize_zone(z):
+    """No longer collapses 11-14 into a core zone — returns them as-is.
+    Only returns None for genuinely invalid/missing zone values."""
     try:
         z = int(z)
     except (ValueError, TypeError):
         return None
-    if 1 <= z <= 9:
+    if z in ALL_ZONES:
         return z
-    if z in ZONE_COLLAPSE:
-        return ZONE_COLLAPSE[z]
     return None
 
 
 def aggregate_zones(pitches_df):
-    """
-    For pitchers, aggregate per zone:
-      - usage_pct: % of all pitches thrown in this zone
-      - ba_against: batting average on balls put in play from this zone
-      - whiff_pct: whiff rate on swings in this zone
-    """
     zones = {str(z): {
         'pitches': 0, 'swings': 0, 'whiffs': 0,
         'ab': 0, 'hits': 0,
-    } for z in range(1, 10)}
+    } for z in ALL_ZONES}
 
     if pitches_df is None or pitches_df.empty:
         return zones, 0
@@ -125,7 +144,6 @@ def aggregate_zones(pitches_df):
             if events_str in {'single', 'double', 'triple', 'home_run'}:
                 zones[key]['hits'] += 1
 
-    # Finalize per-zone rates
     out = {}
     for z, d in zones.items():
         usage_pct  = round((d['pitches'] / total_pitches) * 100, 1) if total_pitches > 0 else 0
@@ -144,15 +162,6 @@ def aggregate_zones(pitches_df):
 
 
 def aggregate_zone_arsenal(pitches_df):
-    """
-    Per pitch type, build a 9-zone grid mirroring aggregate_zones but scoped
-    to that one pitch. Returns { pitch_code: {pitch_name, usage_pct, avg_velo,
-    total_pitches, zones:{...}} }, keeping only pitch types that clear
-    MIN_PITCHES_PER_TYPE.
-
-    Reuses the exact same row-walk idiom and swing/whiff/event logic as
-    aggregate_zones so the two tables can never disagree on what a 'whiff' is.
-    """
     if pitches_df is None or pitches_df.empty:
         return {}
 
@@ -173,7 +182,7 @@ def aggregate_zone_arsenal(pitches_df):
             by_pitch[ptype] = {
                 'pitches': 0, 'velo_sum': 0.0, 'velo_n': 0,
                 'zones': {str(z): {'pitches': 0, 'swings': 0, 'whiffs': 0,
-                                   'ab': 0, 'hits': 0} for z in range(1, 10)},
+                                   'ab': 0, 'hits': 0} for z in ALL_ZONES},
             }
 
         bucket = by_pitch[ptype]
@@ -233,27 +242,145 @@ def aggregate_zone_arsenal(pitches_df):
     return out
 
 
-def label_extremes(zones):
+def aggregate_count_tendency(pitches_df):
     """
-    Returns (go_to_zone_label, weak_zone_label).
+    For each ball-strike count (12 valid in-progress combos), which pitch
+    type gets thrown most, and where does that pitch tend to go (most
+    common zone for that pitch type within that count).
+    """
+    if pitches_df is None or pitches_df.empty:
+        return {}
 
-    go_to_zone = highest usage_pct (where the pitcher lives)
-    weak_zone  = highest ba_against (where they get hit hardest, min 15 ABs)
+    buckets = {c: {} for c in VALID_COUNTS}
+    totals = {c: 0 for c in VALID_COUNTS}
+
+    for _, row in pitches_df.iterrows():
+        b, s = row.get('balls'), row.get('strikes')
+        if b is None or s is None or pd.isna(b) or pd.isna(s):
+            continue
+        b, s = int(b), int(s)
+        if b > 3 or s > 2:
+            continue  # not a real pre-pitch count — guard against any stray value
+        key = f'{b}-{s}'
+
+        ptype = row.get('pitch_type')
+        if ptype is None or pd.isna(ptype) or str(ptype).strip() == '':
+            continue
+        ptype = str(ptype).strip().upper()
+        zone = normalize_zone(row.get('zone'))
+
+        bucket = buckets[key]
+        if ptype not in bucket:
+            bucket[ptype] = {'n': 0, 'zones': {}}
+        bucket[ptype]['n'] += 1
+        if zone is not None:
+            zk = str(zone)
+            bucket[ptype]['zones'][zk] = bucket[ptype]['zones'].get(zk, 0) + 1
+        totals[key] += 1
+
+    out = {}
+    for count_key, pitch_dict in buckets.items():
+        total = totals[count_key]
+        if total < MIN_COUNT_SAMPLE or not pitch_dict:
+            continue
+
+        pitch_summaries = []
+        for ptype, d in pitch_dict.items():
+            top_zone_key = max(d['zones'].items(), key=lambda kv: kv[1])[0] if d['zones'] else None
+            pitch_summaries.append({
+                'pitch_type':     ptype,
+                'pitch_name':     PITCH_NAME.get(ptype, ptype),
+                'count_n':        d['n'],
+                'pct':            round((d['n'] / total) * 100, 1),
+                'top_zone':       top_zone_key,
+                'top_zone_label': ZONE_LABELS.get(int(top_zone_key)) if top_zone_key else None,
+            })
+        pitch_summaries.sort(key=lambda x: x['pct'], reverse=True)
+
+        out[count_key] = {
+            'total_pitches': total,
+            'pitches':       pitch_summaries,
+            'top_pitch':     pitch_summaries[0]['pitch_type'] if pitch_summaries else None,
+        }
+    return out
+
+
+def aggregate_sequencing(pitches_df):
     """
-    # Go-to zone (usage)
+    Given a pitch type just thrown, what's thrown next (within the same
+    at-bat, same game)? See SEQUENCING ASSUMPTION note at top of file re:
+    game_pk — fails safe (empty dict) if that column isn't present rather
+    than guessing at a substitute.
+    """
+    if pitches_df is None or pitches_df.empty:
+        return {}
+    required = {'pitch_type', 'game_pk', 'at_bat_number', 'pitch_number'}
+    if not required.issubset(set(pitches_df.columns)):
+        return {}
+
+    df = pitches_df.dropna(subset=['pitch_type', 'game_pk', 'at_bat_number', 'pitch_number']).copy()
+    if df.empty:
+        return {}
+    df = df.sort_values(['game_pk', 'at_bat_number', 'pitch_number'])
+
+    transitions = {}   # from_type -> {to_type: count}
+    from_totals = {}
+
+    prev_key = None
+    prev_type = None
+    for _, row in df.iterrows():
+        key = (row['game_pk'], row['at_bat_number'])
+        ptype = str(row['pitch_type']).strip().upper()
+
+        if prev_key == key and prev_type is not None:
+            transitions.setdefault(prev_type, {})
+            transitions[prev_type][ptype] = transitions[prev_type].get(ptype, 0) + 1
+            from_totals[prev_type] = from_totals.get(prev_type, 0) + 1
+
+        prev_key = key
+        prev_type = ptype
+
+    out = {}
+    for from_type, total in from_totals.items():
+        if total < MIN_SEQUENCING_SAMPLE:
+            continue
+        to_counts = transitions[from_type]
+        to_list = [
+            {
+                'pitch_type': t,
+                'pitch_name': PITCH_NAME.get(t, t),
+                'count':      n,
+                'pct':        round((n / total) * 100, 1),
+            }
+            for t, n in to_counts.items()
+        ]
+        to_list.sort(key=lambda x: x['pct'], reverse=True)
+        out[from_type] = {
+            'pitch_name':     PITCH_NAME.get(from_type, from_type),
+            'total_followed': total,
+            'next_pitches':   to_list,
+            'top_next':       to_list[0]['pitch_type'] if to_list else None,
+        }
+    return out
+
+
+def label_extremes(zones):
+    """go_to_zone/weak_zone — explicitly scoped to CORE_ZONES only, even
+    though `zones` now also contains chase-zone (11-14) entries."""
+    core_keys = {str(z) for z in CORE_ZONES}
+
     usage_candidates = [
         (int(z), d['usage_pct'])
         for z, d in zones.items()
-        if d['pitches'] >= 30
+        if z in core_keys and d['pitches'] >= 30
     ]
     usage_candidates.sort(key=lambda x: x[1], reverse=True)
     go_to_zone = ZONE_LABELS.get(usage_candidates[0][0]) if usage_candidates else None
 
-    # Weak zone (BA against)
     weak_candidates = [
         (int(z), d['ba_against'])
         for z, d in zones.items()
-        if d.get('ab', 0) >= 15 and d.get('ba_against') is not None
+        if z in core_keys and d.get('ab', 0) >= 15 and d.get('ba_against') is not None
     ]
     weak_candidates.sort(key=lambda x: x[1], reverse=True)
     weak_zone = ZONE_LABELS.get(weak_candidates[0][0]) if weak_candidates else None
@@ -261,15 +388,9 @@ def label_extremes(zones):
     return go_to_zone, weak_zone
 
 
-# ─── Player list ──────────────────────────────────────────────────────────────
 def get_active_pitchers():
-    """
-    Pull active pitchers we already have arsenal data for.
-    Falls back to MLB roster API if pitch_arsenals is empty.
-    """
     season = datetime.now().year
 
-    # Try pitch_arsenals first — these are pitchers we know throw enough to matter
     response = supabase.table('pitch_arsenals')\
         .select('player_id, player_name')\
         .eq('season', season)\
@@ -283,11 +404,10 @@ def get_active_pitchers():
                 seen[pid] = {
                     'id': pid,
                     'name': row.get('player_name', 'Unknown'),
-                    'team_id': None,  # we don't track team in pitch_arsenals
+                    'team_id': None,
                 }
         return list(seen.values())
 
-    # Fallback to roster API
     print('No pitch_arsenals data — falling back to roster API')
     import requests
     teams_url = f'https://statsapi.mlb.com/api/v1/teams?sportId=1&season={season}'
@@ -317,14 +437,14 @@ def get_active_pitchers():
     return list(pitchers.values())
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     season = datetime.now().year
     today = datetime.now().strftime('%Y-%m-%d')
     season_start = f'{season}-03-15'
 
-    print(f'Fetching pitcher hot zones for {season} season')
+    print(f'Fetching pitcher hot zones + count tendency + sequencing for {season} season')
     print(f'Date range: {season_start} to {today}')
+    print('13-zone mode: 9 core + 4 chase quadrants (11-14)')
 
     print('\nFetching active pitcher list...')
     pitchers = get_active_pitchers()
@@ -334,6 +454,8 @@ def main():
     skipped = 0
     failed  = 0
     arsenal_saved = 0
+    count_tendency_saved = 0
+    sequencing_saved = 0
 
     for i, p in enumerate(pitchers):
         progress = f'[{i+1}/{len(pitchers)}]'
@@ -351,6 +473,9 @@ def main():
 
             rows_to_upsert = []
             arsenal_rows = []
+            count_tendency_rows = []
+            sequencing_rows = []
+
             for split_key, split_filter in [
                 ('all',    df),
                 ('vs_lhb', df[df['stand'] == 'L']),
@@ -386,21 +511,55 @@ def main():
                         'updated_at':    datetime.utcnow().isoformat(),
                     })
 
+                count_tendency = aggregate_count_tendency(split_filter)
+                if count_tendency:
+                    count_tendency_rows.append({
+                        'player_id':   pid,
+                        'player_name': name,
+                        'team_id':     team_id,
+                        'season':      season,
+                        'split':       split_key,
+                        'counts':      count_tendency,
+                        'updated_at':  datetime.utcnow().isoformat(),
+                    })
+
+                sequencing = aggregate_sequencing(split_filter)
+                if sequencing:
+                    sequencing_rows.append({
+                        'player_id':   pid,
+                        'player_name': name,
+                        'team_id':     team_id,
+                        'season':      season,
+                        'split':       split_key,
+                        'transitions': sequencing,
+                        'updated_at':  datetime.utcnow().isoformat(),
+                    })
+
             if arsenal_rows:
                 supabase.table('pitcher_zone_arsenal').upsert(
-                    arsenal_rows,
-                    on_conflict='player_id,season,split',
+                    arsenal_rows, on_conflict='player_id,season,split',
                 ).execute()
                 arsenal_saved += 1
 
+            if count_tendency_rows:
+                supabase.table('pitcher_count_tendency').upsert(
+                    count_tendency_rows, on_conflict='player_id,season,split',
+                ).execute()
+                count_tendency_saved += 1
+
+            if sequencing_rows:
+                supabase.table('pitcher_pitch_sequencing').upsert(
+                    sequencing_rows, on_conflict='player_id,season,split',
+                ).execute()
+                sequencing_saved += 1
+
             if rows_to_upsert:
                 supabase.table('pitcher_hot_zones').upsert(
-                    rows_to_upsert,
-                    on_conflict='player_id,season,split',
+                    rows_to_upsert, on_conflict='player_id,season,split',
                 ).execute()
                 success += 1
                 print(f'  {progress} {name}: {len(rows_to_upsert)} splits saved'
-                      f' ({len(arsenal_rows)} arsenal)')
+                      f' (arsenal={len(arsenal_rows)} count_tend={len(count_tendency_rows)} seq={len(sequencing_rows)})')
             else:
                 skipped += 1
                 print(f'  {progress} {name}: skipped (no valid splits)')
@@ -413,10 +572,12 @@ def main():
             time.sleep(1.5)
 
     print(f'\n=== DONE ===')
-    print(f'  Success: {success}')
-    print(f'  Arsenal: {arsenal_saved}')
-    print(f'  Skipped: {skipped}')
-    print(f'  Failed:  {failed}')
+    print(f'  Success:        {success}')
+    print(f'  Arsenal:        {arsenal_saved}')
+    print(f'  Count tendency: {count_tendency_saved}')
+    print(f'  Sequencing:     {sequencing_saved}')
+    print(f'  Skipped:        {skipped}')
+    print(f'  Failed:         {failed}')
 
 
 if __name__ == '__main__':

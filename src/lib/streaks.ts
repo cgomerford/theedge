@@ -125,12 +125,13 @@ export async function getPitcherTrend(pitcherId: number, pitcherName: string): P
 export async function getTopBatterStreaks(teamId: number): Promise<{
   hot: BatterStreak[]
   cold: BatterStreak[]
+  all: BatterStreak[]
 }> {
   try {
     // Fetch team roster
     const rosterUrl = `${MLB_API}/teams/${teamId}/roster?rosterType=Active`
     const rosterRes = await fetch(rosterUrl, { signal: AbortSignal.timeout(8000) })
-    if (!rosterRes.ok) return { hot: [], cold: [] }
+    if (!rosterRes.ok) return { hot: [], cold: [], all: [] }
     const rosterData = await rosterRes.json()
 
     // Filter to position players only (no pitchers)
@@ -154,16 +155,23 @@ export async function getTopBatterStreaks(teamId: number): Promise<{
       .filter(s => s.is_hot)
       .sort((a, b) => Math.max(b.on_base_streak, b.hit_streak) - Math.max(a.on_base_streak, a.hit_streak))
       .slice(0, 3)
-
     const cold = streaks
       .filter(s => s.is_cold)
       .sort((a, b) => (a.last_5_avg ?? 1) - (b.last_5_avg ?? 1))
       .slice(0, 2)
-
-    return { hot, cold }
+    // `all` — every batter actually scanned (up to 13), unfiltered. Added
+    // 2026-08-20 so LiteralStreakNotes can independently find real
+    // consecutive-game streaks regardless of whether that batter happened
+    // to be one of the 5 hot/cold picks above — those two lists are
+    // selected by a DIFFERENT metric (is_hot also triggers on rolling AVG,
+    // not just streak length), so a batter with a genuine 7-game hit
+    // streak could be excluded from `hot` in favor of someone hot purely
+    // by average, and previously never got a chance to show up as a note
+    // at all.
+    return { hot, cold, all: streaks }
   } catch (err) {
     console.error(`Team streak fetch failed for ${teamId}:`, err)
-    return { hot: [], cold: [] }
+    return { hot: [], cold: [], all: [] }
   }
 }
 

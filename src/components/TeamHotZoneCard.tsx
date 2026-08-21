@@ -3,25 +3,16 @@
 // src/components/TeamHotZoneCard.tsx
 //
 // Aggregate confirmed-lineup hot zone — averages real batter_hot_zones data
-// across the confirmed lineup (vs the opposing starter's throwing hand), not
-// a stub. Every cell shows how many of the lineup's batters actually
-// contributed data, so a thin-sample cell reads as thin, not confident.
+// across the confirmed lineup (vs the opposing starter's throwing hand).
+//
+// 2026-08-18: chase zones (11-14) redrawn as Savant-style quadrants —
+// a 2×2 outer frame with the core 3×3 inset in the middle. Values sit
+// in the four outer corners (same treatment as PitchLocationCard).
 //
 // 2026-08-09: added a fallback to each batter's 'all' split when their
-// specific vs_lhp/vs_rhp split doesn't exist yet. A handedness split needs
-// a real chunk of plate appearances against that handedness before it
-// means anything, so plenty of batters legitimately only have an 'all'
-// row this early — without this fallback, enough thin-split batters in
-// one lineup could zero out the whole card even though real season data
-// exists for every one of them. Cells now track how many contributors
-// were handedness-matched vs season-wide fallback, shown honestly rather
-// than silently blended.
+// specific vs_lhp/vs_rhp split doesn't exist yet.
 //
-// 2026-08-11: added `compact` prop for the admin Scout Stories slideshow
-// (340px-wide story frame) — full-size /mlb/[slug] rendering is untouched
-// unless compact is explicitly passed. Also added the same staggered
-// tile-entrance animation used in PitchLocationCard's ZoneGrid, so both
-// grids in the slideshow assemble themselves the same way.
+// 2026-08-11: added `compact` prop for the admin Scout Stories slideshow.
 
 import type { BatterHotZones } from '@/lib/hot-zones'
 import { colorForBatterMetric, formatMetric, ZONE_LABELS } from '@/lib/hot-zones'
@@ -41,17 +32,27 @@ type Props = {
   compact?: boolean
 }
 
+const CORE_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const
+const CHASE_KEYS = ['11', '12', '13', '14'] as const
+const ALL_ZONES = [...CORE_KEYS, ...CHASE_KEYS]
+
+// flex-col: justify = vertical, items = horizontal
+const CHASE_ALIGN: Record<string, string> = {
+  '11': 'items-start justify-start pt-2 pl-2',
+  '12': 'items-end justify-start pt-2 pr-2',
+  '13': 'items-start justify-end pb-2 pl-2',
+  '14': 'items-end justify-end pb-2 pr-2',
+}
+
 export default function TeamHotZoneCard({ teamAbbr, teamName, color, entries, opposingThrows, compact }: Props) {
   const splitKey = opposingThrows === 'L' ? 'vs_lhp' : 'vs_rhp'
 
-  const cells = ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(z => {
+  const cells = Object.fromEntries(ALL_ZONES.map(z => {
     const values: number[] = []
     let matchedCount = 0
     let fallbackCount = 0
 
     for (const e of entries) {
-      // Prefer the handedness-specific split; fall back to 'all' if this
-      // batter doesn't have enough PA against this handedness yet.
       const matched = e.zones?.[splitKey]
       const fallback = e.zones?.['all']
       const source = matched ?? fallback
@@ -63,16 +64,19 @@ export default function TeamHotZoneCard({ teamAbbr, teamName, color, entries, op
       }
     }
     const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null
-    return { zone: z, avg, n: values.length, matchedCount, fallbackCount }
-  })
+    return [z, { zone: z, avg, n: values.length, matchedCount, fallbackCount }]
+  }))
 
-  // A batter "has data" if they have EITHER split available — 'all' alone
-  // still counts, since the card now uses it.
   const totalWithData = entries.filter(e => e.zones?.[splitKey] || e.zones?.['all']).length
   const totalHandednessMatched = entries.filter(e => e.zones?.[splitKey]).length
 
   const pad = compact ? 'p-2.5' : 'p-4'
   const padHead = compact ? 'px-2.5 py-2' : 'px-4 py-2.5'
+  const cellSize = compact ? 30 : 44
+  const gap = compact ? 3 : 4
+  const chaseBand = compact ? 26 : 38
+  const core = cellSize * 3 + gap * 2
+  const total = core + chaseBand * 2
 
   if (entries.length === 0 || totalWithData === 0) {
     return (
@@ -94,7 +98,7 @@ export default function TeamHotZoneCard({ teamAbbr, teamName, color, entries, op
         </p>
       </div>
       <div className={pad}>
-        <div className="zone-grid grid grid-cols-3 mx-auto" style={{ gap: compact ? 3 : 4, maxWidth: compact ? 150 : 220 }}>
+        <div className="mx-auto relative" style={{ width: total, height: total }}>
           <style jsx>{`
             @keyframes tileIn {
               0% { opacity: 0; transform: scale(0.3) rotate(-35deg) translateY(6px); }
@@ -102,26 +106,50 @@ export default function TeamHotZoneCard({ teamAbbr, teamName, color, entries, op
               100% { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
             }
             .zone-cell { animation: tileIn 420ms cubic-bezier(.34,1.56,.64,1) both; }
-            .zone-cell:nth-child(1) { animation-delay: 0ms; }
-            .zone-cell:nth-child(2) { animation-delay: 70ms; }
-            .zone-cell:nth-child(3) { animation-delay: 140ms; }
-            .zone-cell:nth-child(4) { animation-delay: 70ms; }
-            .zone-cell:nth-child(5) { animation-delay: 140ms; }
-            .zone-cell:nth-child(6) { animation-delay: 210ms; }
-            .zone-cell:nth-child(7) { animation-delay: 140ms; }
-            .zone-cell:nth-child(8) { animation-delay: 210ms; }
-            .zone-cell:nth-child(9) { animation-delay: 280ms; }
           `}</style>
-          {cells.map(({ zone, avg, n }) => (
-            <div
-              key={zone}
-              className={`zone-cell aspect-square rounded-md flex flex-col items-center justify-center ${colorForBatterMetric(avg, 'xwoba')} border border-white/40`}
-              title={ZONE_LABELS[zone]}
-            >
-              <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[9px]' : 'text-[11px]'}`}>{formatMetric(avg, 'xwoba')}</span>
-              <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>{n}/{entries.length}</span>
-            </div>
-          ))}
+
+          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 overflow-hidden rounded-md">
+            {CHASE_KEYS.map(z => {
+              const { avg, n } = cells[z]
+              return (
+                <div
+                  key={z}
+                  className={`zone-cell flex flex-col ${CHASE_ALIGN[z]} ${colorForBatterMetric(avg, 'xwoba')} border border-white/25`}
+                  title={ZONE_LABELS[z]}
+                >
+                  <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[8px]' : 'text-[10px]'}`}>{formatMetric(avg, 'xwoba')}</span>
+                  <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>{n}/{entries.length}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <div
+            className="absolute grid"
+            style={{
+              top: chaseBand,
+              left: chaseBand,
+              width: core,
+              height: core,
+              gridTemplateColumns: `repeat(3, ${cellSize}px)`,
+              gridTemplateRows: `repeat(3, ${cellSize}px)`,
+              gap,
+            }}
+          >
+            {CORE_KEYS.map(z => {
+              const { avg, n } = cells[z]
+              return (
+                <div
+                  key={z}
+                  className={`zone-cell rounded-md flex flex-col items-center justify-center ${colorForBatterMetric(avg, 'xwoba')} border border-white/40`}
+                  title={ZONE_LABELS[z]}
+                >
+                  <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[8px]' : 'text-[11px]'}`}>{formatMetric(avg, 'xwoba')}</span>
+                  <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>{n}/{entries.length}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
         {!compact && (
           <p className="text-[9px] font-mono text-center text-stone-400 mt-3">

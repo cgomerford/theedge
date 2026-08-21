@@ -1,189 +1,140 @@
 // src/lib/nfl/fantasy-ownership.ts
 //
-// NFL FANTASY OWNERSHIP — fetch + parse layer for the Waiver Wire Gem.
+// ESPN Fantasy Football ownership + fantasy-points data. Distinct API
+// host from everything else in this codebase (lm-api-reads.fantasy.espn.com,
+// not site.api.espn.com) — no auth needed, confirmed via curl 2026-08-16.
 //
-// Confirmed live (Aug 2026) via a manual curl against:
-//   https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{year}/segments/0/leaguedefaults/3?view=kona_player_info
-// with header: X-Fantasy-Filter: {"players":{"limit":N,"sortPercOwned":{"sortPriority":1,"sortAsc":bool}}}
+// Deliberately does NOT decode the numeric stat-ID dictionary inside
+// each player's stats{} object (keys like "23", "24"...) — ESPN doesn't
+// document what those IDs map to, and guessing would mean showing a
+// fabricated number labeled as a real stat. Only two things are used
+// from this endpoint, both unambiguous:
+//   - ownership.percentOwned / percentStarted / averageDraftPosition
+//   - stats[].appliedTotal (clearly-labeled fantasy points for that
+//     scoring period — NOT a coded ID)
+// Real yardage/TD/reception stat lines come from the sports API leaders
+// work (src/lib/nfl/leaders.ts), not from here.
 //
-// IMPORTANT CORRECTION vs. community docs: percentOwned is 0-100
-// (e.g. 99.86), NOT a 0-1 fraction (some older blog posts show 0.153 —
-// that was either a different API version or simply wrong; our own curl
-// is the ground truth here per the project's data-integrity rule).
-//
-// proTeamId is ESPN's FANTASY team numbering — there is no confirmed
-// mapping from this to the site.api.espn.com team IDs used everywhere
-// else in this codebase (nfl-team-stats.ts, nfl-scout.ts, nfl_transactions).
-// Do NOT assume proTeamId === team_id from those other sources without
-// building and verifying a translation table first. This file exposes
-// proTeamId as-is and leaves reconciliation to the caller.
-//
-// The custom X-Fantasy-Filter header is why this can't go through the
-// standard web_fetch-verified pattern the other NFL lib files used —
-// it was verified via a manual curl run by George, not by Claude directly.
+// Position ID mapping confirmed via curl against real top-60-owned
+// players (2026-08-16): 1=QB, 2=RB, 3=WR, 4=TE, 5=K, 16=D/ST.
 
-// ─────────────────────────────────────────────────────────────────────
-//  TYPES
-// ─────────────────────────────────────────────────────────────────────
+const FANTASY_API = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026'
 
-export type FantasyOwnership = {
-  activityLevel: string | null
-  auctionValueAverage: number | null
-  averageDraftPosition: number | null
-  percentOwned: number   // 0-100, confirmed via curl — do not treat as 0-1
-  percentStarted: number | null
-  percentChange: number | null
-}
-
-export type FantasyPlayer = {
-  espnFantasyId: string
-  firstName: string
-  lastName: string
-  fullName: string
-  defaultPositionId: number
-  position: string | null   // resolved via POSITION_ID_MAP below
-  proTeamId: number          // ESPN fantasy team id — NOT the site.api team id, see file header
-  active: boolean
-  injured: boolean
-  injuryStatus: string | null  // e.g. "ACTIVE", "QUESTIONABLE" — fantasy-context, separate from nfl_transactions
-  ownership: FantasyOwnership
-}
-
-// Confirmed against the earlier NFL fantasy stat-column research —
-// defaultPositionId 2 = RB was verified directly against Jahmyr Gibbs
-// in the curl output. The rest follow ESPN's well-documented convention;
-// re-verify individually if a position ever displays wrong.
-export const POSITION_ID_MAP: Record<number, string> = {
+export const FANTASY_POSITION_MAP: Record<number, string> = {
   1: 'QB',
   2: 'RB',
   3: 'WR',
   4: 'TE',
   5: 'K',
-  16: 'DST',
+  16: 'D/ST',
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  RAW ESPN RESPONSE SHAPE (subset — only what we read, from the confirmed curl)
-// ─────────────────────────────────────────────────────────────────────
-
-type EspnFantasyPlayerEntry = {
+export type FantasyProTeam = {
   id: number
-  player: {
-    active: boolean
-    defaultPositionId: number
-    firstName: string
-    lastName: string
-    fullName: string
-    id: number
-    injured: boolean
-    injuryStatus: string | null
-    proTeamId: number
-    ownership: {
-      activityLevel: string | null
-      auctionValueAverage: number | null
-      averageDraftPosition: number | null
-      percentChange: number | null
-      percentOwned: number
-      percentStarted: number | null
-    }
-  }
+  abbrev: string
+  location: string
+  name: string
+  color: string | null
 }
 
-type EspnFantasyResponse = {
-  players?: EspnFantasyPlayerEntry[]
+export type FantasyOwnershipEntry = {
+  playerId: number
+  athleteId: string        // NEW — string form for building the headshot URL
+  fullName: string
+  positionId: number
+  position: string
+  proTeamId: number
+  percentOwned: number
+  percentStarted: number
+  averageDraftPosition: number
+  latestFantasyPoints: number | null
+  headshotUrl: string | null   // NEW
+  injured: boolean
+  injuryStatus: string | null
 }
 
-// ─────────────────────────────────────────────────────────────────────
-//  FETCH + PARSE
-// ─────────────────────────────────────────────────────────────────────
+let proTeamCache: FantasyProTeam[] | null = null
+let proTeamCacheAt = 0
+const PRO_TEAM_CACHE_MS = 6 * 60 * 60 * 1000 // 6h — team metadata barely changes
 
-/**
- * Fetches players sorted by percentOwned. Set sortAsc=true for the
- * Waiver Wire Gem use case (find LOW-owned players); false for "who's
- * universally rostered" type queries.
- *
- * NOTE: this endpoint needs a custom X-Fantasy-Filter header, which is
- * why this fetch is more manual than the other NFL lib files — there's
- * no web_fetch-tool-verified precedent for this exact call chain, only
- * George's manual curl. If this starts failing, the header syntax or
- * the lm-api-reads.fantasy.espn.com host are the first things to
- * re-verify by hand, the same way we found the host itself had moved
- * from fantasy.espn.com in 2024.
- */
-export async function fetchNFLFantasyOwnership(
-  season: number,
-  opts: { limit?: number; sortAsc?: boolean } = {},
-): Promise<FantasyPlayer[]> {
-  const { limit = 200, sortAsc = true } = opts
+// Fetches the pro-team list dynamically rather than hardcoding all 32
+// team ids/colors from a single partial curl sample — safer than
+// transcribing 32 rows by hand from one truncated response.
+export async function getFantasyProTeams(): Promise<FantasyProTeam[]> {
+  const now = Date.now()
+  if (proTeamCache && now - proTeamCacheAt < PRO_TEAM_CACHE_MS) return proTeamCache
 
-  const filter = JSON.stringify({
-    players: {
-      limit,
-      sortPercOwned: { sortPriority: 1, sortAsc },
-    },
-  })
-
-  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leaguedefaults/3?view=kona_player_info`
-
-  let json: EspnFantasyResponse
   try {
-    const res = await fetch(url, {
-      headers: { 'X-Fantasy-Filter': filter },
-      next: { revalidate: 3600 },
-    } as RequestInit)
-    if (!res.ok) {
-      console.error(`nfl-fantasy-ownership: fetch failed — ${res.status}`)
-      return []
-    }
-    json = await res.json()
+    const res = await fetch(`${FANTASY_API}?view=proTeamSchedules`, { next: { revalidate: 21600 } })
+    if (!res.ok) return proTeamCache ?? []
+    const data = await res.json()
+    const raw: any[] = data.settings?.proTeams ?? data.proTeams ?? []
+    const teams = raw
+      .filter(t => t.id && t.abbrev) // drops the "no team" placeholder entry
+      .map(t => ({
+        id: t.id,
+        abbrev: t.abbrev,
+        location: t.location ?? '',
+        name: t.name ?? '',
+        color: t.color ? `#${t.color}` : null,
+      }))
+    proTeamCache = teams
+    proTeamCacheAt = now
+    return teams
   } catch (e) {
-    console.error('nfl-fantasy-ownership: fetch threw', e)
-    return []
+    console.error('getFantasyProTeams error:', e)
+    return proTeamCache ?? []
   }
-
-  const entries = json.players
-  if (!entries || entries.length === 0) {
-    console.error('nfl-fantasy-ownership: empty players array in response')
-    return []
-  }
-
-  return entries
-    .filter(e => e.player != null)
-    .map(e => {
-      const p = e.player
-      return {
-        espnFantasyId: String(p.id),
-        firstName: p.firstName,
-        lastName: p.lastName,
-        fullName: p.fullName,
-        defaultPositionId: p.defaultPositionId,
-        position: POSITION_ID_MAP[p.defaultPositionId] ?? null,
-        proTeamId: p.proTeamId,
-        active: p.active,
-        injured: p.injured,
-        injuryStatus: p.injuryStatus,
-        ownership: {
-          activityLevel: p.ownership?.activityLevel ?? null,
-          auctionValueAverage: p.ownership?.auctionValueAverage ?? null,
-          averageDraftPosition: p.ownership?.averageDraftPosition ?? null,
-          percentOwned: p.ownership?.percentOwned ?? 0,
-          percentStarted: p.ownership?.percentStarted ?? null,
-          percentChange: p.ownership?.percentChange ?? null,
-        },
-      }
-    })
 }
 
-/**
- * Convenience wrapper for the Waiver Wire Gem: low-owned players only,
- * below a configurable threshold. This does NOT rank by performance —
- * that requires cross-referencing against a separate box-score/gamelog
- * source, which is the next piece to build, not this file's job.
- */
-export async function fetchLowOwnedNFLPlayers(
-  season: number,
-  maxPercentOwned: number = 30,
-): Promise<FantasyPlayer[]> {
-  const players = await fetchNFLFantasyOwnership(season, { limit: 500, sortAsc: true })
-  return players.filter(p => p.ownership.percentOwned <= maxPercentOwned && p.active)
+export async function getFantasyOwnershipLeaders(limit: number = 20): Promise<FantasyOwnershipEntry[]> {
+  try {
+    const res = await fetch(
+      `${FANTASY_API}/segments/0/leaguedefaults/1?view=kona_player_info`,
+      {
+        headers: {
+          'X-Fantasy-Filter': JSON.stringify({
+            players: { limit, sortPercOwned: { sortAsc: false, sortPriority: 1 } },
+          }),
+        },
+        next: { revalidate: 1800 },
+      }
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    const raw: any[] = data.players ?? []
+
+    return raw.map((p): FantasyOwnershipEntry => {
+      const pp = p.player ?? {}
+      const own = pp.ownership ?? {}
+      // stats[] is an array of scoring-period entries; take the most
+      // recent one's appliedTotal if present. Not summed/aggregated —
+      // that would need deciding which periods count as "current," out
+      // of scope for this preview.
+      const latestStat = Array.isArray(pp.stats) && pp.stats.length > 0 ? pp.stats[0] : null
+
+  return {
+  playerId: pp.id,
+  athleteId: String(pp.id ?? ''),
+  fullName: pp.fullName ?? 'Unknown',
+  positionId: pp.defaultPositionId,
+  position: FANTASY_POSITION_MAP[pp.defaultPositionId] ?? '—',
+  proTeamId: pp.proTeamId ?? 0,
+  percentOwned: own.percentOwned ?? 0,
+  percentStarted: own.percentStarted ?? 0,
+  averageDraftPosition: own.averageDraftPosition ?? 0,
+  latestFantasyPoints: latestStat?.appliedTotal ?? null,
+  // Same CDN pattern already confirmed working elsewhere in this codebase
+  // (NFLHomepage.tsx's headshotUrl() helper, transactions headshots) —
+  // not a field ESPN's fantasy payload returns directly, built from the
+  // athlete id using the pattern verified against a real player profile.
+  headshotUrl: pp.id ? `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${pp.id}.png&w=100&h=100` : null,
+  injured: pp.injured ?? false,
+  injuryStatus: pp.injuryStatus ?? null,
+}
+    })
+  } catch (e) {
+    console.error('getFantasyOwnershipLeaders error:', e)
+    return []
+  }
 }

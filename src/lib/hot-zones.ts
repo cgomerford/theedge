@@ -9,6 +9,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase'
+import { cache } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,15 +59,16 @@ export const ZONE_LABELS: Record<string, string> = {
   '1': 'high inside',   '2': 'high middle',   '3': 'high outside',
   '4': 'middle inside', '5': 'middle middle', '6': 'middle outside',
   '7': 'low inside',    '8': 'low middle',    '9': 'low outside',
+  '11': 'chase up/in',  '12': 'chase up/away',
+  '13': 'chase down/in', '14': 'chase down/away',
 }
-
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
 /**
  * Fetch all 3 splits (all / vs_lhp / vs_rhp) for a batter.
  * Returns a map keyed by split. Empty map if no data.
  */
-export async function getBatterHotZones(playerId: number): Promise<Record<string, BatterHotZones>> {
+export const getBatterHotZones = cache(async function getBatterHotZones(playerId: number): Promise<Record<string, BatterHotZones>> {
   const season = new Date().getFullYear()
   const supa = createAdminClient()
 
@@ -83,12 +85,12 @@ export async function getBatterHotZones(playerId: number): Promise<Record<string
     result[row.split] = row as BatterHotZones
   }
   return result
-}
+})
 
 /**
  * Fetch all 3 splits (all / vs_lhb / vs_rhb) for a pitcher.
  */
-export async function getPitcherHotZones(playerId: number): Promise<Record<string, PitcherHotZones>> {
+export const getPitcherHotZones = cache(async function getPitcherHotZones(playerId: number): Promise<Record<string, PitcherHotZones>> {
   const season = new Date().getFullYear()
   const supa = createAdminClient()
 
@@ -105,7 +107,8 @@ export async function getPitcherHotZones(playerId: number): Promise<Record<strin
     result[row.split] = row as PitcherHotZones
   }
   return result
-}
+})
+
 
 // ─── Color helpers (used by the React component) ──────────────────────────────
 

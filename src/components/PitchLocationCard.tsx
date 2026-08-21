@@ -2,23 +2,16 @@
 
 // src/components/PitchLocationCard.tsx
 //
-// New, standalone — not sharing chart code with SprayChart/hot-zones
-// components used elsewhere in the app (Batting tab, Tale of the Tape).
-// Combines two existing, already-populated data sources for the Scout
-// Report's "Pitch Arsenal & Location" section:
-//   - PitcherHotZones (pitcher_hot_zones table)     — overall 3x3 grid
-//   - PitcherZoneArsenal (pitcher_zone_arsenal table) — per-pitch usage/zone
+// 2026-08-18: chase zones (11-14) redrawn as Savant-style quadrants —
+// a 2×2 outer frame (11=top-left, 12=top-right, 13=bottom-left,
+// 14=bottom-right) with the core 3×3 inset in the middle. Values for
+// the chase cells sit in the four outer corners so they are not
+// covered by the inset 3×3.
 //
-// Reuses the pure color/format HELPER FUNCTIONS from src/lib/hot-zones.ts
-// (colorForPitcherMetric, formatMetric, ZONE_LABELS) since those are
-// formatting logic, not UI — "build new, separate" was about not reusing
-// the existing chart components themselves.
+// 2026-08-17: added `richArsenal` — the full pitch_arsenals row (put-away%,
+// whiff%, est. wOBA, hard-hit%) routed in from page.tsx.
 //
-// 2026-08-11: added `compact` prop for the admin Scout Stories slideshow
-// (340px-wide story frame) — full-size /mlb/[slug] rendering is untouched
-// unless compact is explicitly passed. Also added a staggered tile-entrance
-// animation on the zone grid (diagonal wave, "settles into place" easing)
-// so the grid assembles itself instead of just popping in.
+// 2026-08-11: added `compact` prop for the admin Scout Stories slideshow.
 
 import { useState } from 'react'
 import type { PitcherHotZones, ZoneCell } from '@/lib/hot-zones'
@@ -28,24 +21,92 @@ import type { PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 type Split = 'all' | 'vs_lhb' | 'vs_rhb'
 type Metric = 'usage_pct' | 'ba_against' | 'whiff_pct'
 
+export type RichArsenalPitch = {
+  pitch_type: string
+  pitch_name: string | null
+  percentage: number | null
+  count: number | null
+  avg_velocity: number | null
+  whiff_percent: number | null
+  put_away_percent: number | null
+  est_woba: number | null
+  hard_hit_percent: number | null
+  ba_against: number | null
+}
+
 type Props = {
   pitcherName: string
   abbr: string
   color: string
   hotZones: Record<string, PitcherHotZones>
   arsenal: Record<string, PitcherZoneArsenal>
+  richArsenal?: RichArsenalPitch[]
   compact?: boolean
 }
 
 const SPLIT_LABELS: Record<Split, string> = { all: 'All', vs_lhb: 'vs LHB', vs_rhb: 'vs RHB' }
 const METRIC_LABELS: Record<Metric, string> = { usage_pct: 'Usage %', ba_against: 'BA against', whiff_pct: 'Whiff %' }
 
-function ZoneGrid({ zones, metric, compact }: { zones: Record<string, ZoneCell>; metric: Metric; compact?: boolean }) {
+function fmtPct(v: number | null | undefined): string {
+  return v != null ? `${v.toFixed(1)}%` : '—'
+}
+function fmtRate(v: number | null | undefined): string {
+  return v != null ? v.toFixed(3).replace(/^0/, '') : '—'
+}
+
+const CORE_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const
+const CHASE_KEYS = ['11', '12', '13', '14'] as const
+const CHASE_SET = new Set<string>(CHASE_KEYS)
+
+// flex-col: justify = vertical, items = horizontal
+const CHASE_ALIGN: Record<string, string> = {
+  '11': 'items-start justify-start pt-2 pl-2',
+  '12': 'items-end justify-start pt-2 pr-2',
+  '13': 'items-start justify-end pb-2 pl-2',
+  '14': 'items-end justify-end pb-2 pr-2',
+}
+
+function ZoneCellView({
+  z,
+  zones,
+  metric,
+  compact,
+}: {
+  z: string
+  zones: Record<string, ZoneCell>
+  metric: Metric
+  compact?: boolean
+}) {
+  const cell = zones[z]
+  const value = cell?.[metric] ?? null
+  const sample = cell?.pitches ?? cell?.ab ?? 0
+  const isChase = CHASE_SET.has(z)
   return (
     <div
-      className="zone-grid grid grid-cols-3 mx-auto"
-      style={{ gap: compact ? 3 : 4, maxWidth: compact ? 150 : 220 }}
+      className={`zone-cell flex flex-col ${
+        isChase ? CHASE_ALIGN[z] : 'items-center justify-center'
+      } ${colorForPitcherMetric(value, metric)} ${
+        isChase ? 'border border-white/25' : 'rounded-md border border-white/40'
+      }`}
+      title={ZONE_LABELS[z]}
     >
+      <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[8px]' : isChase ? 'text-[10px]' : 'text-[11px]'}`}>
+        {formatMetric(value, metric === 'ba_against' ? 'ba' : 'pct')}
+      </span>
+      <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>n={sample}</span>
+    </div>
+  )
+}
+
+function ZoneGrid({ zones, metric, compact }: { zones: Record<string, ZoneCell>; metric: Metric; compact?: boolean }) {
+  const cellSize = compact ? 30 : 44
+  const gap = compact ? 3 : 4
+  const chaseBand = compact ? 26 : 38
+  const core = cellSize * 3 + gap * 2
+  const total = core + chaseBand * 2
+
+  return (
+    <div className="mx-auto relative" style={{ width: total, height: total }}>
       <style jsx>{`
         @keyframes tileIn {
           0% { opacity: 0; transform: scale(0.3) rotate(-35deg) translateY(6px); }
@@ -53,38 +114,35 @@ function ZoneGrid({ zones, metric, compact }: { zones: Record<string, ZoneCell>;
           100% { opacity: 1; transform: scale(1) rotate(0deg) translateY(0); }
         }
         .zone-cell { animation: tileIn 420ms cubic-bezier(.34,1.56,.64,1) both; }
-        .zone-cell:nth-child(1) { animation-delay: 0ms; }
-        .zone-cell:nth-child(2) { animation-delay: 70ms; }
-        .zone-cell:nth-child(3) { animation-delay: 140ms; }
-        .zone-cell:nth-child(4) { animation-delay: 70ms; }
-        .zone-cell:nth-child(5) { animation-delay: 140ms; }
-        .zone-cell:nth-child(6) { animation-delay: 210ms; }
-        .zone-cell:nth-child(7) { animation-delay: 140ms; }
-        .zone-cell:nth-child(8) { animation-delay: 210ms; }
-        .zone-cell:nth-child(9) { animation-delay: 280ms; }
       `}</style>
-      {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(z => {
-        const cell = zones[z]
-        const value = cell?.[metric] ?? null
-        const sample = cell?.pitches ?? cell?.ab ?? 0
-        return (
-          <div
-            key={z}
-            className={`zone-cell aspect-square rounded-md flex flex-col items-center justify-center ${colorForPitcherMetric(value, metric)} border border-white/40`}
-            title={ZONE_LABELS[z]}
-          >
-            <span className={`font-mono font-bold text-stone-900/80 ${compact ? 'text-[9px]' : 'text-[11px]'}`}>
-              {formatMetric(value, metric === 'ba_against' ? 'ba' : 'pct')}
-            </span>
-            <span className={`font-mono text-stone-900/50 ${compact ? 'text-[6px]' : 'text-[8px]'}`}>n={sample}</span>
-          </div>
-        )
-      })}
+
+      <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 overflow-hidden rounded-md">
+        {CHASE_KEYS.map(z => (
+          <ZoneCellView key={z} z={z} zones={zones} metric={metric} compact={compact} />
+        ))}
+      </div>
+
+      <div
+        className="absolute grid"
+        style={{
+          top: chaseBand,
+          left: chaseBand,
+          width: core,
+          height: core,
+          gridTemplateColumns: `repeat(3, ${cellSize}px)`,
+          gridTemplateRows: `repeat(3, ${cellSize}px)`,
+          gap,
+        }}
+      >
+        {CORE_KEYS.map(z => (
+          <ZoneCellView key={z} z={z} zones={zones} metric={metric} compact={compact} />
+        ))}
+      </div>
     </div>
   )
 }
 
-export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, arsenal, compact }: Props) {
+export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, arsenal, richArsenal, compact }: Props) {
   const [split, setSplit] = useState<Split>('all')
   const [metric, setMetric] = useState<Metric>('usage_pct')
 
@@ -109,6 +167,9 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
         .filter(([, p]) => (p.usage_pct ?? 0) >= 5)
         .sort((a, b) => (b[1].usage_pct ?? 0) - (a[1].usage_pct ?? 0))
     : []
+
+  const richByType = new Map((richArsenal ?? []).map(p => [p.pitch_type, p]))
+  const hasRich = richArsenal != null && richArsenal.length > 0
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
@@ -172,27 +233,43 @@ export default function PitchLocationCard({ pitcherName, abbr, color, hotZones, 
       </div>
 
       {pitchList.length > 0 && !compact && (
-        <div className="border-t border-stone-100">
+        <div className="border-t border-stone-100 overflow-x-auto">
           <table className="w-full text-[11px] font-mono">
             <thead>
               <tr className="text-stone-400 uppercase text-[9px] tracking-wider">
                 <th className="text-left px-3 py-1.5">Pitch</th>
                 <th className="text-right px-2 py-1.5">Use%</th>
                 <th className="text-right px-2 py-1.5">Velo</th>
+                {hasRich && <th className="text-right px-2 py-1.5">Whiff%</th>}
+                {hasRich && <th className="text-right px-2 py-1.5">PutAway%</th>}
+                {hasRich && <th className="text-right px-2 py-1.5">xwOBA</th>}
+                {hasRich && <th className="text-right px-2 py-1.5">HardHit%</th>}
                 <th className="text-right px-3 py-1.5">Pitches</th>
               </tr>
             </thead>
             <tbody>
-              {pitchList.map(([code, p]) => (
-                <tr key={code} className="border-t border-stone-50">
-                  <td className="px-3 py-1.5 text-stone-800 font-semibold">{p.pitch_name ?? code}</td>
-                  <td className="px-2 py-1.5 text-right text-stone-600">{p.usage_pct?.toFixed(1) ?? '—'}%</td>
-                  <td className="px-2 py-1.5 text-right text-stone-600">{p.avg_velo?.toFixed(1) ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right text-stone-400">{p.total_pitches ?? '—'}</td>
-                </tr>
-              ))}
+              {pitchList.map(([code, p]) => {
+                const rich = richByType.get(code)
+                return (
+                  <tr key={code} className="border-t border-stone-50">
+                    <td className="px-3 py-1.5 text-stone-800 font-semibold whitespace-nowrap">{p.pitch_name ?? code}</td>
+                    <td className="px-2 py-1.5 text-right text-stone-600">{p.usage_pct?.toFixed(1) ?? '—'}%</td>
+                    <td className="px-2 py-1.5 text-right text-stone-600">{p.avg_velo?.toFixed(1) ?? '—'}</td>
+                    {hasRich && <td className="px-2 py-1.5 text-right text-stone-600">{fmtPct(rich?.whiff_percent)}</td>}
+                    {hasRich && <td className="px-2 py-1.5 text-right text-stone-600">{fmtPct(rich?.put_away_percent)}</td>}
+                    {hasRich && <td className="px-2 py-1.5 text-right text-stone-600">{fmtRate(rich?.est_woba)}</td>}
+                    {hasRich && <td className="px-2 py-1.5 text-right text-stone-600">{fmtPct(rich?.hard_hit_percent)}</td>}
+                    <td className="px-3 py-1.5 text-right text-stone-400">{p.total_pitches ?? '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
+          {hasRich && (
+            <p className="text-[8px] font-mono text-stone-400 px-3 py-1.5">
+              Whiff%/PutAway%/xwOBA/HardHit% are season-wide, not split by batter handedness.
+            </p>
+          )}
         </div>
       )}
 

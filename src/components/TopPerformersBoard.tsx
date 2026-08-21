@@ -2,24 +2,25 @@
 
 // src/components/TopPerformersBoard.tsx
 //
-// Six mini-leaderboards for the Post-Game Report: fastest exit velo,
-// highest spin rate, best launch angle, slowest pitch, fastest pitch,
-// hardest hit ball. Visually matches the compact NotesCard language used
-// in ScoutReportTab (mono labels, colored dot per rank, team-colored
-// left border) so the Post-Game Report reads as a sibling of the Scout
-// Report rather than a different product.
+// Now 2-column grid of category cards (was single column). Each card
+// shows top 5 by default (was top 3), with an expand toggle to reveal
+// every tracked entry — postgame.ts now returns full sorted arrays
+// instead of capping at the source, so "show all" has real data to show.
 
+import { useState } from 'react'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import type { TopPerformersBoardData, TopPerformerEntry } from '@/lib/postgame'
 
 type TeamColorMap = Record<string, string>
+
+const DEFAULT_VISIBLE = 5
 
 function LeaderRow({ entry, rank, teamColors }: { entry: TopPerformerEntry; rank: number; teamColors: TeamColorMap }) {
   const color = teamColors[entry.teamAbbr] ?? '#a8a29e'
   return (
     <div className="flex items-center gap-2.5 px-3 py-2 border-b border-stone-50 last:border-0">
       <span
-        className="w-4 text-right text-stone-300 font-bold leading-none flex-shrink-0"
+        className="w-5 text-right text-stone-300 font-bold leading-none flex-shrink-0"
         style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem' }}
       >
         {rank}
@@ -50,18 +51,31 @@ function LeaderboardCard({
   teamColors: TeamColorMap
   accent?: string
 }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? entries : entries.slice(0, DEFAULT_VISIBLE)
+  const hiddenCount = entries.length - DEFAULT_VISIBLE
+
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden" style={{ borderLeft: `3px solid ${accent}` }}>
-      <div className="px-3 py-2 bg-stone-50/80 border-b border-stone-100">
+      <div className="px-3 py-2 bg-stone-50/80 border-b border-stone-100 flex items-center justify-between">
         <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-stone-500">{title}</span>
+        <span className="font-mono text-[9px] text-stone-400">{entries.length} tracked</span>
       </div>
       <div>
         {entries.length > 0 ? (
-          entries.map((e, i) => <LeaderRow key={`${e.playerId}-${i}`} entry={e} rank={i + 1} teamColors={teamColors} />)
+          visible.map((e, i) => <LeaderRow key={`${e.playerId}-${i}`} entry={e} rank={i + 1} teamColors={teamColors} />)
         ) : (
           <div className="px-3 py-4 text-center font-mono text-[10px] text-stone-400">No tracked data</div>
         )}
       </div>
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(o => !o)}
+          className="w-full py-2 border-t border-stone-100 text-[9px] font-mono uppercase tracking-widest font-bold text-orange-600 hover:bg-orange-50/50 transition"
+        >
+          {expanded ? 'Show top 5' : `Show all ${entries.length}`}
+        </button>
+      )}
     </div>
   )
 }
@@ -80,9 +94,10 @@ export default function TopPerformersBoard({ data, awayAbbr, homeAbbr, awayColor
   return (
     <div className="flex flex-col gap-3">
       <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400 px-1">Top performers</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <LeaderboardCard title="Fastest exit velo" entries={data.fastestExitVelo} teamColors={teamColors} />
         <LeaderboardCard title="Hardest hit ball" entries={data.hardestHitBall} teamColors={teamColors} />
+        <LeaderboardCard title="Longest hit" entries={data.longestHit} teamColors={teamColors} />
         <LeaderboardCard title="Best launch angle" entries={data.bestLaunchAngle} teamColors={teamColors} />
         <LeaderboardCard title="Highest spin rate" entries={data.highestSpinRate} teamColors={teamColors} />
         <LeaderboardCard title="Fastest pitch" entries={data.fastestPitch} teamColors={teamColors} />

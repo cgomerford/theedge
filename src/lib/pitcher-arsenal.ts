@@ -13,7 +13,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getBatterHotZones, type BatterHotZones, type ZoneCell } from '@/lib/hot-zones'
-
+import { cache } from 'react'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ArsenalZoneCell = {
@@ -58,7 +58,7 @@ export type LineupBatter = {
  * Fetch all 3 splits (all / vs_lhb / vs_rhb) for a pitcher's zone arsenal.
  * Returns a map keyed by split. Empty map if no data.
  */
-export async function getPitcherZoneArsenal(
+export const getPitcherZoneArsenal = cache(async function getPitcherZoneArsenal(
   playerId: number,
 ): Promise<Record<string, PitcherZoneArsenal>> {
   const season = new Date().getFullYear()
@@ -72,12 +72,12 @@ export async function getPitcherZoneArsenal(
 
   if (error || !data) return {}
 
-  const result: Record<string, PitcherZoneArsenal> = {}
+const result: Record<string, PitcherZoneArsenal> = {}
   for (const row of data) {
     result[row.split] = row as PitcherZoneArsenal
   }
   return result
-}
+})
 
 /**
  * Given an opposing lineup, find the most dangerous bat by overall xwOBA
@@ -130,6 +130,7 @@ export async function getMostDangerousBat(
 // hardcoding, so tilt doesn't drift as the run environment shifts.
 export const LG_XWOBA = 0.320
 export const LG_BA = 0.245
+export const LG_WHIFF_PCT = 25.0
 
 /**
  * Net tilt for one zone, for a given pitch (or the blended full mix).
@@ -141,13 +142,21 @@ export function netTilt(
   hitterXwoba: number | null | undefined,
   pitcherBaAgainst: number | null | undefined,
   pitcherUsagePct: number | null | undefined,
+  pitcherWhiffPct?: number | null,
 ): number {
   const hx = typeof hitterXwoba === 'number' ? hitterXwoba : LG_XWOBA
   const pb = typeof pitcherBaAgainst === 'number' ? pitcherBaAgainst : LG_BA
   const use = typeof pitcherUsagePct === 'number' ? pitcherUsagePct : 0
 
   const hitterThreat = (hx - LG_XWOBA) / LG_XWOBA
-  const pitcherHold = (LG_BA - pb) / LG_BA
+
+  const pitcherHoldBa = (LG_BA - pb) / LG_BA
+  let pitcherHold = pitcherHoldBa
+  if (typeof pitcherWhiffPct === 'number') {
+    const pitcherHoldWhiff = (pitcherWhiffPct - LG_WHIFF_PCT) / LG_WHIFF_PCT
+    pitcherHold = pitcherHoldBa * 0.6 + pitcherHoldWhiff * 0.4
+  }
+
   const usageWeight = 0.5 + (use / 100) * 1.0
   return (pitcherHold - hitterThreat) * usageWeight
 }

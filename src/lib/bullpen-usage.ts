@@ -20,6 +20,16 @@
 // confirmed the numbers look right. Happy to build that version next if
 // page load feels slow.
 //
+// 2026-08-17: feed fetching now goes through lib/game-feed.ts's shared,
+// React cache()-memoized getGameFeed() instead of a raw fetch() here.
+// This function and sb-tendency.ts's getSBTendency() were independently
+// walking the exact same ~150 games this season, each firing its own
+// fetch for the same gamePk — doubling real fetch volume on every scout
+// report page load (the ~1 minute load time you flagged). Routing both
+// through the same memoized fetcher guarantees each game's feed is only
+// ever fetched once per page render, regardless of call order between
+// the two functions.
+//
 // STARTER FILTERING: excludes any pitcher whose starts make up half or
 // more of their season appearances (gamesStarted / gamesPitched >= 0.5)
 // — a ratio-based check, not a raw gamesStarted>0 flag, so a reliever
@@ -69,6 +79,8 @@ const MIN_APPEARANCES_PER_INNING = 3 // per-inning qualifier for "best inning" c
 const MIN_GAMES_FOR_INNING_CHART = 10 // extra innings (10+) only happen in a handful of games all season —
 // below this threshold the average is mostly noise (one blown lead in a 2-game sample reads as a "100% run rate"),
 // so those innings are dropped from the chart entirely rather than shown misleadingly
+
+import { getGameFeed } from '@/lib/game-feed'
 
 export type InningPitchingLine = {
   inning: number
@@ -121,10 +133,6 @@ interface RawPlay {
   result: { eventType?: string; awayScore?: number; homeScore?: number }
   playEvents: RawPlayEvent[]
 }
-interface RawLiveFeed {
-  gameData: { teams: { away: { id: number }; home: { id: number } } }
-  liveData: { plays: { allPlays: RawPlay[] } }
-}
 
 function classifyPitch(ev: RawPlayEvent): 'ball' | 'strike' {
   const code = ev.details?.call?.code
@@ -149,8 +157,8 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
 }
 
 // ─── Game pk fetchers ────────────────────────────────────────────────
-export async function getRecentGamePks(teamId: number, limit = 15, lookbackDays = 30): Promise<number[]> {
-  const end = new Date()
+export async function getRecentGamePks(teamId: number, limit = 15, lookbackDays = 30, anchorDate?: string): Promise<number[]> {
+  const end = anchorDate ? new Date(`${anchorDate}T12:00:00`) : new Date()
   const start = new Date(end.getTime() - lookbackDays * 24 * 60 * 60 * 1000)
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const res = await fetch(
@@ -278,15 +286,11 @@ export async function getBullpenReport(teamId: number, gamePks: number[], season
     runsAllowed: number; runsAllowedGames: Set<number>
   }>()
 
-  const feeds = await mapWithConcurrency(gamePks, CONCURRENCY, async (gamePk) => {
-    try {
-      const res = await fetch(`${MLB_API}/game/${gamePk}/feed/live`, { next: { revalidate: 21600 } })
-      if (!res.ok) return null
-      return (await res.json()) as RawLiveFeed
-    } catch {
-      return null
-    }
-  })
+  // 2026-08-17: routed through the shared getGameFeed() (lib/game-feed.ts)
+  // instead of a raw fetch() here — see file header note. Same gamePk
+  // requested by sb-tendency.ts's getSBTendency() now resolves to a
+  // single shared fetch instead of two independent ones.
+  const feeds = await mapWithConcurrency(gamePks, CONCURRENCY, (gamePk) => getGameFeed(gamePk))
 
   gamePks.forEach((gamePk, idx) => {
     const data = feeds[idx]
@@ -301,7 +305,7 @@ export async function getBullpenReport(teamId: number, gamePks: number[], season
     // (pitcherId:inning) -> lead when they entered, most recent lead
     const stintLead = new Map<string, { entered: number; current: number }>()
 
-    for (const play of data.liveData.plays.allPlays) {
+    for (const play of (data.liveData.plays.allPlays as RawPlay[])) {
       const inn = play.about.inning
       const teamIsBatting = (play.about.halfInning === 'top' && isTeamAway) || (play.about.halfInning === 'bottom' && isTeamHome)
       const teamIsPitching = !teamIsBatting

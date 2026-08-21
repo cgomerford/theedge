@@ -47,6 +47,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { aggregateGameStreaks } from '@/lib/streaks'
+import { getYesterdaysPerformers, type BatterPerformance, type PitcherPerformance, type RecapResult } from '@/lib/mlb-recap'
 import type { StatCardSourceData } from '@/app/admin/cards/StatCardPanel'
 
 const supa = createAdminClient()
@@ -59,6 +60,30 @@ const TEAM_ABBR: Record<number, string> = {
   134: 'PIT', 135: 'SD',  136: 'SEA', 137: 'SF',  138: 'STL',
   139: 'TB',  140: 'TEX', 141: 'TOR', 142: 'MIN', 143: 'PHI',
   144: 'ATL', 145: 'CWS', 146: 'MIA', 147: 'NYY', 158: 'MIL',
+}
+
+// ── Flattens getYesterdaysPerformers()'s two RecapResult<T> shapes into
+// the flat graded_performers[] StatCardPanel actually wants — role comes
+// from which array each item was pulled out of, everything else maps
+// directly. `available: false` on either side just contributes nothing,
+// same "empty state over fabricated data" pattern as the rest of this
+// file — never invent performers for a day with no completed games.
+function flattenGradedPerformers(
+  batters: RecapResult<BatterPerformance>,
+  pitchers: RecapResult<PitcherPerformance>,
+): StatCardSourceData['graded_performers'] {
+  const out: StatCardSourceData['graded_performers'] = []
+  if (batters.available) {
+    for (const b of batters.items) {
+      out.push({ role: 'batter', player_name: b.name, team_abbr: b.teamAbbr, line: b.line, grade: b.grade, score: b.score })
+    }
+  }
+  if (pitchers.available) {
+    for (const p of pitchers.items) {
+      out.push({ role: 'pitcher', player_name: p.name, team_abbr: p.teamAbbr, line: p.line, grade: p.grade, score: p.score })
+    }
+  }
+  return out
 }
 
 function abbr(teamId: number | null | undefined): string {
@@ -115,11 +140,25 @@ function readRow(row: Record<string, any>): GameRowShape {
  * and shapes the result into StatCardSourceData for StatCardPanel.
  */
 export async function getTodaysStatCardData(date: string): Promise<StatCardSourceData> {
+  const yesterday = new Date(`${date}T12:00:00`)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+  const { batters: yesterdayBatters, pitchers: yesterdayPitchers } = await getYesterdaysPerformers(yesterdayStr).catch((err) => {
+    console.error('getTodaysStatCardData: getYesterdaysPerformers failed', err)
+    return {
+      batters: { available: false as const, reason: 'Fetch failed.' },
+      pitchers: { available: false as const, reason: 'Fetch failed.' },
+    }
+  })
+  const graded_performers = flattenGradedPerformers(yesterdayBatters, yesterdayPitchers)
+
   const empty: StatCardSourceData = {
     date_label: fmtDateLabel(date),
     hot_batters: [],
     pitcher_trends: [],
     h2h_pitchers: [],
+    graded_performers: [],
   }
 
   const { data, error } = await supa
@@ -237,10 +276,11 @@ export async function getTodaysStatCardData(date: string): Promise<StatCardSourc
     }
   }
 
-  return {
+return {
     date_label: fmtDateLabel(date),
     hot_batters,
     pitcher_trends,
     h2h_pitchers,
+    graded_performers,
   }
 }

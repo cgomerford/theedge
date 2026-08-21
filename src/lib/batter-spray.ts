@@ -17,6 +17,8 @@ export type SprayPlay = {
   bt: string | null                  // batted-ball type: 'ground_ball' | 'line_drive' | 'fly_ball' | 'popup'
   ls: number | null                  // launch speed (exit velocity, mph)
   la: number | null                  // launch angle (degrees)
+  gd: string | null                  // game_date, 'YYYY-MM-DD' — added 2026-08-20 for L30 filtering
+  pt: 'L' | 'R' | null                // pitcher throws — added 2026-08-20 for vs-LHP/vs-RHP filtering
 }
 
 export type BatterSpray = {

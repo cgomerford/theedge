@@ -5,14 +5,17 @@ import crypto from 'crypto'
 const SESSION_COOKIE_NAME = 'edge_session'
 const SESSION_DURATION_DAYS = 30
 const LOGIN_LINK_DURATION_MIN = 30
+
 export type AuthSubscriber = {
   id: string
   email: string
   teams: string[]
+  primary_team: string | null
   preferences_token: string
   is_pro: boolean
   role: 'user' | 'admin'
 }
+
 // Create a one-time login token for a verified email
 export async function createLoginLink(email: string): Promise<string | null> {
   const supa = createAdminClient()
@@ -73,15 +76,17 @@ export async function consumeLoginLink(token: string): Promise<AuthSubscriber | 
   // Fetch the subscriber
   const { data: sub } = await supa
     .from('subscribers')
-    .select('id, email, teams, preferences_token, is_pro, role')
+    .select('id, email, teams, primary_team, preferences_token, is_pro, role')
     .eq('email', link.email)
     .single()
 
   if (!sub) return null
-return {
+
+  return {
     id: sub.id,
     email: sub.email,
     teams: (sub.teams ?? []) as string[],
+    primary_team: sub.primary_team ?? null,
     preferences_token: sub.preferences_token ?? '',
     is_pro: sub.is_pro ?? false,
     role: (sub.role ?? 'user') as 'user' | 'admin',
@@ -124,7 +129,7 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
 
   const { data: session } = await supa
     .from('sessions')
-    .select('*, subscribers(id, email, teams, preferences_token, is_pro, role)')
+    .select('*, subscribers(id, email, teams, primary_team, preferences_token, is_pro, role)')
     .eq('token', token)
     .single()
 
@@ -135,27 +140,27 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
     return null
   }
 
-  // Update last_used
-  await supa
+  // Update last_used — fire-and-forget, don't block the response on housekeeping
+  supa
     .from('sessions')
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', session.id)
+    .then(() => {}, () => {})
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sub = (session.subscribers as any)
   if (!sub) return null
 
-return {
+  return {
     id: sub.id,
     email: sub.email,
     teams: (sub.teams ?? []) as string[],
+    primary_team: sub.primary_team ?? null,
     preferences_token: sub.preferences_token ?? '',
     is_pro: sub.is_pro ?? false,
     role: (sub.role ?? 'user') as 'user' | 'admin',
   }
 }
-
-// Create a session for a subscriber, set cookie
 
 // Destroy current session
 export async function logout(): Promise<void> {

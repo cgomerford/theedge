@@ -1,22 +1,13 @@
 // src/components/admin/cards/StatCardPanel.tsx
 //
 // Admin panel for generating + exporting player stat cards.
-// Mounted as a new button/section on /admin/predictions (see wiring notes
-// at the bottom of this file for exact integration into page.tsx).
 //
-// EXPORT MECHANISM: uses `html-to-image` (toPng) rather than html2canvas.
-// html-to-image has noticeably better support for Google Fonts loaded via
-// next/font (html2canvas frequently silently falls back to a system font
-// for @font-face fonts injected by next/font's CSS-in-JS approach, which
-// would mean Fraunces/Bebas Neue/JetBrains Mono quietly not rendering in
-// the exported PNG even though they render fine on screen).
+// EXPORT MECHANISM: html-to-image (toPng). See original file header notes
+// on why (Google Font support via next/font) — unchanged.
 //
-// Install if not already present:
-//   npm install html-to-image
-//
-// If you'd rather use html2canvas (e.g. already installed elsewhere in the
-// project), swap the one import + the one call in handleExport() — the rest
-// of this file is library-agnostic.
+// NEW: watermark toggle (diagonal repeated overlay, see StatCard.tsx) and
+// the "Graded Performance" card type, sourced from mlb-recap.ts's
+// getYesterdaysPerformers() output (BatterPerformance[] / PitcherPerformance[]).
 
 'use client'
 
@@ -27,19 +18,14 @@ import {
   HotStreakCard,
   PitcherTrendCard,
   HeadToHeadCard,
+  PerformanceGradeCard,
   CARD_REGISTRY,
   type AspectRatio,
   type CardTypeId,
 } from '@/app/admin/cards/StatCard'
 
-// ── Input data shape ────────────────────────────────────────────────────
-// This is intentionally a flat "everything available for this game/day"
-// bag rather than tightly typed per-card-type props, because the panel's
-// job is letting the admin pick *which* player/stat goes into *which*
-// template — the strict typing lives in StatCard.tsx's per-template props,
-// and this panel must satisfy those exactly before render.
 export type StatCardSourceData = {
-  date_label: string // e.g. "Jun 24"
+  date_label: string
   hot_batters: {
     player_name: string
     team_abbr: string
@@ -66,6 +52,17 @@ export type StatCardSourceData = {
     record: string
     era: string
   }[]
+  // NEW — from getYesterdaysPerformers() in mlb-recap.ts. Batters and
+  // pitchers merged into one flat list with a `role` discriminator, since
+  // the panel just needs "everything gradeable from yesterday" to pick from.
+  graded_performers: {
+    role: 'batter' | 'pitcher'
+    player_name: string
+    team_abbr: string
+    line: string
+    grade: string
+    score: number
+  }[]
 }
 
 type Props = {
@@ -77,22 +74,27 @@ export default function StatCardPanel({ data }: Props) {
   const [cardType, setCardType] = useState<CardTypeId>('hot_streak')
   const [aspect, setAspect] = useState<AspectRatio>('square')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [watermark, setWatermark] = useState(false)
   const [exporting, setExporting] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
 
   const hasAnyData =
-    data.hot_batters.length > 0 || data.pitcher_trends.length > 0 || data.h2h_pitchers.length > 0
+    data.hot_batters.length > 0 ||
+    data.pitcher_trends.length > 0 ||
+    data.h2h_pitchers.length > 0 ||
+    data.graded_performers.length > 0
 
   async function handleExport() {
     if (!stageRef.current) return
     setExporting(true)
     try {
       const dataUrl = await toPng(stageRef.current, {
-        pixelRatio: 1, // stage is already rendered at full export resolution (1080/1200px) — don't double it
+        pixelRatio: 1,
         cacheBust: true,
       })
       const link = document.createElement('a')
-      link.download = `edge-card-${cardType}-${Date.now()}.png`
+      const suffix = watermark ? '-wm' : ''
+      link.download = `edge-card-${cardType}${suffix}-${Date.now()}.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
@@ -108,15 +110,13 @@ export default function StatCardPanel({ data }: Props) {
       const batters = data.hot_batters
       if (batters.length === 0) return <EmptyState label="No hot batters in today's data." />
       const b = batters[Math.min(selectedIndex, batters.length - 1)]
-      // Lead with whichever streak is longer/more notable — on-base streaks
-      // read as more impressive than hit streaks at the same length, so
-      // prefer on-base when both are present and roughly comparable.
       const useOnBase = b.on_base_streak >= b.hit_streak
       return (
         <HotStreakCard
           ref={stageRef}
           aspect={aspect}
           date_label={data.date_label}
+          watermark={watermark}
           player_name={b.player_name}
           team_abbr={b.team_abbr}
           position={b.position}
@@ -133,14 +133,13 @@ export default function StatCardPanel({ data }: Props) {
       const pitchers = data.pitcher_trends
       if (pitchers.length === 0) return <EmptyState label="No pitcher trend data in today's data." />
       const p = pitchers[Math.min(selectedIndex, pitchers.length - 1)]
-      // Lead with scoreless-innings streak if it's notable (12+, matches the
-      // threshold already used in streaks.ts trend_label logic), else ERA.
       const leadScoreless = (p.current_scoreless_innings ?? 0) >= 12
       return (
         <PitcherTrendCard
           ref={stageRef}
           aspect={aspect}
           date_label={data.date_label}
+          watermark={watermark}
           player_name={p.player_name}
           team_abbr={p.team_abbr}
           headline_value={leadScoreless ? String(p.current_scoreless_innings) : (p.last_3_era?.toFixed(2) ?? '—')}
@@ -161,11 +160,32 @@ export default function StatCardPanel({ data }: Props) {
           ref={stageRef}
           aspect={aspect}
           date_label={data.date_label}
+          watermark={watermark}
           player_name={h.player_name}
           team_abbr={h.team_abbr}
           opponent_abbr={h.opponent_abbr}
           record={h.record}
           era={h.era}
+        />
+      )
+    }
+
+    if (cardType === 'performance_grade') {
+      const performers = data.graded_performers
+      if (performers.length === 0) return <EmptyState label="No graded performances for yesterday's slate." />
+      const perf = performers[Math.min(selectedIndex, performers.length - 1)]
+      return (
+        <PerformanceGradeCard
+          ref={stageRef}
+          aspect={aspect}
+          date_label={data.date_label}
+          watermark={watermark}
+          player_name={perf.player_name}
+          team_abbr={perf.team_abbr}
+          role={perf.role}
+          line={perf.line}
+          grade={perf.grade}
+          score={perf.score}
         />
       )
     }
@@ -176,6 +196,7 @@ export default function StatCardPanel({ data }: Props) {
   function currentList(): { player_name: string; team_abbr: string }[] {
     if (cardType === 'hot_streak') return data.hot_batters
     if (cardType === 'pitcher_trend') return data.pitcher_trends
+    if (cardType === 'performance_grade') return data.graded_performers
     return data.h2h_pitchers
   }
 
@@ -198,7 +219,6 @@ export default function StatCardPanel({ data }: Props) {
             <EmptyState label="No player stat data available for this date range yet." />
           ) : (
             <>
-              {/* ── Controls ── */}
               <div className="flex flex-wrap items-end gap-4 mb-5">
                 <Field label="Card type">
                   <select
@@ -254,6 +274,18 @@ export default function StatCardPanel({ data }: Props) {
                   </div>
                 </Field>
 
+                <Field label="Watermark">
+                  <button
+                    type="button"
+                    onClick={() => setWatermark((w) => !w)}
+                    className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wide border ${
+                      watermark ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-300 text-stone-600'
+                    }`}
+                  >
+                    {watermark ? 'On' : 'Off'}
+                  </button>
+                </Field>
+
                 <button
                   type="button"
                   onClick={handleExport}
@@ -264,7 +296,6 @@ export default function StatCardPanel({ data }: Props) {
                 </button>
               </div>
 
-              {/* ── Preview — rendered at true export size, scaled down visually ── */}
               <div className="bg-stone-100 p-6 flex justify-center overflow-auto">
                 <div
                   style={{
@@ -297,31 +328,22 @@ function EmptyState({ label }: { label: string }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   WIRING NOTES — integrating into src/app/admin/predictions/page.tsx
+   WIRING NOTES — updating src/app/admin/dashboard/page.tsx
 
-   This panel needs a `StatCardSourceData` object built from whatever
-   streak/H2H data you already fetch for the admin page (or a new fetch
-   alongside `getRecentReads`). I haven't seen the full page.tsx beyond
-   the snippet retrieved via project-knowledge search, so wire this
-   yourself or paste the file back to me for an exact diff. Sketch:
+   import { getYesterdaysPerformers } from '@/lib/mlb-recap'
 
-   import StatCardPanel from '@/components/admin/cards/StatCardPanel'
-   import { getTopBatterStreaks, getPitcherTrend } from '@/lib/streaks'
+   const { batters, pitchers } = await getYesterdaysPerformers(perfDate)
 
-   // ... inside the page component, after predictions are fetched:
-   const cardData: StatCardSourceData = {
-     date_label: new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-     hot_batters: [...],      // map from getTopBatterStreaks() results across today's games
-     pitcher_trends: [...],   // map from getPitcherTrend() results
-     h2h_pitchers: [...],     // map from the *_pitcher_vs_opponent_record/_era fields
-                               // already computed for narrative.ts inputs
-   }
+   const graded_performers: StatCardSourceData['graded_performers'] = [
+     ...(batters.available ? batters.items.map(b => ({
+       role: 'batter' as const, player_name: b.name, team_abbr: b.teamAbbr,
+       line: b.line, grade: b.grade, score: b.score,
+     })) : []),
+     ...(pitchers.available ? pitchers.items.map(p => ({
+       role: 'pitcher' as const, player_name: p.name, team_abbr: p.teamAbbr,
+       line: p.line, grade: p.grade, score: p.score,
+     })) : []),
+   ]
 
-   // ... in the JSX, alongside the existing predictions table:
-   <StatCardPanel data={cardData} />
-
-   None of this touches ShareButton.tsx or share-text.ts — those remain
-   the text-copy path; this is the new, separate graphics path, per your
-   request to add it as a new section on the same page rather than
-   replacing what's there.
+   const cardData: StatCardSourceData = { ...existingCardData, graded_performers }
    ════════════════════════════════════════════════════════════════════════ */

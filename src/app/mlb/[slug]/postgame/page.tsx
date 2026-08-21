@@ -1,37 +1,38 @@
 // src/app/mlb/[slug]/postgame/page.tsx
 //
-// Production post-game report page — promoted from the throwaway
-// /dev/postgame-preview/[gamePk] route. Same PostGameReportTab component
-// and lib/postgame.ts data layer underneath; what changed getting here:
+// Production post-game report page.
 //
-//   - Keyed by SLUG, not raw gamePk. This matters because slugifyGame()
-//     is what the post-game email already builds its CTA link from —
-//     gamePk isn't something a subscriber's URL should expose, and it
-//     wouldn't match the rest of the site's /mlb/[slug] convention.
-//   - Team colors/logos come from lib/teams.ts's findTeamByName(), same
-//     helper every other page uses, instead of pulling raw values off the
-//     live feed's gameData block (the dev route's simplification).
-//   - A real "not final yet" state with a link back to the pre-game page,
-//     instead of the dev route's plain-text message — a subscriber
-//     clicking through from an email before the game (or a lineups)
-//     shouldn't hit a bare error string.
+// Two independent data fetches feed this page:
+//   1. getPostGameReport() — the OLDER PostGameReport shape (top
+//      performers, spray charts, umpire report, win probability, etc.)
+//   2. getLiveFeed() + aggregateGameFeed() — the NEWER PostgameReport
+//      shape (lowercase 'g', DO NOT confuse the two type names), used for
+//      pitchers/pitchLog/batters/linescore — everything PostGameReportTab's
+//      SP/bullpen/box-score section needs.
+// Both run independently; if either fails, the other section still renders.
 //
-// ⚠ UNVERIFIED: I haven't seen SiteHeader.tsx's actual prop signature —
-// used here as <SiteHeader /> with no props, matching how it's imported
-// elsewhere, but if it requires e.g. an isSignedIn/subscriber prop this
-// will fail typecheck. Run `npm run build` and paste back the error if so —
-// quick fix once I see the real signature.
+// 2026-08-20: added getBullpenData() as a THIRD independent fetch — last
+// 3 days' pitch loads per team, for the Bullpen Usage panels under each
+// SP column. Uses the game's official date (from the slug's date match)
+// and both team IDs from the resolved schedule game.
+//
+// ⚠ UNVERIFIED: SiteHeader's prop signature — used as <SiteHeader /> with
+// no props, matching other pages. Flag if build fails there.
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { getRecentGamePks, filterOutStarters, getBullpenReport } from '@/lib/bullpen-usage'
+import { getLast7DaysPitcherWorkload } from '@/lib/pitcher-workload'
 import { getScheduleForDate, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { getPostGameReport } from '@/lib/postgame'
+import { getLiveFeed } from '@/lib/mlb-live-feed'
+import { aggregateGameFeed } from '@/lib/postgame-aggregate'
 import { findTeamByName } from '@/lib/teams'
+import { getBullpenData } from '@/lib/bullpen'
+import { fetchPitcherHands } from '@/lib/pitcher-hands'
 import PostGameReportTab from '@/components/PostGameReportTab'
 import SiteHeader from '@/components/SiteHeader'
 
-// Post-game data won't change once a game is Final — safe to cache longer
-// than the live pre-game page's 60s revalidate.
 export const revalidate = 300
 
 type Props = { params: Promise<{ slug: string }> }
@@ -59,17 +60,12 @@ export default async function PostGamePage({ params }: Props) {
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
 
-  // Resolve the slug back to a real MLBGame — same lookup pattern as
-  // /mlb/[slug]/page.tsx: pull that date's schedule, match by slugifyGame().
   const games = await getScheduleForDate(dateMatch[1])
   const game: MLBGame | undefined = games.find(g => slugifyGame(g) === slug)
   if (!game) notFound()
 
   const isFinal = game.status?.abstractGameState === 'Final'
 
-  // Someone clicked through before the game actually ended (stale email
-  // link, or a curious click on a scheduled game) — don't show a raw error,
-  // send them back to the live pre-game page instead.
   if (!isFinal) {
     return (
       <div className="min-h-screen bg-[#FAF8F3]">
@@ -94,6 +90,54 @@ export default async function PostGamePage({ params }: Props) {
 
   const report = await getPostGameReport(game.gamePk)
 
+  // ── Pitching box score / batter / bullpen source data ──────────────────
+  const liveFeed = await getLiveFeed(game.gamePk)
+  const boxScoreReport = liveFeed ? aggregateGameFeed(liveFeed, slug) : null
+  const boxScorePitchers = boxScoreReport?.pitchers ?? []
+  const boxScorePitchLog = boxScoreReport?.pitchLog ?? []
+    const boxScoreBatters = boxScoreReport?.batters
+  const boxScoreLinescore = boxScoreReport?.linescore ?? []
+
+  // Every distinct pitcher either team's batters faced this game — needed
+  // for vs LHP/RHP splits in BatterBoxScoreSelector. Built off pitchLog
+  // rather than boxScorePitchers, since pitchLog is the actual per-pitch
+  // record of who threw to whom (boxScorePitchers only has each staff's
+  // own pitchers, not who faced them).
+  const allPitcherIdsFaced = Array.from(new Set(boxScorePitchLog.map(p => p.pitcherId)))
+  const pitcherHands = await fetchPitcherHands(allPitcherIdsFaced)
+  // ── Pitcher workload — last 7 days into this game, both teams ──────────
+  const season = new Date(dateMatch[1]).getFullYear()
+  const awayTeamId = game.teams.away.team.id
+  const homeTeamId = game.teams.home.team.id
+
+    const [awayWorkload, homeWorkload, awayRecentGamePks, homeRecentGamePks] = await Promise.all([
+    getLast7DaysPitcherWorkload(awayTeamId, undefined, dateMatch[1]),
+    getLast7DaysPitcherWorkload(homeTeamId, undefined, dateMatch[1]),
+    getRecentGamePks(awayTeamId, 15, 30, dateMatch[1]),
+    getRecentGamePks(homeTeamId, 15, 30, dateMatch[1]),
+ ])
+
+  // Filter each team's workload down to relievers only — pitcher-workload.ts
+  // deliberately includes starters (full-staff view), but this card is
+  // reliever-only per the wireframe. Reuses filterOutStarters rather than
+  // getEligibleRelieverIds, since the latter requires a current-roster
+  // check that would wrongly hide a reliever who's since been traded/
+  // optioned but still actually pitched in this game's 7-day window.
+  const [awayRelieverIds, homeRelieverIds] = await Promise.all([
+    filterOutStarters(awayWorkload.pitchers.map(p => p.playerId), season),
+    filterOutStarters(homeWorkload.pitchers.map(p => p.playerId), season),
+  ])
+  const awayWorkloadRP = { ...awayWorkload, pitchers: awayWorkload.pitchers.filter(p => awayRelieverIds.has(p.playerId)) }
+ const homeWorkloadRP = { ...homeWorkload, pitchers: homeWorkload.pitchers.filter(p => homeRelieverIds.has(p.playerId)) }
+
+
+  // bullpenReport just needs mostUsedInning per reliever — no roster
+  // filtering needed here (unlike the team page), so skip
+  // getEligibleRelieverIds and pass the raw recent gamePks straight in.
+  const [awayBullpenReport, homeBullpenReport] = await Promise.all([
+    getBullpenReport(awayTeamId, awayRecentGamePks, season),
+    getBullpenReport(homeTeamId, homeRecentGamePks, season),
+ ])
   const finalScore = {
     away: (game.teams.away as { score?: number }).score ?? 0,
     home: (game.teams.home as { score?: number }).score ?? 0,
@@ -119,6 +163,16 @@ export default async function PostGamePage({ params }: Props) {
           awayColor={awayTeam?.primary_color}
           homeColor={homeTeam?.primary_color}
           finalScore={finalScore}
+          boxScorePitchers={boxScorePitchers}
+          boxScorePitchLog={boxScorePitchLog}
+                 boxScoreBatters={boxScoreBatters}
+          boxScoreLinescore={boxScoreLinescore}
+                 pitcherHands={pitcherHands}
+          boxScoreBattedBalls={boxScoreReport?.battedBalls ?? []}
+          awayWorkload={awayWorkloadRP}
+         homeWorkload={homeWorkloadRP}
+          awayBullpenReport={awayBullpenReport}
+          homeBullpenReport={homeBullpenReport}
         />
       </div>
     </div>

@@ -52,10 +52,11 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results
 }
 
-function last7Dates(): string[] {
+function last7Dates(anchorDate?: string): string[] {
   const dates: string[] = []
+  const anchor = anchorDate ? new Date(`${anchorDate}T12:00:00`) : new Date()
   for (let i = 6; i >= 0; i--) {
-    const d = new Date()
+    const d = new Date(anchor)
     d.setDate(d.getDate() - i)
     dates.push(d.toISOString().slice(0, 10))
   }
@@ -64,9 +65,11 @@ function last7Dates(): string[] {
 
 export async function getLast7DaysPitcherWorkload(
   teamId: number,
-  currentRosterIds?: Set<number>, // optional — pass to only show players still on the active roster
+  currentRosterIds?: Set<number>,
+  anchorDate?: string, // 'YYYY-MM-DD' — defaults to today if omitted, existing callers unaffected
+ // optional — pass to only show players still on the active roster
 ): Promise<Last7DaysWorkload> {
-  const dates = last7Dates()
+  const dates = last7Dates(anchorDate)
   const startDate = dates[0]
   const endDate = dates[dates.length - 1]
 

@@ -7,7 +7,8 @@
 // lead-protection outcomes, each tagged with a dot color:
 //   green = positive, red = negative, grey = neutral/no real impact.
 
-import type { TeamManagerDecisions } from '@/lib/postgame'
+import type { TeamManagerDecisions, BaseState } from '@/lib/postgame'
+import BaseDiamondIcon from './BaseDiamondIcon'
 
 const IMPACT_COLOR: Record<string, string> = {
   positive: 'bg-emerald-500',
@@ -15,10 +16,11 @@ const IMPACT_COLOR: Record<string, string> = {
   neutral: 'bg-stone-300',
 }
 
-function DecisionRow({ dotColor, name, meta, description }: { dotColor: string; name: string; meta: string; description: string }) {
+function DecisionRow({ dotColor, name, meta, description, bases }: { dotColor: string; name: string; meta: string; description: string; bases: BaseState }) {
   return (
     <div className="px-3 py-1.5 flex items-start gap-2 border-b border-stone-50 last:border-0">
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${dotColor}`} />
+      <BaseDiamondIcon bases={bases} />
       <div className="min-w-0">
         <span className="text-[11.5px] text-stone-800 font-semibold">{name}</span>
         <span className="font-mono text-[9px] text-stone-400"> · {meta}</span>
@@ -47,6 +49,7 @@ function TeamSection({ team }: { team: TeamManagerDecisions }) {
               name={r.playerName}
               meta={`PH slot ${r.battingOrderSlot} · Inn ${r.inning}`}
               description={r.description}
+              bases={r.basesState}
             />
           ))}
           {team.pitchingDecisions.map((r, i) => (
@@ -56,6 +59,7 @@ function TeamSection({ team }: { team: TeamManagerDecisions }) {
               name={r.pitcherName}
               meta={`entered Inn ${r.inning} up ${r.enteredLead}`}
               description={`${r.outcome === 'held' ? 'Held the lead' : 'Blew the lead'}${r.description ? ` — ${r.description}` : ''}`}
+              bases={r.basesState}
             />
           ))}
         </>
@@ -68,8 +72,7 @@ export default function ManagerDecisionsCard({ decisions }: { decisions: { away:
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
       <div className="px-3 py-2 bg-stone-50/80 border-b border-stone-100 flex items-center justify-between flex-wrap gap-2">
-        <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-stone-500">Manager decisions</span>
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-stone-900">Manager decisions</span>        <div className="flex items-center gap-2.5 flex-wrap">
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /><span className="font-mono text-[8px] text-stone-400">Good</span></div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-stone-300" /><span className="font-mono text-[8px] text-stone-400">No impact</span></div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /><span className="font-mono text-[8px] text-stone-400">Negative</span></div>

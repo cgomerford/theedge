@@ -50,6 +50,15 @@ interface RawPlayEvent {
   hitData?: RawHitData
   count?: { balls?: number; strikes?: number; outs?: number }
 }
+interface RawRunnerMovement {
+  start: string | null   // e.g. '1B' | '2B' | '3B' | null (null = batter's box or already home)
+  end: string | null     // base reached, or null if out/scored
+  isOut: boolean
+}
+interface RawRunner {
+  movement: RawRunnerMovement
+  details: { runner: { id: number; fullName: string } }
+}
 interface RawPlay {
   about: { atBatIndex: number; halfInning: 'top' | 'bottom'; inning: number; isComplete: boolean; isScoringPlay: boolean }
   result: { type: string; event?: string; eventType?: string; description?: string; rbi?: number; awayScore?: number; homeScore?: number }
@@ -60,6 +69,40 @@ interface RawPlay {
     pitchHand?: { code: string }
   }
   playEvents: RawPlayEvent[]
+  runners?: RawRunner[]
+}
+
+// ── Base-state reconstruction ────────────────────────────────────────
+// ⚠ ASSUMPTION, NOT FULLY VERIFIED: built from a single sample play
+// (a batter pop-out with no other runners on base, so start/end were
+// both null in that case — nothing to confirm the '1B'/'2B'/'3B' string
+// format against). If base icons render wrong on a play you know had a
+// runner advance, that's this assumption being off — flag it and paste
+// a play with actual runner movement (e.g. a stolen base or a single
+// with a runner on 2nd) so the real string format can be confirmed.
+export type BaseState = { first: boolean; second: boolean; third: boolean }
+
+function computeBaseStateTimeline(plays: RawPlay[]): Map<number, BaseState> {
+  const beforeState = new Map<number, BaseState>()
+  const occupied: Record<'1B' | '2B' | '3B', number | null> = { '1B': null, '2B': null, '3B': null }
+
+  for (const play of plays) {
+    // Snapshot BEFORE this play's runners move — this is "who was on
+    // base when this at-bat started."
+    beforeState.set(play.about.atBatIndex, {
+      first: occupied['1B'] != null,
+      second: occupied['2B'] != null,
+      third: occupied['3B'] != null,
+    })
+
+    for (const r of play.runners ?? []) {
+      const { start, end } = r.movement
+      if (start === '1B' || start === '2B' || start === '3B') occupied[start] = null
+      if (end === '1B' || end === '2B' || end === '3B') occupied[end] = r.details.runner.id
+    }
+  }
+
+  return beforeState
 }
 interface RawLiveFeed {
   gameData: {
@@ -98,12 +141,13 @@ export type TopPerformerEntry = {
 }
 
 export type TopPerformersBoardData = {
-  fastestExitVelo: TopPerformerEntry[]
+  fastestExitVelo: TopPerformerEntry[]   // full sorted list — component slices for "top 5" / "show all"
   highestSpinRate: TopPerformerEntry[]
-  bestLaunchAngle: TopPerformerEntry[] // "best" launch angle = closest to ~25-30deg on hardest hits; here we just rank by absolute value for barrel-ish contact
+  bestLaunchAngle: TopPerformerEntry[]
   slowestPitch: TopPerformerEntry[]
   fastestPitch: TopPerformerEntry[]
   hardestHitBall: TopPerformerEntry[]
+  longestHit: TopPerformerEntry[]
 }
 
 export type ImpactfulAtBat = {
@@ -224,6 +268,8 @@ export type ChallengeEvent = {
   challengingTeam: string | null
   overturned: boolean | null
   description: string | null
+  pX: number | null   // plate coordinates, for plotting on a strike-zone box
+  pZ: number | null
 }
 
 export type UmpireReport = {
@@ -243,8 +289,8 @@ export type PinchHitResult = {
   inning: number
   description: string
   impact: 'positive' | 'negative' | 'neutral'
+  basesState: BaseState
 }
-
 export type PitchingDecisionResult = {
   pitcherName: string
   inning: number
@@ -252,6 +298,7 @@ export type PitchingDecisionResult = {
   outcome: 'held' | 'blown'
   description: string
   impact: 'positive' | 'negative'
+  basesState: BaseState
 }
 
 export type TeamManagerDecisions = {
@@ -464,6 +511,15 @@ const CALL_GRACE_FT = 0.5 / 12 // ~0.5 inch grace on the zone edge before a take
 // as clearly wrong the way one a foot off the plate should be
 
 function computeUmpireReport(data: RawLiveFeed, plays: RawPlay[]): UmpireReport {
+    const awayTeamId = data.gameData.teams.away.id
+  const homeTeamId = data.gameData.teams.home.id
+  const awayAbbr = data.gameData.teams.away.abbreviation
+  const homeAbbr = data.gameData.teams.home.abbreviation
+  function resolveTeamAbbr(teamId: number | undefined): string | null {
+    if (teamId === awayTeamId) return awayAbbr
+    if (teamId === homeTeamId) return homeAbbr
+    return null
+  }
   const officials = (data.liveData.boxscore?.officials ?? [])
     .filter(o => o.official?.fullName)
     .map(o => ({ role: o.officialType ?? 'Umpire', name: o.official!.fullName! }))
@@ -486,13 +542,33 @@ function computeUmpireReport(data: RawLiveFeed, plays: RawPlay[]): UmpireReport 
       // data; a take missing that data still counts as a take, just one we
       // can't grade (it's excluded from missed-call detection, not from the total).
       totalTakes += 1
-
       const pX = ev.pitchData?.coordinates?.pX
       const top = ev.pitchData?.strikeZoneTop
       const bottom = ev.pitchData?.strikeZoneBottom
       const pZ = ev.pitchData?.coordinates?.pZ
-      if (pX == null || pZ == null || top == null || bottom == null) continue // can't grade this one, but it's already counted above
 
+      // ABS challenge read — runs independent of our own missed-call
+      // geometry classification below. A challenged pitch is by
+      // definition borderline, so our clearlyInside/clearlyOutside
+      // grace-margin check often won't flag it as "clearly" wrong even
+      // when MLB's ABS system did overturn it — nesting this under that
+      // classifier (the original placement) silently dropped every real
+      // challenge that wasn't ALSO a clear geometric miss by our own math.
+      const review = (ev as any).reviewDetails
+      if (review) {
+        challengeEvents.push({
+          inning: play.about.inning,
+          batterName: play.matchup.batter.fullName,
+          pitcherName: play.matchup.pitcher.fullName,
+          challengingTeam: resolveTeamAbbr(review.challengeTeamId),
+          overturned: typeof review.isOverturned === 'boolean' ? review.isOverturned : null,
+          description: `Challenged by ${review.player?.fullName ?? 'unknown player'} · ${review.reviewType ?? 'review'}`,
+          pX: pX ?? null,
+          pZ: pZ ?? null,
+        })
+      }
+
+      if (pX == null || top == null || bottom == null || pZ == null) continue // can't grade this one, but it's already counted above
       // A take only counts as a genuine miss if it's clearly on the wrong side of the zone, not just on the
       // line — pitch-tracking has real measurement noise at this precision, so both checks below give a
       // small grace margin rather than flagging every pixel-perfect edge case.
@@ -507,7 +583,7 @@ function computeUmpireReport(data: RawLiveFeed, plays: RawPlay[]): UmpireReport 
       const dz = pZ < bottom ? bottom - pZ : pZ > top ? pZ - top : 0
       const distanceFt = Math.max(dx, dz)
 
-      missedCallsAll.push({
+           missedCallsAll.push({
         inning: play.about.inning,
         half: play.about.halfInning,
         batterName: play.matchup.batter.fullName,
@@ -516,23 +592,8 @@ function computeUmpireReport(data: RawLiveFeed, plays: RawPlay[]): UmpireReport 
         distanceInches: Number((distanceFt * 12).toFixed(1)),
         pX, pZ,
       })
-
-      // Best-effort ABS challenge read — see UmpireReport type doc for
-      // why this is unverified. Only populates if this field shape
-      // actually exists on the response; otherwise silently skipped.
-      const review = (ev.details as any)?.reviewDetails
-      if (review) {
-        challengeEvents.push({
-          inning: play.about.inning,
-          batterName: play.matchup.batter.fullName,
-          pitcherName: play.matchup.pitcher.fullName,
-          challengingTeam: review.challengeTeamId ?? review.challengingTeam ?? null,
-          overturned: typeof review.isOverturned === 'boolean' ? review.isOverturned : null,
-          description: review.description ?? null,
-        })
-      }
-    }
-  }
+    } // closes: for (const ev of play.playEvents)
+  } // closes: for (const play of plays)
 
   const sorted = [...missedCallsAll].sort((a, b) => b.distanceInches - a.distanceInches)
   const accuracyPct = totalTakes > 0 ? Number((((totalTakes - missedCallsAll.length) / totalTakes) * 100).toFixed(1)) : 0
@@ -560,6 +621,9 @@ function classifyPinchHitImpact(pa: RawPlay): 'positive' | 'negative' | 'neutral
 }
 
 function computeManagerDecisions(data: RawLiveFeed, plays: RawPlay[], awayAbbr: string, homeAbbr: string): ManagerDecisions {
+  const baseStateByAtBat = computeBaseStateTimeline(plays)
+  const emptyBases: BaseState = { first: false, second: false, third: false }
+
   function buildForSide(side: 'away' | 'home'): TeamManagerDecisions {
     const teamAbbr = side === 'away' ? awayAbbr : homeAbbr
     const pinchHitResults: PinchHitResult[] = []
@@ -591,6 +655,7 @@ function computeManagerDecisions(data: RawLiveFeed, plays: RawPlay[], awayAbbr: 
         inning: firstPA.about.inning,
         description: firstPA.result.description ?? firstPA.result.event ?? '',
         impact: classifyPinchHitImpact(firstPA),
+        basesState: baseStateByAtBat.get(firstPA.about.atBatIndex) ?? emptyBases,
       })
     }
 
@@ -640,6 +705,7 @@ function computeManagerDecisions(data: RawLiveFeed, plays: RawPlay[], awayAbbr: 
       outcome: blown ? 'blown' : 'held',
       description: stint.lastPlay.result.description ?? '',
       impact: blown ? 'negative' : 'positive',
+      basesState: baseStateByAtBat.get(stint.lastPlay.about.atBatIndex) ?? emptyBases,
     })
   }
 
@@ -683,7 +749,7 @@ export async function getPostGameReport(gamePk: number): Promise<PostGameReport>
   const slowPitchEntries: TopPerformerEntry[] = []
   const fastPitchEntries: TopPerformerEntry[] = []
   const hardHitEntries: TopPerformerEntry[] = []
-
+  const longestHitEntries: TopPerformerEntry[] = []
   // ── Pitcher usage ──
   const usageMap = new Map<number, PitcherUsageEntry>()
 
@@ -780,6 +846,13 @@ export async function getPostGameReport(gamePk: number): Promise<PostGameReport>
             context: play.result.event ?? '',
           })
         }
+        if (typeof hit.totalDistance === 'number' && hit.totalDistance > 0) {
+          longestHitEntries.push({
+            playerId: batter.id, playerName: batter.fullName, teamAbbr: battingTeamAbbr,
+            value: hit.totalDistance, displayValue: `${Math.round(hit.totalDistance)} ft`,
+            context: `${formatTrajectory(hit.trajectory)} · ${play.result.event ?? ''}`,
+          })
+        }
         if (typeof hit.launchAngle === 'number') {
           launchEntries.push({
             playerId: batter.id, playerName: batter.fullName, teamAbbr: battingTeamAbbr,
@@ -820,13 +893,17 @@ export async function getPostGameReport(gamePk: number): Promise<PostGameReport>
     }
   }
 
+  // No cap here anymore — return the FULL sorted list, the component
+  // decides how many to show (top 5 default, expand for all). top()/
+  // bottom() with a length equal to the array's own length just sorts.
   const topPerformers: TopPerformersBoardData = {
-    fastestExitVelo: top(evEntries, e => e.value, 3),
-    highestSpinRate: top(spinEntries, e => e.value, 3),
-    bestLaunchAngle: bottom(launchEntries, e => Math.abs(e.value - 27), 3), // closest to ideal ~27deg launch among tracked balls in play
-    slowestPitch: top(slowPitchEntries, e => -e.value, 3),
-    fastestPitch: top(fastPitchEntries, e => e.value, 3),
-    hardestHitBall: top(hardHitEntries, e => e.value, 3),
+    fastestExitVelo: top(evEntries, e => e.value, evEntries.length),
+    highestSpinRate: top(spinEntries, e => e.value, spinEntries.length),
+    bestLaunchAngle: bottom(launchEntries, e => Math.abs(e.value - 27), launchEntries.length),
+    slowestPitch: top(slowPitchEntries, e => -e.value, slowPitchEntries.length),
+    fastestPitch: top(fastPitchEntries, e => e.value, fastPitchEntries.length),
+    hardestHitBall: top(hardHitEntries, e => e.value, hardHitEntries.length),
+    longestHit: top(longestHitEntries, e => e.value, longestHitEntries.length),
   }
 
   const mostPatientBatters: PatientBatterEntry[] = top(

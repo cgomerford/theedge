@@ -27,6 +27,14 @@
 #      the old tto1_era/tto1_xwoba columns, so nothing downstream breaks
 #      until we deliberately cut TypeScript over to the new fields.
 #
+# 2026-08-20: added tto1_avg/tto2_avg/tto3_avg alongside the existing
+# wOBA columns — AVG is (1b+2b+3b+hr)/ab, and every one of those counts
+# was ALREADY being tallied per bucket to compute wOBA below. No new
+# fetch, no new reconciliation risk — same verified PA counts, one more
+# derived number written per bucket. Requires a migration adding
+# tto1_avg/tto2_avg/tto3_avg (numeric, nullable) to pitcher_stats before
+# this will write successfully — see accompanying SQL.
+#
 # Python 3.9 compatible per project convention.
 
 from __future__ import annotations
@@ -74,7 +82,7 @@ HIT_EVENT_WEIGHT = {'single': W_1B, 'double': W_2B, 'triple': W_3B, 'home_run': 
 HIT_EVENT_KEY = {'single': '1b', 'double': '2b', 'triple': '3b', 'home_run': 'hr'}
 
 MIN_STARTS = 3            # same gate the old script used
-MIN_BUCKET_PA = 10         # below this, a bucket's wOBA is too noisy to show
+MIN_BUCKET_PA = 10         # below this, a bucket's wOBA/AVG is too noisy to show
 PA_RECONCILE_TOLERANCE = 0.04   # allow up to 4% drift vs real battersFaced
 
 
@@ -154,8 +162,8 @@ def process_pitcher(player_id: int, player_name: str, season: int) -> Optional[d
             elif event == 'hit_by_pitch':
                 b['hbp'] += 1
             # intent_walk, sac_fly, sac_bunt, catcher_interf: counted in
-            # pa above (real PAs) but correctly excluded from the wOBA
-            # denominator below since they're not in AB_OUT_EVENTS /
+            # pa above (real PAs) but correctly excluded from the wOBA/AVG
+            # denominators below since they're not in AB_OUT_EVENTS /
             # HIT_EVENT_WEIGHT / walk / hbp.
 
         time.sleep(0.3)  # polite pause between per-game play-by-play calls
@@ -183,6 +191,15 @@ def process_pitcher(player_id: int, player_name: str, season: int) -> Optional[d
                 + W_2B * b['2b'] + W_3B * b['3b'] + W_HR * b['hr']) / denom
         result[f'tto{i}_pa'] = b['pa']
         result[f'tto{i}_woba'] = round(woba, 3)
+
+        # AVG — same counts already tallied above for wOBA, just a
+        # different (and simpler) formula: hits / at-bats. ab is already
+        # the correct AVG denominator (walks/HBP correctly excluded,
+        # same as wOBA's numerator events for hits).
+        hits = b['1b'] + b['2b'] + b['3b'] + b['hr']
+        if b['ab'] > 0:
+            result[f'tto{i}_avg'] = round(hits / b['ab'], 3)
+
         any_bucket_written = True
 
     if not any_bucket_written:

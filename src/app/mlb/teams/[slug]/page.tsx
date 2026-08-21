@@ -15,7 +15,7 @@ import { getRosterGrades } from '@/lib/team-grades'
 import { getTeamUpcomingSchedule } from '@/lib/team-schedule'
 import { getAffiliateStandouts } from '@/lib/team-minors'
 import TeamDugoutView from '@/components/TeamDugoutView'
-
+import TeamArticles from '@/components/TeamArticles'
 // ── NEW: lineup optimizer + bullpen usage ──
 import { fetchConfirmedLineup, fetchBatterSplits, optimizeLineupBySlotHistory } from '@/lib/lineup-optimizer'
 import { getPlayerSlotProfiles } from '@/lib/lineup-slot-stats'
@@ -143,6 +143,7 @@ export default async function TeamPage({ params }: Props) {
         mlbId={mlbId}
         record={record}
         nextGame={nextGame}
+        articlesSlot={<TeamArticles teamCode={team.abbrev} />}
         leaders={leaders}
         news={news}
         composition={composition}

@@ -9,6 +9,7 @@ import { findTeamByName, MLB_TEAMS } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
 import type { FantasyPicksByType } from '@/lib/fantasy'
 import type { TeamTransaction } from '@/lib/team-transactions'
+import type { Top3Snapshot } from '@/lib/series-top3-snapshot'
 
 export type Prospect = {
   rank: number
@@ -36,6 +37,7 @@ type Props = {
   fantasyPicks?: FantasyPicksByType
   fantasyIsStale?: boolean
   prospects?: Prospect[]
+  top3Snapshots?: Map<number, Top3Snapshot>
 }
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -289,7 +291,7 @@ function GameHighlights() {
 
 /* ── TICKER (With Calendar & Timezone Navigation) ──────── */
 
-function Ticker({ games: initialGames, predictions }: { games: MLBGame[]; predictions: Map<number, EdgePrediction> }) {
+function Ticker({ games: initialGames, predictions, top3Snapshots }: { games: MLBGame[]; predictions: Map<number, EdgePrediction>; top3Snapshots?: Map<number, Top3Snapshot> }) {
   const [selectedDate, setSelectedDate] = useState<'yesterday' | 'today' | 'tomorrow'>('today')
   const [tickerGames, setTickerGames] = useState<MLBGame[]>(initialGames)
   const [loading, setLoading] = useState(false)
@@ -389,6 +391,10 @@ function Ticker({ games: initialGames, predictions }: { games: MLBGame[]; predic
               const awayScore = (game as any).teams?.away?.score
               const homeScore = (game as any).teams?.home?.score
 
+              const awaySnap = selectedDate === 'today' ? top3Snapshots?.get(away.team.id) : undefined
+              const homeSnap = selectedDate === 'today' ? top3Snapshots?.get(home.team.id) : undefined
+              const top3EdgeCount = (awaySnap?.edge_count ?? 0) + (homeSnap?.edge_count ?? 0)
+
               return (
                 <Link key={game.gamePk} href={`/mlb/${slugifyGame(game)}`} className="ticker-card">
                   <div className="m" style={{ fontSize: 9, fontWeight: 700, color: live ? '#FF5722' : '#A3A3A3', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -424,6 +430,11 @@ function Ticker({ games: initialGames, predictions }: { games: MLBGame[]; predic
                     )}
                     {!pred && (
                       <div className="m" style={{ fontSize: 8, color: '#D4D0C8', letterSpacing: '0.04em' }}>Edge coming</div>
+                    )}
+                    {top3EdgeCount > 0 && (
+                      <div className="m" style={{ fontSize: 8, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.04em', marginTop: 3 }}>
+                        ⊕ {top3EdgeCount} to watch this series
+                      </div>
                     )}
                   </div>
 
@@ -1039,6 +1050,7 @@ export default function MLBHomepage({
   statLeaders,
   fantasyPicks,
   prospects = [],
+  top3Snapshots,
 }: Props) {
   const hasStats = statLeaders && Object.values(statLeaders).some(l => l.length > 0)
 
@@ -1047,7 +1059,7 @@ export default function MLBHomepage({
       <style>{CSS}</style>
 
       {/* 1. TICKER WITH DATE CONTROLS */}
-      <Ticker games={games} predictions={predictions} />
+      <Ticker games={games} predictions={predictions} top3Snapshots={top3Snapshots} />
 
       {/* 2. MAIN CONTAINER */}
       <div className="mlb-main">

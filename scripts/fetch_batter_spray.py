@@ -8,16 +8,19 @@ JSONB in batter_spray, one row per batter for the current season.
 Powers the Scout Report's combined lineup spray heatmap — displays where
 the confirmed lineup collectively puts balls in play across the field.
 
+2026-08-20: added game_date and p_throws to the pull — curl/script-
+verified both columns exist in pybaseball's statcast_batter() output
+before adding this (confirmed via a live test pull, not assumed). Stored
+as 'gd' and 'pt' in each play dict, same 2-letter key style as the
+existing fields. Powers the L30 window and vs-LHP/vs-RHP filters on the
+Scout Report spray chart, which previously had no date or handedness
+dimension to filter on at all.
+
 Uses pybaseball.statcast_batter(), same architecture and library as
 fetch_pitch_velocity_range.py — hc_x / hc_y / events / bb_type /
-launch_speed / launch_angle are all standard Statcast columns, already
-proven working in this codebase via the batter Statcast fetch in
-BattingTabContent.tsx.
-
-Also stores events, bb_type, launch_speed, launch_angle alongside the
-coordinates. Not used by the current heatmap view, but small storage
-cost and unblocks a scatter-by-outcome view later without re-running
-the whole pipeline.
+launch_speed / launch_angle / game_date / p_throws are all standard
+Statcast columns, already proven working in this codebase via the batter
+Statcast fetch in BattingTabContent.tsx.
 
 Runs once a week via GitHub Actions.
 
@@ -119,7 +122,7 @@ def compute_batter_spray(player_id: int, season: int):
     if df is None or df.empty:
         return None
 
-    needed = ['hc_x', 'hc_y', 'events', 'bb_type', 'launch_speed', 'launch_angle']
+    needed = ['hc_x', 'hc_y', 'events', 'bb_type', 'launch_speed', 'launch_angle', 'game_date', 'p_throws']
     if not all(c in df.columns for c in needed):
         return None
 
@@ -129,6 +132,13 @@ def compute_batter_spray(player_id: int, season: int):
 
     plays = []
     for row in df[needed].itertuples(index=False):
+        # game_date comes back as a pandas Timestamp — format to plain
+        # 'YYYY-MM-DD' so it's a simple string in storage, consistent
+        # with how dates are stored elsewhere in this codebase.
+        gd = None
+        if not pd.isna(row.game_date):
+            gd = pd.Timestamp(row.game_date).strftime('%Y-%m-%d')
+
         plays.append({
             'x': round(float(row.hc_x), 1),
             'y': round(float(row.hc_y), 1),
@@ -136,6 +146,8 @@ def compute_batter_spray(player_id: int, season: int):
             'bt': None if pd.isna(row.bb_type) else str(row.bb_type),
             'ls': None if pd.isna(row.launch_speed) else round(float(row.launch_speed), 1),
             'la': None if pd.isna(row.launch_angle) else round(float(row.launch_angle), 1),
+            'gd': gd,
+            'pt': None if pd.isna(row.p_throws) else str(row.p_throws),
         })
 
     return {
