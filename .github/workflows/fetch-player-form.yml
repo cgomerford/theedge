@@ -1,0 +1,26 @@
+name: fetch-player-form
+
+on:
+  schedule:
+    # 08:45 UTC — after all previous night's MLB games (incl. West Coast) are
+    # final, same reasoning as fetch-bullpen-availability.yml's 08:30 slot.
+    # Staggered 15 min after it so both don't hit the MLB API simultaneously.
+    - cron: '45 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-player-form:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch player form signals
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_player_form.py

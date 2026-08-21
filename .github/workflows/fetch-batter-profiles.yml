@@ -1,0 +1,30 @@
+name: fetch-batter-profiles
+
+on:
+  schedule:
+    - cron: '15 7 * * 1'  # weekly, Monday 07:15 UTC — after the 06:00-06:45 Monday cluster (hot-zones, platoon, batted-ball, pull-tendency, FRV)
+  workflow_dispatch:
+
+jobs:
+  fetch-batter-profiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pybaseball supabase python-dotenv requests pandas
+
+      - name: Fetch batter pitch-type splits
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_batter_pitch_splits.py
+
+      - name: Fetch batter spray charts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_batter_spray.py

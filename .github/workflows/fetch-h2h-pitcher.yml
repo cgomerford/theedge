@@ -1,0 +1,23 @@
+name: fetch-h2h-pitcher
+
+on:
+  schedule:
+    - cron: '45 4 * * *'  # daily, 04:45 UTC — after pitch-arsenal refresh (04:00), before series-context isn't touched (04:30 stays first-mover)
+  workflow_dispatch:
+
+jobs:
+  fetch-h2h-pitcher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch pitcher-batter head-to-head history
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_h2h_pitcher.py

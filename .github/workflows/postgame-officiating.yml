@@ -1,0 +1,33 @@
+name: postgame-officiating
+
+on:
+  schedule:
+    # Daily 09:00 UTC — after fetch-bullpen-availability (08:30) and
+    # fetch-player-form (08:45), same "previous night's games are final"
+    # reasoning, staggered 15 min later.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  postgame-officiating:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+
+      - name: Build ABS challenge log
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_abs_challenge_log.py
+
+      - name: Build umpire profile
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_umpire_profile.py

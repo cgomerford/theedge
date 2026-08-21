@@ -1,0 +1,36 @@
+name: nfl-data-ingest
+
+on:
+  schedule:
+    # Twice daily, same cadence as nfl-injury-sync.yml (off-season default —
+    # tighten this once the regular season starts, same note applies here:
+    # a live-slate scoreboard likely wants a much tighter loop on gamedays,
+    # e.g. every 15-30 min during Sun/Mon/Thu windows via a separate
+    # game-day-only cron once that's worth the added complexity).
+    - cron: '0 11 * * *'   # 11:00 UTC / ~7am ET
+    - cron: '0 21 * * *'   # 21:00 UTC / ~5pm ET
+  workflow_dispatch:
+
+jobs:
+  nfl-ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+
+      - name: Ingest NFL scoreboard
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/nfl_scoreboard_ingest.py
+
+      - name: Ingest NFL boxscores
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/nfl_boxscore_ingest.py

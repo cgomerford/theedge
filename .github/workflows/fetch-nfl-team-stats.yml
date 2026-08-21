@@ -1,0 +1,23 @@
+name: fetch-nfl-team-stats
+
+on:
+  schedule:
+    - cron: '45 6 * * 1'  # weekly, Monday — same day as the MLB team-level Monday cluster, staggered later
+  workflow_dispatch:
+
+jobs:
+  fetch-nfl-team-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Fetch NFL team stats
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_nfl_team_stats.py

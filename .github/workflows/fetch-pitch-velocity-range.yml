@@ -1,0 +1,29 @@
+name: fetch-pitch-velocity-range
+
+on:
+  schedule:
+    # Weekly, per the script's own docstring: "same cadence as
+    # fetch_pitcher_hot_zones.py". Placed at 09:00 UTC — 3 hours after
+    # hot-zones.yml starts (06:00), since that workflow runs two sequential
+    # 90-min-timeout jobs (batter then pitcher) and this script independently
+    # hits pybaseball/Savant too. Standalone rather than chained via `needs`
+    # so a slow/failed hot-zones run doesn't block this one.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  fetch-velocity-range:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pybaseball supabase python-dotenv pandas requests
+      - name: Fetch pitch velocity ranges
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_pitch_velocity_range.py --season $(date +%Y)
