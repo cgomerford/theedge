@@ -511,9 +511,20 @@ async function fetchBullpenQuality(teamId: number): Promise<{
           const statsUrl = `${MLB_API}/people/${pid}/stats?stats=season&group=pitching&season=${SEASON}`
           const statsRes = await fetch(statsUrl)
           if (!statsRes.ok) return null
-          const splits = (await statsRes.json()).stats?.[0]?.splits ?? []
+                    const splits = (await statsRes.json()).stats?.[0]?.splits ?? []
           if (!splits.length) return null
-          return splits[0].stat ?? null
+
+          // FIX (2026-08-21): a mid-season-traded pitcher returns a
+          // combined-teams split (numTeams >= 2) PLUS one split per
+          // team he's played for. splits[0] is the combined one — using
+          // it blends his stats from a previous team into this roster's
+          // bullpen ERA. Select the split scoped to THIS team instead.
+          // Curl-verified against Tyler Ferguson (A's -> Cubs, traded
+          // 2026-05-07, id 621053): splits[0] combined ERA 5.29 vs the
+          // correct Cubs-only split (team.id 112) ERA 3.45.
+          const teamSplit = splits.find((s: any) => s.team?.id === teamId)
+          if (!teamSplit) return null
+          return teamSplit.stat ?? null
         } catch {
           return null
         }

@@ -16,8 +16,6 @@
 
 import { useState, useMemo, useRef } from 'react'
 import type { ScoutReport, ScoutRow, PitchDetailPayload } from '@/lib/scout'
-import type { UmpireSeasonProfile } from '@/lib/umpire-scouting'
-import UmpireScoutingCard from './UmpireScoutingCard'
 import { PitchDetailModal } from './ScoutExpandCharts'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import PitchLocationCard, { type RichArsenalPitch } from './PitchLocationCard'
@@ -108,8 +106,6 @@ type Props = {
   homeBullpenReport?: BullpenReport | null
   awayWorkload?: Last7DaysWorkload | null
   homeWorkload?: Last7DaysWorkload | null
-  umpireName?: string | null
-  umpireProfile?: UmpireSeasonProfile | null
   homeColor?: string
   awayColor?: string
   homeTeamId?: number | null
@@ -376,7 +372,6 @@ export default function ScoutReportTab({
   homeAbbr, awayAbbr, homeName, awayName,
   awayBullpenReport = null, homeBullpenReport = null,
   awayWorkload = null, homeWorkload = null,
-  umpireName = null, umpireProfile = null,
   homeColor = '#1A1A1A', awayColor = '#FF5722',
   homeTeamId, awayTeamId,
   awayPitcherName = 'TBD', homePitcherName = 'TBD',
@@ -647,9 +642,8 @@ venueDimensions = null,
           </div>
         </div>
 
-        {/* Umpire + further context */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <UmpireScoutingCard umpireName={umpireName} profile={umpireProfile} />
+        {/* Roster moves */}
+        <div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-hidden" style={{ borderLeft: '3px solid #FF5722' }}>
             <div className="px-3 py-2 bg-stone-50 border-b border-stone-100">
 <span className="font-mono text-[9px] uppercase tracking-widest text-stone-500">Roster moves</span>            </div>

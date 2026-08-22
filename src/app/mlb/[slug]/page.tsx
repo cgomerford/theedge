@@ -18,7 +18,6 @@ import { findTeamByName } from '@/lib/teams'
 import { getPitchVelocityRanges } from '@/lib/pitch-velocity'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
-import { getUpcomingGameUmpire, getUmpireSeasonProfile } from '@/lib/umpire-scouting'
 import { getSeasonGamePks, getBullpenReport, getEligibleRelieverIds, type BullpenReport } from '@/lib/bullpen-usage'
 
 import ScrollProgress from '@/components/ScrollProgress'
@@ -193,10 +192,6 @@ export default async function GamePreview({ params }: Props) {
   } : undefined
 
   // ── Umpire scouting ──────────────────────────────────────────────────────
-  const umpireSeasonYear = new Date().getFullYear()
-  const umpireName = await getUpcomingGameUmpire(game.gamePk)
-  const umpireSeasonGamePks = umpireName ? await getSeasonGamePks(game.teams.home.team.id, umpireSeasonYear) : []
-  const umpireProfile = umpireName ? await getUmpireSeasonProfile(umpireName, umpireSeasonGamePks) : null
 
   // ── Data fetching (unchanged from previous rev) ─────────────────────────
   const prediction = await getEdgePrediction(game.gamePk)
@@ -878,8 +873,6 @@ const slotScout = (
     <ScoutReportTab
       report={scoutReport}
       homeAbbr={_homeAbbr}
-      umpireName={umpireName}
-      umpireProfile={umpireProfile}
       awayPitcherHotZones={awayPitcherHotZones}
       homePitcherHotZones={homePitcherHotZones}
       awayPitcherArsenalZones={awayPitcherArsenalZones}

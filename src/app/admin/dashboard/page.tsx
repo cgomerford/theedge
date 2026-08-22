@@ -294,14 +294,13 @@ export default async function AdminDashboard({
         homeTrending: homeTeamId ? await getTrendingBatters(homeTeamId) : [],
         awayRolling: (awayFullStats || awayTeamRow?.data) ? {
           sp_era: awayFullStats?.era ?? null,
-          bullpen_era: (awayTeamRow?.data as any)?.bullpen_era ?? null,
-          ops_l30: (awayTeamRow?.data as any)?.ops_l30 ?? null,
+          bullpen_era: (awayTeamRow?.data as any)?.bullpen_era != null ? Number((awayTeamRow?.data as any).bullpen_era) : null,
+                    ops_l30: (awayTeamRow?.data as any)?.ops_l30 ?? null,
           risp_avg: (awayTeamRow?.data as any)?.risp_avg ?? null,
         } : null,
         homeRolling: (homeFullStats || homeTeamRow?.data) ? {
           sp_era: homeFullStats?.era ?? null,
-          bullpen_era: (homeTeamRow?.data as any)?.bullpen_era ?? null,
-          ops_l30: (homeTeamRow?.data as any)?.ops_l30 ?? null,
+          bullpen_era: (homeTeamRow?.data as any)?.bullpen_era != null ? Number((homeTeamRow?.data as any).bullpen_era) : null,           ops_l30: (homeTeamRow?.data as any)?.ops_l30 ?? null,
           risp_avg: (homeTeamRow?.data as any)?.risp_avg ?? null,
         } : null,
       }
