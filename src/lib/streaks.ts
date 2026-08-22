@@ -130,7 +130,7 @@ export async function getTopBatterStreaks(teamId: number): Promise<{
   try {
     // Fetch team roster
     const rosterUrl = `${MLB_API}/teams/${teamId}/roster?rosterType=Active`
-    const rosterRes = await fetch(rosterUrl, { signal: AbortSignal.timeout(8000) })
+    const rosterRes = await fetch(rosterUrl, { signal: AbortSignal.timeout(8000), next: { revalidate: 1800 } })
     if (!rosterRes.ok) return { hot: [], cold: [], all: [] }
     const rosterData = await rosterRes.json()
 
@@ -181,8 +181,8 @@ async function getBatterStreak(
   position: string | null
 ): Promise<BatterStreak | null> {
   try {
-    const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${new Date().getFullYear()}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
+       const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${new Date().getFullYear()}`
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000), next: { revalidate: 1800 } })
     if (!res.ok) return null
     const data = await res.json()
 
