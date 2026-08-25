@@ -1,5 +1,6 @@
 // src/lib/series-games.ts
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+import { createAdminClient } from '@/lib/supabase'
 
 export type SeriesGameResult = {
   gamePk: number
@@ -147,4 +148,16 @@ function daysBetween(a: string, b: string): number {
   const da = new Date(a + 'T12:00:00Z').getTime()
   const db = new Date(b + 'T12:00:00Z').getTime()
   return Math.abs(db - da) / (1000 * 60 * 60 * 24)
+}
+
+
+export async function getSeriesGamesFromDB(tonightGamePk: number): Promise<SeriesGameResult[]> {
+  const supa = createAdminClient()
+  const { data } = await supa
+    .from('series_games_cache')
+    .select('series_games')
+    .eq('tonight_game_pk', tonightGamePk)
+    .single()
+
+  return (data?.series_games as SeriesGameResult[]) ?? []
 }

@@ -1,0 +1,22 @@
+name: series-games-refresh
+on:
+  schedule:
+    - cron: '0 11 * * *'   # 11:00 UTC / ~7am ET — morning baseline, after day's schedule locks
+    - cron: '0 15 * * *'   # 15:00 UTC / ~11am ET — catches early postponement calls
+    - cron: '0 18 * * *'   # 18:00 UTC / ~2pm ET — pre-afternoon-game window
+    - cron: '0 21 * * *'   # 21:00 UTC / ~5pm ET — pre-evening-game window, catches weather calls
+    - cron: '0 23 * * *'   # 23:00 UTC / ~7pm ET — last check before most first pitches
+  workflow_dispatch: {}
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx tsx scripts/compute-series-games.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
