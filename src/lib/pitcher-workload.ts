@@ -16,6 +16,7 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1.1'
 const MLB_API_V1 = 'https://statsapi.mlb.com/api/v1'
 const CONCURRENCY = 8
 
+import { createAdminClient } from '@/lib/supabase'
 export type PitcherWorkloadRow = {
   playerId: number
   playerName: string
@@ -124,6 +125,53 @@ export async function getLast7DaysPitcherWorkload(
       dayMap.set(g.officialDate, (dayMap.get(g.officialDate) ?? 0) + pitchCount)
     }
   })
+
+  let pitchers: PitcherWorkloadRow[] = [...pitchMap.entries()].map(([playerId, dayMap]) => {
+    const byDate: Record<string, number> = {}
+    let total = 0
+    for (const date of dates) {
+      const v = dayMap.get(date) ?? 0
+      byDate[date] = v
+      total += v
+    }
+    return { playerId, playerName: nameMap.get(playerId) ?? `Player ${playerId}`, byDate, totalPitches: total }
+  })
+
+  if (currentRosterIds) {
+    pitchers = pitchers.filter(p => currentRosterIds.has(p.playerId))
+  }
+
+  pitchers.sort((a, b) => b.totalPitches - a.totalPitches)
+
+  return { dates, pitchers }
+}
+
+
+export async function getLast7DaysPitcherWorkloadFromDB(
+  teamId: number,
+  currentRosterIds?: Set<number>,
+  anchorDate?: string,
+): Promise<Last7DaysWorkload> {
+  const dates = last7Dates(anchorDate)
+  const supa = createAdminClient()
+  const season = new Date().getFullYear()
+
+  const { data: rows } = await supa
+    .from('pitcher_workload_daily')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('season', season)
+    .in('game_date', dates)
+
+  const pitchMap = new Map<number, Map<string, number>>()
+  const nameMap = new Map<number, string>()
+
+  for (const row of rows ?? []) {
+    const pid = Number(row.player_id)
+    nameMap.set(pid, row.player_name)
+    if (!pitchMap.has(pid)) pitchMap.set(pid, new Map())
+    pitchMap.get(pid)!.set(row.game_date, Number(row.pitches))
+  }
 
   let pitchers: PitcherWorkloadRow[] = [...pitchMap.entries()].map(([playerId, dayMap]) => {
     const byDate: Record<string, number> = {}
