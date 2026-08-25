@@ -1,24 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 import { getSeasonGamePks, getEligibleRelieverIds, getBullpenReport } from '../src/lib/bullpen-usage'
-import { getTeamRoster } from ' // adjust to actual helper name
+import { getTeamRoster, LEAGUE_BY_TEAM_ID } from '../src/lib/lab'
 
+const TEAM_IDS = Object.keys(LEAGUE_BY_TEAM_ID).map(Number)
 const SEASON = new Date().getFullYear()
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
 
-const MLB_TEAM_IDS = [108, 109, /* ...all 30... */]
-
 async function main() {
-  for (const teamId of MLB_TEAM_IDS) {
+  for (const teamId of TEAM_IDS) {
     const gamePks = await getSeasonGamePks(teamId, SEASON)
-    const roster = await getTeamRoster(teamId) // confirm this exists / real function name
-    const rosterIds = new Set(roster.map((p: any) => p.id))
-    const pitcherIds = roster.filter((p: any) => p.position === 'P').map((p: any) => p.id)
+    const roster = await getTeamRoster(teamId)
+    const rosterIds = new Set(roster.map(p => p.id))
+    const pitcherIds = roster.filter(p => p.primaryPosition === 'P').map(p => p.id)
     const eligibleIds = await getEligibleRelieverIds(pitcherIds, SEASON, rosterIds)
 
     const report = await getBullpenReport(teamId, gamePks, SEASON)
     const eligibleRelievers = report.relievers.filter(r => eligibleIds.has(r.playerId))
 
-    console.log(`Team ${teamId}: ${eligibleRelievers.length} relievers, sample:`, eligibleRelievers[0])
+    console.log(`Team ${teamId}: ${eligibleRelievers.length} relievers. Sample:`, eligibleRelievers[0])
 
     const relieverRows = eligibleRelievers.flatMap(r =>
       r.lines.map(line => ({
@@ -39,12 +38,24 @@ async function main() {
       avg_strikes_thrown: u.avgStrikesThrown, avg_runs_allowed: u.avgRunsAllowed, games_sampled: u.gamesSampled,
     }))
 
-    console.log(`About to upsert ${relieverRows.length} reliever rows, ${usageRows.length} usage rows for team ${teamId}. Ctrl+C within 5s to abort.`)
+    console.log(`Upserting ${relieverRows.length} reliever rows, ${usageRows.length} usage rows for team ${teamId}. Ctrl+C within 5s to abort.`)
     await new Promise(r => setTimeout(r, 5000))
 
-    await supabase.from('bullpen_inning_reports').upsert(relieverRows, { onConflict: 'team_id,season,player_id,inning' })
-    await supabase.from('bullpen_inning_usage').upsert(usageRows, { onConflict: 'team_id,season,inning' })
+    if (relieverRows.length > 0) {
+      const { error: relieverErr } = await supabase
+        .from('bullpen_inning_reports')
+        .upsert(relieverRows, { onConflict: 'team_id,season,player_id,inning' })
+      if (relieverErr) console.error(`Team ${teamId} reliever upsert failed:`, relieverErr.message)
+    }
+
+    if (usageRows.length > 0) {
+      const { error: usageErr } = await supabase
+        .from('bullpen_inning_usage')
+        .upsert(usageRows, { onConflict: 'team_id,season,inning' })
+      if (usageErr) console.error(`Team ${teamId} usage upsert failed:`, usageErr.message)
+    }
   }
+  console.log('Done.')
 }
 
 main()

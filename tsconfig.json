@@ -32,7 +32,6 @@
     "src/app/api/debug-auth"
   ],
   
-  "exclude": ["node_modules", "scripts", "src/components/dashboard/PlayerCompareView.tsx","src/components/PlayerSelectorPanel.tsx",
-    "src/components/SeasonTrendPanel.tsx",
+  "exclude": ["node_modules", "src/components/dashboard/PlayerCompareView.tsx","src/components/PlayerSelectorPanel.tsx",    "src/components/SeasonTrendPanel.tsx",
     "src/lib/postgame-trend.ts","src/components/PlayerSelectorPanel.tsx", "src/components/InningPitcherRunsChart.tsx"]
 }
