@@ -10,6 +10,7 @@
 // until verified, same convention as playerPool=ALL elsewhere in this repo.
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+import { createAdminClient } from '@/lib/supabase'
 
 export type DivisionStandingRow = {
   teamId: number
@@ -106,4 +107,47 @@ export async function getDivisionStandings(teamId: number, season: number): Prom
     console.error('[standings] fetch failed:', err)
     return null
   }
+}
+
+
+export async function getDivisionStandingsFromDB(teamId: number, season: number): Promise<DivisionStandings | null> {
+  const supa = createAdminClient()
+  const { data: allRows } = await supa.from('mlb_standings').select('*').eq('season', season)
+  if (!allRows) return null
+
+  const myTeam = allRows.find(r => Number(r.team_id) === teamId)
+  if (!myTeam) return null
+
+  const divisionRows = allRows.filter(r => r.division_name === myTeam.division_name)
+
+  return {
+    divisionName: myTeam.division_name,
+    leagueId: Number(myTeam.league_id),
+    teams: divisionRows
+      .map(t => ({
+        teamId: Number(t.team_id), name: t.name, abbreviation: t.abbreviation,
+        wins: Number(t.wins), losses: Number(t.losses), divisionRank: Number(t.division_rank),
+        gamesBack: t.games_back, wildCardRank: t.wild_card_rank != null ? Number(t.wild_card_rank) : null,
+        wildCardGamesBack: t.wild_card_games_back, streak: t.streak,
+      }))
+      .sort((a, b) => a.divisionRank - b.divisionRank),
+  }
+}
+
+export async function getLeagueStandingsFromDB(leagueId: number, season: number): Promise<DivisionStandingRow[]> {
+  const supa = createAdminClient()
+  const { data: rows } = await supa
+    .from('mlb_standings')
+    .select('*')
+    .eq('season', season)
+    .eq('league_id', leagueId)
+
+  return (rows ?? [])
+    .map(t => ({
+      teamId: Number(t.team_id), name: t.name, abbreviation: t.abbreviation,
+      wins: Number(t.wins), losses: Number(t.losses), divisionRank: Number(t.division_rank),
+      gamesBack: t.games_back, wildCardRank: t.wild_card_rank != null ? Number(t.wild_card_rank) : null,
+      wildCardGamesBack: t.wild_card_games_back, streak: t.streak,
+    }))
+    .sort((a, b) => (a.wildCardRank ?? 99) - (b.wildCardRank ?? 99))
 }
