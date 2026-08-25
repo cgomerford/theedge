@@ -118,9 +118,8 @@ async function fetchSeasonFromSavant(
     return null
   }
 }
-
 async function upsertSeasonRow(playerId: number, row: SeasonStatcastRow) {
-  await supa.from('player_statcast_history').upsert({
+  const { error } = await supa.from('player_statcast_history').upsert({
     player_id: playerId,
     season: row.season,
     pitches_seen: row.pitchesSeen,
@@ -131,6 +130,7 @@ async function upsertSeasonRow(playerId: number, row: SeasonStatcastRow) {
     is_final: row.isFinal,
     fetched_at: new Date().toISOString(),
   }, { onConflict: 'player_id,season' })
+  if (error) console.error(`[player-statcast-history] upsert failed for player ${playerId}, season ${row.season}:`, error.message)
 }
 
 // Small concurrency window rather than one big Promise.all across ~11
