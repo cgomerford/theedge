@@ -81,7 +81,7 @@ const MIN_GAMES_FOR_INNING_CHART = 10 // extra innings (10+) only happen in a ha
 // so those innings are dropped from the chart entirely rather than shown misleadingly
 
 import { getGameFeed } from '@/lib/game-feed'
-
+import { createAdminClient } from '@/lib/supabase'
 export type InningPitchingLine = {
   inning: number
   battersFaced: number
