@@ -1,0 +1,22 @@
+name: series-stats-refresh
+on:
+  schedule:
+    - cron: '15 11 * * *'
+    - cron: '15 15 * * *'
+    - cron: '15 18 * * *'
+    - cron: '15 21 * * *'
+    - cron: '15 23 * * *'
+  workflow_dispatch: {}
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx tsx scripts/compute-series-stats.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

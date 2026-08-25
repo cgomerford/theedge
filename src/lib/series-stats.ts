@@ -7,8 +7,8 @@
 // baseOnBalls,strikeOuts} are documented MLB fields, not yet confirmed
 // against a live response for this project. console.log below until
 // verified, same convention as the rest of this build.
-
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+import { createAdminClient } from '@/lib/supabase'
 
 export type SeriesBatterLine = {
   playerId: number
@@ -71,4 +71,17 @@ export async function getSeriesBattingStats(gamePks: number[], teamId: number): 
   const rows = Array.from(totals.values())
   for (const r of rows) r.avg = r.ab > 0 ? (r.hits / r.ab).toFixed(3).replace(/^0/, '') : '—'
   return rows.sort((a, b) => b.hits - a.hits)
+}
+
+
+export async function getSeriesBattingStatsFromDB(tonightGamePk: number, teamId: number): Promise<SeriesBatterLine[]> {
+  const supa = createAdminClient()
+  const { data } = await supa
+    .from('series_batting_stats')
+    .select('batting_lines')
+    .eq('tonight_game_pk', tonightGamePk)
+    .eq('team_id', teamId)
+    .single()
+
+  return (data?.batting_lines as SeriesBatterLine[]) ?? []
 }
