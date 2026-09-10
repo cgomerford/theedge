@@ -29,6 +29,8 @@
 // Supabase the whole time).
 
 import { createAdminClient } from '@/lib/supabase'
+import { cache } from 'react'
+
 export type PitcherStatsFull = {
   era: number | null
   whip: number | null
@@ -55,21 +57,20 @@ function toNum(v: unknown): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-export async function getPitcherStatsFull(playerId: number): Promise<PitcherStatsFull | null> {
+export const getPitcherStatsFull = cache(async function getPitcherStatsFull(playerId: number): Promise<PitcherStatsFull | null> {
   const supa = createAdminClient()
   const { data, error } = await supa
     .from('pitcher_stats')
-    .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_avg, tto2_avg, tto3_avg, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')
-    .eq('player_id', playerId)
+    .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_avg, tto2_avg, tto3_avg, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')    .eq('player_id', playerId)
     .single()
   if (error || !data) {
     console.error('[pitcher-full-stats] query failed:', error?.message)
     return null
   }
 
-  const d = data as any
+   const d = data as any
   return {
-  era: toNum(d.era),
+    era: toNum(d.era),
     whip: toNum(d.whip),
     fip: toNum(d.fip),
     k_per_9: toNum(d.k_per_9),
@@ -84,9 +85,9 @@ export async function getPitcherStatsFull(playerId: number): Promise<PitcherStat
     tto1_pa: toNum(d.tto1_pa),
     tto2_pa: toNum(d.tto2_pa),
     tto3_pa: toNum(d.tto3_pa),
-    tto_verified_at: d.tto_verified_at ?? null,
+     tto_verified_at: d.tto_verified_at ?? null,
   }
-}
+})
 
 export type PitchMovementRow = {
   pitchType: string

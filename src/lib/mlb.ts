@@ -262,6 +262,26 @@ export const getPitcherSeasonStats = cache(async (
   }
 })
 
+// Pitcher handedness — 'throws' isn't stored in pitcher_stats (Supabase),
+// so this reads it live from the MLB Stats API's /people endpoint, the
+// authoritative source. Handedness never changes for a player, so this
+// is cached hard (24h) — effectively free after the first call per pitcher.
+export const getPitcherHandedness = cache(async (
+  playerId: number
+): Promise<'L' | 'R' | null> => {
+  const url = `${MLB_API}/people/${playerId}`
+  try {
+    const res = await fetchWithRetry(url, { next: { revalidate: 86400 } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const code = data.people?.[0]?.pitchHand?.code
+    return (code === 'L' || code === 'R') ? code : null
+  } catch (err) {
+    console.error('Pitcher handedness fetch failed:', err)
+    return null
+  }
+})
+
 // =====================================================
 // WEATHER — Open-Meteo (free, no API key needed)
 //

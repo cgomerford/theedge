@@ -1,7 +1,7 @@
 import {
   getScheduleForDate, slugifyGame, teamLogoUrl, getTeamForm, type MLBGame
 } from '@/lib/mlb'
-import { getDivisionStandings, getLeagueStandings } from '@/lib/standings'
+import { getDivisionStandingsFromDB, getLeagueStandingsFromDB } from '@/lib/standings'
 import StandingsCard from '@/components/StandingsCard'
 import RaceForOctober from '@/components/RaceForOctober'
 import { createAdminClient } from '@/lib/supabase'
@@ -18,8 +18,7 @@ import { findTeamByName } from '@/lib/teams'
 import { getPitchVelocityRanges } from '@/lib/pitch-velocity'
 import { getCurrentSubscriber } from '@/lib/auth'
 import GamePageShell from '@/components/GamePageShell'
-import { getSeasonGamePks, getBullpenReport, getEligibleRelieverIds, type BullpenReport } from '@/lib/bullpen-usage'
-
+import { getSeasonGamePks, getBullpenReportFromDB, getEligibleRelieverIds, type BullpenReport } from '@/lib/bullpen-usage'
 import ScrollProgress from '@/components/ScrollProgress'
 import { getProjectedLineup } from '@/lib/lineups'
 import LineupCompare from '@/components/LineupCompare'
@@ -35,16 +34,16 @@ import Top3SidebarTeaser from '@/components/Top3SidebarTeaser'
 import Top3ShareCard from '@/components/Top3ShareCard'
 import BullpenPanel from '@/components/BullpenPanel'
 import { getBullpenData } from '@/lib/bullpen'
-import { getLast7DaysPitcherWorkload } from '@/lib/pitcher-workload'
+import { getLast7DaysPitcherWorkloadFromDB } from '@/lib/pitcher-workload'
 import EdgeIndicator from '@/components/EdgeIndicator'
 import Contrarian from '@/components/Contrarian'
-import { getSeriesGames } from '@/lib/series-games'
+import { getSeriesGamesFromDB } from '@/lib/series-games'
 import type { SeriesGameResult } from '@/lib/series-games'
 import SeriesMomentum from '@/components/SeriesMomentum'
 import SeriesCarousel from '@/components/SeriesCarousel'
 import SeriesPredictions from '@/components/SeriesPredictions'
 import SeriesPlayerStats from '@/components/SeriesPlayerStats'
-import { getSeriesBattingStats } from '@/lib/series-stats'
+import { getSeriesBattingStatsFromDB } from '@/lib/series-stats'
 import { getSeriesInningMomentum } from '@/lib/series-momentum'
 import { getPitcherHotZones, getBatterHotZones } from '@/lib/hot-zones'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
@@ -58,7 +57,11 @@ import { getLineupZoneArsenal } from '@/lib/batter-zone-arsenal'
 import BattingTab from '@/components/BattingTab'
 import { getVenueInfo, describeWindImpact } from '@/lib/venues'
 import { getGameWeather, getGameRainOutlook } from '@/lib/mlb'
-import ScoutReportTab from '@/components/ScoutReportTab'
+import { Suspense } from 'react'
+import ScoutSlotAsync from '@/components/ScoutSlotAsync'
+import PitchingSlotAsync from '@/components/PitchingSlotAsync'
+import BattingSlotAsync from '@/components/BattingSlotAsync'
+import { getActiveRosterIds } from '@/lib/active-roster'
 import {
   buildScoutReport,
   type ScoutInputs,
@@ -68,19 +71,9 @@ import {
   type LineupBatterForScout,
 } from '@/lib/scout'
 
-async function getActiveRosterIds(teamId: number): Promise<Set<number>> {
-  try {
-    const res = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=Active`, {
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) return new Set()
-    const data = await res.json()
-    return new Set((data.roster ?? []).map((r: any) => r.person?.id).filter(Boolean))
-  } catch {
-    return new Set()
-  }
-}
+
 export const revalidate = 60
+export const maxDuration = 15
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -198,14 +191,7 @@ export default async function GamePreview({ params }: Props) {
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
   const gameDateApi = game.gameDate?.split('T')[0] ?? dateMatch[1]
-const [awayStreakData, homeStreakData, awayPitcherTrend, homePitcherTrend] = await Promise.all([
-  getTopBatterStreaks(game.teams.away.team.id),
-  getTopBatterStreaks(game.teams.home.team.id),
-  awayPitcherId ? getPitcherTrend(awayPitcherId, game.teams.away.probablePitcher?.fullName ?? '') : Promise.resolve(null),
-  homePitcherId ? getPitcherTrend(homePitcherId, game.teams.home.probablePitcher?.fullName ?? '') : Promise.resolve(null),
-])
-const awayLiteralBatters = awayStreakData.all
-const homeLiteralBatters = homeStreakData.all
+
   const [awayLineup, homeLineup] = await Promise.all([
     getProjectedLineup(game.teams.away.team.id, gameDateApi, game.gamePk),
     getProjectedLineup(game.teams.home.team.id, gameDateApi, game.gamePk),
@@ -236,12 +222,7 @@ const [
     awayPitcherId ? getPitchMovementFromDB(awayPitcherId, seasonYear) : Promise.resolve([]),
     homePitcherId ? getPitchMovementFromDB(homePitcherId, seasonYear) : Promise.resolve([]),
   ])
-const [awayPitcherHotZones, homePitcherHotZones, awayPitcherArsenalZones, homePitcherArsenalZones] = await Promise.all([
-    awayPitcherId ? getPitcherHotZones(awayPitcherId) : Promise.resolve({}),
-    homePitcherId ? getPitcherHotZones(homePitcherId) : Promise.resolve({}),
-    awayPitcherId ? getPitcherZoneArsenal(awayPitcherId) : Promise.resolve({}),
-    homePitcherId ? getPitcherZoneArsenal(homePitcherId) : Promise.resolve({}),
-  ])
+
 const [awayPitcherVelocityRanges, homePitcherVelocityRanges] = await Promise.all([
     awayPitcherId ? getPitchVelocityRanges(awayPitcherId) : Promise.resolve({}),
     homePitcherId ? getPitchVelocityRanges(homePitcherId) : Promise.resolve({}),
@@ -249,64 +230,11 @@ const [awayPitcherVelocityRanges, homePitcherVelocityRanges] = await Promise.all
   const awayPitcherThrows = (((awayFullStats as any)?.throws) ?? 'R') as 'L' | 'R'
   const homePitcherThrows = (((homeFullStats as any)?.throws) ?? 'R') as 'L' | 'R'
 
-  const awayPitcherTTO = awayFullStats ? {
-    tto1_woba: (awayFullStats as any).tto1_woba ?? null, tto2_woba: (awayFullStats as any).tto2_woba ?? null, tto3_woba: (awayFullStats as any).tto3_woba ?? null,
-    tto1_avg: (awayFullStats as any).tto1_avg ?? null, tto2_avg: (awayFullStats as any).tto2_avg ?? null, tto3_avg: (awayFullStats as any).tto3_avg ?? null,
-    tto1_pa: (awayFullStats as any).tto1_pa ?? null, tto2_pa: (awayFullStats as any).tto2_pa ?? null, tto3_pa: (awayFullStats as any).tto3_pa ?? null,
-  } : null
-  const homePitcherTTO = homeFullStats ? {
-    tto1_woba: (homeFullStats as any).tto1_woba ?? null, tto2_woba: (homeFullStats as any).tto2_woba ?? null, tto3_woba: (homeFullStats as any).tto3_woba ?? null,
-    tto1_avg: (homeFullStats as any).tto1_avg ?? null, tto2_avg: (homeFullStats as any).tto2_avg ?? null, tto3_avg: (homeFullStats as any).tto3_avg ?? null,
-    tto1_pa: (homeFullStats as any).tto1_pa ?? null, tto2_pa: (homeFullStats as any).tto2_pa ?? null, tto3_pa: (homeFullStats as any).tto3_pa ?? null,
-  } : null
+
   const { home: homeBullpen, away: awayBullpen } = await getBullpenData(
     game.teams.home.team.id, game.teams.away.team.id, dateMatch[1],
   )
 
-  // ── Scout Report: bullpen workload, last 7 calendar days ────────────────
-// ── Scout Report: bullpen workload, last 7 calendar days (raw, unfiltered) ──
-  const [awayWorkload, homeWorkload] = await Promise.all([
-    getLast7DaysPitcherWorkload(game.teams.away.team.id, awayActiveRosterIds),
-    getLast7DaysPitcherWorkload(game.teams.home.team.id, homeActiveRosterIds),
-  ])
-
-  // ── Scout Report: bullpen leverage report, full season, per reliever ────
-  // NOTE: this walks every completed game this season for BOTH teams on
-  // every page load — flagged in bullpen-usage.ts itself as a candidate to
-  // move to a nightly cron once the numbers here have been sanity-checked.
-  // getEligibleRelieverIds is handed the full active roster (not a
-  // pitcher-only list — nothing in this file separates pitchers from
-  // position players on the roster) since it fails open safely: a batter's
-  // season-pitching gamesPitched will be 0, so they're excluded by the
-  // MIN_APPEARANCES check inside getEligibleRelieverIds itself.
-  const _bullpenSeason = new Date().getFullYear()
-  const [awaySeasonGamePks, homeSeasonGamePks] = await Promise.all([
-    getSeasonGamePks(game.teams.away.team.id, _bullpenSeason),
-    getSeasonGamePks(game.teams.home.team.id, _bullpenSeason),
-  ])
-  const [awayBullpenReportRaw, homeBullpenReportRaw] = await Promise.all([
-    getBullpenReport(game.teams.away.team.id, awaySeasonGamePks, _bullpenSeason),
-    getBullpenReport(game.teams.home.team.id, homeSeasonGamePks, _bullpenSeason),
-  ])
-  const [awayEligibleRelieverIds, homeEligibleRelieverIds] = await Promise.all([
-    getEligibleRelieverIds([...awayActiveRosterIds], _bullpenSeason, awayActiveRosterIds),
-    getEligibleRelieverIds([...homeActiveRosterIds], _bullpenSeason, homeActiveRosterIds),
-  ])
-
-  // ── Workload, filtered down to RP-only using the same eligible-reliever
-  // definition as the bullpen leverage card, so "reliever" means the same
-  // thing everywhere on this page ────────────────────────────────────────
-  awayWorkload.pitchers = awayWorkload.pitchers.filter(p => awayEligibleRelieverIds.has(p.playerId))
-  homeWorkload.pitchers = homeWorkload.pitchers.filter(p => homeEligibleRelieverIds.has(p.playerId))
-
-  const awayBullpenReport: BullpenReport = {
-    ...awayBullpenReportRaw,
-    relievers: awayBullpenReportRaw.relievers.filter(r => awayEligibleRelieverIds.has(r.playerId)),
-  }
-  const homeBullpenReport: BullpenReport = {
-    ...homeBullpenReportRaw,
-    relievers: homeBullpenReportRaw.relievers.filter(r => homeEligibleRelieverIds.has(r.playerId)),
-  }
   const streakRows = await getHotColdStreaks(
     awayLineup?.batters ?? [], homeLineup?.batters ?? [],
     game.teams.away.team.abbreviation ?? 'AWAY',
@@ -320,10 +248,7 @@ const [awayPitcherVelocityRanges, homePitcherVelocityRanges] = await Promise.all
   // against player_fielding_run_value by player_id. seasonYear is declared
   // earlier in this function (used by getPitchMovementFromDB above) — safe
   // to reuse here since this runs well after that declaration.
-const [awayFieldingAlignment, homeFieldingAlignment] = await Promise.all([
-    getFieldingAlignment(awayLineup?.batters ?? [], seasonYear),
-    getFieldingAlignment(homeLineup?.batters ?? [], seasonYear),
-  ])
+
 
   // ── Pitching Lab + Scout Report snippet: count-tendency + sequencing ────
   // Fetched here, ABOVE slotScout, since slotScout's <ScoutReportTab>
@@ -349,62 +274,27 @@ const [awayFieldingAlignment, homeFieldingAlignment] = await Promise.all([
   // on MLBGame's type, this returns null safely and the chart falls back
   // to its generic shape rather than crashing — but worth confirming this
   // is actually populated rather than assuming.
-const _venueId = (game.venue as any)?.id as number | undefined
-  const venueDimensions = _venueId ? await getVenueFieldDimensions(_venueId) : null
 
   // ── Scout Report: ballpark weather (temp/wind/rain outlook) ─────────────
   // getVenueInfo/describeWindImpact are the SAME functions already used by
   // the daily-brief email (src/lib/venues.ts, src/app/api/cron/send-daily-
   // brief/route.ts) — reused here rather than duplicated, so wind-impact
   // wording stays consistent everywhere it appears in the app.
-  const _venueInfo = getVenueInfo(game.venue?.name)
-  const [weather, rainOutlook] = await Promise.all([
-    _venueInfo && !_venueInfo.indoor ? getGameWeather(_venueInfo.lat, _venueInfo.lon, game.gameDate) : Promise.resolve(null),
-    _venueInfo && !_venueInfo.indoor ? getGameRainOutlook(_venueInfo.lat, _venueInfo.lon, game.gameDate) : Promise.resolve(null),
-  ])
-  const windImpact = weather && game.venue?.name
-    ? describeWindImpact(game.venue.name, weather.wind_direction, weather.wind_mph)
-    : null
-  const isIndoorVenue = _venueInfo?.indoor ?? false
+
   // ── Scout Report: ABS challenge record + SB tendency ─────────────────────
   // SB tendency is the full-season live-feed walk (see sb-tendency.ts) —
   // same cost profile as the bullpen leverage report above, same
   // cron-candidate flag once numbers are sanity-checked.
-  const [awayABSRecord, homeABSRecord, awaySBTendency, homeSBTendency] = await Promise.all([
-    getABSChallengeRecord(game.teams.away.team.abbreviation ?? 'AWAY'),
-    getABSChallengeRecord(game.teams.home.team.abbreviation ?? 'HOME'),
-    getSBTendency(game.teams.away.team.id, seasonYear),
-    getSBTendency(game.teams.home.team.id, seasonYear),
-  ])
 
-const [awayLineupSpray, homeLineupSpray] = await Promise.all([
-    getLineupSpray(awayLineupBatterIds),
-    getLineupSpray(homeLineupBatterIds),
-  ])
-  const [awayLineupZonesArr, homeLineupZonesArr] = await Promise.all([
-    Promise.all(awayLineupBatterIds.map((id: number) => getBatterHotZones(id))),
-    Promise.all(homeLineupBatterIds.map((id: number) => getBatterHotZones(id))),
-  ])
 
-  const awayLineupZones = awayLineupBatterIds.map((id: number, i: number) => ({
-    playerId: id,
-    playerName: (awayLineup?.batters?.[i] as any)?.player_name ?? 'Unknown',
-    zones: awayLineupZonesArr[i],
-  }))
-  const homeLineupZones = homeLineupBatterIds.map((id: number, i: number) => ({
-    playerId: id,
-    playerName: (homeLineup?.batters?.[i] as any)?.player_name ?? 'Unknown',
-    zones: homeLineupZonesArr[i],
-  }))
+
 
   const [awayForm, homeForm] = await Promise.all([
     getTeamForm(game.teams.away.team.id),
     getTeamForm(game.teams.home.team.id),
   ])
 
-  const seriesGames: SeriesGameResult[] = await getSeriesGames(
-    game.teams.home.team.id, game.teams.away.team.id, dateMatch[1], game.gamePk,
-  )
+    const seriesGames: SeriesGameResult[] = await getSeriesGamesFromDB(game.gamePk)
 
   const [awayTop3, homeTop3] = await Promise.all([
     getSeriesTop3(game.teams.away.team.id, game.teams.home.team.id, gameDateApi, game.gamePk),
@@ -464,8 +354,8 @@ const [awayLineupSpray, homeLineupSpray] = await Promise.all([
         gameSlug,
       }
     })),
-    getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.away.team.id),
-    getSeriesBattingStats(seriesGames.filter(g => g.isFinal).map(g => g.gamePk), game.teams.home.team.id),
+       getSeriesBattingStatsFromDB(game.gamePk, game.teams.away.team.id),
+    getSeriesBattingStatsFromDB(game.gamePk, game.teams.home.team.id),
   ])
 
   const seriesMomentum = await getSeriesInningMomentum(
@@ -474,14 +364,14 @@ const [awayLineupSpray, homeLineupSpray] = await Promise.all([
 
   const season = new Date().getFullYear()
   const [awayStandings, homeStandings] = await Promise.all([
-    getDivisionStandings(game.teams.away.team.id, season),
-    getDivisionStandings(game.teams.home.team.id, season),
+    getDivisionStandingsFromDB(game.teams.away.team.id, season),
+    getDivisionStandingsFromDB(game.teams.home.team.id, season),
   ])
   const awayRow = awayStandings?.teams.find(t => t.teamId === game!.teams.away.team.id) ?? null
   const homeRow = homeStandings?.teams.find(t => t.teamId === game!.teams.home.team.id) ?? null
   const [awayLeagueStandings, homeLeagueStandings] = await Promise.all([
-    awayStandings ? getLeagueStandings(awayStandings.leagueId, season) : Promise.resolve([]),
-    homeStandings ? getLeagueStandings(homeStandings.leagueId, season) : Promise.resolve([]),
+       awayStandings ? getLeagueStandingsFromDB(awayStandings.leagueId, season) : Promise.resolve([]),
+    homeStandings ? getLeagueStandingsFromDB(homeStandings.leagueId, season) : Promise.resolve([]),
   ])
 
   const awayTeamMeta = findTeamByName(game.teams.away.team.name)
@@ -853,7 +743,8 @@ const homeFormMap = buildFormMap(_homeHotStreaks)
           away_team_id={game.teams.away.team.id}
           away_team_slug={awaySlug}
           home_team_slug={homeSlug}
-          is_pro={isPro}
+
+        
           llm_narrative={prediction.narrative}
           llm_narrative_pro={prediction.narrative_pro}
           pro_takeaways={prediction.pro_takeaways}
@@ -868,142 +759,26 @@ const homeFormMap = buildFormMap(_homeHotStreaks)
     </div>
   )
 
-  // ── SLOT: SCOUT ───────────────────────────────────────────────────────────
-const slotScout = (
-    <ScoutReportTab
-      report={scoutReport}
-      homeAbbr={_homeAbbr}
-      awayPitcherHotZones={awayPitcherHotZones}
-      homePitcherHotZones={homePitcherHotZones}
-      awayPitcherArsenalZones={awayPitcherArsenalZones}
-      homePitcherArsenalZones={homePitcherArsenalZones}
-      awayPitcherId={awayPitcherId}
-      homePitcherId={homePitcherId}
-      awayPitcherTTO={awayPitcherTTO}
-      homePitcherTTO={homePitcherTTO}
-      awayLiteralBatters={awayLiteralBatters}
-homeLiteralBatters={homeLiteralBatters}
-awayPitcherTrend={awayPitcherTrend}
-homePitcherTrend={homePitcherTrend}
-      awayBatterStreaks={awayStreaksWithZones}
-      homeBatterStreaks={homeStreaksWithZones}
-awayLineupSpray={awayLineupSpray}
-      homeLineupSpray={homeLineupSpray}
-      awayLineupSize={awayLineupBatterIds.length}
-      homeLineupSize={homeLineupBatterIds.length}
-      awayLineupZones={awayLineupZones}
-      homeLineupZones={homeLineupZones}
-      awayPitcherThrows={awayPitcherThrows}
-      homePitcherThrows={homePitcherThrows}
-      awayAbbr={_awayAbbr}
-      homeName={game.teams.home.team.name}
-      awayName={game.teams.away.team.name}
-      homeColor={homeColor}
-      awayColor={awayColor}
-      homeTeamId={game.teams.home.team.id}
-      awayTeamId={game.teams.away.team.id}
-      awayPitcherName={game.teams.away.probablePitcher?.fullName ?? 'TBD'}
-      homePitcherName={game.teams.home.probablePitcher?.fullName ?? 'TBD'}
-      awayWorkload={awayWorkload}
-      homeWorkload={homeWorkload}
-      awayBullpenReport={awayBullpenReport}
-      homeBullpenReport={homeBullpenReport}
-      awayTeamTrends={{
-        sp_era: (awayFullStats as any)?.era ?? null,
-        sp_fip: (awayFullStats as any)?.fip ?? null,
-        bullpen_era: _teamRaw?.away_team?.bullpen_era ?? null,
-        ops_l30: _teamRaw?.away_team?.ops_l30 ?? null,
-        risp_avg: _teamRaw?.away_team?.risp_avg ?? null,
-        risp_ops: _teamRaw?.away_team?.risp_ops ?? null,
-      }}
-      homeTeamTrends={{
-        sp_era: (homeFullStats as any)?.era ?? null,
-        sp_fip: (homeFullStats as any)?.fip ?? null,
-        bullpen_era: _teamRaw?.home_team?.bullpen_era ?? null,
-        ops_l30: _teamRaw?.home_team?.ops_l30 ?? null,
-        risp_avg: _teamRaw?.home_team?.risp_avg ?? null,
-        risp_ops: _teamRaw?.home_team?.risp_ops ?? null,
-      }}
-      awayRollingTrends={{
-        sp_l3_era: (awayFullStats as any)?.l3_era ?? null,
-        runs_per_game_l30: _teamRaw?.away_team?.runs_per_game_l30 ?? null,
-        ops_l30: _teamRaw?.away_team?.ops_l30 ?? null,
-        k_pct_l30: _teamRaw?.away_team?.k_pct ?? null,
-        bb_pct_l30: _teamRaw?.away_team?.bb_pct ?? null,
-      }}
-      homeRollingTrends={{
-        sp_l3_era: (homeFullStats as any)?.l3_era ?? null,
-        runs_per_game_l30: _teamRaw?.home_team?.runs_per_game_l30 ?? null,
-        ops_l30: _teamRaw?.home_team?.ops_l30 ?? null,
-        k_pct_l30: _teamRaw?.home_team?.k_pct ?? null,
-        bb_pct_l30: _teamRaw?.home_team?.bb_pct ?? null,
-      }}
-awayFieldingAlignment={awayFieldingAlignment}
-      homeFieldingAlignment={homeFieldingAlignment}
-      awayABSRecord={awayABSRecord}
-      homeABSRecord={homeABSRecord}
-      awaySBTendency={awaySBTendency}
-      homeSBTendency={homeSBTendency}
-      venueDimensions={venueDimensions}
-      ballparkWeather={weather}
-      windImpact={windImpact}
-      rainOutlook={rainOutlook}
-      isIndoorVenue={isIndoorVenue}
-      awayCountTendency={awayCountTendency}
-      homeCountTendency={homeCountTendency}
-      awaySequencing={awaySequencing}
-      homeSequencing={homeSequencing}
-    />
+  // ── SLOT: SCOUT — streams independently via Suspense, no longer blocks
+  // the rest of the page's initial render ────────────────────────────────
+  const slotScout = (
+    <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Scout Report…</div>}>
+      <ScoutSlotAsync slug={slug} />
+    </Suspense>
   )
 
-// ── SLOT: PITCHING LAB (bullpen folded in) ──────────────────────────────
+  // ── SLOT: PITCHING LAB — streams independently via Suspense ─────────────
   const slotPitching = (
-    <div className="space-y-10">
-      <PitchingTab
-        awayPitcher={awayPitcherId ? {
-          id: awayPitcherId,
-          name: game.teams.away.probablePitcher?.fullName ?? 'TBD',
-          abbr: game.teams.away.team.abbreviation ?? 'AWAY',
-          side: 'Away starter', color: awayColor, fullStats: awayFullStats, movementRows: awayMovementDB,
-          countTendency: awayCountTendency, sequencing: awaySequencing,
-        } : null}
-        homePitcher={homePitcherId ? {
-          id: homePitcherId,
-          name: game.teams.home.probablePitcher?.fullName ?? 'TBD',
-          abbr: game.teams.home.team.abbreviation ?? 'HOME',
-          side: 'Home starter', color: homeColor, fullStats: homeFullStats, movementRows: homeMovementDB,
-          countTendency: homeCountTendency, sequencing: homeSequencing,
-        } : null}
-      />
-      <div>
-        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Bullpen availability</p>
-        <BullpenPanel home={homeBullpen} away={awayBullpen} isPro={isPro} />
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Pitching Lab…</div>}>
+      <PitchingSlotAsync slug={slug} />
+    </Suspense>
   )
 
-  // ── SLOT: BATTING LAB ─────────────────────────────────────────────────
+  // ── SLOT: BATTING LAB — streams independently via Suspense ──────────────
   const slotBatting = (
-    <BattingTab
-      away={awayLineup?.batters?.length ? {
-        abbr: _awayAbbr,
-        name: game.teams.away.team.name,
-        color: awayColor,
-        lineup: _awayLineupForScout,
-        zoneArsenalByPlayer: awayBatterZoneArsenalMap,
-        opposingPitcherCountTendency: homeCountTendency, // away batters face the HOME pitcher tonight
-        opposingPitcherName: game.teams.home.probablePitcher?.fullName ?? 'TBD',
-      } : null}
-      home={homeLineup?.batters?.length ? {
-        abbr: _homeAbbr,
-        name: game.teams.home.team.name,
-        color: homeColor,
-        lineup: _homeLineupForScout,
-        zoneArsenalByPlayer: homeBatterZoneArsenalMap,
-        opposingPitcherCountTendency: awayCountTendency, // home batters face the AWAY pitcher tonight
-        opposingPitcherName: game.teams.away.probablePitcher?.fullName ?? 'TBD',
-      } : null}
-    />
+    <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Batting Lab…</div>}>
+      <BattingSlotAsync slug={slug} />
+    </Suspense>
   )
 
   // ── SLOT: TEAMS (lineups + hot/cold folded in) ──────────────────────────

@@ -9,6 +9,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase'
+import { cache } from 'react'
 
 // ─── Count tendency ───────────────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export type PitcherCountTendency = {
   updated_at: string | null
 }
 
-export async function getPitcherCountTendency(playerId: number): Promise<Record<string, PitcherCountTendency>> {
+export const getPitcherCountTendency = cache(async function getPitcherCountTendency(playerId: number): Promise<Record<string, PitcherCountTendency>> {
   const season = new Date().getFullYear()
   const supa = createAdminClient()
 
@@ -54,7 +55,7 @@ export async function getPitcherCountTendency(playerId: number): Promise<Record<
     result[row.split] = row as PitcherCountTendency
   }
   return result
-}
+})
 
 // ─── Pitch sequencing ─────────────────────────────────────────────────────
 
@@ -81,8 +82,7 @@ export type PitcherPitchSequencing = {
   transitions: Record<string, SequencingFromPitch>   // keyed by pitch_type thrown ('FF', 'SL', ...)
   updated_at: string | null
 }
-
-export async function getPitcherSequencing(playerId: number): Promise<Record<string, PitcherPitchSequencing>> {
+export const getPitcherSequencing = cache(async function getPitcherSequencing(playerId: number): Promise<Record<string, PitcherPitchSequencing>> {
   const season = new Date().getFullYear()
   const supa = createAdminClient()
 
@@ -99,4 +99,4 @@ export async function getPitcherSequencing(playerId: number): Promise<Record<str
     result[row.split] = row as PitcherPitchSequencing
   }
   return result
-}
+})

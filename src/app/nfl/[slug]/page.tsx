@@ -3,8 +3,7 @@ import SiteHeader from '@/components/SiteHeader'
 import NFLGamePage from './NFLGamePage'
 import { getNFLGameBySlugEnhanced } from '@/lib/nfl-schedule'
 import { computeEdgeModelV1 } from '@/lib/nfl/edge-model'
-import { getSeasonQBRoom } from '@/lib/nfl/qb-room-season'
-
+import { getQbZoneProfile, getQbZoneLeagueAverages, getGameQbIds } from '@/lib/nfl/queries'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -25,15 +24,18 @@ export default async function NFLGamePageRoute({ params }: Props) {
   const game = await getNFLGameBySlugEnhanced(slug)
   if (!game) notFound()
 // Inside NFLGamePageRoute, alongside the existing edgeModel fetch:
-const [edgeModel, awaySeasonQB, homeSeasonQB] = await Promise.all([
+const qbIds = await getGameQbIds(game.season, game.week, game.homeTeam.abbreviation, game.awayTeam.abbreviation)
+
+const [edgeModel, awayQbZone, homeQbZone, leagueZoneAvgs] = await Promise.all([
   computeEdgeModelV1(game.homeTeam.id, game.awayTeam.id),
-  getSeasonQBRoom(game.awayTeam.id, game.season),
-  getSeasonQBRoom(game.homeTeam.id, game.season),
+  qbIds.awayQbId ? getQbZoneProfile(qbIds.awayQbId, game.season) : Promise.resolve(null),
+  qbIds.homeQbId ? getQbZoneProfile(qbIds.homeQbId, game.season) : Promise.resolve(null),
+  getQbZoneLeagueAverages(game.season),
 ])
 
 return (
   <main className="min-h-screen bg-[#FAF8F3]">
     <SiteHeader variant="page" />
-    <NFLGamePage game={game} edgeModel={edgeModel} awaySeasonQB={awaySeasonQB} homeSeasonQB={homeSeasonQB} />
+    <NFLGamePage game={game} edgeModel={edgeModel} awayQbZone={awayQbZone} homeQbZone={homeQbZone} leagueZoneAvgs={leagueZoneAvgs} />
   </main>
 )}

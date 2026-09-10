@@ -61,8 +61,6 @@ import {
   type ArsenalPitch,
 } from '@/lib/pitcher-arsenal'
 import { getBatterHotZones, type BatterHotZones } from '@/lib/hot-zones'
-import { getBatterVsPitcher } from '@/lib/batter-stats'
-
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // Pitch-type fit tuning constants — kept separate and named so these are
@@ -481,6 +479,17 @@ function parseCsvLine(line: string): string[] {
  * "unavailable," never fall back to a fabricated number.
  */
 export const getBatterRawPitchLog = cache(async function getBatterRawPitchLog(batterId: number, season?: number): Promise<RawPitchRow[] | null> {
+  // TEMP DISABLED 2026-09-08 — this fetch is a 2-2.5MB uncached CSV per
+  // batter (Next's fetch Data Cache has a hard 2MB item ceiling, so this
+  // was re-downloading in full on every single page load, no caching
+  // benefit ever). Called once per lineup batter from getSeriesTop3,
+  // ~9-18 times per game page load — the dominant cost in a 31s page
+  // load on 2026-09-08. Every caller already treats a null return as
+  // the expected "unavailable" case (see pitchTypeZoneFit,
+  // pitchTypeFitScore) so this degrades to zone-only scoring safely,
+  // not a crash. Re-enable once moved to a nightly cron precomputing
+  // this into Supabase — same pattern as bullpen/SB-tendency/streaks.
+  return null
   const yr = season ?? new Date().getFullYear()
   const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_id=${batterId}&player_type=batter&season=${yr}&type=batter&game_type=R&csv=true`
   try {
@@ -863,21 +872,19 @@ export async function getSeriesTop3(
             batterRawLog,
           )
 
-          // Career H2H — full line, display-only.
-          let h2h: BatterVsPitcherFull | null = null
-          const h2hData = await getBatterVsPitcher(batter.player_id, pid)
-          if (h2hData && h2hData.ab > 0) {
-            h2h = {
-              avg: h2hData.avg,
-              obp: h2hData.obp,
-              slg: h2hData.slg,
-              ops: h2hData.ops,
-              ab: h2hData.ab,
-              hits: h2hData.hits,
-              home_runs: h2hData.home_runs,
-              strikeouts: h2hData.strikeouts,
-            }
-          }
+          // TEMP DISABLED 2026-09-08 — fires once per batter per confirmed
+          // series game (9 batters x N games x 2 teams = 50+ concurrent
+          // calls), and getBatterVsPitcher (batter-stats.ts) has no
+          // request timeout, so a connection stall waits on undici's
+          // default ~10s connect timeout. This was the dominant remaining
+          // cost after disabling the Savant raw-pitch-log fetch — the
+          // 2026-09-08 dev log showed 20+ ECONNRESET/ConnectTimeoutError
+          // failures against statsapi.mlb.com from this exact call site.
+          // h2h is display-only per this file's header comment (never
+          // feeds series_score), so disabling it is safe — h2h === null
+          // is already a normal, handled case in the UI. Re-enable once
+          // batched into a single request or moved to cron.
+          const h2h: BatterVsPitcherFull | null = null
 
           const blended = zoneScore + pitchTypeScore
 

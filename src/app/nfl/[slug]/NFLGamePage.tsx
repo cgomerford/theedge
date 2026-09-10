@@ -3,22 +3,78 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { NFLGame } from '@/lib/nfl-schedule'
-import QBRoomHeatmap from '@/components/nfl/QBRoomHeatmap'
-import type { SeasonQBRoom } from '@/lib/nfl/qb-room-season'
 import type { EdgeModelResult } from '@/lib/nfl/edge-model'
-
+import type { QbZoneProfile, ZoneLeagueAverage } from '@/lib/nfl/queries'
+import { QbZoneGrid } from '@/components/nfl/QbZoneGrid'
 type Props = {
   game: NFLGame
   edgeModel: EdgeModelResult
-  awaySeasonQB: SeasonQBRoom | null
-  homeSeasonQB: SeasonQBRoom | null
+  awayQbZone: QbZoneProfile | null
+  homeQbZone: QbZoneProfile | null
+  leagueZoneAvgs: ZoneLeagueAverage[]
 }
 
-function TabQBRoom({ game, awaySeasonQB, homeSeasonQB }: { game: NFLGame; awaySeasonQB: SeasonQBRoom | null; homeSeasonQB: SeasonQBRoom | null }) {
-  if (!awaySeasonQB && !homeSeasonQB) {
+const ZONE_ORDER: { location: string; length: string }[] = [
+  { location: 'left', length: 'deep' }, { location: 'middle', length: 'deep' }, { location: 'right', length: 'deep' },
+  { location: 'left', length: 'short' }, { location: 'middle', length: 'short' }, { location: 'right', length: 'short' },
+]
+
+function zoneTone(cpoe: number, leagueAvg: number): { bg: string; label: string } {
+  const delta = cpoe - leagueAvg
+  if (delta > 2) return { bg: '#15803D', label: 'BETTER' }
+  if (delta < -2) return { bg: '#B91C1C', label: 'WORSE' }
+  return { bg: '#B45309', label: 'AVERAGE' }
+}
+
+function ZoneGrid({ profile, leagueAvgs, qbName }: { profile: QbZoneProfile; leagueAvgs: ZoneLeagueAverage[]; qbName: string }) {
+  const avgByZone = new Map(leagueAvgs.map((a) => [`${a.passLocation}|${a.passLength}`, a]))
+  const cellByZone = new Map(profile.cells.map((c) => [`${c.passLocation}|${c.passLength}`, c]))
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div className="m" style={{ fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>
+        {qbName} — {profile.totalAttempts} attempts charted this season
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+        {ZONE_ORDER.map(({ location, length }) => {
+          const key = `${location}|${length}`
+          const cell = cellByZone.get(key)
+          const avg = avgByZone.get(key)
+          if (!cell || !avg || cell.attempts === 0) {
+            return (
+              <div key={key} style={{ background: '#E7E5E4', padding: 14, minHeight: 74, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="m" style={{ fontSize: 9, color: '#A3A3A3' }}>No attempts</span>
+              </div>
+            )
+          }
+          const tone = zoneTone(cell.cpoe ?? 0, avg.avgCpoe)
+          return (
+            <div key={key} style={{ background: tone.bg, padding: 14, minHeight: 74, color: '#fff' }}>
+              <div className="s" style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>
+                {cell.cpoe != null ? `${cell.cpoe > 0 ? '+' : ''}${cell.cpoe.toFixed(1)}` : '—'}
+              </div>
+              <div className="m" style={{ fontSize: 8, opacity: 0.85, marginTop: 3 }}>
+                League avg {avg.avgCpoe > 0 ? '+' : ''}{avg.avgCpoe.toFixed(1)}
+              </div>
+              <div className="m" style={{ fontSize: 8, opacity: 0.7, marginTop: 6 }}>
+                {cell.attempts} att · {cell.compPct?.toFixed(0) ?? '—'}% comp
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="m" style={{ fontSize: 8, color: '#A3A3A3', marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        CPOE by zone (left/middle/right × deep/short) — colored vs. this season&apos;s league average for that same zone
+      </div>
+    </div>
+  )
+}
+
+function TabQBRoom({ game, awayQbZone, homeQbZone, leagueZoneAvgs }: { game: NFLGame; awayQbZone: QbZoneProfile | null; homeQbZone: QbZoneProfile | null; leagueZoneAvgs: ZoneLeagueAverage[] }) {
+  if (!awayQbZone && !homeQbZone) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 32, textAlign: 'center' }}>
-        <span className="s" style={{ fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No completed games with passing data yet this season.</span>
+        <span className="s" style={{ fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No charted passing attempts yet this season.</span>
       </div>
     )
   }
@@ -26,36 +82,10 @@ function TabQBRoom({ game, awaySeasonQB, homeSeasonQB }: { game: NFLGame; awaySe
   return (
     <div>
       <div className="m" style={{ fontSize: 9, color: '#A3A3A3', lineHeight: 1.6, marginBottom: 20, background: 'rgba(217,119,6,0.05)', borderLeft: '3px solid #D97706', padding: '10px 14px' }}>
-        Season-to-date across every completed game — currently preseason only. Will automatically extend to include regular-season games once they're played, no separate view needed.
+        Season-to-date across every completed game, collapsed across teams if traded. Colors are relative to this season&apos;s league average for that zone, not an absolute scale.
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
-        {awaySeasonQB && (
-          <div>
-            <div className="m" style={{ fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>{awaySeasonQB.gamesPlayed} game{awaySeasonQB.gamesPlayed !== 1 ? 's' : ''} played</div>
-            <QBRoomHeatmap
-              qbName={awaySeasonQB.name}
-              teamAbbr={game.awayTeam.abbreviation}
-              summary={awaySeasonQB.summary}
-              redZonePlays={[]}
-              targets={[]}
-              trails={awaySeasonQB.trails}
-            />
-          </div>
-        )}
-        {homeSeasonQB && (
-          <div>
-            <div className="m" style={{ fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>{homeSeasonQB.gamesPlayed} game{homeSeasonQB.gamesPlayed !== 1 ? 's' : ''} played</div>
-            <QBRoomHeatmap
-              qbName={homeSeasonQB.name}
-              teamAbbr={game.homeTeam.abbreviation}
-              summary={homeSeasonQB.summary}
-              redZonePlays={[]}
-              targets={[]}
-              trails={homeSeasonQB.trails}
-            />
-          </div>
-        )}
-      </div>
+      {awayQbZone && <QbZoneGrid profile={awayQbZone} leagueAvgs={leagueZoneAvgs} qbName={game.awayTeam.abbreviation} teamId={game.awayTeam.abbreviation} />}
+      {homeQbZone && <QbZoneGrid profile={homeQbZone} leagueAvgs={leagueZoneAvgs} qbName={game.homeTeam.abbreviation} teamId={game.homeTeam.abbreviation} />}
     </div>
   )
 }
@@ -212,7 +242,7 @@ const TABS = [
 ] as const
 type TabKey = typeof TABS[number]['key']
 
-export default function NFLGamePage({ game, edgeModel, awaySeasonQB, homeSeasonQB }: Props) {
+export default function NFLGamePage({ game, edgeModel, awayQbZone, homeQbZone, leagueZoneAvgs }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('model')
   return (
     <div className="gp-page">
@@ -240,8 +270,7 @@ export default function NFLGamePage({ game, edgeModel, awaySeasonQB, homeSeasonQ
         </div>
 
       {activeTab === 'model' && <TabEdgeModel game={game} edgeModel={edgeModel} />}
-      {activeTab === 'qbroom' && <TabQBRoom game={game} awaySeasonQB={awaySeasonQB} homeSeasonQB={homeSeasonQB} />}
-    </div>
+      {activeTab === 'qbroom' && <TabQBRoom game={game} awayQbZone={awayQbZone} homeQbZone={homeQbZone} leagueZoneAvgs={leagueZoneAvgs} />}    </div>
     </div>
   )
 }

@@ -25,7 +25,7 @@ const MLB_DIVISIONS = [
 ]
 
 const MLB_SUB_LINKS = [
-  { href: '/mlb',          label: "Today's Reads",  pro: false },
+  { href: '/mlb',          label: "Home",  pro: false },
   { href: '/mlb/scores',   label: 'Live Scores',    pro: false },
   { href: '/lab',    label: 'Dashboard', pro: false },
   { href: '/stats',    label: 'Stats & Leaders', pro: false  },
@@ -113,13 +113,7 @@ const NFL_DIVISIONS = [
 ]
 
 const NFL_SUB_LINKS = [
-  { href: '/nfl', label: 'This Week', pro: false },
-
-  { href: '/nfl/standings', label: 'Dashboard ', pro: false },
-  { href: '/nfl/schedule', label: 'Schedule', pro: false },
-  { href: '', label: 'Stats & Leaders', pro: false },
-    { href: '/fantasy', label: 'Fantasy',       pro: true },
-  { href: '/track-record', label: 'Track Record',   pro: false },
+  { href: '/nfl', label: 'Home', pro: false }
 
 ]
 

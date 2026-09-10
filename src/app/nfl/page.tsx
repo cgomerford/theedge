@@ -1,82 +1,172 @@
-// src/app/nfl/page.tsx
+/**
+ * src/app/nfl/page.tsx
+ *
+ * No CSS block. All styling lives inline in the client components this
+ * renders. Data-fetching logic is unchanged from before the reset, plus
+ * top5QbRadars / top5WrRadars for the two radar cyclers below the 75/25
+ * row (getQbRadarProfile / getWrRadarProfile in queries.ts).
+ */
+
 import SiteHeader from '@/components/SiteHeader'
-import { getNFLStandings, getNFLTeams } from '@/lib/nfl'
-import { getRecentNFLGamesAdapted } from '@/lib/nfl/games-adapter'
-import { getNFLCurrentWeek } from '@/lib/nfl-schedule'
-import { fetchNFLHomepageLeaders } from '@/lib/nfl/leaders'
-import { fetchNFLNews } from '@/lib/nfl/news'
-import { getHomepageTransactions } from '@/lib/nfl/roster-transactions'
-import { getFantasyOwnershipLeaders, getFantasyProTeams } from '@/lib/nfl/fantasy-ownership'
-import { getTeamDepthChart } from '@/lib/nfl/depth-charts'
-import NFLHomepage from './NFLHomepage'
+import NflHomeClient from '@/app/nfl/NflHomeClient'
+import { getBiggestRushEpaMover } from '@/lib/nfl/queries'
+import { getTeamDefenseLeaders, getTeamFgLeaders } from '@/lib/nfl/queries'
+import { getTeamYardsLeaders } from '@/lib/nfl/queries'
+import {
+  getThisWeeksGames,
+  getAllTeamsWithReports,
+  getQbLeaders,
+  getRbLeaders,
+  getWrLeaders,
+  getTeLeaders,
+  getAdvancedStatsLeaders,
+  getStandings,
+  getActiveStatsSeason,
+  getFantasyPointsLeaders,
+  getFantasyProjections,
+  getInterceptionLeaders,
+  getTacklesForLossLeaders,
+  getTurnoverPlaymakerLeaders,
+  getFieldGoalLeaders,
+  getLeagueSchemeLeaders,
+  getTeamStrengthMap,
+  getQbRadarProfile,
+  getWrRadarProfile,
+  getLeagueCoverageTrend,
+  getLeagueRouteTrend,
+  getLeagueRushPassTrend,
+  getLeagueSchemeEvolutionTrend,
+  getBiggestPassEpaMover,
+  getBiggestReceivingEpaMover,
+  getBiggestFantasyMover,
+  getBiggestTeamOffenseMover,
+} from '@/lib/nfl/queries'
 
 export const metadata = {
   title: 'NFL · The Edge',
-  description: 'Division standings, stat leaders, and league news.',
+  description: 'Live slate, season leaders, standings, and a coverage desk for the analytics era.',
 }
 
-export const revalidate = 3600
+export const revalidate = 300
 
-const CURRENT_SEASON = 2026
+export default async function NflHomePage() {
+  const statsSeason = await getActiveStatsSeason()
 
-// ESPN's team ids (1-34, non-contiguous — see nfl.ts for the full list).
-// Depth chart fetching all 32 teams per homepage load is unnecessary
-// weight for a preview column — this rotates a fixed-size subset by day
-// of year so the preview varies day to day without hitting all 32 every
-// request. Full 32-team browsing belongs on a dedicated page, not here.
-const ALL_TEAM_IDS = [
-  '1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16',
-  '17','18','19','20','21','22','23','24','25','26','27','28','29','30','32','33','34',
-]
-const DEPTH_CHART_PREVIEW_SIZE = 8
-
-function getTodaysTeamSubset(): string[] {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
-  const start = dayOfYear % ALL_TEAM_IDS.length
-  const subset: string[] = []
-  for (let i = 0; i < DEPTH_CHART_PREVIEW_SIZE; i++) {
-    subset.push(ALL_TEAM_IDS[(start + i) % ALL_TEAM_IDS.length])
-  }
-  return subset
-}
-
-export default async function NFLPage() {
-  const todaysTeamIds = getTodaysTeamSubset()
-
-  const [standings, teams, recentGames, currentWeek, leaders, news, transactions, fantasyOwnership, fantasyProTeams, depthCharts] = await Promise.all([
-    getNFLStandings(),
-    getNFLTeams(),
-    getRecentNFLGamesAdapted(12, 1),
-    getNFLCurrentWeek(),
-    fetchNFLHomepageLeaders(CURRENT_SEASON),
-    fetchNFLNews(20),
-    getHomepageTransactions(20),
-    getFantasyOwnershipLeaders(20),
-    getFantasyProTeams(),
-    // One fetch per team in today's subset, in parallel. Nulls (failed
-    // fetches) are filtered out below rather than shown as broken cards.
-    Promise.all(todaysTeamIds.map(id => getTeamDepthChart(id))),
+  const [
+    games,
+    teams,
+    qbLeaders,
+    rbLeaders,
+    wrLeaders,
+    teLeaders,
+    advLeaders,
+    standings,
+    fantasyLeaders,
+    fantasyProjections,
+    intLeaders,
+    tflLeaders,
+    turnoverLeaders,
+    fgLeaders,
+    leagueLeaders,
+    teamStrength,
+  ] = await Promise.all([
+    getThisWeeksGames(statsSeason),
+    getAllTeamsWithReports(statsSeason),
+    getQbLeaders(statsSeason, 10),
+    getRbLeaders(statsSeason, 10),
+    getWrLeaders(statsSeason, 10),
+    getTeLeaders(statsSeason, 10),
+    getAdvancedStatsLeaders(statsSeason),
+    getStandings(statsSeason),
+    getFantasyPointsLeaders(statsSeason, 10),
+    getFantasyProjections(),
+    getInterceptionLeaders(statsSeason, 10),
+    getTacklesForLossLeaders(statsSeason, 10),
+    getTurnoverPlaymakerLeaders(statsSeason),
+ getFieldGoalLeaders(statsSeason),
+    getLeagueSchemeLeaders(statsSeason),
+    getTeamStrengthMap(statsSeason),
   ])
+ 
+const [leagueCoverageTrend, leagueRouteTrend, leagueRushPassTrend, leagueSchemeTrend] = await Promise.all([
+  getLeagueCoverageTrend(),
+  getLeagueRouteTrend(),
+  getLeagueRushPassTrend(),
+  getLeagueSchemeEvolutionTrend(),
+])
+const [biggestRushMover, biggestPassMover, biggestReceivingMover, biggestFantasyMover, biggestTeamMover] = await Promise.all([
+  getBiggestRushEpaMover(statsSeason, statsSeason - 1, 50),
+  getBiggestPassEpaMover(statsSeason, statsSeason - 1, 100),
+  getBiggestReceivingEpaMover(statsSeason, statsSeason - 1, 30),
+  getBiggestFantasyMover(statsSeason, statsSeason - 1, 6),
+  getBiggestTeamOffenseMover(statsSeason, statsSeason - 1),
+])
+ 
+  const week = games[0]?.week ?? null
+  const isLastYear = statsSeason !== 2026
+const teamDefenseLeaders = await getTeamDefenseLeaders(statsSeason, 10)
+const teamFgLeaders = await getTeamFgLeaders(statsSeason, 10)
+  // ── QB / WR radar cyclers (below the 75/25 row) ──────────────────────
+  // Independent from the Promise.all above since these depend on
+  // qbLeaders/wrLeaders already having resolved. getQbRadarProfile /
+  // getWrRadarProfile return null for anyone who doesn't clear the
+  // qualification floor (100+ attempts / 30+ targets) -- filtered out
+  // below rather than passed through as a broken entry.
+  const [top5QbRadarsRaw, top5WrRadarsRaw] = await Promise.all([
+    Promise.all(qbLeaders.slice(0, 5).map((l) => getQbRadarProfile(l.gsisId, statsSeason))),
+    Promise.all(wrLeaders.slice(0, 5).map((l) => getWrRadarProfile(l.gsisId, statsSeason))),
+  ])
+  const teamYardsLeaders = await getTeamYardsLeaders(statsSeason, 10)
 
-  const upcomingGames = recentGames
-  const safeDepthCharts = depthCharts.filter((c): c is NonNullable<typeof c> => c !== null)
+  const top5QbRadars = qbLeaders
+    .slice(0, 5)
+    .map((l, i) => (top5QbRadarsRaw[i] ? { profile: top5QbRadarsRaw[i]!, name: l.fullName } : null))
+    .filter((x): x is { profile: NonNullable<(typeof top5QbRadarsRaw)[number]>; name: string } => x != null)
+
+  const top5WrRadars = wrLeaders
+    .slice(0, 5)
+    .map((l, i) => (top5WrRadarsRaw[i] ? { profile: top5WrRadarsRaw[i]!, name: l.fullName, teamAbbr: l.teamId } : null))
+    .filter((x): x is { profile: NonNullable<(typeof top5WrRadarsRaw)[number]>; name: string; teamAbbr: string } => x != null)
 
   return (
-    <main className="min-h-screen bg-stone-50">
-      <SiteHeader variant="page" />
-      <NFLHomepage
-        upcomingGames={upcomingGames}
-        weekSchedule={currentWeek}
-        leaders={leaders}
-        news={news}
-        transactions={transactions}
-        standings={standings}
+    <>
+      <SiteHeader />
+      <NflHomeClient
+        statsSeason={statsSeason}
+        week={week}
+        games={games}
         teams={teams}
-        season={CURRENT_SEASON}
-        fantasyOwnership={fantasyOwnership}
-        fantasyProTeams={fantasyProTeams}
-        depthCharts={safeDepthCharts}
+        qbLeaders={qbLeaders}
+        rbLeaders={rbLeaders}
+        wrLeaders={wrLeaders}
+        teLeaders={teLeaders}
+        advLeaders={advLeaders}
+        standings={standings}
+        fantasyLeaders={fantasyLeaders}
+        fantasyProjections={fantasyProjections}
+        intLeaders={intLeaders}
+        tflLeaders={tflLeaders}
+        turnoverLeaders={turnoverLeaders}
+        fgLeaders={fgLeaders}
+        leagueLeaders={leagueLeaders}
+        teamStrength={teamStrength}
+        isLastYear={isLastYear}
+           top5QbRadars={top5QbRadars}
+        top5WrRadars={top5WrRadars}
+             teamYardsLeaders={teamYardsLeaders}
+        teamDefenseLeaders={teamDefenseLeaders}
+        teamFgLeaders={teamFgLeaders}
+        leagueCoverageTrend={leagueCoverageTrend}
+        leagueRouteTrend={leagueRouteTrend}
+        leagueRushPassTrend={leagueRushPassTrend}
+        leagueSchemeTrend={leagueSchemeTrend}
+       biggestRushMover={biggestRushMover}
+        biggestPassMover={biggestPassMover}
+        biggestReceivingMover={biggestReceivingMover}
+        biggestFantasyMover={biggestFantasyMover}
+        biggestTeamMover={biggestTeamMover}
       />
-    </main>
+ 
+    </>
   )
 }

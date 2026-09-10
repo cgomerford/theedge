@@ -62,10 +62,12 @@ export type ScoutGraphicGame = {
   homePitcherLast3: any[]
   awayLineup: { playerId: number; playerName: string; avg: number | null }[]
   homeLineup: { playerId: number; playerName: string; avg: number | null }[]
-  awayLineupIsFallback?: boolean
+    awayLineupIsFallback?: boolean
   homeLineupIsFallback?: boolean
   awayTrending: { playerId: number; playerName: string; note: string }[]
   homeTrending: { playerId: number; playerName: string; note: string }[]
+  awayPitcherThrows: 'L' | 'R'
+  homePitcherThrows: 'L' | 'R'
 }
 
 type Props = {
@@ -191,10 +193,12 @@ export default function ScoutReportGraphicSection({ games }: Props) {
         awayHighlightBatterZoneArsenal={away.zoneArsenal}
         homeHighlightBatterName={home.selectedName}
         homeHighlightBatterZoneArsenal={home.zoneArsenal}
-        awayLineup={game.awayLineup}
+             awayLineup={game.awayLineup}
         homeLineup={game.homeLineup}
         awayLineupIsFallback={game.awayLineupIsFallback}
         homeLineupIsFallback={game.homeLineupIsFallback}
+        awayPitcherThrows={game.awayPitcherThrows}
+        homePitcherThrows={game.homePitcherThrows}
        trendingBatters={(() => {
           // Interleave rather than concat-then-slice — a flat concat
           // meant the away team's entries always won all 3 slots

@@ -16,6 +16,7 @@ import SnipStudio from '@/app/admin/dashboard/SnipStudio'
 import StatCardPanel, { type StatCardSourceData } from '@/app/admin/cards/StatCardPanel'
 import AdminDataRoomSection from '@/components/admin/AdminDataRoomSection'
 import AllGamesStorySlideshow from '@/components/admin/AllGamesStorySlideshow'
+import GamePreviewTeaser from '@/components/admin/GamePreviewTeaser'  
 import ScoutReportGraphicSection, { type ScoutGraphicGame } from '@/components/admin/ScoutReportGraphicSection'
 import { getScheduleForDate } from '@/lib/mlb'
 import PostGameXCardSection from '@/components/admin/PostGameXCardSection'
@@ -26,12 +27,17 @@ export const dynamic = 'force-dynamic'
 
 async function getFinalGamePks(date: string): Promise<number[]> {
   const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${date}`
-  const res = await fetch(url, { next: { revalidate: 300 } })
-  if (!res.ok) return []
-  const data = await res.json()
-  return (data.dates?.[0]?.games ?? [])
-    .filter((g: any) => g.status?.abstractGameState === 'Final')
-    .map((g: any) => g.gamePk as number)
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data.dates?.[0]?.games ?? [])
+      .filter((g: any) => g.status?.abstractGameState === 'Final')
+      .map((g: any) => g.gamePk as number)
+  } catch (err) {
+    console.error(`getFinalGamePks failed for ${date}:`, err)
+    return []
+  }
 }
 
 async function getRosterBatters(teamId: number | null): Promise<{ id: number; name: string }[]> {
@@ -286,12 +292,14 @@ export default async function AdminDashboard({
         homeRosterBatters: await getRosterBatters(homeTeamId),
         awayPitcherLast3: awayPitcherId ? await getPitcherRecentStarts(awayPitcherId, 3) : [],
         homePitcherLast3: homePitcherId ? await getPitcherRecentStarts(homePitcherId, 3) : [],
-        awayLineup: awayLineupResult.batters,
+                awayLineup: awayLineupResult.batters,
         homeLineup: homeLineupResult.batters,
         awayLineupIsFallback: awayLineupResult.isFallback,
         homeLineupIsFallback: homeLineupResult.isFallback,
         awayTrending: awayTeamId ? await getTrendingBatters(awayTeamId) : [],
         homeTrending: homeTeamId ? await getTrendingBatters(homeTeamId) : [],
+        awayPitcherThrows: g.awayPitcherThrows,
+        homePitcherThrows: g.homePitcherThrows,
         awayRolling: (awayFullStats || awayTeamRow?.data) ? {
           sp_era: awayFullStats?.era ?? null,
           bullpen_era: (awayTeamRow?.data as any)?.bullpen_era != null ? Number((awayTeamRow?.data as any).bullpen_era) : null,
@@ -564,6 +572,15 @@ export default async function AdminDashboard({
           </section>
         </div>
 
+             {/* ── FULL WIDTH: Game Preview Teaser ──────────────── */}
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Game Preview Teaser</h2>
+            <span className="tag">SP · team numbers · bullpen · 9:16 · fast cut</span>
+          </div>
+          <GamePreviewTeaser games={gamesWithReports} slateDate={slateDate} />
+        </section>
         {/* ── FULL WIDTH: Scout Stories ──────────────────── */}
         <section className="sec card">
           <div className="sechead">

@@ -77,6 +77,9 @@ type Props = {
   awayLineupIsFallback?: boolean
   homeLineupIsFallback?: boolean
 
+  awayPitcherThrows: 'L' | 'R'
+  homePitcherThrows: 'L' | 'R'
+
   trendingBatters: TrendingBatter[]
   fullReportUrl: string
 }
@@ -263,13 +266,13 @@ export default function ScoutReportGraphicCard(props: Props) {
             batterName={props.awayHighlightBatterName} color={props.awayColor}
             batterZoneArsenal={props.awayHighlightBatterZoneArsenal}
             pitcherArsenal={props.homePitcherArsenalZones}
-            pitcherThrows="R"
+            pitcherThrows={props.homePitcherThrows}
           />
           <BatterAttackPlanCard
             batterName={props.homeHighlightBatterName} color={props.homeColor}
             batterZoneArsenal={props.homeHighlightBatterZoneArsenal}
             pitcherArsenal={props.awayPitcherArsenalZones}
-            pitcherThrows="R"
+            pitcherThrows={props.awayPitcherThrows}
           />
         </div>
 

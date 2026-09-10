@@ -39,10 +39,30 @@ export type GameWithReport = {
   homeLineupSpray?: BatterSpray[]
   awayPitcherTTO?: any
   homePitcherTTO?: any
-  awayPitcherThrows?: 'L' | 'R'
+  
+awayPitcherThrows?: 'L' | 'R'
   homePitcherThrows?: 'L' | 'R'
   awayLineupSize?: number
   homeLineupSize?: number
+
+  // Consumed by GamePreviewTeaser.tsx — loosely typed to unblock build;
+  // tighten once that component's actual data shape is confirmed.
+  awayPitcherId?: number | null
+  homePitcherId?: number | null
+  awayWorkload?: any
+  homeWorkload?: any
+  awayFieldingAlignment?: any[]
+  homeFieldingAlignment?: any[]
+  awayLiteralBatters?: any[]
+  homeLiteralBatters?: any[]
+  awayPitcherTrend?: any
+  homePitcherTrend?: any
+  awayHotStreaks?: any[]
+  homeHotStreaks?: any[]
+  awayPitcherStats?: any
+  homePitcherStats?: any
+  awayLineupBatters?: any[]
+  homeLineupBatters?: any[]
 }
 
 type Props = {

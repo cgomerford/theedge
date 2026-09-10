@@ -1,4 +1,5 @@
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 
 // ============================================================
 // TYPES
@@ -45,7 +46,7 @@ export async function getPitcherTrend(pitcherId: number, pitcherName: string): P
   try {
     // Fetch last 5 game logs (we'll use last 3)
     const url = `${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${new Date().getFullYear()}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(8000), cache: 'no-store' })
     if (!res.ok) return null
     const data = await res.json()
     
@@ -129,8 +130,8 @@ export async function getTopBatterStreaks(teamId: number): Promise<{
 }> {
   try {
     // Fetch team roster
-    const rosterUrl = `${MLB_API}/teams/${teamId}/roster?rosterType=Active`
-    const rosterRes = await fetch(rosterUrl, { signal: AbortSignal.timeout(8000), next: { revalidate: 1800 } })
+       const rosterUrl = `${MLB_API}/teams/${teamId}/roster?rosterType=Active`
+    const rosterRes = await throttledMlbFetch(rosterUrl, { signal: AbortSignal.timeout(8000) })
     if (!rosterRes.ok) return { hot: [], cold: [], all: [] }
     const rosterData = await rosterRes.json()
 
@@ -181,8 +182,8 @@ async function getBatterStreak(
   position: string | null
 ): Promise<BatterStreak | null> {
   try {
-       const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${new Date().getFullYear()}`
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000), next: { revalidate: 1800 } })
+        const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${new Date().getFullYear()}`
+    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(6000), cache: 'no-store' })
     if (!res.ok) return null
     const data = await res.json()
 

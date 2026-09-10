@@ -1,3 +1,5 @@
+import { cache } from 'react'
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // ============================================================
@@ -11,6 +13,8 @@ export type LineupBatter = {
   season_avg: number | null
   season_obp: number | null
   season_ops: number | null
+  season_slg: number | null
+  season_rbi: number | null
   bat_side?: 'L' | 'R' | null
 }
 export type ProjectedLineup = {
@@ -23,7 +27,7 @@ export type ProjectedLineup = {
 // ============================================================
 // MAIN ENTRY POINT
 // ============================================================
-export async function getProjectedLineup(
+export const getProjectedLineup = cache(async function getProjectedLineup(
   teamId: number,
   gameDate: string,  // YYYY-MM-DD
   currentGamePk?: number  // optional — pass current game's gamePk to check for confirmed lineup first
@@ -80,7 +84,7 @@ export async function getProjectedLineup(
       batters: [],
     }
   }
-}
+})
 
 // ============================================================
 // HELPERS
@@ -170,9 +174,11 @@ async function getLineupFromGame(
       player_name: player.person?.fullName ?? 'Unknown',
       position: player.position?.abbreviation ?? '',
       batting_order: i + 1,
-      season_avg: null,  // populated by enrichBattersWithStats
+            season_avg: null,  // populated by enrichBattersWithStats
       season_obp: null,
       season_ops: null,
+      season_slg: null,
+      season_rbi: null,
     })
   }
 
@@ -193,11 +199,14 @@ async function enrichBattersWithStats(batters: LineupBatter[]): Promise<LineupBa
         const stat = data.stats?.[0]?.splits?.[0]?.stat
         if (!stat) return batter
 
-        return {
+                return {
           ...batter,
           season_avg: stat.avg ? parseFloat(stat.avg) : null,
           season_obp: stat.obp ? parseFloat(stat.obp) : null,
           season_ops: stat.ops ? parseFloat(stat.ops) : null,
+          // slg + rbi come from the same stat block, previously discarded
+          season_slg: stat.slg ? parseFloat(stat.slg) : null,
+          season_rbi: typeof stat.rbi === 'number' ? stat.rbi : (stat.rbi ? parseInt(stat.rbi, 10) : null),
         }
       } catch {
         return batter

@@ -475,3 +475,45 @@ export async function getBullpenReport(teamId: number, gamePks: number[], season
 
   return { relievers, inningUsage, gamesSampled: gamePks.length }
 }
+
+
+export async function getBullpenReportFromDB(teamId: number, season: number): Promise<BullpenReport> {
+  const supa = createAdminClient()
+  const [{ data: relieverRows }, { data: usageRows }] = await Promise.all([
+    supa.from('bullpen_inning_reports').select('*').eq('team_id', teamId).eq('season', season),
+    supa.from('bullpen_inning_usage').select('*').eq('team_id', teamId).eq('season', season),
+  ])
+
+  const byPlayer = new Map<number, RelieverProfile>()
+  for (const row of relieverRows ?? []) {
+    if (!byPlayer.has(row.player_id)) {
+      byPlayer.set(row.player_id, {
+        playerId: Number(row.player_id), playerName: row.player_name, appearances: Number(row.games_sampled),
+        appearancesByInning: {}, lines: [],
+        mostUsedInning: row.most_used_inning != null ? Number(row.most_used_inning) : null,
+        bestInning: row.best_inning != null
+          ? { inning: Number(row.best_inning), avgRunsAllowed: Number(row.best_inning_avg_runs) } : null,
+        totalBlownLeads: Number(row.total_blown_leads), totalBlownSaves: Number(row.total_blown_saves),
+        summary: row.summary,
+      })
+    }
+    byPlayer.get(row.player_id)!.lines.push({
+      inning: Number(row.inning), battersFaced: Number(row.battersFaced), strikeouts: Number(row.strikeouts),
+      walks: Number(row.walks), hitByPitch: Number(row.hit_by_pitch), homeRuns: Number(row.home_runs),
+      avgRunsAllowed: Number(row.avg_runs_allowed), blownLeads: Number(row.blown_leads),
+      blownSaves: Number(row.blown_saves), appearancesInInning: Number(row.appearances_in_inning),
+    })
+  }
+
+  const inningUsage: BattingPitchingInningUsage[] = (usageRows ?? []).map(u => ({
+    inning: Number(u.inning), avgBallsSeen: Number(u.avg_balls_seen), avgStrikesSeen: Number(u.avg_strikes_seen),
+    avgRunsScored: Number(u.avg_runs_scored), avgBallsThrown: Number(u.avg_balls_thrown),
+    avgStrikesThrown: Number(u.avg_strikes_thrown), avgRunsAllowed: Number(u.avg_runs_allowed),
+    gamesSampled: Number(u.games_sampled),
+  }))
+
+  return {
+    relievers: [...byPlayer.values()].sort((a, b) => b.appearances - a.appearances),
+    inningUsage, gamesSampled: relieverRows?.[0]?.games_sampled ?? 0,
+  }
+}
