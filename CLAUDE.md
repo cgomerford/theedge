@@ -1,6 +1,7 @@
 # CLAUDE.md — The Edge (edgereportdaily.com)
 
 @AGENTS.md
+@DESIGN_SYSTEM.md
 
 Read this file at the start of every session. It is the source of truth for how this project is built, what it is (and is not), and how to work with George.
 
@@ -114,7 +115,7 @@ Live fan-out to external APIs during page render was the root cause of every per
 | Email | Resend. Pre-game daily digest cron + post-game recap cron (polls for finished games). Both use **bearer-token auth** and a dedup table (`postgame_email_log`) to prevent double-sends |
 | Team pages | `TeamDugoutView.tsx` (lineup optimizer, bullpen usage, pitcher workload grid, inning-usage combo charts); GM Lab (`GmLabContent.tsx`, `src/lib/team-transactions.ts`) |
 | Fantasy | `FantasyHub.tsx`, `FantasySubNav.tsx`, Weekly Wrap at `/fantasy/wrap`, minor-league team page (`TeamMiniDugout` pattern) |
-| NFL | QB Room, WR Room, OC/DC pages, `nfl_situational_tendencies`, `nfl_team_scheme_profile`, `sync_qb_coverage_pressure.py`, `sync_wr_coverage_pressure.py`, Madden-style SVG formation/coverage diagrams, game pages, homepage, Fantasy Hub wireframe |
+| NFL | **Build with the MLB team/player page design system — `DESIGN_SYSTEM.md`.** QB Room, WR Room, OC/DC pages, `nfl_situational_tendencies`, `nfl_team_scheme_profile`, `sync_qb_coverage_pressure.py`, `sync_wr_coverage_pressure.py`, Madden-style SVG formation/coverage diagrams, game pages, homepage, Fantasy Hub wireframe |
 | Admin | `GamePreviewTeaser` (animated video export, ffmpeg concat with cross-slide transitions), `TrendingPlayersSection` (MLB/AAA/AA), Scout Report Graphic, articles editor (`src/lib/articles.ts`) |
 | Narrative | Claude prompt system split into **Free** and **Pro** voice profiles |
 
@@ -123,8 +124,10 @@ Live fan-out to external APIs during page render was the root cause of every per
 ## 6. Brand & design system
 
 - Colors: cream `#FAF8F3`, orange `#FF5722`, yellow `#FDE047`, black `#1A1A1A`
-- Type: **Fraunces** (serif), **Bebas Neue** (display), **JetBrains Mono** (data)
-- **Zero border-radius** (exceptions: team / Dugout pages)
+- Type (**updated 2026-09-20 — see `DESIGN_SYSTEM.md`**): **Outfit** for body, ALL headers and ALL bold text (the rounded brand face, `var(--font-outfit)`); **JetBrains Mono** only for light small labels, axis ticks, footnotes and plain numbers. **Bebas Neue and Fraunces are retired on new pages** — do not use them for headers or body.
+  - Always use the `next/font` CSS variables (import `SANS` / `MONO` / `DISPLAY` from `src/components/team/ui.tsx`), never a literal family name — `next/font` hashes family names, so a string like `'Fraunces, serif'` silently falls back to the system font.
+- **NFL (and every new sport) must use this same design system** — fonts, colours, `Section`/`Card`/`Tile`/`RankBars`, the `ProPanel` Pro pattern and the team-coloured-hero page shape. Read `DESIGN_SYSTEM.md` (incl. its §7 NFL checklist) before building any NFL page; reuse the shared components instead of restyling. NFL ranks are among **32** clubs, not 30.
+- **Rounded cards (14px) on team / player pages** (the old "zero border-radius" rule is retired for these; other legacy pages keep their existing style until they are redesigned)
 - Section markers: `⊕` / `§`
 - Prefer visual, mobile-friendly deliverables. Mobile rendering pass is still outstanding.
 

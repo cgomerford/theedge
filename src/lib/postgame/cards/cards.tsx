@@ -11,7 +11,7 @@ import { buildAbs } from '../abs'
 import { getContact } from '../contact'
 import { getStarterNights } from '../starters'
 import { buildLeverage, HIGH_LI } from '../leverage'
-import { Frame, C, SIDE, BEBAS, label, box } from './frame'
+import { Frame, C, SIDE, DISPLAY, label, box } from './frame'
 
 export type CardKind = 'final' | 'swing' | 'performers' | 'umpire' | 'abs' | 'contact' | 'starters' | 'leverage'
 export const CARD_KINDS: CardKind[] = ['final', 'swing', 'performers', 'umpire', 'abs', 'contact', 'starters', 'leverage']
@@ -24,7 +24,7 @@ function Tile({ k, v, sub, w }: { k: string; v: string; sub?: string; w?: number
   return (
     <div style={{ ...box, ...(w ? { width: w } : { flex: 1 }) }}>
       <div style={label()}>{k.toUpperCase()}</div>
-      <div style={F({ fontFamily: BEBAS, fontSize: 64, lineHeight: 1, marginTop: 2 })}>{v}</div>
+      <div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 53, lineHeight: 1, marginTop: 2 })}>{v}</div>
       {sub ? <div style={F({ fontSize: 16, color: C.stone, marginTop: 2 })}>{sub}</div> : null}
     </div>
   )
@@ -41,7 +41,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
     const cell = (v: string, bold?: boolean, color?: string) => <div style={F({ width: 66, justifyContent: 'center', fontSize: 30, fontWeight: bold ? 700 : 400, color: color ?? C.ink })}>{v}</div>
     const row = (s: Side) => (
       <div style={F({ alignItems: 'center', height: 74, borderBottom: `1px solid ${C.line}` })}>
-        <div style={F({ width: 150, fontFamily: BEBAS, fontSize: 52, color: SIDE[s] })}>{abbr[s]}</div>
+        <div style={F({ width: 150, fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 43, color: SIDE[s] })}>{abbr[s]}</div>
         {h.linescore[s].map((r, i) => <div key={i} style={F({ display: 'flex' })}>{cell(r == null ? '–' : String(r))}</div>)}
         <div style={F({ width: 24 })} />{cell(String(h[s].runs), true)}{cell(String(h[s].hits), true)}{cell(String(h[s].errors), true)}
       </div>
@@ -55,7 +55,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
             </div>
             {row('away')}{row('home')}
           </div>
-          <div style={F({ fontFamily: BEBAS, fontSize: 68, lineHeight: 1.05 })}>{h.read}</div>
+          <div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 56, lineHeight: 1.05 })}>{h.read}</div>
           <div style={F({ gap: 48, fontSize: 22 })}>
             {h.decisions.w ? <div style={F({ gap: 10 })}><b>W</b>{h.decisions.w}</div> : null}
             {h.decisions.l ? <div style={F({ gap: 10 })}><b>L</b>{h.decisions.l}</div> : null}
@@ -115,7 +115,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
         {list.map((c) => (
           <div key={c.id} style={{ ...box, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 148 }}>
             <div style={F({ flexDirection: 'column' })}>
-              <div style={F({ alignItems: 'baseline', gap: 12 })}><div style={F({ fontFamily: BEBAS, fontSize: 60, lineHeight: 1 })}>{c.name.toUpperCase()}</div><div style={F({ fontSize: 20, color: SIDE[c.side], fontWeight: 700 })}>{abbr[c.side]}</div></div>
+              <div style={F({ alignItems: 'baseline', gap: 12 })}><div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 50, lineHeight: 1 })}>{c.name}</div><div style={F({ fontSize: 20, color: SIDE[c.side], fontWeight: 700 })}>{abbr[c.side]}</div></div>
               <div style={F({ fontSize: 26, marginTop: 4 })}>{c.line}</div>
             </div>
             <div style={F({ flexDirection: 'column', alignItems: 'flex-end', gap: 6 })}>
@@ -152,7 +152,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
           </div>
           <div style={F({ flexDirection: 'column', flex: 1, gap: 14 })}>
             <div style={F({ alignItems: 'flex-end', gap: 20 })}>
-              <div style={F({ fontFamily: BEBAS, fontSize: 168, lineHeight: 0.9 })}>{`${pl.accuracyPct.toFixed(1)}%`}</div>
+              <div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 139, lineHeight: 0.9 })}>{`${pl.accuracyPct.toFixed(1)}%`}</div>
               <div style={F({ flexDirection: 'column', paddingBottom: 12 })}><div style={label({ fontSize: 20 })}>CALL ACCURACY</div><div style={F({ fontSize: 22 })}>{`${pl.takes - pl.missed} of ${pl.takes} calls right`}</div></div>
             </div>
             <div style={F({ gap: 14 })}>
@@ -249,7 +249,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
       const top = [...s.balls].filter((b) => b.ev != null).sort((x, y) => (y.ev as number) - (x.ev as number)).slice(0, 3)
       return (
         <div key={s.side} style={F({ flexDirection: 'column', gap: 14, flex: 1 })}>
-          <div style={F({ fontFamily: BEBAS, fontSize: 56, color: SIDE[s.side], lineHeight: 1 })}>{`${abbr[s.side]} BATTING`}</div>
+          <div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 46, color: SIDE[s.side], lineHeight: 1 })}>{`${abbr[s.side]} BATTING`}</div>
           <div style={F({ gap: 16 })}>
             {field(s)}
             <div style={F({ flexDirection: 'column', gap: 10, flex: 1 })}>
@@ -276,7 +276,7 @@ export async function buildCard(kind: CardKind, d: PostData, gameDate: string): 
     const st = await getStarterNights(d, gameDate); if (st.length === 0) return null
     const col = (s: (typeof st)[number]) => (
       <div key={s.id} style={{ ...box, flex: 1, gap: 8 }}>
-        <div style={F({ alignItems: 'baseline', gap: 12 })}><div style={F({ fontFamily: BEBAS, fontSize: 56, lineHeight: 1 })}>{s.name.toUpperCase()}</div><div style={F({ fontSize: 22, color: SIDE[s.side], fontWeight: 700 })}>{abbr[s.side]}</div></div>
+        <div style={F({ alignItems: 'baseline', gap: 12 })}><div style={F({ fontFamily: DISPLAY, fontWeight: 800, letterSpacing: -1, fontSize: 46, lineHeight: 1 })}>{s.name}</div><div style={F({ fontSize: 22, color: SIDE[s.side], fontWeight: 700 })}>{abbr[s.side]}</div></div>
         <div style={F({ fontSize: 22 })}>{`${s.line.ip} IP · ${s.line.h} H · ${s.line.er} ER · ${s.line.bb} BB · ${s.line.k} K · ${s.line.pitches} pitches`}</div>
         <div style={F({ fontSize: 20, lineHeight: 1.25, color: C.ink, minHeight: 50 })}>{s.read}</div>
         <div style={F({ flexDirection: 'column', gap: 16, marginTop: 10 })}>
