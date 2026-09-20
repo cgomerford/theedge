@@ -87,6 +87,24 @@ PITCH_NAME = {
 MIN_PITCHES_PER_TYPE = 50
 MIN_PITCHES_PER_ZONE = 15
 
+# ─── Extended zone metrics (2026-09-13) ───────────────────────────────────────
+# Adds slg_against, hard_hit_pct, woba_against, run_value_per_100 to every zone
+# cell in both pitcher_hot_zones and pitcher_zone_arsenal (still one JSONB
+# `zones`/`arsenal` column each — no schema migration needed). Same real,
+# curl-verified Statcast columns already used elsewhere in this repo:
+#   - estimated_woba_using_speedangle -> fetch_batter_hot_zones.py's xwoba
+#   - launch_speed                    -> fetch_batter_spray.py / fetch_statcast_events.py
+#   - delta_run_exp                   -> pitcher-statcast-profile.ts (sign convention
+#                                         there: negative = good for pitcher). Kept
+#                                         UNFLIPPED here (run_value_per_100 = avg*100)
+#                                         to match that existing convention AND
+#                                         Savant's own site + PitcherArsenalCard.tsx's
+#                                         already-shipped run-value display — negative
+#                                         = good for the pitcher, everywhere on this site.
+#   - bb_type                         -> fetch_batter_spray.py (real batted-ball marker)
+TOTAL_BASES = {'single': 1, 'double': 2, 'triple': 3, 'home_run': 4}
+HARD_HIT_MPH = 95  # Statcast's own standard hard-hit threshold
+
 # NEW — thresholds for the two new tables
 VALID_COUNTS = [f'{b}-{s}' for b in range(4) for s in range(3)]  # '0-0' .. '3-2', 12 combos
 MIN_COUNT_SAMPLE = 15       # min pitches thrown IN a given count to trust that count's tendency
@@ -108,7 +126,10 @@ def normalize_zone(z):
 def aggregate_zones(pitches_df):
     zones = {str(z): {
         'pitches': 0, 'swings': 0, 'whiffs': 0,
-        'ab': 0, 'hits': 0,
+        'ab': 0, 'hits': 0, 'total_bases': 0,
+        'batted_balls': 0, 'hard_hit': 0,
+        'xwoba_sum': 0.0, 'xwoba_count': 0,
+        'rv_sum': 0.0, 'rv_count': 0,
     } for z in ALL_ZONES}
 
     if pitches_df is None or pitches_df.empty:
@@ -141,22 +162,57 @@ def aggregate_zones(pitches_df):
         if events and pd.notna(events):
             events_str = str(events).lower()
             zones[key]['ab'] += 1
-            if events_str in {'single', 'double', 'triple', 'home_run'}:
+            if events_str in TOTAL_BASES:
                 zones[key]['hits'] += 1
+                zones[key]['total_bases'] += TOTAL_BASES[events_str]
+
+        bb_type = row.get('bb_type')
+        if bb_type is not None and pd.notna(bb_type) and str(bb_type).strip() != '':
+            zones[key]['batted_balls'] += 1
+            ls = row.get('launch_speed')
+            if ls is not None and pd.notna(ls) and float(ls) >= HARD_HIT_MPH:
+                zones[key]['hard_hit'] += 1
+
+        xwoba_val = row.get('estimated_woba_using_speedangle')
+        if xwoba_val is not None and pd.notna(xwoba_val):
+            try:
+                zones[key]['xwoba_sum'] += float(xwoba_val)
+                zones[key]['xwoba_count'] += 1
+            except (ValueError, TypeError):
+                pass
+
+        rv = row.get('delta_run_exp')
+        if rv is not None and pd.notna(rv):
+            try:
+                zones[key]['rv_sum'] += float(rv)
+                zones[key]['rv_count'] += 1
+            except (ValueError, TypeError):
+                pass
 
     out = {}
     for z, d in zones.items():
         usage_pct  = round((d['pitches'] / total_pitches) * 100, 1) if total_pitches > 0 else 0
         ba_against = round(d['hits'] / d['ab'], 3) if d['ab']     > 0 else None
+        slg_against = round(d['total_bases'] / d['ab'], 3) if d['ab'] > 0 else None
         whiff_pct  = round((d['whiffs'] / d['swings']) * 100, 1) if d['swings'] > 0 else None
+        hard_hit_pct = round((d['hard_hit'] / d['batted_balls']) * 100, 1) if d['batted_balls'] > 0 else None
+        woba_against = round(d['xwoba_sum'] / d['xwoba_count'], 3) if d['xwoba_count'] > 0 else None
+        # Unflipped — same convention as delta_run_exp itself and every other
+        # run-value number on this site: negative = good for the pitcher.
+        run_value_per_100 = round((d['rv_sum'] / d['rv_count']) * 100, 1) if d['rv_count'] > 0 else None
         out[z] = {
-            'usage_pct':  usage_pct,
-            'ba_against': ba_against,
-            'whiff_pct':  whiff_pct,
-            'pitches':    d['pitches'],
-            'swings':     d['swings'],
-            'whiffs':     d['whiffs'],
-            'ab':         d['ab'],
+            'usage_pct':   usage_pct,
+            'ba_against':  ba_against,
+            'slg_against': slg_against,
+            'whiff_pct':   whiff_pct,
+            'hard_hit_pct': hard_hit_pct,
+            'woba_against': woba_against,
+            'run_value_per_100': run_value_per_100,
+            'pitches':     d['pitches'],
+            'swings':      d['swings'],
+            'whiffs':      d['whiffs'],
+            'ab':          d['ab'],
+            'batted_balls': d['batted_balls'],
         }
     return out, total_pitches
 
@@ -181,8 +237,13 @@ def aggregate_zone_arsenal(pitches_df):
         if ptype not in by_pitch:
             by_pitch[ptype] = {
                 'pitches': 0, 'velo_sum': 0.0, 'velo_n': 0,
-                'zones': {str(z): {'pitches': 0, 'swings': 0, 'whiffs': 0,
-                                   'ab': 0, 'hits': 0} for z in ALL_ZONES},
+                'zones': {str(z): {
+                    'pitches': 0, 'swings': 0, 'whiffs': 0,
+                    'ab': 0, 'hits': 0, 'total_bases': 0,
+                    'batted_balls': 0, 'hard_hit': 0,
+                    'xwoba_sum': 0.0, 'xwoba_count': 0,
+                    'rv_sum': 0.0, 'rv_count': 0,
+                } for z in ALL_ZONES},
             }
 
         bucket = by_pitch[ptype]
@@ -210,9 +271,34 @@ def aggregate_zone_arsenal(pitches_df):
 
         events = row.get('events')
         if events and pd.notna(events):
+            events_str = str(events).lower()
             bucket['zones'][key]['ab'] += 1
-            if str(events).lower() in {'single', 'double', 'triple', 'home_run'}:
+            if events_str in TOTAL_BASES:
                 bucket['zones'][key]['hits'] += 1
+                bucket['zones'][key]['total_bases'] += TOTAL_BASES[events_str]
+
+        bb_type = row.get('bb_type')
+        if bb_type is not None and pd.notna(bb_type) and str(bb_type).strip() != '':
+            bucket['zones'][key]['batted_balls'] += 1
+            ls = row.get('launch_speed')
+            if ls is not None and pd.notna(ls) and float(ls) >= HARD_HIT_MPH:
+                bucket['zones'][key]['hard_hit'] += 1
+
+        xwoba_val = row.get('estimated_woba_using_speedangle')
+        if xwoba_val is not None and pd.notna(xwoba_val):
+            try:
+                bucket['zones'][key]['xwoba_sum'] += float(xwoba_val)
+                bucket['zones'][key]['xwoba_count'] += 1
+            except (ValueError, TypeError):
+                pass
+
+        rv = row.get('delta_run_exp')
+        if rv is not None and pd.notna(rv):
+            try:
+                bucket['zones'][key]['rv_sum'] += float(rv)
+                bucket['zones'][key]['rv_count'] += 1
+            except (ValueError, TypeError):
+                pass
 
     out = {}
     for ptype, b in by_pitch.items():
@@ -224,11 +310,16 @@ def aggregate_zone_arsenal(pitches_df):
             zones_out[z] = {
                 'usage_pct':  round((d['pitches'] / b['pitches']) * 100, 1) if b['pitches'] > 0 else 0,
                 'ba_against': round(d['hits'] / d['ab'], 3) if d['ab'] > 0 else None,
+                'slg_against': round(d['total_bases'] / d['ab'], 3) if d['ab'] > 0 else None,
                 'whiff_pct':  round((d['whiffs'] / d['swings']) * 100, 1) if d['swings'] > 0 else None,
+                'hard_hit_pct': round((d['hard_hit'] / d['batted_balls']) * 100, 1) if d['batted_balls'] > 0 else None,
+                'woba_against': round(d['xwoba_sum'] / d['xwoba_count'], 3) if d['xwoba_count'] > 0 else None,
+                'run_value_per_100': round((d['rv_sum'] / d['rv_count']) * 100, 1) if d['rv_count'] > 0 else None,
                 'pitches':    d['pitches'],
                 'swings':     d['swings'],
                 'whiffs':     d['whiffs'],
                 'ab':         d['ab'],
+                'batted_balls': d['batted_balls'],
                 'low_sample': d['pitches'] < MIN_PITCHES_PER_ZONE,
             }
 

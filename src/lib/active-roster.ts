@@ -14,6 +14,7 @@ export const getActiveRosterIds = cache(async function getActiveRosterIds(teamId
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=Active`, {
       signal: AbortSignal.timeout(8000),
+      next: { revalidate: 300 },
     })
     if (!res.ok) return new Set()
     const data = await res.json()

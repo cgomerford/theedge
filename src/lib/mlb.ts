@@ -44,6 +44,7 @@ export type MLBGame = {
   gamePk: number
   gameDate: string
   officialDate?: string  // YYYY-MM-DD format, MLB's "official" date for the game
+  dayNight?: 'day' | 'night'  // MLB schedule's own day/night flag (local first-pitch time)
   doubleHeader?: string  // 'N' | 'Y' (traditional) | 'S' (split)
   gameNumber?: number
   status: { detailedState: string; abstractGameState: string }
@@ -143,7 +144,7 @@ export async function getTodayTickerGames(): Promise<TickerGame[]> {
 }
 
 // Convert "New York Yankees" -> "new-york-yankees"
-function teamSlug(name: string): string {
+export function teamSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 // Build the URL slug for a game's preview page
@@ -199,7 +200,44 @@ export type PitcherSeasonStats = {
   hr_per_9: string
   wins: number
   losses: number
+  runs: number // official season "R" — every run charged to this pitcher, including bequeathed runners a reliever let score after he left the game. Per-pitch Statcast sums (delta bat_score on HIS OWN pitches) can only ever capture runs that scored while he himself was on the mound, so they legitimately run a bit below this number — see MlbDeepDives' RunValueHeatCard, which surfaces both side by side rather than pretending they reconcile.
+  earnedRuns: number
+  hits: number
 }
+
+// Full-season game log, one row per outing, carrying gamePk — the raw
+// material both getPitcherRecentStarts (below) and the Statcast hits
+// backfill (pitcher-statcast-profile.ts) need. gamePk is what lets the
+// backfill line this official log up against Baseball Savant's own
+// per-pitch CSV (which also carries a game_pk column) to find outings
+// Savant's public log is missing entirely, rather than guessing off date
+// strings alone.
+export type PitcherGameLogEntry = { date: string; gamePk: number; hits: number }
+
+export const getPitcherFullSeasonGameLog = cache(async (
+  playerId: number,
+  season: number
+): Promise<PitcherGameLogEntry[]> => {
+  const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=pitching&season=${season}`
+
+  try {
+    const res = await fetchWithRetry(url, { next: { revalidate: 3600 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    const games = data.stats?.[0]?.splits ?? []
+
+    return games
+      .filter((g: any) => g.game?.gamePk)
+      .map((g: any) => ({
+        date: g.date,
+        gamePk: g.game.gamePk,
+        hits: parseInt(g.stat?.hits ?? '0'),
+      }))
+  } catch (err) {
+    console.error('Pitcher full-season game log fetch failed:', err)
+    return []
+  }
+})
 
 export const getPitcherRecentStarts = cache(async (
   playerId: number,
@@ -231,6 +269,50 @@ export const getPitcherRecentStarts = cache(async (
   }
 })
 
+// One pitcher's hit-pitches from a single game's official live-feed play
+// log — used only to backfill outings Baseball Savant's public per-pitch
+// CSV is missing entirely (confirmed real, verified against a live pitcher:
+// Savant's own log can be short whole outings' worth of pitches for some
+// pitchers). MLB's Gumbo feed uses the SAME pitch-type vocabulary as
+// Savant (curl-verified: 'FF', 'ST', 'SL', etc. via details.type.code) and
+// each pitch event's `count` reflects the count that pitch was thrown in
+// (fouls at 2 strikes don't advance the count, matching Savant's own
+// balls/strikes convention) — so a backfilled hit lands in the same
+// (pitchType, balls, strikes) shape the CSV-derived data already uses.
+export type BackfilledHit = { pitchType: string; balls: number; strikes: number }
+
+export const getPitcherHitsFromGameFeed = cache(async (
+  gamePk: number,
+  pitcherId: number
+): Promise<BackfilledHit[]> => {
+  const url = `https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`
+
+  try {
+    const res = await fetchWithRetry(url, { next: { revalidate: 21600 } }, { timeoutMs: 15000 })
+    if (!res.ok) return []
+    const data = await res.json()
+    const plays: any[] = data?.liveData?.plays?.allPlays ?? []
+
+    const hits: BackfilledHit[] = []
+    for (const play of plays) {
+      if (play?.matchup?.pitcher?.id !== pitcherId) continue
+      const event = String(play?.result?.event ?? '').toLowerCase()
+      if (!['single', 'double', 'triple', 'home run'].includes(event)) continue
+
+      const pitchEvents: any[] = (play?.playEvents ?? []).filter((e: any) => e?.isPitch)
+      const hitPitch = pitchEvents.find((e: any) => e?.details?.isInPlay) ?? pitchEvents[pitchEvents.length - 1]
+      const pitchType = hitPitch?.details?.type?.code
+      if (!pitchType || typeof hitPitch?.count?.balls !== 'number' || typeof hitPitch?.count?.strikes !== 'number') continue
+
+      hits.push({ pitchType, balls: hitPitch.count.balls, strikes: hitPitch.count.strikes })
+    }
+    return hits
+  } catch (err) {
+    console.error(`getPitcherHitsFromGameFeed failed (game ${gamePk}, pitcher ${pitcherId}):`, err)
+    return []
+  }
+})
+
 export const getPitcherSeasonStats = cache(async (
   playerId: number
 ): Promise<PitcherSeasonStats | null> => {
@@ -255,6 +337,9 @@ export const getPitcherSeasonStats = cache(async (
       hr_per_9: stats.homeRunsPer9 ?? '—',
       wins: stats.wins ?? 0,
       losses: stats.losses ?? 0,
+      runs: stats.runs ?? 0,
+      earnedRuns: stats.earnedRuns ?? 0,
+      hits: stats.hits ?? 0,
     }
   } catch (err) {
     console.error('Pitcher season stats fetch failed:', err)

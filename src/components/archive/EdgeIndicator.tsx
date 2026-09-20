@@ -14,6 +14,8 @@ type EdgeComponents = {
   park: number
   weather: number
   rest: number
+  pitcher_situational: number
+  offense_situational: number
 }
 
 export type FormResult = 'W' | 'L'
@@ -159,21 +161,38 @@ const FACTOR_META: Record<keyof EdgeComponents, { label: string; description: st
     description: 'Days of rest and travel load for both teams — fatigue compounds over a long homestand or road trip.',
     proTeaser: 'Days rest · road trip length · schedule density',
   },
+  pitcher_situational: {
+    label: 'Pitcher situational',
+    description: 'How each starter handles specific game states — fading (or not) as the lineup turns over, first-pitch strike command, and what they actually throw once they\'re ahead in the count.',
+    proTeaser: 'Times-through-order wOBA trend · first-pitch strike% · 2-strike pitch selection',
+  },
+  offense_situational: {
+    label: 'Offense situational',
+    description: 'How each lineup performs in the moments that decide games — hitting with runners in scoring position, converting opportunities instead of stranding them, and staying disciplined once behind in the count.',
+    proTeaser: 'RISP OPS/AVG · left-on-base% · chase rate & K% behind in count',
+  },
 }
 
 const FACTOR_ORDER: (keyof EdgeComponents)[] = [
   'starting_pitcher', 'bullpen', 'offense', 'defense',
   'matchup', 'park', 'weather', 'rest',
+  'pitcher_situational', 'offense_situational',
 ]
 
 const RADAR_LABELS: Record<keyof EdgeComponents, string> = {
   starting_pitcher: 'SP', bullpen: 'Pen', offense: 'Off', defense: 'Def',
   matchup: 'Mtch', park: 'Park', weather: 'Wx', rest: 'Rest',
+  pitcher_situational: 'P-Sit', offense_situational: 'O-Sit',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toPct(score: number, forHome: boolean): number {
+  // Defensive against older stored predictions computed before this
+  // component existed (e.g. pitcher_situational/offense_situational on a
+  // pre-V7 row) — real value just hasn't been computed for that row yet,
+  // treat as neutral rather than propagating NaN into the SVG.
+  if (score == null || Number.isNaN(score)) return 50
   if (score === 0) return 50
   const abs     = Math.abs(score)
   const winning = Math.min(97, 50 + abs * 0.55)
@@ -279,6 +298,8 @@ function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLean
     park: 'park factor tilt',
     weather: 'weather conditions',
     rest: 'rest and travel edge',
+    pitcher_situational: 'situational pitching edge',
+    offense_situational: 'situational hitting edge',
   }
 
   const factors = topFactors
@@ -289,8 +310,8 @@ function buildEdgeSummary(components: EdgeComponents, winner: string, winnerLean
     .map(k => phrases[k] ?? FACTOR_META[k].label)
 
   const headlines: Record<string, string> = {
-    strong:   `${winnerLeans} of 8 factors clearly favour ${winner}`,
-    moderate: `${winnerLeans} of 8 factors lean ${winner}`,
+    strong:   `${winnerLeans} of ${FACTOR_ORDER.length} factors clearly favour ${winner}`,
+    moderate: `${winnerLeans} of ${FACTOR_ORDER.length} factors lean ${winner}`,
     slight:   `A slim lean toward ${winner}`,
     tossup:   'The data is split',
   }
@@ -649,8 +670,8 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
         label="Last game"
         away={daysSince(at?.last_game_date)}
         home={daysSince(ht?.last_game_date)}
-        awayBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && an > hn })()} 
-        homeBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && hn > an })()} 
+        awayBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && an > hn })()}
+        homeBetter={(() => { const an = daysSinceNum(at?.last_game_date); const hn = daysSinceNum(ht?.last_game_date); return an != null && hn != null && hn > an })()}
         note="more rest = fresher"
       />
       <SR label="Games (last 10 days)" note="schedule density" away={at?.games_last_10_days != null ? String(at.games_last_10_days) : '–'} home={ht?.games_last_10_days != null ? String(ht.games_last_10_days) : '–'} awayBetter={lo(at?.games_last_10_days, ht?.games_last_10_days)} homeBetter={lo(ht?.games_last_10_days, at?.games_last_10_days)} />
@@ -658,6 +679,57 @@ function ProDrillDown({ factorKey, raw, awayAbbr, homeAbbr, awayColor, homeColor
       <DrillSection title="Travel (away team)" />
       <SR label="Road trip games" note="consecutive away" away={at?.consecutive_road_games != null ? `${at.consecutive_road_games}g` : '–'} home="Home" awayBetter={false} homeBetter={(at?.consecutive_road_games ?? 0) >= 4} />
       <SR label="Miles (last trip)" note="away team" away={at?.travel_miles_last != null && at.travel_miles_last > 0 ? `${Math.round(at.travel_miles_last).toLocaleString()} mi` : '–'} home="Home" />
+    </div>
+  )
+
+  if (factorKey === 'pitcher_situational') {
+    function bestTwoStrikePitch(mix: any): { name: string; two_strike_pct: number } | null {
+      if (!mix) return null
+      const entries = Object.values(mix) as { name: string; two_strike_pct: number }[]
+      if (entries.length === 0) return null
+      return [...entries].sort((a, b) => (b.two_strike_pct ?? 0) - (a.two_strike_pct ?? 0))[0]
+    }
+    const aBest = bestTwoStrikePitch(ap?.two_strike_mix)
+    const hBest = bestTwoStrikePitch(hp?.two_strike_mix)
+    return (
+      <div>
+        <DrillSection title="Times through the order (wOBA against)" />
+        <SR label="1st time" away={f2(ap?.tto1_woba)} home={f2(hp?.tto1_woba)} awayBetter={lo(ap?.tto1_woba, hp?.tto1_woba)} homeBetter={lo(hp?.tto1_woba, ap?.tto1_woba)} />
+        <SR label="2nd time" away={f2(ap?.tto2_woba)} home={f2(hp?.tto2_woba)} awayBetter={lo(ap?.tto2_woba, hp?.tto2_woba)} homeBetter={lo(hp?.tto2_woba, ap?.tto2_woba)} />
+        <SR label="3rd time" note="fade risk" away={f2(ap?.tto3_woba)} home={f2(hp?.tto3_woba)} awayBetter={lo(ap?.tto3_woba, hp?.tto3_woba)} homeBetter={lo(hp?.tto3_woba, ap?.tto3_woba)} />
+        <SR label="Verified?" note="self-reconciled vs real batters faced" away={ap?.tto_verified_at ? '✓ verified' : '– not yet'} home={hp?.tto_verified_at ? '✓ verified' : '– not yet'} />
+        <DrillSection title="0-0 count" />
+        <SR label="First-pitch strike%" away={pct(ap?.first_pitch_strike_pct)} home={pct(hp?.first_pitch_strike_pct)} awayBetter={hi(ap?.first_pitch_strike_pct, hp?.first_pitch_strike_pct)} homeBetter={hi(hp?.first_pitch_strike_pct, ap?.first_pitch_strike_pct)} />
+        <DrillSection title="Ahead in the count" />
+        <SR
+          label="Most-thrown at 2 strikes"
+          away={aBest ? `${aBest.name} ${pct(aBest.two_strike_pct)}` : '–'}
+          home={hBest ? `${hBest.name} ${pct(hBest.two_strike_pct)}` : '–'}
+        />
+      </div>
+    )
+  }
+
+  if (factorKey === 'offense_situational') return (
+    <div>
+      <DrillSection title="Runners in scoring position" />
+      <SR
+        label="OPS with RISP"
+        away={f2(at?.ops_with_risp ?? at?.risp_ops)} home={f2(ht?.ops_with_risp ?? ht?.risp_ops)}
+        awayBetter={hi(at?.ops_with_risp ?? at?.risp_ops, ht?.ops_with_risp ?? ht?.risp_ops)}
+        homeBetter={hi(ht?.ops_with_risp ?? ht?.risp_ops, at?.ops_with_risp ?? at?.risp_ops)}
+      />
+      <SR
+        label="AVG with RISP"
+        away={f2(at?.ba_risp ?? at?.risp_avg ?? at?.avg_with_risp)} home={f2(ht?.ba_risp ?? ht?.risp_avg ?? ht?.avg_with_risp)}
+        awayBetter={hi(at?.ba_risp ?? at?.risp_avg ?? at?.avg_with_risp, ht?.ba_risp ?? ht?.risp_avg ?? ht?.avg_with_risp)}
+        homeBetter={hi(ht?.ba_risp ?? ht?.risp_avg ?? ht?.avg_with_risp, at?.ba_risp ?? at?.risp_avg ?? at?.avg_with_risp)}
+      />
+      <DrillSection title="Converting opportunities" />
+      <SR label="LOB%" note="lower = fewer runners stranded" away={pct(at?.lob_pct)} home={pct(ht?.lob_pct)} awayBetter={lo(at?.lob_pct, ht?.lob_pct)} homeBetter={lo(ht?.lob_pct, at?.lob_pct)} />
+      <DrillSection title="Discipline once behind in the count" />
+      <SR label="Chase rate" note="lower = better process" away={pct(at?.chase_rate)} home={pct(ht?.chase_rate)} awayBetter={lo(at?.chase_rate, ht?.chase_rate)} homeBetter={lo(ht?.chase_rate, at?.chase_rate)} />
+      <SR label="K%" note="lower = better" away={pct(at?.k_pct)} home={pct(ht?.k_pct)} awayBetter={lo(at?.k_pct, ht?.k_pct)} homeBetter={lo(ht?.k_pct, at?.k_pct)} />
     </div>
   )
 
@@ -677,7 +749,7 @@ function RadarChart({ components, homeAbbr, awayAbbr, awayColor, homeColor, size
   const RADIUS = 60; const LABEL_R = RADIUS + 18
 
   function spokePoint(i: number, r: number): [number, number] {
-    const a = (i / 8) * 2 * Math.PI - Math.PI / 2
+    const a = (i / FACTOR_ORDER.length) * 2 * Math.PI - Math.PI / 2
     return [CX + r * Math.cos(a), CY + r * Math.sin(a)]
   }
   function polygon(forHome: boolean): string {
@@ -1046,7 +1118,7 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Data factors lean</div>
           <div style={{ fontSize: 24, fontWeight: 500, color: winnerColor }}>
             {winnerLeans}
-            <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/8</span>
+            <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/{FACTOR_ORDER.length}</span>
             <span style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>{winner}</span>
           </div>
         </div>
@@ -1068,10 +1140,10 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
         </div>
       </div>
 
-      {/* Eight Factors · Shape — full-width standalone section */}
+      {/* Data Factors · Shape — full-width standalone section */}
       <div style={{ padding: '16px 16px 14px', borderBottom: '0.5px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888' }}>Eight Factors</div>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.08em', color: '#888' }}>Data Factors</div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Shape</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>

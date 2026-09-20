@@ -26,9 +26,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
-import { getSeriesTop3 } from '@/lib/series-matchup'
-import { getPitcherSeriesEdge } from '@/lib/pitcher-series-edge'
-import { rankKeyPlayers, buildKeyPlayersSnapshotRows, writeKeyPlayersSnapshot } from '@/lib/key-players'
+import { buildKeyPlayersSnapshotRows, writeKeyPlayersSnapshot } from '@/lib/key-players'
+import { computeTeamKeyPlayers } from '@/lib/key-players-pipeline'
+import { getParkFactor } from '@/lib/parks'
 import type { RecentFormContext } from '@/lib/key-players-narrative'
 
 export const dynamic = 'force-dynamic'
@@ -40,14 +40,14 @@ export const maxDuration = 800
 // row for today's date. Called once at the start of the run so we can skip
 // them without hitting the compute path at all.
 //
-// TABLE ASSUMPTION: key_players_snapshots has columns (game_pk, team_id,
-// game_date). Adjust the .select() / composite-key builder below if your
-// schema differs — those are the only two references in this file, both
-// in this one function.
+// TABLE: key_players_snapshot (singular — the same table writeKeyPlayersSnapshot
+// upserts into). This file used to query `key_players_snapshots` (plural),
+// which doesn't exist, so the freeze check silently failed open on every run
+// and recomputed/overwrote already-logged games every 30 minutes.
 async function fetchLoggedPairs(date: string): Promise<Set<string>> {
   const supa = createAdminClient()
   const { data, error } = await supa
-    .from('key_players_snapshots')
+    .from('key_players_snapshot')
     .select('game_pk, team_id')
     .eq('game_date', date)
 
@@ -67,21 +67,25 @@ async function fetchLoggedPairs(date: string): Promise<Set<string>> {
   return set
 }
 
-async function getFormMapForTeam(teamId: number, teamShortName: string): Promise<Map<number, RecentFormContext>> {
+async function getFormMapForTeam(teamId: number, teamShortName: string): Promise<Record<string, RecentFormContext>> {
   const supa = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
   const shortName = teamShortName.split(' ').slice(-1)[0]
   const { data } = await supa
     .from('player_form_signals')
-    .select('player_id, signal, metric, current_value')
+    .select('player_id, signal, metric, current_value, trend')
     .eq('computed_date', today)
     .eq('player_type', 'batter')
     .ilike('team_name', `%${shortName}%`)
 
-  const map = new Map<number, RecentFormContext>()
+  const map: Record<string, RecentFormContext> = {}
   for (const row of data ?? []) {
     if (row.signal !== 'heating' && row.signal !== 'cooling') continue
-    map.set(row.player_id, { signal: row.signal, metric: `${row.metric} ${row.current_value}` })
+    map[String(row.player_id)] = {
+      signal: row.signal,
+      metric: `${row.metric} ${row.current_value}`,
+      trend: Array.isArray(row.trend) ? row.trend.map(Number) : undefined,
+    }
   }
   return map
 }
@@ -91,7 +95,7 @@ async function getFormMapForTeam(teamId: number, teamShortName: string): Promise
 async function deleteLoggedPair(gamePk: number, teamId: number, date: string) {
   const supa = createAdminClient()
   const { error } = await supa
-    .from('key_players_snapshots')
+    .from('key_players_snapshot')
     .delete()
     .eq('game_pk', gamePk)
     .eq('team_id', teamId)
@@ -178,16 +182,18 @@ export async function GET(req: NextRequest) {
       }
 
       try {
-        const seriesResult = await getSeriesTop3(teamId, opposingTeamId, gameDateApi, game.gamePk)
-        const pitcherEdge = pitcher?.id
-          ? await getPitcherSeriesEdge(pitcher.id, pitcher.fullName ?? 'TBD', opposingTeamId, gameDateApi, game.gamePk)
-          : null
-
-        const ranked = rankKeyPlayers(seriesResult.batters, pitcherEdge)
+        const formMap = await getFormMapForTeam(teamId, teamName as string)
+        const park = game.venue?.name ? await getParkFactor(game.venue.name, Number(gameDateApi.slice(0, 4))) : null
+        const ranked = await computeTeamKeyPlayers({
+          game, teamId, opposingTeamId, gameDate: gameDateApi,
+          pitcher: pitcher?.id ? { id: pitcher.id, name: pitcher.fullName ?? 'TBD' } : null,
+          isHome: teamId === homeId,
+          formByPlayerId: formMap, park,
+        })
         if (ranked.length === 0) continue
 
-        const formMap = await getFormMapForTeam(teamId, teamName as string)
-        const rows = buildKeyPlayersSnapshotRows(game.gamePk, slug, gameDateApi, teamId, opposingTeamId, ranked, formMap)
+        const opposingPitcherId = ((teamId === homeId ? awayPitcher : homePitcher)?.id as number | undefined) ?? null
+        const rows = buildKeyPlayersSnapshotRows(game.gamePk, slug, gameDateApi, teamId, opposingTeamId, ranked, formMap, opposingPitcherId)
         const result = await writeKeyPlayersSnapshot(rows)
         written += result.written
         failed += result.failed

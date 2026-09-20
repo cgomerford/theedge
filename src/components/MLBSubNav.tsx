@@ -8,16 +8,19 @@
  * Designed to sit between SiteHeader and the page content.
  *
  * Real routes linked:
- *   /mlb              — Today's Reads (exists)
- *   /mlb/scores       — Live Scores (exists or stub)
+ *   /mlb              — Home (exists)
+ *   /mlb/scores       — Live Scores (exists)
+ *   /mlb/abs          — ABS Challenges (exists)
+ *   /mlb/stats        — Stats search (exists — /mlb/leaders now just redirects here)
+ *   /mlb/glossary     — Stats glossary (exists)
+ *   /mlb/pitching-lab — Pitching Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
+ *   /mlb/batting-lab  — Batting Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
  *   /track-record     — Past Games (exists)
  *   /fantasy          — Fantasy Desk (exists, Pro gated)
- *   /mlb/stats        — Stats & Leaders (new StatsHub page)
  *
- * NOT linked (don't exist yet):
- *   Player dashboards — build after Sep 9
- *   Leaderboards hub  — /mlb/stats covers this for now
- *   Stat dashboards   — future
+ * Kept identical to SiteHeader.tsx's MLB_SUB_LINKS (same hrefs, labels,
+ * order, pro flags) — the main header's MLB dropdown and this sub header
+ * must show the same links as each other. Update both together.
  */
 
 import Link from 'next/link'
@@ -31,11 +34,15 @@ type NavItem = {
 }
 
 const MLB_NAV: NavItem[] = [
-  { href: '/mlb',          label: "Today's Reads" },
-  { href: '/mlb/scores',   label: 'Scores'        },
-  { href: '/mlb/stats',    label: 'Stats'         },
-  { href: '/track-record', label: 'Track Record'  },
-  { href: '/fantasy',      label: 'Fantasy',  pro: true },
+  { href: '/mlb',              label: 'Home'          },
+  { href: '/mlb/scores',       label: 'Scores'        },
+  { href: '/mlb/abs',          label: 'ABS Challenges' },
+  { href: '/mlb/stats',        label: 'Stats'         },
+  { href: '/mlb/glossary',     label: 'Glossary'      },
+  { href: '/mlb/pitching-lab', label: 'Pitching Lab', pro: true },
+  { href: '/mlb/batting-lab',  label: 'Batting Lab',  pro: true },
+  { href: '/track-record',     label: 'Track Record'  },
+  { href: '/fantasy',          label: 'Fantasy',  pro: true },
 ]
 
 export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
@@ -66,7 +73,7 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
           align-items: center;
           gap: 6px;
           padding: 10px 16px;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Outfit', sans-serif;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
@@ -86,7 +93,7 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
           border-bottom-color: #FF5722;
         }
         .mlb-subnav-pro {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Outfit', sans-serif;
           font-size: 8px;
           font-weight: 700;
           letter-spacing: 0.08em;

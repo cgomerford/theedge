@@ -9,11 +9,19 @@ Pulls pitch-by-pitch Statcast data for a date range from Baseball Savant
                          97mph+ pitches" range leaderboard
   - batted_ball_events  every ball in play (a subset of pitches, filtered
                          to launch_speed not null), needed for the
-                         hardest-hit-balls and HR-by-distance boards
+                         hardest-hit-balls and HR-by-distance boards, and
+                         (with estimated_woba / woba_value / launch_speed_angle)
+                         the postgame "Hitters: drop-off or turning a corner?"
+                         last-15-games baselines
+
+TABLE OWNERSHIP: this script is the SINGLE writer of pitch_events and
+batted_ball_events. Do not write these tables from anywhere else.
 
 Usage:
     python3 scripts/fetch_statcast_events.py                     # yesterday only
     python3 scripts/fetch_statcast_events.py --start-date 2026-07-01 --end-date 2026-07-31
+    python3 scripts/fetch_statcast_events.py --start-date 2026-03-27 --end-date 2026-08-16 --batted-only
+        # --batted-only skips pitch_events (use it to re-fill new batted_ball_events columns)
 
 Designed to run as a daily GitHub Actions cron (yesterday's games), with
 manual backfill via --start-date/--end-date for historical ranges.
@@ -59,6 +67,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch Statcast pitch/batted-ball events into Supabase.")
     parser.add_argument("--start-date", type=str, default=None, help="YYYY-MM-DD, defaults to yesterday")
     parser.add_argument("--end-date", type=str, default=None, help="YYYY-MM-DD, defaults to yesterday")
+    parser.add_argument("--batted-only", action="store_true",
+                        help="Only write batted_ball_events (skip the much larger pitch_events table)")
     return parser.parse_args()
 
 
@@ -135,6 +145,11 @@ def build_batted_ball_events(df: pd.DataFrame) -> list[dict]:
             "launch_angle": float(r["launch_angle"]) if not pd.isna(r.get("launch_angle")) else None,
             "hit_distance_sc": float(r["hit_distance_sc"]) if not pd.isna(r.get("hit_distance_sc")) else None,
             "events": str(r["events"]),
+            # Column names verified against a live Savant CSV (2026-08-16). xwOBA / launch_speed_angle are
+            # blank on sac bunts (5 of 754 in that sample) - keep those as NULL, never 0.
+            "estimated_woba": float(r["estimated_woba_using_speedangle"]) if not pd.isna(r.get("estimated_woba_using_speedangle")) else None,
+            "woba_value": float(r["woba_value"]) if not pd.isna(r.get("woba_value")) else None,
+            "launch_speed_angle": int(r["launch_speed_angle"]) if not pd.isna(r.get("launch_speed_angle")) else None,
         })
     return rows
 
@@ -176,7 +191,7 @@ def main() -> None:
     if df is None:
         sys.exit(0)  # not an error — just nothing to do (off-day, etc.)
 
-    pitch_rows = build_pitch_events(df)
+    pitch_rows = [] if args.batted_only else build_pitch_events(df)
     batted_rows = build_batted_ball_events(df)
 
     if sanity_check_and_confirm("pitch_events", pitch_rows):

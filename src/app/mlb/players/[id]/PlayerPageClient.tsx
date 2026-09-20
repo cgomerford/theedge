@@ -12,6 +12,12 @@
 // plus full-width year-on-year sections underneath (traditional rate
 // stats, pitch-type mix, barrel%).
 //
+// SCOPE (2026-09): this is the BASIC stats page. Pitch-level / Statcast-deep
+// views (spray chart, hot zones, radar, pitch mix history, defense, Pro Lab
+// tabs) were removed from here and now live in the Batting Lab / Pitching Lab.
+// The page says so and deep-links there via LabCallout. Do not re-add
+// advanced views here — put them in the lab.
+//
 // Ownership after the merge:
 //   - identity, career yearByYear, draft/awards/transactions → server-side,
 //     already in `data` prop (getPlayerPageData, one hydrate call)
@@ -19,15 +25,11 @@
 //     client-side, /api/stats/gamelog, unchanged math (sums counts,
 //     doesn't average rates)
 //   - Statcast dials → fetched once here, feeds SignatureSummary,
-//     GradeBanner's season grade, StatsPercentilesRail, AND PlayerRadarChart
-//     — one fetch, four consumers, no duplication
-//   - year-on-year Statcast (pitch mix, barrels) → StatcastHistoryPanel,
-//     own client-side fetch to /api/player/statcast-history, ~20s cold
-//     cache confirmed, so it's non-blocking with its own skeleton
+//     GradeBanner's season grade, and StatsPercentilesRail — one fetch,
+//     three consumers, no duplication
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import ChartModal from '@/components/player/ChartModal'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import type { PlayerPageData } from '@/lib/player-page'
@@ -42,29 +44,26 @@ import { buildBatterSignature, buildPitcherSignature, buildBatterPercentileList,
 import type { BatterStatcastFull, PitcherStatcastFull } from '@/lib/player-statcast-full'
 import type { CareerSeasonRow } from '@/lib/lab'
 import type { LevelKey, LevelStatLine } from '@/lib/player-levels'
-import type { BatterSplits, BatterStatcast } from '@/lib/batter-stats'
-import type { FieldingStats, OutsAboveAverage } from '@/lib/batter-fielding'
-import type { PercentileStat } from '@/lib/pitcher-percentiles'
+import type { BatterSplits } from '@/lib/batter-stats'
+import { findTeamByName } from '@/lib/teams'
 import type { PitcherGameLog } from '@/lib/mlb'
 
-import IdentityStrip from '@/components/player/IdentityStrip'
 import SignatureSummary from '@/components/player/SignatureSummary'
 import GradeBanner from '@/components/player/GradeBanner'
 import MonthlyGradeStrip from '@/components/player/MonthlyGradeStrip'
-import ChartLabRail from '@/components/player/ChartLabRail'
 import StatsPercentilesRail from '@/components/player/StatsPercentilesRail'
-import PlayerRadarChart from '@/components/player/PlayerRadarChart'
 import BattingYearOnYear from '@/components/player/BattingYearOnYear'
-import StatcastHistoryPanel from '@/components/player/StatcastHistoryPanel'
 import LevelSelector from '@/components/stats/LevelSelector'
 import CareerStats from '@/components/stats/CareerTable'
-import DefensePanel from '@/components/stats/DefensePanel'
-import SprayChart from '@/components/SprayChart'
-import StrikeZoneHeatMap from '@/components/StrikeZoneHeatMap'
-import PitcherPercentileStrip from '@/components/stats/PitcherPercentileStrip'
 import LastFiveStarts from '@/components/stats/LastFiveStarts'
-import PitcherAdvancedLab from '@/components/PitcherAdvancedLab'
-import BatterAdvancedLab from '@/components/BatterAdvancedLab'
+import LabCallout from '@/components/player/LabCallout'
+import PlayerRadarChart from '@/components/player/PlayerRadarChart'
+import StatcastHistoryPanel from '@/components/player/StatcastHistoryPanel'
+import { SeasonStatsCard, PercentileRankingsCard } from '@/components/player/StatsPercentilesRail'
+import ProPanel from '@/components/profile/ProPanel'
+import ProfileTabs, { type ProfileTab } from '@/components/profile/ProfileTabs'
+import { Card, Foot, Tile, C, MONO, SANS, DISPLAY } from '@/components/team/ui'
+import { MLB_TEAMS } from '@/lib/teams'
 
 function headshotUrl(id: number) {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/w_300,q_100/v1/people/${id}/headshot/67/current`
@@ -391,7 +390,7 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
           />
         </div>
         <div>
-          <div className="font-serif text-sm font-bold text-stone-900 leading-tight">{playerName}</div>
+          <div className="font-sans text-sm font-bold text-stone-900 leading-tight">{playerName}</div>
           <div className="font-mono text-[9px] text-stone-400 uppercase tracking-widest">{teamAbbr} · Season Progression · ⊕ The Edge</div>
         </div>
       </div>
@@ -430,7 +429,7 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
             Expand ⤢
           </button>
         </div>
-        <p className="text-xs font-serif text-stone-400 italic mb-3 -mt-2">By game number, cumulative. Pick a stat and add any season to compare.</p>
+        <p className="text-xs font-sans text-stone-400 italic mb-3 -mt-2">By game number, cumulative. Pick a stat and add any season to compare.</p>
         {controls}
         {renderChart(220, chartRef)}
       </div>
@@ -483,7 +482,7 @@ function WindowCompareTab({
           const improving = delta !== null && (row.higherIsBetter ? delta > 0 : delta < 0)
           return (
             <div key={row.key} className="grid grid-cols-4 border-t border-stone-200 font-mono text-[13px]">
-              <div className="px-3 py-2.5 font-serif italic text-stone-600 bg-stone-50">{row.label}</div>
+              <div className="px-3 py-2.5 font-sans italic text-stone-600 bg-stone-50">{row.label}</div>
               <div className="px-3 py-2.5 text-right text-stone-500">
                 <div>{a != null ? row.format(a) : '—'}</div>
                 <div className="mt-1 flex justify-end"><HoverSparkline row={row} contextLabel={`First ${firstN.length} Games`} series={seriesFor(row, firstN, subject)} color="#a89e8c" /></div>
@@ -509,6 +508,63 @@ function WindowCompareTab({
   )
 }
 
+// Plain game-by-game table, newest first. Uses the same /api/stats/gamelog
+// rows the Form tab already loads — no extra fetch. Pitcher innings arrive as
+// decimal thirds (5.667), so they're converted back to baseball notation (5.2).
+function fmtIp(ip: number): string {
+  const outs = Math.round(ip * 3)
+  return `${Math.floor(outs / 3)}.${outs % 3}`
+}
+function fmtLogDate(d: string): string {
+  const m = d.match(/^\d{4}-(\d{2})-(\d{2})/)
+  return m ? `${Number(m[1])}/${Number(m[2])}` : d
+}
+
+function GameLogTab({ games, subject }: { games: (BatterGame | PitcherGame)[]; subject: 'batter' | 'pitcher' }) {
+  const [showAll, setShowAll] = useState(false)
+  if (games.length === 0) {
+    return <p className="text-xs font-sans italic text-stone-400 py-6 text-center">No games logged yet this season.</p>
+  }
+  const newestFirst = [...games].reverse()
+  const visible = showAll ? newestFirst : newestFirst.slice(0, 15)
+  const cols = subject === 'batter'
+    ? ['AB', 'H', 'HR', 'RBI', 'BB', 'SO', 'SB']
+    : ['IP', 'H', 'ER', 'BB', 'SO', 'HR']
+  const cells = (g: BatterGame | PitcherGame): (string | number)[] => subject === 'batter'
+    ? (() => { const b = g as BatterGame; return [b.ab, b.h, b.hr, b.rbi, b.bb, b.so, b.sb] })()
+    : (() => { const p = g as PitcherGame; return [fmtIp(p.ip), p.h, p.er, p.bb, p.so, p.hr] })()
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full font-mono text-[12px]">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-widest text-stone-400 border-b border-stone-200">
+              <th className="py-2 pr-3 font-normal">Date</th>
+              <th className="py-2 pr-3 font-normal">Opp</th>
+              {cols.map(c => <th key={c} className="py-2 px-2 font-normal text-right">{c}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((g, i) => (
+              <tr key={`${g.date}-${i}`} className="border-b border-stone-100 last:border-0">
+                <td className="py-1.5 pr-3 text-stone-500">{fmtLogDate(g.date)}</td>
+                <td className="py-1.5 pr-3 text-stone-800">{g.isHome ? 'vs' : '@'} {findTeamByName(g.opponent)?.abbrev ?? g.opponent}</td>
+                {cells(g).map((v, j) => <td key={j} className="py-1.5 px-2 text-right text-stone-900">{v}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {newestFirst.length > 15 && (
+        <button onClick={() => setShowAll(a => !a)} className="mt-3 font-mono text-[10px] uppercase tracking-widest text-orange-600 hover:text-orange-700">
+          {showAll ? '− Show recent 15' : `+ Show all ${newestFirst.length} games`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function BioTab({ data }: { data: PlayerPageData }) {
   const { draft, schools, awards, transactions } = data
   return (
@@ -516,7 +572,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
       {draft && (
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Draft</p>
-          <p className="font-serif text-sm text-stone-800">
+          <p className="font-sans text-sm text-stone-800">
             {draft.year} · Round {draft.round}{draft.pickNumber ? `, Pick ${draft.pickNumber}` : ''}{draft.team ? ` — ${draft.team}` : ''}
           </p>
         </div>
@@ -526,7 +582,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
           <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Education</p>
           <ul className="space-y-1">
             {schools.map((s, i) => (
-              <li key={i} className="font-serif text-sm text-stone-800">
+              <li key={i} className="font-sans text-sm text-stone-800">
                 {s.name}{s.city ? ` — ${s.city}${s.state ? `, ${s.state}` : ''}` : ''}
                 <span className="text-stone-400 text-xs ml-1">({s.type === 'highschool' ? 'HS' : 'College'})</span>
               </li>
@@ -538,9 +594,9 @@ function BioTab({ data }: { data: PlayerPageData }) {
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Awards</p>
           <ul className="space-y-1.5">
-            {awards.map(a => (
-              <li key={a.id} className="flex items-center justify-between border-b border-stone-50 pb-1.5 last:border-0">
-                <span className="font-serif text-sm text-stone-800">{a.name}</span>
+            {awards.map((a, i) => (
+              <li key={`${a.id}-${a.season ?? a.date}-${i}`} className="flex items-center justify-between border-b border-stone-50 pb-1.5 last:border-0">
+                <span className="font-sans text-sm text-stone-800">{a.name}</span>
                 <span className="font-mono text-xs text-stone-400">{a.season ?? a.date}</span>
               </li>
             ))}
@@ -553,7 +609,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
           <ul className="space-y-1.5">
             {transactions.slice(0, 8).map(t => (
               <li key={t.id} className="border-b border-stone-50 pb-1.5 last:border-0">
-                <span className="font-serif text-sm text-stone-800">{t.description}</span>
+                <span className="font-sans text-sm text-stone-800">{t.description}</span>
                 <span className="block font-mono text-[10px] text-stone-400">{t.date}</span>
               </li>
             ))}
@@ -561,7 +617,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
         </div>
       )}
       {!draft && schools.length === 0 && awards.length === 0 && transactions.length === 0 && (
-        <p className="text-xs font-serif italic text-stone-400 py-6 text-center">No bio details on record.</p>
+        <p className="text-xs font-sans italic text-stone-400 py-6 text-center">No bio details on record.</p>
       )}
     </div>
   )
@@ -569,13 +625,18 @@ function BioTab({ data }: { data: PlayerPageData }) {
 
 // NOTE: 'window' removed as its own section — Custom Window is now folded
 // into the Form tab, per the wireframe.
-type BatterSection = 'career' | 'form' | 'spray' | 'zones' | 'advanced' | 'defense' | 'lab' | 'bio'
-type PitcherSection = 'career' | 'form' | 'percentiles' | 'starts' | 'lab' | 'bio'
+type BatterSection = 'career' | 'form' | 'log' | 'bio'
+type PitcherSection = 'career' | 'form' | 'starts' | 'log' | 'bio'
 
-export default function PlayerPageClient({ data }: { data: PlayerPageData }) {
+export default function PlayerPageClient({ data, initialSection, isPro, trendsSlot }: { data: PlayerPageData; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
   const { identity } = data
   const subject: 'batter' | 'pitcher' = identity.isPitcher ? 'pitcher' : 'batter'
   const rows = subject === 'batter' ? BATTER_ROWS : PITCHER_ROWS
+  // Two-way players get a link to their other lab too — only when the MLB
+  // year-by-year data actually has rows for that side (no guessing from position).
+  const otherLab: 'batter' | 'pitcher' | null = subject === 'batter'
+    ? (data.yearByYearPitching.length > 0 ? 'pitcher' : null)
+    : (data.yearByYearHitting.length > 0 ? 'batter' : null)
   const teamColor = identity.currentTeam?.primaryColor ?? '#1A1A1A'
 
   const [games, setGames] = useState<(BatterGame | PitcherGame)[]>([])
@@ -589,18 +650,12 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   const [leaderboardPct, setLeaderboardPct] = useState<{ key: string; label: string; percentile: number | null }[]>([])
   const [careerSeasons, setCareerSeasons] = useState<CareerSeasonRow[]>([])
 
-  const [percentiles, setPercentiles] = useState<{ stats: PercentileStat[]; qualified: boolean } | null>(null)
   const [recentStarts, setRecentStarts] = useState<PitcherGameLog[]>([])
   const [batterSplits, setBatterSplits] = useState<BatterSplits | null>(null)
-  const [batterStatcast, setBatterStatcast] = useState<BatterStatcast | null>(null)
-  const [batterFielding, setBatterFielding] = useState<FieldingStats | null>(null)
-  const [batterOaa, setBatterOaa] = useState<OutsAboveAverage | null>(null)
 
   const [levelStats, setLevelStats] = useState<Partial<Record<LevelKey, LevelStatLine>>>({})
   const [activeLevel, setActiveLevel] = useState<LevelKey>('mlb')
 
-  const [section, setSection] = useState<BatterSection | PitcherSection>('career')
-  const [formExpanded, setFormExpanded] = useState(false)
 
   const cardRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
@@ -617,7 +672,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   }, [subject, identity.id])
 
   // Statcast dials — feeds SignatureSummary, GradeBanner's season grade,
-  // StatsPercentilesRail, AND PlayerRadarChart. One fetch, four consumers.
+  // and StatsPercentilesRail. One fetch, three consumers.
   useEffect(() => {
     let cancelled = false
     setSigLoading(true)
@@ -657,7 +712,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   }, [identity.id, identity.isPitcher, identity.primaryPosition.abbreviation])
 
   // Leaderboard percentiles — season grade's other half, also feeds
-  // StatsPercentilesRail and PlayerRadarChart
+  // StatsPercentilesRail
   useEffect(() => {
     let cancelled = false
     fetch(`/api/stats/percentile?playerId=${identity.id}&subject=${subject}&season=${new Date().getFullYear()}`)
@@ -676,7 +731,6 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   useEffect(() => {
     if (subject !== 'pitcher') return
     let cancelled = false
-    fetch(`/api/stats/pitcher-percentiles?playerId=${identity.id}&season=${new Date().getFullYear()}`).then(r => r.json()).then(json => { if (!cancelled) setPercentiles(json) }).catch(() => {})
     fetch(`/api/stats/pitcher-recent-starts?playerId=${identity.id}&limit=5`).then(r => r.json()).then(json => { if (!cancelled) setRecentStarts(json.starts ?? []) }).catch(() => {})
     return () => { cancelled = true }
   }, [subject, identity.id])
@@ -686,8 +740,6 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
     if (subject !== 'batter') return
     let cancelled = false
     fetch(`/api/batter-stats?playerId=${identity.id}&type=splits`).then(r => r.json()).then(j => { if (!cancelled) setBatterSplits(j ?? null) }).catch(() => {})
-    fetch(`/api/batter-stats?playerId=${identity.id}&type=statcast`).then(r => r.json()).then(j => { if (!cancelled) setBatterStatcast(j ?? null) }).catch(() => {})
-    fetch(`/api/stats/batter-fielding?playerId=${identity.id}&season=${new Date().getFullYear()}`).then(r => r.json()).then(j => { if (!cancelled) { setBatterFielding(j.fielding ?? null); setBatterOaa(j.oaa ?? null) } }).catch(() => {})
     return () => { cancelled = true }
   }, [subject, identity.id])
 
@@ -787,218 +839,216 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const batterTabs: { key: BatterSection; label: string }[] = [
-    { key: 'career', label: 'Career' }, { key: 'form', label: 'Form' },
-    { key: 'spray', label: 'Spray chart' }, { key: 'zones', label: 'Hot zones' },
-    { key: 'advanced', label: 'Total stats' }, { key: 'defense', label: 'Defense' },
-    { key: 'lab', label: 'Pro Lab' }, { key: 'bio', label: 'Bio' },
-  ]
-  const pitcherTabs: { key: PitcherSection; label: string }[] = [
-    { key: 'career', label: 'Career' }, { key: 'form', label: 'Form' },
-    { key: 'percentiles', label: 'Percentiles' }, { key: 'starts', label: 'Last 5 starts' },
-    { key: 'lab', label: 'Pro Lab' }, { key: 'bio', label: 'Bio' },
-  ]
-  const tabs = subject === 'batter' ? batterTabs : pitcherTabs
+  // Tab deep links: old links used ?tab=starts / spray / zones / advanced / defense.
+  // Map them onto the new tab ids instead of dropping people on the wrong tab.
+  const TAB_ALIAS: Record<string, string> = { starts: 'splits', percentiles: 'overview', spray: 'lab', zones: 'lab', advanced: 'statcast', defense: 'lab', fantasy: 'overview' }
+  const initialTab = initialSection ? (TAB_ALIAS[initialSection] ?? initialSection) : 'overview'
 
   const seasonStatRows = rows.map(row => ({
     key: row.key, label: row.label, value: seasonStats[row.key] != null ? row.format(seasonStats[row.key]!) : '—',
   }))
-const percentileRows = [
-  ...(subject === 'batter' ? buildBatterPercentileList(statcastRanks) : buildPitcherPercentileList(statcastRanks)),
-  ...leaderboardPct,
-]
-return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 pb-24">
-      <Link href="/stats" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 hover:text-[#FF5722] transition-colors">
-        ← All players
-      </Link>
+  const percentileRows = [
+    ...(subject === 'batter' ? buildBatterPercentileList(statcastRanks) : buildPitcherPercentileList(statcastRanks)),
+    ...leaderboardPct,
+  ]
 
-      {/* Row 1 — Identity (wide, with team logo) + Grade banner (narrow) */}
-      <div className="mt-4 grid grid-cols-1 lg:grid-cols-[260px_1fr_300px] gap-5 items-stretch">
-        <div className="lg:col-span-2">
-          <IdentityStrip identity={identity} />
+  // ── hero ──
+  const agg = subject === 'batter' ? aggregateBatting(games as BatterGame[]) : aggregatePitching(games as PitcherGame[])
+  const teamMeta = identity.currentTeam ? MLB_TEAMS.find(t => t.abbrev === identity.currentTeam!.abbr) : undefined
+  const on = teamMeta?.text_on_primary ?? '#FFFFFF'
+  const r3 = (v: number | null) => (v == null ? '—' : v.toFixed(3).replace(/^0/, ''))
+  const heroTiles: [string, string, string?][] = gamesLoading ? [] : subject === 'batter'
+    ? (() => { const a = agg as ReturnType<typeof aggregateBatting>; return [['AVG', r3(a.avg)], ['OBP', r3(a.obp)], ['SLG', r3(a.slg)], ['OPS', r3(a.ops)], ['HR', String(a.hr)], ['RBI', String(a.rbi)], ['SB', String(a.sb)]] as [string, string][] })()
+    : (() => { const a = agg as ReturnType<typeof aggregatePitching>; return [['ERA', a.era != null ? a.era.toFixed(2) : '—'], ['WHIP', a.whip != null ? a.whip.toFixed(2) : '—'], ['K/9', a.k9 != null ? a.k9.toFixed(1) : '—'], ['BB/9', a.bb9 != null ? a.bb9.toFixed(1) : '—'], ['IP', a.ip.toFixed(0)], ['SO', String(a.so)]] as [string, string][] })()
+  const bio = [
+    identity.primaryPosition.name,
+    subject === 'batter' ? (identity.batSide ? `Bats ${identity.batSide}` : null) : (identity.pitchHand ? `Throws ${identity.pitchHand}` : null),
+    identity.currentAge ? `Age ${identity.currentAge}` : null,
+    identity.height ? `${identity.height}${identity.weight ? ` · ${identity.weight} lb` : ''}` : null,
+  ].filter(Boolean).join(' · ')
+
+  const CSS = `
+.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-outfit),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
+.pl-grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+.pl-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pl-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.pl-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+@media (max-width:900px){.pl-grid,.pl-grid-2,.pl-grid-3{grid-template-columns:1fr}}
+`
+
+  const loadingNote = <p style={{ fontFamily: SANS, fontSize: 12, color: C.faint, fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>Loading the season game log…</p>
+
+  // ── tab bodies ──
+  const overview = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <SignatureSummary dials={dials} oneLine={oneLine} loading={sigLoading} />
+      <div className="pl-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <GradeBanner seasonGrade={seasonGrade} careerGrade={careerGrade} teamColor={teamColor} />
+          <SeasonStatsCard seasonStatRows={seasonStatRows} />
         </div>
-        <GradeBanner seasonGrade={seasonGrade} careerGrade={careerGrade} teamColor={teamColor} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <PercentileRankingsCard percentileRows={percentileRows} season={new Date().getFullYear()} />
+          <SeasonProgressionCard playerId={identity.id} playerName={identity.fullName} teamAbbr={identity.currentTeam?.abbr ?? ''} subject={subject} color={teamColor} currentSeasonGames={games} />
+        </div>
       </div>
+      <MonthlyGradeStrip months={monthlyGrades} />
+      <Foot>Percentiles compare {identity.fullName.split(' ').slice(-1)[0]} with every qualified MLB {subject === 'batter' ? 'hitter' : 'pitcher'} this season. Want the pitch-level picture? See the Lab tab.</Foot>
+    </div>
+  )
 
-      <div className="mt-5">
-        <SignatureSummary dials={dials} oneLine={oneLine} loading={sigLoading} />
-      </div>
+  const formTab = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {subject === 'batter' && (
+        <Card title="Recent form" note="rolling windows">
+          {batterSplits ? (
+            <div className="pl-tiles">
+              {[{ l: 'Last 7', d: batterSplits.last_7 }, { l: 'Last 14', d: batterSplits.last_14 }, { l: 'Last 30', d: batterSplits.last_30 }].map(w => (
+                <Tile key={w.l} label={w.l} value={String(w.d?.ops ?? '—')} sub={`OPS · AVG ${w.d?.avg ?? '—'}`} />
+              ))}
+            </div>
+          ) : <p style={{ fontSize: 12, color: C.faint, fontStyle: 'italic', margin: 0 }}>Loading…</p>}
+        </Card>
+      )}
+      <Card title="Last games vs the season" note="pick a window">
+        {games.length === 0 ? loadingNote : <WindowCompareTab games={games} subject={subject} rows={rows} windowSize={windowSize} setWindowSize={setWindowSize} color={teamColor} />}
+      </Card>
+    </div>
+  )
 
-      <div className="mt-5">
+  const splitsTab = subject === 'batter' ? (
+    <div className="pl-grid-2">
+      {([['vs left-handed pitching', batterSplits?.vs_lhp], ['vs right-handed pitching', batterSplits?.vs_rhp]] as const).map(([label, sp]) => (
+        <Card key={label} title={label}>
+          {!sp ? <p style={{ fontSize: 12, color: C.faint, fontStyle: 'italic', margin: 0 }}>{batterSplits ? 'No plate appearances in this split.' : 'Loading…'}</p> : (
+            <>
+              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 40, lineHeight: 1.1, color: C.ink }}>{sp.ops}</div>
+              <div style={{ fontFamily: MONO, fontSize: 10, color: C.faint, margin: '2px 0 12px' }}>OPS · {sp.pa} PA</div>
+              <div style={{ height: 8, background: C.soft, borderRadius: 4 }}><div style={{ width: `${Math.min((Number(sp.ops) / 1.1) * 100, 100)}%`, height: '100%', background: teamColor, borderRadius: 4 }} /></div>
+              <div style={{ fontFamily: MONO, fontSize: 12, color: C.ink, marginTop: 10 }}>{sp.avg} / {sp.obp} / {sp.slg}</div>
+            </>
+          )}
+        </Card>
+      ))}
+    </div>
+  ) : (
+    <LastFiveStarts starts={recentStarts} />
+  )
+
+  const careerTab = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
         <LevelSelector available={levelStats} activeLevel={activeLevel} onSelect={setActiveLevel} />
         {activeLevel !== 'mlb' && (
-          <div className="border border-amber-300 bg-amber-50 rounded-lg p-3 mb-2">
-            <p className="text-xs font-serif text-amber-800">
-              Viewing <b>{levelStats[activeLevel]?.teamName}</b> ({levelStats[activeLevel]?.leagueName}) — {levelStats[activeLevel]?.gamesPlayed} games.
-              Spray chart, hot zones, and advanced Statcast metrics aren't available below MLB — Savant has no minor-league tracking data.
+          <div style={{ border: '1px solid #f5d98b', background: '#FFF8E1', borderRadius: 10, padding: 12, marginTop: 8 }}>
+            <p style={{ fontSize: 12, color: '#7a5a00', margin: 0 }}>
+              Viewing <b>{levelStats[activeLevel]?.teamName}</b> ({levelStats[activeLevel]?.leagueName}) — {levelStats[activeLevel]?.gamesPlayed} games. Statcast-based percentiles and grades are MLB-only — Savant has no minor-league tracking data.
             </p>
           </div>
         )}
       </div>
+      <Card title="Career"><CareerStats seasons={careerSeasons} subject={subject} playerId={identity.id} /></Card>
+      <BattingYearOnYear rows={subject === 'batter' ? data.yearByYearHitting : data.yearByYearPitching} isPitcher={identity.isPitcher} />
+    </div>
+  )
 
-      {gamesLoading && <p className="font-mono text-sm text-stone-400 mt-6">Loading game log…</p>}
+  const logTab = <Card title="Game log" note="this season">{gamesLoading ? loadingNote : <GameLogTab games={games} subject={subject} />}</Card>
+  const bioTab = <Card title="Bio"><BioTab data={data} /></Card>
 
-      {!gamesLoading && (
-        <>
-          {/* Row 2 — Stats/percentile rail (narrow) · Tab engine + Month-by-month + Chart Lab (wide) · Season Progression + Radar (narrow) */}
-          {/* REBALANCED 2026-08: Month-by-month and Chart Lab moved from the
-              right rail into the middle column, below the tab panel — fills
-              the height gap that opened up when the Career tab (short) sat
-              next to a right rail stacking 4 cards (tall). Also gives the
-              month table more width, which it needed anyway. */}
-          <div className="mt-5 grid grid-cols-1 lg:grid-cols-[260px_1fr_300px] gap-5 items-start">
-            <StatsPercentilesRail seasonStatRows={seasonStatRows} percentileRows={percentileRows} />
+  // Pro tabs: for non-Pro the body is a locked card and NOTHING inside is
+  // constructed (StatcastHistoryPanel would fetch on mount) — children only
+  // exist on the isPro branch.
+  const statcastTab = (
+    <ProPanel
+      isPro={isPro} defaultOpen title="Statcast trends"
+      blurb="How he is trending against himself: rolling contact quality, plate discipline, pitch mix and more."
+      features={subject === 'batter'
+        ? ['Rolling xwOBA, hard-hit % and barrel % across the season', 'Chase, whiff, walk and strikeout trends', 'Pull / center / oppo mix over time, and exit velocity this season vs last', 'A "turning a corner" dial — the same read as the Pro postgame check', 'Toggles for vs LHP / RHP and day / night']
+        : ['Velocity and whiff by pitch, outing by outing', 'Hard-hit, barrel, zone and chase trends', 'Pitch usage over time, plus ERA, FIP and xwOBA against', 'A "concern dial" on recent velocity, put-away pitch and hard-hit spikes']}
+    >
+      {isPro ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* own wrapper: a server-rendered element among sibling children trips React's dev-only key check */}
+          <div>{trendsSlot}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, marginTop: 8 }}>Season over season</div>
+          <StatcastHistoryPanel playerId={identity.id} subject={subject} color={teamColor} />
+          <PlayerRadarChart dials={dials} leaderboardPercentiles={leaderboardPct} color={teamColor} />
+        </div>
+      ) : null}
+    </ProPanel>
+  )
 
-            <div className="space-y-5">
-              <div>
-                <div className="rounded-t-xl overflow-hidden" style={{ background: '#1A1A1A' }}>
-                  <div className="flex flex-wrap">
-                    {tabs.map(t => {
-                      const isActive = section === t.key
-                      return (
-                        <button
-                          key={t.key}
-                          onClick={() => setSection(t.key)}
-                          className="flex-1 flex items-center justify-center py-3 transition-colors relative min-w-[90px]"
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: 700,
-                            letterSpacing: '0.06em', textTransform: 'uppercase',
-                            color: isActive ? '#FF5722' : 'rgba(250,248,243,0.4)',
-                            background: 'transparent', border: 'none', cursor: 'pointer',
-                          }}
-                        >
-                          {t.label}
-                          {isActive && <span className="absolute bottom-0 left-0 right-0" style={{ height: '2px', background: '#FF5722' }} />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+  const labTab = (
+    <ProPanel
+      isPro={isPro} defaultOpen title={subject === 'batter' ? 'Batting Lab' : 'Pitching Lab'}
+      blurb="Pitch-by-pitch detail lives in the lab — this page stays the simple version."
+      features={subject === 'batter'
+        ? ['Results against every pitch type, and where he does damage', 'Zone heat maps by pitch type and spray charts', 'How pitchers sequence him, and career head-to-head vs pitchers']
+        : ['Every pitch in the arsenal: velocity, movement, usage, results', 'Location maps, count tendencies and sequencing', 'Hot-zone overlays and career head-to-head vs hitters']}
+      labHref={`/mlb/${subject === 'batter' ? 'batting' : 'pitching'}-lab/${identity.id}`}
+      labLabel={`Open the ${subject === 'batter' ? 'Batting' : 'Pitching'} Lab`}
+      showLabLinkWhenOpen={false}
+    >
+      {isPro ? <LabCallout playerId={identity.id} playerName={identity.fullName} subject={subject} variant="full" otherLab={otherLab} /> : null}
+    </ProPanel>
+  )
 
-                <motion.div
-                  key={section}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-white border border-stone-200 border-t-0 rounded-b-xl p-5"
-                >
-                  {section === 'career' && <CareerStats seasons={careerSeasons} subject={subject} playerId={identity.id} />}
+  const tabs: ProfileTab[] = [
+    { id: 'overview', label: 'Overview', content: overview },
+    { id: 'form', label: 'Form', content: formTab },
+    { id: 'splits', label: subject === 'batter' ? 'Splits' : 'Starts', content: splitsTab },
+    { id: 'career', label: 'Career', content: careerTab },
+    { id: 'log', label: 'Game log', content: logTab },
+    { id: 'bio', label: 'Bio', content: bioTab },
+    { id: 'statcast', label: 'Statcast trends', pro: true, content: statcastTab },
+    { id: 'lab', label: subject === 'batter' ? 'Batting Lab' : 'Pitching Lab', pro: true, content: labTab },
+  ]
 
-                  {subject === 'batter' && section === 'form' && (
-                    <div className="space-y-5">
-                      {batterSplits ? (
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold">Recent form</p>
-                            <button onClick={() => setFormExpanded(e => !e)} className="font-mono text-[9px] uppercase tracking-widest text-stone-400 hover:text-stone-900 transition">
-                              {formExpanded ? 'Hide vs handedness' : 'vs LHP/RHP →'}
-                            </button>
-                          </div>
-                          <div className="flex gap-8 mb-2">
-                            {[{ l: 'L7', d: batterSplits.last_7 }, { l: 'L14', d: batterSplits.last_14 }, { l: 'L30', d: batterSplits.last_30 }].map(w => (
-                              <div key={w.l}>
-                                <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-1">{w.l}</div>
-                                <div className="flex gap-3 text-xs font-mono">
-                                  <span className="text-stone-500">AVG <b className="text-stone-900">{w.d?.avg ?? '—'}</b></span>
-                                  <span className="text-stone-500">OPS <b className="text-stone-900">{w.d?.ops ?? '—'}</b></span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {formExpanded && (
-                            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-stone-100">
-                              {batterSplits.vs_lhp && (
-                                <div className="bg-stone-50 rounded-lg p-3">
-                                  <p className="text-[9px] font-mono uppercase text-stone-400 mb-1">vs LHP</p>
-                                  <p className="text-sm font-mono font-bold text-stone-900">{batterSplits.vs_lhp.ops} OPS</p>
-                                  <p className="text-[10px] font-mono text-stone-500">{batterSplits.vs_lhp.avg} / {batterSplits.vs_lhp.obp} / {batterSplits.vs_lhp.slg} · {batterSplits.vs_lhp.pa} PA</p>
-                                </div>
-                              )}
-                              {batterSplits.vs_rhp && (
-                                <div className="bg-stone-50 rounded-lg p-3">
-                                  <p className="text-[9px] font-mono uppercase text-stone-400 mb-1">vs RHP</p>
-                                  <p className="text-sm font-mono font-bold text-stone-900">{batterSplits.vs_rhp.ops} OPS</p>
-                                  <p className="text-[10px] font-mono text-stone-500">{batterSplits.vs_rhp.avg} / {batterSplits.vs_rhp.obp} / {batterSplits.vs_rhp.slg} · {batterSplits.vs_rhp.pa} PA</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : <p className="text-xs font-serif italic text-stone-400 py-2">Loading…</p>}
+  return (
+    <div className="tp-root" style={{ background: C.cream, fontFamily: SANS }}>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '24px 24px 80px' }}>
+        <div style={{ marginBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <Link href="/stats" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.orange, textDecoration: 'none' }}>← All players</Link>
+          {teamMeta && <Link href={`/mlb/teams/${teamMeta.slug}`} style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.ink, textDecoration: 'none' }}>{teamMeta.name} →</Link>}
+        </div>
 
-                      <div className="pt-5 border-t border-stone-100">
-                        <WindowCompareTab games={games} subject={subject} rows={rows} windowSize={windowSize} setWindowSize={setWindowSize} color={teamColor} />
-                      </div>
-                    </div>
-                  )}
-
-                  {subject === 'pitcher' && section === 'form' && (
-                    <WindowCompareTab games={games} subject={subject} rows={rows} windowSize={windowSize} setWindowSize={setWindowSize} color={teamColor} />
-                  )}
-
-                  {subject === 'batter' && section === 'advanced' && (
-                    batterStatcast ? (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          { label: 'xBA', value: batterStatcast.xba }, { label: 'xSLG', value: batterStatcast.xslg },
-                          { label: 'xwOBA', value: batterStatcast.xwoba }, { label: 'Barrel%', value: batterStatcast.barrel_pct },
-                          { label: 'Hard-hit%', value: batterStatcast.hard_hit_pct }, { label: 'Sweet spot%', value: batterStatcast.sweet_spot_pct },
-                          { label: 'Avg EV', value: batterStatcast.avg_exit_velocity }, { label: 'Max EV', value: batterStatcast.max_exit_velocity },
-                        ].map(s => (
-                          <div key={s.label}>
-                            <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">{s.label}</div>
-                            <div className="text-sm font-mono font-bold text-stone-900">{s.value != null ? s.value.toFixed(3).replace(/^0\./, '.') : '—'}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : <p className="text-xs font-serif italic text-stone-400 py-2">Loading…</p>
-                  )}
-
-                  {subject === 'batter' && section === 'spray' && (
-                    <SprayChart playerId={identity.id} playerName={identity.fullName} stand={identity.batSide === 'S' ? null : identity.batSide} isPro={true} />
-                  )}
-                  {subject === 'batter' && section === 'zones' && (
-                    <StrikeZoneHeatMap playerId={identity.id} playerName={identity.fullName} stand={identity.batSide === 'S' ? null : identity.batSide} isPro={true} />
-                  )}
-                  {subject === 'batter' && section === 'defense' && <DefensePanel fielding={batterFielding} oaa={batterOaa} />}
-                  {subject === 'batter' && section === 'lab' && <BatterAdvancedLab batterId={identity.id} />}
-                  {section === 'bio' && <BioTab data={data} />}
-
-                  {subject === 'pitcher' && section === 'percentiles' && percentiles && (
-                    <PitcherPercentileStrip stats={percentiles.stats} qualified={percentiles.qualified} />
-                  )}
-                  {subject === 'pitcher' && section === 'starts' && <LastFiveStarts starts={recentStarts} />}
-                  {subject === 'pitcher' && section === 'lab' && <PitcherAdvancedLab pitcherId={identity.id} />}
-                </motion.div>
+        {/* Hero */}
+        <div style={{ background: teamColor, borderRadius: 16, padding: '28px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={headshotUrl(identity.id)} alt={identity.fullName} referrerPolicy="no-referrer" style={{ width: 104, height: 104, borderRadius: '50%', objectFit: 'cover', background: '#F4F1EA', border: '4px solid #fff', flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.yellow, marginBottom: 6 }}>
+                ⊕ Player profile{identity.currentTeam ? ` · ${identity.currentTeam.abbr}` : ''}{identity.primaryNumber ? ` · #${identity.primaryNumber}` : ''}
               </div>
-
-              <MonthlyGradeStrip months={monthlyGrades} />
-              <ChartLabRail playerId={identity.id} isPitcher={identity.isPitcher} />
-            </div>
-
-            <div className="space-y-5">
-           <SeasonProgressionCard
-  playerId={identity.id}
-  playerName={identity.fullName}
-  teamAbbr={identity.currentTeam?.abbr ?? ''}
-  subject={subject}
-  color={teamColor}
-  currentSeasonGames={games}
-/>
-              <PlayerRadarChart dials={dials} leaderboardPercentiles={leaderboardPct} color={teamColor} />
+              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, letterSpacing: '-.02em', color: on }}>{identity.fullName}</div>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: on, opacity: 0.8, marginTop: 8 }}>{bio}</div>
             </div>
           </div>
+          {heroTiles.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px 34px', marginTop: 22 }}>
+              {heroTiles.map(([label, value]) => (
+                <div key={label}>
+                  <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '.14em', textTransform: 'uppercase', color: on, opacity: 0.6 }}>{label}</div>
+                  <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, lineHeight: 1.1, color: on }}>{value}</div>
+                </div>
+              ))}
+              <div style={{ fontFamily: MONO, fontSize: 9, color: on, opacity: 0.55, alignSelf: 'flex-end' }}>{new Date().getFullYear()} season · {agg.g} games</div>
+            </div>
+          )}
+          {oneLine && (
+            <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.2)', fontFamily: SANS, fontSize: 15, color: on, lineHeight: 1.5, maxWidth: 820 }}>{oneLine}</div>
+          )}
+        </div>
 
-          {/* Row 3 — full-width year-on-year sections */}
-          <div className="mt-5 space-y-5">
-            <BattingYearOnYear
-              rows={subject === 'batter' ? data.yearByYearHitting : data.yearByYearPitching}
-              isPitcher={identity.isPitcher}
-            />
-            <StatcastHistoryPanel playerId={identity.id} subject={subject} color={teamColor} />
-          </div>
+        <div style={{ marginTop: 14 }}>
+          <LabCallout playerId={identity.id} playerName={identity.fullName} subject={subject} variant="banner" otherLab={otherLab} />
+        </div>
 
+        <ProfileTabs tabs={tabs} initial={initialTab} />
+
+        <div style={{ marginTop: 32 }}>
           {games.length > 0 && (
             <>
               <div className="mt-8 mb-4">
@@ -1047,7 +1097,7 @@ return (
 
               {showReferralPrompt && (
                 <div className="border border-[#FF5722]/30 bg-[#FFF3E0] rounded-xl p-4 mb-8 text-center">
-                  <p className="font-serif text-sm text-stone-800 mb-2">Nice card. Invite 2 friends to The Edge and get a free month of Pro.</p>
+                  <p className="font-sans text-sm text-stone-800 mb-2">Nice card. Invite 2 friends to The Edge and get a free month of Pro.</p>
                   <Link href="/account/referrals" className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] hover:underline">Get your invite link →</Link>
                 </div>
               )}
@@ -1055,7 +1105,7 @@ return (
               {tweetText && (
                 <div className="border border-stone-200 bg-white rounded-xl shadow-sm p-5">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Suggested tweet</p>
-                  <p className="font-serif text-sm text-stone-800 mb-3">{tweetText}</p>
+                  <p className="font-sans text-sm text-stone-800 mb-3">{tweetText}</p>
                   <button onClick={copyTweet} className="font-mono text-[10px] uppercase tracking-widest bg-white border border-stone-300 px-3.5 py-2 rounded-lg hover:border-[#FF5722] hover:text-[#FF5722] transition">
                     {copied ? 'Copied ✓' : 'Copy tweet text'}
                   </button>
@@ -1063,8 +1113,9 @@ return (
               )}
             </>
           )}
-        </>
-      )}
+
+        </div>
+      </div>
     </div>
   )
 }

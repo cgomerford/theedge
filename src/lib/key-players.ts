@@ -15,7 +15,8 @@
 import { createAdminClient } from '@/lib/supabase'
 import type { Top3Batter } from '@/lib/series-matchup'
 import type { Top3Pitcher } from '@/lib/pitcher-series-edge'
-import { pickDrivingPitch, buildBatterNarrative, buildPitcherNarrative, buildStarterSummarySentence, type RecentFormContext } from '@/lib/key-players-narrative'
+import { pickDrivingPitch, bestBatterLine, buildBatterNarrative, buildPitcherNarrative, buildStarterSummarySentence, type RecentFormContext } from '@/lib/key-players-narrative'
+import type { MatchupFactor } from '@/lib/key-player-factors'
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type KeyPlayerCandidate =
@@ -68,21 +69,23 @@ export function buildKeyPlayersSnapshotRows(
   gameDate: string,
   teamId: number,
   opposingTeamId: number,
-  candidates: KeyPlayerCandidate[],
-  formByPlayerId: Map<number, RecentFormContext>,
+  candidates: (KeyPlayerCandidate & { factors?: MatchupFactor[] })[],
+  formByPlayerId: Record<string, RecentFormContext>,
+  opposingPitcherId: number | null = null,
 ): KeyPlayerSnapshotRow[] {
   return candidates.map((c, i) => {
     const rank = (i + 1) as 1 | 2 | 3
     const lean = leanFromScore(c.score)
+    const factors = c.factors ?? []
 
     if (c.kind === 'batter') {
-      const topLine = c.batter.per_pitcher[0] ?? null
-      const drivingPitch = topLine ? pickDrivingPitch(topLine.pitch_type_fit) : null
+      const topLine = bestBatterLine(c.batter)
+      const drivingPitch = topLine ? pickDrivingPitch(topLine.pitch_type_fit, 'batter') : null
       const zone = topLine ? [...topLine.zone_fit].sort((a, b) => b.tilt - a.tilt)[0]?.zone ?? null : null
-      const form = formByPlayerId.get(c.batter.player_id) ?? null
+      const form = formByPlayerId[String(c.batter.player_id)] ?? null
 
       const narrative = (topLine && drivingPitch && zone)
-        ? buildBatterNarrative(c.batter.player_name, topLine.pitcher_name, zone, drivingPitch, form, c.batter.bat_side)
+        ? buildBatterNarrative(c.batter.player_name, topLine.pitcher_name, zone, drivingPitch, form, c.batter.bat_side, topLine.pitch_type_fit)
         : null
 
       return {
@@ -96,7 +99,7 @@ export function buildKeyPlayersSnapshotRows(
           zone_score: topLine?.zone_score ?? null,
           pitch_type_fit_score: topLine?.pitch_type_fit_score ?? null,
           games_used: c.batter.games_used,
-     driving_pitch: drivingPitch?.pitch_name ?? null,
+          driving_pitch: drivingPitch?.pitch_name ?? null,
           driving_zone: zone,
           starter_summary: buildStarterSummarySentence(c.batter),
           per_starter: c.batter.per_pitcher.map((p) => ({
@@ -104,6 +107,9 @@ export function buildKeyPlayersSnapshotRows(
             combined_score: Math.round((p.zone_score + p.pitch_type_fit_score) * 100) / 100,
           })),
           bat_side: c.batter.bat_side,
+          factors,
+          focus_key: topLine ? String(topLine.pitcher_id) : null,
+          opposing_pitcher_id: opposingPitcherId,
           // FULL matchup options for the selector — not just the top one
           matchup_options: c.batter.per_pitcher.map((p) => ({
             key: String(p.pitcher_id),
@@ -117,9 +123,9 @@ export function buildKeyPlayersSnapshotRows(
       }
     }
     const tough = c.pitcher.toughest_matchup
-    const drivingPitch = tough ? pickDrivingPitch(tough.pitch_type_fit) : null
+    const drivingPitch = tough ? pickDrivingPitch(tough.pitch_type_fit, 'pitcher') : null
     const zone = tough ? [...tough.zone_fit].sort((a, b) => a.tilt - b.tilt)[0]?.zone ?? null : null // most negative = pitcher-favorable
-    const form = formByPlayerId.get(c.pitcher.pitcher_id) ?? null
+    const form = formByPlayerId[String(c.pitcher.pitcher_id)] ?? null
 
     const narrative = (tough && drivingPitch && zone)
       ? buildPitcherNarrative(c.pitcher.pitcher_name, tough.batter_name, zone, drivingPitch, drivingPitch.pitcher_usage_pct ?? 0, form, tough.bat_side)
@@ -130,7 +136,7 @@ export function buildKeyPlayersSnapshotRows(
       team_id: teamId, opposing_team_id: opposingTeamId, rank,
       player_type: 'pitcher', player_id: c.pitcher.pitcher_id, player_name: c.pitcher.pitcher_name,
       lean, narrative,
-reason_summary: {
+      reason_summary: {
         kind: 'pitcher',
         opposing_team_id: c.pitcher.opposing_team_id,
         toughest_matchup_batter_id: tough?.batter_id ?? null,
@@ -139,6 +145,8 @@ reason_summary: {
         batters_used: c.pitcher.batters_used,
         driving_pitch: drivingPitch?.pitch_name ?? null,
         driving_zone: zone,
+        factors,
+        focus_key: tough ? String(tough.batter_id) : null,
         // FULL matchup options — every projected lineup batter, not just the toughest
         matchup_options: c.pitcher.per_batter.map((b) => ({
           key: String(b.batter_id),

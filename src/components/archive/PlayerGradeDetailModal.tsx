@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import type { RosterPlayer } from '@/lib/lab'
 import type { PlayerGrade } from '@/lib/team-grades'
-import PercentileRing from './PercentileRing'
+import PercentileRing from '@/components/PercentileRing'
 
 function headshotUrl(personId: number): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${personId}/headshot/67/current`
@@ -98,6 +99,19 @@ export default function PlayerGradeDetailModal({
               </div>
             </>
           )}
+
+          {/* Hand-off: basic stats page first, then the advanced lab for this player type */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid #e7e2d8' }}>
+            <Link href={`/mlb/players/${player.id}`} style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none', fontWeight: 700 }}>
+              Full stats page →
+            </Link>
+            <Link
+              href={`/mlb/${player.primaryPosition === 'P' ? 'pitching' : 'batting'}-lab/${player.id}`}
+              style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#1A1A1A', textDecoration: 'none', fontWeight: 700 }}
+            >
+              {player.primaryPosition === 'P' ? 'Pitching' : 'Batting'} Lab →
+            </Link>
+          </div>
         </div>
       </div>
     </div>,

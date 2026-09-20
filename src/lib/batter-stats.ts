@@ -1,3 +1,5 @@
+import { MLB_TEAMS } from '@/lib/mlb-assets'
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // =====================================================
@@ -182,14 +184,23 @@ export async function getBatterSplits(
 // VS PITCHER (H2H) — MLB Stats API
 // =====================================================
 
+// 2026-09-17: was `cache: 'no-store'` with no request timeout — every
+// call hit MLB live with zero caching, and a stalled connection blocked
+// on undici's ~10s default connect timeout. Under series-matchup.ts's
+// concurrent per-batter-per-game fan-out (9 batters x N games x 2 teams)
+// that produced 20+ ECONNRESET/ConnectTimeoutError failures in one page
+// load (2026-09-08 dev log) and got this call site disabled entirely.
+// Fixed at the source instead of staying disabled: real caching (career
+// H2H between two specific players changes at most once a day, when they
+// actually face each other) plus a bounded timeout so one slow connection
+// can't stall the batch.
 export async function getBatterVsPitcher(
   batterId: number,
   pitcherId: number
 ): Promise<BatterVsPitcher | null> {
   try {
-    // src/lib/batter-stats.ts — getBatterVsPitcher
-const url = `${MLB_API}/people/${batterId}/stats?stats=vsPlayerTotal&group=hitting&opposingPlayerId=${pitcherId}`
-    const res = await fetch(url, { cache: 'no-store' })
+    const url = `${MLB_API}/people/${batterId}/stats?stats=vsPlayerTotal&group=hitting&opposingPlayerId=${pitcherId}`
+    const res = await fetch(url, { next: { revalidate: 21600 }, signal: AbortSignal.timeout(5000) })
     if (!res.ok) return null
     const data = await res.json()
     const s = data.stats?.[0]?.splits?.[0]?.stat
@@ -276,5 +287,70 @@ export async function getBatterStatcast(playerId: number): Promise<BatterStatcas
     sprint_speed: null,
     k_pct: null,
     bb_pct: null,
+  }
+}
+
+// =====================================================
+// TOP-N BATTERS BY PLATE APPEARANCES — bulk season stats
+// =====================================================
+//
+// One MLB Stats API call returns up to `limit` batters' FULL season line
+// (HR/2B/3B/SLG/etc.), ranked by plate appearances — real everyday
+// regulars, not a stat-specific leaderboard skewed toward one skill (the
+// way a home-run leaderboard is skewed toward power hitters). This is the
+// bulk equivalent of calling getBatterSeasonStats() once per player: same
+// underlying data, one request instead of up to 100, and it doubles as
+// the pool definition for "top 100 qualified batters" used by the
+// bat-speed radar/neural charts (see src/app/page.tsx).
+
+export type TopBatter = { personId: number; name: string; teamAbbr: string; seasonStats: BatterSeasonStats }
+
+export async function getTopBattersByPlateAppearances(limit = 100): Promise<TopBatter[]> {
+  const season = new Date().getFullYear()
+  const url = `${MLB_API}/stats?stats=season&group=hitting&sportId=1&season=${season}&limit=${limit}&sortStat=plateAppearances&order=desc`
+
+  try {
+    const res = await fetch(url, { next: { revalidate: 1800 } })
+    if (!res.ok) return []
+    const data = await res.json()
+    const splits: unknown[] = data.stats?.[0]?.splits ?? []
+
+    return splits.map((sp): TopBatter | null => {
+      const row = sp as { stat?: Record<string, unknown>; team?: { id?: number }; player?: { id?: number; fullName?: string } }
+      const s = row.stat
+      const player = row.player
+      if (!s || !player?.id || !player.fullName) return null
+
+      const avg = parseFloat(String(s.avg ?? '0'))
+      const slg = parseFloat(String(s.slg ?? '0'))
+      const iso = slg && avg ? (slg - avg).toFixed(3) : '—'
+
+      return {
+        personId: player.id,
+        name: player.fullName,
+        teamAbbr: MLB_TEAMS[row.team?.id ?? -1]?.abbr ?? '—',
+        seasonStats: {
+          avg: String(s.avg ?? '—'),
+          obp: String(s.obp ?? '—'),
+          slg: String(s.slg ?? '—'),
+          ops: String(s.ops ?? '—'),
+          home_runs: Number(s.homeRuns ?? 0),
+          rbi: Number(s.rbi ?? 0),
+          runs: Number(s.runs ?? 0),
+          stolen_bases: Number(s.stolenBases ?? 0),
+          strikeouts: Number(s.strikeOuts ?? 0),
+          walks: Number(s.baseOnBalls ?? 0),
+          pa: Number(s.plateAppearances ?? 0),
+          hits: Number(s.hits ?? 0),
+          doubles: Number(s.doubles ?? 0),
+          triples: Number(s.triples ?? 0),
+          babip: String(s.babip ?? '—'),
+          iso,
+        },
+      }
+    }).filter((r): r is TopBatter => r !== null)
+  } catch (err) {
+    console.error('getTopBattersByPlateAppearances fetch failed:', err)
+    return []
   }
 }

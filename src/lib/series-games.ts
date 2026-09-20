@@ -1,5 +1,6 @@
 // src/lib/series-games.ts
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
 
 export type SeriesGameResult = {
@@ -151,7 +152,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 
-export async function getSeriesGamesFromDB(tonightGamePk: number): Promise<SeriesGameResult[]> {
+export const getSeriesGamesFromDB = cache(async (tonightGamePk: number): Promise<SeriesGameResult[]> => {
   const supa = createAdminClient()
   const { data } = await supa
     .from('series_games_cache')
@@ -160,4 +161,4 @@ export async function getSeriesGamesFromDB(tonightGamePk: number): Promise<Serie
     .single()
 
   return (data?.series_games as SeriesGameResult[]) ?? []
-}
+})

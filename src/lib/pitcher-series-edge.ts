@@ -11,6 +11,7 @@
  * honest beats an unvalidated weighting scheme.
  */
 
+import { cache } from 'react'
 import { getProjectedLineup } from '@/lib/lineups'
 import { getPitcherZoneArsenal, type PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getBatterHotZones } from '@/lib/hot-zones'
@@ -62,13 +63,13 @@ export type PitcherGameResult = {
 
 // ─── Main scoring entry point ────────────────────────────────────────────
 
-export async function getPitcherSeriesEdge(
+export const getPitcherSeriesEdge = cache(async (
   pitcherId: number,
   pitcherName: string,
   opposingTeamId: number,
   gameDate: string,
   gamePk: number,
-): Promise<Top3Pitcher | null> {
+): Promise<Top3Pitcher | null> => {
   const [opposingLineup, pitcherZoneSplits, pitcherPitchTypeArsenal] = await Promise.all([
     getProjectedLineup(opposingTeamId, gameDate, gamePk),
     getPitcherZoneArsenal(pitcherId),
@@ -122,7 +123,7 @@ export async function getPitcherSeriesEdge(
     toughest_matchup: toughestMatchup,
     per_batter: perBatter,
   }
-}
+})
 
 // ─── Postgame: actual recorded line ──────────────────────────────────────
 

@@ -1,65 +1,45 @@
 'use client'
 /**
- * src/components/fantasy/FantasySubNav.tsx
- *
- * Persistent horizontal nav strip that sits below the masthead on every
- * fantasy page. Shows all deep pages + the dashboard home.
- * Active page is highlighted. Scrollable on mobile.
- *
- * Usage: drop <FantasySubNav active="start-sit" /> into any fantasy page
- * just below the SiteHeader.
- *
- * active prop options (optional — omit or pass undefined for "no tab highlighted",
- * which is the real case when the player page is reached with no `from` context):
- *   'home' | 'start-sit' | 'streamers' | 'platforms' | 'two-start' | 'news'
- *   | 'prospects' | 'pitchers' | 'yesterday' | 'wrap' | 'trends' | 'trending' | 'trade-desk'
- *
- * CHANGE LOG:
- *   - Added 'start-sit' nav item linking to /fantasy/start-sit
- *   - Reordered so Start/Sit sits second (right after Desk) — it's the
- *     most-visited fantasy page so it belongs early in the tab order.
- *   - Added 'prospects' nav item linking to /fantasy/prospects — confirmed
- *     as a real, existing page (src/app/fantasy/prospects/page.tsx),
- *     already linked from Fantasyhub.tsx, MinorLeagueTeamBoard.tsx, and
- *     the player detail page's back-link. This was previously reachable
- *     without ever appearing in the persistent nav strip.
- *   - Added 'pitchers' nav item linking to /fantasy/pitchers — same gap.
- *   - Added 'yesterday' / 'wrap' / 'trends' / 'trade-desk' — found via an
- *     exhaustive `grep -rn "FantasySubNav active=" src/app/fantasy/`.
- *   - Added 'trending' — a GENUINELY SEPARATE page from 'trends' (confirmed
- *     via player/[playerId]/page.tsx's fromToNav()/BackLink, which both
- *     reference /fantasy/trending as its own route). Not a duplicate —
- *     two real, distinct pages that happen to have similar names.
- *   - `active` is now optional (was required NavKey). fromToNav() in
- *     player/[playerId]/page.tsx can legitimately return undefined (no
- *     back-context when the player page is reached directly), which the
- *     old required-prop type couldn't express — this was the next type
- *     error waiting to surface. undefined now just means no tab highlights.
+ * Persistent fantasy nav. Slimmed to the six rooms a weekly manager
+ * actually lives in; deeper boards (streamers, two-start, wrap, news)
+ * stay linked from the Desk instead of competing for the tab strip.
  */
 import Link from 'next/link'
+
 const NAV_ITEMS = [
-  { label: 'Desk',        href: '/fantasy',              key: 'home',       proOnly: false },
-  { label: 'Start/Sit',   href: '/fantasy/start-sit',    key: 'start-sit',  proOnly: true  },
-  { label: 'Streamers',   href: '/fantasy/streamers',    key: 'streamers',  proOnly: true  },
-  { label: 'Pitchers',    href: '/fantasy/pitchers',     key: 'pitchers',   proOnly: true  },
-  { label: 'Platforms',   href: '/fantasy/platforms',     key: 'platforms',  proOnly: true  },
-  { label: 'Two-Start',   href: '/fantasy/two-start',    key: 'two-start',  proOnly: true  },
-  { label: 'Trends',      href: '/fantasy/trends',       key: 'trends',     proOnly: true  },
-  { label: 'Trending',    href: '/fantasy/trending',     key: 'trending',   proOnly: true  },
-  { label: 'Trade Desk',  href: '/fantasy/trade-desk',   key: 'trade-desk', proOnly: true  },
-  { label: 'Prospects',   href: '/fantasy/prospects',    key: 'prospects',  proOnly: true  },
-  { label: 'Yesterday',   href: '/fantasy/yesterday',    key: 'yesterday',  proOnly: false },
-  { label: 'Wrap',        href: '/fantasy/wrap',         key: 'wrap',       proOnly: true  },
-  { label: 'News Wire',   href: '/fantasy/news',         key: 'news',       proOnly: false },
+  { label: 'Desk',      href: '/fantasy',           key: 'home',       proOnly: false },
+  { label: 'My League', href: '/fantasy/league',    key: 'league',     proOnly: false },
+  { label: 'Wire',      href: '/fantasy/start-sit', key: 'start-sit',  proOnly: true  },
+  { label: 'Trade',     href: '/fantasy/trade-desk',key: 'trade-desk', proOnly: true  },
+  { label: 'Farm',      href: '/fantasy/prospects', key: 'prospects',  proOnly: true  },
+  { label: 'Recap',     href: '/fantasy/yesterday', key: 'yesterday',  proOnly: false },
 ] as const
-type NavKey = typeof NAV_ITEMS[number]['key']
+
+type VisibleKey = typeof NAV_ITEMS[number]['key']
+export type NavKey =
+  | VisibleKey
+  | 'streamers' | 'pitchers' | 'platforms' | 'two-start'
+  | 'trends' | 'trending' | 'wrap' | 'news'
+
+const ACTIVE_ALIAS: Partial<Record<NavKey, VisibleKey>> = {
+  streamers: 'start-sit',
+  pitchers: 'start-sit',
+  platforms: 'start-sit',
+  'two-start': 'start-sit',
+  trends: 'trade-desk',
+  trending: 'trade-desk',
+  wrap: 'yesterday',
+  news: 'yesterday',
+}
+
 export default function FantasySubNav({ active, isPro = true }: { active?: NavKey; isPro?: boolean }) {
+  const highlight = active ? (ACTIVE_ALIAS[active] ?? active) : undefined
   return (
-    <div className="border-b border-stone-200 bg-stone-50 sticky top-0 z-30">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <div className="border-b border-stone-200/80 bg-[#FAF8F3]/90 backdrop-blur sticky top-0 z-30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center overflow-x-auto scrollbar-hide gap-0">
           {NAV_ITEMS.map((item) => {
-            const isActive = item.key === active
+            const isActive = item.key === highlight
             const showLock = item.proOnly && !isPro
             const href = showLock ? '/pricing' : item.href
             return (
@@ -83,16 +63,15 @@ export default function FantasySubNav({ active, isPro = true }: { active?: NavKe
                   </svg>
                 )}
                 {isActive && (
-                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-orange-600" />
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-orange-600 rounded-full" />
                 )}
               </Link>
             )
           })}
-          {/* Spacer + Pro badge */}
           <div className="ml-auto shrink-0 pl-4 py-3">
             <Link
               href="/pricing"
-              className="font-mono text-[9px] tracking-widest uppercase bg-yellow-300 text-stone-900 px-2.5 py-1 font-bold hover:bg-yellow-200 transition rounded-sm whitespace-nowrap"
+              className="font-mono text-[9px] tracking-widest uppercase bg-yellow-300 text-stone-900 px-2.5 py-1 font-bold hover:bg-yellow-200 transition rounded-full whitespace-nowrap"
             >
               Pro ↗
             </Link>

@@ -15,15 +15,15 @@
   import type { AffiliateStandout } from '@/lib/team-minors'
   import type { RosterPlayer, TeamMetric, RollingPoint } from '@/lib/lab'
   import SeasonRollingChart from './SeasonRollingChart'
-  import StandingsChart from './StandingsChart'
+  import StandingsChart from '@/components/StandingsChart'
 
   // ── NEW: lineup optimizer + bullpen usage ──
   import type { ConfirmedLineupEntry, OptimizedLineupEntry } from '@/lib/lineup-optimizer'
   import type { BullpenReport } from '@/lib/bullpen-usage'
   import type { Last7DaysWorkload } from '@/lib/pitcher-workload'
   import LineupCard from './LineupCard'
-  import PitcherWorkloadCard from './PitcherWorkloadCard'
-  import BullpenUsageCard from './BullpenUsageCard'
+  import PitcherWorkloadCard from '@/components/PitcherWorkloadCard'
+  import BullpenUsageCard from '@/components/BullpenUsageCard'
   import BattingInningChart from './BattingInningChart'
   import PitchingInningChart from './PitchingInningChart'
 
@@ -358,6 +358,7 @@
 
         <div style={{ marginBottom: 16 }}>
           <Link href="/mlb" style={{ fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>← Back</Link>
+          <a href="#club-desk" style={{ marginLeft: 20, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: '#1A1A1A', textDecoration: 'none' }}>Club desk: ABS · run game · defense · bullpen ↓</a>
         </div>
 
         {/* ── Hero ── */}
@@ -473,7 +474,7 @@
             </div>
 
             {/* Roster grades */}
-            <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>
+            <div id="roster-grades" style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>
               <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700, marginBottom: 4 }}>Roster grades</div>
               <p style={{ fontSize: 11, color: '#a89e8c', marginBottom: 10 }}>Average percentile across core stats, min 10 PA/IP · league-wide pool · tap a player for the full breakdown</p>
               <GradesExplainer />
@@ -517,13 +518,13 @@
                 {[...battingLeaders.slice(0, 2), ...pitchingLeaders.slice(0, 2)].map(l => (
                   <div key={l.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f7f5ef' }}>
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#1A1A1A' }}>{shortName(l.name)}</div>
+                      <Link href={`/mlb/players/${l.personId}`} style={{ fontSize: 12, fontWeight: 600, color: '#1A1A1A', textDecoration: 'none' }}>{shortName(l.name)}</Link>
                       <div style={{ fontSize: 9, color: '#a89e8c', textTransform: 'uppercase' }}>{l.label}</div>
                     </div>
                     <div style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 700, color: team.primary_color }}>{l.value}</div>
                   </div>
                 ))}
-                <Link href={`/mlb/teams/${team.slug}/stats`} style={{ display: 'block', marginTop: 12, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>Full roster & stats →</Link>
+                <a href="#roster-grades" style={{ display: 'block', marginTop: 12, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>Full roster · tap a player →</a>
               </div>
 
               <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>

@@ -190,23 +190,26 @@ const draft: PlayerDraft | null = draftDetail ? {
     }
 
     // Awards
-    const awards: PlayerAward[] = (p.awards ?? []).map((a: any) => ({
+    const awards: PlayerAward[] = (p.awards ?? []).map((a: { id?: string | number; name?: string; date?: string; season?: string }) => ({
       id: String(a.id ?? ''),
       name: a.name ?? '',
       date: a.date ?? '',
       season: a.season ?? null,
     }))
 
-    // Transactions
-    const transactions: PlayerTransaction[] = (p.transactions ?? []).map((t: any) => ({
-      id: t.id,
-      date: t.date ?? '',
-      typeCode: t.typeCode ?? '',
-      typeDesc: t.typeDesc ?? '',
-      description: t.description ?? '',
-      fromTeam: t.fromTeam?.name ?? null,
-      toTeam: t.toTeam?.name ?? null,
-    }))
+    // Transactions — MLB's own API doesn't guarantee an order, so sort
+    // explicitly newest-first (real dates, just not pre-sorted on arrival).
+    const transactions: PlayerTransaction[] = (p.transactions ?? [])
+      .map((t: { id: number; date?: string; typeCode?: string; typeDesc?: string; description?: string; fromTeam?: { name?: string }; toTeam?: { name?: string } }) => ({
+        id: t.id,
+        date: t.date ?? '',
+        typeCode: t.typeCode ?? '',
+        typeDesc: t.typeDesc ?? '',
+        description: t.description ?? '',
+        fromTeam: t.fromTeam?.name ?? null,
+        toTeam: t.toTeam?.name ?? null,
+      }))
+      .sort((a: PlayerTransaction, b: PlayerTransaction) => b.date.localeCompare(a.date))
 
     // Year-by-year splits
     const yearByYearHitting: YearByYearRow[] = []

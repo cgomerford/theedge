@@ -19,6 +19,8 @@ type Props = {
   title?: string
   compact?: boolean
   className?: string
+  rounded?: boolean // opt-in — the sitewide chart default is square corners (see types.ts), but callers embedding this inside an already-rounded card (e.g. the MLB deep-dive radar cards) can ask for rounded bars to match
+  edgeMarker?: boolean // opt-in — a small pip marking the exact percentile position at the end of the fill, on top of the plain filled-bar look
 }
 
 // Palette matches your existing project convention (green good / red bad),
@@ -32,12 +34,14 @@ function fillFor(percentile: number, higherIsBetter: boolean): string {
   return CHART_COLORS.negative
 }
 
-function PercentileRowBar({ row, compact }: { row: PercentileRow; compact: boolean }) {
+function PercentileRowBar({ row, compact, rounded, edgeMarker }: { row: PercentileRow; compact: boolean; rounded: boolean; edgeMarker: boolean }) {
   const higherIsBetter = row.higherIsBetter ?? true
   const fill = fillFor(row.percentile, higherIsBetter)
 
   const rowH = compact ? 22 : 28
   const trackH = 8
+  const barRadius = rounded ? trackH / 2 : 0
+  const markerPos = Math.max(2, Math.min(98, row.percentile))
 
   return (
     <div
@@ -59,27 +63,46 @@ function PercentileRowBar({ row, compact }: { row: PercentileRow; compact: boole
         {row.label}
       </div>
 
-      {/* Track + filled bar */}
-      <div
-        style={{
-          position: 'relative',
-          height: trackH,
-          background: CHART_COLORS.grid,
-        }}
-      >
+      {/* Track + filled bar — wrapped in a non-clipping outer so the edge
+          marker (taller than the track) isn't cut off by the track's own
+          overflow:hidden (needed for the fill bar's rounded corners). */}
+      <div style={{ position: 'relative', height: trackH }}>
         <div
           style={{
-            position: 'absolute',
-            left: 0, top: 0, height: trackH,
-            width: `${Math.max(2, row.percentile)}%`,
-            background: fill,
+            position: 'absolute', inset: 0,
+            background: CHART_COLORS.grid,
+            borderRadius: barRadius,
+            overflow: 'hidden',
           }}
-        />
-        {/* Midpoint tick */}
-        <div style={{
-          position: 'absolute', left: '50%', top: -2, width: 1, height: trackH + 4,
-          background: CHART_COLORS.axis, opacity: 0.5,
-        }} />
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: 0, top: 0, height: trackH,
+              width: `${Math.max(2, row.percentile)}%`,
+              background: fill,
+              borderRadius: barRadius,
+            }}
+          />
+          {/* Midpoint tick */}
+          <div style={{
+            position: 'absolute', left: '50%', top: -2, width: 1, height: trackH + 4,
+            background: CHART_COLORS.axis, opacity: 0.5,
+          }} />
+        </div>
+
+        {/* Edge marker — a small pip pinned to the exact percentile position */}
+        {edgeMarker && (
+          <div
+            style={{
+              position: 'absolute', top: '50%', left: `${markerPos}%`,
+              transform: 'translate(-50%, -50%)',
+              width: trackH + 4, height: trackH + 4, borderRadius: '50%',
+              background: fill, border: '2px solid #fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+            }}
+          />
+        )}
       </div>
 
       {/* Raw value */}
@@ -106,10 +129,14 @@ export default function SavantPercentileBar({
   title,
   compact = false,
   className = '',
+  rounded = false,
+  edgeMarker = false,
 }: Props) {
+  const outerRadius = rounded ? 10 : 0
+
   if (rows.length === 0) {
     return (
-      <div className={`border border-stone-200 bg-white p-4 text-center ${className}`}>
+      <div className={`border border-stone-200 bg-white p-4 text-center ${className}`} style={{ borderRadius: outerRadius }}>
         <p style={{
           fontFamily: CHART_FONTS.serif, fontStyle: 'italic',
           color: CHART_COLORS.axis, fontSize: 13,
@@ -121,7 +148,7 @@ export default function SavantPercentileBar({
   }
 
   return (
-    <div className={`border border-stone-200 bg-white ${className}`}>
+    <div className={`border border-stone-200 bg-white ${className}`} style={{ borderRadius: outerRadius, overflow: rounded ? 'hidden' : undefined }}>
       {title && (
         <div
           className="border-b border-stone-100 px-3 py-2 flex items-center justify-between"
@@ -138,7 +165,7 @@ export default function SavantPercentileBar({
         </div>
       )}
       <div>
-        {rows.map((row, i) => <PercentileRowBar key={`${row.label}-${i}`} row={row} compact={compact} />)}
+        {rows.map((row, i) => <PercentileRowBar key={`${row.label}-${i}`} row={row} compact={compact} rounded={rounded} edgeMarker={edgeMarker} />)}
       </div>
     </div>
   )

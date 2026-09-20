@@ -22,8 +22,38 @@ function normPct(v: number): number {
   return v > 1 ? v / 100 : v
 }
 // ============================================================
-// V6 COMPONENT WEIGHTS
-// Key changes vs V5:
+// V7 COMPONENT WEIGHTS
+// Key changes vs V6: two new top-level components, both scored entirely
+// from real fields the model was already fetching but never reading —
+// no new pipeline, no new fetch:
+//   - pitcher_situational (NEW, 0.06): times-through-the-order wOBA trend
+//     (tto1_woba vs tto3_woba, self-verified — pitcher_stats), first-pitch
+//     strike command (first_pitch_strike_pct), and 2-strike "put the
+//     batter away" pitch selection quality (two_strike_mix cross-
+//     referenced against arsenal whiff%). Distinct from starting_pitcher's
+//     existing arsenal-wide put_away_percent sub-factor (item 12 there) —
+//     this one is scoped specifically to what's actually thrown once
+//     ahead in the count, not a season-wide average.
+//   - offense_situational (NEW, 0.06): real team RISP performance
+//     (ops_with_risp/ba_risp — team_stats), LOB% (fewer runners stranded),
+//     and a real proxy for plate discipline once behind in the count
+//     (chase_rate, k_pct) — no team-level "batting-average-when-behind"
+//     column exists yet, so this uses the closest real, already-fetched
+//     signals rather than fabricating one.
+//   - All 8 existing weights proportionally trimmed to fund the 0.12
+//     given to the two new components. Total = 1.00 exactly, unchanged
+//     convention.
+//
+// IMPORTANT — these two new weights (0.06 each) are a reasoned starting
+// point, NOT backtest-derived like the rest of this file's weights are
+// meant to be (see scripts/derive_edge_plus_weights.py for the pattern
+// used elsewhere in this app, e.g. Edge+'s stuff weights — no equivalent
+// script exists yet for this file's 8/10 components; scripts/archive/
+// backtest_edge.py is a stale V2-era script, not usable as-is). Treat
+// these two weights as provisional until a real backtest against actual
+// game outcomes re-derives them.
+//
+// V6 changes vs V5, for history:
 //   - Defense:  0.10 → 0.14  (biggest change — Defense is now "Batted-Ball
 //               & Defensive Alignment": two new sub-factors, GB-collision
 //               (moved from Matchup) and positional-exploit (new), on top
@@ -32,17 +62,18 @@ function normPct(v: number): number {
 //   - Offense:  0.17 → 0.16  (small trim to help fund Defense's expansion)
 //   - Park:     0.08 → 0.07  (small trim, same reason)
 //   - SP, Bullpen, Weather, Rest: unchanged — V5 already rebalanced these
-// Total = 1.00 exactly — no hidden components (unchanged from V5)
 // ============================================================
 export const WEIGHTS = {
-  starting_pitcher: 0.23,
-  bullpen:          0.13,
-  offense:          0.16,
-  defense:          0.14,
-  matchup:          0.12,
-  park:             0.07,
-  weather:          0.09,
-  rest:             0.06,
+  starting_pitcher:      0.20,
+  bullpen:               0.12,
+  offense:               0.14,
+  defense:               0.12,
+  matchup:               0.11,
+  park:                  0.06,
+  weather:               0.08,
+  rest:                  0.05,
+  pitcher_situational:   0.06,
+  offense_situational:   0.06,
 }
 // ============================================================
 // TYPES
@@ -56,6 +87,8 @@ export type EdgeComponents = {
   park: number
   weather: number
   rest: number
+  pitcher_situational: number
+  offense_situational: number
 }
 
 export type EdgeScoreResult = {
@@ -115,7 +148,7 @@ export type ScoredResult = {
 // PURE SCORING — no fetching, no side effects. Takes already-fetched
 // inputs (either fresh from calculateEdgeScore, or replayed from a
 // stored edge_predictions.components_raw row) and produces a score.
-// This is the single source of truth for "how do 8 components become
+// This is the single source of truth for "how do 10 components become
 // an Edge Score" — calculateEdgeScore below and scripts/backtest_edge.ts
 // both call this, so live scoring and backtesting can never drift apart.
 //
@@ -129,28 +162,32 @@ export function scoreFromComponentsRaw(
   weights: typeof WEIGHTS = WEIGHTS,
 ): ScoredResult {
   const componentsRaw: EdgeComponents = {
-    starting_pitcher: computePitcherEdge(raw.home_pitcher, raw.away_pitcher, raw.home_pitcher_arsenal, raw.away_pitcher_arsenal),
-    bullpen:          computeBullpenEdge(raw.home_team, raw.away_team),
-    offense:          computeOffenseEdge(raw.home_team, raw.away_team, raw.home_platoon, raw.away_platoon, raw.away_pitcher, raw.home_pitcher),
-    defense:          computeDefenseEdge(raw.home_team, raw.away_team, raw.home_pitcher, raw.away_pitcher, raw.home_platoon, raw.away_platoon),
-    matchup:          computeMatchupEdge(raw.home_pitcher, raw.away_pitcher, raw.home_team, raw.away_team, raw.home_platoon, raw.away_platoon, raw.home_pitcher_arsenal, raw.away_pitcher_arsenal, raw.home_pitcher_h2h, raw.away_pitcher_h2h),
-    park:             computeParkEdge(raw.park, raw.home_team, raw.away_team, raw.home_pitcher, raw.away_pitcher),
-    weather:          computeWeatherEdge(raw.weather, raw.park, raw.home_team, raw.away_team),
-    rest:             computeRestEdge(raw.home_team, raw.away_team),
+    starting_pitcher:    computePitcherEdge(raw.home_pitcher, raw.away_pitcher, raw.home_pitcher_arsenal, raw.away_pitcher_arsenal),
+    bullpen:             computeBullpenEdge(raw.home_team, raw.away_team),
+    offense:             computeOffenseEdge(raw.home_team, raw.away_team, raw.home_platoon, raw.away_platoon, raw.away_pitcher, raw.home_pitcher),
+    defense:             computeDefenseEdge(raw.home_team, raw.away_team, raw.home_pitcher, raw.away_pitcher, raw.home_platoon, raw.away_platoon),
+    matchup:             computeMatchupEdge(raw.home_pitcher, raw.away_pitcher, raw.home_team, raw.away_team, raw.home_platoon, raw.away_platoon, raw.home_pitcher_arsenal, raw.away_pitcher_arsenal, raw.home_pitcher_h2h, raw.away_pitcher_h2h),
+    park:                computeParkEdge(raw.park, raw.home_team, raw.away_team, raw.home_pitcher, raw.away_pitcher),
+    weather:             computeWeatherEdge(raw.weather, raw.park, raw.home_team, raw.away_team),
+    rest:                computeRestEdge(raw.home_team, raw.away_team),
+    pitcher_situational: computePitcherSituationalEdge(raw.home_pitcher, raw.away_pitcher, raw.home_pitcher_arsenal, raw.away_pitcher_arsenal),
+    offense_situational: computeOffenseSituationalEdge(raw.home_team, raw.away_team),
   }
 
   const components: EdgeComponents = {
-    starting_pitcher: Math.round(componentsRaw.starting_pitcher * 10) / 10,
-    bullpen:          Math.round(componentsRaw.bullpen * 10) / 10,
-    offense:          Math.round(componentsRaw.offense * 10) / 10,
-    defense:          Math.round(componentsRaw.defense * 10) / 10,
-    matchup:          Math.round(componentsRaw.matchup * 10) / 10,
-    park:             Math.round(componentsRaw.park * 10) / 10,
-    weather:          Math.round(componentsRaw.weather * 10) / 10,
-    rest:             Math.round(componentsRaw.rest * 10) / 10,
+    starting_pitcher:    Math.round(componentsRaw.starting_pitcher * 10) / 10,
+    bullpen:             Math.round(componentsRaw.bullpen * 10) / 10,
+    offense:             Math.round(componentsRaw.offense * 10) / 10,
+    defense:             Math.round(componentsRaw.defense * 10) / 10,
+    matchup:             Math.round(componentsRaw.matchup * 10) / 10,
+    park:                Math.round(componentsRaw.park * 10) / 10,
+    weather:             Math.round(componentsRaw.weather * 10) / 10,
+    rest:                Math.round(componentsRaw.rest * 10) / 10,
+    pitcher_situational: Math.round(componentsRaw.pitcher_situational * 10) / 10,
+    offense_situational: Math.round(componentsRaw.offense_situational * 10) / 10,
   }
 
-  // Weighted sum — all weight in the visible 8 components, nothing hidden
+  // Weighted sum — all weight in the visible 10 components, nothing hidden
   let edge_score = 0
   for (const [key, value] of Object.entries(components)) {
     edge_score += value * weights[key as keyof typeof weights]
@@ -414,6 +451,73 @@ function computePitcherEdge(home: any, away: any, homeArsenal: any[] | null, awa
 }
 
 // ============================================================
+// COMPONENT 1b: PITCHER SITUATIONAL (NEW — V7)
+// All three sub-factors read fields already present on the same
+// pitcher_stats/pitch_arsenals objects computePitcherEdge above already
+// receives — no new fetch. Verified live against pitcher_stats before
+// building on it (real player row: tto1_woba .200 vs tto3_woba .267,
+// tto1_pa 128/tto3_pa 87, first_pitch_strike_pct 54.5, two_strike_mix
+// keyed by the same short pitch-type codes ('FF','SL',...) as
+// pitch_arsenals.pitch_type — confirmed compatible for the cross-
+// reference in sub-factor 3).
+// ============================================================
+function computePitcherSituationalEdge(home: any, away: any, homeArsenal: any[] | null, awayArsenal: any[] | null): number {
+  if (!home && !away) return 0
+
+  function scorePitcher(p: any, arsenal: any[] | null): number {
+    if (!p) return 0
+    let score = 0
+
+    // 1. Times-through-the-order trend — does he fade as the game/lineup
+    // turns over? tto1_woba/tto3_woba are self-verified against real
+    // battersFaced (see pitcher-full-stats.ts) — only score when both
+    // buckets clear a real sample floor, and only once verified.
+    if (p.tto_verified_at && p.tto1_woba != null && p.tto3_woba != null
+        && (p.tto1_pa ?? 0) >= 15 && (p.tto3_pa ?? 0) >= 15) {
+      score += (Number(p.tto1_woba) - Number(p.tto3_woba)) * 200
+    }
+
+    // 2. First-pitch strike command — real 0-0 count outcome.
+    // League avg first-pitch-strike% is ~60%.
+    if (p.first_pitch_strike_pct != null) {
+      score += (normPct(p.first_pitch_strike_pct) - 0.60) * 60
+    }
+
+    // 3. 2-strike pitch-selection quality — usage-weighted whiff% of what
+    // he actually throws once ahead in the count (two_strike_mix's real
+    // two_strike_pct per pitch, cross-referenced against that same pitch's
+    // real whiff_percent from the arsenal). Distinct from computePitcherEdge's
+    // existing arsenal-wide put_away_percent sub-factor, which is a
+    // season-wide average independent of count.
+    if (p.two_strike_mix && arsenal && arsenal.length > 0) {
+      const whiffByType = new Map(arsenal.map((a: any) => [a.pitch_type, a.whiff_percent != null ? Number(a.whiff_percent) : null]))
+      let weighted = 0
+      let weightSum = 0
+      for (const [pitchType, mix] of Object.entries(p.two_strike_mix) as [string, any][]) {
+        const whiff = whiffByType.get(pitchType)
+        const twoStrikePct = mix?.two_strike_pct
+        if (whiff != null && twoStrikePct != null) {
+          const w = normPct(Number(twoStrikePct))
+          weighted += w * whiff
+          weightSum += w
+        }
+      }
+      if (weightSum > 0) {
+        const twoStrikeWhiff = weighted / weightSum
+        score += (twoStrikeWhiff - 24.0) * 0.5 // same LEAGUE_AVG_WHIFF anchor as computePitcherEdge's season-wide version
+      }
+    }
+
+    return score
+  }
+
+  const homeScore = scorePitcher(home, homeArsenal)
+  const awayScore = scorePitcher(away, awayArsenal)
+
+  return Math.max(-100, Math.min(100, homeScore - awayScore))
+}
+
+// ============================================================
 // COMPONENT 2: BULLPEN (unchanged in V6)
 // ============================================================
 function computeBullpenEdge(home: any, away: any): number {
@@ -543,6 +647,59 @@ function computeOffenseEdge(
   const awayScore = scoreOffense(away, awayPlatoon, homePitcher)
 
   return Math.max(-100, Math.min(100, homeScore - awayScore))
+}
+
+// ============================================================
+// COMPONENT 3b: OFFENSE SITUATIONAL (NEW — V7)
+// Real team_stats fields computeOffenseEdge's own fetchTeam() already
+// pulls in full (select('*')) but never read — verified live against the
+// real table schema before building on it. RISP is genuinely redundant
+// across 4 columns on this table (ops_with_risp/risp_ops, ba_risp/
+// risp_avg/avg_with_risp — different scripts writing the same real
+// concept at different times); only ONE is used per team, preferring the
+// richer OPS figure, to avoid double-counting the same real signal twice.
+// No team-level "average when behind in count" column exists yet, so
+// "how offenses handle falling behind" is proxied by real, already-
+// fetched chase_rate/k_pct rather than inventing a column that isn't
+// there.
+// ============================================================
+function computeOffenseSituationalEdge(home: any, away: any): number {
+  if (!home && !away) return 0
+
+  function scoreTeam(t: any): number {
+    if (!t) return 0
+    let score = 0
+
+    // 1. Real RISP performance — prefer OPS (richer), fall back to AVG.
+    const rispOps = t.ops_with_risp ?? t.risp_ops ?? null
+    if (rispOps != null) {
+      score += (Number(rispOps) - 0.720) * 30
+    } else {
+      const rispAvg = t.ba_risp ?? t.risp_avg ?? t.avg_with_risp ?? null
+      if (rispAvg != null) score += (Number(rispAvg) - 0.250) * 60
+    }
+
+    // 2. LOB% — real, batting-side (player-stats.ts already documents
+    // this as higherIsBetter:false for a hitter) — fewer runners
+    // stranded = better situational conversion. League avg ~72%.
+    if (t.lob_pct != null) {
+      score += (0.72 - normPct(t.lob_pct)) * 40
+    }
+
+    // 3. Falling-behind-count discipline proxy — real team-level chase
+    // rate/K% (no literal "behind in count" split exists on this table
+    // yet). Lower chase rate and lower K% = better process once behind.
+    if (t.chase_rate != null) {
+      score += (0.28 - normPct(t.chase_rate)) * 30
+    }
+    if (t.k_pct != null) {
+      score += (0.225 - normPct(t.k_pct)) * 25
+    }
+
+    return score
+  }
+
+  return Math.max(-100, Math.min(100, scoreTeam(home) - scoreTeam(away)))
 }
 
 // ============================================================

@@ -9,6 +9,15 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const MIN_SAMPLE_PA = 20
 const MIN_SAMPLE_BF = 20
 
+// The raw per-split "stat" object MLB's sitCodes/byMonth endpoints return —
+// field set varies by group (hitting vs pitching) and isn't formally
+// documented, so this stays loosely typed rather than guessing a shape
+// that'll drift. SplitLine above is the cleaned/shaped version callers
+// actually consume; this is what callers reading fields straight off the
+// raw response (e.g. the game-preview Standard Stats modals) work with.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RawSplitStat = any
+
 export interface SplitLine {
   label: string
   sitCode: string
@@ -77,7 +86,7 @@ const PITCHING_SITS: Array<{ label: string; sit: string; bucket: keyof PlayerSpl
 
 // ─── Batter fetch ─────────────────────────────────────────────────────────
 
-async function fetchHittingSplit(playerId: number, season: number, sitCode: string): Promise<any | null> {
+export async function fetchHittingSplit(playerId: number, season: number, sitCode: string): Promise<RawSplitStat | null> {
   const url = `${MLB_API}/people/${playerId}/stats?stats=statSplits&group=hitting&season=${season}&sitCodes=${sitCode}&gameType=R`
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } })
@@ -89,7 +98,7 @@ async function fetchHittingSplit(playerId: number, season: number, sitCode: stri
   }
 }
 
-async function fetchPitchingSplit(playerId: number, season: number, sitCode: string): Promise<any | null> {
+export async function fetchPitchingSplit(playerId: number, season: number, sitCode: string): Promise<RawSplitStat | null> {
   const url = `${MLB_API}/people/${playerId}/stats?stats=statSplits&group=pitching&season=${season}&sitCodes=${sitCode}&gameType=R`
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } })
@@ -110,7 +119,7 @@ async function fetchMonthlyHitting(playerId: number, season: number): Promise<Sp
     const splits = json?.stats?.[0]?.splits ?? []
     const monthNames = ['', 'Jan', 'Feb', 'March/April', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']
     return splits
-      .map((s: any) => {
+      .map((s: RawSplitStat) => {
        const pa = Number(s.stat?.plateAppearances ?? s.stat?.atBats ?? 0)
 if (pa < MIN_SAMPLE_PA) return null
         return {
@@ -142,7 +151,7 @@ async function fetchMonthlyPitching(playerId: number, season: number): Promise<S
     const splits = json?.stats?.[0]?.splits ?? []
     const monthNames = ['', 'Jan', 'Feb', 'March/April', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']
     return splits
-      .map((s: any) => {
+      .map((s: RawSplitStat) => {
         const bf = Number(s.stat?.battersFaced ?? 0)
         if (bf < MIN_SAMPLE_BF) return null
         return {

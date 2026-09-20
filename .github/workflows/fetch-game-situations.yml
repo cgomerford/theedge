@@ -1,0 +1,27 @@
+name: fetch-game-situations
+
+on:
+  schedule:
+    # Daily 09:30 UTC — after the previous night's games are final.
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-game-situations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+
+      # Yesterday's games: ABS challenges (with count/outs/base state/margin) and
+      # stolen-base attempts. Needs scripts/sql/add_game_situations.sql applied once.
+      - name: Fetch game situations
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_game_situations.py

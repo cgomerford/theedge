@@ -1,15 +1,14 @@
 // src/app/fantasy/page.tsx
 //
-// Fantasy Hub — entry point. Server component. Fetches:
-//   1. Subscriber (for Pro gating)
-//   2. Fantasy picks (daily_fantasy_picks)
-//   3. Ownership lookup for every pick (fantasy_ownership)
-//
-// Ownership is best-effort: unmatched picks render as "—", never fake data.
+// Fantasy Desk — trading floor. Extra fetches are best-effort: a
+// two-start or MiLB miss must never blank the slate.
 
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getFantasyPicks, type FantasyPick } from '@/lib/fantasy'
-import { getOwnershipByMlbIds, getOwnershipByNames } from '@/lib/fantasy-ownership'
+import { getOwnershipByMlbIds, getOwnershipByNames, getOwnershipTrend } from '@/lib/fantasy-ownership'
+import { getTonightAllPitchers } from '@/lib/fantasy-ticker'
+import { getTwoStartPitchers } from '@/lib/fantasy-two-start'
+import { getMilbOpsLeaders } from '@/lib/fantasy-minors'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
 import FantasyHub from './Fantasyhub'
@@ -19,7 +18,12 @@ export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'Fantasy Desk · The Edge',
   description:
-    "Start/sit calls, waiver targets, trending players, prospect watch, and trade value — derived from The Edge's own model, cross-referenced with real ESPN ownership.",
+    "Who to start, sit, grab, and trade. Real ESPN roster rates, not vibes.",
+}
+
+async function settled<T>(p: Promise<T>, fallback: T): Promise<T> {
+  const r = await Promise.allSettled([p])
+  return r[0].status === 'fulfilled' ? r[0].value : fallback
 }
 
 export default async function FantasyPage() {
@@ -30,7 +34,6 @@ export default async function FantasyPage() {
 
   const isPro = subscriber?.is_pro ?? false
 
-  // Flatten all picks and gather lookup keys
   const allPicks: FantasyPick[] = [
     ...fantasyResult.picks.streamer,
     ...fantasyResult.picks.sleeper,
@@ -49,12 +52,16 @@ export default async function FantasyPage() {
     .filter(p => p.player_id == null)
     .map(p => p.player_name)
 
-  const [ownByMlbId, ownByName] = await Promise.all([
+  const [ownByMlbId, ownByName, ticker, twoStarts, ownTrend, aaaLeaders, aaLeaders] = await Promise.all([
     getOwnershipByMlbIds(mlbIds),
     getOwnershipByNames(namesNeedingLookup),
+    settled(getTonightAllPitchers(), []),
+    settled(getTwoStartPitchers(), []),
+    settled(getOwnershipTrend({ daysAgo: 7, minDelta: 2, limit: 12 }), { risers: [], fallers: [] }),
+    settled(getMilbOpsLeaders(11, 8), []),
+    settled(getMilbOpsLeaders(12, 8), []),
   ])
 
-  // Flat lookup keyed by pick.id → percent (null if no match)
   const ownershipByPickId: Record<number, number | null> = {}
   for (const p of allPicks) {
     let pct: number | null = null
@@ -76,6 +83,12 @@ export default async function FantasyPage() {
         forDate={fantasyResult.forDate}
         isStale={fantasyResult.isStale}
         isPro={isPro}
+        ticker={ticker}
+        twoStarts={twoStarts.slice(0, 10)}
+        ownRisers={ownTrend.risers}
+        ownFallers={ownTrend.fallers}
+        aaaLeaders={aaaLeaders}
+        aaLeaders={aaLeaders}
       />
     </main>
   )

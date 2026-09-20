@@ -5,6 +5,8 @@
 // unavailable). Labeled honestly as traditional fielding, not a
 // substitute for modern defensive value stats.
 
+import { withSavantCache } from '@/lib/savant-cache'
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 export type FieldingStats = {
@@ -51,54 +53,74 @@ function parseCSVLine(line: string): string[] {
   return cells
 }
 
-export async function getOutsAboveAverage(playerId: number, season: number): Promise<OutsAboveAverage | null> {
-  const url = `https://baseballsavant.mlb.com/leaderboard/outs_above_average?type=Fielder&startYear=${season}&endYear=${season}&split=no&team=&range=year&min=1&pos=&roles=&viz=hide&csv=true`
-  try {
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/csv,*/*',
-      },
-    })
-    if (!res.ok) return null
-    const text = await res.text()
-    const lines = text.trim().split('\n')
-    if (lines.length < 2) return null
-    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''))
-    const idIdx = headers.indexOf('player_id')
-    if (idIdx === -1) return null
+export type FielderOaa = OutsAboveAverage & {
+  playerId: number
+  name: string
+  team: string
+  position: string
+}
 
-    for (let i = 1; i < lines.length; i++) {
-      const cells = parseCSVLine(lines[i]).map(c => c.replace(/"/g, ''))
-      if (Number(cells[idIdx]) !== playerId) continue
-      const get = (key: string) => {
-        const idx = headers.indexOf(key)
-        return idx === -1 ? null : cells[idx]
+/**
+ * The whole league's OAA in ONE fetch, cached in Supabase (12h) via
+ * withSavantCache — the leaderboard CSV is the same file regardless of which
+ * player you want, so the old per-player getOutsAboveAverage re-downloaded
+ * it uncached for every lookup. Key Players needs ~18 fielders per game.
+ */
+export async function getLeagueOaa(season: number): Promise<Record<string, FielderOaa>> {
+  return withSavantCache(`oaa_league_${season}`, 12 * 3600, async () => {
+    const url = `https://baseballsavant.mlb.com/leaderboard/outs_above_average?type=Fielder&startYear=${season}&endYear=${season}&split=no&team=&range=year&min=1&pos=&roles=&viz=hide&csv=true`
+    const out: Record<string, FielderOaa> = {}
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/csv,*/*',
+        },
+      })
+      if (!res.ok) return out
+      const lines = (await res.text()).replace(/^\uFEFF/, '').trim().split('\n')
+      if (lines.length < 2) return out
+      const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''))
+      const idx = (key: string) => headers.indexOf(key)
+      const idIdx = idx('player_id')
+      if (idIdx === -1) return out
+
+      for (let i = 1; i < lines.length; i++) {
+        const cells = parseCSVLine(lines[i]).map(c => c.replace(/"/g, ''))
+        const playerId = Number(cells[idIdx])
+        if (!playerId) continue
+        const get = (key: string) => { const j = idx(key); return j === -1 ? null : cells[j] }
+        const num = (key: string) => { const v = parseFloat(get(key) ?? ''); return isNaN(v) ? 0 : v }
+        out[String(playerId)] = {
+          playerId,
+          name: get('last_name, first_name') ?? '',
+          team: get('display_team_name') ?? '',
+          position: get('primary_pos_formatted') ?? '',
+          outsAboveAverage: num('outs_above_average'),
+          fieldingRunsPrevented: num('fielding_runs_prevented'),
+          oaaInFront: num('outs_above_average_infront'),
+          oaaLateralToward3B: num('outs_above_average_lateral_toward3bline'),
+          oaaLateralToward1B: num('outs_above_average_lateral_toward1bline'),
+          oaaBehind: num('outs_above_average_behind'),
+          oaaVsRHH: num('outs_above_average_rhh'),
+          oaaVsLHH: num('outs_above_average_lhh'),
+          actualSuccessRate: get('actual_success_rate_formatted') ?? '—',
+          estimatedSuccessRate: get('adj_estimated_success_rate_formatted') ?? '—',
+          diffSuccessRate: get('diff_success_rate_formatted') ?? '—',
+        }
       }
-      const num = (key: string) => {
-        const v = parseFloat(get(key) ?? '')
-        return isNaN(v) ? 0 : v
-      }
-      return {
-        outsAboveAverage: num('outs_above_average'),
-        fieldingRunsPrevented: num('fielding_runs_prevented'),
-        oaaInFront: num('outs_above_average_infront'),
-        oaaLateralToward3B: num('outs_above_average_lateral_toward3bline'),
-        oaaLateralToward1B: num('outs_above_average_lateral_toward1bline'),
-        oaaBehind: num('outs_above_average_behind'),
-        oaaVsRHH: num('outs_above_average_rhh'),
-        oaaVsLHH: num('outs_above_average_lhh'),
-        actualSuccessRate: get('actual_success_rate_formatted') ?? '—',
-        estimatedSuccessRate: get('adj_estimated_success_rate_formatted') ?? '—',
-        diffSuccessRate: get('diff_success_rate_formatted') ?? '—',
-      }
+    } catch (err) {
+      console.error('[batter-fielding] league OAA fetch failed:', err)
     }
-    return null
-  } catch (err) {
-    console.error('[batter-fielding] OAA fetch failed:', err)
-    return null
-  }
+    return out
+  })
+}
+
+export async function getOutsAboveAverage(playerId: number, season: number): Promise<OutsAboveAverage | null> {
+  const league = await getLeagueOaa(season)
+  return league[String(playerId)] ?? null
 }
 
 export async function getBatterFielding(playerId: number, season: number): Promise<FieldingStats | null> {

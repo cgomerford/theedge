@@ -43,11 +43,11 @@
  * are INTERNAL ranking numbers only. Public UI must translate this into
  * factor-count / plain language — never render the raw score.
  *
- * KNOWN LIMITATION: the raw pitch log is fetched fresh per request
- * (cached 1hr via Next's fetch revalidate). A batter with a very high
- * pitch count this season means a larger CSV to parse — fine at today's
- * scale, worth watching if this feature sees heavy traffic before a
- * proper cached/precomputed table is worth building.
+ * 2026-09-17: getBatterRawPitchLog now delegates to batter-pitch-log.ts's
+ * getBatterPitchLog, which is backed by withSavantCache (a Supabase
+ * cache-aside table) rather than a per-request live fetch — the earlier
+ * "fetched fresh per request" limitation this comment used to describe is
+ * resolved; only a cold cache miss pays the live-fetch cost.
  */
 
 import { createAdminClient } from '@/lib/supabase'
@@ -61,11 +61,13 @@ import {
   type ArsenalPitch,
 } from '@/lib/pitcher-arsenal'
 import { getBatterHotZones, type BatterHotZones } from '@/lib/hot-zones'
+import { getBatterPitchLog } from '@/lib/batter-pitch-log'
+import { getBatterVsPitcher, type BatterVsPitcher } from '@/lib/batter-stats'
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // Pitch-type fit tuning constants — kept separate and named so these are
 // easy to retune once we have real accuracy data to check them against.
-const MIN_VELOCITY_BAND_AB = 8       // below this, the velocity-matched split is too thin to trust// mph, either side — widened from 1.0 per George, trades some precision for far fewer "sample too thin" readsconst PUT_AWAY_USAGE_FLOOR_PCT = 5   // pitch must clear this usage% to be eligible as "the" put-away pitch
+const MIN_VELOCITY_BAND_AB = 8       // below this, the velocity-matched split is too thin to trust
 const PUT_AWAY_MULTIPLIER = 1.5      // extra weight when the batter's weak/strong pitch is the pitcher's out-pitch
 const PITCH_TYPE_FIT_WEIGHT = 0.7    // trusted somewhat less than the zone score — smaller samples
 const VELOCITY_BAND_TOLERANCE = 3.0  // mph, either side — widened from 1.0 per George, trades some precision for far fewer "sample too thin" reads
@@ -175,6 +177,7 @@ export type Top3Batter = {
   player_id: number
   player_name: string
   bat_side: string | null
+  switch_hitter?: boolean
   series_score: number                        // internal only, never render raw
   games_used: number
   per_pitcher: Top3BatterPitcherLine[]
@@ -182,6 +185,7 @@ export type Top3Batter = {
 
 export type SeriesTop3Result = {
   batters: Top3Batter[]                       // top 3, ranked descending
+  pool?: Top3Batter[]                         // top 5 — Key Players re-ranks these with context factors
   series_games: SeriesGame[]                  // ALL games found (confirmed + TBD)
   confirmed_games_count: number
   lineup_source: 'confirmed' | 'projected_from_previous_game' | 'unavailable'
@@ -453,20 +457,6 @@ export type RawPitchRow = {
 const NON_AB_EVENTS = new Set(['walk', 'intent_walk', 'hit_by_pitch', 'sac_fly', 'sac_bunt', 'sac_fly_double_play', 'catcher_interf'])
 const HIT_EVENTS = new Set(['single', 'double', 'triple', 'home_run'])
 
-function parseCsvLine(line: string): string[] {
-  const cells: string[] = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') inQuotes = !inQuotes
-    else if (ch === ',' && !inQuotes) { cells.push(current.trim()); current = '' }
-    else current += ch
-  }
-  cells.push(current.trim())
-  return cells
-}
-
 /**
  * Fetches a batter's full raw per-pitch log for the CURRENT season from
  * Baseball Savant — same URL shape, headers, and CSV-parsing approach as
@@ -478,61 +468,39 @@ function parseCsvLine(line: string): string[] {
  * Returns null on fetch/parse failure — callers must treat null as
  * "unavailable," never fall back to a fabricated number.
  */
+// Re-enabled 2026-09-17 — delegates to batter-pitch-log.ts's
+// getBatterPitchLog instead of live-fetching Savant's CSV directly.
+// That function hits the exact same statcast_search/csv endpoint this one
+// used to, but goes through withSavantCache (savant-cache.ts) first — a
+// Supabase-backed cache-aside layer built specifically for the "2-2.5MB
+// CSV exceeds Next's 2MB fetch-cache ceiling" problem (see
+// scripts/sql/create_savant_fetch_cache.sql, confirmed live in Supabase).
+// It was already used elsewhere (Location Lab, EV trend, Reaction
+// Window) — this file just wasn't wired to it. Only the first request
+// for a given batter/season pays the live-fetch cost; every request
+// after that (any batter, any page, within the 6h TTL) is a fast
+// Supabase read instead of a 2.5MB re-download. Restores
+// pitchTypeFitScore's velocity-matched splits AND pitchTypeZoneFit's
+// true batter-vs-this-exact-pitcher H2H (both read batterRawLog) without
+// a separate cron.
 export const getBatterRawPitchLog = cache(async function getBatterRawPitchLog(batterId: number, season?: number): Promise<RawPitchRow[] | null> {
-  // TEMP DISABLED 2026-09-08 — this fetch is a 2-2.5MB uncached CSV per
-  // batter (Next's fetch Data Cache has a hard 2MB item ceiling, so this
-  // was re-downloading in full on every single page load, no caching
-  // benefit ever). Called once per lineup batter from getSeriesTop3,
-  // ~9-18 times per game page load — the dominant cost in a 31s page
-  // load on 2026-09-08. Every caller already treats a null return as
-  // the expected "unavailable" case (see pitchTypeZoneFit,
-  // pitchTypeFitScore) so this degrades to zone-only scoring safely,
-  // not a crash. Re-enable once moved to a nightly cron precomputing
-  // this into Supabase — same pattern as bullpen/SB-tendency/streaks.
-  return null
   const yr = season ?? new Date().getFullYear()
-  const url = `https://baseballsavant.mlb.com/statcast_search/csv?player_id=${batterId}&player_type=batter&season=${yr}&type=batter&game_type=R&csv=true`
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TheEdge/1.0)',
-        'Accept': 'text/csv,*/*',
-      },
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) return null
-
-    const text = await res.text()
-    const lines = text.trim().split('\n')
-    if (lines.length < 2) return null
-
-     const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/^\ufeff/, '').replace(/^"|"$/g, ''))
-    const ptIdx = headers.indexOf('pitch_type')
-    const speedIdx = headers.indexOf('release_speed')
-    const zoneIdx = headers.indexOf('zone')
-    const evtIdx = headers.indexOf('events')
-    const pitcherIdx = headers.indexOf('pitcher')
-    if (ptIdx === -1 || speedIdx === -1) return null
-
-    const rows: RawPitchRow[] = []
-    for (let i = 1; i < lines.length; i++) {
-      const cells = parseCsvLine(lines[i])
-      const speed = parseFloat(cells[speedIdx])
-      const pitcherId = pitcherIdx >= 0 ? parseInt(cells[pitcherIdx]) : NaN
-      rows.push({
-        pitch_type: cells[ptIdx] || null,
-        release_speed: isNaN(speed) ? null : speed,
-        zone: zoneIdx >= 0 ? (parseInt(cells[zoneIdx]) || null) : null,
-        events: evtIdx >= 0 ? (cells[evtIdx] || null) : null,
-        pitcher_id: isNaN(pitcherId) ? null : pitcherId,
-      })
-    }
-    return rows
- } catch (e) {
-    console.error('series-matchup: getBatterRawPitchLog failed', e)
-    return null
-  }
+  const log = await getBatterPitchLog(batterId, yr)
+  if (!log) return null
+  return log.pitches.map((p): RawPitchRow => ({
+    pitch_type: p.pitchType,
+    release_speed: p.releaseSpeed,
+    zone: p.zone != null ? Number(p.zone) : null,
+    // batter-pitch-log's `result` is the Statcast `events` value only on the
+    // pitch that ended the PA — otherwise it falls back to the pitch
+    // `description` ("ball", "foul"...). computeBaFromRows treats any non-null
+    // events as a plate appearance, so without this guard every pitch counted
+    // as an AB and every velocity-matched BA collapsed toward ~.05.
+    events: p.result && p.result !== p.description ? p.result : null,
+    pitcher_id: p.pitcherId,
+  }))
 })
+
 /**
  * Computes AVG from a slice of raw pitch rows, using the same simplified
  * AB convention already used app-wide (fetch_pitcher_hot_zones.py counts
@@ -814,12 +782,12 @@ export async function getBatterGameResult(
  * still TBD, returns an empty batters array with series_games populated so
  * the UI can show an honest "waiting on confirmed starters" state.
  */
-export async function getSeriesTop3(
+export const getSeriesTop3 = cache(async (
   teamId: number,
   opposingTeamId: number,
   gameDate: string,
   currentGamePk?: number,
-): Promise<SeriesTop3Result> {
+): Promise<SeriesTop3Result> => {
   const [lineup, seriesGames] = await Promise.all([
     getProjectedLineup(teamId, gameDate, currentGamePk),
     getSeriesGames(teamId, opposingTeamId),
@@ -872,19 +840,14 @@ export async function getSeriesTop3(
             batterRawLog,
           )
 
-          // TEMP DISABLED 2026-09-08 — fires once per batter per confirmed
-          // series game (9 batters x N games x 2 teams = 50+ concurrent
-          // calls), and getBatterVsPitcher (batter-stats.ts) has no
-          // request timeout, so a connection stall waits on undici's
-          // default ~10s connect timeout. This was the dominant remaining
-          // cost after disabling the Savant raw-pitch-log fetch — the
-          // 2026-09-08 dev log showed 20+ ECONNRESET/ConnectTimeoutError
-          // failures against statsapi.mlb.com from this exact call site.
-          // h2h is display-only per this file's header comment (never
-          // feeds series_score), so disabling it is safe — h2h === null
-          // is already a normal, handled case in the UI. Re-enable once
-          // batched into a single request or moved to cron.
-          const h2h: BatterVsPitcherFull | null = null
+          // Re-enabled 2026-09-17 — getBatterVsPitcher (batter-stats.ts)
+          // now caches (6h) and has a 5s request timeout, fixing the
+          // ECONNRESET/ConnectTimeoutError storm this call site used to
+          // cause under concurrent fan-out (see that function's own
+          // comment for the full story). Still display-only — never
+          // feeds series_score — so a null here (fetch failure or no
+          // history) stays the normal, already-handled UI case.
+          const h2h: BatterVsPitcher | null = await getBatterVsPitcher(batter.player_id, pid)
 
           const blended = zoneScore + pitchTypeScore
 
@@ -913,7 +876,8 @@ export async function getSeriesTop3(
       return {
         player_id: batter.player_id,
         player_name: batter.player_name,
-        bat_side: (batter as any).bat_side ?? null,
+        bat_side: batter.bat_side ?? null,
+        switch_hitter: batter.switch_hitter ?? false,
         series_score: Math.round((scoreSum / perGame.length) * 100) / 100,
         games_used: perGame.length,
         per_pitcher: perGame.map((p) => p.line),
@@ -926,11 +890,12 @@ export async function getSeriesTop3(
 
   return {
     batters: batters.slice(0, 3),
+    pool: batters.slice(0, 5),
     series_games: seriesGames,
     confirmed_games_count: confirmedGames.length,
     lineup_source: lineup.source,
   }
-}
+})
 
 
 // ─── Career-vs-pitch-type split (on-demand, NOT part of the main scoring

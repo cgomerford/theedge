@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scout Report — X card mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF8F3; --orange:#FF5722; --yellow:#FDE047; --black:#1A1A1A; --grey:#8A8577; --line:#E4DFD2; }
+  * { box-sizing:border-box; border-radius:0; }
+  body { margin:0; background:#E9E5DA; font-family:'JetBrains Mono',monospace; color:var(--black); padding:28px 16px 60px; }
+  .wrap { max-width:1240px; margin:0 auto; }
+  h1 { font:700 13px 'JetBrains Mono'; letter-spacing:.14em; text-transform:uppercase; margin:0 0 4px; color:var(--orange); }
+  p.note { font:500 12px/1.55 'JetBrains Mono'; color:#57534E; margin:0 0 16px; max-width:900px; }
+
+  /* the artboard: exactly 1200 x 675 (X's 16:9 image), scaled to fit the page */
+  .stage { width:100%; aspect-ratio:1200/675; container-type:inline-size; box-shadow:0 1px 0 var(--line), 0 12px 40px rgba(0,0,0,.14); background:var(--cream); overflow:hidden; }
+  .card { width:1200px; height:675px; transform-origin:0 0; transform:scale(calc(100cqw / 1200px)); display:grid; grid-template-rows:76px 1fr 46px; background:var(--cream); }
+
+  .top { background:var(--black); color:var(--cream); display:flex; align-items:center; justify-content:space-between; padding:0 40px; }
+  .brand { font:400 44px 'Bebas Neue'; letter-spacing:.04em; }
+  .brand b { color:var(--orange); font-weight:400; }
+  .date { font:700 17px 'JetBrains Mono'; letter-spacing:.08em; color:var(--yellow); }
+
+  .body { display:grid; grid-template-columns:400px 1fr; }
+  .left { background:var(--yellow); border-right:4px solid var(--black); padding:26px 32px; display:flex; flex-direction:column; justify-content:space-between; }
+  .eyebrow { font:700 15px 'JetBrains Mono'; letter-spacing:.16em; text-transform:uppercase; }
+  .teams { display:flex; align-items:center; gap:14px; margin:6px 0 0; }
+  .teams img { width:104px; height:104px; object-fit:contain; }
+  .at { font:400 40px 'Bebas Neue'; color:var(--black); }
+  .big { font:400 132px/0.86 'Bebas Neue'; letter-spacing:.01em; margin:14px 0 0; }
+  .sp { font:700 16px/1.5 'JetBrains Mono'; }
+  .sp span { display:block; font-weight:500; color:#3d3a30; }
+
+  .right { padding:20px 36px 12px 34px; display:grid; grid-template-rows:repeat(3,1fr); gap:0; }
+  .row { display:grid; grid-template-columns:54px 1fr 200px; align-items:center; gap:20px; border-bottom:3px solid var(--black); }
+  .row:last-child { border-bottom:0; }
+  .num { width:54px; height:54px; background:var(--black); color:var(--yellow); font:400 38px/54px 'Bebas Neue'; text-align:center; }
+  .tag { font:700 13px 'JetBrains Mono'; letter-spacing:.14em; text-transform:uppercase; color:var(--orange); }
+  .head { font:800 40px/1.05 'Fraunces',serif; letter-spacing:-.01em; margin:3px 0 4px; }
+  .sub { font:500 16px/1.35 'JetBrains Mono'; color:#57534E; }
+
+  /* mini graphics */
+  .g { display:block; width:200px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; width:132px; margin-left:auto; }
+  .grid3 i { display:block; height:40px; }
+
+  .bottom { background:var(--orange); color:var(--black); display:flex; align-items:center; justify-content:space-between; padding:0 40px; font:700 15px 'JetBrains Mono'; letter-spacing:.1em; text-transform:uppercase; }
+  .bottom .url { font-weight:700; letter-spacing:.06em; text-transform:none; }
+
+  /* everything outside the artboard */
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:26px; }
+  @media (max-width:900px){ .cols{ grid-template-columns:1fr; } }
+  .box { background:var(--cream); border:2px solid var(--black); padding:16px 18px; }
+  .box h2 { font:700 12px 'JetBrains Mono'; letter-spacing:.14em; text-transform:uppercase; margin:0 0 10px; color:var(--orange); }
+  pre { margin:0; white-space:pre-wrap; font:500 15px/1.55 'JetBrains Mono'; }
+  .count { font:700 12px 'JetBrains Mono'; margin-top:10px; }
+  .count.ok { color:#15803d; }
+  ul.f { margin:0; padding-left:18px; font:500 12.5px/1.65 'JetBrains Mono'; }
+  .phone { width:340px; max-width:100%; margin:0 auto; border:2px solid var(--black); background:#fff; padding:12px; }
+  .phone .who { font:700 12px 'JetBrains Mono'; margin-bottom:6px; }
+  .phone .who span { color:var(--grey); font-weight:500; }
+  .phone pre { font-size:12.5px; margin-bottom:8px; }
+  .phone .img { position:relative; width:100%; aspect-ratio:16/9; border:1px solid var(--line); overflow:hidden; container-type:inline-size; }
+  .phone .img .card { transform:scale(calc(100cqw / 1200px)); }
+  .reply { margin-top:8px; padding-top:8px; border-top:1px solid var(--line); font:500 12px/1.5 'JetBrains Mono'; color:#57534E; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⊕ Mockup · X card for the Scout Report</h1>
+  <p class="note">This is a mockup for approval — the numbers are <b>sample values</b>, not live data. Nothing is built in React yet. Artboard is 1200×675 (16:9), the size X shows uncropped in a timeline.</p>
+
+  <div class="stage">
+    <div class="card" id="card">
+      <div class="top">
+        <div class="brand">THE <b>EDGE</b> · SCOUT REPORT</div>
+        <div class="date">SAT SEP 19 · 7:10 PM ET</div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div>
+            <div class="eyebrow">§ Tonight</div>
+            <div class="teams">
+              <img src="https://www.mlbstatic.com/team-logos/116.svg" alt="DET">
+              <span class="at">AT</span>
+              <img src="https://www.mlbstatic.com/team-logos/145.svg" alt="CWS">
+            </div>
+            <div class="big">DET<br>AT CWS</div>
+          </div>
+          <div class="sp">Jobe (R) <span>vs Cease (R)</span></div>
+        </div>
+
+        <div class="right">
+          <!-- 1 zone clash -->
+          <div class="row">
+            <div class="num">1</div>
+            <div>
+              <div class="tag">Zone clash</div>
+              <div class="head">3 DET bats fit Cease’s zones</div>
+              <div class="sub">Greene, Torkelson, Keith hit where he throws</div>
+            </div>
+            <div class="grid3" aria-hidden="true">
+              <i style="background:rgba(42,120,214,.85)"></i><i style="background:#eeeeec"></i><i style="background:rgba(235,104,52,.55)"></i>
+              <i style="background:rgba(42,120,214,.55)"></i><i style="background:rgba(42,120,214,.9)"></i><i style="background:#eeeeec"></i>
+              <i style="background:rgba(235,104,52,.75)"></i><i style="background:#eeeeec"></i><i style="background:rgba(42,120,214,.4)"></i>
+            </div>
+          </div>
+
+          <!-- 2 run game -->
+          <div class="row">
+            <div class="num">2</div>
+            <div>
+              <div class="tag">Run game</div>
+              <div class="head">CWS catcher pops 2.06s</div>
+              <div class="sub">8th quickest of 28 · DET safe on 79% of steals</div>
+            </div>
+            <svg class="g" viewBox="0 0 200 56" aria-hidden="true">
+              <line x1="6" x2="194" y1="30" y2="30" stroke="#E4DFD2" stroke-width="4" stroke-linecap="round"/>
+              <rect x="52" y="22" width="88" height="16" fill="#E4DFD2"/>
+              <line x1="96" x2="96" y1="14" y2="46" stroke="#8A8577" stroke-width="3"/>
+              <circle cx="66" cy="30" r="11" fill="#2a78d6" stroke="#FAF8F3" stroke-width="3"/>
+              <text x="6" y="54" font-family="JetBrains Mono" font-size="10" fill="#8A8577">quicker</text>
+              <text x="194" y="54" font-family="JetBrains Mono" font-size="10" fill="#8A8577" text-anchor="end">slower</text>
+            </svg>
+          </div>
+
+          <!-- 3 late innings -->
+          <div class="row">
+            <div class="num">3</div>
+            <div>
+              <div class="tag">Late innings</div>
+              <div class="head">DET is 4–7 vs CWS this year</div>
+              <div class="sub">7th on: 4 runs scored, 8 allowed in 11 meetings</div>
+            </div>
+            <svg class="g" viewBox="0 0 200 64" aria-hidden="true">
+              <g font-family="JetBrains Mono" font-size="11" fill="#57534E">
+                <text x="0" y="12">7th</text><rect x="30" y="4" width="34" height="8" fill="#2a78d6"/><rect x="30" y="14" width="68" height="8" fill="#eb6834"/>
+                <text x="0" y="40">8th</text><rect x="30" y="32" width="52" height="8" fill="#2a78d6"/><rect x="30" y="42" width="34" height="8" fill="#eb6834"/>
+                <text x="0" y="62">9th</text><rect x="30" y="54" width="10" height="8" fill="#2a78d6"/><rect x="30" y="64" width="18" height="0" fill="#eb6834"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <span>12 sections · every number shows its sample</span>
+        <span class="url">edgereportdaily.com</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="box">
+      <h2>Post text</h2>
+      <pre id="post">Scout Report | Tigers at White Sox
+
+▸ Zone clash: 3 DET bats fit Cease's zones
+▸ Run game: CWS catcher pops 2.06s, 8th of 28
+▸ Late innings: DET 4-7 vs CWS this year
+
+Full report in the reply ↓</pre>
+      <div class="count ok" id="count"></div>
+      <h2 style="margin-top:18px">Reply (carries the link)</h2>
+      <pre>Full Scout Report, all 12 sections: edgereportdaily.com/mlb/detroit-tigers-vs-chicago-white-sox-2026-09-19/scout-report</pre>
+    </div>
+
+    <div>
+      <div class="phone">
+        <div class="who">The Edge <span>@edgereportdaily · now</span></div>
+        <pre id="postPhone"></pre>
+        <div class="img"><div class="card" id="cardPhone"></div></div>
+        <div class="reply"><b>The Edge</b> replying: Full Scout Report, all 12 sections: edgereportdaily.com/…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box" style="margin-top:26px">
+    <h2>Why it is built this way</h2>
+    <ul class="f">
+      <li><b>16:9, 1200×675.</b> Shown uncropped in the feed; the number tiles stay readable at phone width (the small preview above is that size).</li>
+      <li><b>Three reads, not twelve.</b> One hook per row: a number you can quote, a plain-language line, and a tiny chart. Big type, hard black rules, yellow block for the matchup — it should stop a scroll.</li>
+      <li><b>Which reads appear is picked from the data.</b> The card shows the three strongest rows that clear their sample gates (e.g. a zone-clash row only if 3+ hitters have a real edge; a late-innings row only with 3+ meetings). Nothing appears when the sample is too thin.</li>
+      <li><b>House rules.</b> No Edge Score, no percentages of winning, no picks or odds language. Wording describes what the numbers show. The link lives in the reply, never the post body.</li>
+      <li><b>Text is ~190 characters</b> (limit 250), leaving room for the team hashtags or a hook line if you want one.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // phone preview reuses the same artboard markup
+  const card = document.getElementById('card');
+  document.getElementById('cardPhone').innerHTML = card.innerHTML;
+  document.getElementById('postPhone').textContent = document.getElementById('post').textContent;
+  // X counts most symbols as 2 characters — count conservatively
+  const t = document.getElementById('post').textContent;
+  let n = 0; for (const ch of t) n += ch.codePointAt(0) > 0x2000 ? 2 : 1;
+  const el = document.getElementById('count');
+  el.textContent = n + ' / 250 characters (symbols counted as 2)';
+  el.className = 'count ' + (n <= 250 ? 'ok' : '');
+</script>
+</body>
+</html>

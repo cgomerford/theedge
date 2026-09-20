@@ -12,6 +12,7 @@ export type BatterPerformance = {
   line: string
   score: number
   grade: Grade
+  gameNumber: number | null
   seasonAVG: string | null
   seasonOPS: string | null
   seasonHR: number | null
@@ -33,6 +34,7 @@ export type PitcherPerformance = {
   line: string
   score: number
   grade: Grade
+  gameNumber: number | null
   seasonERA: string | null
   seasonWHIP: string | null
   seasonK: number | null
@@ -131,6 +133,20 @@ export async function getYesterdaysPerformers(
     const r = { available: false as const, reason: `No completed games found for ${dateStr}.` }
     return { batters: r, pitchers: r }
   }
+  return getPerformersForGames(games, limit)
+}
+
+// Same per-game grading as getYesterdaysPerformers, generalized to an
+// explicit gamePk list instead of "every game on this date" — lets
+// callers grade performances across a specific set of games (e.g. one
+// series) rather than the whole league's slate.
+export async function getPerformersForGames(
+  games: { gamePk: number; awayAbbr: string; homeAbbr: string; gameNumber?: number }[], limit = 5
+): Promise<{ batters: RecapResult<BatterPerformance>; pitchers: RecapResult<PitcherPerformance> }> {
+  if (games.length === 0) {
+    const r = { available: false as const, reason: 'No completed games given.' }
+    return { batters: r, pitchers: r }
+  }
   const batters: BatterPerformance[] = []
   const pitchers: PitcherPerformance[] = []
 
@@ -153,7 +169,7 @@ export async function getYesterdaysPerformers(
           batters.push({
             personId: p.person?.id ?? 0, name: p.person?.fullName ?? '—', teamAbbr,
             headshot: headshotUrl(p.person?.id ?? 0), line: parts.join(', '),
-            score: sc, grade: gradeBatter(sc),
+            score: sc, grade: gradeBatter(sc), gameNumber: game.gameNumber ?? null,
             seasonAVG: sBat?.avg ?? null, seasonOPS: sBat?.ops ?? null,
             seasonHR: sBat?.homeRuns != null ? Number(sBat.homeRuns) : null,
             seasonRBI: sBat?.rbi != null ? Number(sBat.rbi) : null,
@@ -171,7 +187,7 @@ export async function getYesterdaysPerformers(
             personId: p.person?.id ?? 0, name: p.person?.fullName ?? '—', teamAbbr,
             headshot: headshotUrl(p.person?.id ?? 0),
             line: `${pit.inningsPitched ?? '0.0'} IP, ${pit.earnedRuns ?? 0} ER, ${pit.strikeOuts ?? 0} K, ${pit.baseOnBalls ?? 0} BB`,
-            score: sc, grade: gradePitcher(sc),
+            score: sc, grade: gradePitcher(sc), gameNumber: game.gameNumber ?? null,
             seasonERA: sPit?.era ?? null, seasonWHIP: sPit?.whip ?? null,
             seasonK: sPit?.strikeOuts != null ? Number(sPit.strikeOuts) : null,
             gameER: Number(pit.earnedRuns ?? 0), gameIP: pit.inningsPitched ?? '0.0',
@@ -183,7 +199,7 @@ export async function getYesterdaysPerformers(
   }
   batters.sort((a, b) => b.score - a.score)
   pitchers.sort((a, b) => b.score - a.score)
-  console.log(`[mlb-recap] getYesterdaysPerformers(${dateStr}): ${batters.length} batter perfs, ${pitchers.length} pitcher perfs before slicing to limit=${limit}`)
+  console.log(`[mlb-recap] getPerformersForGames(${games.map(g => g.gamePk).join(',')}): ${batters.length} batter perfs, ${pitchers.length} pitcher perfs before slicing to limit=${limit}`)
   return {
     batters: batters.length > 0 ? { available: true, items: batters.slice(0, limit) } : { available: false, reason: 'No qualifying batting performances found.' },
     pitchers: pitchers.length > 0 ? { available: true, items: pitchers.slice(0, limit) } : { available: false, reason: 'No qualifying pitching performances found.' },

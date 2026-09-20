@@ -52,3 +52,44 @@ export async function getLineupSpray(playerIds: number[]): Promise<BatterSpray[]
   console.log('[batter-spray] requested', playerIds.length, 'players:', playerIds, '→ got', (data ?? []).length, 'rows back')
   return (data as BatterSpray[]) ?? []
 }
+
+// ─── Pull profile ───────────────────────────────────────────────────────────
+// Shared by Key Players' spray-vs-defense factor. Mirrors the convention
+// SprayChart.tsx's getPullSummary uses (RHB pulls to low hc_x, LHB to high
+// hc_x) but over ALL balls in play rather than hits only, since the point
+// is "where do his ground balls / flies go," not "where do his hits fall."
+
+export type PullProfile = {
+  bip: number
+  pullPct: number            // % of all BIP hit to the pull third
+  gbCount: number
+  gbPct: number              // % of BIP that are ground balls
+  pulledGbPct: number        // % of his ground balls that go pull-side
+  airCount: number
+  pulledAirPct: number       // % of his fly balls / liners / pops that go pull-side
+}
+
+const PULL_MARGIN = 25       // hc_x distance from ~125 (plate line) that counts as "pull third"
+
+export function computePullProfile(plays: SprayPlay[], stand: 'L' | 'R', vsHand?: 'L' | 'R' | null): PullProfile | null {
+  const usable = plays.filter((p) => typeof p.x === 'number' && typeof p.y === 'number' && p.bt)
+  const pool = vsHand ? usable.filter((p) => p.pt === vsHand) : usable
+  // Fall back to all-hand data when the vs-hand slice is too thin to trust.
+  const rows = pool.length >= 40 ? pool : usable
+  if (rows.length < 60) return null
+
+  const isPull = (x: number) => (stand === 'R' ? x < 125 - PULL_MARGIN : x > 125 + PULL_MARGIN)
+  const gb = rows.filter((p) => p.bt === 'ground_ball')
+  const air = rows.filter((p) => p.bt !== 'ground_ball')
+  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0)
+
+  return {
+    bip: rows.length,
+    pullPct: pct(rows.filter((p) => isPull(p.x)).length, rows.length),
+    gbCount: gb.length,
+    gbPct: pct(gb.length, rows.length),
+    pulledGbPct: pct(gb.filter((p) => isPull(p.x)).length, gb.length),
+    airCount: air.length,
+    pulledAirPct: pct(air.filter((p) => isPull(p.x)).length, air.length),
+  }
+}

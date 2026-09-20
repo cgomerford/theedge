@@ -24,6 +24,51 @@ export type OwnershipRow = {
   percent_owned: number | null
 }
 
+export type OwnershipIndexRow = {
+  espn_player_id: number
+  mlb_player_id: number | null
+  full_name: string
+  percent_owned: number | null
+}
+
+/**
+ * One-shot load of the latest ESPN ownership snapshot. Used by the league
+ * grader to match pasted names and attach real % owned. Table is ~1.5–3k
+ * rows, same cost as getOwnershipByNames.
+ */
+export async function getOwnershipIndex(): Promise<{
+  byMlbId: Map<number, OwnershipIndexRow>
+  byName: Map<string, OwnershipIndexRow>
+  byEspnId: Map<number, OwnershipIndexRow>
+}> {
+  const byMlbId = new Map<number, OwnershipIndexRow>()
+  const byName = new Map<string, OwnershipIndexRow>()
+  const byEspnId = new Map<number, OwnershipIndexRow>()
+  const supa = createAdminClient()
+  const { data, error } = await supa
+    .from('fantasy_ownership')
+    .select('espn_player_id, mlb_player_id, full_name, percent_owned')
+
+  if (error) {
+    console.error('[fantasy-ownership] getOwnershipIndex error:', error.message)
+    return { byMlbId, byName, byEspnId }
+  }
+
+  for (const row of data ?? []) {
+    const rec: OwnershipIndexRow = {
+      espn_player_id: row.espn_player_id,
+      mlb_player_id: row.mlb_player_id,
+      full_name: row.full_name,
+      percent_owned: row.percent_owned == null ? null : Number(row.percent_owned),
+    }
+    if (rec.percent_owned != null && Number.isNaN(rec.percent_owned)) rec.percent_owned = null
+    if (rec.mlb_player_id != null) byMlbId.set(rec.mlb_player_id, rec)
+    if (rec.full_name) byName.set(normalizeName(rec.full_name), rec)
+    if (rec.espn_player_id != null) byEspnId.set(rec.espn_player_id, rec)
+  }
+  return { byMlbId, byName, byEspnId }
+}
+
 export type OwnershipChange = {
   espn_player_id: number
   full_name:       string

@@ -27,6 +27,20 @@ import {
   colorForPitcherMetric,
   formatMetric,
 } from '@/lib/hot-zones'
+// Same 13-zone key set + corner-alignment convention as the Pitching/
+// Batting Lab's own zone grids (pitching-lab/ZoneGrid.tsx,
+// batting-lab/BatterHotZoneOverlay.tsx) — the 4 chase zones are real
+// quadrant-sized cells with their content pinned toward the true corner
+// (a 2x2 overlay sitting BEHIND the 3x3 core grid, which visually
+// occludes everything but each quadrant's corner sliver), not small dots.
+import { CORE_KEYS, CHASE_KEYS, CHASE_SET } from '@/components/pitching-lab/ZoneGrid'
+
+const CHASE_ALIGN: Record<string, string> = {
+  '11': 'items-start justify-start pt-2 pl-2',
+  '12': 'items-end justify-start pt-2 pr-2',
+  '13': 'items-start justify-end pb-2 pl-2',
+  '14': 'items-end justify-end pb-2 pr-2',
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -168,7 +182,7 @@ export default function HotZone(props: Props) {
         </div>
       )}
 
-      {/* ── The 3x3 grid ────────────────────────────────────────────── */}
+      {/* ── The 13-zone grid (9 in-zone + 4 chase corners) ──────────── */}
       <div className="relative">
 
         {/* Strike zone outline + grid */}
@@ -178,82 +192,32 @@ export default function HotZone(props: Props) {
             from catcher&apos;s view
           </div>
 
-          {/* The 3x3 grid */}
-          <div className="grid grid-cols-3 gap-1 aspect-square border-2 border-stone-900 p-1 bg-stone-900">
-            {['1','2','3','4','5','6','7','8','9'].map((zoneNum) => {
-              const cell: ZoneCell = zones[zoneNum] ?? {}
+          {/* Board: a 2x2 chase-zone overlay (11/12/13/14) fills the
+              whole square first, then the 3x3 in-zone core (1-9) draws
+              on top of it, centered — leaving only each chase quadrant's
+              true corner sliver visible. Same technique as the Pitching/
+              Batting Lab's own zone grids (ZoneGrid.tsx / BatterZoneGrid
+              in BatterHotZoneOverlay.tsx), not a separate dot per corner. */}
+          <div className="relative aspect-square">
+            {/* No overflow-hidden here — hover tooltips render above their
+                cell and need to escape this box; a clipped ancestor was
+                exactly what made the chase-zone hover "broken" (invisible,
+                cut off mid-render) versus the core zones, which never had
+                a clipping ancestor. */}
+            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+              {CHASE_KEYS.map((zoneNum) => (
+                <ZoneButton key={zoneNum} zoneNum={zoneNum} cell={zones[zoneNum] ?? {}} mode={mode} isPro={isPro} isMobile={isMobile} activeZone={activeZone} setActiveZone={setActiveZone} chaseAlign={CHASE_ALIGN[zoneNum]} />
+              ))}
+            </div>
 
-              // Choose colour based on mode
-              const bgClass = mode === 'batter'
-                ? colorForBatterMetric(cell.xwoba ?? cell.slg ?? cell.ba, 'xwoba')
-                : colorForPitcherMetric(cell.ba_against, 'ba_against')
-
-              // Headline number shown in each cell
-              const primary = mode === 'batter'
-                ? formatMetric(cell.xwoba ?? cell.ba, cell.xwoba != null ? 'xwoba' : 'ba')
-                : formatMetric(cell.ba_against, 'ba')
-
-              const sampleSize = mode === 'batter' ? cell.ab ?? 0 : cell.ab ?? 0
-              const tooSmall = sampleSize < 10
-
-              return (
-                <div key={zoneNum} className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => { if (isMobile) setActiveZone(zoneNum) }}
-                    onMouseEnter={() => { if (!isMobile) setActiveZone(zoneNum) }}
-                    onMouseLeave={() => { if (!isMobile) setActiveZone(null) }}
-                    aria-label={`Zone ${zoneNum}: ${ZONE_LABELS[zoneNum]}`}
-                    className={`
-                      relative w-full aspect-square flex flex-col items-center justify-center
-                      ${bgClass}
-                      ${tooSmall ? 'opacity-50' : ''}
-                      transition hover:ring-2 hover:ring-orange-600 hover:ring-inset
-                      focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-inset
-                    `}
-                  >
-                    {/* Free tier — no numbers shown */}
-                    {!isPro && (
-                      <span className="text-[10px] font-mono text-stone-700/40 select-none">?</span>
-                    )}
-
-                    {/* Pro tier — show metric */}
-                    {isPro && (
-                      <>
-                        <span className="font-mono font-bold text-stone-900 text-sm sm:text-base leading-none">
-                          {primary}
-                        </span>
-                        {!tooSmall && (
-                          <span className="text-[8px] font-mono text-stone-700 mt-0.5 uppercase">
-                            {mode === 'batter' ? 'xwOBA' : 'BAA'}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </button>
-
-                  {/* Desktop tooltip on hover (Pro only) */}
-                  {isPro && !isMobile && activeZone === zoneNum && (
-                    <div
-                      className="absolute z-50 left-1/2 -translate-x-1/2 -top-2 -translate-y-full
-                                 bg-stone-900 text-stone-100 px-3 py-2 shadow-xl
-                                 min-w-[160px] pointer-events-none"
-                      role="tooltip"
-                    >
-                      <div className="text-[10px] font-mono uppercase tracking-widest text-orange-400 font-bold mb-1">
-                        {ZONE_LABELS[zoneNum]}
-                      </div>
-                      <ZoneStats cell={cell} mode={mode} />
-                      {/* Arrow */}
-                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
-                                      border-l-[6px] border-l-transparent
-                                      border-r-[6px] border-r-transparent
-                                      border-t-[6px] border-t-stone-900" />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            <div
+              className="absolute grid grid-cols-3 gap-1 border-2 border-stone-900 p-1 bg-stone-900"
+              style={{ top: '16%', left: '16%', width: '68%', height: '68%' }}
+            >
+              {CORE_KEYS.map((zoneNum) => (
+                <ZoneButton key={zoneNum} zoneNum={zoneNum} cell={zones[zoneNum] ?? {}} mode={mode} isPro={isPro} isMobile={isMobile} activeZone={activeZone} setActiveZone={setActiveZone} />
+              ))}
+            </div>
           </div>
 
           {/* L/R labels around the zone */}
@@ -349,6 +313,100 @@ export default function HotZone(props: Props) {
             </div>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+// ─── One zone cell — shared by the 9 in-zone buttons and the 4 chase-zone
+// corners. `corner` shrinks the type and drops the metric-name sub-label
+// since corner cells are visually smaller than the main 3x3 grid.
+// ────────────────────────────────────────────────────────────────────────
+
+function ZoneButton({
+  zoneNum, cell, mode, isPro, isMobile, activeZone, setActiveZone, chaseAlign,
+}: {
+  zoneNum: string
+  cell: ZoneCell
+  mode: 'batter' | 'pitcher'
+  isPro: boolean
+  isMobile: boolean
+  activeZone: string | null
+  setActiveZone: (z: string | null) => void
+  // Set only for the 4 chase-zone quadrants — flex alignment + padding
+  // that pins this cell's content toward the board's true outer corner
+  // (see CHASE_ALIGN above), matching how the Lab's own zone grids do it.
+  chaseAlign?: string
+}) {
+  const isChase = CHASE_SET.has(zoneNum)
+  // Defaults to AVG (per George) rather than xwOBA — falls back to xwOBA/SLG
+  // only when a zone genuinely has no AVG on record.
+  const bgClass = mode === 'batter'
+    ? colorForBatterMetric(cell.ba ?? cell.xwoba ?? cell.slg, 'ba')
+    : colorForPitcherMetric(cell.ba_against, 'ba_against')
+
+  const primary = mode === 'batter'
+    ? formatMetric(cell.ba ?? cell.xwoba, cell.ba != null ? 'ba' : 'xwoba')
+    : formatMetric(cell.ba_against, 'ba')
+
+  const sampleSize = cell.ab ?? 0
+  const tooSmall = sampleSize < 10
+
+  return (
+    <div className={`relative group ${isChase ? 'w-full h-full' : ''}`}>
+      <button
+        type="button"
+        onClick={() => { if (isMobile) setActiveZone(zoneNum) }}
+        onMouseEnter={() => { if (!isMobile) setActiveZone(zoneNum) }}
+        onMouseLeave={() => { if (!isMobile) setActiveZone(null) }}
+        aria-label={`Zone ${zoneNum}: ${ZONE_LABELS[zoneNum]}`}
+        className={`
+          relative w-full ${isChase ? `h-full flex flex-col ${chaseAlign}` : 'aspect-square flex flex-col items-center justify-center'}
+          ${bgClass}
+          ${tooSmall ? 'opacity-50' : ''}
+          ${isChase ? 'border border-white/25' : ''}
+          transition hover:ring-2 hover:ring-orange-600 hover:ring-inset
+          focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-inset
+        `}
+      >
+        {/* Free tier — no numbers shown */}
+        {!isPro && (
+          <span className={`font-mono text-stone-700/40 select-none ${isChase ? 'text-[8px]' : 'text-[10px]'}`}>?</span>
+        )}
+
+        {/* Pro tier — show metric */}
+        {isPro && (
+          <>
+            <span className={`font-mono font-bold text-stone-900 leading-none ${isChase ? 'text-[9px] sm:text-[10px]' : 'text-sm sm:text-base'}`}>
+              {primary}
+            </span>
+            {!tooSmall && !isChase && (
+              <span className="text-[8px] font-mono text-stone-700 mt-0.5 uppercase">
+                {mode === 'batter' ? 'xwOBA' : 'BAA'}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+
+      {/* Desktop tooltip on hover (Pro only) */}
+      {isPro && !isMobile && activeZone === zoneNum && (
+        <div
+          className="absolute z-50 left-1/2 -translate-x-1/2 -top-2 -translate-y-full
+                     bg-stone-900 text-stone-100 px-3 py-2 shadow-xl
+                     min-w-[160px] pointer-events-none"
+          role="tooltip"
+        >
+          <div className="text-[10px] font-mono uppercase tracking-widest text-orange-400 font-bold mb-1">
+            {ZONE_LABELS[zoneNum]}
+          </div>
+          <ZoneStats cell={cell} mode={mode} />
+          {/* Arrow */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
+                          border-l-[6px] border-l-transparent
+                          border-r-[6px] border-r-transparent
+                          border-t-[6px] border-t-stone-900" />
+        </div>
       )}
     </div>
   )

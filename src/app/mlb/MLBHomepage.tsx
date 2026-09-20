@@ -5,11 +5,25 @@ import Link from 'next/link'
 import type { MLBDivisionStandings, MLBStatLeader, MLBNewsItem } from '@/lib/mlb-homepage'
 import type { MLBGame } from '@/lib/mlb'
 import { slugifyGame, teamLogoUrl } from '@/lib/mlb'
-import { findTeamByName, MLB_TEAMS } from '@/lib/teams'
+import { findTeamByName, MLB_TEAMS, shareDisplayName } from '@/lib/teams'
 import type { EdgePrediction } from '@/lib/edge-fetch'
-import type { FantasyPicksByType } from '@/lib/fantasy'
 import type { TeamTransaction } from '@/lib/team-transactions'
-import type { Top3Snapshot } from '@/lib/series-top3-snapshot'
+import StandingsChart from '@/components/StandingsChart'
+import { TeamLeaderboardTable } from '@/components/LeagueStandardStatsSection'
+import NewsFeedSidebar from '@/components/NewsFeedSidebar'
+import type { LeagueTeamStatRow } from '@/lib/league-standard-stats'
+import TeamRadarSlideshow from '@/components/TeamRadarSlideshow'
+import type { TeamRadarRow } from '@/lib/team-radar'
+import SeasonShapeRiver from '@/components/SeasonShapeRiver'
+import LeverageBoard from '@/components/LeverageBoard'
+import EngineRoom from '@/components/EngineRoom'
+import DeserveToWinWaterfall from '@/components/DeserveToWinWaterfall'
+import PlayerSearch from '@/components/PlayerSearch'
+
+// Same sitewide flag as src/app/page.tsx and src/proxy.ts — flip all three
+// on Sept 18. Duplicated per-file rather than threaded as a prop because
+// that's the existing pattern this app already uses for it.
+const MAINTENANCE_MODE = false
 
 export type Prospect = {
   rank: number
@@ -29,15 +43,17 @@ type Props = {
   games: MLBGame[]
   predictions: Map<number, EdgePrediction>
   news: MLBNewsItem[]
-  today: string
-  isPro: boolean
   activeIL: TeamTransaction[]
   recentTransactions: TeamTransaction[]
   statLeaders?: Record<string, MLBStatLeader[]>
-  fantasyPicks?: FantasyPicksByType
-  fantasyIsStale?: boolean
   prospects?: Prospect[]
-  top3Snapshots?: Map<number, Top3Snapshot>
+  leagueStandardStats: LeagueTeamStatRow[]
+  teamRadarRows: TeamRadarRow[]
+  teamRadarFipConstant: number
+  // Server component (async, fetches its own data) — can't be imported and
+  // rendered directly from this 'use client' file, so page.tsx renders it
+  // and passes the element down instead.
+  articlesTeaser: React.ReactNode
 }
 
 /* ── helpers ───────────────────────────────────────────── */
@@ -55,12 +71,6 @@ function fmt(d: string) {
   }
 }
 
-function ago(iso: string) {
-  if (!iso) return ''
-  const h = Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000)
-  return h < 1 ? 'just now' : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`
-}
-
 function fCount(p: EdgePrediction) {
   if (!p?.components) return null
   const c = p.components as Record<string, number>
@@ -70,56 +80,73 @@ function fCount(p: EdgePrediction) {
   }
 }
 
-function teamColors(teamId: number): { primary: string; secondary: string } {
-  const t = MLB_TEAMS.find(t => {
-    const idMap: Record<string, number> = {
-      yankees: 147, 'red-sox': 111, 'blue-jays': 141, orioles: 110, rays: 139,
-      guardians: 114, tigers: 116, royals: 118, twins: 142, 'white-sox': 145,
-      astros: 117, angels: 108, athletics: 133, mariners: 136, rangers: 140,
-      braves: 144, marlins: 146, mets: 121, phillies: 143, nationals: 120,
-      cubs: 112, reds: 113, brewers: 158, pirates: 134, cardinals: 138,
-      diamondbacks: 109, rockies: 115, dodgers: 119, padres: 135, giants: 137,
-    }
-    return idMap[t.slug] === teamId
-  })
-  return { primary: t?.primary_color ?? '#1A1A1A', secondary: t?.secondary_color ?? '#A3A3A3' }
-}
-
 /* ── styles ────────────────────────────────────────────── */
 
 const CSS = `
-  .mlb-page { background: #FAF8F3; min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
-  .m { font-family: 'JetBrains Mono', monospace; }
-  .s { font-family: 'Fraunces', serif; }
-  .b { font-family: 'Bebas Neue', sans-serif; }
+  /* .m/.s/.b used to switch between JetBrains Mono/Fraunces/Bebas Neue for
+     labels/headlines/hero numbers — Outfit (the sitewide brand font, see
+     layout.tsx/globals.css) is now the standard everywhere, so all three
+     just point at it. Kept as named classes rather than deleted so the
+     ~50 existing className="m"/"s"/"b" usages below don't all need
+     touching individually — each still gets its own size/weight/spacing
+     via inline styles, just on the one shared typeface now. */
+  .mlb-page { background: #FAF8F3; min-height: 100vh; font-family: 'Outfit', sans-serif; }
+  .m { font-family: 'Outfit', sans-serif; }
+  .s { font-family: 'Outfit', sans-serif; }
+  .b { font-family: 'Outfit', sans-serif; }
 
-  /* Ticker */
-  .ticker-outer { position: relative; background: #fff; border-bottom: 1px solid rgba(26,26,26,0.1); }
-  .ticker-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  /* Ticker — streamlined: individual rounded cards with real gaps instead
+     of a hairline-divided strip, tighter per-card content (no team-color
+     bottom bar, no secondary cross-sell line) so more games fit on screen
+     at once and each one reads faster. */
+  .ticker-outer { position: relative; background: #FAF8F3; border-bottom: 1px solid rgba(26,26,26,0.08); }
+  .ticker-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 10px 16px 12px; }
   .ticker-wrap::-webkit-scrollbar { display: none; }
-  .ticker-track { display: flex; max-width: 1400px; margin: 0 auto; }
-  .ticker-card { min-width: 168px; padding: 12px 14px 0; border-left: 1px solid rgba(26,26,26,0.07); cursor: pointer; text-decoration: none; display: block; flex-shrink: 0; transition: background 0.1s; }
-  .ticker-card:first-child { border-left: none; }
-  .ticker-card:hover { background: #FAF8F3; }
+  .ticker-track { display: flex; gap: 8px; max-width: 1400px; margin: 0 auto; }
+  .ticker-card { position: relative; overflow: hidden; min-width: 150px; padding: 10px 12px; background: #fff; border: 1px solid rgba(26,26,26,0.08); border-radius: 10px; display: block; flex-shrink: 0; transition: border-color 0.1s, box-shadow 0.1s; }
+  .ticker-card:hover { border-color: rgba(26,26,26,0.2); box-shadow: 0 2px 8px rgba(26,26,26,0.06); }
+  .ticker-card-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 4px; padding: 8px; background: rgba(26,26,26,0.9); opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+  .ticker-card:hover .ticker-card-overlay { opacity: 1; pointer-events: auto; }
+  .ticker-card-overlay-btn { font-family: 'Outfit', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; text-decoration: none; color: #1A1A1A; background: #fff; border-radius: 6px; padding: 6px 4px; transition: background 0.1s, color 0.1s; }
+  .ticker-card-overlay-btn:hover { background: #FF5722; color: #fff; }
   .ticker-arrow { position: absolute; top: 32px; bottom: 0; width: 40px; display: flex; align-items: center; justify-content: center; background: linear-gradient(to right, rgba(255,255,255,0.95), rgba(255,255,255,0)); z-index: 2; cursor: pointer; border: none; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .ticker-arrow.right { background: linear-gradient(to left, rgba(255,255,255,0.95), rgba(255,255,255,0)); right: 0; }
   .ticker-arrow.left { left: 0; }
   .ticker-outer:hover .ticker-arrow { opacity: 1; pointer-events: auto; }
 
   /* Main layout */
-  .mlb-main { max-width: 1400px; margin: 0 auto; padding: 24px 16px 48px; }
-  .leaders-standings { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 32px; }
-  @media (min-width: 768px) { .leaders-standings { grid-template-columns: 2fr 1fr; gap: 32px; } .mlb-main { padding: 24px 24px 48px; } }
+  /* Widened from 1400 — the comprehensive leaderboard's 11 columns (team +
+     10 standard stats) need real room; 1400 forced it into a horizontal
+     scroll even full-width. */
+  .mlb-main { max-width: 1600px; margin: 0 auto; padding: 24px 16px 48px; }
+  /* Content + sidebar — same lg:grid-cols-[1fr_320px] pattern the root
+     homepage uses for its own leaderboards/articles/news sidebar. */
+  .mlb-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 1024px) { .mlb-layout { grid-template-columns: 1fr 320px; gap: 32px; } }
+  .mlb-sidebar { min-width: 0; }
+  /* Full-bleed section — breaks out of the sidebar column so wide content
+     (the leaderboard table) gets the whole row's width instead of being
+     squeezed into the ~1fr main column. */
+  .mlb-full-bleed { grid-column: 1 / -1; }
+  /* Single source of section spacing — replaces the old scattered mix of
+     inline marginBottom:32 styles and per-component CSS margins, which
+     would otherwise double up now that every section also gets wrapped
+     in .mlb-section. */
+  .mlb-section { margin-bottom: 32px; }
+  .mlb-section:last-child { margin-bottom: 0; }
+  .mlb-standings-row { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 768px) { .mlb-standings-row { grid-template-columns: 1fr 1.2fr; gap: 32px; } .mlb-main { padding: 24px 24px 48px; } }
+  .mlb-leaders-row { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  @media (min-width: 900px) { .mlb-leaders-row { grid-template-columns: 1fr 1fr; gap: 32px; } }
 
   /* Pipeline */
-  .pipeline-section { margin-bottom: 32px; }
   .pipeline-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
   @media (min-width: 480px) { .pipeline-grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 768px) { .pipeline-grid { grid-template-columns: 1fr 1fr 1fr; } }
   @media (min-width: 1100px) { .pipeline-grid { grid-template-columns: repeat(4, 1fr); } }
 
   /* News */
-  .news-grid { display: grid; grid-template-columns: 1fr; gap: 1px; background: rgba(26,26,26,0.06); }
+  .news-grid { display: grid; grid-template-columns: 1fr; gap: 1px; background: rgba(26,26,26,0.06); border: 1px solid rgba(26,26,26,0.08); border-radius: 12px; overflow: hidden; }
   @media (min-width: 640px) { .news-grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 1000px) { .news-grid { grid-template-columns: 1fr 1fr 1fr; } }
 
@@ -127,10 +154,6 @@ const CSS = `
   .team-pills { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 4px; }
   .team-pills::-webkit-scrollbar { display: none; }
 
-  /* Highlights */
-  .highlights-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-  @media (min-width: 640px) { .highlights-grid { grid-template-columns: 1fr 1fr; } }
-  @media (min-width: 1100px) { .highlights-grid { grid-template-columns: 2fr 1fr 1fr; } }
 `
 
 /* ── section label ─────────────────────────────────────── */
@@ -146,143 +169,40 @@ function Sec({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ── VIDEO PLAYER ──────────────────────────────────────── */
 
-function HighlightPlayer({
-  title,
-  src,
-  poster,
-  duration,
-}: {
-  title: string
-  src: string
-  poster?: string
-  duration?: string
-}) {
+/* ── ALL 30 TEAMS — quick nav ──────────────────────────── */
+//
+// Standings (further down) already links each row to its team page, but
+// only for the currently-selected league and buried past the fold — this
+// is a flat, always-visible way to jump straight to any of the 30 team
+// pages from the top of the page, independent of tonight's schedule.
+
+const ALL_TEAMS_SORTED = [...MLB_TEAMS].sort((a, b) => a.short.localeCompare(b.short))
+
+function AllTeamsStrip() {
   return (
-    <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ position: 'relative', background: '#000' }}>
-        <video
-          controls
-          playsInline
-          preload="metadata"
-          poster={poster}
-          style={{ width: '100%', display: 'block', aspectRatio: '16/9', background: '#000' }}
-          src={src}
-        />
-      </div>
-      <div style={{ padding: '12px 14px', flex: 1 }}>
-        <div className="s" style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A', lineHeight: 1.3, marginBottom: 4 }}>
-          {title}
-        </div>
-        {duration && (
-          <div className="m" style={{ fontSize: 9, color: '#A3A3A3', letterSpacing: '0.06em' }}>
-            {duration}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/* ── HIGHLIGHTS SECTION (Dynamic Yesterday Highlights) ───── */
-
-function GameHighlights() {
-  const [clips, setClips] = useState<Array<{ title: string; src: string; poster?: string; duration?: string; gameSlug?: string }>>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchYesterdayHighlights() {
-      try {
-        // Calculate yesterday's date relative to Eastern Time
-        const d = new Date()
-        d.setDate(d.getDate() - 1)
-        const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-
-        // Fetch yesterday's games
-        const schedRes = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&hydrate=team`)
-        const schedData = await schedRes.json()
-        const gamesList = schedData.dates?.[0]?.games || []
-
-        const finalGames = gamesList.filter((g: any) => g.status?.abstractGameState === 'Final')
-        if (!finalGames.length) {
-          setLoading(false)
-          return
-        }
-
-        // Parallel fetch for video highlights
-        const contentPromises = finalGames.slice(0, 8).map((g: any) =>
-          fetch(`https://statsapi.mlb.com/api/v1/game/${g.gamePk}/content`)
-            .then(r => r.json())
-            .then(data => ({ game: g, data }))
-            .catch(() => null)
-        )
-
-        const results = await Promise.all(contentPromises)
-        const extractedClips: typeof clips = []
-
-        for (const res of results) {
-          if (!res?.data?.highlights?.highlights?.items) continue
-          const items = res.data.highlights.highlights.items
-          for (const item of items) {
-            const mp4Playback = item.playbacks?.find((p: any) => p.name?.includes('mp4Avc') || p.url?.endsWith('.mp4'))
-            const poster = item.image?.cuts?.find((c: any) => c.width >= 640)?.src || item.image?.cuts?.[0]?.src
-            if (mp4Playback?.url) {
-              extractedClips.push({
-                title: item.blurb || item.headline || `${res.game.teams.away.team.abbreviation} @ ${res.game.teams.home.team.abbreviation} Highlight`,
-                src: mp4Playback.url,
-                poster,
-                duration: item.duration,
-                gameSlug: slugifyGame(res.game),
-              })
-            }
-          }
-        }
-
-        // Shuffle & select 3 random highlights
-        const shuffled = extractedClips.sort(() => 0.5 - Math.random()).slice(0, 3)
-        setClips(shuffled)
-      } catch (err) {
-        console.error('Failed to fetch yesterday highlights:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchYesterdayHighlights()
-  }, [])
-
-  if (loading) {
-    return (
-      <div style={{ marginBottom: 32 }}>
-        <Sec>Yesterday's Highlights</Sec>
-        <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 24, textAlign: 'center' }}>
-          <span className="m" style={{ fontSize: 10, color: '#A3A3A3' }}>Loading yesterday's highlights...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!clips.length) {
-    return (
-      <div style={{ marginBottom: 32 }}>
-        <Sec>Yesterday's Highlights</Sec>
-        <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 24, textAlign: 'center' }}>
-          <span className="s" style={{ fontSize: 13, color: '#A3A3A3', fontStyle: 'italic' }}>No highlight videos available from yesterday's games.</span>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-        <Sec>Yesterday's Highlights</Sec>
-      </div>
-
-      <div className="highlights-grid">
-        {clips.map((c, i) => (
-          <HighlightPlayer key={i} title={c.title} src={c.src} poster={c.poster} duration={c.duration} />
+    <div className="mlb-section">
+      <Sec>All 30 teams</Sec>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {ALL_TEAMS_SORTED.map(t => (
+          <Link
+            key={t.slug}
+            href={`/mlb/teams/${t.slug}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 10px 5px 6px',
+              background: '#fff',
+              border: '1px solid rgba(26,26,26,0.08)',
+              borderRadius: 999,
+              textDecoration: 'none',
+              transition: 'border-color 0.1s',
+            }}
+          >
+            <img src={teamLogoUrl(t.id)} alt="" width={16} height={16} style={{ flexShrink: 0 }} />
+            <span className="m" style={{ fontSize: 10, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.03em' }}>{t.abbrev}</span>
+          </Link>
         ))}
       </div>
     </div>
@@ -291,7 +211,7 @@ function GameHighlights() {
 
 /* ── TICKER (With Calendar & Timezone Navigation) ──────── */
 
-function Ticker({ games: initialGames, predictions, top3Snapshots }: { games: MLBGame[]; predictions: Map<number, EdgePrediction>; top3Snapshots?: Map<number, Top3Snapshot> }) {
+function Ticker({ games: initialGames, predictions }: { games: MLBGame[]; predictions: Map<number, EdgePrediction> }) {
   const [selectedDate, setSelectedDate] = useState<'yesterday' | 'today' | 'tomorrow'>('today')
   const [tickerGames, setTickerGames] = useState<MLBGame[]>(initialGames)
   const [loading, setLoading] = useState(false)
@@ -383,66 +303,61 @@ function Ticker({ games: initialGames, predictions, top3Snapshots }: { games: ML
               const pred = predictions.get(game.gamePk)
               const away = game.teams.away
               const home = game.teams.home
-              const awayC = teamColors(away.team.id)
-              const homeC = teamColors(home.team.id)
               const fc = pred ? fCount(pred) : null
               const leanAbbr = pred?.predicted_winner === 'home' ? home.team.abbreviation : away.team.abbreviation
               const tier = pred?.confidence_tier
               const awayScore = (game as any).teams?.away?.score
               const homeScore = (game as any).teams?.home?.score
 
-              const awaySnap = selectedDate === 'today' ? top3Snapshots?.get(away.team.id) : undefined
-              const homeSnap = selectedDate === 'today' ? top3Snapshots?.get(home.team.id) : undefined
-              const top3EdgeCount = (awaySnap?.edge_count ?? 0) + (homeSnap?.edge_count ?? 0)
+              const gameSlug = slugifyGame(game)
 
               return (
-                <Link key={game.gamePk} href={`/mlb/${slugifyGame(game)}`} className="ticker-card">
-                  <div className="m" style={{ fontSize: 9, fontWeight: 700, color: live ? '#FF5722' : '#A3A3A3', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                <div key={game.gamePk} className="ticker-card">
+                  <div className="ticker-card-overlay">
+                    {final ? (
+                      <Link href={`/mlb/${gameSlug}/postgame`} className="ticker-card-overlay-btn">Postgame</Link>
+                    ) : (
+                      <>
+                        <Link href={`/mlb/${gameSlug}/scout-report`} className="ticker-card-overlay-btn">Scout Report</Link>
+                        <Link href={`/mlb/${gameSlug}`} className="ticker-card-overlay-btn">Game Preview</Link>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="m" style={{ fontSize: 9, fontWeight: 700, color: live ? '#FF5722' : '#A3A3A3', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                     {live ? '● LIVE' : final ? 'FINAL' : fmt(game.gameDate)}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <img src={teamLogoUrl(away.team.id)} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
-                    <span className="m" style={{ fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{away.team.abbreviation}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <img src={teamLogoUrl(away.team.id)} alt="" width={18} height={18} style={{ flexShrink: 0 }} />
+                    <span className="m" style={{ fontSize: 11, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{away.team.abbreviation}</span>
                     {(live || final)
-                      ? <span className="b" style={{ fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{awayScore ?? 0}</span>
+                      ? <span className="b" style={{ fontSize: 16, color: '#1A1A1A', lineHeight: 1 }}>{awayScore ?? 0}</span>
                       : <span className="m" style={{ fontSize: 9, color: '#A3A3A3' }}>{away.leagueRecord?.wins}-{away.leagueRecord?.losses}</span>
                     }
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <img src={teamLogoUrl(home.team.id)} alt="" width={20} height={20} style={{ flexShrink: 0 }} />
-                    <span className="m" style={{ fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{home.team.abbreviation}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <img src={teamLogoUrl(home.team.id)} alt="" width={18} height={18} style={{ flexShrink: 0 }} />
+                    <span className="m" style={{ fontSize: 11, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{home.team.abbreviation}</span>
                     {(live || final)
-                      ? <span className="b" style={{ fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{homeScore ?? 0}</span>
+                      ? <span className="b" style={{ fontSize: 16, color: '#1A1A1A', lineHeight: 1 }}>{homeScore ?? 0}</span>
                       : <span className="m" style={{ fontSize: 9, color: '#A3A3A3' }}>{home.leagueRecord?.wins}-{home.leagueRecord?.losses}</span>
                     }
                   </div>
 
-                  <div style={{ minHeight: 16, marginBottom: 8 }}>
-                    {fc && tier && tier !== 'tossup' && (
-                      <div className="m" style={{ fontSize: 8, fontWeight: 700, color: '#FF5722', letterSpacing: '0.04em' }}>
-                        {fc.count}/{fc.total} factors lean {leanAbbr}
-                      </div>
-                    )}
-                    {tier === 'tossup' && (
-                      <div className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em' }}>Even match-up</div>
-                    )}
-                    {!pred && (
-                      <div className="m" style={{ fontSize: 8, color: '#D4D0C8', letterSpacing: '0.04em' }}>Edge coming</div>
-                    )}
-                    {top3EdgeCount > 0 && (
-                      <div className="m" style={{ fontSize: 8, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.04em', marginTop: 3 }}>
-                        ⊕ {top3EdgeCount} to watch this series
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', height: 5 }}>
-                    <div style={{ flex: 1, background: awayC.primary }} />
-                    <div style={{ flex: 1, background: homeC.primary }} />
-                  </div>
-                </Link>
+                  {fc && tier && tier !== 'tossup' && (
+                    <div className="m" style={{ fontSize: 8, fontWeight: 700, color: '#FF5722', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>
+                      {fc.count}/{fc.total} lean {leanAbbr}
+                    </div>
+                  )}
+                  {tier === 'tossup' && (
+                    <div className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>Even match-up</div>
+                  )}
+                  {!pred && (
+                    <div className="m" style={{ fontSize: 8, color: '#D4D0C8', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>Edge coming</div>
+                  )}
+                </div>
               )
             })
           )}
@@ -481,8 +396,127 @@ const SUB_STATS: Record<string, (l: MLBStatLeader) => string> = {
   walksAndHitsPerInningPitched: l => `${l.statValue} WHIP`,
 }
 
+// ── "Back of the baseball card" hover sheet ────────────────────────────
+//
+// Hovering a leaderboard row fetches that player's real full season line
+// PLUS his real by-month splits (one combined MLB Stats API call —
+// stats=season,byMonth in a single request, curl-verified — per person,
+// cached per session so re-hovering the same player doesn't refetch) and
+// shows both as a comprehensive card-back stat sheet with a small trend
+// sparkline, instead of just the single stat the row itself is ranked on.
+
+const CARD_SEASON = new Date().getFullYear()
+type CardStat = Record<string, string | number> | null
+type CardMonth = { month: number; value: number }
+type CardData = { season: CardStat; months: CardMonth[] } | null
+
+const BATTING_CARD_ROWS: [string, string][] = [
+  ['AVG', 'avg'], ['OBP', 'obp'], ['SLG', 'slg'], ['OPS', 'ops'],
+  ['HR', 'homeRuns'], ['RBI', 'rbi'], ['R', 'runs'], ['SB', 'stolenBases'],
+  ['H', 'hits'], ['2B', 'doubles'], ['3B', 'triples'], ['BB', 'baseOnBalls'],
+  ['SO', 'strikeOuts'], ['AB', 'atBats'], ['PA', 'plateAppearances'], ['HBP', 'hitByPitch'],
+]
+const PITCHING_CARD_ROWS: [string, string][] = [
+  ['ERA', 'era'], ['WHIP', 'whip'], ['W-L', ''], ['SV', 'saves'],
+  ['SO', 'strikeOuts'], ['IP', 'inningsPitched'], ['BB', 'baseOnBalls'], ['H', 'hits'],
+  ['HR', 'homeRuns'], ['K/9', 'strikeoutsPer9Inn'], ['BB/9', 'walksPer9Inn'], ['HR/9', 'homeRunsPer9'],
+  ['GS', 'gamesStarted'], ['QS', ''], ['HLD', 'holds'], ['BS', 'blownSaves'],
+]
+const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function TrendSparkline({ months, higherIsBetter }: { months: CardMonth[]; higherIsBetter: boolean }) {
+  if (months.length < 2) return null
+  const values = months.map(m => m.value)
+  const min = Math.min(...values), max = Math.max(...values)
+  const span = max - min || 1
+  const W = 100, H = 28, PAD = 3
+  const x = (i: number) => (months.length === 1 ? W / 2 : PAD + (i / (months.length - 1)) * (W - PAD * 2))
+  const y = (v: number) => H - PAD - ((v - min) / span) * (H - PAD * 2)
+  const line = months.map((m, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(m.value)}`).join(' ')
+  const last = months[months.length - 1], first = months[0]
+  const improving = higherIsBetter ? last.value >= first.value : last.value <= first.value
+  const color = improving ? '#34D399' : '#F87171'
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', textTransform: 'uppercase' }}>By month</span>
+        <span className="m" style={{ fontSize: 8, color, fontWeight: 700 }}>{improving ? '▲ trending up' : '▼ trending down'}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 32 }} preserveAspectRatio="none">
+        <path d={line} fill="none" stroke={color} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
+        {months.map((m, i) => (
+          <circle key={m.month} cx={x(i)} cy={y(m.value)} r={i === months.length - 1 ? 2.2 : 1.4} fill={color} />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+        {months.map(m => (
+          <span key={m.month} className="m" style={{ fontSize: 7, color: '#8A8577' }}>{MONTH_NAMES[m.month]}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PlayerCardBack({ leader, group, data, loading }: { leader: MLBStatLeader; group: 'hitting' | 'pitching'; data: CardData; loading: boolean }) {
+  const rows = group === 'hitting' ? BATTING_CARD_ROWS : PITCHING_CARD_ROWS
+  const stat = data?.season ?? null
+  const trendKey = group === 'hitting' ? 'ops' : 'era'
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        zIndex: 30,
+        top: '100%',
+        left: 0,
+        marginTop: 6,
+        width: 260,
+        maxWidth: '90vw',
+        background: '#1A1A1A',
+        color: '#FAF8F3',
+        borderRadius: 12,
+        boxShadow: '0 16px 40px rgba(0,0,0,0.32)',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.06)' }}>
+        <img src={leader.headshot} alt="" width={34} height={34} style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <div className="s" style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{leader.name}</div>
+          <div className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{leader.teamAbbr} · {CARD_SEASON} season</div>
+        </div>
+      </div>
+      <div style={{ padding: '10px 12px' }}>
+        {loading || !stat ? (
+          <div className="m" style={{ fontSize: 9, color: '#A3A3A3', padding: '6px 0' }}>{loading ? 'Loading…' : 'Stats unavailable'}</div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 12px' }}>
+              {rows.map(([label, key]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</span>
+                  <span className="m" style={{ fontSize: 10.5, fontWeight: 700, color: '#FAF8F3' }}>
+                    {label === 'W-L' ? `${stat.wins ?? 0}-${stat.losses ?? 0}` : label === 'QS' ? '—' : (stat[key] ?? '—')}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {data?.months && data.months.length >= 2 && (
+              <TrendSparkline
+                months={data.months.map(m => ({ month: m.month, value: m.value }))}
+                higherIsBetter={trendKey !== 'era'}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function LeaderPanel({
-  title, tabs, activeTab, onTab, leaders, accent,
+  title, tabs, activeTab, onTab, leaders, accent, group,
 }: {
   title: string
   tabs: { key: string; label: string; short: string }[]
@@ -490,7 +524,33 @@ function LeaderPanel({
   onTab: (k: string) => void
   leaders: MLBStatLeader[]
   accent: string
+  group: 'hitting' | 'pitching'
 }) {
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const [cardCache, setCardCache] = useState<Record<number, CardData>>({})
+  const [loadingId, setLoadingId] = useState<number | null>(null)
+
+  function handleHover(personId: number) {
+    setHoveredId(personId)
+    if (cardCache[personId] !== undefined) return
+    setLoadingId(personId)
+    const trendKey = group === 'hitting' ? 'ops' : 'era'
+    fetch(`https://statsapi.mlb.com/api/v1/people/${personId}/stats?stats=season,byMonth&group=${group}&season=${CARD_SEASON}`)
+      .then(res => res.json())
+      .then(json => {
+        const statsByType: any[] = json.stats ?? []
+        const season = statsByType.find(s => s.type?.displayName === 'season')?.splits?.[0]?.stat ?? null
+        const monthSplits: any[] = statsByType.find(s => s.type?.displayName === 'byMonth')?.splits ?? []
+        const months: CardMonth[] = monthSplits
+          .map(s => ({ month: Number(s.month), value: parseFloat(s.stat?.[trendKey] ?? 'NaN') }))
+          .filter(m => !Number.isNaN(m.value))
+          .sort((a, b) => a.month - b.month)
+        setCardCache(prev => ({ ...prev, [personId]: season ? { season, months } : null }))
+      })
+      .catch(() => setCardCache(prev => ({ ...prev, [personId]: null })))
+      .finally(() => setLoadingId(null))
+  }
+
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ marginBottom: 14 }}>
@@ -525,61 +585,66 @@ function LeaderPanel({
 
       <div>
         {leaders.slice(0, 5).map((l, i) => (
-          <Link key={l.rank} href={`/stats?player=${l.personId}`} style={{ textDecoration: 'none', display: 'block' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 0',
-                borderBottom: i < 4 ? '1px solid rgba(26,26,26,0.06)' : 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <span className="m" style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? accent : '#D4D0C8', width: 18, flexShrink: 0, textAlign: 'right' }}>
-                {l.rank}
-              </span>
+          <div key={l.personId} style={{ position: 'relative' }} onMouseEnter={() => handleHover(l.personId)} onMouseLeave={() => setHoveredId(null)}>
+            <Link href={`/stats?player=${l.personId}`} style={{ textDecoration: 'none', display: 'block' }}>
               <div
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  background: '#F0EBE0',
-                  border: i === 0 ? `2px solid ${accent}` : '2px solid #F0EBE0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 0',
+                  borderBottom: i < 4 ? '1px solid rgba(26,26,26,0.06)' : 'none',
+                  cursor: 'pointer',
                 }}
               >
-                <img
-                  src={l.headshot}
-                  alt={l.name}
-                  width={42}
-                  height={42}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  onError={e => {
-                    ;(e.target as HTMLImageElement).style.display = 'none'
+                <span className="m" style={{ fontSize: 11, fontWeight: 700, color: i === 0 ? accent : '#D4D0C8', width: 18, flexShrink: 0, textAlign: 'right' }}>
+                  {l.rank}
+                </span>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: '#F0EBE0',
+                    border: i === 0 ? `2px solid ${accent}` : '2px solid #F0EBE0',
                   }}
-                />
+                >
+                  <img
+                    src={l.headshot}
+                    alt={l.name}
+                    width={42}
+                    height={42}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    onError={e => {
+                      ;(e.target as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="s" style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {l.name}
+                  </div>
+                  <div className="m" style={{ fontSize: 10, color: '#A3A3A3', marginTop: 1 }}>
+                    {l.teamAbbr}
+                    {SUB_STATS[activeTab] ? ` · ${SUB_STATS[activeTab](l)}` : ''}
+                  </div>
+                </div>
+                <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 52 }}>
+                  <div className="s" style={{ fontSize: 20, fontWeight: 700, color: i === 0 ? accent : '#1A1A1A', lineHeight: 1 }}>
+                    {l.statValue}
+                  </div>
+                  <div className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2 }}>
+                    {BATTING_TABS.concat(PITCHING_TABS).find(t => t.key === activeTab)?.short}
+                  </div>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="s" style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {l.name}
-                </div>
-                <div className="m" style={{ fontSize: 10, color: '#A3A3A3', marginTop: 1 }}>
-                  {l.teamAbbr}
-                  {SUB_STATS[activeTab] ? ` · ${SUB_STATS[activeTab](l)}` : ''}
-                </div>
-              </div>
-              <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 52 }}>
-                <div className="s" style={{ fontSize: 20, fontWeight: 700, color: i === 0 ? accent : '#1A1A1A', lineHeight: 1 }}>
-                  {l.statValue}
-                </div>
-                <div className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 2 }}>
-                  {BATTING_TABS.concat(PITCHING_TABS).find(t => t.key === activeTab)?.short}
-                </div>
-              </div>
-            </div>
-          </Link>
+            </Link>
+            {hoveredId === l.personId && (
+              <PlayerCardBack leader={l} group={group} data={cardCache[l.personId] ?? null} loading={loadingId === l.personId} />
+            )}
+          </div>
         ))}
       </div>
     </div>
@@ -599,10 +664,10 @@ function Leaders({ statLeaders }: { statLeaders: Record<string, MLBStatLeader[]>
         <Sec>League leaders</Sec>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 20px' }}>
-        <LeaderPanel title="Batting" tabs={BATTING_TABS} activeTab={batTab} onTab={setBatTab} leaders={batLeaders} accent="#FF5722" />
-        <div style={{ background: 'rgba(26,26,26,0.08)', alignSelf: 'stretch' }} />
-        <LeaderPanel title="Pitching" tabs={PITCHING_TABS} activeTab={pitTab} onTab={setPitTab} leaders={pitLeaders} accent="#185FA5" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <LeaderPanel title="Batting" tabs={BATTING_TABS} activeTab={batTab} onTab={setBatTab} leaders={batLeaders} accent="#FF5722" group="hitting" />
+        <div style={{ borderTop: '1px solid rgba(26,26,26,0.08)' }} />
+        <LeaderPanel title="Pitching" tabs={PITCHING_TABS} activeTab={pitTab} onTab={setPitTab} leaders={pitLeaders} accent="#185FA5" group="pitching" />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.08)', marginTop: 16 }}>
@@ -651,7 +716,7 @@ function Standings({ standings }: { standings: MLBDivisionStandings[] }) {
         </div>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)' }}>
+      <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, overflow: 'hidden' }}>
         {divs.map((div, di) => (
           <div key={di}>
             <div style={{ padding: '5px 12px', background: '#F5F1E8', borderTop: di > 0 ? '2px solid rgba(26,26,26,0.08)' : 'none', borderBottom: '1px solid rgba(26,26,26,0.06)' }}>
@@ -681,7 +746,7 @@ function Standings({ standings }: { standings: MLBDivisionStandings[] }) {
                   </span>
                   <img src={`https://www.mlbstatic.com/team-logos/${team.id}.svg`} alt="" width={16} height={16} style={{ flexShrink: 0 }} />
                   <span className="s" style={{ flex: 1, fontSize: 12, color: '#1A1A1A', fontWeight: first ? 600 : 400 }}>
-                    {team.name.split(' ').slice(-1)[0]}
+                    {shareDisplayName(team.name)}
                   </span>
                   <span className="m" style={{ fontSize: 11, fontWeight: 600, color: '#1A1A1A', width: 22, textAlign: 'center' }}>
                     {team.wins}
@@ -691,6 +756,18 @@ function Standings({ standings }: { standings: MLBDivisionStandings[] }) {
                   </span>
                   <span className="m" style={{ fontSize: 10, color: '#A3A3A3', width: 26, textAlign: 'right' }}>
                     {team.gb}
+                  </span>
+                  <span
+                    className="m"
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      width: 26,
+                      textAlign: 'right',
+                      color: team.streak.startsWith('W') ? '#059669' : team.streak.startsWith('L') ? '#DC2626' : '#A3A3A3',
+                    }}
+                  >
+                    {team.streak}
                   </span>
                 </Link>
               )
@@ -722,12 +799,20 @@ function TxBadge({ cat }: { cat: string }) {
 }
 
 function Transactions({ activeIL, recentTransactions }: { activeIL: TeamTransaction[]; recentTransactions: TeamTransaction[] }) {
-  const all = [...activeIL.slice(0, 4), ...recentTransactions.slice(0, 6)].slice(0, 8)
+  // recentTransactions is a general feed of recent moves, so a player just
+  // placed on IL shows up there AND in activeIL (his current active IL
+  // stint) — same transaction_id in both lists. Dedupe before slicing, or
+  // that one move eats two of the panel's 8 slots and renders as a
+  // same-key React warning (and a real user-facing duplicate row).
+  const seenTx = new Set<number>()
+  const all = [...activeIL.slice(0, 4), ...recentTransactions.slice(0, 6)]
+    .filter(tx => (seenTx.has(tx.transaction_id) ? false : (seenTx.add(tx.transaction_id), true)))
+    .slice(0, 8)
   if (!all.length) return null
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div>
       <Sec>Transactions</Sec>
-      <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)' }}>
+      <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, overflow: 'hidden' }}>
         {all.map((tx, i) => (
           <div key={tx.transaction_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < all.length - 1 ? '1px solid rgba(26,26,26,0.05)' : 'none' }}>
             {(tx.team_id ?? tx.to_team_id) && <img src={`https://www.mlbstatic.com/team-logos/${tx.team_id ?? tx.to_team_id}.svg`} alt="" width={18} height={18} style={{ flexShrink: 0 }} />}
@@ -747,26 +832,13 @@ function Transactions({ activeIL, recentTransactions }: { activeIL: TeamTransact
 
 /* ── MILB PIPELINE ─────────────────────────────────────── */
 
-const TEAM_LIST = MLB_TEAMS.map(t => {
-  const idMap: Record<string, number> = {
-    yankees: 147, 'red-sox': 111, 'blue-jays': 141, orioles: 110, rays: 139,
-    guardians: 114, tigers: 116, royals: 118, twins: 142, 'white-sox': 145,
-    astros: 117, angels: 108, athletics: 133, mariners: 136, rangers: 140,
-    braves: 144, marlins: 146, mets: 121, phillies: 143, nationals: 120,
-    cubs: 112, reds: 113, brewers: 158, pirates: 134, cardinals: 138,
-    diamondbacks: 109, rockies: 115, dodgers: 119, padres: 135, giants: 137,
-  }
-  return { id: idMap[t.slug] ?? 0, abbr: t.abbrev, name: t.short, slug: t.slug }
-})
-  .filter(t => t.id > 0)
+const TEAM_LIST = MLB_TEAMS.map(t => ({ id: t.id, abbr: t.abbrev, name: t.short, slug: t.slug }))
   .sort((a, b) => a.name.localeCompare(b.name))
 
 function Pipeline({
   prospects = [],
-  fantasyPicks,
 }: {
   prospects?: Prospect[]
-  fantasyPicks?: FantasyPicksByType
 }) {
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [expanded, setExpanded] = useState(false)
@@ -928,7 +1000,7 @@ function Pipeline({
           )}
         </>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: '28px', textAlign: 'center' }}>
+        <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, padding: '28px', textAlign: 'center' }}>
           <div className="s" style={{ fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>
             {selectedTeam ? `No MiLB players found for ${selectedTeamObj?.name ?? 'this organisation'}.` : 'No MiLB data available.'}
           </div>
@@ -957,7 +1029,7 @@ function ProspectCard({
   const levelColor = p.level === 'AAA' ? '#185FA5' : p.level === 'AA' ? '#7c3aed' : '#6b7280'
 
   return (
-    <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <div
           style={{
@@ -1043,14 +1115,14 @@ export default function MLBHomepage({
   games,
   predictions,
   news,
-  today,
-  isPro,
   activeIL,
   recentTransactions,
   statLeaders,
-  fantasyPicks,
   prospects = [],
-  top3Snapshots,
+  leagueStandardStats,
+  teamRadarRows,
+  teamRadarFipConstant,
+  articlesTeaser,
 }: Props) {
   const hasStats = statLeaders && Object.values(statLeaders).some(l => l.length > 0)
 
@@ -1058,52 +1130,106 @@ export default function MLBHomepage({
     <div className="mlb-page">
       <style>{CSS}</style>
 
-      {/* 1. TICKER WITH DATE CONTROLS */}
-      <Ticker games={games} predictions={predictions} top3Snapshots={top3Snapshots} />
-
-      {/* 2. MAIN CONTAINER */}
-      <div className="mlb-main">
-        {/* HIGHLIGHTS SECTION */}
-        <GameHighlights />
-
-        {/* 3. LEADERS + STANDINGS */}
-        <div className="leaders-standings">
-          <div>{hasStats && <Leaders statLeaders={statLeaders!} />}</div>
-          <div><Standings standings={standings} /></div>
+      {/* PLAYER SEARCH — top right, real typeahead (src/lib/lab.ts's real
+          MLB /people/search, same one the root homepage uses), clicking a
+          result navigates straight to that player's /mlb/players/[id]
+          page. */}
+      <div style={{ maxWidth: 1600, margin: '0 auto', padding: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ width: '100%', maxWidth: 320 }}>
+          <PlayerSearch maintenance={MAINTENANCE_MODE} sport="MLB" rounded />
         </div>
+      </div>
 
-        {/* 4. TRANSACTIONS */}
-        <Transactions activeIL={activeIL} recentTransactions={recentTransactions} />
+      {/* 1. TICKER WITH DATE CONTROLS — tonight's action first */}
+      <Ticker games={games} predictions={predictions} />
 
-        {/* 5. MILB PIPELINE */}
-        <Pipeline prospects={prospects} fantasyPicks={fantasyPicks} />
+      {/* 2. MAIN CONTAINER — main column + sidebar. "Around the league"
+          news is pulled for now; the sidebar just carries The Edge's own
+          articles. */}
+      <div className="mlb-main">
+        <div className="mlb-layout">
+          <div>
+            {/* ALL 30 TEAMS — quick nav, always visible regardless of
+                tonight's slate */}
+            <AllTeamsStrip />
 
-        {/* 6. NEWS */}
-        {news.length > 0 && (
-          <div style={{ marginBottom: 32 }}>
-            <Sec>Around the league</Sec>
-            <div className="news-grid">
-              {news.slice(0, 9).map((item, i) => (
-                <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', gap: 12, padding: '14px 16px', background: '#fff', textDecoration: 'none' }}>
-                  {item.image && (
-                    <div style={{ width: 56, height: 56, flexShrink: 0, background: '#F5F1E8', overflow: 'hidden' }}>
-                      <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="s" style={{ fontSize: 13, fontWeight: 600, color: '#1A1A1A', lineHeight: 1.4, marginBottom: 4 }}>
-                      {item.headline}
-                    </div>
-                    <div className="m" style={{ fontSize: 9, color: '#A3A3A3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {ago(item.published)}
-                      {item.source ? ` · ${item.source}` : ''}
-                    </div>
-                  </div>
-                </a>
-              ))}
+            {/* PLAYER LEADERBOARDS + COMPREHENSIVE LEADERBOARD — leaders in
+                their own single column on the left, the full sortable
+                all-30-teams table on the right (same row, filling the
+                space that used to sit empty next to a half-width Leaders
+                panel). */}
+            <div className="mlb-section mlb-leaders-row">
+              {hasStats && <Leaders statLeaders={statLeaders!} />}
+              <div>
+                <div className="text-[13px] font-serif font-bold text-[#1A1A1A]">Comprehensive leaderboard</div>
+                <div className="m" style={{ fontSize: 10.5, color: '#8A8577', marginTop: 2, marginBottom: 4 }}>
+                  Every team, every standard stat — click a column to sort. Click a team to open its page.
+                </div>
+                <TeamLeaderboardTable rows={leagueStandardStats} />
+              </div>
+            </div>
+
+            {/* STANDINGS + STANDINGS PROGRESSION — division rank/streak on
+                the left; on the right, the SAME per-game win-progression
+                chart used on a team's own page, scoped by division (AL
+                East, NL West, etc. — pick any of the 6), not a whole-league
+                view. */}
+            <div className="mlb-section mlb-standings-row">
+              <div><Standings standings={standings} /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, padding: 16 }}>
+                  <StandingsChart defaultDivision="AL East" />
+                </div>
+                {/* MOST ROUNDED TEAM — 20-axis radar (10 pitching, 10
+                    batting), auto-advancing through all 30 teams, pausing
+                    on hover; hovering a vertex shows the full roster line
+                    behind that number. Stacked under the progression
+                    chart, in the same right-hand column. */}
+                <TeamRadarSlideshow rows={teamRadarRows} cFIP={teamRadarFipConstant} />
+              </div>
+            </div>
+
+            {/* SEASON SHAPE RIVER — the first of the new "cockpit" charts:
+                a rolling real run-differential stream for one team's real
+                season, with a real opponent-quality band and real
+                trade/call-up/signing/IL ticks. Own team + rival selectors,
+                lazy-fetched client-side. */}
+            <div className="mlb-section">
+              <SeasonShapeRiver standings={standings} />
+            </div>
+
+            {/* LEVERAGE BOARD — real biggest win-probability swings of the
+                season, off MLB's own per-at-bat odds feed (already used on
+                game pages), not a modeled "clutch" score. */}
+            <div className="mlb-section">
+              <LeverageBoard />
+            </div>
+
+            {/* ENGINE ROOM — real runs-above-average value per player (not
+                WAR — see src/lib/engine-room.ts), tagged by how they
+                actually joined the roster this season via real
+                transactions. */}
+            <div className="mlb-section">
+              <EngineRoom />
+            </div>
+
+            {/* DESERVE-TO-WIN WATERFALL — real Pythagorean-expected wins
+                walked to the real record through real close-game luck,
+                plus a real league-wide "who's owed / who's banked" sort. */}
+            <div className="mlb-section">
+              <DeserveToWinWaterfall standings={standings} />
             </div>
           </div>
-        )}
+
+          {/* SIDEBAR — real news scraped from around the league, plus The
+              Edge's own articles, same components/shape the root homepage
+              already uses in its own sidebar. Transactions and the MiLB
+              pipeline are pulled for now. */}
+          <div className="mlb-sidebar">
+            <NewsFeedSidebar items={news.slice(0, 9).map(n => ({ id: n.id, headline: n.headline, link: n.link, published: n.published }))} />
+            {articlesTeaser}
+          </div>
+        </div>
       </div>
     </div>
   )

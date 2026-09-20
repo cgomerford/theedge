@@ -17,6 +17,9 @@ export type ZoneCell = {
   ba?:         number | null   // batting average (batters)
   slg?:        number | null   // slugging         (batters)
   xwoba?:      number | null   // expected wOBA    (batters)
+  woba?:       number | null   // actual wOBA      (batters; added 2026-09-19 — absent until the weekly job re-runs)
+  ev?:         number | null   // average exit velocity, mph (batters; same)
+  bbe?:        number          // batted-ball events behind ev / hard_hit_pct (batters; same)
   pitches?:    number
   swings?:     number
   whiffs?:     number
@@ -26,6 +29,11 @@ export type ZoneCell = {
   // Pitcher-only fields
   usage_pct?:   number | null  // % of pitches thrown to this zone
   ba_against?:  number | null  // BA against in this zone
+  slg_against?: number | null  // SLG against in this zone
+  hard_hit_pct?: number | null // % of batted balls in this zone at >=95mph exit velo
+  woba_against?: number | null // avg estimated wOBA (speed+angle) the batter achieved in this zone
+  run_value_per_100?: number | null // per 100 pitches in this zone; negative = good for the pitcher (Savant's own convention)
+  batted_balls?: number | null
 }
 
 export type BatterHotZones = {
@@ -144,7 +152,11 @@ export function colorForBatterMetric(value: number | null | undefined, metric: '
  * For pitchers we color by ba_against (red = vulnerable, blue = dominant)
  * OR by usage_pct (orange = lives here) depending on view mode.
  */
-export function colorForPitcherMetric(value: number | null | undefined, mode: 'ba_against' | 'usage_pct' | 'whiff_pct'): string {
+export type PitcherZoneMetric =
+  | 'ba_against' | 'usage_pct' | 'whiff_pct'
+  | 'slg_against' | 'hard_hit_pct' | 'woba_against' | 'run_value_per_100'
+
+export function colorForPitcherMetric(value: number | null | undefined, mode: PitcherZoneMetric): string {
   if (value === null || value === undefined) return 'bg-stone-200'
 
   if (mode === 'ba_against') {
@@ -154,6 +166,54 @@ export function colorForPitcherMetric(value: number | null | undefined, mode: 'b
     if (value < 0.270) return 'bg-stone-200'
     if (value < 0.300) return 'bg-orange-300'
     if (value < 0.330) return 'bg-orange-400'
+    return 'bg-red-500'
+  }
+
+  if (mode === 'slg_against') {
+    // League-average SLG-against sits around .400-.420 — banded the same
+    // direction as ba_against (low = good for pitcher = blue).
+    if (value < 0.300) return 'bg-blue-400'
+    if (value < 0.370) return 'bg-blue-300'
+    if (value < 0.420) return 'bg-blue-200'
+    if (value < 0.460) return 'bg-stone-200'
+    if (value < 0.520) return 'bg-orange-300'
+    if (value < 0.600) return 'bg-orange-400'
+    return 'bg-red-500'
+  }
+
+  if (mode === 'woba_against') {
+    // League-average wOBA sits around .310-.320 (matches LG_XWOBA in
+    // pitcher-arsenal.ts) — low = good for pitcher = blue.
+    if (value < 0.230) return 'bg-blue-400'
+    if (value < 0.270) return 'bg-blue-300'
+    if (value < 0.300) return 'bg-blue-200'
+    if (value < 0.330) return 'bg-stone-200'
+    if (value < 0.370) return 'bg-orange-300'
+    if (value < 0.420) return 'bg-orange-400'
+    return 'bg-red-500'
+  }
+
+  if (mode === 'hard_hit_pct') {
+    // League-average hard-hit% sits around 38-40% — low = good for pitcher.
+    if (value < 25) return 'bg-blue-400'
+    if (value < 32) return 'bg-blue-300'
+    if (value < 38) return 'bg-blue-200'
+    if (value < 44) return 'bg-stone-200'
+    if (value < 52) return 'bg-orange-300'
+    if (value < 60) return 'bg-orange-400'
+    return 'bg-red-500'
+  }
+
+  if (mode === 'run_value_per_100') {
+    // Centered at 0 (league-average) — NEGATIVE = good for the pitcher,
+    // same convention as delta_run_exp/PitcherArsenalCard.tsx elsewhere
+    // on this site (see the fetch script's header note).
+    if (value <= -3)   return 'bg-blue-400'
+    if (value <= -1.2) return 'bg-blue-300'
+    if (value <= -0.3) return 'bg-blue-200'
+    if (value <= 0.3)  return 'bg-stone-200'
+    if (value <= 1.2)  return 'bg-orange-300'
+    if (value <= 3)    return 'bg-orange-400'
     return 'bg-red-500'
   }
 
@@ -178,9 +238,10 @@ export function colorForPitcherMetric(value: number | null | undefined, mode: 'b
 /**
  * Format a metric value for display. Returns '—' if null.
  */
-export function formatMetric(value: number | null | undefined, kind: 'ba' | 'slg' | 'xwoba' | 'pct'): string {
+export function formatMetric(value: number | null | undefined, kind: 'ba' | 'slg' | 'xwoba' | 'pct' | 'rv'): string {
   if (value === null || value === undefined) return '—'
   if (kind === 'pct')  return `${value.toFixed(1)}%`
+  if (kind === 'rv')   return value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1)
   // Baseball avg-style: .312 (no leading zero)
   const fixed = value.toFixed(3)
   return fixed.startsWith('0.') ? fixed.slice(1) : fixed

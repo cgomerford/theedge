@@ -115,17 +115,7 @@ async function fetchLeaderboard(challengeType: 'batting-team' | 'catching-team')
   }
 }
 
-export async function getABSChallengeRecord(teamAbbr: string): Promise<ABSChallengeRecord | null> {
-  const [battingRows, catchingRows] = await Promise.all([
-    fetchLeaderboard('batting-team'),
-    fetchLeaderboard('catching-team'),
-  ])
-
-  const battingRow = battingRows.find(r => r.team_abbr === teamAbbr)
-  const catchingRow = catchingRows.find(r => r.team_abbr === teamAbbr)
-
-  if (!battingRow && !catchingRow) return null
-
+function combineRecord(teamAbbr: string, battingRow: RawRow | undefined, catchingRow: RawRow | undefined): ABSChallengeRecord {
   const battingChallenges = battingRow?.n_challenges ?? 0
   const battingOverturns = battingRow?.n_overturns ?? 0
   const pitchingChallenges = catchingRow?.n_challenges ?? 0
@@ -149,4 +139,43 @@ export async function getABSChallengeRecord(teamAbbr: string): Promise<ABSChalle
     total_overturns: totalOverturns,
     total_success_rate: totalChallenges > 0 ? Math.round((totalOverturns / totalChallenges) * 1000) / 1000 : null,
   }
+}
+
+export async function getABSChallengeRecord(teamAbbr: string): Promise<ABSChallengeRecord | null> {
+  const [battingRows, catchingRows] = await Promise.all([
+    fetchLeaderboard('batting-team'),
+    fetchLeaderboard('catching-team'),
+  ])
+
+  const battingRow = battingRows.find(r => r.team_abbr === teamAbbr)
+  const catchingRow = catchingRows.find(r => r.team_abbr === teamAbbr)
+
+  if (!battingRow && !catchingRow) return null
+
+  return combineRecord(teamAbbr, battingRow, catchingRow)
+}
+
+// League-wide version for the homepage board — same two Savant pulls,
+// just not filtered down to one team. Sorted by total challenges desc so
+// the busiest challenge teams surface first.
+export async function getABSChallengeLeaderboard(): Promise<ABSChallengeRecord[]> {
+  const [battingRows, catchingRows] = await Promise.all([
+    fetchLeaderboard('batting-team'),
+    fetchLeaderboard('catching-team'),
+  ])
+
+  const teamAbbrs = new Set<string>([
+    ...battingRows.map(r => r.team_abbr),
+    ...catchingRows.map(r => r.team_abbr),
+  ])
+
+  const records = [...teamAbbrs].map(abbr =>
+    combineRecord(
+      abbr,
+      battingRows.find(r => r.team_abbr === abbr),
+      catchingRows.find(r => r.team_abbr === abbr),
+    )
+  )
+
+  return records.sort((a, b) => b.total_challenges - a.total_challenges)
 }

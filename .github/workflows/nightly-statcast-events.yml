@@ -1,0 +1,38 @@
+name: Nightly Statcast events
+
+# Single writer of pitch_events + batted_ball_events (scripts/fetch_statcast_events.py).
+# Feeds the postgame hitter check (last-15-games baselines) and the range leaderboards.
+#
+# Depends on: Baseball Savant having finalized last night's games. West Coast games end ~06:00 UTC,
+# so 11:00 UTC (7am ET) leaves a wide margin. Runs before the 12:00 UTC daily brief.
+# Re-pulls the last 2 days every run so a game Savant processed late is still caught (upsert = idempotent).
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  statcast-events:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Fetch last 2 days of Statcast events
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/fetch_statcast_events.py \
+            --start-date "$(date -u -d '2 days ago' +%F)" \
+            --end-date "$(date -u -d '1 day ago' +%F)"

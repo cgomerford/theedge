@@ -18,6 +18,7 @@
 
 import { getScheduleForDate, slugifyGame, getTeamForm, type MLBGame } from '@/lib/mlb'
 import { createAdminClient } from '@/lib/supabase'
+import { getCurrentSubscriber } from '@/lib/auth'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getActiveRosterIds } from '@/lib/active-roster'
 import { getTopBatterStreaks, getPitcherTrend } from '@/lib/streaks'
@@ -39,7 +40,7 @@ import { getSBTendency } from '@/lib/sb-tendency'
 import { getLineupSpray } from '@/lib/batter-spray'
 import { getSeriesGamesFromDB } from '@/lib/series-games'
 import { findTeamByName } from '@/lib/teams'
-import ScoutReportTab from '@/components/ScoutReportTab'
+import ScoutReportTab from './ScoutReportTab'
 import {
   buildScoutReport,
   type ScoutInputs,
@@ -69,6 +70,11 @@ export default async function ScoutSlotAsync({ slug }: { slug: string }) {
 
   const gameState = game.status?.abstractGameState
   const isFinal = gameState === 'Final'
+  const subscriber = await getCurrentSubscriber()
+  // TEMP: forced true so the new pro-gated layout can be reviewed locally
+  // without a real pro session — revert to `subscriber?.is_pro ?? false`
+  // before shipping.
+  const isPro = true || (subscriber?.is_pro ?? false)
   const prediction = await getEdgePrediction(game.gamePk)
   const awayPitcherId = game.teams.away.probablePitcher?.id
   const homePitcherId = game.teams.home.probablePitcher?.id
@@ -517,6 +523,7 @@ export default async function ScoutSlotAsync({ slug }: { slug: string }) {
   return (
     <ScoutReportTab
       report={scoutReport}
+      isPro={isPro}
       homeAbbr={_homeAbbr}
       awayPitcherHotZones={awayPitcherHotZones}
       homePitcherHotZones={homePitcherHotZones}

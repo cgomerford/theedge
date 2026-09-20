@@ -19,11 +19,16 @@ import { cache } from 'react'
 export type ArsenalZoneCell = {
   usage_pct:   number | null   // % of THIS pitch thrown to this zone
   ba_against:  number | null
+  slg_against: number | null
   whiff_pct:   number | null
+  hard_hit_pct: number | null  // % of batted balls in this zone at >=95mph exit velo
+  woba_against: number | null  // avg estimated wOBA (speed+angle) the batter achieved in this zone
+  run_value_per_100: number | null // per 100 pitches in this zone; negative = good for the pitcher (Savant's own convention)
   pitches:     number
   swings:      number
   whiffs:      number
   ab:          number
+  batted_balls: number
   low_sample:  boolean         // true when under MIN_PITCHES_PER_ZONE — fade in UI
 }
 

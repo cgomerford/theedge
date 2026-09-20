@@ -22,10 +22,20 @@ export type PercentileStat = {
   tier: 'below' | 'average' | 'above' | 'elite' | null
 }
 
+// 2026-09-14: extended for the Pitching Lab Overview tab's fuller
+// percentile strip — every added key is a real pitcher_stats column
+// (confirmed present in the schema), same "no proprietary/derived model"
+// bar as the original three. Still no Stuff+/xFIP/proStuff+-style metric.
 const PERCENTILE_COLS: StatColumn[] = [
+  { key: 'era', label: 'ERA', higherIsBetter: false },
+  { key: 'fip', label: 'FIP', higherIsBetter: false },
+  { key: 'whip', label: 'WHIP', higherIsBetter: false },
   { key: 'k_pct', label: 'K%', higherIsBetter: true },
-  { key: 'whiff_pct', label: 'Whiff%', higherIsBetter: true },
   { key: 'bb_pct', label: 'BB%', higherIsBetter: false },
+  { key: 'whiff_pct', label: 'Whiff%', higherIsBetter: true },
+  { key: 'chase_rate', label: 'Chase%', higherIsBetter: true },
+  { key: 'barrel_pct', label: 'Barrel%', higherIsBetter: false },
+  { key: 'hard_hit_pct', label: 'Hard-Hit%', higherIsBetter: false },
 ]
 
 function tierFor(pct: number): PercentileStat['tier'] {
@@ -49,13 +59,18 @@ export async function getPitcherPercentiles(pitcherId: number, season: number): 
   // guessed percentile.
   const qualified = !!row
 
+  // era/fip/whip are plain rate stats (e.g. "3.78"), not percentages —
+  // every other column here is already 0-100 scale (confirmed against
+  // real pitcher_stats rows), formatted as "X.X%".
+  const DECIMAL_COLS = new Set(['era', 'fip', 'whip'])
+
   const stats: PercentileStat[] = PERCENTILE_COLS.map(col => {
     const rawValue = row?.stats[col.key]
     const pct = row ? percentiles.get(row.id)?.get(col.key) ?? null : null
     return {
       key: col.key,
       label: col.label,
-      value: rawValue != null ? `${rawValue.toFixed(1)}%` : '—',
+      value: rawValue != null ? (DECIMAL_COLS.has(col.key) ? rawValue.toFixed(2) : `${rawValue.toFixed(1)}%`) : '—',
       percentile: pct,
       tier: pct != null ? tierFor(pct) : null,
     }

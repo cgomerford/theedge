@@ -18,6 +18,8 @@ export type EdgePrediction = {
     park: number
     weather: number
     rest: number
+    pitcher_situational: number
+    offense_situational: number
   }
   components_raw?: any | null
   lineups_confirmed: boolean
@@ -60,4 +62,23 @@ export async function getEdgePrediction(gamePk: number): Promise<EdgePrediction 
 
   if (error || !data) return null
   return data as EdgePrediction
+}
+
+/**
+ * Batched version of getEdgePrediction for a series/slate of games — one
+ * round-trip instead of one per gamePk.
+ */
+export async function getEdgePredictionsByGamePks(gamePks: number[]): Promise<Map<number, EdgePrediction>> {
+  if (gamePks.length === 0) return new Map()
+  const { data, error } = await supa
+    .from('edge_predictions')
+    .select('game_pk, edge_score, predicted_winner, confidence_tier, components, lineups_confirmed, updated_at, home_stories, away_stories, contrarian, pro_takeaways, summary, story_lead, narrative, narrative_pro, components_raw, fantasy_cards')
+    .in('game_pk', gamePks)
+
+  if (error || !data) return new Map()
+  const map = new Map<number, EdgePrediction>()
+  for (const row of data) {
+    map.set(Number(row.game_pk), row as EdgePrediction)
+  }
+  return map
 }

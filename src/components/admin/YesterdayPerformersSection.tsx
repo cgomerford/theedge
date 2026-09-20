@@ -40,8 +40,8 @@ function GradeBadge({ grade }: { grade: Grade }) {
   const c = gradeColor(grade)
   return (
     <div
+      className="font-display"
       style={{
-        fontFamily: "'Bebas Neue',sans-serif",
         fontSize: 28,
         lineHeight: 1,
         color: c,

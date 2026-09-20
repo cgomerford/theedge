@@ -36,6 +36,59 @@ export const SPORT_LEVEL_LABEL: Record<number, string> = {
   16: 'Rookie',
 }
 
+export type MilbOpsLeader = {
+  playerId: number
+  name: string
+  team: string
+  teamId: number | null
+  ops: number
+  level: 'AAA' | 'AA'
+}
+
+/** Real MLB Stats API OPS leaders for AAA (sportId 11) or AA (12). */
+export async function getMilbOpsLeaders(sportId: 11 | 12, limit = 8): Promise<MilbOpsLeader[]> {
+  const season = new Date().getFullYear()
+  const url = `${MLB_STATS_BASE}/stats/leaders?leaderCategories=ops&season=${season}&sportId=${sportId}&limit=${Math.max(limit, 8)}`
+  try {
+    const res = await fetch(url, { next: { revalidate: 21600 } })
+    if (!res.ok) return []
+    const json = await res.json() as {
+      leagueLeaders?: {
+        leaderCategory?: string
+        leaders?: {
+          value?: string | number
+          person?: { id?: number; fullName?: string }
+          team?: { id?: number; name?: string }
+        }[]
+      }[]
+    }
+    const level: 'AAA' | 'AA' = sportId === 11 ? 'AAA' : 'AA'
+    const seen = new Set<number>()
+    const out: MilbOpsLeader[] = []
+    for (const cat of json.leagueLeaders ?? []) {
+      for (const row of cat.leaders ?? []) {
+        const playerId = Number(row.person?.id)
+        const raw = row.value
+        const ops = raw === '' || raw == null ? NaN : Number(raw)
+        if (!Number.isFinite(playerId) || playerId <= 0 || seen.has(playerId) || !Number.isFinite(ops)) continue
+        seen.add(playerId)
+        out.push({
+          playerId,
+          name: row.person?.fullName ?? `#${playerId}`,
+          team: row.team?.name ?? '',
+          teamId: row.team?.id != null ? Number(row.team.id) : null,
+          ops,
+          level,
+        })
+      }
+    }
+    out.sort((a, b) => b.ops - a.ops)
+    return out.slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type MinorLeagueTeamMeta = {
@@ -158,6 +211,7 @@ export async function getMinorLeagueRoster(
   const roster: unknown[] = data?.roster ?? []
 
   return roster.map((r) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const row = r as Record<string, any>
     const p = row.person ?? {}
     return {
@@ -298,6 +352,7 @@ async function getAllMinorLeagueTeams(): Promise<{ id: number; sportId: number; 
   const teams: unknown[] = data?.teams ?? []
 
   const parsed = teams.map((r) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t = r as Record<string, any>
     const names = [t.name, t.shortName, t.teamName, t.franchiseName, t.abbreviation]
       .filter((s: unknown): s is string => typeof s === 'string' && s.length > 0)

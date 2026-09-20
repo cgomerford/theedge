@@ -5,6 +5,7 @@
 // Returns typed BullpenData for home and away teams.
 
 import { createClient } from '@supabase/supabase-js'
+import { cache } from 'react'
 import type { BullpenArm, BullpenData, PitchDay } from '@/components/BullpenPanel'
 
 const supa = createClient(
@@ -12,11 +13,11 @@ const supa = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function getBullpenData(
+export const getBullpenData = cache(async (
   homeTeamId: number,
   awayTeamId: number,
   gameDate: string   // 'YYYY-MM-DD'
-): Promise<{ home: BullpenData | null; away: BullpenData | null }> {
+): Promise<{ home: BullpenData | null; away: BullpenData | null }> => {
   try {
     const { data, error } = await supa
       .from('bullpen_availability')
@@ -76,5 +77,32 @@ export async function getBullpenData(
   } catch (err) {
     console.error('getBullpenData failed:', err)
     return { home: null, away: null }
+  }
+})
+
+// Homepage board card just needs one number per team — total pitches the
+// whole bullpen (every reliever on the roster) has thrown over the last 3
+// calendar days. Sums pitches_3d (already a per-reliever 3-day rolling
+// total, see scripts/fetch_bullpen_availability.py) across every reliever
+// row for that team/date, rather than fetching full per-arm detail like
+// getBullpenData does for the game page's BullpenPanel.
+export async function getBullpenPitches3dTotals(gameDate: string): Promise<Map<number, number>> {
+  try {
+    const { data, error } = await supa
+      .from('bullpen_availability')
+      .select('team_id, pitches_3d')
+      .eq('game_date', gameDate)
+
+    if (error || !data) return new Map()
+
+    const totals = new Map<number, number>()
+    for (const row of data as { team_id: number | string; pitches_3d: number | string | null }[]) {
+      const teamId = Number(row.team_id)
+      totals.set(teamId, (totals.get(teamId) ?? 0) + Number(row.pitches_3d ?? 0))
+    }
+    return totals
+  } catch (err) {
+    console.error('getBullpenPitches3dTotals failed:', err)
+    return new Map()
   }
 }

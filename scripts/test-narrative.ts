@@ -16,6 +16,8 @@ const testInputs = {
     park: 5,
     weather: 2,
     rest: -3,
+    pitcher_situational: 4,
+    offense_situational: -2,
   },
   components_raw: {
     home_pitcher: {

@@ -23,6 +23,7 @@
 //      fewer than 4 if not enough lineup batters clear even L14 — this
 //      widens the net, it does not fabricate a floor.
 
+import { cache } from 'react'
 import { getBatterSplits } from './batter-stats'
 import type { LineupBatter } from './lineups'
 
@@ -81,10 +82,10 @@ function buildRow(
   }
 }
 
-export async function getHotColdStreaks(
+export const getHotColdStreaks = cache(async (
   awayBatters: LineupBatter[], homeBatters: LineupBatter[],
   awayAbbr: string, homeAbbr: string,
-): Promise<StreakRow[]> {
+): Promise<StreakRow[]> => {
   const all = [
     ...awayBatters.map(b => ({ b, teamAbbr: awayAbbr })),
     ...homeBatters.map(b => ({ b, teamAbbr: homeAbbr })),
@@ -150,4 +151,4 @@ export async function getHotColdStreaks(
   }
 
   return result
-}
+})

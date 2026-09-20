@@ -9,9 +9,11 @@
 #
 # Usage: bash scripts/backfill_statcast.sh 2026-03-27 2026-08-16
 #        (first arg = season start, second arg = last date to backfill)
+#        Optional third arg is passed to fetch_statcast_events.py, e.g. --batted-only
 
 START_DATE=$1
 END_DATE=$2
+EXTRA_FLAGS=$3
 
 if [ -z "$START_DATE" ] || [ -z "$END_DATE" ]; then
   echo "Usage: bash scripts/backfill_statcast.sh YYYY-MM-DD YYYY-MM-DD"
@@ -28,7 +30,7 @@ while [ "$(date -j -f %Y-%m-%d "$current" +%s 2>/dev/null || date -d "$current" 
 
   echo ""
   echo "=== Backfilling $current to $chunk_end ==="
-  python3 scripts/fetch_statcast_events.py --start-date "$current" --end-date "$chunk_end"
+  python3 scripts/fetch_statcast_events.py --start-date "$current" --end-date "$chunk_end" $EXTRA_FLAGS
 
   current=$(date -j -v+7d -f %Y-%m-%d "$current" +%Y-%m-%d 2>/dev/null || date -d "$current + 7 days" +%Y-%m-%d)
 

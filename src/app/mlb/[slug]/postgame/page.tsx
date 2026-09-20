@@ -1,180 +1,111 @@
 // src/app/mlb/[slug]/postgame/page.tsx
 //
-// Production post-game report page.
+// Postgame report — rebuilt in the Scout Report's format (sticky section nav, one card per
+// section, Free / Pro tiers). The page resolves the game and hands a small context to
+// <PostgameShell>; each section fetches what it needs (one shared cached feed, see
+// lib/postgame/data.ts) and streams in on its own.
 //
-// Two independent data fetches feed this page:
-//   1. getPostGameReport() — the OLDER PostGameReport shape (top
-//      performers, spray charts, umpire report, win probability, etc.)
-//   2. getLiveFeed() + aggregateGameFeed() — the NEWER PostgameReport
-//      shape (lowercase 'g', DO NOT confuse the two type names), used for
-//      pitchers/pitchLog/batters/linescore — everything PostGameReportTab's
-//      SP/bullpen/box-score section needs.
-// Both run independently; if either fails, the other section still renders.
-//
-// 2026-08-20: added getBullpenData() as a THIRD independent fetch — last
-// 3 days' pitch loads per team, for the Bullpen Usage panels under each
-// SP column. Uses the game's official date (from the slug's date match)
-// and both team IDs from the resolved schedule game.
-//
-// ⚠ UNVERIFIED: SiteHeader's prop signature — used as <SiteHeader /> with
-// no props, matching other pages. Flag if build fails there.
+// The previous tabbed page (PostGameReportTab and its children) is no longer rendered from here;
+// the components and lib/postgame.ts are left in place for salvage while the remaining sections
+// (spray, ABS, bullpen, umpires, key players, the Pro audits) are rebuilt.
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getRecentGamePks, filterOutStarters, getBullpenReport } from '@/lib/bullpen-usage'
-import { getLast7DaysPitcherWorkload } from '@/lib/pitcher-workload'
-import { getScheduleForDate, slugifyGame, type MLBGame } from '@/lib/mlb'
-import { getPostGameReport } from '@/lib/postgame'
-import { getLiveFeed } from '@/lib/mlb-live-feed'
-import { aggregateGameFeed } from '@/lib/postgame-aggregate'
-import { findTeamByName } from '@/lib/teams'
-import { getBullpenData } from '@/lib/bullpen'
-import { fetchPitcherHands } from '@/lib/pitcher-hands'
-import PostGameReportTab from '@/components/PostGameReportTab'
+import { getScheduleForDate, slugifyGame, teamLogoUrl, type MLBGame } from '@/lib/mlb'
+import { createAdminClient } from '@/lib/supabase'
+import { getCurrentSubscriber } from '@/lib/auth'
 import SiteHeader from '@/components/SiteHeader'
+import LiveTicker from '@/components/LiveTicker'
+import PostgameShell from '@/components/postgame/report/PostgameShell'
+import type { PostgameContext } from '@/components/postgame/report/types'
 
 export const revalidate = 300
+export const maxDuration = 30
 
 type Props = { params: Promise<{ slug: string }> }
 
+const MAX_W = 1440
+const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
-  const matchup = slug
-    .replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '')
-    .replace(/-vs-/, ' vs ')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-  const title = `${matchup} — Post-Game Report · The Edge`
-  const description = `Post-game breakdown for ${matchup}: top performers, the biggest moment, and how it actually happened.`
-  return {
-    title,
-    description,
-    openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}/postgame` },
-    twitter: { card: 'summary_large_image', title, description },
-  }
+  const matchup = slug.replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '').replace(/-vs-/, ' vs ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const title = `${matchup} — Postgame Report · The Edge`
+  const description = `Postgame breakdown for ${matchup}: how the game swung, top performers, the full box score and a hand-scored scorecard.`
+  return { title, description, openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}/postgame` }, twitter: { card: 'summary_large_image', title, description } }
 }
 
 export default async function PostGamePage({ params }: Props) {
   const { slug } = await params
-
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
 
-  const games = await getScheduleForDate(dateMatch[1])
-  const game: MLBGame | undefined = games.find(g => slugifyGame(g) === slug)
+  // live schedule first; fall back to the cached game_previews row for games that have aged out of it
+  const [fresh, { data: cached }] = await Promise.all([
+    getScheduleForDate(dateMatch[1]).catch(() => [] as MLBGame[]),
+    createAdminClient().from('game_previews').select('raw_data').eq('slug', slug).single(),
+  ])
+  let game: MLBGame | null = fresh.find((g) => slugifyGame(g) === slug) ?? null
+  if (!game && cached?.raw_data) game = cached.raw_data as MLBGame
   if (!game) notFound()
 
+  const subscriber = await getCurrentSubscriber()
+  const isPro = (subscriber?.is_pro ?? false) || process.env.NODE_ENV === 'development'   // dev is always Pro so the Pro sections can be tested
+  const isAdmin = subscriber?.role === 'admin' || process.env.NODE_ENV === 'development'
   const isFinal = game.status?.abstractGameState === 'Final'
+  const away = game.teams.away, home = game.teams.home
+  const awayAbbr = away.team.abbreviation ?? 'AWAY', homeAbbr = home.team.abbreviation ?? 'HOME'
 
-  if (!isFinal) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F3]">
-        <SiteHeader />
-        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
-          <p className="font-mono text-xs uppercase tracking-widest text-orange-600 mb-3">
-            Not final yet
-          </p>
-          <h1 className="font-serif text-2xl text-stone-900 mb-4">
-            {game.teams.away.team.name} @ {game.teams.home.team.name}
-          </h1>
-          <p className="text-stone-500 mb-8">
-            The post-game report is available once the game ends. Current status: {game.status?.detailedState ?? 'Scheduled'}.
-          </p>
-          <Link href={`/mlb/${slug}`} className="font-mono text-sm underline text-stone-900">
-            ← Back to the game preview
-          </Link>
-        </div>
-      </div>
-    )
+  const ctx: PostgameContext = {
+    gamePk: game.gamePk, gameDate: dateMatch[1], slug, isPro, isAdmin,
+    away: { id: away.team.id, name: away.team.name, abbr: awayAbbr },
+    home: { id: home.team.id, name: home.team.name, abbr: homeAbbr },
   }
-
-  const report = await getPostGameReport(game.gamePk)
-
-  // ── Pitching box score / batter / bullpen source data ──────────────────
-  const liveFeed = await getLiveFeed(game.gamePk)
-  const boxScoreReport = liveFeed ? aggregateGameFeed(liveFeed, slug) : null
-  const boxScorePitchers = boxScoreReport?.pitchers ?? []
-  const boxScorePitchLog = boxScoreReport?.pitchLog ?? []
-    const boxScoreBatters = boxScoreReport?.batters
-  const boxScoreLinescore = boxScoreReport?.linescore ?? []
-
-  // Every distinct pitcher either team's batters faced this game — needed
-  // for vs LHP/RHP splits in BatterBoxScoreSelector. Built off pitchLog
-  // rather than boxScorePitchers, since pitchLog is the actual per-pitch
-  // record of who threw to whom (boxScorePitchers only has each staff's
-  // own pitchers, not who faced them).
-  const allPitcherIdsFaced = Array.from(new Set(boxScorePitchLog.map(p => p.pitcherId)))
-  const pitcherHands = await fetchPitcherHands(allPitcherIdsFaced)
-  // ── Pitcher workload — last 7 days into this game, both teams ──────────
-  const season = new Date(dateMatch[1]).getFullYear()
-  const awayTeamId = game.teams.away.team.id
-  const homeTeamId = game.teams.home.team.id
-
-    const [awayWorkload, homeWorkload, awayRecentGamePks, homeRecentGamePks] = await Promise.all([
-    getLast7DaysPitcherWorkload(awayTeamId, undefined, dateMatch[1]),
-    getLast7DaysPitcherWorkload(homeTeamId, undefined, dateMatch[1]),
-    getRecentGamePks(awayTeamId, 15, 30, dateMatch[1]),
-    getRecentGamePks(homeTeamId, 15, 30, dateMatch[1]),
- ])
-
-  // Filter each team's workload down to relievers only — pitcher-workload.ts
-  // deliberately includes starters (full-staff view), but this card is
-  // reliever-only per the wireframe. Reuses filterOutStarters rather than
-  // getEligibleRelieverIds, since the latter requires a current-roster
-  // check that would wrongly hide a reliever who's since been traded/
-  // optioned but still actually pitched in this game's 7-day window.
-  const [awayRelieverIds, homeRelieverIds] = await Promise.all([
-    filterOutStarters(awayWorkload.pitchers.map(p => p.playerId), season),
-    filterOutStarters(homeWorkload.pitchers.map(p => p.playerId), season),
-  ])
-  const awayWorkloadRP = { ...awayWorkload, pitchers: awayWorkload.pitchers.filter(p => awayRelieverIds.has(p.playerId)) }
- const homeWorkloadRP = { ...homeWorkload, pitchers: homeWorkload.pitchers.filter(p => homeRelieverIds.has(p.playerId)) }
-
-
-  // bullpenReport just needs mostUsedInning per reliever — no roster
-  // filtering needed here (unlike the team page), so skip
-  // getEligibleRelieverIds and pass the raw recent gamePks straight in.
-  const [awayBullpenReport, homeBullpenReport] = await Promise.all([
-    getBullpenReport(awayTeamId, awayRecentGamePks, season),
-    getBullpenReport(homeTeamId, homeRecentGamePks, season),
- ])
-  const finalScore = {
-    away: (game.teams.away as { score?: number }).score ?? 0,
-    home: (game.teams.home as { score?: number }).score ?? 0,
-  }
-
-  const awayAbbr = game.teams.away.team.abbreviation ?? report.awayAbbr
-  const homeAbbr = game.teams.home.team.abbreviation ?? report.homeAbbr
-  const awayTeam = findTeamByName(game.teams.away.team.name)
-  const homeTeam = findTeamByName(game.teams.home.team.name)
 
   return (
-    <div className="min-h-screen bg-[#FAF8F3]">
-      <SiteHeader />
-      <div className="py-8">
-        <PostGameReportTab
-          report={report}
-          awayAbbr={awayAbbr}
-          homeAbbr={homeAbbr}
-          awayName={game.teams.away.team.name}
-          homeName={game.teams.home.team.name}
-          awayTeamId={game.teams.away.team.id}
-          homeTeamId={game.teams.home.team.id}
-          awayColor={awayTeam?.primary_color}
-          homeColor={homeTeam?.primary_color}
-          finalScore={finalScore}
-          boxScorePitchers={boxScorePitchers}
-          boxScorePitchLog={boxScorePitchLog}
-                 boxScoreBatters={boxScoreBatters}
-          boxScoreLinescore={boxScoreLinescore}
-                 pitcherHands={pitcherHands}
-          boxScoreBattedBalls={boxScoreReport?.battedBalls ?? []}
-          awayWorkload={awayWorkloadRP}
-         homeWorkload={homeWorkloadRP}
-          awayBullpenReport={awayBullpenReport}
-          homeBullpenReport={homeBullpenReport}
-        />
+    <>
+      <SiteHeader variant="page" />
+      <LiveTicker />
+      <div className="min-h-screen bg-stone-50">
+        <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
+          <div className="flex items-center px-4 py-2 gap-2" style={centered}>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={teamLogoUrl(away.team.id)} alt={awayAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
+              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{awayAbbr}</span>
+              {isFinal && <span className="text-[15px] font-mono font-bold text-stone-900 ml-1">{(away as { score?: number }).score ?? ''}</span>}
+            </div>
+            <div className="flex flex-col items-center shrink-0 px-1">
+              <span className="text-[11px] font-serif italic text-stone-400 leading-none">at</span>
+              <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">{isFinal ? 'Final' : (game.status?.detailedState ?? 'Not final')}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+              {isFinal && <span className="text-[15px] font-mono font-bold text-stone-900 mr-1">{(home as { score?: number }).score ?? ''}</span>}
+              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{homeAbbr}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={teamLogoUrl(home.team.id)} alt={homeAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
+            </div>
+            <div className="flex items-center gap-3 shrink-0 ml-3">
+              <Link href={`/mlb/${slug}`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">Game Preview →</Link>
+              <Link href={`/mlb/${slug}/scout-report`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">Scout Report →</Link>
+            </div>
+          </div>
+          <div className="px-4 py-2 border-t border-stone-100" style={centered}>
+            <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-orange-600">§ Postgame Report</span>
+          </div>
+        </div>
+
+        <div className="px-4 py-6" style={centered}>
+          {isFinal ? <PostgameShell ctx={ctx} /> : (
+            <div className="max-w-2xl mx-auto py-16 text-center">
+              <p className="font-mono text-xs uppercase tracking-widest text-orange-600 mb-3">Not final yet</p>
+              <h1 className="font-serif text-2xl text-stone-900 mb-3">{away.team.name} @ {home.team.name}</h1>
+              <p className="text-stone-500 mb-6">The postgame report appears once the game ends. Status: {game.status?.detailedState ?? 'Scheduled'}.</p>
+              <Link href={`/mlb/${slug}`} className="font-mono text-sm underline text-stone-900">← Back to the game preview</Link>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

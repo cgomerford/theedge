@@ -20,7 +20,7 @@ import PlayerPitchHover from './PlayerPitchHover'
 
 function StatTable({ abbr, rows, gamePks }: { abbr: string; rows: SeriesBatterLine[]; gamePks: number[] }) {
   const withAtBats = rows.filter(r => r.ab > 0)
-  if (withAtBats.length === 0) return <p className="text-xs font-serif italic text-stone-400 py-2">No batting data yet.</p>
+  if (withAtBats.length === 0) return <p className="text-xs font-sans italic text-stone-400 py-2">No batting data yet.</p>
   return (
     <div>
       <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">{abbr}</p>
@@ -53,7 +53,7 @@ function StatTable({ abbr, rows, gamePks }: { abbr: string; rows: SeriesBatterLi
                         e.currentTarget.onerror = null
                       }}
                     />
-                    <span className="font-serif text-stone-900 truncate">{r.name.split(' ').slice(-1)[0]}</span>
+                    <span className="font-sans text-stone-900 truncate">{r.name.split(' ').slice(-1)[0]}</span>
                   </Link>
                 </PlayerPitchHover>
               </td>
@@ -83,6 +83,26 @@ export default function SeriesPlayerStats({
       <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Player stats this series</p>
       <StatTable abbr={awayAbbr} rows={awayRows} gamePks={gamePks} />
       <StatTable abbr={homeAbbr} rows={homeRows} gamePks={gamePks} />
+    </div>
+  )
+}
+
+// Single-team version of the card above — same StatTable, own card, so a
+// page can lay Home/Away out as two separate columns instead of one
+// stacked card (game-preview's Series Stats wireframe wants Home Stats /
+// Away Stats side by side, with the highlights card between them).
+export function SeriesTeamPlayerCard({
+  title, abbr, rows, gamePks,
+}: {
+  title: string
+  abbr: string
+  rows: SeriesBatterLine[]
+  gamePks: number[]
+}) {
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-5">
+      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">{title}</p>
+      <StatTable abbr={abbr} rows={rows} gamePks={gamePks} />
     </div>
   )
 }

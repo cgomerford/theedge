@@ -20,11 +20,13 @@
  * itself, same as the scoring functions don't.
  */
 
-import type { PitchTypeFitLine } from '@/lib/series-matchup'
+import type { PitchTypeFitLine, Top3Batter, Top3BatterPitcherLine } from '@/lib/series-matchup'
+import type { ParkFactor } from '@/lib/parks'
 
 export type RecentFormContext = {
   signal: 'heating' | 'cooling'
   metric: string   // e.g. "ERA 1.42 last 3 starts" — pre-formatted by caller
+  trend?: number[] // per-game OPS from player_form_signals.trend, oldest → newest
 } | null
 // ─── Zone labels — single source of truth ────────────────────────────────
 // Moved here from Top3KeyPlayersTab.tsx so the narrative text and the
@@ -48,15 +50,38 @@ export function getZoneLabel(zone: string, batSide: string | null): string {
   return dict[zone] ?? `zone ${zone}`
 }
 /**
- * Picks the single pitch type most responsible for the score — highest
- * usage among put-away pitches, or highest usage overall if none is a
- * put-away pitch. This is the pitch the narrative talks about.
+ * Picks the single pitch type the narrative should talk about. Evidence
+ * first: among pitches with a real velocity-matched sample (and at least 8%
+ * usage), the one with the biggest batter edge ('batter' mode) or the
+ * biggest pitcher edge ('pitcher' mode). Only when NO pitch has a real
+ * sample do we fall back to the old rule (put-away pitch, else most used) —
+ * previously that fallback was the only rule, so a pitch with no batter data
+ * at all could be named as the driver.
  */
-export function pickDrivingPitch(pitchTypeFit: PitchTypeFitLine[]): PitchTypeFitLine | null {
+export function pickDrivingPitch(pitchTypeFit: PitchTypeFitLine[], mode: 'batter' | 'pitcher' = 'batter'): PitchTypeFitLine | null {
   if (pitchTypeFit.length === 0) return null
+  const real = pitchTypeFit.filter(
+    (p) => !p.velocity_matched_low_sample && p.velocity_matched_ba != null && (p.pitcher_usage_pct ?? 0) >= 8,
+  )
+  if (real.length > 0) {
+    const sign = mode === 'batter' ? -1 : 1
+    return [...real].sort((a, b) => sign * ((a.velocity_matched_ba as number) - (b.velocity_matched_ba as number)))[0]
+  }
   const putAway = pitchTypeFit.filter((p) => p.is_put_away_pitch)
   const pool = putAway.length > 0 ? putAway : pitchTypeFit
   return [...pool].sort((a, b) => (b.pitcher_usage_pct ?? 0) - (a.pitcher_usage_pct ?? 0))[0]
+}
+
+/**
+ * The confirmed starter this batter matches up best against. Everything
+ * headline-shaped (driving pitch, driving zone, narrative) should describe
+ * this line — previously it used per_pitcher[0], i.e. simply the FIRST game
+ * of the series, whatever his numbers were.
+ */
+export function bestBatterLine(batter: Top3Batter): Top3BatterPitcherLine | null {
+  return [...batter.per_pitcher].sort(
+    (a, b) => (b.zone_score + b.pitch_type_fit_score) - (a.zone_score + a.pitch_type_fit_score),
+  )[0] ?? null
 }
 
 function fmtBa(ba: number): string {
@@ -71,6 +96,46 @@ function formClause(form: RecentFormContext): string {
 }
 
 /**
+ * "Is there a real gap in this pitcher's arsenal" — a genuinely different
+ * signal from the zone/pitch-type fit: not "is this pitch bad," but "does
+ * he even HAVE a real third pitch to change the batter's look." Computed
+ * from the same PitchTypeFitLine[] already passed to the narrative
+ * builders (pitcher_usage_pct per pitch type) — no new fetch. A "real"
+ * pitch is one thrown at least 12% of the time; two or fewer real pitches
+ * is a genuine two-pitch mix (below that, elite closers/relievers aside,
+ * there's no real third weapon to keep a lineup off balance).
+ */
+export function arsenalGapClause(pitchTypeFit: PitchTypeFitLine[]): string | null {
+  if (pitchTypeFit.length < 2) return null
+  const real = pitchTypeFit.filter((p) => (p.pitcher_usage_pct ?? 0) >= 12)
+  if (real.length > 2) return null
+  const names = [...real].sort((a, b) => (b.pitcher_usage_pct ?? 0) - (a.pitcher_usage_pct ?? 0))
+    .map((p) => p.pitch_name.toLowerCase())
+  const joined = names.length === 2 ? `${names[0]} and ${names[1]}` : names[0] ?? 'one pitch'
+  return `He's really a ${names.length}-pitch mix here — ${joined} account for nearly everything he throws, with no real third weapon to change the batter's eye level or timing.`
+}
+
+/**
+ * Real park-factor clause — from lib/parks.ts's park_factors table
+ * (season-scoped, side-specific HR factors). Only mentioned when it's
+ * genuinely notable (±8% or more) in either direction; a near-neutral
+ * park isn't part of the story and shouldn't pad the sentence.
+ */
+export function parkFactorClause(park: ParkFactor | null, batSide: string | null): string | null {
+  if (!park) return null
+  const factor = batSide === 'L' ? park.hr_factor_lhb : batSide === 'R' ? park.hr_factor_rhb : park.hr_factor
+  if (factor == null) return null
+  const sideWord = batSide === 'L' ? 'left-handed' : batSide === 'R' ? 'right-handed' : ''
+  if (factor >= 1.08) {
+    return `${park.venue_name} adds to it — a real ${Math.round((factor - 1) * 100)}% home-run bump for ${sideWord} hitters here this season.`
+  }
+  if (factor <= 0.92) {
+    return `Working against it: ${park.venue_name} suppresses home runs for ${sideWord} hitters by about ${Math.round((1 - factor) * 100)}% this season.`
+  }
+  return null
+}
+
+/**
  * Batter-facing narrative: "why does this batter beat this pitcher."
  */
 export function buildBatterNarrative(
@@ -80,15 +145,25 @@ export function buildBatterNarrative(
   pitch: PitchTypeFitLine,
   form: RecentFormContext,
   batSide: string | null,
+  fullArsenal: PitchTypeFitLine[] = [],
+  park: ParkFactor | null = null,
 ): string {
-  const ba = pitch.velocity_matched_ba != null ? fmtBa(pitch.velocity_matched_ba) : 'a strong number'
-  const putAwayClause = pitch.is_put_away_pitch ? "— it's his identified put-away pitch, too" : ''
+  const hasBa = pitch.velocity_matched_ba != null && !pitch.velocity_matched_low_sample
+  const putAwayClause = pitch.is_put_away_pitch ? " — it's his identified put-away pitch, too" : ''
   const clause = formClause(form)
   const zoneLabel = getZoneLabel(zone, batSide)
 
-  return `${batterName} has shown a real fit against ${pitcherName}'s ${pitch.pitch_name.toLowerCase()}, ` +
-    `hitting ${ba} at the velocity he actually throws it ${putAwayClause}. ` +
-    `That's the pitch driving the ${zoneLabel} zone${clause ? ', ' + clause : '.'}`
+  // Never claim a hitting number we don't have: with no real velocity-matched
+  // sample the sentence rests on the zone fit alone.
+  const base = hasBa
+    ? `${batterName} has shown a real fit against ${pitcherName}'s ${pitch.pitch_name.toLowerCase()}, ` +
+      `hitting ${fmtBa(pitch.velocity_matched_ba as number)} at the velocity he actually throws it${putAwayClause}. ` +
+      `That's the pitch driving the ${zoneLabel} zone${clause ? ', ' + clause : '.'}`
+    : `${batterName}'s ${zoneLabel} zone lines up with where ${pitcherName} works, and ${pitcherName}'s ${pitch.pitch_name.toLowerCase()} is the pitch he leans on there${putAwayClause}${clause ? ', ' + clause : '.'}`
+
+  const extra = [arsenalGapClause(fullArsenal), parkFactorClause(park, batSide)]
+    .filter((c): c is string => !!c)
+  return extra.length > 0 ? `${base} ${extra.join(' ')}` : base
 }
 
 /**
@@ -104,6 +179,7 @@ export function buildPitcherNarrative(
   usagePct: number,
   form: RecentFormContext,
   batSide: string | null,
+  park: ParkFactor | null = null,
 ): string {
   const putAwayClause = pitch.is_put_away_pitch ? "It's his identified put-away pitch" : null
   const clause = formClause(form)
@@ -113,10 +189,18 @@ export function buildPitcherNarrative(
   const tailParts = [putAwayClause, clause].filter((c): c is string => !!c && c.length > 0)
   const tail = tailParts.length > 0 ? ' ' + tailParts.join(', ') + '.' : ''
 
-  return `${pitcherName}'s ${pitch.pitch_name.toLowerCase()} lives in the ${zoneLabel} zone ${roundedUsage}% of the time he throws it — ` +
+  const base = `${pitcherName} leans on his ${pitch.pitch_name.toLowerCase()} (${roundedUsage}% of his pitches) and works the ${zoneLabel} zone — ` +
     `exactly where ${toughestBatterName} has shown the clearest weakness in the projected lineup.${tail}`
+
+  // Park clause reads pitcher-favoring here (suppressed power helps him,
+  // not a batter-side "adds to it" framing) — only worth a sentence when
+  // it's genuinely working in his favor.
+  const parkFactor = batSide === 'L' ? park?.hr_factor_lhb : batSide === 'R' ? park?.hr_factor_rhb : park?.hr_factor
+  if (park && parkFactor != null && parkFactor <= 0.92) {
+    return `${base} ${park.venue_name} helps too — it suppresses home runs for ${batSide === 'L' ? 'left-handed' : batSide === 'R' ? 'right-handed' : ''} hitters by about ${Math.round((1 - parkFactor) * 100)}% this season.`
+  }
+  return base
 }
-import type { Top3Batter } from '@/lib/series-matchup'
 
 /**
  * "Favourable vs Verlander, Ohtani — not vs Skubal." Built from the

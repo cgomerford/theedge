@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createAdminClient } from './supabase'
 
 export type TeamTransaction = {
@@ -64,7 +65,7 @@ export async function getTeamTransactions(
 
 // ── Per-team IL list (GM Lab) ─────────────────────────────────────────────────
 
-export async function getTeamILList(teamId: number): Promise<TeamTransaction[]> {
+export const getTeamILList = cache(async (teamId: number): Promise<TeamTransaction[]> => {
   const supa = createAdminClient()
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -90,7 +91,7 @@ export async function getTeamILList(teamId: number): Promise<TeamTransaction[]> 
   const activatedIds = new Set((activations ?? []).map(a => a.player_id))
 
   return (ilPlacements as TeamTransaction[]).filter(p => !activatedIds.has(p.player_id))
-}
+})
 
 // ── All-teams fetch (Fantasy Desk) ────────────────────────────────────────────
 

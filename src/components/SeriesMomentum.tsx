@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, ResponsiveContainer, Legend } from 'recharts'
 import type { GameMomentum } from '@/lib/series-momentum'
+import DetailModal from './game-preview/DetailModal'
 
 const GAME_COLORS = ['#78716C', '#A8A29E', '#44403C', '#D6D3D1', '#292524']
 
@@ -25,7 +26,7 @@ function buildSeriesFlow(momentum: GameMomentum[]): ChartPoint[] {
       x += 1
       points.push({
         x,
-        label: `G${game.gameNumber} · Inn ${p.inning}`,
+        label: `G${game.gameNumber} · Inn ${p.inning}${p.isTopInning ? ' (top)' : ' (bot)'}`,
         posDiff: p.diff > 0 ? p.diff : 0,
         negDiff: p.diff < 0 ? p.diff : 0,
         gameNumber: game.gameNumber,
@@ -46,7 +47,10 @@ function buildByGameSeries(momentum: GameMomentum[]) {
     const inning = i + 1
     const row: Record<string, number | null> = { inning }
     for (const m of momentum) {
-      const pt = m.points.find(p => p.inning === inning)
+      // Last play of the inning (its win-probability, post-half-inning) —
+      // a real summary now that points are per-play, not one-per-inning.
+      const ptsInInning = m.points.filter(p => p.inning === inning)
+      const pt = ptsInInning[ptsInInning.length - 1]
       row[`Game ${m.gameNumber}`] = pt ? pt.diff : null
     }
     return row
@@ -54,7 +58,17 @@ function buildByGameSeries(momentum: GameMomentum[]) {
   return rows
 }
 
-function SeriesTooltip({ active, payload, awayAbbr, homeAbbr, awayColor, homeColor }: any) {
+type SeriesTooltipProps = {
+  active?: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any[]
+  awayAbbr: string
+  homeAbbr: string
+  awayColor: string
+  homeColor: string
+}
+
+function SeriesTooltip({ active, payload, awayAbbr, homeAbbr, awayColor, homeColor }: SeriesTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
   const point = payload[0]?.payload
   if (!point) return null
@@ -65,54 +79,63 @@ function SeriesTooltip({ active, payload, awayAbbr, homeAbbr, awayColor, homeCol
   return (
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm px-3 py-2 text-xs font-mono">
       <p className="text-stone-400 text-[10px] mb-1 whitespace-nowrap">{point.label}</p>
-      {homeAhead && <p style={{ color: homeColor }} className="font-bold whitespace-nowrap">{homeAbbr} +{point.posDiff}</p>}
-      {awayAhead && <p style={{ color: awayColor }} className="font-bold whitespace-nowrap">{awayAbbr} {point.negDiff}</p>}
-      {!homeAhead && !awayAhead && <p className="text-stone-500 whitespace-nowrap">Tied</p>}
+      {homeAhead && <p style={{ color: homeColor }} className="font-bold whitespace-nowrap">{homeAbbr} {50 + point.posDiff}% to win</p>}
+      {awayAhead && <p style={{ color: awayColor }} className="font-bold whitespace-nowrap">{awayAbbr} {50 - point.negDiff}% to win</p>}
+      {!homeAhead && !awayAhead && <p className="text-stone-500 whitespace-nowrap">Even odds</p>}
     </div>
   )
 }
 
-export default function SeriesMomentum({
-  momentum, awayAbbr, homeAbbr, awayColor, homeColor,
-}: {
-  momentum: GameMomentum[]
+type ChartBodyProps = {
+  mode: 'series' | 'byGame'
+  setMode: (m: 'series' | 'byGame') => void
+  flowData: ChartPoint[]
+  gameStarts: ChartPoint[]
+  byGameData: Record<string, number | null>[]
+  withPoints: GameMomentum[]
   awayAbbr: string
   homeAbbr: string
   awayColor: string
   homeColor: string
-}) {
-  const [mode, setMode] = useState<'series' | 'byGame'>('series')
-  const withPoints = momentum.filter(m => m.points.length > 0)
+  height: number
+  onExpand?: () => void
+}
 
-  if (withPoints.length === 0) {
-    return <p className="text-xs font-serif italic text-stone-400 py-6 text-center">No completed games with inning data yet.</p>
-  }
-
-  const flowData = buildSeriesFlow(withPoints)
-  const gameStarts = flowData.filter(p => p.isGameStart)
-  const byGameData = buildByGameSeries(withPoints)
-
+function MomentumChartBody({
+  mode, setMode, flowData, gameStarts, byGameData, withPoints, awayAbbr, homeAbbr, awayColor, homeColor, height, onExpand,
+}: ChartBodyProps) {
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-1">
+    <>
+      <div className="flex items-center justify-between mb-1 gap-2">
         <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Series momentum</p>
-        <div className="flex gap-1 bg-stone-100 p-0.5 rounded-full">
-          {(['series', 'byGame'] as const).map(m => (
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-stone-100 p-0.5 rounded-full">
+            {(['series', 'byGame'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest rounded-full transition ${mode === m ? 'bg-[#1A1A1A] text-white' : 'text-stone-400'}`}
+              >
+                {m === 'series' ? 'Series' : 'By game'}
+              </button>
+            ))}
+          </div>
+          {onExpand && (
             <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest rounded-full transition ${mode === m ? 'bg-[#1A1A1A] text-white' : 'text-stone-400'}`}
+              onClick={onExpand}
+              aria-label="Expand chart"
+              className="w-6 h-6 shrink-0 flex items-center justify-center rounded-full border border-stone-200 text-stone-400 hover:text-stone-900 hover:border-stone-400 transition text-xs"
             >
-              {m === 'series' ? 'Series' : 'By game'}
+              ⤢
             </button>
-          ))}
+          )}
         </div>
       </div>
       <p className="text-[10px] font-mono text-stone-400 mb-3">
         {mode === 'series' ? (
           <>
-            <span style={{ color: homeColor }} className="font-bold">{homeAbbr}</span> ahead above the line ·{' '}
-            <span style={{ color: awayColor }} className="font-bold">{awayAbbr}</span> ahead below · resets each game
+            Win probability, play by play · <span style={{ color: homeColor }} className="font-bold">{homeAbbr}</span> favored above the line ·{' '}
+            <span style={{ color: awayColor }} className="font-bold">{awayAbbr}</span> favored below · resets each game
           </>
         ) : (
           'Every game on the same inning axis — compare which innings tend to swing'
@@ -120,7 +143,7 @@ export default function SeriesMomentum({
       </p>
 
       {mode === 'series' ? (
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={height}>
           <AreaChart data={flowData} margin={{ top: 24, right: 10, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e7e2d6" />
             <XAxis dataKey="x" tick={false} axisLine={{ stroke: '#e7e2d6' }} />
@@ -141,7 +164,7 @@ export default function SeriesMomentum({
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={height}>
           <LineChart data={byGameData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e7e2d6" />
             <XAxis dataKey="inning" tick={{ fontSize: 9, fontFamily: 'monospace' }} label={{ value: 'Inning', position: 'insideBottom', offset: -2, fontSize: 9 }} />
@@ -162,6 +185,41 @@ export default function SeriesMomentum({
             ))}
           </LineChart>
         </ResponsiveContainer>
+      )}
+    </>
+  )
+}
+
+export default function SeriesMomentum({
+  momentum, awayAbbr, homeAbbr, awayColor, homeColor,
+}: {
+  momentum: GameMomentum[]
+  awayAbbr: string
+  homeAbbr: string
+  awayColor: string
+  homeColor: string
+}) {
+  const [mode, setMode] = useState<'series' | 'byGame'>('series')
+  const [expanded, setExpanded] = useState(false)
+  const withPoints = momentum.filter(m => m.points.length > 0)
+
+  if (withPoints.length === 0) {
+    return <p className="text-xs font-sans italic text-stone-400 py-6 text-center">No completed games with inning data yet.</p>
+  }
+
+  const flowData = buildSeriesFlow(withPoints)
+  const gameStarts = flowData.filter(p => p.isGameStart)
+  const byGameData = buildByGameSeries(withPoints)
+  const bodyProps = { mode, setMode, flowData, gameStarts, byGameData, withPoints, awayAbbr, homeAbbr, awayColor, homeColor }
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-5">
+      <MomentumChartBody {...bodyProps} height={240} onExpand={() => setExpanded(true)} />
+
+      {expanded && (
+        <DetailModal eyebrow="Series momentum" title={`${awayAbbr} @ ${homeAbbr}`} onClose={() => setExpanded(false)} wide>
+          <MomentumChartBody {...bodyProps} height={420} />
+        </DetailModal>
       )}
     </div>
   )

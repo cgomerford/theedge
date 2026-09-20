@@ -18,15 +18,15 @@ import { useState, useMemo, useRef } from 'react'
 import type { ScoutReport, ScoutRow, PitchDetailPayload } from '@/lib/scout'
 import { PitchDetailModal } from './ScoutExpandCharts'
 import { playerHeadshotUrl } from '@/lib/mlb'
-import PitchLocationCard, { type RichArsenalPitch } from './PitchLocationCard'
-import LineupSprayChart from './LineupSprayChart'
+import PitchLocationCard, { type RichArsenalPitch } from '@/components/PitchLocationCard'
+import LineupSprayChart from '@/components/LineupSprayChart'
 import type { BatterSpray } from '@/lib/batter-spray'
-import TTOFatigueChart from './TTOFatigueChart'
-import TeamHotZoneCard, { type LineupZoneEntry } from './TeamHotZoneCard'
-import BatterStreakBoard, { type StreakWithZones } from './BatterStreakBoard'
-import LiteralStreakNotes from './LiteralStreakNotes'
-import BullpenUsageCard from './BullpenUsageCard'
-import PitcherWorkloadCard from './PitcherWorkloadCard'
+import TTOFatigueChart from '@/components/TTOFatigueChart'
+import TeamHotZoneCard, { type LineupZoneEntry } from '@/components/TeamHotZoneCard'
+import BatterStreakBoard, { type StreakWithZones } from '@/components/BatterStreakBoard'
+import LiteralStreakNotes from '@/components/LiteralStreakNotes'
+import BullpenUsageCard from '@/components/BullpenUsageCard'
+import PitcherWorkloadCard from '@/components/PitcherWorkloadCard'
 import type { PitcherHotZones } from '@/lib/hot-zones'
 import type { PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import ExpandableCard from '@/components/ExpandableCard'
@@ -97,6 +97,7 @@ type WeatherInfo = {
 
 type Props = {
   report: ScoutReport
+  isPro: boolean
   homeAbbr: string
   awayAbbr: string
   homeName: string
@@ -365,10 +366,54 @@ function ComingSoonCard({ label, note, color }: { label: string; note: string; c
   )
 }
 
+// ── Topic-section wrapper + pro-gating ────────────────────────────────────
+// Same locked-teaser language already established in EdgeIndicator.tsx's
+// FactorBar ("⊕ Pro — full drill-down" + one-line teaser + Unlock → to
+// /pricing) — reused here instead of inventing a second pattern.
+function ReportSection({ title, locked, teaser, children }: {
+  title: string; locked?: boolean; teaser?: string; children: React.ReactNode
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between px-1 mb-3">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400">§ {title}</p>
+        {locked && <span className="font-mono text-[8px] uppercase tracking-widest text-stone-300">⊕ Pro</span>}
+      </div>
+      {locked ? <ProLockedCard label={title} teaser={teaser ?? 'More detail with Pro.'} /> : children}
+    </div>
+  )
+}
+
+function ProLockedCard({ label, teaser }: { label: string; teaser: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="font-mono text-[9px] uppercase tracking-widest text-stone-500 font-bold mb-1">⊕ Pro — {label.toLowerCase()}</div>
+          <p className="text-[11px] text-stone-500">{teaser}</p>
+        </div>
+        <a href="/pricing" className="shrink-0 text-[10px] font-mono font-bold px-3 py-1.5 bg-[#1A1A1A] text-[#FDE047] rounded-md hover:bg-stone-800 transition">
+          Unlock →
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// ── Funnel link to the full Pitching/Batting Lab ──────────────────────────
+function LabFunnelLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-orange-600 hover:text-orange-700 transition">
+      {label} →
+    </a>
+  )
+}
+
 
 
 export default function ScoutReportTab({
   report,
+  isPro,
   homeAbbr, awayAbbr, homeName, awayName,
   awayBullpenReport = null, homeBullpenReport = null,
   awayWorkload = null, homeWorkload = null,
@@ -454,34 +499,19 @@ venueDimensions = null,
   return (
     <>
       <style>{`
-        .scout-top-grid {
+        /* Topic-section 2-column away/home comparison — replaces the old
+           4-column team-grouped grid (scout-top-grid) now that content is
+           organized by topic (pitching/batting/bullpen/defense/situational)
+           instead of by team column. */
+        .scout-section-grid {
           display: grid;
-          grid-template-columns: minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,1.5fr) minmax(0,1.5fr);
-          gap: 24px;
-          align-items: start;
-        }
-        .scout-top-grid > div { min-width: 0; }
-        @media (max-width: 1400px) {
-          .scout-top-grid { grid-template-columns: 1fr 1fr; }
-          .scout-col-wide { grid-column: 1 / -1; }
-        }
-        @media (max-width: 1024px) {
-          /* iPad and below — stack everything 1-by-1 vertically, per your
-             instruction. Previous breakpoint was 720px, which left iPad
-             portrait/landscape (768–1024) in the 2-column state above,
-             squeezing the diamond and workload cards into ~half-width
-             columns and causing name/badge overlap. */
-          .scout-top-grid { grid-template-columns: 1fr; }
-          .scout-top-grid > div { grid-column: 1 / -1 !important; }
-        }
-      .scout-ballpark-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-columns: 1fr 1fr;
           gap: 16px;
           align-items: start;
         }
-        @media (max-width: 1024px) {
-          .scout-ballpark-grid { grid-template-columns: 1fr; }
+        .scout-section-grid > div { min-width: 0; }
+        @media (max-width: 900px) {
+          .scout-section-grid { grid-template-columns: 1fr; }
         }
         .scout-stack { display: flex; flex-direction: column; gap: 16px; }
       `}</style>
@@ -495,16 +525,25 @@ venueDimensions = null,
             <h2 className="text-stone-400 font-mono text-[10px] uppercase tracking-widest text-center">
               Scouting Report
             </h2>
-            <button
-              onClick={handleDownloadPng}
-              disabled={isExporting}
-              className="px-2.5 py-1 text-xs font-mono rounded bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              {isExporting ? 'Generating...' : 'Export PNG'}
-            </button>
+            {isPro ? (
+              <button
+                onClick={handleDownloadPng}
+                disabled={isExporting}
+                className="px-2.5 py-1 text-xs font-mono rounded bg-stone-100 hover:bg-stone-200 text-stone-700 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {isExporting ? 'Generating...' : 'Share image'}
+              </button>
+            ) : (
+              <a
+                href="/pricing"
+                className="px-2.5 py-1 text-xs font-mono rounded bg-[#1A1A1A] text-[#FDE047] hover:bg-stone-800 transition flex items-center gap-1.5"
+              >
+                ⊕ Share image
+              </a>
+            )}
           </div>
 
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 pb-5 pt-3">
@@ -546,101 +585,150 @@ venueDimensions = null,
           </div>
         </div>
 
-        {/* 4-column team-grouped grid: narrow-away | narrow-home | wide-away | wide-home */}
-        <div className="scout-top-grid">
-
-          {/* NARROW — AWAY */}
-          <div className="scout-stack">
+        {/* § Team Snapshot — free: season-standard numbers (ERA/FIP/OPS/RISP) */}
+        <ReportSection title="Team Snapshot">
+          <div className="scout-section-grid">
             <TeamTrendsCard teamAbbr={awayAbbr} teamName={awayName} teamId={awayTeamId} color={awayColor} trends={awayTeamTrends} />
+            <TeamTrendsCard teamAbbr={homeAbbr} teamName={homeName} teamId={homeTeamId} color={homeColor} trends={homeTeamTrends} />
+          </div>
+        </ReportSection>
+
+        {/* § Recent Form — pro: rolling L30/L3 */}
+        <ReportSection title="Recent Form" locked={!isPro} teaser="Rolling L30/L3 form — SP L3 ERA, Runs/G, OPS, K%/BB% trending now, not just the season line.">
+          <div className="scout-section-grid">
             <TeamRollingCard teamAbbr={awayAbbr} teamName={awayName} teamId={awayTeamId} color={awayColor} trends={awayRollingTrends} />
-            {awayWorkload && <PitcherWorkloadCard workload={awayWorkload} bullpenReport={awayBullpenReport} teamColor={awayColor} teamAbbr={awayAbbr} />}
-            {awayBullpenReport && (
-              <BullpenUsageCard relievers={awayBullpenReport.relievers} teamColor={awayColor} gamesSampled={awayBullpenReport.gamesSampled} awayColor={awayColor} homeColor={homeColor} />
-            )}
+            <TeamRollingCard teamAbbr={homeAbbr} teamName={homeName} teamId={homeTeamId} color={homeColor} trends={homeRollingTrends} />
+          </div>
+        </ReportSection>
+
+        {/* § Starting Pitching — pro: arsenal, locations, TTO fatigue, sequencing */}
+        <ReportSection title="Starting Pitching" locked={!isPro} teaser="Full pitch arsenal + locations, times-through-the-order fatigue, and count-by-count sequencing for both starters.">
+          <div className="mb-2">
+            <LabFunnelLink href={awayPitcherId ? `/mlb/pitching-lab/${awayPitcherId}` : '/mlb/pitching-lab'} label={`See ${awayPitcherName} in Pitching Lab`} />
+            <span className="text-stone-300 mx-2">·</span>
+            <LabFunnelLink href={homePitcherId ? `/mlb/pitching-lab/${homePitcherId}` : '/mlb/pitching-lab'} label={`See ${homePitcherName} in Pitching Lab`} />
+          </div>
+          <div className="scout-section-grid">
+            <div className="scout-stack">
+              <ExpandableCard label={`${awayPitcherName} pitch arsenal & locations`}>
+                <PitchLocationCard
+                  pitcherName={awayPitcherName} abbr={awayAbbr} color={awayColor}
+                  hotZones={awayPitcherHotZones} arsenal={awayPitcherArsenalZones}
+                  richArsenal={awayPitcherRichArsenal}
+                />
+              </ExpandableCard>
+              <ExpandableCard label={`${awayPitcherName} times through order`}>
+                <TTOFatigueChart pitcherName={awayPitcherName} abbr={awayAbbr} tto={awayPitcherTTO} />
+              </ExpandableCard>
+              <PitchSequencingSnippet
+                pitcherName={awayPitcherName} abbr={awayAbbr} color={awayColor} side="away"
+                countTendency={awayCountTendency} sequencing={awaySequencing}
+              />
+            </div>
+            <div className="scout-stack">
+              <ExpandableCard label={`${homePitcherName} pitch arsenal & locations`}>
+                <PitchLocationCard
+                  pitcherName={homePitcherName} abbr={homeAbbr} color={homeColor}
+                  hotZones={homePitcherHotZones} arsenal={homePitcherArsenalZones}
+                  richArsenal={homePitcherRichArsenal}
+                />
+              </ExpandableCard>
+              <ExpandableCard label={`${homePitcherName} times through order`}>
+                <TTOFatigueChart pitcherName={homePitcherName} abbr={homeAbbr} tto={homePitcherTTO} />
+              </ExpandableCard>
+              <PitchSequencingSnippet
+                pitcherName={homePitcherName} abbr={homeAbbr} color={homeColor} side="home"
+                countTendency={homeCountTendency} sequencing={homeSequencing}
+              />
+            </div>
+          </div>
+        </ReportSection>
+
+        {/* § Batting & Lineups — pro: hot zones, spray, streaks */}
+        <ReportSection title="Batting & Lineups" locked={!isPro} teaser="Lineup hot zones vs tonight's starter, spray charts, and who's hot/cold right now.">
+          <div className="mb-2">
+            <LabFunnelLink href="/mlb/batting-lab" label={`${awayAbbr} lineup in Batting Lab`} />
+            <span className="text-stone-300 mx-2">·</span>
+            <LabFunnelLink href="/mlb/batting-lab" label={`${homeAbbr} lineup in Batting Lab`} />
+          </div>
+          <div className="scout-section-grid">
+            <div className="scout-stack">
+              <ExpandableCard label={`${awayAbbr} lineup hot zones vs ${homePitcherThrows}HP`}>
+                <TeamHotZoneCard teamAbbr={awayAbbr} teamName={awayName} color={awayColor} entries={awayLineupZones} opposingThrows={homePitcherThrows} />
+              </ExpandableCard>
+              <LineupSprayChart teamAbbr={awayAbbr} teamName={awayName} color={awayColor} batters={awayLineupSpray} lineupSize={awayLineupSize} venueDimensions={venueDimensions} playerNames={Object.fromEntries(awayLineupZones.map(e => [e.playerId, e.playerName]))} />
+              <BatterStreakBoard teamAbbr={awayAbbr} teamName={awayName} color={awayColor} streaks={awayBatterStreaks} />
+              <LiteralStreakNotes teamAbbr={awayAbbr} color={awayColor} batters={awayLiteralBatters} pitcher={awayPitcherTrend} />
+            </div>
+            <div className="scout-stack">
+              <ExpandableCard label={`${homeAbbr} lineup hot zones vs ${awayPitcherThrows}HP`}>
+                <TeamHotZoneCard teamAbbr={homeAbbr} teamName={homeName} color={homeColor} entries={homeLineupZones} opposingThrows={awayPitcherThrows} />
+              </ExpandableCard>
+              <LineupSprayChart teamAbbr={homeAbbr} teamName={homeName} color={homeColor} batters={homeLineupSpray} lineupSize={homeLineupSize} venueDimensions={venueDimensions} playerNames={Object.fromEntries(homeLineupZones.map(e => [e.playerId, e.playerName]))} />
+              <BatterStreakBoard teamAbbr={homeAbbr} teamName={homeName} color={homeColor} streaks={homeBatterStreaks} />
+              <LiteralStreakNotes teamAbbr={homeAbbr} color={homeColor} batters={homeLiteralBatters} pitcher={homePitcherTrend} />
+            </div>
+          </div>
+        </ReportSection>
+
+        {/* § Bullpen — free: workload + arm-by-arm usage */}
+        <ReportSection title="Bullpen">
+          <div className="scout-section-grid">
+            <div className="scout-stack">
+              {awayWorkload && <PitcherWorkloadCard workload={awayWorkload} bullpenReport={awayBullpenReport} teamColor={awayColor} teamAbbr={awayAbbr} />}
+              {awayBullpenReport && (
+                <BullpenUsageCard relievers={awayBullpenReport.relievers} teamColor={awayColor} gamesSampled={awayBullpenReport.gamesSampled} awayColor={awayColor} homeColor={homeColor} />
+              )}
+            </div>
+            <div className="scout-stack">
+              {homeWorkload && <PitcherWorkloadCard workload={homeWorkload} bullpenReport={homeBullpenReport} teamColor={homeColor} teamAbbr={homeAbbr} />}
+              {homeBullpenReport && (
+                <BullpenUsageCard relievers={homeBullpenReport.relievers} teamColor={homeColor} gamesSampled={homeBullpenReport.gamesSampled} awayColor={awayColor} homeColor={homeColor} />
+              )}
+            </div>
+          </div>
+        </ReportSection>
+
+        {/* § Defense — pro: fielding alignment */}
+        <ReportSection title="Defense" locked={!isPro} teaser="Real projected fielding alignment for both defenses tonight.">
+          <div className="scout-section-grid">
             <ExpandableCard label={`${awayAbbr} fielding alignment`}>
               <FieldingAlignmentDiamond teamAbbr={awayAbbr} teamName={awayName} teamColor={awayColor} fielders={awayFieldingAlignment} />
             </ExpandableCard>
-            <ABSChallengeCard teamAbbr={awayAbbr} color={awayColor} record={awayABSRecord} />
-            <SBTendencyCard teamAbbr={awayAbbr} color={awayColor} report={awaySBTendency} />
-          </div>
-
-          {/* NARROW — HOME */}
-          <div className="scout-stack">
-            <TeamTrendsCard teamAbbr={homeAbbr} teamName={homeName} teamId={homeTeamId} color={homeColor} trends={homeTeamTrends} />
-            <TeamRollingCard teamAbbr={homeAbbr} teamName={homeName} teamId={homeTeamId} color={homeColor} trends={homeRollingTrends} />
-            {homeWorkload && <PitcherWorkloadCard workload={homeWorkload} bullpenReport={homeBullpenReport} teamColor={homeColor} teamAbbr={homeAbbr} />}
-            {homeBullpenReport && (
-              <BullpenUsageCard relievers={homeBullpenReport.relievers} teamColor={homeColor} gamesSampled={homeBullpenReport.gamesSampled} awayColor={awayColor} homeColor={homeColor} />
-            )}
             <ExpandableCard label={`${homeAbbr} fielding alignment`}>
               <FieldingAlignmentDiamond teamAbbr={homeAbbr} teamName={homeName} teamColor={homeColor} fielders={homeFieldingAlignment} />
             </ExpandableCard>
-            <ABSChallengeCard teamAbbr={homeAbbr} color={homeColor} record={homeABSRecord} />
-            <SBTendencyCard teamAbbr={homeAbbr} color={homeColor} report={homeSBTendency} />
           </div>
+        </ReportSection>
 
-          {/* WIDE — AWAY: starting pitcher, lineup zone matchup, hot/cold + streaks */}
-          <div className="scout-stack scout-col-wide">
-            <ExpandableCard label={`${awayPitcherName} pitch arsenal & locations`}>
-              <PitchLocationCard
-                pitcherName={awayPitcherName} abbr={awayAbbr} color={awayColor}
-                hotZones={awayPitcherHotZones} arsenal={awayPitcherArsenalZones}
-                richArsenal={awayPitcherRichArsenal}
-              />
-            </ExpandableCard>
-        <ExpandableCard label={`${awayPitcherName} times through order`}>
-              <TTOFatigueChart pitcherName={awayPitcherName} abbr={awayAbbr} tto={awayPitcherTTO} />
-            </ExpandableCard>
-            <PitchSequencingSnippet
-              pitcherName={awayPitcherName} abbr={awayAbbr} color={awayColor} side="away"
-              countTendency={awayCountTendency} sequencing={awaySequencing}
-            />
-            <ExpandableCard label={`${awayAbbr} lineup hot zones vs ${homePitcherThrows}HP`}>
-              <TeamHotZoneCard teamAbbr={awayAbbr} teamName={awayName} color={awayColor} entries={awayLineupZones} opposingThrows={homePitcherThrows} />
-            </ExpandableCard>
-            <BatterStreakBoard teamAbbr={awayAbbr} teamName={awayName} color={awayColor} streaks={awayBatterStreaks} />
-            <LiteralStreakNotes teamAbbr={awayAbbr} color={awayColor} batters={awayLiteralBatters} pitcher={awayPitcherTrend} />
+        {/* § Situational — pro: ABS challenges, SB tendency */}
+        <ReportSection title="Situational" locked={!isPro} teaser="ABS challenge record and stolen-base tendency for both teams.">
+          <div className="scout-section-grid">
+            <div className="scout-stack">
+              <ABSChallengeCard teamAbbr={awayAbbr} color={awayColor} record={awayABSRecord} />
+              <SBTendencyCard teamAbbr={awayAbbr} color={awayColor} report={awaySBTendency} />
+            </div>
+            <div className="scout-stack">
+              <ABSChallengeCard teamAbbr={homeAbbr} color={homeColor} record={homeABSRecord} />
+              <SBTendencyCard teamAbbr={homeAbbr} color={homeColor} report={homeSBTendency} />
+            </div>
+          </div>
+        </ReportSection>
+
+        {/* § Ballpark & Weather — free */}
+        <ReportSection title="Ballpark & Weather">
+          <div className="max-w-md">
+            <BallparkWeatherCard venueName={venueName} isIndoor={isIndoorVenue} weather={ballparkWeather} windImpact={windImpact} rainOutlook={rainOutlook} />
+          </div>
+        </ReportSection>
+
+        {/* § Key Notes — free */}
+        <ReportSection title="Key Notes">
+          <div className="scout-section-grid">
             <NotesCard title={`${awayAbbr} · key notes`} teamAbbr={awayAbbr} teamColor={awayColor} teamId={awayTeamId} rows={awayKeyNotes} emptyLabel="No notable edges" />
-          </div>
-
-          {/* WIDE — HOME */}
-          <div className="scout-stack scout-col-wide">
-            <ExpandableCard label={`${homePitcherName} pitch arsenal & locations`}>
-              <PitchLocationCard
-                pitcherName={homePitcherName} abbr={homeAbbr} color={homeColor}
-                hotZones={homePitcherHotZones} arsenal={homePitcherArsenalZones}
-                richArsenal={homePitcherRichArsenal}
-              />
-            </ExpandableCard>
-            <ExpandableCard label={`${homePitcherName} times through order`}>
-              <TTOFatigueChart pitcherName={homePitcherName} abbr={homeAbbr} tto={homePitcherTTO} />
-            </ExpandableCard>
-            <PitchSequencingSnippet
-              pitcherName={homePitcherName} abbr={homeAbbr} color={homeColor} side="home"
-              countTendency={homeCountTendency} sequencing={homeSequencing}
-            />
-            <ExpandableCard label={`${homeAbbr} lineup hot zones vs ${awayPitcherThrows}HP`}>
-              <TeamHotZoneCard teamAbbr={homeAbbr} teamName={homeName} color={homeColor} entries={homeLineupZones} opposingThrows={awayPitcherThrows} />
-            </ExpandableCard>
-            <BatterStreakBoard teamAbbr={homeAbbr} teamName={homeName} color={homeColor} streaks={homeBatterStreaks} />
-            <LiteralStreakNotes teamAbbr={homeAbbr} color={homeColor} batters={homeLiteralBatters} pitcher={homePitcherTrend} />
             <NotesCard title={`${homeAbbr} · key notes`} teamAbbr={homeAbbr} teamColor={homeColor} teamId={homeTeamId} rows={homeKeyNotes} emptyLabel="No notable edges" />
           </div>
-        </div>
-
-        {/* Ballpark — full width, spray charts + weather */}
-      <div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400 px-1 mb-3">§ Ballpark</p>
-          <div className="scout-ballpark-grid">
-            <div>
-              <LineupSprayChart teamAbbr={awayAbbr} teamName={awayName} color={awayColor} batters={awayLineupSpray} lineupSize={awayLineupSize} venueDimensions={venueDimensions} playerNames={Object.fromEntries(awayLineupZones.map(e => [e.playerId, e.playerName]))} />
-            </div>
-            <div>
-              <LineupSprayChart teamAbbr={homeAbbr} teamName={homeName} color={homeColor} batters={homeLineupSpray} lineupSize={homeLineupSize} venueDimensions={venueDimensions} playerNames={Object.fromEntries(homeLineupZones.map(e => [e.playerId, e.playerName]))} />
-            </div>
-         <BallparkWeatherCard venueName={venueName} isIndoor={isIndoorVenue} weather={ballparkWeather} windImpact={windImpact} rainOutlook={rainOutlook} />
-          </div>
-        </div>
+        </ReportSection>
 
         {/* Roster moves */}
         <div>

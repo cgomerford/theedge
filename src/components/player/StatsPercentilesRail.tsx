@@ -25,13 +25,22 @@ function pctColor(p: number): string {
   return '#dc2626'
 }
 
-function SavantBar({ label, percentile }: { label: string; percentile: number }) {
+// A white halo, not an opaque box — invisible on the plain white/near-
+// white surface this bar normally sits on, but keeps the label/pctile
+// text readable on PlayerSnipCard.tsx's team-color + logo-watermark
+// background, where a dark logo stroke can otherwise pass right under
+// light gray text and wash it out.
+const TEXT_HALO = {
+  textShadow: '0 0 5px #fff, 0 0 5px #fff, 0 0 5px #fff, 0 0 3px #fff',
+}
+
+export function SavantBar({ label, percentile, textColor }: { label: string; percentile: number; textColor?: string }) {
   const color = pctColor(percentile)
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-stone-600 font-semibold">{label}</span>
-        <span className="font-mono text-[9px] text-stone-400">{percentile}th pctile</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-stone-600 font-semibold" style={{ ...TEXT_HALO, ...(textColor ? { color: textColor } : {}) }}>{label}</span>
+        <span className="font-mono text-[9px] text-stone-400" style={{ ...TEXT_HALO, ...(textColor ? { color: textColor } : {}) }}>{percentile}th pctile</span>
       </div>
       <div className="relative h-2.5 rounded-full" style={{ background: 'linear-gradient(to right, #3B82F6, #E7E5E4 50%, #DC2626)' }}>
         <div
@@ -49,45 +58,63 @@ function SavantBar({ label, percentile }: { label: string; percentile: number })
   )
 }
 
+// 2026-09-14: split into two standalone pieces (SeasonStatsCard,
+// PercentileRankingsCard) so a caller that wants a 3-column layout (season
+// stats | percentiles | something else, e.g. the Pitching Lab Overview's
+// radar) can place them independently instead of getting the stacked pair
+// below. The default export keeps composing them stacked, unchanged, for
+// /mlb/players/[id].
+
+export function SeasonStatsCard({ seasonStatRows }: { seasonStatRows: { key: string; label: string; value: string }[] }) {
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-3">This season</p>
+      <div className="space-y-2">
+        {seasonStatRows.map(r => (
+          <div key={r.key} className="flex items-center justify-between border-b border-stone-50 pb-1.5 last:border-0 last:pb-0">
+            <span className="font-serif italic text-xs text-stone-500">{r.label}</span>
+            <span className="font-mono text-sm font-bold text-stone-900">{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PercentileRankingsCard({ percentileRows, season }: { percentileRows: { key: string; label: string; percentile: number | null }[]; season?: number }) {
+  const ranked = percentileRows.filter(
+    (r): r is { key: string; label: string; percentile: number } => r.percentile != null
+  ).sort((a, b) => b.percentile - a.percentile)
+
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-5">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-1">{season ?? new Date().getFullYear()} Percentile Rankings</p>
+      <div className="flex items-center justify-between mb-5">
+        <span className="font-mono text-[8px] uppercase tracking-widest text-blue-500">Poor</span>
+        <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400">Average</span>
+        <span className="font-mono text-[8px] uppercase tracking-widest text-red-600">Great</span>
+      </div>
+      {ranked.length === 0 ? (
+        <p className="text-xs font-serif italic text-stone-400 py-6 text-center">Not enough sample to rank yet.</p>
+      ) : (
+        <div className="space-y-6">
+          {ranked.map(r => <SavantBar key={r.key} label={r.label} percentile={r.percentile} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function StatsPercentilesRail({
   seasonStatRows, percentileRows,
 }: {
   seasonStatRows: { key: string; label: string; value: string }[]
   percentileRows: { key: string; label: string; percentile: number | null }[]
 }) {
-  const ranked = percentileRows.filter(
-    (r): r is { key: string; label: string; percentile: number } => r.percentile != null
-  ).sort((a, b) => b.percentile - a.percentile)
-
   return (
     <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }} className="space-y-5">
-      <div className="bg-white border border-stone-200 rounded-xl p-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-3">This season</p>
-        <div className="space-y-2">
-          {seasonStatRows.map(r => (
-            <div key={r.key} className="flex items-center justify-between border-b border-stone-50 pb-1.5 last:border-0 last:pb-0">
-              <span className="font-serif italic text-xs text-stone-500">{r.label}</span>
-              <span className="font-mono text-sm font-bold text-stone-900">{r.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-1">2026 Percentile Rankings</p>
-        <div className="flex items-center justify-between mb-5">
-          <span className="font-mono text-[8px] uppercase tracking-widest text-blue-500">Poor</span>
-          <span className="font-mono text-[8px] uppercase tracking-widest text-stone-400">Average</span>
-          <span className="font-mono text-[8px] uppercase tracking-widest text-red-600">Great</span>
-        </div>
-        {ranked.length === 0 ? (
-          <p className="text-xs font-serif italic text-stone-400 py-6 text-center">Not enough sample to rank yet.</p>
-        ) : (
-          <div className="space-y-6">
-            {ranked.map(r => <SavantBar key={r.key} label={r.label} percentile={r.percentile} />)}
-          </div>
-        )}
-      </div>
+      <SeasonStatsCard seasonStatRows={seasonStatRows} />
+      <PercentileRankingsCard percentileRows={percentileRows} />
     </motion.div>
   )
 }

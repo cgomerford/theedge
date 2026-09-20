@@ -41,10 +41,6 @@ export default function CareerStats({
   subject: 'batter' | 'pitcher'
   playerId?: number
 }) {
-  if (seasons.length === 0) {
-    return <p className="text-xs font-serif italic text-stone-400 py-6 text-center">No prior MLB seasons on record.</p>
-  }
-
   const isBatter = subject === 'batter'
   const cols = isBatter ? BATTER_COLS : PITCHER_COLS
   const summableKeys = isBatter
@@ -133,6 +129,12 @@ export default function CareerStats({
   }
 
   const yearSpan = `${Math.min(...seasons.map((s: any) => s.season))}–${Math.max(...seasons.map((s: any) => s.season))}`
+
+  // Empty state comes AFTER every hook — returning before them changed the hook
+  // count when career data arrived (React 'static flag' / Rules of Hooks error).
+  if (seasons.length === 0) {
+    return <p className="text-xs font-sans italic text-stone-400 py-6 text-center">No prior MLB seasons on record.</p>
+  }
 
   return (
     <div className="space-y-8">

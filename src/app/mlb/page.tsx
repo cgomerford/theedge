@@ -9,11 +9,11 @@ import {
 import { getScheduleForDate } from '@/lib/mlb'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import MLBHomepage from './MLBHomepage'
-import { getFantasyPicks } from '@/lib/fantasy'
-import { getCurrentSubscriber } from '@/lib/auth'
 import { getAllActiveIL, getAllRecentTransactions } from '@/lib/team-transactions'
-import { getTodaysTop3Snapshots } from '@/lib/series-top3-snapshot'
+import { getLeagueStandardStats } from '@/lib/league-standard-stats'
+import { getTeamRadarStats } from '@/lib/team-radar'
 import MLBSubNav from '@/components/MLBSubNav'
+import ArticlesTeaser from '@/components/ArticlesTeaser'
 
 export const metadata = {
   title: 'MLB · The Edge',
@@ -25,20 +25,17 @@ export const revalidate = 1800
 export default async function MLBPage() {
   const today = new Date().toISOString().split('T')[0]
 
-  const [standings, news, games, predictions, fantasyResult, subscriber, activeIL, recentTransactions, top3Snapshots, ...statLeaderGroups] = await Promise.all([
+  const [standings, news, games, predictions, activeIL, recentTransactions, leagueStandardStats, teamRadar, ...statLeaderGroups] = await Promise.all([
     getMLBStandings(),
     getMLBNewsMultiSource(),
     getScheduleForDate(today),
     getPredictionsForDate(today),
-    getFantasyPicks(),
-    getCurrentSubscriber(),
     getAllActiveIL(),
     getAllRecentTransactions(5, ['IL', 'ACTIVATION', 'TRADE', 'SIGNING', 'CALLUP']),
-    getTodaysTop3Snapshots(today),
+    getLeagueStandardStats(new Date().getFullYear()),
+    getTeamRadarStats(new Date().getFullYear()),
     ...MLB_STAT_CATEGORIES.map(cat => getMLBStatLeaders(cat.slug, 10, cat.group)),
   ])
-
-  const isPro = subscriber?.is_pro ?? false
 
   const statLeaders: Record<string, Awaited<ReturnType<typeof getMLBStatLeaders>>> = {}
   MLB_STAT_CATEGORIES.forEach((cat, i) => {
@@ -46,7 +43,7 @@ export default async function MLBPage() {
   })
 
   return (
-    <main className="min-h-screen bg-stone-50">
+    <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader variant="page" />
       <MLBSubNav />
       <MLBHomepage
@@ -55,13 +52,12 @@ export default async function MLBPage() {
         games={games}
         predictions={predictions as Map<number, any>}
         news={news}
-        today={today}
-        fantasyPicks={fantasyResult.picks}
-        fantasyIsStale={fantasyResult.isStale}
-        isPro={isPro}
         activeIL={activeIL}
         recentTransactions={recentTransactions}
-        top3Snapshots={top3Snapshots}
+        leagueStandardStats={leagueStandardStats}
+        teamRadarRows={teamRadar.rows}
+        teamRadarFipConstant={teamRadar.cFIP}
+        articlesTeaser={<ArticlesTeaser />}
       />
     </main>
   )

@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // the X-graphic route reads its font files at request time; make sure the deploy bundles them
+  outputFileTracingIncludes: { '/api/postgame-card/[gamePk]': ['./src/lib/postgame/cards/fonts/**/*'] },
   async headers() {
     return [
       {

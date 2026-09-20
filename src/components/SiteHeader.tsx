@@ -24,15 +24,21 @@ const MLB_DIVISIONS = [
   { label: 'NL West',    teams: [{ slug: 'diamondbacks', short: 'Arizona D-Backs' }, { slug: 'rockies', short: 'Colorado Rockies' }, { slug: 'dodgers', short: 'Los Angeles Dodgers' }, { slug: 'padres', short: 'San Diego Padres' }, { slug: 'giants', short: 'San Francisco Giants' }] },
 ]
 
+// Kept identical to MLBSubNav.tsx's MLB_NAV (same hrefs, labels, order,
+// pro flags) — the main header's MLB dropdown and the MLB pages' own sub
+// header must show the same links as each other, not two independently
+// drifted lists (Articles has its own standalone top-level link already,
+// so it's deliberately not repeated here).
 const MLB_SUB_LINKS = [
-  { href: '/mlb',          label: "Home",  pro: false },
-  { href: '/mlb/scores',   label: 'Live Scores',    pro: false },
-  { href: '/lab',    label: 'Dashboard', pro: false },
-  { href: '/stats',    label: 'Stats & Leaders', pro: false  },
-  { href: '/fantasy', label: 'Fantasy',       pro: true },
-  { href: '/track-record', label: 'Track Record',   pro: false },
-  {href: '/articles', label: 'Articles'},
-   {href: '/mlb/leaders', label: 'Leaders'}
+  { href: '/mlb',              label: 'Home',           pro: false },
+  { href: '/mlb/scores',       label: 'Scores',         pro: false },
+  { href: '/mlb/abs',          label: 'ABS Challenges',  pro: false },
+  { href: '/mlb/stats',        label: 'Stats',          pro: false },
+  { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
+  { href: '/mlb/pitching-lab', label: 'Pitching Lab',   pro: true },
+  { href: '/mlb/batting-lab',  label: 'Batting Lab',    pro: true },
+  { href: '/track-record',     label: 'Track Record',   pro: false },
+  { href: '/fantasy',          label: 'Fantasy',        pro: true },
 ]
 
 // ─── NFL Data ─────────────────────────────────────────────────────────────────
@@ -529,7 +535,7 @@ const sectionHead: React.CSSProperties = {
 
 const menuLink: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
-  fontFamily: 'Fraunces, serif',
+  fontFamily: 'Outfit, sans-serif',
   fontSize: 15, color: '#1A1A1A',
   textDecoration: 'none',
   padding: '6px 0',
@@ -560,7 +566,7 @@ const teamName: React.CSSProperties = {
 
 const authLink: React.CSSProperties = {
   display: 'block',
-  fontFamily: 'Fraunces, serif',
+  fontFamily: 'Outfit, sans-serif',
   fontSize: 17, fontWeight: 600,
   color: '#1A1A1A', textDecoration: 'none',
   padding: '8px 0',

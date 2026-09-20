@@ -21,8 +21,12 @@ const STATS_API = 'https://statsapi.mlb.com/api/v1'
 
 type RawWinProbEntry = {
   atBatIndex?: number
-  inning?: number
-  halfInning?: 'top' | 'bottom'
+  // inning/halfInning live under `about`, not at the top level — curl the
+  // live endpoint for any real gamePk and diff it if this ever looks wrong
+  // again; a prior version of this file read e.inning/e.halfInning
+  // directly, which don't exist there, so every point silently fell back
+  // to inning 0 / 'top'.
+  about?: { inning?: number; halfInning?: 'top' | 'bottom' }
   homeTeamWinProbability?: number
   awayTeamWinProbability?: number
 }
@@ -45,8 +49,8 @@ export async function getGameWinProbability(gamePk: number): Promise<WinProbabil
       )
       .map(e => ({
         atBatIndex: e.atBatIndex!,
-        inning: e.inning ?? 0,
-        halfInning: e.halfInning ?? 'top',
+        inning: e.about?.inning ?? 0,
+        halfInning: e.about?.halfInning ?? 'top',
         homeWinPct: round1(e.homeTeamWinProbability!),
         awayWinPct: round1(e.awayTeamWinProbability!),
       }))

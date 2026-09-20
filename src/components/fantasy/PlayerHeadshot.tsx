@@ -24,7 +24,8 @@ export default function PlayerHeadshot({
     <img
       src={playerHeadshotUrl(playerId, size)}
       alt=""
-      className={className}
+      className={`rounded-full object-cover ${className}`}
+      style={{ width: size, height: size }}
       onError={(e) => { e.currentTarget.style.display = 'none' }}
     />
   )

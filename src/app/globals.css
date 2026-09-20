@@ -14,7 +14,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
+  /* Outfit (Effra stand-in) is the sitewide brand default — see the note
+     in layout.tsx. font-serif/font-mono/font-display stay available as
+     deliberate secondary choices (e.g. tabular numbers in mono), not the
+     base body font anymore. */
+  --font-sans: var(--font-outfit);
   --font-serif: var(--font-fraunces);
   --font-mono: var(--font-jetbrains);
   --font-display: var(--font-bebas);
@@ -23,5 +27,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
 }

@@ -101,6 +101,9 @@ def aggregate_zones(pitches_df):
         'pitches': 0, 'swings': 0, 'whiffs': 0,
         'ab': 0, 'hits': 0, 'total_bases': 0,
         'xwoba_sum': 0.0, 'xwoba_count': 0,
+        # 2026-09-19: wOBA (actual), exit velocity and hard-hit per zone for the Scout Report toggle
+        'woba_sum': 0.0, 'woba_denom': 0.0,
+        'ev_sum': 0.0, 'bbe': 0, 'hard': 0,
     } for z in ALL_ZONES}
 
     if pitches_df is None or pitches_df.empty:
@@ -146,6 +149,28 @@ def aggregate_zones(pitches_df):
             except (ValueError, TypeError):
                 pass
 
+        # actual wOBA: only plate-appearance-ending pitches carry a denominator
+        w_val, w_den = row.get('woba_value'), row.get('woba_denom')
+        if w_val is not None and w_den is not None and pd.notna(w_val) and pd.notna(w_den):
+            try:
+                if float(w_den) > 0:
+                    zones[key]['woba_sum'] += float(w_val)
+                    zones[key]['woba_denom'] += float(w_den)
+            except (ValueError, TypeError):
+                pass
+
+        # exit velocity / hard-hit: batted balls only (launch_speed is blank otherwise)
+        ev_val = row.get('launch_speed')
+        if ev_val is not None and pd.notna(ev_val):
+            try:
+                ev = float(ev_val)
+                zones[key]['ev_sum'] += ev
+                zones[key]['bbe'] += 1
+                if ev >= 95:
+                    zones[key]['hard'] += 1
+            except (ValueError, TypeError):
+                pass
+
     out = {}
     for z, d in zones.items():
         ba    = round(d['hits'] / d['ab'], 3)           if d['ab']     > 0 else None
@@ -157,6 +182,10 @@ def aggregate_zones(pitches_df):
             'ba':        ba,
             'slg':       slg,
             'xwoba':     xwoba,
+            'woba':      round(d['woba_sum'] / d['woba_denom'], 3) if d['woba_denom'] > 0 else None,
+            'ev':        round(d['ev_sum'] / d['bbe'], 1) if d['bbe'] > 0 else None,
+            'hard_hit_pct': round((d['hard'] / d['bbe']) * 100, 1) if d['bbe'] > 0 else None,
+            'bbe':       d['bbe'],
             'whiff_pct': whiff_pct,
             'pitches':   d['pitches'],
             'swings':    d['swings'],
