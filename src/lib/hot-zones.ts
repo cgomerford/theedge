@@ -76,23 +76,64 @@ export const ZONE_LABELS: Record<string, string> = {
  * Fetch all 3 splits (all / vs_lhp / vs_rhp) for a batter.
  * Returns a map keyed by split. Empty map if no data.
  */
-export const getBatterHotZones = cache(async function getBatterHotZones(playerId: number): Promise<Record<string, BatterHotZones>> {
+// Callers ask for one batter at a time, usually inside Promise.all over a
+// lineup (a game page did ~18 separate round-trips and timed out on Vercel).
+// Requests made in the same tick are collected and sent as ONE `.in()` query.
+// Callers are unchanged; nothing is cached across ticks (React `cache` below
+// still dedupes repeat ids within a single render).
+const HOT_ZONE_CHUNK = 100 // 100 batters x 3 splits = 300 rows, well under PostgREST's 1,000 cap
+
+type BatterZonesResult = Record<string, BatterHotZones>
+type PendingBatterZones = { playerId: number; resolve: (r: BatterZonesResult) => void }
+
+let pendingBatterZones: PendingBatterZones[] = []
+
+async function flushBatterZones(batch: PendingBatterZones[]): Promise<void> {
   const season = new Date().getFullYear()
   const supa = createAdminClient()
+  const ids = Array.from(new Set(batch.map(p => p.playerId)))
+  const byPlayer = new Map<number, BatterZonesResult>()
 
-  const { data, error } = await supa
-    .from('batter_hot_zones')
-    .select('*')
-    .eq('player_id', playerId)
-    .eq('season', season)
+  for (let i = 0; i < ids.length; i += HOT_ZONE_CHUNK) {
+    const chunk = ids.slice(i, i + HOT_ZONE_CHUNK)
+    const { data, error } = await supa
+      .from('batter_hot_zones')
+      .select('*')
+      .in('player_id', chunk)
+      .eq('season', season)
 
-  if (error || !data) return {}
-
-  const result: Record<string, BatterHotZones> = {}
-  for (const row of data) {
-    result[row.split] = row as BatterHotZones
+    if (error || !data) {
+      console.error('[getBatterHotZones] Supabase error:', error?.message)
+      continue // this chunk's batters resolve to {} below
+    }
+    for (const row of data as BatterHotZones[]) {
+      const pid = Number(row.player_id)
+      const forPlayer = byPlayer.get(pid) ?? {}
+      forPlayer[row.split] = row
+      byPlayer.set(pid, forPlayer)
+    }
   }
-  return result
+
+  for (const p of batch) p.resolve(byPlayer.get(p.playerId) ?? {})
+}
+
+export const getBatterHotZones = cache(function getBatterHotZones(playerId: number): Promise<BatterZonesResult> {
+  return new Promise<BatterZonesResult>((resolve) => {
+    pendingBatterZones.push({ playerId, resolve })
+    if (pendingBatterZones.length > 1) return // a flush is already scheduled for this tick
+
+    // setTimeout(0) waits until every synchronous .map(getBatterHotZones) in the
+    // caller has queued its id. flushBatterZones catches its own errors so an
+    // unresolved promise (a hung render) is impossible.
+    setTimeout(() => {
+      const batch = pendingBatterZones
+      pendingBatterZones = []
+      flushBatterZones(batch).catch((e) => {
+        console.error('[getBatterHotZones] flush failed:', e instanceof Error ? e.message : e)
+        for (const p of batch) p.resolve({})
+      })
+    }, 0)
+  })
 })
 
 /**

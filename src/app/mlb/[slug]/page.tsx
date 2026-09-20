@@ -63,7 +63,7 @@ import { fetchPitchingSplit } from '@/lib/player-splits'
 import { getTeamSeasonStats, getTeamVenueRecord } from '@/lib/team-season-stats'
 
 export const revalidate = 60
-export const maxDuration = 15
+export const maxDuration = 60 // was 15; a brief Supabase stall (pitcher_stats took 7.8s) turned into a hard timeout
 
 type Props = { params: Promise<{ slug: string }> }
 
