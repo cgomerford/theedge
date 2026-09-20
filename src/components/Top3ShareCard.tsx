@@ -6,7 +6,7 @@
  * Admin-only export tool. Renders a fixed 1080×1350 social image +
  * matching tweet copy via html-to-image.
  *
- * Brand: cream / orange / black, Fraunces, Bebas Neue, JetBrains Mono,
+ * Brand: cream / orange / black, Outfit (heavy headers), JetBrains Mono,
  * zero border-radius. No raw scores. No betting language.
  */
 
@@ -317,8 +317,8 @@ function ShareCardInner({
 
             <div
               style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 48,
+                fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                fontSize: 41,
                 lineHeight: 0.95,
                 color: '#1A1A1A',
                 marginBottom: 10,
@@ -395,8 +395,8 @@ function ShareCardInner({
             >
               <div
                 style={{
-                  fontFamily: "'Bebas Neue', sans-serif",
-                  fontSize: 34,
+                  fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                  fontSize: 29,
                   color: '#A8A29E',
                   width: 36,
                   lineHeight: 1,
@@ -492,9 +492,9 @@ function ShareCardInner({
       >
         <div
           style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 28,
-            letterSpacing: 1.4,
+            fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+            fontSize: 24,
+            letterSpacing: -0.5,
             color: '#1A1A1A',
           }}
         >
@@ -538,8 +538,8 @@ function ShareCardInner({
             <span
               key={i}
               style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 20,
+                fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                fontSize: 17,
                 letterSpacing: 2.5,
                 color: 'rgba(26,26,26,0.038)',
                 whiteSpace: 'nowrap',

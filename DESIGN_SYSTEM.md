@@ -140,3 +140,15 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 6. **Same Pro rule:** server-side gate, required `isPro`, locked card with feature list only.
 7. **NFL-specific gotchas still apply** (see `CLAUDE.md` §4): ESPN team-ID maps are corrupted (verify with curl), coverage names use underscores, participation→pbp join keys. Verify every external field against a live response before parsing.
 8. **Verify visually** (headless Chrome screenshot) and check the browser console — the last redesign caught a hook-order bug and a server→client function-prop bug that `tsc` could not.
+
+## 8. Exports (X graphics, share cards, story slides, sheets)
+
+Anything exported as an image follows the same fonts — **Outfit 800 for headers/bold, JetBrains Mono for light labels; no Bebas Neue.** How each kind of export loads them:
+
+| Export kind | Where | How the font is loaded |
+|---|---|---|
+| **Server-rendered X graphics** (`next/og` / Satori, 1600×900) | `src/lib/postgame/cards/*`, route `api/postgame-card/[gamePk]` | Satori cannot read CSS variables — it needs real font files. Static **`Outfit-700.woff` / `Outfit-800.woff`** and JetBrains Mono live in `src/lib/postgame/cards/fonts/` and are loaded in `frame.tsx` (`DISPLAY = 'Outfit'`, with `fontWeight: 800`). `next.config.ts` traces that folder into the route. WOFF/TTF/OTF only — **not WOFF2**, and not variable fonts. |
+| **DOM-captured cards** (`html-to-image` → PNG) | `KeyPlayersShareCard`, `Top3ShareCard`, `ShareCard`, `ScoutStorySlideshow`, story/teaser components | `fontFamily: 'var(--font-outfit), system-ui, sans-serif'` + `fontWeight: 800`. Never a literal `'Outfit'`/`'Bebas Neue'` string (next/font hashes names). |
+| **`next/font` in a sheet component** | `postgame/ScorecardSheet.tsx` | `Outfit({ weight: ['800'] })` and `display.className`. |
+
+Outfit is wider than Bebas: when swapping, cut display sizes ~15–20%, drop forced `.toUpperCase()` on long names, and **render the card and look at it** for overflow before shipping.

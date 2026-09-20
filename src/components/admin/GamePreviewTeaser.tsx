@@ -110,7 +110,7 @@ function SlideFrame({ kicker, title, children }: {
         <p className="font-mono text-[10px] tracking-[0.25em] text-stone-500 uppercase">{kicker}</p>
         <h2
           className="text-stone-900 font-bold uppercase leading-none mt-0.5"
-          style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: '1.6rem' }}
+          style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: '1.6rem' }}
         >
           {title}
         </h2>
@@ -493,7 +493,7 @@ const GamePreviewTeaser = forwardRef<TeaserSlideshowHandle, Props>(function Game
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 px-2">
               <div
                 className="text-3xl font-bold uppercase text-stone-900"
-                style={{ fontFamily: 'Bebas Neue, sans-serif' }}
+                style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}
               >
                 {current.lean_team}
               </div>

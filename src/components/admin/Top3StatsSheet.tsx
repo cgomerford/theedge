@@ -4,8 +4,8 @@
 // (794×1123px, 96dpi) and exports it as a single-page PDF.
 //
 // EXPORT MECHANISM: same pattern as StatCardPanel.tsx — html-to-image's
-// toPng() rather than html2canvas, for reliable next/font (Fraunces/Bebas
-// Neue/JetBrains Mono) rendering. The preview is visually scaled down with
+// toPng() rather than html2canvas, for reliable next/font (Outfit/JetBrains
+// Mono) rendering. The preview is visually scaled down with
 // a CSS transform on an OUTER wrapper; the ref is on the unscaled inner
 // stage, so the exported image is always captured at true 794×1123 size —
 // same trick StatCardPanel uses for its scaled preview.

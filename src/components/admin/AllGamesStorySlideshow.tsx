@@ -144,7 +144,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5">
             <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">THE EDGE</p>
-            <h1 className="text-3xl font-bold leading-tight uppercase" style={{ fontFamily: 'Bebas Neue, sans-serif' }}>
+            <h1 className="text-3xl font-bold leading-tight uppercase" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
               {current.matchup}
             </h1>
             <div className="px-4 py-1.5 rounded-full bg-[#FF5722] text-white font-mono text-xs font-bold tracking-wider">
@@ -260,7 +260,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
             <p className="font-mono text-[11px] tracking-widest text-stone-400">SLATE RANK</p>
-            <div className="text-6xl font-bold" style={{ fontFamily: 'Bebas Neue, sans-serif' }}>
+            <div className="text-6xl font-bold" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
               #{active + 1}
             </div>
             <p className="text-stone-400 text-sm">of {games.length} games on slate</p>

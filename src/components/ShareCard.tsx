@@ -184,8 +184,8 @@ export default function ShareCard({
           {/* Factor count headline */}
           <div>
             <div style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 62, lineHeight: 1, color: '#FAF8F3',
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+              fontSize: 53, lineHeight: 1, color: '#FAF8F3',
               letterSpacing: '0.02em',
             }}>
               {winnerCount} of {total}

@@ -7,11 +7,11 @@
 // pos / 10 innings / AB R H RBI), SUMS, pitchers, catchers, umpires.
 // Notation conventions are explained on the sheet itself (see lib/postgame/scorecard.ts).
 
-import { Bebas_Neue, Caveat } from 'next/font/google'
+import { Outfit, Caveat } from 'next/font/google'
 import type { Base, PlateAppearance, Scorecard, TeamSheet } from '@/lib/postgame/scorecard'
 
 const hand = Caveat({ subsets: ['latin'], weight: ['500', '700'], display: 'swap' })
-const display = Bebas_Neue({ subsets: ['latin'], weight: '400', display: 'swap' })
+const display = Outfit({ subsets: ['latin'], weight: ['800'], display: 'swap' })   // rounded brand face (was Bebas Neue — retired)
 
 // Edge palette: cream paper, black printed form + pen, orange for hits / base paths / RBI, yellow for runs scored
 const INK = '#1A1A1A'            // pen
@@ -113,7 +113,7 @@ export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team
   return (
     <section style={{ background: PAPER, padding: 22, width: 'fit-content', boxShadow: '0 1px 0 #d8d4c8, 0 14px 40px rgba(0,0,0,.12)', color: PRINT }}>
       <div style={{ background: PRINT, color: PAPER, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', margin: '-22px -22px 14px', borderBottom: `4px solid ${ORANGE}` }}>
-        <span className={display.className} style={{ fontSize: 34, letterSpacing: '.05em', lineHeight: 1 }}>THE <span style={{ color: ORANGE }}>EDGE</span> · SCORECARD</span>
+        <span className={display.className} style={{ fontSize: 28, fontWeight: 800, letterSpacing: '.02em', lineHeight: 1 }}>THE <span style={{ color: ORANGE }}>EDGE</span> · SCORECARD</span>
         <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: YELLOW }}>⊕ {team.name} batting</span>
         <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, letterSpacing: '.08em', opacity: .75 }}>edgereportdaily.com</span>
       </div>

@@ -12,7 +12,7 @@
  * rather than duplicating them — one source of truth for the color
  * thresholds, matching the single-writer discipline used elsewhere.
  *
- * Brand: cream / orange / black, Fraunces, Bebas Neue, JetBrains Mono,
+ * Brand: cream / orange / black, Outfit (heavy headers), JetBrains Mono,
  * zero border-radius. No raw scores. No betting language.
  */
 
@@ -210,10 +210,10 @@ function ShareCardInner({
               ⊕ NO. 1 READ
             </div>
             <div style={{
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, lineHeight: 0.95, color: '#1A1A1A',
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 41, lineHeight: 0.95, color: '#1A1A1A',
               marginBottom: 10, letterSpacing: 0.4, display: 'flex', alignItems: 'baseline', gap: 12,
             }}>
-              {first.playerName.toUpperCase()}
+              {first.playerName}
               {first.subLabel && (
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, color: '#78716c', letterSpacing: 1 }}>
                   {first.subLabel}
@@ -255,7 +255,7 @@ function ShareCardInner({
             borderBottom: i === 0 ? '1.5px solid rgba(26,26,26,0.10)' : 'none',
           }}>
             <div style={{
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: '#A8A29E', width: 36,
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 29, color: '#A8A29E', width: 36,
               lineHeight: 1, textAlign: 'center',
             }}>
               {i + 2}
@@ -299,7 +299,7 @@ function ShareCardInner({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 20,
         borderTop: '1.5px solid rgba(26,26,26,0.12)',
       }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: 1.4, color: '#1A1A1A' }}>THE EDGE</div>
+        <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, color: '#1A1A1A' }}>The Edge</div>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
       </div>
 
@@ -311,7 +311,7 @@ function ShareCardInner({
         }}>
           {Array.from({ length: 24 }).map((_, i) => (
             <span key={i} style={{
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2.5,
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 17, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
               THE EDGE · EDGEREPORTDAILY.COM
