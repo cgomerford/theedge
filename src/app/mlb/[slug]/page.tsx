@@ -29,7 +29,7 @@ import {
 import { getVenueInfo } from '@/lib/venues'
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, cache } from 'react'
 import { after } from 'next/server'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
@@ -169,6 +169,249 @@ async function buildSpData(
 }
 
 
+// ─── Streaming architecture ───────────────────────────────────────────────────
+//
+// The page function awaits ONLY what the shell needs (who is viewing + which
+// game this slug is). Everything else lives in async server components below,
+// each inside its own <Suspense>, so the shell paints immediately and every
+// section streams in as its own data arrives. (This used to be three chained
+// `await Promise.all` stages before any HTML was sent — on Vercel that was 15s+
+// and timed out; in dev everything was warm so it looked fine.)
+
+// Per-request memoisation: several Suspense children need the same data
+// (series games, prediction, team stats). React's cache() lets them share ONE
+// fetch for the duration of the request. getSeriesGamesFromDB is already cached.
+const loadPrediction = cache(getEdgePrediction)
+const loadSp = cache(buildSpData)
+const loadTeamStats = cache(getTeamSeasonStats)
+const loadTeamVenue = cache(getTeamVenueRecord)
+
+// One failing upstream must not take the whole page down. Log with a prefix and
+// return an EMPTY value (never a fabricated one).
+async function safe<T>(name: string, p: Promise<T>, empty: T): Promise<T> {
+  try {
+    return await p
+  } catch (e) {
+    console.error(`[game-page:${name}] failed:`, e instanceof Error ? e.message : e)
+    return empty
+  }
+}
+
+type TeamCtx = {
+  id: number; name: string; abbr: string; color: string; slug?: string
+  record?: { wins: number; losses: number }
+  pitcherId?: number; pitcherName?: string
+}
+type GameCtx = {
+  slug: string; isPro: boolean; gamePk: number; season: number
+  gameDateApi: string; gameDateIso: string; gameTimeFormatted: string; venueName: string
+  home: TeamCtx; away: TeamCtx
+}
+
+function seriesHeaderFrom(seriesGames: SeriesGameResult[], gamePk: number) {
+  if (seriesGames.length < 2) return null
+  const tonight = seriesGames.find(g => g.gamePk === gamePk)
+  const record = seriesGames.reduce(
+    (acc, g) => {
+      if (g.isFinal && g.awayScore !== null && g.homeScore !== null) {
+        if (g.awayScore > g.homeScore) acc.away += 1
+        else if (g.homeScore > g.awayScore) acc.home += 1
+      }
+      return acc
+    },
+    { away: 0, home: 0 },
+  )
+  return { gameNumber: tonight?.gameNumber ?? 1, totalGames: seriesGames.length, record }
+}
+
+// Skeleton blocks — same footprint idea as the real cards so the layout doesn't jump.
+function Skeleton({ h, label }: { h: number; label?: string }) {
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4 animate-pulse" style={{ minHeight: h }} aria-busy="true">
+      {label ? <p className="text-[9px] font-mono uppercase tracking-widest text-stone-300 font-bold mb-3">{label}</p> : <div className="h-2.5 w-24 bg-stone-200 rounded mb-4" />}
+      <div className="h-10 bg-stone-100 rounded" />
+    </div>
+  )
+}
+
+// ── Banner: weather + series header stream in; matchup/time/venue are instant ──
+async function BannerAsync({ ctx }: { ctx: GameCtx }) {
+  const venueInfo = getVenueInfo(ctx.venueName)
+  const [weather, seriesGames] = await Promise.all([
+    venueInfo && !venueInfo.indoor
+      ? safe('weather', getGameWeather(venueInfo.lat, venueInfo.lon, ctx.gameDateIso), null)
+      : Promise.resolve(null),
+    safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[]),
+  ])
+  return (
+    <GameBriefBanner
+      awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
+      gameTimeFormatted={ctx.gameTimeFormatted}
+      venueName={ctx.venueName} city={venueInfo?.city ?? null} isDome={venueInfo?.indoor ?? false}
+      weather={weather} series={seriesHeaderFrom(seriesGames, ctx.gamePk)}
+    />
+  )
+}
+
+async function JumpNavAsync({ ctx }: { ctx: GameCtx }) {
+  const seriesGames = await safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[])
+  return <JumpNav hasSeries={seriesGames.length >= 2} hasPostgames={seriesGames.some(g => g.isFinal)} />
+}
+
+// ── Team snapshot ──
+async function SnapshotAsync({ ctx, side }: { ctx: GameCtx; side: 'home' | 'away' }) {
+  const t = ctx[side]
+  const [seasonStats, venueRecord] = await Promise.all([
+    safe('team-season-stats', loadTeamStats(t.id, ctx.season), null),
+    safe('team-venue-record', loadTeamVenue(t.id, ctx.season, ctx.venueName), null),
+  ])
+  return (
+    <TeamSnapshotCard
+      teamName={t.name} teamAbbr={t.abbr} record={t.record}
+      season={ctx.season} venueName={ctx.venueName} seasonStats={seasonStats} venueRecord={venueRecord}
+      slug={ctx.slug} isPro={ctx.isPro}
+    />
+  )
+}
+
+// ── Starting pitcher (the heavy one: percentiles, arsenal, trend, venue, splits) ──
+async function PitcherAsync({ ctx, side }: { ctx: GameCtx; side: 'home' | 'away' }) {
+  const t = ctx[side]
+  const sp = await safe('starting-pitcher', loadSp(t.pitcherId, t.pitcherName, t.abbr, t.color, ctx.venueName), null)
+  return <TeamPitcherCard pitcherId={t.pitcherId} pitcherName={t.pitcherName} sp={sp} isPro={ctx.isPro} />
+}
+
+// ── Edge indicator ──
+async function EdgeAsync({ ctx }: { ctx: GameCtx }) {
+  const prediction = await safe('edge-prediction', loadPrediction(ctx.gamePk), null)
+  if (!prediction) {
+    return <ShellPlaceholder title="Edge Indicator" note="No prediction on record for this game yet." />
+  }
+  const edgeProps: EdgeIndicatorPanelProps = {
+    edge_score: prediction.edge_score,
+    predicted_winner: prediction.predicted_winner,
+    confidence_tier: prediction.confidence_tier,
+    components: prediction.components,
+    components_raw: prediction.components_raw,
+    is_pro: ctx.isPro,
+    home_team: ctx.home.name,
+    away_team: ctx.away.name,
+    home_team_abbr: ctx.home.abbr,
+    away_team_abbr: ctx.away.abbr,
+    updated_at: prediction.updated_at,
+    away_primary_color: ctx.away.color,
+    home_primary_color: ctx.home.color,
+    lineups_confirmed: prediction.lineups_confirmed,
+    home_team_id: ctx.home.id,
+    away_team_id: ctx.away.id,
+    away_team_slug: ctx.away.slug,
+    home_team_slug: ctx.home.slug,
+    llm_narrative: prediction.narrative,
+    llm_narrative_pro: prediction.narrative_pro,
+    pro_takeaways: prediction.pro_takeaways,
+  }
+  return <EdgeIndicatorPanel {...edgeProps} />
+}
+
+// ── Series sections (below Key Players). Renders nothing for a one-off game. ──
+async function SeriesBelowAsync({ ctx }: { ctx: GameCtx }) {
+  const seriesGames = await safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[])
+  if (seriesGames.length < 2) return null
+
+  const postgameRows = seriesGames
+    .filter(g => g.isFinal)
+    .map(g => ({
+      gameNumber: g.gameNumber,
+      slug: seriesGameSlug(g, ctx.away.name, ctx.home.name),
+      awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr,
+      awayScore: g.awayScore, homeScore: g.homeScore,
+    }))
+
+  return (
+    <>
+      <div id="series-stats" className="space-y-4">
+        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Series Stats</p>
+        {/* The ~9 box-score / win-probability fetches live in here, off the critical path. */}
+        <Suspense fallback={<Skeleton h={320} label="Loading series stats…" />}>
+          <SeriesStatsAsync ctx={ctx} seriesGames={seriesGames} />
+        </Suspense>
+      </div>
+
+      <div id="postgame">
+        <SeriesPostgameLinks rows={postgameRows} />
+      </div>
+    </>
+  )
+}
+
+async function SeriesStatsAsync({ ctx, seriesGames }: { ctx: GameCtx; seriesGames: SeriesGameResult[] }) {
+  const finalGames = seriesGames.filter(g => g.isFinal)
+  const finalGamePks = finalGames.map(g => g.gamePk)
+  const finalGamesForGrading = finalGames.map(g => ({ gamePk: g.gamePk, gameNumber: g.gameNumber, awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr }))
+  const hasFinals = finalGamePks.length > 0
+
+  const [
+    awaySeriesStats, homeSeriesStats, seriesMomentum, awaySeriesBoxStats, homeSeriesBoxStats,
+    seriesPerformers, seriesRisp, awaySeriesPitchingStats, homeSeriesPitchingStats,
+  ] = await Promise.all([
+    safe('series-batting-away', getSeriesBattingStatsFromDB(ctx.gamePk, ctx.away.id), []),
+    safe('series-batting-home', getSeriesBattingStatsFromDB(ctx.gamePk, ctx.home.id), []),
+    safe('series-momentum', getSeriesInningMomentum(seriesGames.map(g => ({ gamePk: g.gamePk, gameNumber: g.gameNumber, isFinal: g.isFinal }))), []),
+    hasFinals ? safe('series-box-away', getSeriesTeamBoxscoreStats(finalGamePks, ctx.away.id), null) : Promise.resolve(null),
+    hasFinals ? safe('series-box-home', getSeriesTeamBoxscoreStats(finalGamePks, ctx.home.id), null) : Promise.resolve(null),
+    safe('series-performers', getPerformersForGames(finalGamesForGrading, 6), null),
+    hasFinals ? safe('series-risp', getSeriesRispStats(finalGamePks), null) : Promise.resolve(null),
+    hasFinals ? safe('series-pitching-away', getSeriesPitchingStats(finalGamePks, ctx.away.id), [] as SeriesPitcherLine[]) : Promise.resolve([] as SeriesPitcherLine[]),
+    hasFinals ? safe('series-pitching-home', getSeriesPitchingStats(finalGamePks, ctx.home.id), [] as SeriesPitcherLine[]) : Promise.resolve([] as SeriesPitcherLine[]),
+  ])
+
+  const seriesTopBatters: BatterPerformance[] = seriesPerformers?.batters.available ? seriesPerformers.batters.items : []
+  const seriesTopPitchers: PitcherPerformance[] = seriesPerformers?.pitchers.available ? seriesPerformers.pitchers.items : []
+  const awaySeriesRispStats: SeriesRispStats | null = seriesRisp?.away ?? null
+  const homeSeriesRispStats: SeriesRispStats | null = seriesRisp?.home ?? null
+
+  return (
+    <>
+      <div className="grid lg:grid-cols-[1fr_1.1fr_1fr] gap-4 items-start">
+        <SeriesTeamPlayerCard
+          title="Home stats" abbr={ctx.home.abbr} rows={homeSeriesStats}
+          gamePks={seriesGames.map(g => g.gamePk)}
+        />
+        <div className="bg-white border border-stone-200 rounded-xl p-5">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Series highlights</p>
+          <SeriesMomentum
+            momentum={seriesMomentum}
+            awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
+            awayColor={ctx.away.color} homeColor={ctx.home.color}
+          />
+          <div className="mt-4 pt-4 border-t border-stone-100">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-3">Team stats — this series</p>
+            <SeriesTeamStats
+              awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
+              awayRows={awaySeriesStats} homeRows={homeSeriesStats}
+              awayBoxStats={awaySeriesBoxStats} homeBoxStats={homeSeriesBoxStats}
+              awayRispStats={awaySeriesRispStats} homeRispStats={homeSeriesRispStats}
+            />
+          </div>
+        </div>
+        <SeriesTeamPlayerCard
+          title="Away stats" abbr={ctx.away.abbr} rows={awaySeriesStats}
+          gamePks={seriesGames.map(g => g.gamePk)}
+        />
+      </div>
+
+      <div className="bg-white border border-stone-200 rounded-xl p-5">
+        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Top performers — this series</p>
+        <SeriesTopPerformers
+          batters={seriesTopBatters} pitchers={seriesTopPitchers}
+          awayBattingLines={awaySeriesStats} homeBattingLines={homeSeriesStats}
+          awayPitchingLines={awaySeriesPitchingStats} homePitchingLines={homeSeriesPitchingStats}
+        />
+      </div>
+    </>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function GamePreview({ params }: Props) {
@@ -177,15 +420,22 @@ export default async function GamePreview({ params }: Props) {
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
 
-  const [subscriber, freshGames, { data: cached }] = await Promise.all([
+  // The ONLY blocking work: who is viewing, and which game is this slug.
+  const [subscriber, freshGames] = await Promise.all([
     getCurrentSubscriber(),
     getScheduleForDate(dateMatch[1]).catch(() => [] as MLBGame[]),
-    supa.from('game_previews').select('*').eq('slug', slug).single(),
   ])
-  const isPro = subscriber?.is_pro ?? true
+  // Never default to true (a `?? true` here once leaked Pro to logged-out users).
+  // `next dev` unlocks Pro so the paid views can be built and tested locally.
+  const isPro = (subscriber?.is_pro ?? false) || process.env.NODE_ENV === 'development'
 
   let game: MLBGame | null = freshGames.find(g => slugifyGame(g) === slug) ?? null
-  if (!game && cached?.raw_data) game = cached.raw_data as MLBGame
+  if (!game) {
+    // Only hit the cache table when the live schedule didn't have the game.
+    const { data: cached, error } = await supa.from('game_previews').select('raw_data').eq('slug', slug).maybeSingle()
+    if (error) console.error('[game-page] game_previews lookup failed:', error.message)
+    if (cached?.raw_data) game = cached.raw_data as MLBGame
+  }
   if (!game) notFound()
 
   // Cache-refresh side effect — doesn't need to block the response.
@@ -201,277 +451,107 @@ export default async function GamePreview({ params }: Props) {
 
   const awayTeam = game.teams.away.team
   const homeTeam = game.teams.home.team
-  const gameDateApi = game.gameDate?.split('T')[0] ?? dateMatch[1]
   const awayTeamMeta = findTeamByName(awayTeam.name)
   const homeTeamMeta = findTeamByName(homeTeam.name)
-  const awayColor = awayTeamMeta?.primary_color ?? '#FF5722'
-  const homeColor = homeTeamMeta?.primary_color ?? '#1A1A1A'
-  const awayAbbr = awayTeam.abbreviation ?? 'AWAY'
-  const homeAbbr = homeTeam.abbreviation ?? 'HOME'
-
   const venueName = game.venue?.name ?? ''
   const venueInfo = getVenueInfo(venueName)
-  const gameTimeFormatted = new Date(game.gameDate).toLocaleTimeString('en-US', {
-    hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
-  }) + ' ET'
-  const season = new Date().getFullYear()
 
-  const [
-    prediction, seriesGames, spHome, spAway, weather,
-    homeSeasonStats, awaySeasonStats, homeVenueRecord, awayVenueRecord,
-  ] = await Promise.all([
-    getEdgePrediction(game.gamePk),
-    getSeriesGamesFromDB(game.gamePk),
-    buildSpData(game.teams.home.probablePitcher?.id, game.teams.home.probablePitcher?.fullName, homeAbbr, homeColor, venueName),
-    buildSpData(game.teams.away.probablePitcher?.id, game.teams.away.probablePitcher?.fullName, awayAbbr, awayColor, venueName),
-    venueInfo && !venueInfo.indoor ? getGameWeather(venueInfo.lat, venueInfo.lon, game.gameDate) : Promise.resolve(null),
-    getTeamSeasonStats(homeTeam.id, season),
-    getTeamSeasonStats(awayTeam.id, season),
-    getTeamVenueRecord(homeTeam.id, season, venueName),
-    getTeamVenueRecord(awayTeam.id, season, venueName),
-  ])
-  const hasSeries = seriesGames.length >= 2
-
-  // Series-derived data — header bar's Game X of Y, series W-L, player
-  // stats, momentum chart, postgame links. All skipped when this game
-  // isn't part of a tracked series.
-  let seriesHeader: { gameNumber: number; totalGames: number; record: { away: number; home: number } } | null = null
-  let awaySeriesStats: Awaited<ReturnType<typeof getSeriesBattingStatsFromDB>> = []
-  let homeSeriesStats: Awaited<ReturnType<typeof getSeriesBattingStatsFromDB>> = []
-  let seriesMomentum: Awaited<ReturnType<typeof getSeriesInningMomentum>> = []
-  let awaySeriesBoxStats: Awaited<ReturnType<typeof getSeriesTeamBoxscoreStats>> | null = null
-  let homeSeriesBoxStats: Awaited<ReturnType<typeof getSeriesTeamBoxscoreStats>> | null = null
-  let awaySeriesRispStats: SeriesRispStats | null = null
-  let homeSeriesRispStats: SeriesRispStats | null = null
-  let awaySeriesPitchingStats: SeriesPitcherLine[] = []
-  let homeSeriesPitchingStats: SeriesPitcherLine[] = []
-  let seriesTopBatters: BatterPerformance[] = []
-  let seriesTopPitchers: PitcherPerformance[] = []
-  let postgameRows: { gameNumber: number; slug: string; awayAbbr: string; homeAbbr: string; awayScore: number | null; homeScore: number | null }[] = []
-
-  if (hasSeries) {
-    const tonight = seriesGames.find(g => g.gamePk === game!.gamePk)
-    const record = seriesGames.reduce(
-      (acc, g) => {
-        if (g.isFinal && g.awayScore !== null && g.homeScore !== null) {
-          if (g.awayScore > g.homeScore) acc.away += 1
-          else if (g.homeScore > g.awayScore) acc.home += 1
-        }
-        return acc
-      },
-      { away: 0, home: 0 },
-    )
-    seriesHeader = { gameNumber: tonight?.gameNumber ?? 1, totalGames: seriesGames.length, record }
-
-    postgameRows = seriesGames
-      .filter(g => g.isFinal)
-      .map(g => ({
-        gameNumber: g.gameNumber,
-        slug: seriesGameSlug(g, awayTeam.name, homeTeam.name),
-        awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr,
-        awayScore: g.awayScore, homeScore: g.homeScore,
-      }))
-
-    const finalGamePks = seriesGames.filter(g => g.isFinal).map(g => g.gamePk)
-    const finalGamesForGrading = seriesGames
-      .filter(g => g.isFinal)
-      .map(g => ({ gamePk: g.gamePk, gameNumber: g.gameNumber, awayAbbr: g.awayAbbr, homeAbbr: g.homeAbbr }))
-
-    let seriesPerformers: Awaited<ReturnType<typeof getPerformersForGames>>
-    let seriesRisp: Awaited<ReturnType<typeof getSeriesRispStats>> | null
-    ;[
-      awaySeriesStats, homeSeriesStats, seriesMomentum, awaySeriesBoxStats, homeSeriesBoxStats,
-      seriesPerformers, seriesRisp, awaySeriesPitchingStats, homeSeriesPitchingStats,
-    ] = await Promise.all([
-      getSeriesBattingStatsFromDB(game.gamePk, awayTeam.id),
-      getSeriesBattingStatsFromDB(game.gamePk, homeTeam.id),
-      getSeriesInningMomentum(seriesGames.map(g => ({ gamePk: g.gamePk, gameNumber: g.gameNumber, isFinal: g.isFinal }))),
-      finalGamePks.length > 0 ? getSeriesTeamBoxscoreStats(finalGamePks, awayTeam.id) : Promise.resolve(null),
-      finalGamePks.length > 0 ? getSeriesTeamBoxscoreStats(finalGamePks, homeTeam.id) : Promise.resolve(null),
-      getPerformersForGames(finalGamesForGrading, 6),
-      finalGamePks.length > 0 ? getSeriesRispStats(finalGamePks) : Promise.resolve(null),
-      finalGamePks.length > 0 ? getSeriesPitchingStats(finalGamePks, awayTeam.id) : Promise.resolve([]),
-      finalGamePks.length > 0 ? getSeriesPitchingStats(finalGamePks, homeTeam.id) : Promise.resolve([]),
-    ])
-    seriesTopBatters = seriesPerformers.batters.available ? seriesPerformers.batters.items : []
-    seriesTopPitchers = seriesPerformers.pitchers.available ? seriesPerformers.pitchers.items : []
-    awaySeriesRispStats = seriesRisp?.away ?? null
-    homeSeriesRispStats = seriesRisp?.home ?? null
+  const ctx: GameCtx = {
+    slug, isPro, gamePk: game.gamePk, season: new Date().getFullYear(),
+    gameDateApi: game.gameDate?.split('T')[0] ?? dateMatch[1],
+    gameDateIso: game.gameDate,
+    gameTimeFormatted: new Date(game.gameDate).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
+    }) + ' ET',
+    venueName,
+    home: {
+      id: homeTeam.id, name: homeTeam.name, abbr: homeTeam.abbreviation ?? 'HOME',
+      color: homeTeamMeta?.primary_color ?? '#1A1A1A', slug: homeTeamMeta?.slug,
+      record: game.teams.home.leagueRecord,
+      pitcherId: game.teams.home.probablePitcher?.id, pitcherName: game.teams.home.probablePitcher?.fullName,
+    },
+    away: {
+      id: awayTeam.id, name: awayTeam.name, abbr: awayTeam.abbreviation ?? 'AWAY',
+      color: awayTeamMeta?.primary_color ?? '#FF5722', slug: awayTeamMeta?.slug,
+      record: game.teams.away.leagueRecord,
+      pitcherId: game.teams.away.probablePitcher?.id, pitcherName: game.teams.away.probablePitcher?.fullName,
+    },
   }
 
-  const edgeProps: EdgeIndicatorPanelProps | null = prediction ? {
-    edge_score: prediction.edge_score,
-    predicted_winner: prediction.predicted_winner,
-    confidence_tier: prediction.confidence_tier,
-    components: prediction.components,
-    components_raw: prediction.components_raw,
-    is_pro: isPro,
-    home_team: homeTeam.name,
-    away_team: awayTeam.name,
-    home_team_abbr: homeAbbr,
-    away_team_abbr: awayAbbr,
-    updated_at: prediction.updated_at,
-    away_primary_color: awayColor,
-    home_primary_color: homeColor,
-    lineups_confirmed: prediction.lineups_confirmed,
-    home_team_id: homeTeam.id,
-    away_team_id: awayTeam.id,
-    away_team_slug: awayTeamMeta?.slug,
-    home_team_slug: homeTeamMeta?.slug,
-    llm_narrative: prediction.narrative,
-    llm_narrative_pro: prediction.narrative_pro,
-    pro_takeaways: prediction.pro_takeaways,
-  } : null
-
-  const battingCardFallback = (
-    <div className="bg-white border border-stone-200 rounded-xl p-4 animate-pulse" aria-hidden="true">
-      <div className="h-2.5 w-24 bg-stone-200 rounded mb-4" />
-      <div className="h-14 bg-stone-100 rounded" />
-    </div>
-  )
+  const battingCardFallback = <Skeleton h={90} />
 
   return (
     <>
       <SiteHeader variant="page" />
       <LiveTicker />
-      <JumpNav hasSeries={hasSeries} hasPostgames={postgameRows.length > 0} />
+      <Suspense fallback={<JumpNav hasSeries={false} hasPostgames={false} />}>
+        <JumpNavAsync ctx={ctx} />
+      </Suspense>
       <div className="min-h-screen bg-stone-50">
         <div className="px-4 py-6 space-y-6" style={centered}>
 
-          <GameBriefBanner
-            awayAbbr={awayAbbr} homeAbbr={homeAbbr}
-            gameTimeFormatted={gameTimeFormatted}
-            venueName={venueName} city={venueInfo?.city ?? null} isDome={venueInfo?.indoor ?? false}
-            weather={weather}
-            series={hasSeries && seriesHeader ? seriesHeader : null}
-          />
+          <Suspense fallback={
+            <GameBriefBanner
+              awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
+              gameTimeFormatted={ctx.gameTimeFormatted}
+              venueName={venueName} city={venueInfo?.city ?? null} isDome={venueInfo?.indoor ?? false}
+              weather={null} series={null} pending
+            />
+          }>
+            <BannerAsync ctx={ctx} />
+          </Suspense>
 
           {/* ── Home / Away team panels + Edge Indicator ── */}
           <div className="grid lg:grid-cols-[1fr_1fr_340px] gap-4 items-start">
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <img src={teamLogoUrl(homeTeam.id)} alt="" className="w-5 h-5 object-contain" />
-                <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">Home — {homeTeam.name}</h2>
-              </div>
-              <TeamSnapshotCard
-                teamName={homeTeam.name} teamAbbr={homeAbbr} record={game.teams.home.leagueRecord}
-                season={season} venueName={venueName} seasonStats={homeSeasonStats} venueRecord={homeVenueRecord}
-                slug={slug} isPro={isPro}
-              />
-              <TeamPitcherCard
-                pitcherId={game.teams.home.probablePitcher?.id}
-                pitcherName={game.teams.home.probablePitcher?.fullName} sp={spHome} isPro={isPro}
-              />
-              <Suspense fallback={battingCardFallback}>
-                <TeamBatterCard
-                  slug={slug} teamId={homeTeam.id} gameDate={gameDateApi} gamePk={game.gamePk}
-                  venueName={venueName} isPro={isPro}
-                  opposingPitcherId={game.teams.away.probablePitcher?.id ?? null}
-                  opposingPitcherName={game.teams.away.probablePitcher?.fullName ?? null}
-                />
-              </Suspense>
-            </section>
-
-            <section className="space-y-3">
-              <div className="flex items-center gap-2">
-                <img src={teamLogoUrl(awayTeam.id)} alt="" className="w-5 h-5 object-contain" />
-                <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">Away — {awayTeam.name}</h2>
-              </div>
-              <TeamSnapshotCard
-                teamName={awayTeam.name} teamAbbr={awayAbbr} record={game.teams.away.leagueRecord}
-                season={season} venueName={venueName} seasonStats={awaySeasonStats} venueRecord={awayVenueRecord}
-                slug={slug} isPro={isPro}
-              />
-              <TeamPitcherCard
-                pitcherId={game.teams.away.probablePitcher?.id}
-                pitcherName={game.teams.away.probablePitcher?.fullName} sp={spAway} isPro={isPro}
-              />
-              <Suspense fallback={battingCardFallback}>
-                <TeamBatterCard
-                  slug={slug} teamId={awayTeam.id} gameDate={gameDateApi} gamePk={game.gamePk}
-                  venueName={venueName} isPro={isPro}
-                  opposingPitcherId={game.teams.home.probablePitcher?.id ?? null}
-                  opposingPitcherName={game.teams.home.probablePitcher?.fullName ?? null}
-                />
-              </Suspense>
-            </section>
+            {(['home', 'away'] as const).map(side => {
+              const t = ctx[side]
+              const opp = ctx[side === 'home' ? 'away' : 'home']
+              return (
+                <section key={side} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <img src={teamLogoUrl(t.id)} alt="" className="w-5 h-5 object-contain" />
+                    <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">
+                      {side === 'home' ? 'Home' : 'Away'} — {t.name}
+                    </h2>
+                  </div>
+                  <Suspense fallback={<Skeleton h={180} label="Team Snapshot" />}>
+                    <SnapshotAsync ctx={ctx} side={side} />
+                  </Suspense>
+                  <Suspense fallback={<Skeleton h={260} label="Starting Pitcher" />}>
+                    <PitcherAsync ctx={ctx} side={side} />
+                  </Suspense>
+                  <Suspense fallback={battingCardFallback}>
+                    <TeamBatterCard
+                      slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
+                      venueName={venueName} isPro={isPro}
+                      opposingPitcherId={opp.pitcherId ?? null}
+                      opposingPitcherName={opp.pitcherName ?? null}
+                    />
+                  </Suspense>
+                </section>
+              )
+            })}
 
             <section className="space-y-3">
               <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">Edge Indicator</h2>
-              {edgeProps ? (
-                <EdgeIndicatorPanel {...edgeProps} />
-              ) : (
-                <ShellPlaceholder title="Edge Indicator" note="No prediction on record for this game yet." />
-              )}
+              <Suspense fallback={<Skeleton h={320} />}>
+                <EdgeAsync ctx={ctx} />
+              </Suspense>
             </section>
           </div>
 
-            {/* ── Series ── (Game X of Y / series record moved into GameBriefBanner up top).
-                 3 Key Players stays full-width. Series Stats is now 3
-                 columns — Home Stats / Series Highlights / Away Stats —
-                 with a full-width "best graded players" reel underneath
-                 the highlights card (was one stacked full-width block). */}
-            {hasSeries && seriesHeader ? (
-              <>
-                <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Key Players…</div>}>
-                  <div id="key-players">
-                    <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
-                    <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
-                  </div>
-                </Suspense>
+          {/* ── 3 Key Players (independent stream) ── */}
+          <div id="key-players">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
+            <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Key Players…</div>}>
+              <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
+            </Suspense>
+          </div>
 
-                <div id="series-stats" className="space-y-4">
-                  <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Series Stats</p>
-                  <div className="grid lg:grid-cols-[1fr_1.1fr_1fr] gap-4 items-start">
-                    <SeriesTeamPlayerCard
-                      title="Home stats" abbr={homeAbbr} rows={homeSeriesStats}
-                      gamePks={seriesGames.map(g => g.gamePk)}
-                    />
-                    <div className="bg-white border border-stone-200 rounded-xl p-5">
-                      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Series highlights</p>
-                      <SeriesMomentum
-                        momentum={seriesMomentum}
-                        awayAbbr={awayAbbr} homeAbbr={homeAbbr}
-                        awayColor={awayColor} homeColor={homeColor}
-                      />
-                      <div className="mt-4 pt-4 border-t border-stone-100">
-                        <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-3">Team stats — this series</p>
-                        <SeriesTeamStats
-                          awayAbbr={awayAbbr} homeAbbr={homeAbbr}
-                          awayRows={awaySeriesStats} homeRows={homeSeriesStats}
-                          awayBoxStats={awaySeriesBoxStats} homeBoxStats={homeSeriesBoxStats}
-                          awayRispStats={awaySeriesRispStats} homeRispStats={homeSeriesRispStats}
-                        />
-                      </div>
-                    </div>
-                    <SeriesTeamPlayerCard
-                      title="Away stats" abbr={awayAbbr} rows={awaySeriesStats}
-                      gamePks={seriesGames.map(g => g.gamePk)}
-                    />
-                  </div>
-
-                  <div className="bg-white border border-stone-200 rounded-xl p-5">
-                    <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Top performers — this series</p>
-                    <SeriesTopPerformers
-                      batters={seriesTopBatters} pitchers={seriesTopPitchers}
-                      awayBattingLines={awaySeriesStats} homeBattingLines={homeSeriesStats}
-                      awayPitchingLines={awaySeriesPitchingStats} homePitchingLines={homeSeriesPitchingStats}
-                    />
-                  </div>
-                </div>
-
-                <div id="postgame">
-                  <SeriesPostgameLinks rows={postgameRows} />
-                </div>
-              </>
-            ) : (
-              <div id="key-players">
-                <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
-                <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Key Players…</div>}>
-                  <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
-                </Suspense>
-              </div>
-            )}
+          {/* ── Series stats + postgame links (only when the game is part of a tracked series) ── */}
+          <Suspense fallback={null}>
+            <SeriesBelowAsync ctx={ctx} />
+          </Suspense>
 
         </div>
       </div>

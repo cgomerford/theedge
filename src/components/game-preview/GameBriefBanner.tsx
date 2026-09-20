@@ -20,10 +20,12 @@ type Props = {
     wind_direction_text: string
   } | null
   series: { gameNumber: number; totalGames: number; record: { away: number; home: number } } | null
+  /** True while weather/series are still streaming in, so we don't claim "unavailable" prematurely. */
+  pending?: boolean
 }
 
 export default function GameBriefBanner({
-  awayAbbr, homeAbbr, gameTimeFormatted, venueName, city, isDome, weather, series,
+  awayAbbr, homeAbbr, gameTimeFormatted, venueName, city, isDome, weather, series, pending,
 }: Props) {
   return (
     <div className="bg-white border border-stone-200 rounded-xl px-5 py-3 flex items-center justify-between flex-wrap gap-x-4 gap-y-1.5">
@@ -38,6 +40,8 @@ export default function GameBriefBanner({
           <span>Dome — weather N/A</span>
         ) : weather ? (
           <span>{weather.temp_f}°F, {weather.conditions.toLowerCase()}, wind {weather.wind_mph} mph {weather.wind_direction_text}</span>
+        ) : pending ? (
+          <span className="text-stone-400">Loading weather…</span>
         ) : (
           <span className="text-stone-400">Weather unavailable</span>
         )}

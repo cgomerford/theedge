@@ -21,6 +21,30 @@ import Top3KeyPlayersTab, { type PostgameResults } from '@/components/Top3KeyPla
 import type { RecentFormContext } from '@/lib/key-players-narrative'
 import type { HotStreakPlayer } from '@/lib/scout'
 
+// Key Players is computed from live Savant pitch logs (2MB CSV per batter) and
+// can take minutes on a cold cache. A streamed section must never hang the page,
+// so we give the compute a fixed budget. On timeout the work keeps running in the
+// background (it fills savant_fetch_cache, so the next view is fast) and we show
+// an honest "still computing" state, not a guess.
+const KEY_PLAYERS_BUDGET_MS = 12_000
+function withBudget<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve) => {
+    const t = setTimeout(() => resolve(null), ms)
+    p.then(
+      (v) => { clearTimeout(t); resolve(v) },
+      (e) => { clearTimeout(t); console.error('[KeyPlayersSlotAsync] compute failed:', e instanceof Error ? e.message : e); resolve(null) },
+    )
+  })
+}
+
+function KeyPlayersPending() {
+  return (
+    <div className="p-8 text-center font-mono text-xs text-stone-500 bg-white border border-stone-200 rounded-xl">
+      Key Players are still being computed for this game — refresh in a minute.
+    </div>
+  )
+}
+
 export default async function KeyPlayersSlotAsync({ slug, isPro }: { slug: string; isPro: boolean }) {
   const supa = createAdminClient()
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
@@ -79,7 +103,11 @@ export default async function KeyPlayersSlotAsync({ slug, isPro }: { slug: strin
       }))
       return out
     }
-    const [awayResults, homeResults] = await Promise.all([resultsFor(awaySnap), resultsFor(homeSnap)])
+    // If the per-player results are slow, show the picks without the report-card
+    // ratings rather than hang; ratings fill in on a later view once cached.
+    const [awayResults, homeResults] = (await withBudget(
+      Promise.all([resultsFor(awaySnap), resultsFor(homeSnap)]), KEY_PLAYERS_BUDGET_MS,
+    )) ?? [{} as PostgameResults, {} as PostgameResults]
 
     return (
       <div className="grid md:grid-cols-2 gap-4">
@@ -175,7 +203,7 @@ export default async function KeyPlayersSlotAsync({ slug, isPro }: { slug: strin
   const awayFormMap = buildFormMap(_awayHotStreaks)
   const homeFormMap = buildFormMap(_homeHotStreaks)
 
-  const [awayKeyPlayers, homeKeyPlayers] = await Promise.all([
+  const computed = await withBudget(Promise.all([
     computeTeamKeyPlayers({
       game, teamId: game.teams.away.team.id, opposingTeamId: game.teams.home.team.id, gameDate: gameDateApi,
       pitcher: awayPitcherId ? { id: awayPitcherId, name: game.teams.away.probablePitcher?.fullName ?? 'TBD' } : null,
@@ -186,7 +214,9 @@ export default async function KeyPlayersSlotAsync({ slug, isPro }: { slug: strin
       pitcher: homePitcherId ? { id: homePitcherId, name: game.teams.home.probablePitcher?.fullName ?? 'TBD' } : null,
       isHome: true, formByPlayerId: homeFormMap, park,
     }),
-  ])
+  ]), KEY_PLAYERS_BUDGET_MS)
+  if (!computed) return <KeyPlayersPending />
+  const [awayKeyPlayers, homeKeyPlayers] = computed
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
