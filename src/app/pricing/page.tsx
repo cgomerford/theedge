@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import SignupForm from '@/components/SignupForm'
+import CheckoutButtons from '@/components/CheckoutButtons'
 import { getCurrentSubscriber } from '@/lib/auth'
 
 // 2026-08-23: full sync pass with the redesigned homepage. Feature
@@ -39,7 +40,7 @@ export default async function PricingPage() {
       <div className="border-b border-[#DEDACE] bg-[#F4F1EA]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-[#8A8577]">
           <span>Pricing</span>
-          <span className="text-[#FF5722]">Beta · Pro opens at launch</span>
+          <span className="text-[#FF5722]">Pro is open</span>
         </div>
       </div>
 
@@ -194,9 +195,9 @@ export default async function PricingPage() {
           </div>
 
           {/* ──── PRO TIER — LOCKED ──────────────────────────────────── */}
-          <div className="border-2 border-[#FF5722] bg-[#1A1A1A] text-[#FAF8F3] p-7 flex flex-col relative">
+          <div id="pro" className="border-2 border-[#FF5722] bg-[#1A1A1A] text-[#FAF8F3] p-7 flex flex-col relative scroll-mt-24">
             <div className="absolute -top-[1px] right-0 bg-[#FF5722] text-white font-mono text-[10px] uppercase tracking-widest px-3 py-1.5">
-              🔒 Opens at launch
+              Pro is open
             </div>
 
             <div className="font-mono text-[10px] uppercase tracking-widest text-[#FDE047] mb-2">
@@ -207,7 +208,7 @@ export default async function PricingPage() {
               <span className="font-mono text-sm text-[#8A8577] line-through">£6/mo</span>
             </div>
             <div className="font-mono text-[11px] text-[#8A8577] mb-6">
-              or £40/yr <span className="line-through">£60/yr</span> · Founding 100 price, at launch
+              or £40/yr <span className="line-through">£60/yr</span> · Founding 100 price while spots last
             </div>
 
             <ul className="space-y-0 flex-1 mb-6">
@@ -246,14 +247,7 @@ export default async function PricingPage() {
                   ✓ You&apos;re a Pro member
                 </div>
               ) : (
-                <>
-                  <div className="bg-[#FAF8F3] p-3 border border-[#3A3A38]">
-                    <SignupForm source="pricing_pro_waitlist" buttonText="Join Pro waitlist →" theme="light" />
-                  </div>
-                  <p className="text-[10px] font-mono text-[#8A8577] text-center mt-3">
-                    No payment yet · Founding 100 price locked in when Pro opens
-                  </p>
-                </>
+                <CheckoutButtons signedIn={!!subscriber} />
               )}
             </div>
           </div>
@@ -291,7 +285,7 @@ export default async function PricingPage() {
               },
               {
                 q: 'What does "Founding 100" mean?',
-                a: 'The first 100 people to join the Pro waitlist lock in £4/mo (or £40/yr) for as long as they stay subscribed once Pro opens. After that, Pro is £6/mo (£60/yr). Your price never changes once locked in.',
+                a: 'The first 100 members to go Pro lock in £4/mo (or £40/yr) for as long as they stay subscribed. After that, Pro is £6/mo (£60/yr). Your price never changes once locked in.',
               },
               {
                 q: 'What does Pro actually add over Free?',
@@ -325,7 +319,7 @@ export default async function PricingPage() {
             Same analysis. Different depth.
           </h2>
           <p className="font-serif italic text-lg text-[#4A4740] mb-4 max-w-lg mx-auto">
-            Start free. Join the Pro waitlist for when the full depth opens.
+            Start free. Go Pro when you want the full depth.
           </p>
           <p className="font-serif italic text-base text-[#8A8577] mb-8 max-w-md mx-auto">
             We're not in the business of calls or predictions. We take the same data the pros use and make it easier to actually understand what's happening on the field.
@@ -336,10 +330,10 @@ export default async function PricingPage() {
             )}
             {!isPro && (
               <Link
-                href="#pro-waitlist"
-                className="inline-block bg-[#F4F1EA] text-[#4A4740] border border-[#DEDACE] px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-[#DEDACE] transition"
+                href="#pro"
+                className="inline-block bg-[#1A1A1A] text-[#FAF8F3] border border-[#1A1A1A] px-8 py-3 text-sm font-mono uppercase tracking-widest hover:bg-[#FF5722] transition"
               >
-                🔒 Pro waitlist — above
+                Go Pro — above
               </Link>
             )}
           </div>

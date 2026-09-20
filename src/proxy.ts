@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 const BYPASS_COOKIE = 'edge_preview_access';
 
 export function proxy(request: NextRequest) {
