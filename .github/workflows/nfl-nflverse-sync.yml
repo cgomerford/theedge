@@ -1,0 +1,66 @@
+name: nfl-nflverse-sync
+
+# Keeps the NFL game pages fresh: nflverse -> Python -> Supabase tables -> pages read cached rows.
+# Before this workflow existed NOTHING scheduled the scripts/nfl/ syncs, so the tables went stale between manual runs.
+#
+# DEPENDENCIES / ORDER (each step needs the ones above it):
+#   schedule -> players -> snap counts / injuries / depth charts / next gen / PFR / defense+ST
+#   -> compute_team_week_splits (writes nfl_team_week_splits + nfl_team_form; reads nflverse PBP)
+#   -> compute_nfl_postgame     (writes nfl_game_postgame for every final game; reads nflverse PBP)
+# nflverse publishes play-by-play overnight after games, so 10:00 UTC (~6am ET) picks up the previous night.
+#
+# Only the current season is synced (the scripts' full-history ranges are for manual backfills) to keep
+# Supabase writes and egress small. Requires the tables from scripts/sql/create_nfl_team_week_splits.sql and
+# scripts/sql/create_nfl_game_postgame.sql to exist.
+
+on:
+  schedule:
+    - cron: '0 10 * * *'   # 10:00 UTC / ~6am ET, daily (injury reports and depth charts change midweek too)
+    - cron: '0 3 * * 1'    # Monday 03:00 UTC (Sunday-night games) — catches late-loading Sunday play-by-play
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # nflreadpy / polars need 3.10+ (the MLB scripts stay on 3.9)
+      - name: Install dependencies
+        run: pip install nflreadpy polars requests supabase python-dotenv
+
+      - name: Work out the active NFL season
+        id: season
+        run: echo "year=$(python -c "import datetime as d;t=d.date.today();print(t.year if t.month>2 else t.year-1)")" >> "$GITHUB_OUTPUT"
+
+      # Each sync script lists its own SEASONS; rewrite that line to the active season only for this run.
+      - name: Limit syncs to the active season
+        run: |
+          for f in sync_schedule sync_players sync_snap_counts sync_injuries sync_depth_charts sync_nextgen sync_pfr_advstats sync_defense_special_teams; do
+            sed -i -E 's/^SEASONS *= *.*/SEASONS = [${{ steps.season.outputs.year }}]/' scripts/nfl/$f.py
+          done
+
+      - name: Teams, schedule, players
+        run: |
+          python scripts/nfl/sync_teams.py
+          python scripts/nfl/sync_schedule.py
+          python scripts/nfl/sync_players.py
+      - name: Snaps, injuries, depth charts
+        run: |
+          python scripts/nfl/sync_snap_counts.py
+          python scripts/nfl/sync_injuries.py
+          python scripts/nfl/sync_depth_charts.py
+      - name: Next Gen Stats, PFR, defense and special teams
+        run: |
+          python scripts/nfl/sync_nextgen.py
+          python scripts/nfl/sync_pfr_advstats.py
+          python scripts/nfl/sync_defense_special_teams.py
+      - name: Team splits and form (play-by-play precompute)
+        run: python scripts/nfl/compute_team_week_splits.py --seasons ${{ steps.season.outputs.year }}
+      - name: Postgame payloads (play-by-play precompute)
+        run: python scripts/nfl/compute_nfl_postgame.py --season ${{ steps.season.outputs.year }}

@@ -129,11 +129,14 @@ function TickerRow({ row }: { row: Row }) {
 export default function SportLiveTicker({
   mlbGames,
   nflGames,
+  defaultSport = 'mlb',
 }: {
   mlbGames: TickerGame[]
   nflGames: NflTickerGame[]
+  /** which tab opens first; the NFL pages pass 'nfl' */
+  defaultSport?: Sport
 }) {
-  const [sport, setSport] = useState<Sport>('mlb')
+  const [sport, setSport] = useState<Sport>(defaultSport)
 
   const rows: Row[] =
     sport === 'mlb' ? mlbGames.map(fromMlb) : nflGames.map(fromNfl)

@@ -12,7 +12,8 @@ import Link from 'next/link'
 import { PlayerTeamSearch } from '@/components/nfl/PlayerTeamSearch'
 
 const SUBNAV_LINKS = [
-  { label: 'Dashboard', href: '/nfl/standings' },
+  { label: 'Home', href: '/nfl' },
+  { label: 'League Desk', href: '/nfl/league' },
   { label: 'QB Room', href: '/nfl/qb-room' },
   { label: 'WR Room', href: '/nfl/wr-room' },
    { label: 'Defense', href: '/nfl/defensive-coordinator' },

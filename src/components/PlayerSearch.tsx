@@ -40,7 +40,7 @@ export default function PlayerSearch({
   rounded = false,
 }: {
   maintenance?: boolean
-  sport?: 'ALL' | 'MLB'
+  sport?: 'ALL' | 'MLB' | 'NFL'
   rounded?: boolean
 }) {
   const [query, setQuery] = useState('')
@@ -63,7 +63,8 @@ export default function PlayerSearch({
     const reqId = ++latest.current
     const t = setTimeout(async () => {
       const [mlb, nfl] = await Promise.allSettled([
-        fetch(`/api/lab/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
+        // NFL-only pages skip the MLB fetch, mirroring the MLB-only skip below.
+        sport === 'NFL' ? Promise.resolve({ people: [] }) : fetch(`/api/lab/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
         // MLB-only pages (e.g. /mlb) skip the NFL fetch entirely rather
         // than fetching and discarding it — one real request instead of two.
         sport === 'MLB' ? Promise.resolve({ results: [] }) : fetch(`/api/nfl/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
@@ -127,7 +128,7 @@ export default function PlayerSearch({
         value={query}
         onChange={(e) => { setQuery(e.target.value); setLocked(null) }}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
-        placeholder={sport === 'MLB' ? 'Search any MLB player…' : 'Search any MLB or NFL player…'}
+        placeholder={sport === 'MLB' ? 'Search any MLB player…' : sport === 'NFL' ? 'Search any NFL player or team…' : 'Search any MLB or NFL player…'}
         aria-label="Search players"
         className={`w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-full' : ''}`}
       />
