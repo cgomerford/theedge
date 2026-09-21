@@ -60,7 +60,7 @@ export type MLBGame = {
       leagueRecord?: { wins: number; losses: number }
     }
   }
-  venue: { name: string }
+  venue: { id?: number; name: string }
 }
 
 export type TickerGame = {
