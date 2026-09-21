@@ -26,6 +26,7 @@
  */
 
 import type { MetadataRoute } from 'next'
+import { isMaintenanceGated } from '@/lib/maintenance-gates'
 import { createAdminClient } from '@/lib/supabase'
 import { getTeamRoster, TEAM_NAMES, LEAGUE_BY_TEAM_ID } from '@/lib/lab'
 
@@ -140,5 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('sitemap: player pages query failed', e)
   }
 
+  // Sections held behind the maintenance page must not be advertised (lib/maintenance-gates).
   return [...staticPages, ...teamPages, ...gamePages, ...playerPages]
+    .filter(entry => !isMaintenanceGated(new URL(entry.url).pathname))
 }
