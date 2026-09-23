@@ -158,6 +158,12 @@ def extract(feed: dict) -> tuple[list[dict], list[dict], list[dict], list[dict]]
         # count/outs BEFORE each event, keyed by event index (used to place steals)
         before: dict = {}
 
+        # A challenge on the pitch that ENDS the PA (called strike three, ball four) is recorded on the play
+        # (allPlays[].reviewDetails), not the pitch — same rule as fetch_abs_challenge_log.py (see its note).
+        pitch_events = [e for e in events if e.get("isPitch")]
+        last_pitch = pitch_events[-1] if pitch_events else None
+        play_review = play.get("reviewDetails") or {}
+
         for e in events:
             before[e.get("index")] = (balls, strikes, outs_now)
             c = e.get("count") or {}
@@ -165,6 +171,8 @@ def extract(feed: dict) -> tuple[list[dict], list[dict], list[dict], list[dict]]
                 outs_now = c.get("outs", outs_now)
                 continue
             review = e.get("reviewDetails")
+            if (not review or review.get("reviewType") != "MJ") and e is last_pitch and play_review.get("reviewType") == "MJ":
+                review = play_review
             if review and review.get("reviewType") == "MJ" and e.get("playId"):
                 ch_id = review.get("challengeTeamId")
                 who = review.get("player") or {}

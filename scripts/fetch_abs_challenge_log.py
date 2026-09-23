@@ -136,13 +136,25 @@ def extract_challenges(feed: dict) -> list[dict]:
         fielding_team_id = home_id if is_top else away_id
         matchup = play.get("matchup", {})
 
-        for event in play.get("playEvents", []):
-            if not event.get("isPitch"):
-                continue
+        # (pitch event, its MJ review) pairs for this plate appearance.
+        challenged: list[tuple[dict, dict]] = []
+        pitches = [e for e in play.get("playEvents", []) if e.get("isPitch")]
+        for event in pitches:
             review = event.get("reviewDetails")
-            if not review or review.get("reviewType") != "MJ":
-                continue
+            if review and review.get("reviewType") == "MJ":
+                challenged.append((event, review))
 
+        # When the challenged pitch ENDS the plate appearance (called strike three, ball four), the feed puts
+        # the MJ review on the play (allPlays[].reviewDetails), not on the pitch. Verified 2026-09-20: pitch-level
+        # MJ alone gave 42 of the 55 challenges in gameData.absChallenges; adding these gave 55. Attach it to the
+        # play's last pitch, unless that pitch already carries its own MJ review (then it's the same challenge).
+        play_review = play.get("reviewDetails")
+        if play_review and play_review.get("reviewType") == "MJ" and pitches:
+            last_pitch = pitches[-1]
+            if (last_pitch.get("reviewDetails") or {}).get("reviewType") != "MJ":
+                challenged.append((last_pitch, play_review))
+
+        for event, review in challenged:
             play_id = event.get("playId")
             if not play_id:
                 continue  # no stable key to upsert on — skip rather than risk dupes
