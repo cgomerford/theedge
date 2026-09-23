@@ -32,8 +32,6 @@ jobs:
             --start-date "$(date -u -d '3 days ago' +%F)" \
             --end-date "$(date -u -d 'yesterday' +%F)"
 
-      - name: Build umpire profile
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python scripts/build_umpire_profile.py
+      # build_umpire_profile.py is NOT scheduled: it's a manual per-player tool (requires
+      # --player-id and --player-type, still marked unverified in its header) and nothing in
+      # src/ reads umpire_player_profile yet. Run without args it exits 2, which failed this job daily.
