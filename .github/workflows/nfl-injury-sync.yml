@@ -1,15 +1,12 @@
 name: NFL injury report sync
 
+# SCHEDULE DISABLED 2026-09-23 — manual-only.
+#   - Its table, nfl_transactions, no longer exists in Supabase (PGRST205 on every run since 2026-08-25).
+#   - Nothing renders it: src/lib/nfl/transactions.ts has no importers (the NFL homepage dropped the
+#     injury feed by product decision). NFL injuries are refreshed by scripts/nfl/sync_injuries.py
+#     in nfl-nflverse-sync.yml.
+#   - Its ESPN athlete lookup also only collects 1,000 of ~20,000 names (paging bug) — fix before reviving.
 on:
-  schedule:
-    # Twice daily through the pre-season / off-season (injury news is
-    # slower-moving here). Tighten this once the regular season starts —
-    # Wed/Thu/Fri practice reports and Sunday-morning inactives are the
-    # moments that actually matter, so a 4-6x/day cadence in-season would
-    # serve the Scout Report and any gameday content much better than
-    # this twice-daily off-season default.
-    - cron: '0 11 * * *'   # 11:00 UTC / ~7am ET
-    - cron: '0 21 * * *'   # 21:00 UTC / ~5pm ET
   workflow_dispatch:
     # Manual trigger from the GitHub Actions UI — useful for testing
 
