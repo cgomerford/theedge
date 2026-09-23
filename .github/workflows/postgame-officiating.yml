@@ -20,11 +20,17 @@ jobs:
       - name: Install dependencies
         run: pip install requests supabase python-dotenv
 
-      - name: Build ABS challenge log
+      # fetch_abs_challenge_log.py replaced the old --probe-only build_abs_challenge_log.py
+      # (which exited without writing). Rolling 3-day window: the upsert is keyed on play_id,
+      # so re-pulling is idempotent and one failed night is picked up by the next run.
+      - name: Fetch ABS challenge log
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python scripts/build_abs_challenge_log.py
+        run: |
+          python scripts/fetch_abs_challenge_log.py \
+            --start-date "$(date -u -d '3 days ago' +%F)" \
+            --end-date "$(date -u -d 'yesterday' +%F)"
 
       - name: Build umpire profile
         env:

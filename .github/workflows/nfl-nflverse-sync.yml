@@ -22,7 +22,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -41,9 +41,12 @@ jobs:
       # Each sync script lists its own SEASONS; rewrite that line to the active season only for this run.
       - name: Limit syncs to the active season
         run: |
-          for f in sync_schedule sync_players sync_snap_counts sync_injuries sync_depth_charts sync_nextgen sync_pfr_advstats sync_defense_special_teams; do
+          for f in sync_schedule sync_players sync_snap_counts sync_injuries sync_depth_charts sync_nextgen sync_pfr_advstats sync_defense_special_teams \
+                   sync_team_stats sync_player_stats sync_team_scheme_profile sync_player_route_profile sync_qb_zone_profile; do
             sed -i -E 's/^SEASONS *= *.*/SEASONS = [${{ steps.season.outputs.year }}]/' scripts/nfl/$f.py
           done
+          sed -i -E 's/^SEASONS_TO_COMPUTE *= *.*/SEASONS_TO_COMPUTE = [${{ steps.season.outputs.year }}]/' scripts/nfl/compute_team_reports.py
+          sed -i -E 's/^SCHEDULE_SEASON *= *.*/SCHEDULE_SEASON = ${{ steps.season.outputs.year }}/' scripts/nfl/compute_fantasy_projections.py
 
       - name: Teams, schedule, players
         run: |
@@ -64,3 +67,27 @@ jobs:
         run: python scripts/nfl/compute_team_week_splits.py --seasons ${{ steps.season.outputs.year }}
       - name: Postgame payloads (play-by-play precompute)
         run: python scripts/nfl/compute_nfl_postgame.py --season ${{ steps.season.outputs.year }}
+
+      # The steps below were previously manual-only, so their tables went stale.
+      # `!cancelled()` lets each independent group run even if an earlier group failed;
+      # the job still shows red in Actions, so a failure is never silent.
+      # team_stats + player_stats -> season reports (needs schedule) -> fantasy projections (needs player_stats + games)
+      - name: Weekly team and player stats, season reports, fantasy projections
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/nfl/sync_team_stats.py
+          python scripts/nfl/sync_player_stats.py
+          python scripts/nfl/compute_team_reports.py
+          python scripts/nfl/compute_fantasy_projections.py
+      # Participation + FTN charting (lags pbp by a few days; a failure here doesn't block the rest)
+      - name: Scheme, route and QB zone profiles
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/nfl/sync_team_scheme_profile.py
+          python scripts/nfl/sync_player_route_profile.py
+          python scripts/nfl/sync_qb_zone_profile.py
+      - name: QB and WR coverage-vs-pressure plays
+        if: ${{ !cancelled() }}
+        run: |
+          python scripts/nfl/sync_qb_coverage_pressure.py --season ${{ steps.season.outputs.year }}
+          python scripts/nfl/sync_wr_coverage_pressure.py --season ${{ steps.season.outputs.year }}

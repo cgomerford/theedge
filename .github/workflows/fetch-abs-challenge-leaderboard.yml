@@ -1,0 +1,26 @@
+name: fetch-abs-challenge-leaderboard
+
+on:
+  schedule:
+    # Daily 09:10 UTC — season-cumulative data, no upstream cron dependency,
+    # just staggered away from the other 09:00/09:30 morning crons.
+    - cron: '10 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-abs-challenge-leaderboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+
+      - name: Fetch ABS challenge team leaderboard
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_abs_challenge_leaderboard.py

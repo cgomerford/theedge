@@ -11,7 +11,7 @@ on:
 jobs:
   compute-regression-watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -24,7 +24,21 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-dotenv supabase
+          pip install python-dotenv supabase requests scipy
+
+      # Regression watch reads ultimate_team_players, so refresh the pool (MLB Stats API sweep)
+      # and its per-position grades first, in this same job, so the order is guaranteed.
+      - name: Fetch Ultimate Team player pool
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_ultimate_team_pool.py
+
+      - name: Grade Ultimate Team player pool
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/grade_ultimate_team_pool.py
 
       - name: Run regression watch computation
         env:

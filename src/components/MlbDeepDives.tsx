@@ -154,18 +154,28 @@ function sequentialRedColor(t: number): string {
 
 // ── ABS challenge deep dive — 2x2 sub-grid ──────────────────────────────
 //
-// Box A and D run off the season-aggregate team ledger (real, live Savant
-// leaderboard — see abs-challenges.ts). Box B and C run off the per-pitch
-// abs_challenge_log table (real MLB live-feed data — see
-// abs-challenge-log.ts / scripts/fetch_abs_challenge_log.py) which needs
-// its one-time backfill to have rows; both render an honest "backfilling"
-// state rather than fabricating a chart when that table is still empty.
+// Box A and D run off the season-aggregate team ledger — precomputed by
+// scripts/fetch_abs_challenge_leaderboard.py into abs_challenge_team_leaderboard,
+// see abs-challenges.ts. Box B and C run off the per-pitch abs_challenge_log
+// table (real MLB live-feed data — see abs-challenge-log.ts /
+// scripts/fetch_abs_challenge_log.py). All four render an honest empty/
+// "backfilling" state rather than fabricating a chart when their table is
+// still empty.
 
 function StackedChallengeSidesBox({ ledger }: { ledger: ABSChallengeRecord[] }) {
   // All 30 teams, not a top-N cut — the box scrolls internally so the
   // 2x2 grid's row height stays fixed while every team stays reachable.
   const all = [...ledger].filter(r => r.total_challenges > 0).sort((a, b) => b.total_challenges - a.total_challenges)
   const maxTotal = Math.max(1, ...all.map(r => r.total_challenges))
+
+  if (all.length === 0) {
+    return (
+      <div className="rounded-lg border border-[#E8E4DC] bg-white p-3 flex flex-col items-center justify-center text-center">
+        <div className="text-[11.5px] font-bold text-[#1A1A1A] self-start mb-1">Who&apos;s challenging</div>
+        <div className="text-[10px] text-[#8A8577] flex-1 flex items-center">Team leaderboard temporarily unavailable — check back shortly.</div>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-lg border border-[#E8E4DC] bg-white p-3 flex flex-col">
@@ -695,6 +705,15 @@ function DailyTrendBox({ byTeam, isBackfilling }: { byTeam: DailyTeamTrendRow[];
 }
 
 function AbsLeaderboardsBox({ ledger }: { ledger: ABSChallengeRecord[] }) {
+  if (ledger.length === 0) {
+    return (
+      <div className="rounded-lg border border-[#E8E4DC] bg-white p-3 flex flex-col items-center justify-center text-center">
+        <div className="text-[11.5px] font-bold text-[#1A1A1A] self-start mb-1">Leaderboards</div>
+        <div className="text-[10px] text-[#8A8577] flex-1 flex items-center">Team leaderboard temporarily unavailable — check back shortly.</div>
+      </div>
+    )
+  }
+
   const withChallenges = ledger.filter(r => r.total_challenges > 0)
   const withSample = ledger.filter(r => r.total_challenges >= 20)
   const mostChallenges = [...ledger].sort((a, b) => b.total_challenges - a.total_challenges)[0]

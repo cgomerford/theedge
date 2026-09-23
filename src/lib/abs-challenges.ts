@@ -1,25 +1,20 @@
 // src/lib/abs-challenges.ts
 //
 // ABS (Automated Ball-Strike) Challenge System record, per team, for the
-// 2026 season. Curl-verified against the live endpoint before writing
-// this — GET /leaderboard/abs-challenges?...&csv=true returns real CSV
-// with these confirmed columns (not assumed):
-//   entity_name, team_abbr, level, n_challenges, n_overturns, n_confirms,
-//   rate_overturns, n_challenges_against, n_overturns_against,
-//   n_confirms_against, rate_overturns_against, ...(many more advanced
-//   columns not used here)
+// current season. Reads the precomputed abs_challenge_team_leaderboard
+// table — populated daily by scripts/fetch_abs_challenge_leaderboard.py
+// (that script is the single writer; see its header for the full story).
 //
-// 2026-08-20 (later): confirmed the real value via Savant's own Network
-// tab request, not another guess — 'catching-team' is correct. The UI
-// dropdown label ("Fielding Team") doesn't match the API parameter
-// string, which is why 'fielding-team' also crashed the same way
-// 'pitching-team' did. Two curl-verified team-level categories now:
-//   'batting-team'  — challenges initiated by this team's batters
-//   'catching-team' — challenges initiated by this team's pitcher/catcher
-// Both confirmed returning clean CSV with team names in entity_name,
-// same column shape.
+// This used to fetch Baseball Savant's abs-challenges leaderboard CSV
+// live, at request time. That CSV export started returning HTTP 500 in
+// Sept 2026 regardless of query params (curl-verified), which silently
+// blanked the "Who's challenging" and "Leaderboards" boxes on /mlb/abs —
+// and doing a live Savant fetch in the render path was already against
+// this codebase's own rule (CLAUDE.md: precompute and store). Moved to
+// the standard cron -> Python -> Supabase -> page pattern instead.
 
-const SEASON = 2026
+import { createAdminClient } from '@/lib/supabase'
+import { MLB_TEAMS } from '@/lib/mlb-assets'
 
 export type ABSChallengeRecord = {
   team_abbr: string
@@ -29,8 +24,7 @@ export type ABSChallengeRecord = {
   batting_overturns: number
   batting_confirms: number
   batting_success_rate: number | null
-  // Pitcher/catcher-initiated (challenging called balls) — CONFIRMED,
-  // via challengeType=catching-team
+  // Pitcher/catcher-initiated (challenging called balls)
   pitching_challenges: number
   pitching_overturns: number
   pitching_confirms: number
@@ -41,141 +35,101 @@ export type ABSChallengeRecord = {
   total_success_rate: number | null
 }
 
-function parseCSVLine(line: string): string[] {
-  const cells: string[] = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') {
-      inQuotes = !inQuotes
-    } else if (ch === ',' && !inQuotes) {
-      cells.push(current.trim())
-      current = ''
-    } else {
-      current += ch
-    }
-  }
-  cells.push(current.trim())
-  return cells
+type Row = {
+  team_id: number
+  season: number
+  batting_challenges: number | string
+  batting_overturns: number | string
+  batting_confirms: number | string
+  batting_success_rate: number | string | null
+  pitching_challenges: number | string
+  pitching_overturns: number | string
+  pitching_confirms: number | string
+  pitching_success_rate: number | string | null
+  total_challenges: number | string
+  total_overturns: number | string
+  total_success_rate: number | string | null
 }
 
-type RawRow = {
-  team_abbr: string
-  n_challenges: number
-  n_overturns: number
-  n_confirms: number
-  rate_overturns: number | null
-}
+function toRecord(row: Row): ABSChallengeRecord | null {
+  const teamAbbr = MLB_TEAMS[row.team_id]?.abbr
+  if (!teamAbbr) return null // unrecognized team id — skip rather than mislabel
 
-async function fetchLeaderboard(challengeType: 'batting-team' | 'catching-team'): Promise<RawRow[]> {
-  const url = [
-    'https://baseballsavant.mlb.com/leaderboard/abs-challenges',
-    `?gameType=regular&year=${SEASON}&challengeType=${challengeType}`,
-    '&level=mlb&minChal=0&minOppChal=0&sort=n_challenges&sortDir=desc&page=0&pageSize=50&csv=true',
-  ].join('')
-
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TheEdge/1.0)', Accept: 'text/csv,*/*' },
-      next: { revalidate: 21600 }, // 6h — same cadence as other season-aggregate Savant pulls
-    })
-    if (!res.ok) return []
-    const text = await res.text()
-    const lines = text.trim().split('\n')
-    if (lines.length < 2) return []
-
-    const headers = parseCSVLine(lines[0]).map(h => h.replace(/^"|"$/g, ''))
-    const idx = (name: string) => headers.indexOf(name)
-    const abbrIdx = idx('team_abbr')
-    const nChalIdx = idx('n_challenges')
-    const nOverIdx = idx('n_overturns')
-    const nConfIdx = idx('n_confirms')
-    const rateIdx = idx('rate_overturns')
-
-    if (abbrIdx === -1 || nChalIdx === -1) return []
-
-    const rows: RawRow[] = []
-    for (let i = 1; i < lines.length; i++) {
-      const cells = parseCSVLine(lines[i]).map(c => c.replace(/^"|"$/g, ''))
-      const abbr = cells[abbrIdx]
-      if (!abbr) continue
-      rows.push({
-        team_abbr: abbr,
-        n_challenges: Number(cells[nChalIdx] ?? 0) || 0,
-        n_overturns: Number(cells[nOverIdx] ?? 0) || 0,
-        n_confirms: Number(cells[nConfIdx] ?? 0) || 0,
-        rate_overturns: cells[rateIdx] ? Number(cells[rateIdx]) : null,
-      })
-    }
-    return rows
-  } catch (err) {
-    console.error(`ABS leaderboard fetch failed (${challengeType}):`, err)
-    return []
-  }
-}
-
-function combineRecord(teamAbbr: string, battingRow: RawRow | undefined, catchingRow: RawRow | undefined): ABSChallengeRecord {
-  const battingChallenges = battingRow?.n_challenges ?? 0
-  const battingOverturns = battingRow?.n_overturns ?? 0
-  const pitchingChallenges = catchingRow?.n_challenges ?? 0
-  const pitchingOverturns = catchingRow?.n_overturns ?? 0
-
-  const totalChallenges = battingChallenges + pitchingChallenges
-  const totalOverturns = battingOverturns + pitchingOverturns
+  const numOrNull = (v: number | string | null) => (v == null ? null : Number(v))
 
   return {
     team_abbr: teamAbbr,
-    season: SEASON,
-    batting_challenges: battingChallenges,
-    batting_overturns: battingOverturns,
-    batting_confirms: battingRow?.n_confirms ?? 0,
-    batting_success_rate: battingRow?.rate_overturns ?? null,
-    pitching_challenges: pitchingChallenges,
-    pitching_overturns: pitchingOverturns,
-    pitching_confirms: catchingRow?.n_confirms ?? 0,
-    pitching_success_rate: catchingRow?.rate_overturns ?? null,
-    total_challenges: totalChallenges,
-    total_overturns: totalOverturns,
-    total_success_rate: totalChallenges > 0 ? Math.round((totalOverturns / totalChallenges) * 1000) / 1000 : null,
+    season: Number(row.season),
+    batting_challenges: Number(row.batting_challenges) || 0,
+    batting_overturns: Number(row.batting_overturns) || 0,
+    batting_confirms: Number(row.batting_confirms) || 0,
+    batting_success_rate: numOrNull(row.batting_success_rate),
+    pitching_challenges: Number(row.pitching_challenges) || 0,
+    pitching_overturns: Number(row.pitching_overturns) || 0,
+    pitching_confirms: Number(row.pitching_confirms) || 0,
+    pitching_success_rate: numOrNull(row.pitching_success_rate),
+    total_challenges: Number(row.total_challenges) || 0,
+    total_overturns: Number(row.total_overturns) || 0,
+    total_success_rate: numOrNull(row.total_success_rate),
   }
 }
 
 export async function getABSChallengeRecord(teamAbbr: string): Promise<ABSChallengeRecord | null> {
-  const [battingRows, catchingRows] = await Promise.all([
-    fetchLeaderboard('batting-team'),
-    fetchLeaderboard('catching-team'),
-  ])
+  const teamId = Object.entries(MLB_TEAMS).find(([, t]) => t.abbr === teamAbbr)?.[0]
+  if (!teamId) return null
 
-  const battingRow = battingRows.find(r => r.team_abbr === teamAbbr)
-  const catchingRow = catchingRows.find(r => r.team_abbr === teamAbbr)
+  const supa = createAdminClient()
+  const { data, error } = await supa
+    .from('abs_challenge_team_leaderboard')
+    .select('*')
+    .eq('team_id', Number(teamId))
+    .order('season', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (!battingRow && !catchingRow) return null
+  if (error) {
+    if (error.code !== 'PGRST205') console.error('[getABSChallengeRecord] Supabase error:', error.message)
+    return null
+  }
+  if (!data) return null
 
-  return combineRecord(teamAbbr, battingRow, catchingRow)
+  return toRecord(data as unknown as Row)
 }
 
-// League-wide version for the homepage board — same two Savant pulls,
-// just not filtered down to one team. Sorted by total challenges desc so
-// the busiest challenge teams surface first.
+// League-wide version for the homepage board and /mlb/abs deep dive —
+// sorted by total challenges desc so the busiest challenge teams surface
+// first. Only the latest season present in the table is returned, so a
+// season rollover doesn't mix two years of counts together.
 export async function getABSChallengeLeaderboard(): Promise<ABSChallengeRecord[]> {
-  const [battingRows, catchingRows] = await Promise.all([
-    fetchLeaderboard('batting-team'),
-    fetchLeaderboard('catching-team'),
-  ])
+  const supa = createAdminClient()
 
-  const teamAbbrs = new Set<string>([
-    ...battingRows.map(r => r.team_abbr),
-    ...catchingRows.map(r => r.team_abbr),
-  ])
+  const { data: latest, error: latestError } = await supa
+    .from('abs_challenge_team_leaderboard')
+    .select('season')
+    .order('season', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  const records = [...teamAbbrs].map(abbr =>
-    combineRecord(
-      abbr,
-      battingRows.find(r => r.team_abbr === abbr),
-      catchingRows.find(r => r.team_abbr === abbr),
-    )
-  )
+  if (latestError) {
+    if (latestError.code !== 'PGRST205') console.error('[getABSChallengeLeaderboard] Supabase error:', latestError.message)
+    return []
+  }
+  if (!latest) return []
+
+  const { data, error } = await supa
+    .from('abs_challenge_team_leaderboard')
+    .select('*')
+    .eq('season', latest.season)
+
+  if (error) {
+    console.error('[getABSChallengeLeaderboard] Supabase error:', error.message)
+    return []
+  }
+  if (!data) return []
+
+  const records = (data as unknown as Row[])
+    .map(toRecord)
+    .filter((r): r is ABSChallengeRecord => r !== null)
 
   return records.sort((a, b) => b.total_challenges - a.total_challenges)
 }
