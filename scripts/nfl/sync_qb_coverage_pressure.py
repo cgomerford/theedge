@@ -55,9 +55,11 @@ def load_and_join_season(season: int) -> pl.DataFrame | None:
 
     try:
         part = nfl.load_participation(seasons=season)
-    except (ValueError, ConnectionError) as e:
+    except ValueError as e:
+        # nflverse hasn't published this season's participation file yet (it lags pbp) -- not an error.
         print(f"  Skipping season {season} (no participation data): {type(e).__name__}")
         return None
+    # ConnectionError is deliberately NOT caught: a network failure should fail the run.
 
     part = part.with_columns(pl.col("play_id").cast(pl.Float64))
     pbp = pbp.with_columns(pl.col("play_id").cast(pl.Float64))
@@ -117,7 +119,10 @@ def main() -> None:
     print(f"Computing QB coverage/pressure splits for {args.season}...")
     plays = load_and_join_season(args.season)
     if plays is None:
-        sys.exit(1)
+        # Source not published for this season yet: nothing written, existing rows untouched.
+        # Exit 0 so the daily cron isn't red for an expected state; the ::notice:: shows on the run summary.
+        print(f"::notice::No nflverse participation/pbp data for {args.season} yet -- table not updated.")
+        sys.exit(0)
 
     rows = compute_qb_splits(plays, args.season)
     if not rows:
