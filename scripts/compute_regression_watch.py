@@ -120,7 +120,7 @@ def compute_pitcher_regression():
             continue   # not meaningful enough to flag
 
         direction = 'rise' if gap > 0 else 'drop'  # ERA > FIP → expect ERA to fall → value rises
-       candidates.append({
+        candidates.append({
             'player_id':     r['player_id'],
             'player_name':   r['player_name'],
             'team_short':    pool_info.get('team_short'),
