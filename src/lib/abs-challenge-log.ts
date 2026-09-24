@@ -121,7 +121,29 @@ const PAGE_SIZE = 1000 // PostgREST's own default max-rows cap — a single
 // (Confirmed the hard way: the UI's "indexed so far" count was stuck at
 // exactly 1,000 while the real table kept growing past 4,600+ rows.)
 
-async function fetchAllChallengeRows(withLocation = false): Promise<RawRow[]> {
+// One shared pull per server instance, reused for ROWS_TTL_MS. Before this, the homepage and /mlb/abs each
+// called this three times per render (inning / daily trend / players), paging the whole table every time —
+// ~33 queries per render at ~10k rows. Under load that stampede took the database down (2026-09-24).
+// In-flight requests share the same promise, so concurrent renders don't each start their own pull.
+// Failed or partial pulls are not cached.
+const ROWS_TTL_MS = 10 * 60 * 1000
+let rowsCache: { at: number; rows: RawRow[] } | null = null
+let rowsInFlight: Promise<RawRow[]> | null = null
+
+async function fetchAllChallengeRows(): Promise<RawRow[]> {
+  if (rowsCache && Date.now() - rowsCache.at < ROWS_TTL_MS) return rowsCache.rows
+  if (!rowsInFlight) {
+    rowsInFlight = pullAllChallengeRows()
+      .then(({ rows, complete }) => {
+        if (complete && rows.length > 0) rowsCache = { at: Date.now(), rows }
+        return rows
+      })
+      .finally(() => { rowsInFlight = null })
+  }
+  return rowsInFlight
+}
+
+async function pullAllChallengeRows(): Promise<{ rows: RawRow[]; complete: boolean }> {
   const supa = createUncachedAdminClient()
   const rows: RawRow[] = []
   let offset = 0
@@ -129,7 +151,8 @@ async function fetchAllChallengeRows(withLocation = false): Promise<RawRow[]> {
   while (true) {
     const { data, error } = await supa
       .from('abs_challenge_log')
-      .select('game_date, inning, challenging_team_id, challenge_side, challenger_player_id, challenger_player_name, is_overturned' + (withLocation ? ', plate_x, plate_z, sz_top, sz_bot, sz_width_in' : ''))
+      .select('game_date, inning, challenging_team_id, challenge_side, challenger_player_id, challenger_player_name, is_overturned, plate_x, plate_z, sz_top, sz_bot, sz_width_in')
+      .order('play_id') // stable order, or offset paging can skip/repeat rows
       .range(offset, offset + PAGE_SIZE - 1)
 
     if (error) {
@@ -141,9 +164,9 @@ async function fetchAllChallengeRows(withLocation = false): Promise<RawRow[]> {
       if (error.code === 'PGRST205') {
         console.warn('abs_challenge_log: table not created yet (run scripts/sql/create_abs_challenge_log.sql) — showing empty state.')
       } else {
-        console.error('abs_challenge_log query failed:', error.message)
+        console.error('[pullAllChallengeRows] Supabase error:', error.message)
       }
-      return rows.length > 0 ? rows : []
+      return { rows, complete: false } // partial on a mid-pull failure — shown, but not cached
     }
 
     rows.push(...((data ?? []) as unknown as RawRow[])) // select string is built dynamically, so supabase-js can't infer the row type
@@ -151,7 +174,7 @@ async function fetchAllChallengeRows(withLocation = false): Promise<RawRow[]> {
     offset += PAGE_SIZE
   }
 
-  return rows
+  return { rows, complete: true }
 }
 
 export async function getAbsInningBreakdown(): Promise<InningBreakdownRow[]> {
@@ -212,7 +235,7 @@ function toLocation(r: RawRow): PitchLocation | null {
 // selected in the scatter, so a team's full roster — including players
 // with just 1-4 challenges — is visible for "spread across the team."
 export async function getPlayerChallengeEfficiency(): Promise<PlayerChallengeRow[]> {
-  const rows = await fetchAllChallengeRows(true)
+  const rows = await fetchAllChallengeRows()
   if (rows.length === 0) return []
 
   // challenge_side is per-row, but the SIDE that CHALLENGES is the one the
