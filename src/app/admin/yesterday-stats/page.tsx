@@ -20,6 +20,12 @@
 // mlb-live-feed.ts. If the AAA/AA sections come back completely empty on a
 // date you know had games, that's the first thing to check, before
 // assuming the aggregation pipeline itself is broken.
+//
+// Must stay force-dynamic: this walks yesterday's full MLB/AAA/AA slate and,
+// for any game missing from game_postgame_reports, fetches that game's live
+// feed one at a time. Without opting out of static generation, Next tries to
+// prerender this at build time — easily >60s, which fails all 3 build
+// retries and kills the whole build (broke the 2026-09-24 deploy).
 
 import { createAdminClient } from '@/lib/supabase'
 import {
@@ -37,6 +43,8 @@ import Top3StatsSheet from '@/components/admin/Top3StatsSheet'
 import VideoExportPanel from '@/components/admin/VideoExportPanel'
 import type { PostgameReport } from '@/types/postgame'
 import type { Top3StatsPayload } from '@/types/live-tracker'
+
+export const dynamic = 'force-dynamic'
 
 const supa = createAdminClient()
 
