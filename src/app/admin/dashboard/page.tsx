@@ -9,6 +9,8 @@ import { getScoutReportBundle } from '@/lib/scout-bundle'
 import GamePreviewTeaser from '@/components/admin/GamePreviewTeaser'
 import GamePreviewBuilder from '@/components/admin/game-preview/GamePreviewBuilder'
 import ScoutGraphicBuilder, { type BuilderGame, type BuilderPitcherSide, type BuilderRosterBatter } from '@/components/admin/scout-graphic/ScoutGraphicBuilder'
+import InGameXCardSection from '@/components/admin/InGameXCardSection'
+import PostseasonBracketBuilder from '@/components/admin/PostseasonBracketBuilder'
 import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import { getScheduleForDate, getPitcherRecentStarts } from '@/lib/mlb'
 import { getPitcherStatsFull } from '@/lib/pitcher-full-stats'
@@ -120,6 +122,13 @@ export default async function AdminDashboard({
   )
 
   const slateSchedule = await getScheduleForDate(slateDate)
+
+  const liveGameOptions = slateSchedule
+    .filter(g => g.status?.abstractGameState === 'Live')
+    .map(g => ({
+      gamePk: g.gamePk,
+      matchup: `${g.teams.away.team.abbreviation ?? g.teams.away.team.name} @ ${g.teams.home.team.abbreviation ?? g.teams.home.team.name}`,
+    }))
 
   const builderGames: BuilderGame[] = await Promise.all(
     gamesWithReports.map(async (g) => {
@@ -245,6 +254,24 @@ export default async function AdminDashboard({
             <span className="tag">X post · 4:5 · starting pitchers head to head</span>
           </div>
           <GamePreviewBuilder games={builderGames} slateDate={slateDate} />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Postseason Bracket Graphic</h2>
+            <span className="tag">X post · 16:9 · Wild Card / DS / CS / World Series · fully manual</span>
+          </div>
+          <PostseasonBracketBuilder />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>In-Game X Cards</h2>
+            <span className="tag">pitcher arm angle/arsenal · batter spray/EV/barrels · live games only</span>
+          </div>
+          <InGameXCardSection games={liveGameOptions} />
         </section>
 
         <div className="footnote">

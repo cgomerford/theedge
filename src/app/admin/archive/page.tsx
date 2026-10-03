@@ -18,6 +18,7 @@ import AllGamesStorySlideshow from '@/components/admin/AllGamesStorySlideshow'
 import { getScheduleForDate } from '@/lib/mlb'
 import { css } from '@/app/admin/admin-css'
 import PostGameXCardSection from '@/components/admin/PostGameXCardSection'
+import InGameXCardSection from '@/components/admin/InGameXCardSection'
 export const dynamic = 'force-dynamic'
 
 async function getFinalGamePks(date: string): Promise<number[]> {
@@ -173,6 +174,13 @@ export default async function AdminArchive({
   ])
   const finishedGameOptions = [...yesterdaySchedule, ...todaySchedule]
     .filter(g => g.status?.abstractGameState === 'Final')
+    .map(g => ({
+      gamePk: g.gamePk,
+      matchup: `${g.teams.away.team.abbreviation ?? g.teams.away.team.name} @ ${g.teams.home.team.abbreviation ?? g.teams.home.team.name}`,
+    }))
+
+  const liveGameOptions = todaySchedule
+    .filter(g => g.status?.abstractGameState === 'Live')
     .map(g => ({
       gamePk: g.gamePk,
       matchup: `${g.teams.away.team.abbreviation ?? g.teams.away.team.name} @ ${g.teams.home.team.abbreviation ?? g.teams.home.team.name}`,
@@ -404,6 +412,16 @@ export default async function AdminArchive({
             />
           </section>
         </div>
+
+        {/* ── FULL WIDTH: In-Game X Cards ─────────────────── */}
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>In-Game X Cards</h2>
+            <span className="tag">pitcher arm angle/arsenal · batter spray/EV/barrels · live games only</span>
+          </div>
+          <InGameXCardSection games={liveGameOptions} />
+        </section>
 
         {/* ── FULL WIDTH: Snip Studio ────────────────────── */}
         <SnipStudio snips={snips} />
