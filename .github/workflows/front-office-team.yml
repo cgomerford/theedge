@@ -1,0 +1,23 @@
+name: front-office-team
+
+on:
+  schedule:
+    - cron: '30 8 * * *'  # daily 08:30 UTC — reads only the public MLB Stats API, no upstream cron dependency
+  workflow_dispatch:
+
+jobs:
+  team-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Compute team Front Office snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/compute_team_front_office.py

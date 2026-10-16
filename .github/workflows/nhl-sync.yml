@@ -1,0 +1,88 @@
+name: nhl-sync
+
+# NHL precompute: api-web.nhle.com/v1 + api.nhle.com/stats/rest -> Python ->
+# Supabase nhl_* tables -> pages read cached rows. Private prototype only --
+# /nhl stays maintenance-gated (see src/lib/maintenance-gates.ts) and noindex
+# until George lifts the gate. See CLAUDE.md's N1 STOP summary for the
+# politeness-lock reconciliation (MAX_CONCURRENT=6 semaphore + a token bucket
+# at NHL_REQS_PER_SEC, 1.0 default / 3.0 here for the nightly and game-night
+# runs) and the open questions list.
+
+on:
+  schedule:
+    - cron: '0 10 * * *'    # 10:00 UTC / 11:00 BST -- schedule + rosters + rollups
+    - cron: '0 8 * * *'     # 09:00 BST -- nightly sweep: ingest every uningested OFF game, then rollups
+                             # (NOT YET BUILT: re-checking 'unchecked' strength_check rows against a
+                             # freshly-fetched reference -- open question 1 in the N1 STOP summary)
+    - cron: '*/30 0-7 * * *' # game-night window (UTC 00:00-07:30), only acts if an OFF+pending game exists
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'backfill | game | rollups'
+        required: true
+        default: 'rollups'
+      game_id:
+        description: 'required when mode=game'
+        required: false
+
+concurrency:
+  group: nhl-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv pytest
+
+      - name: Run strength.py unit tests
+        run: python -m pytest scripts/nhl/tests/test_strength.py -q
+
+      - name: Work out the active NHL season
+        id: season
+        run: echo "season=$(python -c "import datetime as d;t=d.date.today();y=t.year if t.month>=7 else t.year-1;print(f'{y}{y+1}')")" >> "$GITHUB_OUTPUT"
+
+      # 10:00 UTC daily run -- schedule, rosters, rollups
+      - name: Schedule, teams and rosters (daily run)
+        if: github.event.schedule == '0 10 * * *'
+        run: |
+          python scripts/nhl/sync_schedule.py
+          python scripts/nhl/sync_teams_rosters.py
+
+      # 09:00 BST nightly sweep -- ingest everything not yet ingested
+      - name: Nightly sweep (ingest uningested OFF games)
+        if: github.event.schedule == '0 8 * * *'
+        env:
+          NHL_REQS_PER_SEC: '3.0'
+        run: python scripts/nhl/backfill.py --season ${{ steps.season.outputs.season }}
+
+      # Game-night window -- only acts if there's an OFF+pending game; exits early otherwise
+      - name: Game-night ingest (only if a pending OFF game exists)
+        if: github.event.schedule == '*/30 0-7 * * *'
+        env:
+          NHL_REQS_PER_SEC: '3.0'
+        run: python scripts/nhl/backfill.py --season ${{ steps.season.outputs.season }}
+
+      - name: Rollups (every scheduled run)
+        if: github.event_name == 'schedule'
+        run: python scripts/nhl/rollups.py --season ${{ steps.season.outputs.season }}
+
+      # workflow_dispatch modes
+      - name: Manual -- backfill
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'backfill'
+        run: python scripts/nhl/backfill.py --season ${{ steps.season.outputs.season }} --through-yesterday
+      - name: Manual -- single game
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'game'
+        run: python scripts/nhl/ingest_game.py ${{ github.event.inputs.game_id }}
+      - name: Manual -- rollups
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'rollups'
+        run: python scripts/nhl/rollups.py --season ${{ steps.season.outputs.season }}

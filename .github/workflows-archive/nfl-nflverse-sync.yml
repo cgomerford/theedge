@@ -46,7 +46,6 @@ jobs:
             sed -i -E 's/^SEASONS *= *.*/SEASONS = [${{ steps.season.outputs.year }}]/' scripts/nfl/$f.py
           done
           sed -i -E 's/^SEASONS_TO_COMPUTE *= *.*/SEASONS_TO_COMPUTE = [${{ steps.season.outputs.year }}]/' scripts/nfl/compute_team_reports.py
-          sed -i -E 's/^SCHEDULE_SEASON *= *.*/SCHEDULE_SEASON = ${{ steps.season.outputs.year }}/' scripts/nfl/compute_fantasy_projections.py
 
       - name: Teams, schedule, players
         run: |
@@ -71,14 +70,13 @@ jobs:
       # The steps below were previously manual-only, so their tables went stale.
       # `!cancelled()` lets each independent group run even if an earlier group failed;
       # the job still shows red in Actions, so a failure is never silent.
-      # team_stats + player_stats -> season reports (needs schedule) -> fantasy projections (needs player_stats + games)
-      - name: Weekly team and player stats, season reports, fantasy projections
+      # team_stats + player_stats -> season reports (needs schedule)
+      - name: Weekly team and player stats, season reports
         if: ${{ !cancelled() }}
         run: |
           python scripts/nfl/sync_team_stats.py
           python scripts/nfl/sync_player_stats.py
           python scripts/nfl/compute_team_reports.py
-          python scripts/nfl/compute_fantasy_projections.py
       # Participation + FTN charting (lags pbp by a few days; a failure here doesn't block the rest)
       - name: Scheme, route and QB zone profiles
         if: ${{ !cancelled() }}
