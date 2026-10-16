@@ -25,9 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { teamId } = await params;
   const statsSeason = await getActiveStatsSeason();
   const team = await getTeamDetail(teamId, statsSeason);
-  if (!team) return { title: "Team · The Edge" };
+  if (!team) return { title: "Team · x9Lab" };
   return {
-    title: `${team.teamName} — ${team.record ?? "Schedule"} · The Edge`,
+    title: `${team.teamName} — ${team.record ?? "Schedule"} · x9Lab`,
     description: `Year-on-year stats, coverage profile, injuries, and depth chart for the ${team.teamName}.`,
   };
 }

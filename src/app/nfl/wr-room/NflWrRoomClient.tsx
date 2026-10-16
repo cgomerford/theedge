@@ -14,7 +14,7 @@ import NflRadarCycler from '@/components/nfl/NflRadarCycler'
 import { NflQbCoverageChart, NflQbPressureChart } from '@/components/nfl/NflQbCoveragePressureFormation'
 import type {
   WrNgsSeasonProfile, WrNgsWeeklyPoint, WrWeeklyGridRow,
-  WrRadarProfile, FantasyProjectionRow, QbCoverageSplit, QbPressureSplit,
+  WrRadarProfile, QbCoverageSplit, QbPressureSplit,
 } from '@/lib/nfl/queries'
 
 type SearchResult = { type: 'player' | 'team'; id: string; label: string; sublabel: string; imageUrl: string | null; href: string }
@@ -31,7 +31,7 @@ function Cube({ title, explainer, children }: { title: string; explainer: string
 
 export default function NflWrRoomClient({
   statsSeason, profiles, defaultWr, defaultWeekly, weeklyGrid,
-  defaultRadar, fantasyProjections, defaultCoverage, defaultPressure,
+  defaultRadar, defaultCoverage, defaultPressure,
 }: {
   statsSeason: number
   profiles: WrNgsSeasonProfile[]
@@ -39,7 +39,6 @@ export default function NflWrRoomClient({
   defaultWeekly: WrNgsWeeklyPoint[]
   weeklyGrid: WrWeeklyGridRow[]
   defaultRadar: WrRadarProfile | null
-  fantasyProjections: FantasyProjectionRow[]
   defaultCoverage: QbCoverageSplit[]
   defaultPressure: QbPressureSplit[]
 }) {
@@ -84,7 +83,7 @@ export default function NflWrRoomClient({
   return (
     <main style={{ maxWidth: 1600, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px 24px 60px' }}>
       <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-        § The Edge · NFL {statsSeason}
+        § x9Lab · NFL {statsSeason}
       </p>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: '4px 0 8px', color: '#1A1A1A' }}>WR Room</h1>
       <p style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#78716C', maxWidth: 620, marginBottom: 28 }}>
@@ -116,24 +115,6 @@ export default function NflWrRoomClient({
               <NflWrWeeklyHeatmap rows={weeklyGrid} />
             </Cube>
           </div>
-
-          {fantasyProjections.length > 0 && (
-            <div style={{ marginBottom: 28 }}>
-              <Cube title="Fantasy Projections, This Week" explainer="Forward-looking projections for the upcoming week's slate.">
-                <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 20 }}>
-                  {fantasyProjections.map((f, i) => (
-                    <div key={f.gsisId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(26,26,26,0.06)' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: i === 0 ? '#FF5722' : '#D4D0C8', width: 20 }}>{i + 1}</span>
-                      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 700, flex: 1 }}>
-                        {f.fullName} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 400, color: '#78716C' }}>· {f.teamId}{f.opponentTeam ? ` vs ${f.opponentTeam}` : ''}</span>
-                      </span>
-                      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 700, color: i === 0 ? '#FF5722' : '#1A1A1A' }}>{f.statValue.toFixed(1)} pts</span>
-                    </div>
-                  ))}
-                </div>
-              </Cube>
-            </div>
-          )}
 
           <div style={{ borderTop: '2px solid rgba(26,26,26,0.08)', paddingTop: 24 }}>
             <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, margin: '0 0 8px' }}>Player Deep Dive</h2>

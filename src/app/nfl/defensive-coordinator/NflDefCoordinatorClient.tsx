@@ -33,7 +33,7 @@ export default function NflDefCoordinatorClient({ statsSeason, teams }: { statsS
   return (
     <main style={{ maxWidth: 1400, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px 24px 60px' }}>
       <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-        § The Edge · NFL {statsSeason}
+        § x9Lab · NFL {statsSeason}
       </p>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: '4px 0 8px', color: '#1A1A1A' }}>Defensive Coordinator</h1>
       <p style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#78716C', maxWidth: 620, marginBottom: 8 }}>

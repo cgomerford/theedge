@@ -23,7 +23,6 @@ import {
   getStandings,
   getActiveStatsSeason,
   getFantasyPointsLeaders,
-  getFantasyProjections,
   getInterceptionLeaders,
   getTacklesForLossLeaders,
   getTurnoverPlaymakerLeaders,
@@ -43,7 +42,7 @@ import {
 } from '@/lib/nfl/queries'
 
 export const metadata = {
-  title: 'NFL League Desk · The Edge',
+  title: 'NFL League Desk · x9Lab',
   description: 'Season leaders, standings, and a coverage desk for the analytics era.',
 }
 
@@ -62,7 +61,6 @@ export default async function NflHomePage() {
     advLeaders,
     standings,
     fantasyLeaders,
-    fantasyProjections,
     intLeaders,
     tflLeaders,
     turnoverLeaders,
@@ -79,7 +77,6 @@ export default async function NflHomePage() {
     getAdvancedStatsLeaders(statsSeason),
     getStandings(statsSeason),
     getFantasyPointsLeaders(statsSeason, 10),
-    getFantasyProjections(),
     getInterceptionLeaders(statsSeason, 10),
     getTacklesForLossLeaders(statsSeason, 10),
     getTurnoverPlaymakerLeaders(statsSeason),
@@ -143,7 +140,6 @@ const teamFgLeaders = await getTeamFgLeaders(statsSeason, 10)
         advLeaders={advLeaders}
         standings={standings}
         fantasyLeaders={fantasyLeaders}
-        fantasyProjections={fantasyProjections}
         intLeaders={intLeaders}
         tflLeaders={tflLeaders}
         turnoverLeaders={turnoverLeaders}

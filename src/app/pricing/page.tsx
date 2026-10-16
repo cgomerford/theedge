@@ -19,7 +19,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 // listing feature names and assuming the value is self-evident.
 
 export const metadata = {
-  title: 'Pricing · The Edge',
+  title: 'Pricing · x9Lab',
   description: 'Free for fans. Pro for analysts. Founding 100 members lock in £4/mo for life.',
 }
 
@@ -77,7 +77,7 @@ export default async function PricingPage() {
             </div>
             <div className="p-7">
               <span className="block font-mono text-[10px] uppercase tracking-widest text-[#FF5722] mb-3">
-                The Edge read
+                x9Lab read
               </span>
               <p className="font-serif text-base leading-relaxed">
                 His slider has been{' '}
@@ -302,7 +302,7 @@ export default async function PricingPage() {
               },
               {
                 q: 'How is this different from other stats sites?',
-                a: 'Most sites give you either raw advanced data or long-form storytelling. The Edge sits in between — a 5-minute read that tells you what actually matters tonight, with the underlying data always visible.',
+                a: 'Most sites give you either raw advanced data or long-form storytelling. x9Lab sits in between — a 5-minute read that tells you what actually matters tonight, with the underlying data always visible.',
               },
             ].map((faq, i) => (
               <div key={i}>

@@ -144,7 +144,7 @@ export default function PostGameXCardBatter({ batter, battedBalls, pitchLog, tea
 
         {/* Footer */}
         <div className="text-center pt-2 border-t border-stone-100">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">The Edge · edgereportdaily.com</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · edgereportdaily.com</span>
         </div>
       </div>
     </div>

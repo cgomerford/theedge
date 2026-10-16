@@ -6,9 +6,9 @@ import WhyEdgeClient from './WhyEdgeClient'
 export const revalidate = 3600
 
 export const metadata = {
-  title: 'Why The Edge · Smart-friend reads for every level of fan',
+  title: 'Why x9Lab · Smart-friend reads for every level of fan',
   description:
-    'The Edge meets you where you are — casual fan to GM-level analyst. Same game, four reads. See how the 8-factor model works and what makes it different.',
+    'x9Lab meets you where you are — casual fan to GM-level analyst. Same game, four reads. See how the 8-factor model works and what makes it different.',
 }
 
 export default async function WhyEdgePage() {

@@ -30,7 +30,7 @@ const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginIn
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const matchup = slug.replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '').replace(/-vs-/, ' vs ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  const title = `${matchup} — Postgame Report · The Edge`
+  const title = `${matchup} — Postgame Report · x9Lab`
   const description = `Postgame breakdown for ${matchup}: how the game swung, top performers, the full box score and a hand-scored scorecard.`
   return { title, description, openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}/postgame` }, twitter: { card: 'summary_large_image', title, description } }
 }

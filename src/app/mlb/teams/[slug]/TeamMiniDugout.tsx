@@ -92,7 +92,7 @@ export default function TeamMiniDugout({ team, record, nextGame, leaders, news }
             className="text-[10px] font-mono uppercase tracking-[0.25em] mb-2 opacity-70"
             style={{ color: team.text_on_primary }}
           >
-            ⊕ The Edge · {team.league} {team.division}
+            ⊕ x9Lab · {team.league} {team.division}
           </div>
           <h1
             className="font-serif text-4xl md:text-5xl font-bold leading-none tracking-tight mb-1"

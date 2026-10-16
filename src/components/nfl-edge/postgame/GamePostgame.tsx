@@ -17,7 +17,7 @@ import {
 } from '../ui'
 import { WinProbChart } from './PostgameClient'
 
-const NAV: [string, string][] = [['swing', 'How it swung'], ['performers', 'Performers'], ['box', 'Box score'], ['qb', 'QB night'], ['snaps', 'Snaps'], ['drives', 'Scoring'], ['turnovers', 'TO & penalties'], ['scorecard', 'Scorecard'], ['pro', 'Pro'], ['next', 'Next up']]
+const NAV: [string, string][] = [['swing', 'Biggest swings'], ['performers', 'Performers'], ['box', 'Box score'], ['qb', 'QB night'], ['snaps', 'Snaps'], ['drives', 'Scoring'], ['turnovers', 'TO & penalties'], ['scorecard', 'Vs own average'], ['pro', 'Pro'], ['next', 'Next up']]
 
 function Delta({ tonight, season, fmt, higherBetter = true }: { tonight: number | null; season: number | null; fmt: (v: number | null) => string; higherBetter?: boolean }) {
   const d = tonight != null && season != null ? tonight - season : null
@@ -77,10 +77,10 @@ export default function GamePostgame({
         </nav>
 
         {!payload && (
-          <div style={{ marginTop: 20 }}><Card><Empty>The play-by-play breakdown (win-probability line, scoring drives, team box score) is still being prepared for this game. Everything else below is already available.</Empty></Card></div>
+          <div style={{ marginTop: 20 }}><Card><Empty>The play-by-play breakdown (game-flow line, scoring drives, team box score) is still being prepared for this game. Everything else below is already available.</Empty></Card></div>
         )}
 
-        <Section id="swing" num="01" title="How it swung" sub="Home win probability through the game. Numbered dots are the five biggest swings, in game order.">
+        <Section id="swing" num="01" title="Biggest swings" sub="The five plays that moved the game most, in game order. Numbered dots mark them on the line.">
           <Card>
             {payload ? (
               <>
@@ -90,13 +90,13 @@ export default function GamePostgame({
                     <li key={i} style={{ display: 'grid', gridTemplateColumns: '24px 74px minmax(0,1fr)', gap: 10, alignItems: 'start', fontSize: 13 }}>
                       <span style={{ background: C.orange, color: '#fff', borderRadius: 999, width: 22, height: 22, display: 'grid', placeItems: 'center', fontFamily: MONO, fontSize: 10 }}>{i + 1}</span>
                       <span><Chip tone={s.kind === 'TD' ? 'good' : s.kind === 'Turnover' ? 'bad' : 'plain'}>{s.kind}</Chip></span>
-                      <span><span style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint }}>{s.q > 4 ? 'OT' : `Q${s.q}`} {s.clock} · {s.team} · win probability moved {Math.round(Math.abs(s.home_wp_after - s.home_wp_before) * 100)} pts toward {s.home_wp_before <= s.home_wp_after ? home.id : away.id}</span><br />{s.desc}</span>
+                      <span><span style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint }}>{s.q > 4 ? 'OT' : `Q${s.q}`} {s.clock} · {s.team} · the game swung toward {s.home_wp_before <= s.home_wp_after ? home.id : away.id}</span><br />{s.desc}</span>
                     </li>
                   ))}
                 </ol>
               </>
             ) : <Empty>Not available yet.</Empty>}
-            <Foot>Win probability is nflfastR&apos;s play-by-play model, shown only to describe how this game unfolded.</Foot>
+            <Foot>nflverse win-probability model, after the fact.</Foot>
           </Card>
         </Section>
 
@@ -245,7 +245,7 @@ export default function GamePostgame({
           </div>
         </Section>
 
-        <Section id="scorecard" num="08" title="Key players scorecard" sub="Each club's three busiest skill players going into the game: did they beat their own per-game yardage?">
+        <Section id="scorecard" num="08" title="Key players vs their own average" sub="Each club's three busiest skill players going into the game: tonight's yardage next to their own per-game average.">
           <Card>
             {scorecard.length ? (
               <div className="tp-grid-2" style={{ gap: 20 }}>
@@ -254,15 +254,15 @@ export default function GamePostgame({
                     <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.orange, textTransform: 'uppercase', letterSpacing: '.14em', marginBottom: 6 }}>{t.nick}</div>
                     {scorecard.filter(s => s.team === t.id).map(s => (
                       <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '7px 0', borderTop: `1px solid ${C.soft}`, alignItems: 'center' }}>
-                        <span><b style={{ fontSize: 13 }}>{s.name}</b> <span style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint }}>{s.pos} · avg {s.expected.toFixed(0)} yds ({s.basis})</span></span>
-                        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><b style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{s.actual} yds</b><Chip tone={s.hit ? 'good' : 'bad'}>{s.hit ? 'Above avg' : 'Below avg'}</Chip></span>
+                        <span><b style={{ fontSize: 13 }}>{s.name}</b> <span style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint }}>{s.pos} · his per-game average before tonight: {s.avgBefore.toFixed(0)} yds ({s.avgGames} game{s.avgGames === 1 ? '' : 's'})</span></span>
+                        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><b style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums' }}>{s.actual} yds</b><span style={{ fontFamily: MONO, fontSize: 10.5, color: C.mute }}>{(s.actual - s.avgBefore) >= 0 ? '+' : ''}{Math.round(s.actual - s.avgBefore)} yds</span></span>
                       </div>
                     ))}
                   </div>
                 ))}
               </div>
             ) : <Empty>The scorecard needs at least one earlier game this season to compare against.</Empty>}
-            <Foot>Yardage is rushing for running backs and receiving for everyone else. A description of how each player did against his own norm.</Foot>
+            <Foot>Yardage is rushing for running backs and receiving for everyone else. Tonight&apos;s yardage minus the player&apos;s own per-game average before this game.</Foot>
           </Card>
         </Section>
 

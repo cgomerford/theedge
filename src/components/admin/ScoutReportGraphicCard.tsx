@@ -228,7 +228,7 @@ export default function ScoutReportGraphicCard(props: Props) {
       <div ref={cardRef} className="bg-stone-50 p-4 rounded-2xl" style={{ width: 900 }}>
         {/* Header — Edge logo + team logos */}
         <div className="flex items-center justify-between mb-3 px-1">
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-stone-900">The Edge</span>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-stone-900">x9Lab</span>
           <div className="flex items-center gap-3">
             <img src={`https://www.mlbstatic.com/team-logos/${props.awayTeamId}.svg`} alt={props.awayAbbr} className="w-8 h-8 object-contain" />
             <span className="font-mono text-[10px] text-stone-400">@</span>

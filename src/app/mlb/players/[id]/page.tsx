@@ -26,11 +26,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   
   const data = await getPlayerPageData(Number(id))
-  if (!data) return { title: 'Player · The Edge' }
+  if (!data) return { title: 'Player · x9Lab' }
   const { identity } = data
   const teamAbbr = identity.currentTeam?.abbr ?? ''
   return {
-    title: `${identity.fullName} — ${teamAbbr} ${identity.primaryPosition.abbreviation} · The Edge`,
+    title: `${identity.fullName} — ${teamAbbr} ${identity.primaryPosition.abbreviation} · x9Lab`,
     description: `${identity.fullName} stats: season line, form, career history and game log. Advanced pitch-level views are in the ${identity.isPitcher ? 'Pitching' : 'Batting'} Lab.`,
   }
 }

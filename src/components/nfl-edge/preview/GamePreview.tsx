@@ -11,25 +11,24 @@ import Link from 'next/link'
 import type { NflGame } from '@/lib/nfl-edge/games'
 import { dateLabel, kickoffLabel, roofKind, weekLabel, isPrimetime } from '@/lib/nfl-edge/games'
 import type { NflTeam } from '@/lib/nfl-edge/teams'
-import type { EdgeRead } from '@/lib/nfl-edge/factors'
-import { leanLabel } from '@/lib/nfl-edge/factors'
+import type { MatchupNote } from '@/lib/nfl-edge/matchup-notes'
 import type { QbCardData, TeamPlayers } from '@/lib/nfl-edge/players'
 import type { KeyPlayer, Meeting, SnapRow } from '@/lib/nfl-edge/preview'
 import { ordinal } from '@/lib/ordinal'
 import {
-  C, MONO, SANS, DISPLAY, Card, Chip, CompareBar, DISCLAIMER, Empty, Foot, GameHero, LeanPill, NflStyles, RestBadge, Section, TabStrip, TiltGauge, WeatherIcon, roofText,
+  C, MONO, SANS, DISPLAY, Card, Chip, CompareBar, DISCLAIMER, Empty, Foot, GameHero, NflStyles, RestBadge, Section, TabStrip, WeatherIcon, roofText,
 } from '../ui'
-import { DepthGrid, FactorExplorer, KeyPlayerCards, QbCards, type TeamLite } from './PreviewClient'
+import { DepthGrid, MatchupNotes, KeyPlayerCards, QbCards, type TeamLite } from './PreviewClient'
 
 const lite = (t: NflTeam): TeamLite => ({ id: t.id, nick: t.nick, color: t.color, textOn: t.textOn, logo: t.logo })
 
-const NAV: [string, string][] = [['snapshot', 'Snapshot'], ['edge', 'Edge read'], ['qbs', 'QBs'], ['depth', 'Starters'], ['key', 'Key players'], ['form', 'Recent form'], ['scout', 'Scout']]
+const NAV: [string, string][] = [['snapshot', 'Snapshot'], ['notes', 'Matchup notes'], ['qbs', 'QBs'], ['depth', 'Starters'], ['key', 'Key players'], ['form', 'Recent form'], ['scout', 'Scout']]
 
 export default function GamePreview({
-  game, home, away, homeRec, awayRec, read, snapshot, qbs, weapons, homePlayers, awayPlayers, homeKey, awayKey, lastMeeting, homeForm, awayForm, teams,
+  game, home, away, homeRec, awayRec, notes, snapshot, qbs, weapons, homePlayers, awayPlayers, homeKey, awayKey, lastMeeting, homeForm, awayForm, teams,
 }: {
   game: NflGame; home: NflTeam; away: NflTeam; homeRec: string; awayRec: string
-  read: EdgeRead
+  notes: MatchupNote[]
   snapshot: SnapRow[]
   qbs: [QbCardData | null, QbCardData | null]     // [away, home]
   weapons: [string | null, string | null]
@@ -40,8 +39,6 @@ export default function GamePreview({
 }) {
   const rk = roofKind(game.roof, game.stadium)
   const outdoorsKnown = rk === 'outdoors' && (game.temp != null || game.wind != null)
-  const label = leanLabel(read, home.id, away.id)
-  const leadCount = read.lean === 'home' ? read.homeCount : read.lean === 'away' ? read.awayCount : 0
   const availability = (p: TeamPlayers) => p.injuries.filter(i => i.status === 'Out' || i.status === 'Doubtful').length
 
   const resultLine = (g: NflGame, teamId: string) => {
@@ -104,30 +101,15 @@ export default function GamePreview({
           </Card>
         </Section>
 
-        {/* § 02 edge -------------------------------------------------------------- */}
-        <Section id="edge" num="02" title="Edge indicator" sub="Up to ten factors, each read head to head. We count which club leans ahead on more of them.">
-          {read.ready && read.total > 0 ? (
-            <>
-              <Card style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
-                  <TiltGauge home={home} away={away} homeCount={read.homeCount} awayCount={read.awayCount} total={read.total} size={200} />
-                  <div style={{ flex: 1, minWidth: 220 }}>
-                    <LeanPill label={label} count={leadCount} total={read.total} ready />
-                    <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, color: C.ink, marginTop: 8, lineHeight: 1.1 }}>
-                      {read.lean === 'even' ? `${read.homeCount} of ${read.total} each way` : `${leadCount} of ${read.total} factors lean ${read.lean === 'home' ? home.id : away.id}`}
-                    </div>
-                    <div style={{ fontFamily: SANS, fontSize: 13, color: '#5b5347', marginTop: 4 }}>
-                      {away.id} leads on {read.awayCount} · {home.id} leads on {read.homeCount} · {read.evenCount} even
-                    </div>
-                    {read.earlyNote && <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.orange, marginTop: 8, maxWidth: 520 }}>{read.earlyNote}</div>}
-                  </div>
-                </div>
-                <Foot>The needle points toward the club leading on more factors. It is a count, not a probability. {DISCLAIMER}</Foot>
-              </Card>
-              <FactorExplorer factors={read.factors} home={lite(home)} away={lite(away)} />
-            </>
+        {/* § 02 matchup notes ---------------------------------------------------- */}
+        <Section id="notes" num="02" title="Matchup notes" sub="Unit against unit. Both numbers, the sample, and the rank of 32.">
+          {notes.length > 0 ? (
+            <Card>
+              <MatchupNotes notes={notes} home={lite(home)} away={lite(away)} />
+              <Foot>Source: nflverse (CC-BY 4.0). {DISCLAIMER}</Foot>
+            </Card>
           ) : (
-            <Card><Empty>The factor read needs at least some played games (this season or last) for both clubs. It appears here as soon as that data is in.</Empty></Card>
+            <Card><Empty>Matchup notes need played games (this season or last) for both clubs. They appear here as soon as that data is in.</Empty></Card>
           )}
         </Section>
 

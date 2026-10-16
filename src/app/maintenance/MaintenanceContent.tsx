@@ -55,7 +55,7 @@ export default function MaintenanceContent() {
           marginBottom: '16px',
         }}
       >
-        THE EDGE
+        X9LAB
       </div>
 
       <div

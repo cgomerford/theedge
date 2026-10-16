@@ -189,7 +189,7 @@ export default function MinorLeagueTeamBoard({
         />
         <div className="relative">
           <div className="text-[10px] font-mono uppercase tracking-[0.25em] mb-2 opacity-70 text-white">
-            ⊕ The Edge · {team.league ?? 'Minor League Baseball'} · {team.level} affiliate
+            ⊕ x9Lab · {team.league ?? 'Minor League Baseball'} · {team.level} affiliate
           </div>
           <h1 className="font-serif text-4xl md:text-5xl font-bold leading-none tracking-tight mb-1 text-white">
             {team.name}<span style={{ color: ACCENT_2 }}>.</span>

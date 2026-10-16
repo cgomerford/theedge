@@ -1,16 +1,15 @@
 // src/lib/nfl-edge/slate.ts
 //
 // Everything the NFL homepage needs for "this week's slate": each game with both clubs, records,
-// the Edge lean chip (factor counts only), star-injury counts, weather/roof and rest badges.
+// star-injury counts, weather/roof and rest badges.
 //
-// Tables read: nfl_games, nfl_teams, nfl_team_form (via factors.ts), nfl_injuries, nfl_depth_charts.
+// Tables read: nfl_games, nfl_teams, nfl_team_form (via form.ts), nfl_injuries, nfl_depth_charts.
 // All small, all cached upstream; nothing here calls an external API.
 
 import { createAdminClient } from '@/lib/supabase'
 import { getNflTeams, type NflTeam } from './teams'
 import { currentWeek, getSeasonGames, isPrimetime, kickoffTime, isShortWeek, phaseOf, roofKind, weekLabel, type GamePhase, type NflGame, type RoofKind } from './games'
 import { getLeagueForm, leagueRates, type LeagueForm } from './form'
-import { computeEdgeRead, leanLabel, type Strength } from './factors'
 import { fetchAll, getDepthChart } from './players'
 import type { NflTickerGame } from '@/lib/nfl-ticker'
 
@@ -40,7 +39,6 @@ export type SlateGame = {
   phase: GamePhase
   homeRec: string
   awayRec: string
-  read: { ready: boolean; label: string; lean: 'home' | 'away' | 'even'; strength: Strength; homeCount: number; awayCount: number; total: number }
   starInjuries: { home: number; away: number }
   roof: RoofKind
   primetime: boolean
@@ -112,15 +110,12 @@ async function buildSlate(games: NflGame[], week: number, now: Date, withInjuryT
     weekGames.map(async (g): Promise<SlateGame | null> => {
       const home = teams.get(g.homeId), away = teams.get(g.awayId)
       if (!home || !away) return null
-      const [hq, aq] = await Promise.all([starterQbId(g.homeId, season, g.homeQbId), starterQbId(g.awayId, season, g.awayQbId)])
-      const r = await computeEdgeRead({ game: g, lf, homeQbId: hq, awayQbId: aq })
       const hr = lr.get(g.homeId), ar = lr.get(g.awayId)
       const net = (x?: typeof hr) => (x && x.offEpa != null && x.defEpa != null ? x.offEpa - x.defEpa : null)
       const hn = net(hr), an = net(ar)
       return {
         game: g, home, away, phase: phaseOf(g, now),
         homeRec: recordStr(records.get(g.homeId) ?? { w: 0, l: 0, t: 0 }), awayRec: recordStr(records.get(g.awayId) ?? { w: 0, l: 0, t: 0 }),
-        read: { ready: r.ready && r.total > 0, label: leanLabel(r, home.id, away.id), lean: r.lean, strength: r.strength, homeCount: r.homeCount, awayCount: r.awayCount, total: r.total },
         starInjuries: { home: stars.get(g.homeId) ?? 0, away: stars.get(g.awayId) ?? 0 },
         roof: roofKind(g.roof, g.stadium), primetime: isPrimetime(g),
         shortHome: isShortWeek(g.homeRest), shortAway: isShortWeek(g.awayRest),

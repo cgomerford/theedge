@@ -1257,7 +1257,7 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
 
       {/* Footer */}
       <div style={{ padding: '8px 16px', borderTop: '0.5px solid var(--border)', background: SAND, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 4 }}>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>⊕ The Edge · Information only · Not betting advice</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>⊕ x9Lab · Information only · Not betting advice</span>
         <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>Percentile ranks vs MLB this season</span>
       </div>
     </div>

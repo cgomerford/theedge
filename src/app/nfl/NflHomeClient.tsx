@@ -24,7 +24,7 @@ import type {
   LeagueCoverageTrendPoint, LeagueRouteTrendPoint, LeagueRushPassTrendPoint, LeagueSchemeEvolutionPoint,
 } from '@/lib/nfl/queries'
 import type {
-  LeaderRow, StandingsRow, TeamWithReport, FantasyProjectionRow, LeagueLeaderEntry,
+  LeaderRow, StandingsRow, TeamWithReport, LeagueLeaderEntry,
   TeamStrengthPoint,
 } from '@/lib/nfl/queries'
 import { NflSubHeader } from '@/components/nfl/NFLSubHeader'
@@ -39,14 +39,12 @@ type ServerGame = {
   awayScore?: number | null; homeScore?: number | null; venue?: string | null; broadcast?: string | null
   awayTeam: { teamId: string; logoUrl?: string | null; record?: string | null }
   homeTeam: { teamId: string; logoUrl?: string | null; record?: string | null }
-  edge?: { edgeTeam: string | null; factorsLeanCount: number | null; confidence: string | null } | null
 }
 type ScheduleGame = {
   id: string; href: string; awayId: string; homeId: string; awayLogo?: string; homeLogo?: string
   awayRecord?: string; homeRecord?: string
   awayScore: number | null; homeScore: number | null; status: string; when: string | null
   venue?: string; broadcast?: string; week?: number | null
-  edgeTeam?: string | null; factorsLeanCount?: number | null
 }
 
 type Props = {
@@ -61,7 +59,6 @@ type Props = {
   advLeaders: LeaderRow[]
   standings: StandingsRow[]
   fantasyLeaders: LeaderRow[]
-  fantasyProjections: FantasyProjectionRow[]
   intLeaders: LeaderRow[]
   tflLeaders: LeaderRow[]
   turnoverLeaders: LeaderRow[]
@@ -105,7 +102,6 @@ function mapServerGames(games: ServerGame[]): ScheduleGame[] {
     awayScore: g.awayScore ?? null, homeScore: g.homeScore ?? null,
     status: g.gameStatus === 'final' ? 'final' : g.gameStatus === 'in_progress' ? 'in_progress' : 'scheduled',
     when: g.gametime ?? null, venue: g.venue ?? undefined, broadcast: g.broadcast ?? undefined, week: g.week ?? null,
-    edgeTeam: g.edge?.edgeTeam ?? null, factorsLeanCount: g.edge?.factorsLeanCount ?? null,
   }))
 }
 
@@ -265,7 +261,7 @@ export default function NflHomeClient(props: Props) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
             <div>
               <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-          § The Edge · NFL {props.statsSeason}
+          § x9Lab · NFL {props.statsSeason}
         </p>
               <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: 0, fontSize: 30, color: '#1A1A1A' }}>{weekLabel}</h2>
             
@@ -549,7 +545,6 @@ function GameCard({ game, teamColorMap, isFirst }: { game: ScheduleGame; teamCol
   const final = game.status === 'final'
   const awayColor = teamColorMap.get(game.awayId) ?? '#1A1A1A'
   const homeColor = teamColorMap.get(game.homeId) ?? '#1A1A1A'
-  const hasEdge = game.edgeTeam != null && game.factorsLeanCount != null && game.factorsLeanCount > 0
 
   return (
     <Link
@@ -579,9 +574,7 @@ function GameCard({ game, teamColorMap, isFirst }: { game: ScheduleGame; teamCol
         )}
       </div>
 
-      <div style={{ minHeight: 14, margin: '4px 0 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: 8, letterSpacing: '0.04em', fontWeight: hasEdge ? 700 : 400, color: hasEdge ? '#FF5722' : '#D4D0C8' }}>
-        {hasEdge ? `${game.factorsLeanCount} factors lean ${game.edgeTeam}` : 'Edge coming'}
-      </div>
+      <div style={{ minHeight: 14, margin: '4px 0 8px' }} />
 
       <div style={{ display: 'flex', height: 5 }}>
         <div style={{ flex: 1, background: awayColor }} />

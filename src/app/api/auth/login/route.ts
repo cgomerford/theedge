@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = loginLinkEmail(parsed.data.email, token)
       await resend.emails.send({
-        from: 'The Edge <hello@edgereportdaily.com>',
+        from: 'x9Lab <hello@edgereportdaily.com>',
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,

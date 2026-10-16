@@ -278,7 +278,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
       <div className="sg-head">
         <div className="sg-brand">
           <span className="sg-mk">⊕</span>
-          <span className="sg-nm">THE EDGE</span>
+          <span className="sg-nm">X9LAB</span>
           <span className="sg-kick">Scout Report · {props.dateLabel}</span>
         </div>
         <div className="sg-logos">

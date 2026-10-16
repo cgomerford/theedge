@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "About · The Edge",
-  description: "Why The Edge exists, who's behind it, and what we believe about sports analytics.",
+  title: "About · x9Lab",
+  description: "Why x9Lab exists, who's behind it, and what we believe about sports analytics.",
 }
 
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export default function AboutPage() {
 
         <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2">§ About</div>
         <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mb-12">
-          About The Edge<span className="text-[#FF5722]">.</span>
+          About x9Lab<span className="text-[#FF5722]">.</span>
         </h1>
 
         <div className="space-y-6 text-lg leading-relaxed text-stone-700 font-serif">
@@ -28,7 +28,7 @@ export default function AboutPage() {
             On the other side, mainstream sports media — the takes, the highlights, the box scores. Easy to consume, but rarely teaches you anything you didn&apos;t already know.
           </p>
           <p>
-            The Edge sits in the middle. We take the data the experts use, find the one or two stats that will actually matter in tonight&apos;s game, and tell you the story before first pitch. Five minutes. Free. Every day.
+            x9Lab sits in the middle. We take the data the experts use, find the one or two stats that will actually matter in tonight&apos;s game, and tell you the story before first pitch. Five minutes. Free. Every day.
           </p>
           <p>
             We&apos;re built for fans who want to watch smarter, journalists who want angles their colleagues missed, and anyone who&apos;s ever wondered why the same pitcher dominates one lineup and gets shelled by another.

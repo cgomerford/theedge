@@ -30,7 +30,7 @@ import FantasyPlayerCard from '@/components/fantasy/FantasyPlayerCard'
 
 export const revalidate = 1800
 export const metadata = {
-  title: 'Pitchers · The Fantasy Desk · The Edge',
+  title: 'Pitchers · The Fantasy Desk · x9Lab',
   description: 'Streamers, two-start weeks, and trending pitchers — everything about who to start, in one place.',
 }
 

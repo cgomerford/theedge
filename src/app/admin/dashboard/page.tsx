@@ -11,11 +11,18 @@ import GamePreviewBuilder from '@/components/admin/game-preview/GamePreviewBuild
 import ScoutGraphicBuilder, { type BuilderGame, type BuilderPitcherSide, type BuilderRosterBatter } from '@/components/admin/scout-graphic/ScoutGraphicBuilder'
 import InGameXCardSection from '@/components/admin/InGameXCardSection'
 import PostseasonBracketBuilder from '@/components/admin/PostseasonBracketBuilder'
+import PitcherReel from '@/components/admin/PitcherReel'
+import PostgameReel from '@/components/admin/PostgameReel'
+import BatterReel from '@/components/admin/BatterReel'
+import StatLineBuilder from '@/components/admin/stat-line/StatLineBuilder'
 import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import { getScheduleForDate, getPitcherRecentStarts } from '@/lib/mlb'
+import { buildStoryExtras } from '@/components/admin/story/extras'
+import type { StoryInputGame } from '@/components/admin/story/types'
 import { getPitcherStatsFull } from '@/lib/pitcher-full-stats'
 import { getPitcherMinorsProfile } from '@/lib/pitcher-minors-profile'
 import { createAdminClient } from '@/lib/supabase'
+import SlateDatePicker from '@/components/admin/SlateDatePicker'
 import { css } from '@/app/admin/admin-css'
 
 export const dynamic = 'force-dynamic'
@@ -73,11 +80,16 @@ async function getRichArsenal(pitcherId: number | null): Promise<RichArsenalPitc
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string; storyStill?: string; storyCheck?: string; storySafe?: string }>
 }) {
-  const { date } = await searchParams
-  const slateDate = date || etDate(0)
+  const { date, storyStill, storyCheck, storySafe } = await searchParams
+  // Only a well-formed YYYY-MM-DD reaches the schedule/DB calls; anything else falls back to today.
+  const today = etDate(0)
+  const slateDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today
 
+  // The story teaser is built from the SCHEDULE, not from edge_predictions (it never shows a lean).
+  // `reads` still feeds the other dashboard sections, unchanged.
+  const slateSchedule = await getScheduleForDate(slateDate)
   const reads = await getTodaysReads(slateDate)
 
   const gamesWithReports = await Promise.all(
@@ -121,7 +133,32 @@ export default async function AdminDashboard({
     })
   )
 
-  const slateSchedule = await getScheduleForDate(slateDate)
+  const isOff = (g: (typeof slateSchedule)[number]) => /postpone|cancel/i.test(g.status?.detailedState ?? '')
+  const storyGames: StoryInputGame[] = await Promise.all(
+    slateSchedule.filter(g => !isOff(g)).map(async (g): Promise<StoryInputGame> => {
+      const away = g.teams.away.team.abbreviation ?? g.teams.away.team.name
+      const home = g.teams.home.team.abbreviation ?? g.teams.home.team.name
+      const existing = gamesWithReports.find(x => x.game_pk === g.gamePk)
+      const bundle = existing ?? (await getScoutReportBundle(g.gamePk))
+      const base = {
+        game_pk: g.gamePk, matchup: `${away} @ ${home}`, report: null as null,
+        lineups_confirmed: existing ? !!existing.lineups_confirmed : false,
+      }
+      if (bundle) {
+        // strip every edge_predictions field (TodaysRead) before it can reach the client
+        const merged: Record<string, unknown> = { ...(bundle as object), ...base }
+        for (const k of ['lean_team', 'other_team', 'abs_edge', 'raw_edge', 'dominant_factor', 'factor_count', 'confidence_tier', 'story_lead', 'summary', 'near_split']) delete merged[k]
+        return merged as unknown as StoryInputGame
+      }
+      return {
+        ...base, awayAbbr: away, homeAbbr: home, awayName: away, homeName: home, awayColor: '#FF5722', homeColor: '#1A1A1A',
+        awayPitcherName: 'TBD', homePitcherName: 'TBD', awayPitcherHotZones: {}, homePitcherHotZones: {},
+        awayPitcherArsenalZones: {}, homePitcherArsenalZones: {}, awayLineupZones: [], homeLineupZones: [],
+        awayLineupSpray: [], homeLineupSpray: [], awayPitcherTTO: null, homePitcherTTO: null,
+        awayPitcherThrows: 'R' as const, homePitcherThrows: 'R' as const, awayLineupSize: 0, homeLineupSize: 0,
+      }
+    }),
+  )
 
   const liveGameOptions = slateSchedule
     .filter(g => g.status?.abstractGameState === 'Live')
@@ -208,6 +245,13 @@ export default async function AdminDashboard({
     })
   )
 
+  const storyExtras = Object.fromEntries(
+    storyGames.map(g => [
+      g.game_pk,
+      buildStoryExtras(slateSchedule.find(sg => sg.gamePk === g.game_pk), !!g.lineups_confirmed),
+    ]),
+  )
+
   const fmtDate = (s: string) =>
     new Date(`${s}T12:00:00`).toLocaleDateString('en-GB', {
       weekday: 'short',
@@ -222,11 +266,12 @@ export default async function AdminDashboard({
       <div className="wrap">
         <div className="topbar">
           <div className="brand">
-            <span className="mark">⊕</span> THE EDGE <span className="sub">/ admin</span>
+            <span className="mark">⊕</span> X9LAB <span className="sub">/ admin</span>
           </div>
           <div className="topmeta">
             Slate {fmtDate(slateDate)} · <a href="/admin/archive" style={{ color: 'inherit' }}>Archive →</a>
           </div>
+          <SlateDatePicker value={slateDate} today={today} />
         </div>
 
         <section className="sec card">
@@ -235,7 +280,43 @@ export default async function AdminDashboard({
             <h2>Game Preview Teaser</h2>
             <span className="tag">SP · team numbers · bullpen · 9:16 · fast cut</span>
           </div>
-          <GamePreviewTeaser games={gamesWithReports} slateDate={slateDate} />
+          <GamePreviewTeaser games={storyGames} slateDate={slateDate} storyExtras={storyExtras} storyStill={storyStill ?? null} storyCheck={storyCheck === '1'} storySafe={storySafe === '1'} />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Pitcher Reel</h2>
+            <span className="tag">9:16 · box score · arsenal · arm angle · hits · through the order · vs season · next start</span>
+          </div>
+          <PitcherReel slateDate={slateDate} />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Postgame Reel</h2>
+            <span className="tag">9:16 · final &amp; linescore · game flow · key plays · top hitters · pitching lines · hits on the field</span>
+          </div>
+          <PostgameReel slateDate={slateDate} />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Batter Reel</h2>
+            <span className="tag">9:16 · box line · every plate appearance · spray chart · contact quality · pitches seen</span>
+          </div>
+          <BatterReel slateDate={slateDate} />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Player Stat Line Graphic</h2>
+            <span className="tag">PNG · headshot + team-colour gradient · 4:5 / 1:1 / 9:16</span>
+          </div>
+          <StatLineBuilder />
         </section>
 
         <section className="sec card">

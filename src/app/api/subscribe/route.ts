@@ -189,7 +189,7 @@ let fanType: string = 'casual'
       const content = verificationEmail(parsed.data.email, verificationToken)
 
       await resend.emails.send({
-        from: 'The Edge <hello@edgereportdaily.com>',
+        from: 'x9Lab <hello@edgereportdaily.com>',
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,

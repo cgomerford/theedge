@@ -187,7 +187,7 @@ const GamePreviewCard = forwardRef<HTMLDivElement, GamePreviewCardProps>(functio
       <div className="sg-head">
         <div className="sg-brand">
           <span className="sg-mk">⊕</span>
-          <span className="sg-nm">THE EDGE</span>
+          <span className="sg-nm">X9LAB</span>
           <span className="sg-kick">Game Preview · {props.dateLabel}</span>
         </div>
         <div className="sg-logos">

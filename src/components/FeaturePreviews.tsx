@@ -127,7 +127,7 @@ const PREVIEWS: Preview[] = [
   { tag: 'Pitching Lab', sport: 'MLB', title: 'Full pitch arsenal', body: 'Usage, velocity, movement and put-away rates for every pitch a starter throws.', visual: <Arsenal /> },
   { tag: 'Scout Report', sport: 'MLB', title: 'Spray charts', body: 'Where every ball in play actually lands, scaled to the real ballpark.', visual: <SprayChart /> },
   { tag: 'NFL', sport: 'NFL', title: 'Coverage matchups', body: 'What a defense runs by down and distance — and where it leaves the field open.', visual: <Coverage /> },
-  { tag: 'The Edge', sport: 'MLB', title: 'Factor breakdown', body: 'The eight factors behind every read, and which side each one leans.', visual: <EdgeFactors /> },
+  { tag: 'x9Lab', sport: 'MLB', title: 'Factor breakdown', body: 'The eight factors behind every read, and which side each one leans.', visual: <EdgeFactors /> },
 ]
 
 export default function FeaturePreviews() {

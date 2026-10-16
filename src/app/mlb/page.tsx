@@ -16,7 +16,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import ArticlesTeaser from '@/components/ArticlesTeaser'
 
 export const metadata = {
-  title: 'MLB · The Edge',
+  title: 'MLB · x9Lab',
   description: "Division standings, stat leaders, and today's edges — the GM briefing for baseball.",
 }
 

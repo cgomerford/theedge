@@ -146,7 +146,7 @@ const PostseasonBracketCard = forwardRef<HTMLDivElement, PostseasonBracketCardPr
       <div className="pb-head">
         <div className="pb-brand">
           <span className="pb-mk">⊕</span>
-          <span className="pb-nm">THE EDGE</span>
+          <span className="pb-nm">X9LAB</span>
           <span className="pb-kick">Postseason · {year}</span>
         </div>
         <div className="pb-title">The Bracket</div>
@@ -185,7 +185,7 @@ const PostseasonBracketCard = forwardRef<HTMLDivElement, PostseasonBracketCardPr
       <Slot m={slots.ws} x={COL.ws} y={Y.ws} width={WIDTH.ws} height={72} isWs />
 
       <div className="pb-foot">
-        <div className="pb-note">Matchups and results as reported · The Edge</div>
+        <div className="pb-note">Matchups and results as reported · x9Lab</div>
         <div className="pb-cta">edgereportdaily.com</div>
       </div>
     </div>

@@ -141,7 +141,11 @@ async function batchLookup(
 
 // ─── Main handler ────────────────────────────────────────────────────────────
 
+const RETIRED = true as boolean
+
 export async function GET(request: NextRequest) {
+  // RETIRED 8 Oct 2026: ESPN ownership cron is off (removed from vercel.json). Returns before any fetch or write.
+  if (RETIRED) return NextResponse.json({ retired: true }, { status: 410 })
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -182,7 +182,7 @@ export function generateTweetCopy(
 ): string {
   const top = result.batters[0]
   if (!top) {
-    return `Top 3 batters to watch for ${teamName} this series — full breakdown on The Edge.`
+    return `Top 3 batters to watch for ${teamName} this series — full breakdown on x9Lab.`
   }
 
   return [
@@ -190,7 +190,7 @@ export function generateTweetCopy(
     ``,
     `${top.player_name} leads the read: ${leanText(top.series_score).toLowerCase()} across the confirmed starters left in this series.`,
     ``,
-    `Full zone + pitch-type breakdown on The Edge.`,
+    `Full zone + pitch-type breakdown on x9Lab.`,
     ``,
     `#${teamName.replace(/\s+/g, '')} #MLB`,
   ].join('\n')
@@ -498,7 +498,7 @@ function ShareCardInner({
             color: '#1A1A1A',
           }}
         >
-          THE EDGE
+          X9LAB
         </div>
         <div
           style={{
@@ -545,7 +545,7 @@ function ShareCardInner({
                 whiteSpace: 'nowrap',
               }}
             >
-              THE EDGE · EDGEREPORTDAILY.COM
+              X9LAB · EDGEREPORTDAILY.COM
             </span>
           ))}
         </div>

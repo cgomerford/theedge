@@ -4,7 +4,7 @@
  * Deterministic "why" builder that reads the deltas from
  * PlayerSignalContext and writes a plain-English explanation. This is
  * the fantasy site's differentiator: everywhere else lists numbers,
- * The Edge tells you what they mean.
+ * x9Lab tells you what they mean.
  *
  * Deterministic-first, LLM-later:
  *   - Ship this as pure computed text so it's cheap, cached-forever,

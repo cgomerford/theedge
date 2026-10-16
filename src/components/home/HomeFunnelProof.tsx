@@ -31,7 +31,7 @@ export default function HomeFunnelProof({
         <div className="grid lg:grid-cols-12 gap-10 lg:gap-14 items-start">
           <div className="lg:col-span-7">
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] mb-4">
-              THE EDGE · {activeSportLabel} IN SEASON
+              X9LAB · {activeSportLabel} IN SEASON
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold tracking-tight mb-5 text-stone-900 leading-[1.05]">
               See the edge before you sign up<span className="text-[#ea580c]">.</span>

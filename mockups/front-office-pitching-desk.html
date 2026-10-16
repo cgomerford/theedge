@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phillies Pitching Desk · Front Office · The Edge (mockup)</title>
+<!-- Mockup fonts. In the app, swap to the site's existing font tokens. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#FAF8F3; --card:#FFFFFF; --ink:#1A1A1A; --muted:#6E6A60; --faint:#A39E92;
+  --line:#E6E1D6; --soft:#F3F0E8; --accent:#FF5722; --team:#D63A3A; --team-ink:#FFFFFF;
+  --good:#C8412F; --good-bg:#FBE3DD; --poor:#4E6E8E; --poor-bg:#E1E9F1;
+  --ok:#3E9C7A; --ok-bg:#E3F3EC; --warn:#D9A21B; --warn-bg:#FBF1D2;
+  --display:"Schibsted Grotesk",system-ui,sans-serif; --body:"DM Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  --r:10px; --r-sm:999px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme: dark;
+    --bg:#16150F; --card:#1F1E18; --ink:#F1EEE6; --muted:#ABA697; --faint:#7A766B;
+    --line:#34322A; --soft:#272620; --good-bg:#3A1F1A; --poor-bg:#1C2833; --ok-bg:#16302A; --warn-bg:#3A3018; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:inherit}
+
+/* Top nav (matches current site) */
+.nav{display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:30}
+.logo{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em}
+.logo b{color:var(--accent)}
+.nav .sep{width:1px;height:22px;background:var(--line)}
+.nav a.nl{text-decoration:none;font-size:13px;color:var(--muted)}
+.nav .sp{flex:1}
+.nav .login{font-weight:600;font-size:13px}
+.nav .cta{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:7px 14px;font-weight:600;font-size:13px}
+
+.wrap{max-width:1240px;margin:0 auto;padding:22px 28px 120px}
+.crumb{font-family:var(--mono);font-size:11px;color:var(--accent)}
+h1{font-family:var(--display);font-weight:800;font-size:40px;letter-spacing:-.03em;margin:4px 0 14px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;border:1px solid var(--line);background:var(--card);border-radius:var(--r-sm);padding:6px 11px;text-transform:uppercase}
+.pill.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.new::after{content:"new";margin-left:6px;color:var(--accent)}
+
+.banner{margin:16px 0 0;background:var(--team);color:var(--team-ink);border-radius:var(--r);padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.banner small{font-family:var(--mono);font-size:10px;opacity:.85;letter-spacing:.06em}
+.banner h2{font-family:var(--display);font-weight:800;font-size:22px;margin:2px 0 0;letter-spacing:-.02em}
+.sample{background:rgba(255,255,255,.18);border-radius:6px;padding:4px 8px;font-family:var(--mono);font-size:10px}
+
+/* Layout: index rail + content (mirrors Scout Report) */
+.layout{display:grid;grid-template-columns:190px 1fr;gap:26px;margin-top:20px}
+.rail{position:sticky;top:120px;align-self:start;font-size:12.5px}
+.rail h6{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em;margin:0 0 8px;font-weight:500}
+.rail ol{list-style:none;margin:0 0 18px;padding:0}
+.rail li{display:flex;gap:8px;padding:4px 0}
+.rail li span{font-family:var(--mono);font-size:10.5px;color:var(--faint);width:18px}
+.rail li a{text-decoration:none}
+.rail li a:hover{color:var(--accent)}
+.rail li.locked{color:var(--faint)}
+.rail li.locked a{pointer-events:none}
+
+/* Analyst controls */
+.controls{position:sticky;top:57px;z-index:20;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl label,.ctl .lab{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase}
+select{font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;padding:6px 10px;font-size:12px;font-family:var(--mono)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+
+/* Sections & cards */
+section{padding-top:28px;scroll-margin-top:130px}
+.sec-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mark{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.sec-h h2{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;margin:0}
+.badge{font-family:var(--mono);font-size:9.5px;border:1px solid var(--line);border-radius:4px;padding:2px 6px;color:var(--muted)}
+.badge.pro{border-color:var(--accent);color:var(--accent)}
+.lede{color:var(--muted);max-width:72ch;margin:6px 0 14px}
+.q{font-family:var(--display);font-weight:700;color:var(--ink)}
+
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g-7-5{grid-template-columns:7fr 5fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;position:relative;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px}
+.ct{font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.cs{font-size:12px;color:var(--muted);margin-top:2px}
+.tools{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.src{font-family:var(--mono);font-size:9px;color:var(--faint);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+.tb{border:1px solid var(--line);background:var(--card);border-radius:5px;font-family:var(--mono);font-size:10px;padding:3px 7px}
+.tb:hover{border-color:var(--ink)}
+.tb.pinned{background:var(--ink);color:var(--bg)}
+.method{display:none;margin-top:10px;padding:10px 12px;background:var(--soft);border-radius:8px;font-size:12.5px;color:var(--muted)}
+.method.open{display:block}
+.method b{color:var(--ink)}
+.foot{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px}
+.read{border-left:3px solid var(--accent);padding:8px 12px;background:var(--soft);border-radius:0 8px 8px 0;font-size:13px;margin-top:12px}
+.read b{font-family:var(--display)}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-family:var(--mono);font-size:9.5px;color:var(--faint);font-weight:500;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap;letter-spacing:.04em;text-transform:uppercase}
+th:first-child,td:first-child{text-align:left}
+th.sort{cursor:pointer}
+th.sort:hover{color:var(--ink)}
+td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);font-size:12px;white-space:nowrap}
+td.n{font-family:var(--body);font-weight:600;font-size:13px}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--soft)}
+tr.sel td{background:var(--soft)}
+.cell{display:inline-block;min-width:44px;padding:1px 6px;border-radius:4px}
+.hi{background:var(--good-bg);color:var(--good)} .hi2{background:var(--good);color:#fff}
+.lo{background:var(--poor-bg);color:var(--poor)} .lo2{background:var(--poor);color:#fff}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.muted{color:var(--faint)}
+
+/* Signal meter */
+.meter{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.meter i{display:block;width:44px;height:5px;border-radius:3px;background:var(--line);position:relative;overflow:hidden}
+.meter i b{position:absolute;inset:0 auto 0 0;border-radius:3px}
+.meter.early b{background:var(--faint)} .meter.settling b{background:var(--warn)} .meter.reliable b{background:var(--ok)}
+
+/* Pitcher header */
+.ph{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;margin-top:16px}
+.avatar{width:58px;height:58px;border-radius:50%;background:var(--soft);border:1px solid var(--line);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:18px}
+.ph h3{font-family:var(--display);font-weight:800;font-size:24px;margin:0;letter-spacing:-.02em}
+.ph .meta{font-size:12.5px;color:var(--muted)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chip{font-family:var(--mono);font-size:10px;border-radius:4px;padding:2px 6px;color:#fff}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:112px;background:var(--card)}
+.kpi .l{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em}
+
+/* Charts */
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--mono);fill:var(--muted);font-size:10px}
+svg .ax{stroke:var(--line)}
+svg .ax0{stroke:var(--faint)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:6px}
+.toggles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tg{border:1px solid var(--line);background:var(--card);border-radius:var(--r-sm);padding:3px 9px;font-family:var(--mono);font-size:10.5px}
+.tg.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chk{font-size:12px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+
+/* Heatmap */
+.heat{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:270px;margin:0 auto;position:relative}
+.heat div{aspect-ratio:1/1;border-radius:3px;display:grid;place-items:center;font-family:var(--mono);font-size:10px}
+.heat-wrap{position:relative;max-width:270px;margin:0 auto}
+.zone-box{position:absolute;left:20%;top:20%;width:60%;height:60%;border:2px solid var(--ink);pointer-events:none;border-radius:2px}
+
+/* Locked / upcoming */
+.bench{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bench .card{background:transparent;border-style:dashed}
+.bench h4{font-family:var(--display);font-weight:700;font-size:15px;margin:2px 0 4px}
+.bench p{margin:0;font-size:12.5px;color:var(--muted)}
+
+/* Notebook tray */
+.tray{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 12px 10px 16px;display:flex;gap:14px;align-items:center;z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.18);max-width:calc(100% - 32px)}
+.tray .t{font-family:var(--mono);font-size:11px}
+.tray .list{font-size:12px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.tray button{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600}
+.tray button.ghost{background:transparent;border:1px solid rgba(255,255,255,.3)}
+.toast{position:fixed;top:70px;right:20px;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:13px;z-index:50;display:none;max-width:320px}
+
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}.rail{display:none}
+  .g2,.g3,.g-7-5{grid-template-columns:1fr}.bench{grid-template-columns:1fr 1fr}
+  .ph{grid-template-columns:auto 1fr}.ph .kpis{grid-column:1/-1}
+  .controls{top:57px}
+}
+@media (max-width:600px){ .wrap{padding:16px 14px 120px} h1{font-size:30px} .bench{grid-template-columns:1fr} .nav{padding:10px 14px} .nav a.nl,.nav .sep{display:none} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span aria-hidden="true">☰</span>
+  <span class="logo">The Edge<b>.</b></span>
+  <span class="sep"></span>
+  <a class="nl" href="#">MLB ▾</a><a class="nl" href="#">NFL ▾</a><a class="nl" href="#">Articles</a><a class="nl" href="#">About ▾</a>
+  <span class="sp"></span>
+  <span class="login">Log in</span>
+  <button class="cta">Free daily reports</button>
+</nav>
+
+<main class="wrap">
+  <div class="crumb">● MLB · FRONT OFFICE</div>
+  <h1>Phillies Front Office</h1>
+  <div class="pills" role="tablist" aria-label="Front Office tools">
+    <button class="pill">Front office</button>
+    <button class="pill on new" aria-selected="true">Pitching desk</button>
+    <button class="pill">Roster blueprint</button>
+    <button class="pill">The ledger</button>
+    <button class="pill">Breakout radar</button>
+    <button class="pill">Swing decisions</button>
+  </div>
+
+  <div class="banner">
+    <div><small>2026 · NL EAST · PITCHING DEPARTMENT</small><h2>Philadelphia Phillies</h2></div>
+    <div style="display:flex;gap:8px;align-items:center"><span class="sample">Mockup · sample data</span><small>Snapshot Oct 15, 2026</small></div>
+  </div>
+
+  <div class="layout">
+    <aside class="rail" aria-label="Sections">
+      <h6>SECTIONS</h6>
+      <ol>
+        <li><span>00</span><a href="#s0">Staff board</a></li>
+        <li><span>01</span><a href="#s1">Stuff &amp; shape</a></li>
+        <li><span>02</span><a href="#s2">Execution &amp; results</a></li>
+        <li><span>03</span><a href="#s3">Durability &amp; trajectory</a></li>
+      </ol>
+      <h6>ON THE BENCH</h6>
+      <ol>
+        <li class="locked"><span>04</span><a>Edge Stuff Grade</a></li>
+        <li class="locked"><span>05</span><a>Pitch design lab</a></li>
+        <li class="locked"><span>06</span><a>Arsenal optimiser</a></li>
+        <li class="locked"><span>07</span><a>Role &amp; platoon fit</a></li>
+        <li class="locked"><span>08</span><a>Prospect arms</a></li>
+        <li class="locked"><span>09</span><a>Control &amp; value</a></li>
+      </ol>
+    </aside>
+
+    <div>
+      <!-- Analyst controls: every chart below reads these -->
+      <div class="controls" role="toolbar" aria-label="Analyst controls">
+        <div class="ctl"><label for="pSel">Pitcher</label><select id="pSel"></select></div>
+        <div class="ctl"><span class="lab">Window</span><div class="seg" id="winSeg">
+          <button class="on" data-v="season">Season</button><button data-v="l30">Last 30d</button><button data-v="l15">Last 15d</button><button data-v="l5">Last 5 apps</button></div></div>
+        <div class="ctl"><span class="lab">Batter side</span><div class="seg" id="sideSeg">
+          <button class="on" data-v="all">All</button><button data-v="R">vs RHB</button><button data-v="L">vs LHB</button></div></div>
+        <div class="ctl"><label for="cmpSel">Compare with</label><select id="cmpSel"><option value="lg">League average</option></select></div>
+      </div>
+
+      <div id="pitcherHead"></div>
+
+      <!-- §00 Staff board -->
+      <section id="s0">
+        <div class="sec-h"><span class="mark">§ 00</span><h2>Staff board</h2><span class="badge">FREE</span></div>
+        <p class="lede"><span class="q">Who on this staff is pitching better or worse than his results say?</span> The analyst's first pass: process stats that settle fast, set against the ERA everyone sees. Click a pitcher to load him into every tool below.</p>
+        <div class="grid g-7-5">
+          <article class="card" data-title="Staff board">
+            <div class="card-h"><div><div class="ct">Pitching staff · 2026</div><div class="cs">Sort any column. Shading = vs league average for the role.</div></div>
+              <div class="tools"><span class="src">MLB API</span><span class="src">SAVANT</span><span class="src">EDGE CALC</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div class="tbl-wrap"><table id="staffTbl"></table></div>
+            <div class="method"><b>K−BB%</b> strikeouts minus walks per batter faced; settles first. <b>CSW%</b> called strikes plus whiffs per pitch. <b>xERA</b> from Savant expected stats. <b>FB Δ</b> primary fastball velocity vs last season. <b>Stuff Grade</b> is The Edge's own model and arrives in a later release.</div>
+          </article>
+          <article class="card" data-title="Process vs results">
+            <div class="card-h"><div><div class="ct">Process vs results</div><div class="cs">Above the line: ERA worse than expected. Below: outperforming.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="quad"></div>
+            <div class="method">x = xERA (what the quality of contact, strikeouts and walks deserved), y = actual ERA. Distance from the diagonal is the part of a pitcher's line driven by defence, sequencing and luck, which tends not to repeat.</div>
+          </article>
+        </div>
+      </section>
+
+      <!-- §01 Stuff -->
+      <section id="s1">
+        <div class="sec-h"><span class="mark">§ 01</span><h2>Stuff &amp; shape</h2><span class="badge">FREE TABLE</span><span class="badge pro">PRO DRILL-DOWN</span></div>
+        <p class="lede"><span class="q">Is the raw material good?</span> Front offices grade each pitch on its physics: speed, movement, spin, where it's released and the angle it arrives. These settle within a few starts, long before ERA means anything.</p>
+
+        <article class="card" data-title="Arsenal">
+          <div class="card-h"><div><div class="ct" id="arsTitle">Arsenal</div><div class="cs">Every pitch, graded against league average for that pitch type. Click a row to focus it in the charts.</div></div>
+            <div class="tools"><span class="src">SAVANT</span><span class="src">EDGE CALC</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+          <div class="tbl-wrap"><table id="arsTbl"></table></div>
+          <div class="method"><b>IVB</b> induced vertical break: rise relative to a spinless pitch. <b>HB</b> horizontal break, arm side positive (mirrored for lefties so both hands compare). <b>Active spin</b> share of spin that creates movement (Savant). <b>VAA</b> vertical approach angle at the plate, computed from release velocity and acceleration; flatter four-seamers play up in the zone. <b>RV/100</b> run value per 100 pitches, pitcher's view (positive = good). <b>Stuff Grade</b>: The Edge's own model, coming soon.</div>
+          <div class="foot">Shading: deep = 1.5+ SD from league average for the pitch type, light = 0.5–1.5 SD.</div>
+        </article>
+
+        <div class="grid g2" style="margin-top:14px">
+          <article class="card" data-title="Movement profile">
+            <div class="card-h"><div><div class="ct">Movement profile</div><div class="cs">Each dot is a pitch. Hollow rings are league average for that type.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <label class="chk"><input type="checkbox" id="lgRings" checked> Show league averages</label>
+            <div id="mov"></div>
+            <div class="legend" id="movLeg"></div>
+            <div class="method">Inches of induced break from the catcher's view, mirrored so arm side is always right. The dashed line is the pitcher's arm angle. Separation between pitches that start on the same line is what makes hitters guess wrong.</div>
+          </article>
+          <article class="card" data-title="Release & extension">
+            <div class="card-h"><div><div class="ct">Release point</div><div class="cs">Tight, overlapping release points hide which pitch is coming.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="rel"></div>
+            <div class="legend" id="relLeg"></div>
+            <div class="method">Release side and height in feet, catcher's view. <b>Spread</b> is the average distance of each pitch type's release centre from the overall centre; lower means pitches look alike out of the hand. Extension is how far in front of the rubber he lets go; more extension shortens the hitter's reaction time.</div>
+          </article>
+        </div>
+
+        <article class="card" data-title="Shape comps" style="margin-top:14px">
+          <div class="card-h"><div><div class="ct">Shape comps <span class="badge pro" style="margin-left:6px">PRO</span></div><div class="cs">The five league pitches closest in shape to his, and how they performed. How front offices spot a pitch that should be working better.</div></div>
+            <div class="tools"><span class="src">SAVANT</span><span class="src">EDGE CALC</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+          <div class="toggles" id="compTg"></div>
+          <div class="tbl-wrap"><table id="compTbl"></table></div>
+          <div class="method">Nearest neighbours on standardised velocity, IVB, HB, spin rate, extension, arm angle and VAA (z-scored within pitch type, then Euclidean distance). Similarity = 100 × e<sup>−distance</sup>. If his results trail his comps', the shape isn't the problem; look at location or sequencing.</div>
+        </article>
+        <div class="read" id="read1"></div>
+      </section>
+
+      <!-- §02 Execution -->
+      <section id="s2">
+        <div class="sec-h"><span class="mark">§ 02</span><h2>Execution &amp; results</h2><span class="badge pro">PRO</span></div>
+        <p class="lede"><span class="q">Is he getting the results his stuff deserves, and does he control it?</span> Analysts strip luck out of ERA, then check whether he lands pitches where they work and wins counts.</p>
+
+        <div class="grid g2">
+          <article class="card" data-title="ERA estimators">
+            <div class="card-h"><div><div class="ct">ERA vs estimators</div><div class="cs">Five ways to say what his ERA should be.</div></div>
+              <div class="tools"><span class="src">MLB API</span><span class="src">SAVANT</span><span class="src">EDGE CALC</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="ladder"></div>
+            <div class="method"><b>FIP</b> uses only strikeouts, walks, hit batters and home runs. <b>xFIP</b> swaps his home runs for a league-average HR/FB rate. <b>SIERA</b> adds ground balls and the interaction of strikeouts and walks. <b>xERA</b> uses Statcast quality of contact. FIP, xFIP and SIERA are calculated by The Edge from public formulas and MLB Stats API counts.</div>
+          </article>
+          <article class="card" data-title="Luck check">
+            <div class="card-h"><div><div class="ct">Luck check</div><div class="cs">Stats that drift toward league average. Meter shows whether his sample means anything yet.</div></div>
+              <div class="tools"><span class="src">MLB API</span><span class="src">EDGE CALC</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="luck"></div>
+            <div class="method">Thresholds follow published reliability research: K% begins to stabilise around 70 batters faced, BB% around 170, ground-ball rate around 70 balls in play. BABIP and strand rate need multiple seasons, so big gaps from league average usually close.</div>
+          </article>
+        </div>
+
+        <div class="grid g-7-5" style="margin-top:14px">
+          <article class="card" data-title="Location">
+            <div class="card-h"><div><div class="ct">Location by pitch</div><div class="cs">Catcher's view. Box = strike zone, outer ring = shadow and chase areas.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div class="toggles" id="heatPitch"></div>
+            <div class="toggles" id="heatMetric">
+              <button class="tg on" data-v="freq">Where he throws it</button><button class="tg" data-v="whiff">Whiff %</button><button class="tg" data-v="xwoba">xwOBA allowed</button></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center">
+              <div class="heat-wrap"><div class="heat" id="heat"></div><div class="zone-box"></div></div>
+              <div id="heatNote" style="font-size:12.5px;color:var(--muted)"></div>
+            </div>
+            <div class="method">Pitches binned into a 5×5 grid scaled to each batter's strike zone. Uses the batter-side control above. Cells with fewer than 15 pitches are greyed in the live build.</div>
+          </article>
+          <article class="card" data-title="Command & discipline">
+            <div class="card-h"><div><div class="ct">Command &amp; discipline</div><div class="cs">Bars run from league average.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="disc"></div>
+            <div class="method"><b>Zone%</b> pitches in the strike zone. <b>Chase%</b> swings at pitches outside it. <b>Z-Contact%</b> contact on swings in the zone (lower is better for the pitcher). <b>SwStr%</b> whiffs per pitch. <b>First-pitch strike%</b> strikes on 0-0.</div>
+          </article>
+        </div>
+
+        <div class="grid g2" style="margin-top:14px">
+          <article class="card" data-title="Pitch mix by count">
+            <div class="card-h"><div><div class="ct">Pitch mix by count</div><div class="cs">How he sequences: what he trusts when ahead, behind, and with two strikes.</div></div>
+              <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="counts"></div>
+            <div class="method">Ahead = more strikes than balls; behind = more balls than strikes; two strikes includes every 2-strike count. A pitcher who throws the same mix in every count is easier to sit on.</div>
+          </article>
+          <article class="card" data-title="Rolling form">
+            <div class="card-h"><div><div class="ct">Rolling form</div><div class="cs">Is the process trending? Markers show when the sample became meaningful.</div></div>
+              <div class="tools"><span class="src">MLB API</span><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div class="toggles" id="rollMetric"><button class="tg on" data-v="kbb">K−BB%</button><button class="tg" data-v="csw">CSW%</button></div>
+            <div class="toggles" id="rollWin"><button class="tg" data-v="3">3 apps</button><button class="tg on" data-v="5">5 apps</button><button class="tg" data-v="10">10 apps</button></div>
+            <div id="roll"></div>
+            <div class="method">Rolling average across the chosen number of appearances, weighted by batters faced. Vertical markers: cumulative 70 BF (K% begins to stabilise) and 170 BF (BB%).</div>
+          </article>
+        </div>
+        <div class="read" id="read2"></div>
+      </section>
+
+      <!-- §03 Durability -->
+      <section id="s3">
+        <div class="sec-h"><span class="mark">§ 03</span><h2>Durability &amp; trajectory</h2><span class="badge pro">PRO</span></div>
+        <p class="lede"><span class="q">Will it hold up, inside a start, across a season, over a contract?</span> Velocity, workload and arm slot are the public early-warning signals teams watch. These are trends in public tracking data, not medical assessments.</p>
+
+        <article class="card" data-title="Velocity by appearance">
+          <div class="card-h"><div><div class="ct">Velocity by appearance</div><div class="cs">Average velocity per pitch type, every outing. Shaded = injured list.</div></div>
+            <div class="tools"><span class="src">SAVANT</span><span class="src">MLB API</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+          <div id="velo"></div>
+          <div class="legend" id="veloLeg"></div>
+          <div class="method">Flag fires when his primary fastball averages 1.0 mph or more below his season mean across his last three outings. IL dates come from MLB Stats API transactions.</div>
+        </article>
+
+        <div class="grid g3" style="margin-top:14px">
+          <article class="card" data-title="Times through the order">
+            <div class="card-h"><div><div class="ct">Times through order</div><div class="cs">xwOBA allowed, 1st/2nd/3rd look.</div></div>
+              <div class="tools"><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="tto"></div>
+          </article>
+          <article class="card" data-title="Velocity within a start">
+            <div class="card-h"><div><div class="ct">Within a start</div><div class="cs">Fastball velocity by pitch count.</div></div>
+              <div class="tools"><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="decay"></div>
+          </article>
+          <article class="card" data-title="Workload">
+            <div class="card-h"><div><div class="ct">Workload</div><div class="cs">Pitches per outing, coloured by rest.</div></div>
+              <div class="tools"><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+            <div id="work"></div>
+            <div class="legend"><span><i class="dot" style="background:var(--warn)"></i>≤4 days rest</span><span><i class="dot" style="background:var(--ok)"></i>5 days</span><span><i class="dot" style="background:var(--poor)"></i>6+ days</span></div>
+          </article>
+        </div>
+
+        <article class="card" data-title="Arm angle trend" style="margin-top:14px">
+          <div class="card-h"><div><div class="ct">Arm angle &amp; release height trend</div><div class="cs">Mechanical drift often shows up here before it shows up in results.</div></div>
+            <div class="tools"><span class="src">SAVANT</span><button class="tb" data-act="method">Method</button><button class="tb" data-act="pin">Pin</button><button class="tb" data-act="png">PNG</button></div></div>
+          <div id="arm"></div>
+          <div class="method">Arm angle per outing from Savant, with a band of ±1 standard deviation around his season mean. A sustained move outside the band is worth watching; it can mean fatigue, a deliberate change, or nothing at all.</div>
+        </article>
+        <div class="read" id="read3"></div>
+      </section>
+
+      <!-- On the bench -->
+      <section id="s4">
+        <div class="sec-h"><span class="mark">§ 04</span><h2>On the bench</h2><span class="badge">COMING</span></div>
+        <p class="lede">The next tools on the Pitching Desk, in build order.</p>
+        <div class="bench">
+          <div class="card"><div class="ct">Model</div><h4>Edge Stuff Grade</h4><p>Our own pitch model on the 20-80 scale, trained on Statcast physics.</p></div>
+          <div class="card"><div class="ct">What-if</div><h4>Pitch design lab</h4><p>Change a pitch's velocity or break and see how its comps and expected value move.</p></div>
+          <div class="card"><div class="ct">Usage</div><h4>Arsenal optimiser</h4><p>Which pitches deserve more or less usage, by count and batter side.</p></div>
+          <div class="card"><div class="ct">Role</div><h4>Role &amp; platoon fit</h4><p>Starter or reliever? Splits, times through the order and stamina in one read.</p></div>
+          <div class="card"><div class="ct">Pipeline</div><h4>Prospect arms</h4><p>Triple-A Statcast for the next wave, graded on the same scales.</p></div>
+          <div class="card"><div class="ct">Market</div><h4>Control &amp; value</h4><p>Years of control and surplus value, from The Ledger.</p></div>
+          <div class="card"><div class="ct">Scouting</div><h4>Reclamation radar</h4><p>League-wide arms whose stuff outruns their results: the Brewers and Rays target list.</p></div>
+          <div class="card"><div class="ct">Notebook</div><h4>My scout report</h4><p>Save pinned charts and notes as a report you can export or share.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="tray" id="tray" aria-live="polite">
+  <span class="t" id="trayCount">Notebook · 0 pinned</span>
+  <span class="list" id="trayList">Pin any chart to build your own read.</span>
+  <button class="ghost" id="trayClear">Clear</button>
+  <button id="trayExport">Export pinned as PNG</button>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ---------------- Sample data (illustrative only) ---------------- */
+const COL={FF:'#D63A3A',SI:'#E8842C',FC:'#8C5A3C',SL:'#E3B53B',SW:'#B08A1E',CU:'#3E7CB1',CH:'#3E9C7A',FS:'#6FBFA8'};
+const NAME={FF:'Four-seam',SI:'Sinker',FC:'Cutter',SL:'Slider',SW:'Sweeper',CU:'Curveball',CH:'Changeup',FS:'Splitter'};
+const LGP={FF:{velo:94.6,ivb:16.0,hb:7.6,spin:2290,act:92,vaa:-4.8,ext:6.5,whiff:21,xwoba:.345,rv:0},
+ SI:{velo:93.4,ivb:8.0,hb:15.0,spin:2150,act:85,vaa:-5.3,ext:6.4,whiff:13,xwoba:.360,rv:0},
+ FC:{velo:89.2,ivb:8.5,hb:-2.5,spin:2400,act:48,vaa:-5.6,ext:6.4,whiff:22,xwoba:.330,rv:0},
+ SL:{velo:85.5,ivb:2.0,hb:-4.5,spin:2420,act:38,vaa:-7.1,ext:6.3,whiff:32,xwoba:.290,rv:0},
+ SW:{velo:82.3,ivb:1.0,hb:-13.5,spin:2550,act:55,vaa:-7.4,ext:6.3,whiff:31,xwoba:.285,rv:0},
+ CU:{velo:79.5,ivb:-9.5,hb:-8.5,spin:2550,act:70,vaa:-9.0,ext:6.2,whiff:30,xwoba:.300,rv:0},
+ CH:{velo:85.6,ivb:6.5,hb:14.0,spin:1780,act:88,vaa:-7.2,ext:6.4,whiff:31,xwoba:.300,rv:0},
+ FS:{velo:86.6,ivb:3.0,hb:11.5,spin:1350,act:60,vaa:-7.6,ext:6.5,whiff:34,xwoba:.280,rv:0}};
+const SD={velo:2,ext:.4,whiff:6,xwoba:.035,rv:1,act:10};
+const LG={K:22.4,BB:8.2,KBB:14.2,CSW:28.5,SwStr:11.2,Zone:49.5,Chase:28.6,ZCon:82.5,FPS:61.5,BABIP:.290,LOB:72.0,HRFB:11.5,GB:43.0,ERA:4.10,tto:[.298,.312,.334]};
+
+const P={
+ sanchez:{name:'Cristopher Sánchez',ini:'CS',hand:'L',age:29,role:'SP',arm:31,rel:{x:2.7,z:5.55},
+  pitches:[
+   {t:'SI',use:47,velo:95.6,ivb:7.4,hb:16.8,spin:2080,act:87,vaa:-5.4,ext:6.9,rv:1.2,whiff:15,xwoba:.312},
+   {t:'CH',use:34,velo:86.4,ivb:2.9,hb:15.6,spin:1650,act:90,vaa:-7.9,ext:6.8,rv:2.4,whiff:39,xwoba:.238},
+   {t:'SL',use:19,velo:85.2,ivb:0.8,hb:-4.2,spin:2240,act:35,vaa:-7.6,ext:6.6,rv:0.6,whiff:31,xwoba:.281}],
+  pr:{IP:'196.2',BF:790,BIP:520,ERA:2.71,FIP:2.83,xFIP:3.02,SIERA:3.18,xERA:2.92,K:26.8,BB:5.9,CSW:30.4,SwStr:13.6,Zone:47.1,Chase:33.8,ZCon:80.2,FPS:64.0,BABIP:.281,LOB:76.5,HRFB:9.2,GB:58.4},
+  heat:{SI:[1.2,2.6],CH:[1.4,3.6],SL:[3.0,3.4]},
+  counts:{SI:[58,38,48,62,35],CH:[30,40,34,28,45],SL:[12,22,18,10,20]},
+  tto:[.262,.281,.318],decay:[95.9,95.7,95.5,95.2,94.9],apps:31,il:null,drift:0,
+  comps:{CH:[['Framber Valdez','LHP',86.9,3.4,15.1,94,34,1.6],['Logan Webb','RHP',87.1,4.1,15.9,91,35,1.9],['Shota Imanaga','LHP',85.8,2.2,13.8,88,37,2.0],['Devin Williams','RHP',84.2,1.5,16.9,84,46,3.1],['Luis Castillo','RHP',87.6,3.9,16.2,83,33,1.1]],
+         SI:[['Framber Valdez','LHP',94.1,7.0,16.1,92,14,0.8],['Logan Webb','RHP',92.6,6.8,16.6,89,12,0.9],['Ranger Suárez','LHP',91.8,7.9,15.3,86,13,0.5],['Max Fried','LHP',94.4,8.6,15.7,85,16,1.0],['Clay Holmes','RHP',94.9,5.9,17.4,83,15,0.7]],
+         SL:[['Framber Valdez','LHP',84.1,1.0,-3.6,90,30,0.4],['Ranger Suárez','LHP',83.0,1.6,-4.9,87,28,0.2],['Max Fried','LHP',85.6,0.4,-5.2,85,33,0.9],['Shota Imanaga','LHP',84.5,2.1,-3.1,82,35,1.1],['Logan Webb','RHP',85.9,0.2,-5.8,80,31,0.7]]}},
+ wheeler:{name:'Zack Wheeler',ini:'ZW',hand:'R',age:36,role:'SP',arm:44,rel:{x:-1.8,z:6.15},
+  pitches:[
+   {t:'FF',use:34,velo:97.0,ivb:15.6,hb:6.8,spin:2480,act:94,vaa:-4.6,ext:6.6,rv:1.6,whiff:25,xwoba:.300},
+   {t:'SW',use:18,velo:84.6,ivb:1.2,hb:-13.8,spin:2620,act:58,vaa:-7.3,ext:6.4,rv:1.8,whiff:36,xwoba:.248},
+   {t:'FS',use:15,velo:87.9,ivb:2.6,hb:12.4,spin:1420,act:62,vaa:-7.8,ext:6.5,rv:1.5,whiff:38,xwoba:.245},
+   {t:'SI',use:14,velo:96.1,ivb:9.4,hb:15.2,spin:2350,act:88,vaa:-5.2,ext:6.5,rv:0.4,whiff:12,xwoba:.338},
+   {t:'CU',use:11,velo:79.8,ivb:-10.6,hb:-9.2,spin:2710,act:74,vaa:-9.1,ext:6.3,rv:0.9,whiff:34,xwoba:.262},
+   {t:'FC',use:8,velo:91.2,ivb:9.6,hb:-1.5,spin:2560,act:46,vaa:-5.4,ext:6.5,rv:-0.2,whiff:20,xwoba:.352}],
+  pr:{IP:'150.1',BF:600,BIP:370,ERA:2.95,FIP:3.05,xFIP:3.20,SIERA:3.11,xERA:3.10,K:29.0,BB:6.4,CSW:31.6,SwStr:14.1,Zone:48.6,Chase:31.9,ZCon:79.8,FPS:66.2,BABIP:.268,LOB:79.8,HRFB:10.4,GB:42.0},
+  heat:{FF:[2,1.0],SW:[3.4,3.2],FS:[1.4,3.6],SI:[1.0,2.4],CU:[2.4,3.8],FC:[3,1.8]},
+  counts:{FF:[44,30,36,48,32],SW:[14,22,18,12,24],FS:[10,18,14,10,20],SI:[16,10,14,20,8],CU:[10,14,10,6,12],FC:[6,6,8,4,4]},
+  tto:[.255,.279,.331],decay:[97.4,97.1,96.9,96.5,96.1],apps:26,il:[14,15],drift:-1.6,
+  comps:{FF:[['Hunter Greene','RHP',98.6,16.4,7.9,90,28,1.9],['Spencer Strider','RHP',96.8,17.1,8.4,87,31,2.2],['Jacob deGrom','RHP',97.9,16.2,6.1,86,30,2.0],['Dylan Cease','RHP',96.5,15.1,5.4,84,24,0.8],['Shane McClanahan','LHP',96.4,15.0,7.2,82,26,1.2]],
+         SW:[['Dylan Cease','RHP',86.1,1.7,-12.9,89,38,1.6],['Logan Gilbert','RHP',84.9,0.9,-13.1,88,35,1.4],['Tanner Bibee','RHP',84.0,1.9,-14.5,85,34,1.5],['Sonny Gray','RHP',82.6,0.2,-15.0,83,33,1.9],['Kevin Gausman','RHP',83.8,1.1,-12.6,80,32,0.9]],
+         FS:[['Kevin Gausman','RHP',85.5,3.2,11.1,91,41,2.0],['Logan Gilbert','RHP',86.9,2.4,10.6,87,37,1.3],['Shota Imanaga','LHP',84.5,2.0,12.0,84,37,1.8],['Hunter Greene','RHP',88.4,3.5,11.8,82,33,0.6],['Kodai Senga','RHP',84.0,-1.5,9.9,78,45,2.6]]}}
+};
+const STAFF=[
+ {k:'sanchez',n:'Cristopher Sánchez',role:'SP',h:'L',age:29,ip:196.2,bf:790,kbb:20.9,csw:30.4,whiff:30.1,xera:2.92,era:2.71,fbd:0.6},
+ {k:'wheeler',n:'Zack Wheeler',role:'SP',h:'R',age:36,ip:150.1,bf:600,kbb:22.6,csw:31.6,whiff:31.4,xera:3.10,era:2.95,fbd:-0.4},
+ {k:'luzardo',n:'Jesús Luzardo',role:'SP',h:'L',age:28,ip:172.0,bf:725,kbb:18.1,csw:29.8,whiff:28.7,xera:3.48,era:3.95,fbd:0.2},
+ {k:'nola',n:'Aaron Nola',role:'SP',h:'R',age:33,ip:141.2,bf:604,kbb:14.0,csw:28.1,whiff:25.9,xera:4.21,era:4.88,fbd:-0.7},
+ {k:'painter',n:'Andrew Painter',role:'SP',h:'R',age:23,ip:64.1,bf:271,kbb:12.5,csw:27.4,whiff:24.8,xera:4.05,era:4.20,fbd:null},
+ {k:'duran',n:'Jhoan Duran',role:'RP',h:'R',age:28,ip:66.0,bf:268,kbb:22.8,csw:31.9,whiff:33.5,xera:2.61,era:2.48,fbd:0.3},
+ {k:'alvarado',n:'José Alvarado',role:'RP',h:'L',age:31,ip:58.2,bf:247,kbb:17.4,csw:30.2,whiff:30.8,xera:3.12,era:3.68,fbd:-0.5},
+ {k:'mayza',n:'Tim Mayza',role:'RP',h:'L',age:34,ip:44.1,bf:186,kbb:10.9,csw:26.5,whiff:22.0,xera:4.30,era:3.45,fbd:-0.9}];
+
+/* ---------------- State & helpers ---------------- */
+const S={p:'sanchez',cmp:'lg',win:'season',side:'all',focus:null,heatPitch:null,heatMetric:'freq',rollM:'kbb',rollW:5,comp:null,sort:{k:'kbb',d:-1},pins:new Set()};
+const WIN={season:1,l30:.22,l15:.11,l5:.18};
+function rng(seed){let a=0;for(const c of String(seed))a=(a*31+c.charCodeAt(0))>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+const sc=(d0,d1,r0,r1)=>v=>r0+(v-d0)/(d1-d0)*(r1-r0);
+const $=s=>document.querySelector(s);
+const fx=(v,d=1)=>v==null?'—':Number(v).toFixed(d);
+const f3=v=>v.toFixed(3).replace(/^0/,'');
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600)}
+function shade(z){if(z>=1.5)return'hi2';if(z>=.5)return'hi';if(z<=-1.5)return'lo2';if(z<=-.5)return'lo';return''}
+function meter(n,th){const r=n/th;const st=r>=1?'reliable':r>=.5?'settling':'early';const lab=st==='reliable'?'Reliable':st==='settling'?'Settling':'Early';return `<span class="meter ${st}" title="${Math.round(n)} of ~${th} needed"><i><b style="width:${Math.min(100,r*100)}%"></b></i>${lab}</span>`}
+const cur=()=>P[S.p];
+function bfNow(){return Math.round(cur().pr.BF*WIN[S.win])}
+function jit(v,amt,seedKey){if(S.win==='season'&&S.side==='all')return v;const r=rng(S.p+S.win+S.side+seedKey);return v+(r()-.5)*2*amt}
+
+/* ---------------- Pitcher header ---------------- */
+function renderHead(){
+ const p=cur(),pr=p.pr,bf=bfNow();
+ const kbb=jit(pr.K-pr.BB,3,'kbb'),csw=jit(pr.CSW,2,'csw'),xera=jit(pr.xERA,.6,'xera');
+ $('#pitcherHead').innerHTML=`<div class="ph">
+  <div class="avatar" aria-hidden="true">${p.ini}</div>
+  <div><h3>${p.name}</h3><div class="meta">${p.hand}HP · ${p.role} · Age ${p.age} · ${pr.IP} IP · ${bf} batters faced in window · Arm angle ${p.arm}°</div>
+   <div class="chips">${p.pitches.map(x=>`<span class="chip" style="background:${COL[x.t]}">${x.t} ${x.use}%</span>`).join('')}</div></div>
+  <div class="kpis">
+   <div class="kpi"><div class="l">K−BB%</div><div class="v">${fx(kbb)}</div>${meter(bf,170)}</div>
+   <div class="kpi"><div class="l">CSW%</div><div class="v">${fx(csw)}</div>${meter(bf*3.8,400)}</div>
+   <div class="kpi"><div class="l">xERA</div><div class="v">${fx(xera,2)}</div>${meter(bf,300)}</div>
+   <div class="kpi"><div class="l">Stuff Grade</div><div class="v muted">—</div><span class="meter">Coming soon</span></div>
+  </div></div>`;
+}
+
+/* ---------------- §00 Staff ---------------- */
+function renderStaff(){
+ const cols=[['n','Pitcher'],['role','Role'],['age','Age'],['ip','IP'],['kbb','K−BB%'],['csw','CSW%'],['whiff','Whiff%'],['xera','xERA'],['era','ERA'],['gap','ERA−xERA'],['fbd','FB Δ mph'],['sg','Stuff Grade']];
+ const rows=STAFF.map(r=>({...r,gap:+(r.era-r.xera).toFixed(2),sg:null}));
+ const {k,d}=S.sort;rows.sort((a,b)=>{const A=a[k],B=b[k];if(A==null)return 1;if(B==null)return -1;return (A>B?1:A<B?-1:0)*d});
+ const z={kbb:r=>(r.kbb-LG.KBB)/5,csw:r=>(r.csw-LG.CSW)/2.5,whiff:r=>(r.whiff-25)/4,xera:r=>(LG.ERA-r.xera)/.7,gap:r=>-(r.gap)/.5,fbd:r=>r.fbd==null?0:r.fbd/.6};
+ let h='<thead><tr>'+cols.map(([c,l])=>`<th class="sort" data-k="${c}" aria-sort="${S.sort.k===c?(d>0?'ascending':'descending'):'none'}">${l}${S.sort.k===c?(d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr></thead><tbody>';
+ rows.forEach(r=>{h+=`<tr class="click ${r.k===S.p?'sel':''}" data-k="${r.k}" tabindex="0">`+cols.map(([c])=>{
+  if(c==='n')return `<td class="n">${r.n}</td>`;
+  if(c==='sg')return `<td class="muted">—</td>`;
+  let v=r[c];let txt=c==='role'||c==='age'?v:c==='ip'?fx(v):c==='xera'||c==='era'?fx(v,2):c==='gap'?(v>0?'+':'')+fx(v,2):c==='fbd'?(v==null?'—':(v>0?'+':'')+fx(v)):fx(v);
+  const cl=z[c]?shade(z[c](r)):'';return `<td><span class="cell ${cl}">${txt}</span></td>`}).join('')+'</tr>'});
+ $('#staffTbl').innerHTML=h+'</tbody>';
+ $('#staffTbl').querySelectorAll('th.sort').forEach(th=>th.onclick=()=>{const kk=th.dataset.k;S.sort={k:kk,d:S.sort.k===kk?-S.sort.d:-1};renderStaff()});
+ $('#staffTbl').querySelectorAll('tr.click').forEach(tr=>{const go=()=>selectPitcher(tr.dataset.k);tr.onclick=go;tr.onkeydown=e=>{if(e.key==='Enter')go()}});
+}
+function renderQuad(){
+ const W=440,H=320,m={l:40,r:14,t:12,b:32},x=sc(2,5.5,m.l,W-m.r),y=sc(2,5.5,H-m.b,m.t);
+ let g='';for(let v=2;v<=5.5;v+=.5){g+=`<line class="ax" x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${H-m.b}"/><line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${x(v)}" y="${H-m.b+14}" text-anchor="middle">${v.toFixed(1)}</text><text x="${m.l-6}" y="${y(v)+3}" text-anchor="end">${v.toFixed(1)}</text>`}
+ g+=`<line x1="${x(2)}" y1="${y(2)}" x2="${x(5.5)}" y2="${y(5.5)}" stroke="var(--ink)" stroke-dasharray="4 4"/>`;
+ g+=`<text x="${x(2.15)}" y="${y(5.25)}" style="fill:var(--good)">Results worse than process</text><text x="${x(5.35)}" y="${y(2.3)}" text-anchor="end" style="fill:var(--poor)">Outperforming</text>`;
+ STAFF.forEach(r=>{const sel=r.k===S.p;g+=`<g style="cursor:pointer" data-k="${r.k}"><circle cx="${x(r.xera)}" cy="${y(r.era)}" r="${sel?7:5}" fill="${sel?'var(--accent)':'var(--ink)'}" opacity="${sel?1:.7}"/><text x="${x(r.xera)+9}" y="${y(r.era)+3}" style="fill:var(--ink)">${r.n.split(' ').slice(-1)[0]}</text></g>`});
+ g+=`<text x="${(W)/2}" y="${H-2}" text-anchor="middle">xERA</text><text transform="translate(10 ${H/2}) rotate(-90)" text-anchor="middle">ERA</text>`;
+ $('#quad').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="ERA versus xERA for the staff">${g}</svg>`;
+ $('#quad').querySelectorAll('g[data-k]').forEach(n=>n.onclick=()=>selectPitcher(n.dataset.k));
+}
+
+/* ---------------- §01 Stuff ---------------- */
+function renderArsenal(){
+ const p=cur();$('#arsTitle').textContent=`Arsenal · ${p.name} · 2026`;
+ const cols=['Pitch','Usage','Velo','IVB','HB','Spin','Active spin','VAA','Ext','Whiff%','xwOBA','RV/100','Stuff Grade'];
+ let h='<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+ p.pitches.forEach(x=>{const L=LGP[x.t],w=x=>x;
+  const v=jit(x.velo,.4,x.t+'v'),wh=jit(x.whiff,4,x.t+'w'),xw=jit(x.xwoba,.03,x.t+'x'),rv=jit(x.rv,.8,x.t+'r');
+  const c=(val,lg,sd,inv)=>shade(((val-lg)/sd)*(inv?-1:1));
+  h+=`<tr class="click ${S.focus===x.t?'sel':''}" data-t="${x.t}" tabindex="0"><td class="n"><span class="dot" style="background:${COL[x.t]}"></span>${NAME[x.t]}</td>
+  <td>${x.use}%</td><td><span class="cell ${c(v,L.velo,SD.velo)}">${fx(v)}</span></td><td>${fx(x.ivb)}"</td><td>${fx(x.hb)}"</td><td>${x.spin}</td>
+  <td><span class="cell ${c(x.act,L.act,SD.act)}">${x.act}%</span></td><td>${fx(x.vaa)}°</td><td><span class="cell ${c(x.ext,L.ext,SD.ext)}">${fx(x.ext)}</span></td>
+  <td><span class="cell ${c(wh,L.whiff,SD.whiff)}">${fx(wh)}</span></td><td><span class="cell ${c(xw,L.xwoba,SD.xwoba,true)}">${f3(xw)}</span></td>
+  <td><span class="cell ${c(rv,0,SD.rv)}">${rv>0?'+':''}${fx(rv)}</span></td><td class="muted">—</td></tr>`});
+ $('#arsTbl').innerHTML=h+'</tbody>';
+ $('#arsTbl').querySelectorAll('tr.click').forEach(tr=>{const go=()=>{S.focus=S.focus===tr.dataset.t?null:tr.dataset.t;renderArsenal();renderMovement();renderRelease()};tr.onclick=go;tr.onkeydown=e=>{if(e.key==='Enter')go()}});
+}
+function cloud(p,x,n,sd,key){const r=rng(p.name+x.t+key+S.side);const pts=[];for(let i=0;i<n;i++)pts.push([x.hb+gauss(r)*sd,x.ivb+gauss(r)*sd]);return pts}
+function renderMovement(){
+ const p=cur(),W=460,H=400,m={l:34,r:12,t:10,b:30},x=sc(-25,25,m.l,W-m.r),y=sc(-20,25,H-m.b,m.t);
+ let g='';for(let v=-25;v<=25;v+=5){g+=`<line class="${v?'ax':'ax0'}" x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${H-m.b}"/>`;if(v%10===0)g+=`<text x="${x(v)}" y="${H-m.b+13}" text-anchor="middle">${v}</text>`}
+ for(let v=-20;v<=25;v+=5){g+=`<line class="${v?'ax':'ax0'}" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/>`;if(v%10===0)g+=`<text x="${m.l-5}" y="${y(v)+3}" text-anchor="end">${v}</text>`}
+ const a=p.arm*Math.PI/180;g+=`<line x1="${x(0)}" y1="${y(0)}" x2="${x(Math.cos(a)*24)}" y2="${y(Math.sin(a)*24)}" stroke="var(--ink)" stroke-dasharray="3 4" opacity=".55"/><text x="${x(Math.cos(a)*24)-4}" y="${y(Math.sin(a)*24)-4}" text-anchor="end">arm ${p.arm}°</text>`;
+ p.pitches.forEach(pt=>{const op=S.focus&&S.focus!==pt.t?.12:.45;cloud(p,pt,Math.round(pt.use*1.6),1.8,'m').forEach(([hx,vy])=>g+=`<circle cx="${x(hx)}" cy="${y(vy)}" r="2.4" fill="${COL[pt.t]}" opacity="${op}"/>`)});
+ if($('#lgRings').checked)p.pitches.forEach(pt=>{const L=LGP[pt.t];g+=`<circle cx="${x(L.hb)}" cy="${y(L.ivb)}" r="9" fill="none" stroke="${COL[pt.t]}" stroke-width="2" stroke-dasharray="3 2"/>`});
+ if(S.cmp!=='lg'){const c=P[S.cmp];c.pitches.forEach(pt=>{g+=`<rect x="${x(pt.hb)-6}" y="${y(pt.ivb)-6}" width="12" height="12" transform="rotate(45 ${x(pt.hb)} ${y(pt.ivb)})" fill="none" stroke="${COL[pt.t]}" stroke-width="2"/>`})}
+ p.pitches.forEach(pt=>{const dim=S.focus&&S.focus!==pt.t;g+=`<circle cx="${x(pt.hb)}" cy="${y(pt.ivb)}" r="7" fill="${COL[pt.t]}" stroke="var(--card)" stroke-width="2" opacity="${dim?.3:1}"/><text x="${x(pt.hb)+10}" y="${y(pt.ivb)+4}" style="fill:var(--ink);font-weight:700">${pt.t}</text>`});
+ g+=`<text x="${W/2}" y="${H-2}" text-anchor="middle">Horizontal break, in (arm side →)</text><text transform="translate(9 ${H/2}) rotate(-90)" text-anchor="middle">Induced vertical break, in</text>`;
+ $('#mov').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pitch movement chart">${g}</svg>`;
+ $('#movLeg').innerHTML=p.pitches.map(pt=>`<span><i class="dot" style="background:${COL[pt.t]}"></i>${NAME[pt.t]}</span>`).join('')+`<span>◯ league avg</span>`+(S.cmp!=='lg'?`<span>◇ ${P[S.cmp].name}</span>`:'');
+}
+function renderRelease(){
+ const p=cur(),W=460,H=300,m={l:34,r:12,t:10,b:30},x=sc(-4,4,m.l,W-m.r),y=sc(4,7,H-m.b,m.t);
+ let g='';for(let v=-4;v<=4;v++){g+=`<line class="${v?'ax':'ax0'}" x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${H-m.b}"/><text x="${x(v)}" y="${H-m.b+13}" text-anchor="middle">${v}</text>`}
+ for(let v=4;v<=7;v+=.5){g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-5}" y="${y(v)+3}" text-anchor="end">${v}</text>`}
+ g+=`<rect x="${x(-1)}" y="${y(4.25)}" width="${x(1)-x(-1)}" height="${y(4)-y(4.25)}" fill="var(--soft)" stroke="var(--line)"/><text x="${x(0)}" y="${y(4.1)+3}" text-anchor="middle">rubber</text>`;
+ const r=rng(p.name+'rel');let spread=0;
+ p.pitches.forEach((pt,i)=>{const off=[(r()-.5)*.25,(r()-.5)*.18];spread+=Math.hypot(off[0],off[1]);const op=S.focus&&S.focus!==pt.t?.12:.5;
+  for(let k=0;k<pt.use*1.2;k++)g+=`<circle cx="${x(p.rel.x+off[0]+gauss(r)*.09)}" cy="${y(p.rel.z+off[1]+gauss(r)*.08)}" r="2.3" fill="${COL[pt.t]}" opacity="${op}"/>`});
+ spread=spread/p.pitches.length*12;
+ $('#rel').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Release point chart">${g}<text x="${W/2}" y="${H-2}" text-anchor="middle">Release side, ft (catcher's view)</text></svg>`;
+ const ext=(p.pitches.reduce((s,q)=>s+q.ext*q.use,0)/100);
+ $('#relLeg').innerHTML=`<span><b style="color:var(--ink)">Spread ${spread.toFixed(1)} in</b> (league ~2.4)</span><span><b style="color:var(--ink)">Extension ${ext.toFixed(1)} ft</b> (league 6.4)</span><span><b style="color:var(--ink)">Height ${p.rel.z.toFixed(2)} ft</b></span>`;
+}
+function renderComps(){
+ const p=cur(),keys=Object.keys(p.comps);if(!S.comp||!p.comps[S.comp])S.comp=keys[0];
+ $('#compTg').innerHTML=keys.map(k=>`<button class="tg ${k===S.comp?'on':''}" data-v="${k}">${NAME[k]}</button>`).join('');
+ $('#compTg').querySelectorAll('.tg').forEach(b=>b.onclick=()=>{S.comp=b.dataset.v;renderComps()});
+ const mine=p.pitches.find(q=>q.t===S.comp);
+ let h='<thead><tr><th>Pitcher</th><th>Throws</th><th>Velo</th><th>IVB</th><th>HB</th><th>Similarity</th><th>Whiff%</th><th>RV/100</th></tr></thead><tbody>';
+ h+=`<tr class="sel"><td class="n">${p.name} (this pitch)</td><td>${p.hand}HP</td><td>${fx(mine.velo)}</td><td>${fx(mine.ivb)}"</td><td>${fx(mine.hb)}"</td><td>—</td><td>${mine.whiff}</td><td>${mine.rv>0?'+':''}${fx(mine.rv)}</td></tr>`;
+ p.comps[S.comp].forEach(c=>{h+=`<tr><td class="n">${c[0]}</td><td>${c[1]}</td><td>${fx(c[2])}</td><td>${fx(c[3])}"</td><td>${fx(c[4])}"</td><td><span class="meter reliable"><i><b style="width:${c[5]}%"></b></i>${c[5]}</span></td><td>${c[6]}</td><td>${c[7]>0?'+':''}${fx(c[7])}</td></tr>`});
+ const avgRv=p.comps[S.comp].reduce((s,c)=>s+c[7],0)/5;
+ $('#compTbl').innerHTML=h+`</tbody>`;
+ $('#compTbl').insertAdjacentHTML('beforeend',`<caption style="caption-side:bottom;text-align:left;padding-top:8px;font-size:12.5px;color:var(--muted)">Comp average RV/100: <b style="color:var(--ink)">${avgRv>0?'+':''}${avgRv.toFixed(1)}</b>. His: <b style="color:var(--ink)">${mine.rv>0?'+':''}${mine.rv.toFixed(1)}</b>. ${mine.rv>=avgRv?'Performing at or above what this shape usually produces.':'Below what this shape usually produces: look at location and usage.'}</caption>`);
+}
+function renderRead1(){const p=cur();const best=[...p.pitches].sort((a,b)=>b.rv-a.rv)[0];
+ $('#read1').innerHTML=`<b>Analyst's read.</b> ${p.name}'s best pitch by run value is his ${NAME[best.t].toLowerCase()} (${best.rv>0?'+':''}${best.rv.toFixed(1)} per 100). ${p.hand==='L'?'A low arm slot and heavy arm-side run let the sinker and changeup start on the same line and split late.':'A high slot and elite fastball ride give his sweeper and splitter two directions to break away from it.'} Sample data in this mockup.`}
+
+/* ---------------- §02 Execution ---------------- */
+function renderLadder(){
+ const pr=cur().pr,W=460,H=230,m={l:70,r:20,t:14,b:28},x=sc(1.5,5.5,m.l,W-m.r);
+ const rows=[['ERA',pr.ERA,'actual'],['FIP',jit(pr.FIP,.4,'f')],['xFIP',jit(pr.xFIP,.3,'xf')],['SIERA',jit(pr.SIERA,.3,'si')],['xERA',jit(pr.xERA,.4,'xe')]];
+ let g='';for(let v=1.5;v<=5.5;v+=.5)g+=`<line class="ax" x1="${x(v)}" x2="${x(v)}" y1="${m.t}" y2="${H-m.b}"/><text x="${x(v)}" y="${H-m.b+14}" text-anchor="middle">${v.toFixed(1)}</text>`;
+ g+=`<line x1="${x(LG.ERA)}" x2="${x(LG.ERA)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="${x(LG.ERA)+4}" y="${m.t+8}">league ${LG.ERA}</text>`;
+ const step=(H-m.t-m.b)/rows.length;
+ rows.forEach(([l,v,t],i)=>{const cy=m.t+step*(i+.5);g+=`<text x="${m.l-10}" y="${cy+4}" text-anchor="end" style="fill:var(--ink);font-weight:700">${l}</text><line x1="${x(pr.ERA)}" x2="${x(v)}" y1="${cy}" y2="${cy}" stroke="var(--line)" stroke-width="6" stroke-linecap="round"/><circle cx="${x(v)}" cy="${cy}" r="6.5" fill="${t?'var(--accent)':'var(--ink)'}"/><text x="${x(v)+11}" y="${cy+4}" style="fill:var(--ink)">${v.toFixed(2)}</text>`});
+ $('#ladder').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="ERA and estimators">${g}</svg>`;
+}
+function renderLuck(){
+ const pr=cur().pr,bf=bfNow(),bip=Math.round(pr.BIP*WIN[S.win]);
+ const rows=[['K%',jit(pr.K,3,'k'),LG.K,meter(bf,70),'%',1],['BB%',jit(pr.BB,1.5,'b'),LG.BB,meter(bf,170),'%',-1],['Ground-ball %',jit(pr.GB,4,'g'),LG.GB,meter(bip,70),'%',1],
+  ['BABIP',jit(pr.BABIP,.03,'ba'),LG.BABIP,'<span class="meter early"><i><b style="width:12%"></b></i>Multi-season</span>','',-1],['Strand rate (LOB%)',jit(pr.LOB,4,'l'),LG.LOB,'<span class="meter early"><i><b style="width:15%"></b></i>Multi-season</span>','%',1],['HR/FB',jit(pr.HRFB,3,'h'),LG.HRFB,'<span class="meter early"><i><b style="width:25%"></b></i>Multi-season</span>','%',-1]];
+ let h='<table><thead><tr><th>Stat</th><th>His</th><th>League</th><th>Gap</th><th>Sample</th></tr></thead><tbody>';
+ rows.forEach(([l,v,lg,mt,u,good])=>{const dec=l==='BABIP'?3:1,gap=v-lg,cl=shade(gap/(l==='BABIP'?.02:l==='K%'?3:2)*good);
+  h+=`<tr><td class="n" style="font-size:12.5px">${l}</td><td>${l==='BABIP'?f3(v):fx(v)+u}</td><td>${l==='BABIP'?f3(lg):fx(lg)+u}</td><td><span class="cell ${cl}">${gap>0?'+':''}${l==='BABIP'?gap.toFixed(3):fx(gap)}</span></td><td>${mt}</td></tr>`});
+ $('#luck').innerHTML=h+'</tbody></table>';
+}
+function renderHeat(){
+ const p=cur(),keys=Object.keys(p.heat);if(!S.heatPitch||!p.heat[S.heatPitch])S.heatPitch=keys[0];
+ $('#heatPitch').innerHTML=keys.map(k=>`<button class="tg ${k===S.heatPitch?'on':''}" data-v="${k}"><span class="dot" style="background:${COL[k]}"></span>${k}</button>`).join('');
+ $('#heatPitch').querySelectorAll('.tg').forEach(b=>b.onclick=()=>{S.heatPitch=b.dataset.v;renderHeat()});
+ let [cx,cy]=p.heat[S.heatPitch];if(S.side==='L')cx=4-cx;
+ const pt=p.pitches.find(q=>q.t===S.heatPitch);let cells='',vals=[];
+ for(let r=0;r<5;r++)for(let c=0;c<5;c++){const d2=(c-cx)**2+(r-cy)**2;let v;
+  if(S.heatMetric==='freq')v=Math.exp(-d2/2.4);
+  else if(S.heatMetric==='whiff'){const out=(r===0||r===4||c===0||c===4)?1.25:.8;v=Math.min(70,pt.whiff*out*(.75+r*.12))}
+  else{const dm=(c-2)**2+(r-2)**2;v=.170+.26*Math.exp(-dm/1.6)+(pt.xwoba-.3)*.6}
+  vals.push(v)}
+ const mx=Math.max(...vals),mn=Math.min(...vals);
+ vals.forEach(v=>{const t=(v-mn)/(mx-mn||1);const hot=S.heatMetric==='xwoba'?'214,58,58':S.heatMetric==='whiff'?'62,156,122':'255,87,34';
+  const lab=S.heatMetric==='freq'?Math.round(v/vals.reduce((a,b)=>a+b,0)*100)+'%':S.heatMetric==='whiff'?Math.round(v)+'%':f3(v);
+  cells+=`<div style="background:rgba(${hot},${(.08+t*.85).toFixed(2)});color:${t>.55?'#fff':'var(--ink)'}">${lab}</div>`});
+ $('#heat').innerHTML=cells;
+ const note={freq:`Where his ${NAME[S.heatPitch].toLowerCase()} lands${S.side==='all'?'':' '+(S.side==='R'?'against right-handed':'against left-handed')+' batters'}. Front offices check whether a pitch lives where its shape works best: rising fastballs up, sinkers and changeups down and arm side.`,
+  whiff:`Swing-and-miss rate by location. Whiffs cluster below and outside the zone; the question is whether he can get hitters to chase there.`,
+  xwoba:`Expected damage allowed by location. Red cells in the heart of the zone are expected; red cells on the edges point to a command problem.`}[S.heatMetric];
+ $('#heatNote').innerHTML=note+`<div class="foot">${pt.use}% usage · sample cell labels</div>`;
+}
+function renderDisc(){
+ const pr=cur().pr;const side=S.side==='all'?0:S.side==='R'?1:-1;
+ const rows=[['Zone%',pr.Zone+side*.8,LG.Zone,1,4],['Chase%',pr.Chase+side*1.2,LG.Chase,1,4],['Z-Contact%',pr.ZCon-side*1,LG.ZCon,-1,4],['SwStr%',pr.SwStr+side*.6,LG.SwStr,1,3],['CSW%',pr.CSW+side*.5,LG.CSW,1,3],['First-pitch strike%',pr.FPS,LG.FPS,1,5]];
+ const W=360,H=rows.length*34+14,mid=W*.6,half=W*.36;
+ let g=`<line x1="${mid}" x2="${mid}" y1="4" y2="${H-6}" stroke="var(--faint)"/>`;
+ rows.forEach(([l,v,lg,good,span],i)=>{v=jit(v,1.5,l);const y=10+i*34,d=(v-lg)*good,w=Math.min(half,Math.abs(d)/span*half*.9);
+  g+=`<text x="0" y="${y+14}" style="fill:var(--ink);font-family:var(--body);font-size:12px">${l}</text><text x="0" y="${y+27}">lg ${lg.toFixed(1)}</text>
+   <rect x="${d>=0?mid:mid-w}" y="${y+6}" width="${w}" height="14" rx="3" fill="${d>=0?'var(--good)':'var(--poor)'}" opacity=".85"/>
+   <text x="${d>=0?mid+w+5:mid-w-5}" y="${y+17}" text-anchor="${d>=0?'start':'end'}" style="fill:var(--ink)">${v.toFixed(1)}</text>`});
+ $('#disc').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Command and discipline vs league">${g}</svg><div class="legend"><span><i class="dot" style="background:var(--good)"></i>Better than league</span><span><i class="dot" style="background:var(--poor)"></i>Worse</span></div>`;
+}
+function renderCounts(){
+ const p=cur(),states=['First pitch','Ahead','Even','Behind','Two strikes'],W=460,H=200,m={l:84,r:10,t:6,b:20},x=sc(0,100,m.l,W-m.r),bh=24,gap=10;
+ let g='';states.forEach((s,i)=>{let acc=0;const y=m.t+i*(bh+gap);g+=`<text x="${m.l-8}" y="${y+16}" text-anchor="end" style="fill:var(--ink)">${s}</text>`;
+  Object.entries(p.counts).forEach(([t,arr])=>{const v=arr[i];g+=`<rect x="${x(acc)}" y="${y}" width="${x(acc+v)-x(acc)}" height="${bh}" fill="${COL[t]}"><title>${NAME[t]} ${v}%</title></rect>`;if(v>=10)g+=`<text x="${x(acc+v/2)}" y="${y+16}" text-anchor="middle" style="fill:#fff">${v}</text>`;acc+=v})});
+ $('#counts').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pitch mix by count">${g}</svg><div class="legend">${Object.keys(p.counts).map(t=>`<span><i class="dot" style="background:${COL[t]}"></i>${NAME[t]}</span>`).join('')}</div>`;
+}
+function games(){const p=cur(),r=rng(p.name+'g'),out=[];let bfc=0;const d0=new Date(2026,2,27);let day=0;
+ for(let i=0;i<p.apps;i++){const rest=4+Math.floor(r()*3);day+=i?rest+1:0;if(p.il&&i===p.il[0])day+=34;
+  const bf=22+Math.floor(r()*7);bfc+=bf;const late=i>=p.apps-6?1:0;
+  const kp=(p.pr.K+gauss(r)*6)/100,bp=Math.max(.01,(p.pr.BB+gauss(r)*3)/100);
+  const d=new Date(d0);d.setDate(d.getDate()+day);
+  out.push({i,date:d,rest,bf,bfc,k:Math.round(bf*kp),bb:Math.round(bf*bp),csw:p.pr.CSW+gauss(r)*3,pitches:84+Math.floor(r()*22),
+   velo:Object.fromEntries(p.pitches.map(q=>[q.t,q.velo+gauss(r)*.35+(p.il?(late?-.7:0):(i/p.apps-.5)*.4)])),arm:p.arm+gauss(r)*.6+(late?p.drift:0),relz:p.rel.z+gauss(r)*.03+(late?p.drift*.02:0)})}
+ return out}
+function renderRoll(){
+ const G=games(),w=S.rollW,W=460,H=230,m={l:34,r:12,t:12,b:28};
+ const ser=G.map((g,i)=>{const s=G.slice(Math.max(0,i-w+1),i+1);const bf=s.reduce((a,b)=>a+b.bf,0);
+  return S.rollM==='kbb'?(s.reduce((a,b)=>a+b.k-b.bb,0)/bf*100):(s.reduce((a,b)=>a+b.csw*b.bf,0)/bf)});
+ const lo=Math.floor(Math.min(...ser)-2),hi=Math.ceil(Math.max(...ser)+2),x=sc(0,G.length-1,m.l,W-m.r),y=sc(lo,hi,H-m.b,m.t);
+ let g='';for(let v=lo;v<=hi;v+=Math.max(1,Math.round((hi-lo)/5)))g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-5}" y="${y(v)+3}" text-anchor="end">${v}</text>`;
+ const lgv=S.rollM==='kbb'?LG.KBB:LG.CSW;g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(lgv)}" y2="${y(lgv)}" stroke="var(--faint)" stroke-dasharray="4 3"/><text x="${W-m.r}" y="${y(lgv)-4}" text-anchor="end">league</text>`;
+ [70,170].forEach(th=>{const gi=G.findIndex(q=>q.bfc>=th);if(gi>=0)g+=`<line x1="${x(gi)}" x2="${x(gi)}" y1="${m.t}" y2="${H-m.b}" stroke="var(--ok)" stroke-dasharray="2 3"/><text x="${x(gi)+3}" y="${m.t+9}" style="fill:var(--ok)">${th} BF</text>`});
+ g+=`<polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="${ser.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`;
+ G.forEach((q,i)=>{if(i%5===0)g+=`<text x="${x(i)}" y="${H-m.b+14}" text-anchor="middle">${q.date.getMonth()+1}/${q.date.getDate()}</text>`});
+ $('#roll').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rolling form">${g}</svg>`;
+}
+function renderRead2(){const pr=cur().pr,gap=pr.ERA-pr.xERA;
+ $('#read2').innerHTML=`<b>Analyst's read.</b> ERA ${pr.ERA.toFixed(2)} against an xERA of ${pr.xERA.toFixed(2)}: ${Math.abs(gap)<.25?'results line up with process.':gap<0?'he is running slightly ahead of his contact quality, helped by a '+(pr.LOB>LG.LOB?'high strand rate':'low BABIP')+'. Expect some give-back.':'he has been unlucky; the underlying numbers are better than the line.'} K% and BB% are reliable at this sample; BABIP and strand rate are not. Sample data.`}
+
+/* ---------------- §03 Durability ---------------- */
+function renderVelo(){
+ const p=cur(),G=games(),types=p.pitches.slice(0,3).map(q=>q.t),W=900,H=250,m={l:40,r:16,t:14,b:28};
+ const all=G.flatMap(g=>types.map(t=>g.velo[t])),lo=Math.floor(Math.min(...all)-1),hi=Math.ceil(Math.max(...all)+1);
+ const t0=G[0].date.getTime(),t1=G[G.length-1].date.getTime(),x=sc(t0,t1,m.l,W-m.r),y=sc(lo,hi,H-m.b,m.t);
+ let g='';for(let v=lo;v<=hi;v+=2)g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`;
+ if(p.il){const a=G[p.il[0]-1].date.getTime()+4*864e5,b=G[p.il[0]].date.getTime()-3*864e5;g+=`<rect x="${x(a)}" y="${m.t}" width="${x(b)-x(a)}" height="${H-m.t-m.b}" fill="var(--warn-bg)"/><text x="${(x(a)+x(b))/2}" y="${m.t+12}" text-anchor="middle" style="fill:var(--warn)">Injured list</text>`}
+ types.forEach(t=>{g+=`<polyline fill="none" stroke="${COL[t]}" stroke-width="2.2" points="${G.map(q=>x(q.date.getTime())+','+y(q.velo[t])).join(' ')}"/>`;G.forEach(q=>g+=`<circle cx="${x(q.date.getTime())}" cy="${y(q.velo[t])}" r="2.6" fill="${COL[t]}"/>`)});
+ [3,4,5,6,7,8,9].forEach(mo=>{const d=new Date(2026,mo,1).getTime();if(d>t0&&d<t1)g+=`<text x="${x(d)}" y="${H-m.b+14}" text-anchor="middle">${['','','','Apr','May','Jun','Jul','Aug','Sep','Oct'][mo]}</text>`});
+ const fb=types[0],mean=G.reduce((a,q)=>a+q.velo[fb],0)/G.length,last3=G.slice(-3).reduce((a,q)=>a+q.velo[fb],0)/3,flag=mean-last3>=1;
+ $('#velo').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Velocity by appearance">${g}</svg>`;
+ $('#veloLeg').innerHTML=types.map(t=>`<span><i class="dot" style="background:${COL[t]}"></i>${NAME[t]}</span>`).join('')+`<span style="margin-left:auto">${flag?'<b style="color:var(--good)">▼ Velocity flag</b>':'<b style="color:var(--ok)">● Velocity steady</b>'}: last 3 ${NAME[fb].toLowerCase()} avg ${last3.toFixed(1)} vs season ${mean.toFixed(1)}</span>`;
+}
+function renderTTO(){
+ const p=cur(),W=260,H=180,m={l:34,r:8,t:14,b:26},x=i=>m.l+20+i*68,y=sc(.22,.36,H-m.b,m.t);
+ let g='';[.24,.28,.32,.36].forEach(v=>g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-4}" y="${y(v)+3}" text-anchor="end">${f3(v)}</text>`);
+ g+=`<polyline fill="none" stroke="var(--faint)" stroke-dasharray="4 3" points="${LG.tto.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`;
+ g+=`<polyline fill="none" stroke="var(--accent)" stroke-width="2.4" points="${p.tto.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`;
+ p.tto.forEach((v,i)=>g+=`<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="var(--accent)"/><text x="${x(i)}" y="${y(v)-9}" text-anchor="middle" style="fill:var(--ink)">${f3(v)}</text><text x="${x(i)}" y="${H-m.b+15}" text-anchor="middle">${['1st','2nd','3rd'][i]}</text>`);
+ $('#tto').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Times through the order">${g}</svg><div class="foot">Dashed = league. Penalty 1st→3rd: +${f3(p.tto[2]-p.tto[0])} (league +${f3(LG.tto[2]-LG.tto[0])})</div>`;
+}
+function renderDecay(){
+ const p=cur(),W=260,H=180,m={l:34,r:8,t:14,b:26},lab=['1–25','26–50','51–75','76–100','100+'],lo=Math.floor(Math.min(...p.decay)-1),hi=Math.ceil(Math.max(...p.decay)+.5),x=i=>m.l+14+i*50,y=sc(lo,hi,H-m.b,m.t);
+ let g='';for(let v=lo;v<=hi;v++)g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-4}" y="${y(v)+3}" text-anchor="end">${v}</text>`;
+ p.decay.forEach((v,i)=>g+=`<rect x="${x(i)-13}" y="${y(v)}" width="26" height="${H-m.b-y(v)}" fill="${COL[p.pitches[0].t]}" opacity="${.45+i*.12}"/><text x="${x(i)}" y="${y(v)-5}" text-anchor="middle" style="fill:var(--ink)">${v.toFixed(1)}</text><text x="${x(i)}" y="${H-m.b+15}" text-anchor="middle">${lab[i]}</text>`);
+ $('#decay').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Velocity within a start">${g}</svg><div class="foot">Drop first→last bucket: ${(p.decay[4]-p.decay[0]).toFixed(1)} mph (typical −1.0)</div>`;
+}
+function renderWork(){
+ const G=games(),W=260,H=180,m={l:28,r:6,t:10,b:20},bw=(W-m.l-m.r)/G.length,y=sc(60,115,H-m.b,m.t);
+ let g='';[70,90,110].forEach(v=>g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-4}" y="${y(v)+3}" text-anchor="end">${v}</text>`);
+ G.forEach((q,i)=>{const c=q.rest<=4?'var(--warn)':q.rest===5?'var(--ok)':'var(--poor)';g+=`<rect x="${m.l+i*bw+1}" y="${y(q.pitches)}" width="${bw-2}" height="${H-m.b-y(q.pitches)}" fill="${c}"><title>${q.date.toDateString()}: ${q.pitches} pitches, ${q.rest} days rest</title></rect>`});
+ const avg=G.reduce((a,q)=>a+q.pitches,0)/G.length;
+ $('#work').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Workload">${g}</svg><div class="foot">${G.length} outings · avg ${avg.toFixed(0)} pitches · ${cur().pr.IP} IP</div>`;
+}
+function renderArm(){
+ const p=cur(),G=games(),W=900,H=220,m={l:40,r:16,t:14,b:26},arr=G.map(q=>q.arm),mean=arr.reduce((a,b)=>a+b,0)/arr.length,sd=Math.sqrt(arr.reduce((a,b)=>a+(b-mean)**2,0)/arr.length)||.5;
+ const lo=Math.floor(mean-4),hi=Math.ceil(mean+3),x=sc(0,G.length-1,m.l,W-m.r),y=sc(lo,hi,H-m.b,m.t);
+ let g='';for(let v=lo;v<=hi;v++)g+=`<line class="ax" y1="${y(v)}" y2="${y(v)}" x1="${m.l}" x2="${W-m.r}"/><text x="${m.l-6}" y="${y(v)+3}" text-anchor="end">${v}°</text>`;
+ g+=`<rect x="${m.l}" y="${y(mean+sd)}" width="${W-m.l-m.r}" height="${y(mean-sd)-y(mean+sd)}" fill="var(--soft)"/><line x1="${m.l}" x2="${W-m.r}" y1="${y(mean)}" y2="${y(mean)}" stroke="var(--faint)" stroke-dasharray="4 3"/>`;
+ g+=`<polyline fill="none" stroke="var(--ink)" stroke-width="2" points="${arr.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`;
+ arr.forEach((v,i)=>{const out=Math.abs(v-mean)>sd*1.4;g+=`<circle cx="${x(i)}" cy="${y(v)}" r="${out?4.5:3}" fill="${out?'var(--good)':'var(--ink)'}"/>`});
+ G.forEach((q,i)=>{if(i%5===0)g+=`<text x="${x(i)}" y="${H-m.b+14}" text-anchor="middle">${q.date.getMonth()+1}/${q.date.getDate()}</text>`});
+ const last=arr.slice(-5).reduce((a,b)=>a+b,0)/5,drift=last-mean;
+ $('#arm').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Arm angle trend">${g}</svg><div class="legend"><span>Season mean ${mean.toFixed(1)}° (band ±${sd.toFixed(1)}°)</span><span>Last 5 outings ${last.toFixed(1)}°</span><span>${Math.abs(drift)>1?'<b style="color:var(--good)">Drift '+(drift>0?'+':'')+drift.toFixed(1)+'°: worth watching</b>':'<b style="color:var(--ok)">Stable</b>'}</span></div>`;
+}
+function renderRead3(){const p=cur();$('#read3').innerHTML=`<b>Analyst's read.</b> ${p.il?'Velocity came back after the IL stint but has slipped late, and his arm angle has dropped about '+Math.abs(p.drift).toFixed(1)+'°. At 36, that pairing is what a front office would monitor before committing beyond next season.':'Velocity has held or ticked up across the season, his arm slot is stable and he holds stuff deep into starts. A durable profile at 29.'} Public tracking trends only, not a medical read. Sample data.`}
+
+/* ---------------- Wiring ---------------- */
+function renderAll(){renderHead();renderStaff();renderQuad();renderArsenal();renderMovement();renderRelease();renderComps();renderRead1();renderLadder();renderLuck();renderHeat();renderDisc();renderCounts();renderRoll();renderRead2();renderVelo();renderTTO();renderDecay();renderWork();renderArm();renderRead3()}
+function selectPitcher(k){if(!P[k]){toast('This mockup has full drill-downs for Sánchez and Wheeler. Every pitcher gets them in the live build.');return}
+ S.p=k;S.focus=null;S.heatPitch=null;S.comp=null;if(S.cmp===k)S.cmp='lg';$('#pSel').value=k;fillCmp();renderAll()}
+function fillCmp(){$('#cmpSel').innerHTML='<option value="lg">League average</option>'+Object.keys(P).filter(k=>k!==S.p).map(k=>`<option value="${k}">${P[k].name}</option>`).join('');$('#cmpSel').value=S.cmp}
+$('#pSel').innerHTML=STAFF.map(r=>`<option value="${r.k}">${r.n} · ${r.role}</option>`).join('');
+$('#pSel').onchange=e=>{const v=e.target.value;if(!P[v]){e.target.value=S.p}selectPitcher(v)};
+$('#cmpSel').onchange=e=>{S.cmp=e.target.value;renderMovement()};
+function seg(id,key){document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>{document.querySelectorAll(`#${id} button`).forEach(x=>x.classList.remove('on'));b.classList.add('on');S[key]=b.dataset.v;renderAll()})}
+seg('winSeg','win');seg('sideSeg','side');
+function tg(id,key,fn,num){document.querySelectorAll(`#${id} .tg`).forEach(b=>b.onclick=()=>{document.querySelectorAll(`#${id} .tg`).forEach(x=>x.classList.remove('on'));b.classList.add('on');S[key]=num?+b.dataset.v:b.dataset.v;fn()})}
+tg('heatMetric','heatMetric',renderHeat);tg('rollMetric','rollM',renderRoll);tg('rollWin','rollW',renderRoll,true);
+$('#lgRings').onchange=renderMovement;
+
+/* Card tools: method, pin, PNG export */
+function exportCard(card){if(!window.htmlToImage){toast('PNG export loads html-to-image from a CDN. Open this file online to try it.');return Promise.resolve()}
+ const bg=getComputedStyle(document.body).backgroundColor;const name=(card.dataset.title||'chart').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+ card.querySelectorAll('.method').forEach(mn=>mn.dataset.wasOpen=mn.classList.contains('open'));
+ return htmlToImage.toPng(card,{pixelRatio:2,backgroundColor:getComputedStyle(card).backgroundColor||bg,filter:n=>!(n.classList&&(n.classList.contains('tools')))})
+  .then(url=>{const a=document.createElement('a');a.href=url;a.download=`the-edge-${S.p}-${name}.png`;a.click()}).catch(()=>toast('Export failed. Try again.'))}
+document.querySelectorAll('.card').forEach(card=>{card.querySelectorAll('.tb').forEach(b=>b.onclick=()=>{
+ const act=b.dataset.act;
+ if(act==='method')card.querySelector('.method')?.classList.toggle('open');
+ if(act==='png'){exportCard(card).then(()=>toast(`Exported ${card.dataset.title}.`))}
+ if(act==='pin'){const t=card.dataset.title;if(S.pins.has(t)){S.pins.delete(t);b.classList.remove('pinned');b.textContent='Pin'}else{S.pins.add(t);b.classList.add('pinned');b.textContent='Pinned'}renderTray()}})});
+function renderTray(){$('#trayCount').textContent=`Notebook · ${S.pins.size} pinned`;$('#trayList').textContent=S.pins.size?[...S.pins].join(', '):'Pin any chart to build your own read.'}
+$('#trayClear').onclick=()=>{S.pins.clear();document.querySelectorAll('.tb.pinned').forEach(b=>{b.classList.remove('pinned');b.textContent='Pin'});renderTray()};
+$('#trayExport').onclick=async()=>{if(!S.pins.size){toast('Pin a chart first.');return}
+ for(const card of document.querySelectorAll('.card')){if(S.pins.has(card.dataset.title))await exportCard(card)}toast(`Exported ${S.pins.size} chart${S.pins.size>1?'s':''}.`)};
+
+fillCmp();renderAll();
+</script>
+</body>
+</html>

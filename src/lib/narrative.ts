@@ -170,7 +170,7 @@ function openerLabel(pitcher: any): string {
   return `⚠ OPENER/BULK ARM (${pitcher.starts ?? 0} starts in ${games} apps, ${(ip / games).toFixed(1)} IP/game). Frame as short-stint arm handing off to the bullpen; the pen is the real pitching story here.`
 }
 
-const SYSTEM_PROMPT = `You are the lead beat reporter for The Edge — a premium, daily MLB pre-game briefing. Your job is to help fans watch tonight's game smarter, whether they are in the stands or on the couch.
+const SYSTEM_PROMPT = `You are the lead beat reporter for x9Lab — a premium, daily MLB pre-game briefing. Your job is to help fans watch tonight's game smarter, whether they are in the stands or on the couch.
 
 WHO YOU'RE WRITING FOR: A baseball fan who wants the inside scoop before first pitch. Every sentence must earn its place by making the next three hours of baseball more interesting to watch. 
 

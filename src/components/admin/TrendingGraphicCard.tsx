@@ -114,7 +114,7 @@ export default function TrendingGraphicCard({
           </div>
 
           <div className="tg-topbar">
-            <span className="tg-brand">⊕ THE EDGE</span>
+            <span className="tg-brand">⊕ X9LAB</span>
             <span className="tg-level">
               {LEVEL_LABEL[data.level]} TRENDING{pitcher ? ` · ${roleTag}` : ''} · #{rank}
             </span>

@@ -64,7 +64,7 @@ export default function ScoutReport({
     const s = v.season?.r.offEpa, l = v.l3?.r.offEpa, n = v.l3?.r.plays ?? 0
     if (s == null || l == null || !v.l3 || v.l3.games < 3) return { text: 'Fewer than three games played, so no trend read yet.', tone: 'plain' as const, n }
     const d = l - s
-    if (Math.abs(d) >= 0.08 && n >= 120) return { text: `${d > 0 ? 'Trending up' : 'Trending down'}: last 3 at ${fmtEpa(l)} vs season ${fmtEpa(s)} on ${Math.round(n)} plays.`, tone: d > 0 ? ('good' as const) : ('bad' as const), n }
+    if (Math.abs(d) >= 0.08 && n >= 120) return { text: `${d > 0 ? 'Rising' : 'Falling'}: last 3 at ${fmtEpa(l)} vs season ${fmtEpa(s)} on ${Math.round(n)} plays.`, tone: d > 0 ? ('good' as const) : ('bad' as const), n }
     return { text: `Within normal noise: last 3 at ${fmtEpa(l)} vs season ${fmtEpa(s)} on ${Math.round(n)} plays.`, tone: 'plain' as const, n }
   }
 
@@ -288,7 +288,7 @@ export default function ScoutReport({
               ) : null}
             </ProPanel>
 
-            <ProPanel isPro={isPro} title="Run game &amp; box counts" blurb="Rush efficiency, stuffs, early-down run rate and how many defenders sit in the box." features={['Rush EPA and stuff rate', 'Early-down run rate', 'Light vs stacked box (FTN)', 'Rush yards over expected (Next Gen Stats)']}>
+            <ProPanel isPro={isPro} title="Run game &amp; box counts" blurb="Rush efficiency, stuffs, early-down run rate and how many defenders line up in the box." features={['Rush EPA and stuff rate', 'Early-down run rate', 'Light vs stacked box (FTN)', 'Rush yards over expected (Next Gen Stats)']}>
               {isPro && pro ? (
                 <div className="tp-grid-2">
                   {views.map((v, i) => (

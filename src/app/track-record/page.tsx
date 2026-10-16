@@ -7,7 +7,7 @@ import SiteHeader from '@/components/SiteHeader'
 export const revalidate = 1800
 
 export const metadata: Metadata = {
-  title: 'Historical Archive · The Edge',
+  title: 'Historical Archive · x9Lab',
   description:
     'Review past slates. Compare our pre-game structural analysis alongside actual game outcomes. Raw data, pure transparency.',
 }
@@ -25,7 +25,7 @@ export default async function HistoricalArchivePage() {
             ════════════════════════════════════════════════ */}
         <header className="mb-12">
           <div className="flex items-center gap-3 mb-4">
-            <div className="text-[#ea580c] text-xs font-mono uppercase tracking-[3px]">THE EDGE • MLB</div>
+            <div className="text-[#ea580c] text-xs font-mono uppercase tracking-[3px]">X9LAB • MLB</div>
           </div>
           
           <h1

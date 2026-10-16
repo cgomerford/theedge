@@ -8,7 +8,7 @@ import { getBatterFormSignals, getPitcherFormSignals, type FormSignalRow } from 
 
 export const revalidate = 3600
 export const metadata = {
-  title: 'Trends · The Fantasy Desk · The Edge',
+  title: 'Trends · The Fantasy Desk · x9Lab',
   description: 'Batters and pitchers whose recent form just peaked or bottomed out — a real, backtested signal, not a guess.',
 }
 

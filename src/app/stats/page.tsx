@@ -4,7 +4,7 @@ import SiteHeader from '@/components/SiteHeader'
 import StatsExplorer from '@/components/stats/StatsExplorer'
 import { getCurrentSubscriber } from '@/lib/auth'
 
-export const metadata = { title: 'The Stats · The Edge' }
+export const metadata = { title: 'The Stats · x9Lab' }
 
 export default async function StatsPage() {
   // DEV-ONLY bypass — same pattern as /lab. Gated on NODE_ENV so it can't

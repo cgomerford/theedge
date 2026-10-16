@@ -97,13 +97,6 @@ interface NflTeamSeasonReportsRow {
   points_allowed_per_game: string | null;
 }
 
-interface NflEdgeFactorsRow {
-  game_id: string;
-  edge_team: string | null;
-  factors_lean_count: number | null;
-  confidence: string | null;
-}
-
 interface NflPlayersRow {
   gsis_id: string;
   full_name: string;
@@ -163,7 +156,6 @@ export interface NflGameCard {
   roof: string | null;
   homeQbName: string | null;
   awayQbName: string | null;
-  edge: EdgeSummary | null;
 }
 
 export interface TeamSummary {
@@ -178,12 +170,6 @@ export interface TeamSummary {
   pointsAllowedPerGame: number | null;
   offEpaRank: number | null;
   defEpaRank: number | null;
-}
-
-export interface EdgeSummary {
-  edgeTeam: string | null;
-  factorsLeanCount: number | null;
-  confidence: string | null;
 }
 
 /**
@@ -239,18 +225,8 @@ export async function getThisWeeksGames(statsSeason: number): Promise<NflGameCar
     .eq("season", statsSeason);
   const reports = (reportsRaw ?? []) as NflTeamSeasonReportsRow[];
 
-  const { data: edgesRaw } = await supabase
-    .from("nfl_edge_factors")
-    .select("game_id, edge_team, factors_lean_count, confidence")
-    .in(
-      "game_id",
-      games.map((g) => g.game_id)
-    );
-  const edges = (edgesRaw ?? []) as NflEdgeFactorsRow[];
-
   const teamById = new Map(teams.map((t) => [t.team_id, t]));
   const reportById = new Map(reports.map((r) => [r.team_id, r]));
-  const edgeByGame = new Map(edges.map((e) => [e.game_id, e]));
 
   const toTeamSummary = (teamId: string): TeamSummary => {
     const t = teamById.get(teamId);
@@ -276,7 +252,6 @@ export async function getThisWeeksGames(statsSeason: number): Promise<NflGameCar
   };
 
   return games.map((g) => {
-    const edge = edgeByGame.get(g.game_id);
     return {
       gameId: g.game_id,
       season: g.season,
@@ -292,13 +267,6 @@ export async function getThisWeeksGames(statsSeason: number): Promise<NflGameCar
       roof: g.roof,
       homeQbName: g.home_qb_name,
       awayQbName: g.away_qb_name,
-      edge: edge
-        ? {
-            edgeTeam: edge.edge_team,
-            factorsLeanCount: edge.factors_lean_count,
-            confidence: edge.confidence,
-          }
-        : null,
     };
   });
 }
@@ -619,7 +587,7 @@ export const getFieldGoalLeaders = (statsSeason: number, limit = 5) =>
 /**
  * Season-to-date fantasy points (PPR) leaders across all skill
  * positions -- historical, "how has this player actually scored,"
- * not a projection. See getFantasyProjections() for forward-looking.
+ * not a projection.
  */
 export async function getFantasyPointsLeaders(statsSeason: number, limit = 8): Promise<LeaderRow[]> {
   const supabase = createAdminClient();
@@ -672,61 +640,6 @@ export interface FantasyProjectionRow extends LeaderRow {
   isReliableSample: boolean;
 }
 
-/**
- * Forward-looking fantasy projections for the next upcoming week,
- * written by compute_fantasy_projections.py. Empty until that script
- * has run against a season with real player-week data (i.e. not
- * pre-season, when there's no game history yet to project from).
- */
-export async function getFantasyProjections(limit = 8): Promise<FantasyProjectionRow[]> {
-  const supabase = createAdminClient();
-
-  const { data: projRaw } = await supabase
-    .from("nfl_fantasy_projections")
-    .select("*")
-    .order("projected_points_ppr", { ascending: false })
-    .limit(limit);
-  const projections = (projRaw ?? []) as {
-    player_id: string;
-    opponent_team: string | null;
-    projected_points_ppr: string | null;
-    matchup_factor: string | null;
-    is_reliable_sample: boolean;
-  }[];
-
-  if (projections.length === 0) return [];
-
-  const playerIds = projections.map((p) => p.player_id);
-  const { data: playersRaw } = await supabase
-    .from("nfl_players")
-    .select("gsis_id, full_name, team_id, headshot_url")
-    .in("gsis_id", playerIds);
-  const playerById = new Map(
-    ((playersRaw ?? []) as Pick<NflPlayersRow, "gsis_id" | "full_name" | "team_id" | "headshot_url">[]).map(
-      (p) => [p.gsis_id, p]
-    )
-  );
-
-  return projections.map((p) => {
-    const player = playerById.get(p.player_id);
-    return {
-      gsisId: p.player_id,
-      fullName: player?.full_name ?? p.player_id,
-      teamId: player?.team_id ?? "",
-      headshotUrl: player?.headshot_url ?? null,
-      statValue: p.projected_points_ppr != null ? Number(p.projected_points_ppr) : 0,
-      opponentTeam: p.opponent_team,
-      matchupFactor: p.matchup_factor != null ? Number(p.matchup_factor) : 1,
-      isReliableSample: p.is_reliable_sample,
-    };
-  });
-}
-
-/**
- * Advanced Stats panel: CPOE leaders from Next Gen Stats passing data
- * (most recent week per QB, not season-aggregated -- NGS doesn't sum
- * cleanly across weeks the way counting stats do).
- */
 export async function getAdvancedStatsLeaders(statsSeason: number, limit = 5): Promise<LeaderRow[]> {
   const supabase = createAdminClient();
 

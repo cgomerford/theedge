@@ -14,7 +14,7 @@ import WeeklyWrapBoard from './WeeklyWrapBoard'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Weekly Wrap · The Edge Fantasy Desk',
+  title: 'Weekly Wrap · x9Lab Fantasy Desk',
   description: 'Ownership movers, trending players, the IL report, and the full transaction log — one page, built for the week.',
 }
 

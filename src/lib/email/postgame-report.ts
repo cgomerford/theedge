@@ -27,7 +27,7 @@
 //   })
 //
 //   await resend.emails.send({
-//     from: 'The Edge <hello@edgereportdaily.com>',
+//     from: 'x9Lab <hello@edgereportdaily.com>',
 //     to: recipientEmail,
 //     subject: email.subject,
 //     html: email.html,
@@ -177,7 +177,7 @@ function buildSubject(
   const winnerShort = finalScore.away > finalScore.home ? awayShort : homeShort
   const loserScore = Math.min(finalScore.away, finalScore.home)
   const winnerScore = Math.max(finalScore.away, finalScore.home)
-  return `${winnerShort} win it, ${winnerScore}-${loserScore} · The Edge`
+  return `${winnerShort} win it, ${winnerScore}-${loserScore} · x9Lab`
 }
 
 // ─── Plain text ─────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ function buildPlainText(
   unsubscribeUrl: string,
 ): string {
   const lines: string[] = []
-  lines.push('THE EDGE — POST-GAME REPORT')
+  lines.push('X9LAB — POST-GAME REPORT')
   lines.push('')
   lines.push(`${awayTeamName} ${finalScore.away} — ${homeTeamName} ${finalScore.home} (Final)`)
   lines.push('')
@@ -215,7 +215,7 @@ function buildPlainText(
   lines.push(`Update preferences: ${preferencesUrl}`)
   lines.push(`Unsubscribe: ${unsubscribeUrl}`)
   lines.push('')
-  lines.push('— The Edge')
+  lines.push('— x9Lab')
 
   return lines.join('\n')
 }
@@ -282,7 +282,7 @@ export function buildPostgameEmail({
     : `${awayTeamName} ${finalScore.away} — ${homeTeamName} ${finalScore.home}`
 
   const html = wrapEmail({
-    title: `The Edge — Post-Game Report`,
+    title: `x9Lab — Post-Game Report`,
     preheader,
     body: bodyParts.join(''),
   })

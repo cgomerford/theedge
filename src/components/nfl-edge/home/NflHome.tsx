@@ -3,12 +3,11 @@
 // NFL homepage, laid out exactly like the MLB homepage (src/app/mlb/MLBHomepage.tsx):
 //   player search (top right) → card ticker with a date bar → main column + 320px sidebar:
 //     § All 32 teams · § Featured game · § League leaders + comprehensive leaderboard · § Standings + quality map ·
-//     § Coverage desk · § Injury alert · § How the Edge works · § Fantasy context
-//     sidebar: § Around the league (news) + Latest from The Edge (articles)
+//     § Coverage desk · § Injury alert · § How x9Lab works · § Fantasy context
+//     sidebar: § Around the league (news) + Latest from x9Lab (articles)
 // The CSS below is the MLB block (class names differ only by prefix), so spacing, cards and the ticker match.
 //
-// Content rules: no spreads / totals / odds; the lean is factor COUNTS only ("6/9 lean BUF"), never a score or probability;
-// empty state over fabricated data. Everything is read from nflverse-backed tables (nothing live from ESPN except the news feed).
+// Content rules: no spreads / totals / odds / leans / scores; empty state over fabricated data. Everything is read from nflverse-backed tables; nothing is fetched at render.
 
 import Link from 'next/link'
 import type { Slate, SlateGame, StandingRow, TickerWeek } from '@/lib/nfl-edge/slate'
@@ -19,7 +18,7 @@ import { kickoffLabel } from '@/lib/nfl-edge/games'
 import PlayerSearch from '@/components/PlayerSearch'
 import NewsFeedSidebar, { type NewsSidebarItem } from '@/components/NewsFeedSidebar'
 import SignupForm from '@/components/home/SignupForm'
-import { C, Chip, DISCLAIMER, InjuryDot, RestBadge, TeamLogo, TiltGauge, WeatherIcon, roofText } from '../ui'
+import { C, Chip, DISCLAIMER, InjuryDot, RestBadge, TeamLogo, WeatherIcon, roofText } from '../ui'
 import { CoverageSection, TeamQualitySection } from './LeagueDesk'
 import { LeaderPanel, NflTicker, Sec, Standings, TeamTable, type LeaderTab, type StandingsData, type TeamTableCol, type TeamTableRow, type TickerCard, type TickerWeekData } from './HomeClient'
 
@@ -58,14 +57,11 @@ const CSS = `
 const card: React.CSSProperties = { background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 12, padding: 16 }
 
 function toCard(g: SlateGame): TickerCard {
-  const r = g.read
-  const lead = r.lean === 'home' ? { n: r.homeCount, id: g.home.id } : { n: r.awayCount, id: g.away.id }
   return {
     id: g.game.id, slug: g.game.slug,
     away: { id: g.away.id, logo: g.away.logo, rec: g.awayRec }, home: { id: g.home.id, logo: g.home.logo, rec: g.homeRec },
     awayScore: g.game.awayScore, homeScore: g.game.homeScore, phase: g.phase,
     label: g.phase === 'final' ? 'FINAL' : g.phase === 'awaiting' ? 'FINAL SOON' : kickoffLabel(g.game.kickoff).replace(' ET', ''),
-    lean: g.phase === 'final' || !r.ready || r.total === 0 ? { kind: 'pending', text: '' } : r.lean === 'even' ? { kind: 'even', text: '' } : { kind: 'lean', text: `${lead.n}/${r.total} lean ${lead.id}` },
   }
 }
 
@@ -77,8 +73,6 @@ function AllTeamsStrip({ teams }: { teams: Map<string, NflTeam> }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {list.map(t => (
           <Link key={t.id} href={`/nfl/teams/${t.id.toLowerCase()}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px 5px 6px', background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderRadius: 999, textDecoration: 'none' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={t.logo} alt="" width={16} height={16} style={{ flexShrink: 0, objectFit: 'contain' }} />
             <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.03em' }}>{t.id}</span>
           </Link>
         ))}
@@ -88,7 +82,6 @@ function AllTeamsStrip({ teams }: { teams: Map<string, NflTeam> }) {
 }
 
 function Featured({ g }: { g: SlateGame }) {
-  const r = g.read
   const inj = (t: NflTeam, n: number) => (
     <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: FONT, fontSize: 12, color: '#3a352c' }}>
       <InjuryDot status={n > 0 ? 'Out' : null} /> {t.id}: {n > 0 ? `${n} starter${n === 1 ? '' : 's'} Out / Doubtful` : 'no starters Out / Doubtful'}
@@ -123,18 +116,7 @@ function Featured({ g }: { g: SlateGame }) {
           </div>
         </div>
         <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
-          {r.ready && r.total > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-              <TiltGauge home={g.home} away={g.away} homeCount={r.homeCount} awayCount={r.awayCount} total={r.total} size={160} />
-              <div>
-                <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>{r.label}</div>
-                <div style={{ fontFamily: FONT, fontSize: 13, color: '#5b5347', marginTop: 4 }}>{r.homeCount} of {r.total} factors lean {g.home.id} · {r.awayCount} lean {g.away.id}</div>
-                <div style={{ fontFamily: FONT, fontSize: 9.5, color: '#A3A3A3', marginTop: 4 }}>Needle = which club leads on more factors. Not a probability.</div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ fontFamily: FONT, fontSize: 12, color: '#A3A3A3', fontStyle: 'italic' }}>The factor read builds as clubs play. Open the preview for what is already known.</div>
-          )}
+          <div style={{ fontFamily: FONT, fontSize: 13, color: '#5b5347', lineHeight: 1.5 }}>Open the preview for matchup notes, both starting quarterbacks and who is available.</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{inj(g.away, g.starInjuries.away)}{inj(g.home, g.starInjuries.home)}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Link href={`/nfl/${g.game.slug}`} style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', background: C.ink, color: '#FAF8F3', padding: '9px 14px', borderRadius: 6, textDecoration: 'none' }}>Game Preview</Link>
@@ -218,7 +200,7 @@ export default function NflHome({
               <div className="nh-section">
                 <Sec>Featured game · {slate.label}</Sec>
                 <Featured g={slate.featured} />
-                <div style={{ fontFamily: FONT, fontSize: 9.5, color: '#A3A3A3', marginTop: 6 }}>The strongest combined-quality matchup still to play this week. Kickoffs in Eastern time. The lean counts how many of up to 10 factors point each way; it reads the data, it does not predict.</div>
+                <div style={{ fontFamily: FONT, fontSize: 9.5, color: '#A3A3A3', marginTop: 6 }}>The strongest combined-quality matchup still to play this week. Kickoffs in Eastern time.</div>
               </div>
             )}
 
@@ -281,18 +263,18 @@ export default function NflHome({
             </div>
 
             <div className="nh-section">
-              <Sec>How the Edge works</Sec>
+              <Sec>How x9Lab works</Sec>
               <div className="tp-grid-2">
                 <div style={card}>
                   <p style={{ fontFamily: FONT, fontSize: 15, color: '#1A1A1A', lineHeight: 1.55, margin: 0 }}>
-                    We line up ten factors: quarterback form, protection, passing and rushing offense and defense, red zone, turnovers, rest and weather. Then we count how many favor each club. You get a lean, the receipts behind it, and none of the noise.
+                    Every game gets a scouting report: who&apos;s available, who&apos;s actually playing, how each side wins, and what to watch. Numbers come with their sample size.
                   </p>
                   <div style={{ marginTop: 14 }}><SignupForm source="nfl-home" buttonLabel="Get the free weekly read →" /></div>
                 </div>
                 <div style={card}>
                   <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722', marginBottom: 10 }}>Free vs Pro</div>
                   <div style={{ display: 'grid', gap: 10 }}>
-                    {[['Game Preview', 'Free', 'Who is playing, the factor read, both quarterbacks, likely starters, key players.'], ['Scout Report', 'Free signup', 'Availability desk, form trends, snap and personnel shares, situational football.'], ['Pro Scout', 'Pro', 'FTN motion / blitz / play-action, Next Gen Stats depth, matchup clashes, full splits.']].map(([t, tier, blurb]) => (
+                    {[['Game Preview', 'Free', 'Who is playing, matchup notes, both quarterbacks, likely starters, key players.'], ['Scout Report', 'Free signup', 'Availability desk, form trends, snap and personnel shares, situational football.'], ['Pro Scout', 'Pro', 'FTN motion / blitz / play-action, Next Gen Stats depth, matchup clashes, full splits.']].map(([t, tier, blurb]) => (
                       <div key={t} style={{ display: 'grid', gridTemplateColumns: '108px 1fr', gap: 10, alignItems: 'start' }}>
                         <div><div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 14, color: '#1A1A1A' }}>{t}</div><Chip tone={tier === 'Pro' ? 'yellow' : tier === 'Free' ? 'good' : 'orange'}>{tier}</Chip></div>
                         <div style={{ fontFamily: FONT, fontSize: 12.5, color: '#5b5347', lineHeight: 1.45 }}>{blurb}</div>

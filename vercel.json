@@ -15,10 +15,6 @@
 {
   "path": "/api/cron/series-top3-snapshot",
   "schedule": "0 13,17,21 * * *"
-},
-    {"path": "/api/cron/fetch-fantasy-ownership",
-    
-      "schedule": "0 13 * * *"
-    }
+}
   ]
 }

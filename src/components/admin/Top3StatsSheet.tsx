@@ -198,7 +198,7 @@ export const Top3StatsStage = forwardRef<HTMLDivElement, Top3StatsStageProps>(
           }}
         >
           <div style={{ fontFamily: 'var(--font-fraunces), serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>
-            <span style={{ color: COLORS.orange }}>⊕</span> THE EDGE{' '}
+            <span style={{ color: COLORS.orange }}>⊕</span> X9LAB{' '}
             <span style={{ fontWeight: 400, fontSize: 13, color: COLORS.gray }}>/ {levelLabel ?? DEFAULT_LEVEL_LABEL}</span>
           </div>
           <div

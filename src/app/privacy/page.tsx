@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Privacy Policy · The Edge",
+  title: "Privacy Policy · x9Lab",
   description: "How we handle your data.",
 }
 import SiteHeader from '@/components/SiteHeader'
@@ -22,14 +22,14 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">What we collect</h2>
             <p>
-              When you sign up to The Edge, we collect your email address and which sports/teams you choose to follow. We do not ask for your name, location, or any other identifying information. If you contact us by email, we&apos;ll have a record of that conversation.
+              When you sign up to x9Lab, we collect your email address and which sports/teams you choose to follow. We do not ask for your name, location, or any other identifying information. If you contact us by email, we&apos;ll have a record of that conversation.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">How we use it</h2>
             <p>
-              Your email is used solely to send you the daily brief and occasional updates about The Edge (e.g., a new sport launching). We do not sell, rent, or share your email with third parties.
+              Your email is used solely to send you the daily brief and occasional updates about x9Lab (e.g., a new sport launching). We do not sell, rent, or share your email with third parties.
             </p>
           </section>
 
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Where data is stored</h2>
             <p>
-              Subscriber data is stored on Supabase (a US/EU-based hosting provider). The Edge is hosted on Vercel. Email delivery is handled by Resend. All providers are GDPR and CCPA compliant.
+              Subscriber data is stored on Supabase (a US/EU-based hosting provider). x9Lab is hosted on Vercel. Email delivery is handled by Resend. All providers are GDPR and CCPA compliant.
             </p>
           </section>
 
@@ -57,7 +57,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Children</h2>
             <p>
-              The Edge is not directed at children under 13. We do not knowingly collect data from children. If we learn we have, we&apos;ll delete it.
+              x9Lab is not directed at children under 13. We do not knowingly collect data from children. If we learn we have, we&apos;ll delete it.
             </p>
           </section>
 

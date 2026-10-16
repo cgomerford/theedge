@@ -27,7 +27,7 @@ export default function HomeFunnelEditorial({
 
       <section className="px-6 pt-24 pb-20 max-w-5xl mx-auto">
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#ea580c] mb-6">
-          THE EDGE · {activeSportLabel} IN SEASON
+          X9LAB · {activeSportLabel} IN SEASON
         </div>
         <h1 className="text-6xl md:text-7xl font-serif font-bold tracking-tight mb-6 text-stone-900">
           Sharp analysis.

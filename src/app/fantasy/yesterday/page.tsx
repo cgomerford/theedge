@@ -9,7 +9,7 @@ import YesterdayBoard from './YesterdayBoard'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: "Last Night's Numbers · The Edge Fantasy Desk",
+  title: "Last Night's Numbers · x9Lab Fantasy Desk",
   description: 'Strikeout leaders, hardest-hit balls, and extra-base-hit leaders from last night\'s slate.',
 }
 

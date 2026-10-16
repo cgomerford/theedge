@@ -662,7 +662,7 @@ export default function FantasyDashboard({
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <div className="font-mono text-[9px] uppercase tracking-widest text-orange-500 font-bold mb-1">
-              ⊕ The Edge · Fantasy Desk · Pro
+              ⊕ x9Lab · Fantasy Desk · Pro
             </div>
             <h1 className="font-serif text-2xl md:text-3xl font-bold text-stone-900 leading-none tracking-tight">
               The Trading Floor<span className="text-orange-500">.</span>

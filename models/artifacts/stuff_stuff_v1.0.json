@@ -1,0 +1,68 @@
+{
+  "method_version": "stuff_v1.0",
+  "train": [
+    2023,
+    2024
+  ],
+  "valid": 2025,
+  "test": 2026,
+  "rounds": {
+    "fastball": 600,
+    "breaking": 577,
+    "offspeed": 481
+  },
+  "features": {
+    "fastball": [
+      "release_speed",
+      "release_spin_rate",
+      "spin_axis_mirror",
+      "hb_in",
+      "ivb_in",
+      "release_extension",
+      "rel_x_arm",
+      "rel_z",
+      "arm_angle",
+      "vaa",
+      "haa",
+      "p_throws_l",
+      "stand_l"
+    ],
+    "breaking": [
+      "release_speed",
+      "release_spin_rate",
+      "spin_axis_mirror",
+      "hb_in",
+      "ivb_in",
+      "release_extension",
+      "rel_x_arm",
+      "rel_z",
+      "arm_angle",
+      "vaa",
+      "haa",
+      "p_throws_l",
+      "stand_l",
+      "velo_gap",
+      "ivb_gap",
+      "hb_gap"
+    ],
+    "offspeed": [
+      "release_speed",
+      "release_spin_rate",
+      "spin_axis_mirror",
+      "hb_in",
+      "ivb_in",
+      "release_extension",
+      "rel_x_arm",
+      "rel_z",
+      "arm_angle",
+      "vaa",
+      "haa",
+      "p_throws_l",
+      "stand_l",
+      "velo_gap",
+      "ivb_gap",
+      "hb_gap"
+    ]
+  },
+  "model": "sklearn HistGradientBoostingRegressor (LightGBM unavailable: no libomp)"
+}

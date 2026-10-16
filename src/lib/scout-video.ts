@@ -131,7 +131,7 @@ function drawBrandBar(ctx: CanvasRenderingContext2D, revealT: number) {
   ctx.font = `700 44px "${FONTS.display}"`
   ctx.fillText('⊕', 60, 110)
   ctx.fillStyle = COLORS.stone
-  ctx.fillText('THE EDGE', 110, 110)
+  ctx.fillText('X9LAB', 110, 110)
   ctx.restore()
 }
 

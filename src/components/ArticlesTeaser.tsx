@@ -10,7 +10,7 @@ export default async function ArticlesTeaser() {
     <section style={{ padding: '40px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
         <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 24 }}>
-          Latest from The Edge
+          Latest from x9Lab
         </h2>
         <Link
           href="/articles"

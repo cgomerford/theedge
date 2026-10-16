@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = welcomeEmail(sub.email, sub.preferences_token)
       await resend.emails.send({
-        from: 'The Edge <hello@edgereportdaily.com>',
+        from: 'x9Lab <hello@edgereportdaily.com>',
         to: sub.email,
         subject: content.subject,
         html: content.html,

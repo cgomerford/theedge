@@ -20,7 +20,7 @@ import TradeDeskBoard from './TradeDeskBoard'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Trade Desk · The Edge Fantasy Desk',
+  title: 'Trade Desk · x9Lab Fantasy Desk',
   description: 'Sell-high and buy-low candidates based on real trending signals — trade targets worth exploring.',
 }
 

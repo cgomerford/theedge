@@ -113,40 +113,6 @@ export function InjuryDot({ status, practice }: { status: 'Out' | 'Doubtful' | '
   return <span title={label} aria-label={label} style={{ width: 9, height: 9, borderRadius: 999, background: color, display: 'inline-block', flexShrink: 0 }} />
 }
 
-/**
- * Tilt gauge: a half-circle split between the two clubs' colours with a needle pointing toward the club
- * that leads on more factors. It shows a COUNT difference, never a probability or a score.
- */
-export function TiltGauge({ home, away, homeCount, awayCount, total, size = 150 }: { home: NflTeam; away: NflTeam; homeCount: number; awayCount: number; total: number; size?: number }) {
-  const w = size, h = size * 0.62, cx = w / 2, cy = h - 6, r = size * 0.44
-  const tilt = total > 0 ? (homeCount - awayCount) / total : 0          // −1 (all away) … +1 (all home)
-  // Positions on the half-circle are parameterised by a ∈ [0, π]: 0 = far left (away), π = far right (home).
-  const at = (a: number, rad: number) => [cx + rad * Math.cos(Math.PI - a), cy - rad * Math.sin(Math.PI - a)]
-  const [nx, ny] = at((Math.PI * (tilt + 1)) / 2, r - 10)
-  const arc = (a0: number, a1: number, col: string) => {
-    const [x0, y0] = at(a0, r), [x1, y1] = at(a1, r)
-    return <path d={`M${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1}`} stroke={col} strokeWidth={10} fill="none" strokeLinecap="butt" />
-  }
-  return (
-    <svg viewBox={`0 0 ${w} ${h + 4}`} width={w} height={h + 4} role="img" aria-label={`${homeCount} factors lean ${home.id}, ${awayCount} lean ${away.id}, of ${total}`}>
-      {arc(0, Math.PI / 2, away.color)}
-      {arc(Math.PI / 2, Math.PI, home.color)}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={C.ink} strokeWidth={3} strokeLinecap="round" />
-      <circle cx={cx} cy={cy} r={5} fill={C.ink} />
-    </svg>
-  )
-}
-
-/** The lean as a pill: "Moderate lean BUF · 6 of 9 factors". Count language only. */
-export function LeanPill({ label, count, total, ready }: { label: string; count: number; total: number; ready: boolean }) {
-  if (!ready) return <Chip>Read builds as games are played</Chip>
-  return (
-    <span style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 700, color: C.ink, background: '#FFF4A8', padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-      {label}{count > 0 ? <span style={{ fontWeight: 500, color: '#5b5347' }}> · {count} of {total} factors</span> : null}
-    </span>
-  )
-}
-
 export function TabStrip({ game, active }: { game: NflGame; active: 'preview' | 'scout' | 'postgame' }) {
   const base = `/nfl/${game.slug}`
   const tabs: { id: 'preview' | 'scout' | 'postgame'; label: string; href: string }[] = [
@@ -237,4 +203,4 @@ export const fmtPct = (v: number | null | undefined, d = 1) => (v == null ? '—
 export const fmtNum = (v: number | null | undefined, d = 1) => (v == null ? '—' : v.toFixed(d))
 
 export const DISCLAIMER =
-  'The Edge is an information and analysis product, not betting advice. Reads describe what the data shows about each club. They are not predictions or recommendations.'
+  'x9Lab is an information and analysis product, not betting advice. Reports describe what the data shows; they are not forecasts.'

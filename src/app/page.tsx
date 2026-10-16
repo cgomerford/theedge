@@ -571,14 +571,14 @@ export default async function HomePage({ searchParams }: Props) {
         <footer className="bg-[#FAF8F3] border-t border-[#E8E4DC] px-4 sm:px-6 py-12">
           <div className="max-w-[1320px] mx-auto">
             <div className="flex flex-wrap gap-x-8 gap-y-3 mb-10 text-xs uppercase tracking-widest text-[#8A8577]">
-              <Link href="/why-edge" className="hover:text-[#1A1A1A] transition-colors">Why The Edge</Link>
+              <Link href="/why-edge" className="hover:text-[#1A1A1A] transition-colors">Why x9Lab</Link>
               <Link href="/pricing" className="hover:text-[#1A1A1A] transition-colors">Pricing</Link>
               <Link href="/privacy" className="hover:text-[#1A1A1A] transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-[#1A1A1A] transition-colors">Terms</Link>
               <a href="mailto:hello@edgereportdaily.com" className="hover:text-[#1A1A1A] transition-colors">Contact</a>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-[10px] text-[#8A8577]">
-              <div>© 2026 The Edge · edgereportdaily.com · currently patching, features reopen Sept 18</div>
+              <div>© 2026 x9Lab · edgereportdaily.com · currently patching, features reopen Sept 18</div>
               <div className="max-w-md leading-relaxed">Statistical analysis only. No gambling advice, picks, or wagering recommendations.</div>
             </div>
           </div>

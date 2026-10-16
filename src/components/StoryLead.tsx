@@ -14,7 +14,7 @@ export default function StoryLead({ story_lead }: Props) {
         &ldquo;{story_lead}&rdquo;
       </p>
       <div className="text-xs font-mono uppercase tracking-wider text-stone-500 mt-6">
-        — by The Edge
+        — by x9Lab
       </div>
     </section>
   )

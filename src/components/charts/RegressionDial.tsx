@@ -1,7 +1,7 @@
 // src/components/charts/RegressionDial.tsx
 //
 // A single-glance gauge — Buy / Hold / Sell — with the plain-English "why"
-// sitting next to it. This is what makes The Edge feel like a trading desk:
+// sitting next to it. This is what makes x9Lab feel like a trading desk:
 // every player row can end in one clear tag instead of "here are the stats,
 // good luck".
 //

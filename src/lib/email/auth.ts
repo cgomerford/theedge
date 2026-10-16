@@ -63,21 +63,21 @@ export function verificationEmail(email: string, token: string) {
     transactionalFooter(),
   ].join('')
   return {
-    subject: 'Confirm your email · The Edge',
+    subject: 'Confirm your email · x9Lab',
     html: wrapEmail({
-      title: 'Confirm your email — The Edge',
+      title: 'Confirm your email — x9Lab',
       preheader: 'One click to confirm your Edge subscription.',
       body,
     }),
     text: [
-      'Confirm your email — The Edge',
+      'Confirm your email — x9Lab',
       '',
       'One quick click and you\'re set up:',
       verifyUrl,
       '',
       'Didn\'t sign up? Ignore this email and nothing happens.',
       '',
-      '— The Edge',
+      '— x9Lab',
     ].join('\n'),
   }
 }
@@ -89,7 +89,7 @@ export function welcomeEmail(email: string, preferencesToken: string) {
     masthead('Welcome'),
     hairline(),
     editorialHeadline({
-      title: 'Welcome to <em style="color:' + COLORS.orange + ';">The Edge.</em>',
+      title: 'Welcome to <em style="color:' + COLORS.orange + ';">x9Lab.</em>',
       dek: 'One quick thing before tomorrow morning\'s brief.',
     }),
     spacer(8),
@@ -121,7 +121,7 @@ export function welcomeEmail(email: string, preferencesToken: string) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
-            The&nbsp;Edge<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
+            x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
           </td>
           <td align="right">
             <a href="${unsubscribeUrl}" style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.08em;color:${COLORS.muted};text-decoration:none;">
@@ -133,10 +133,10 @@ export function welcomeEmail(email: string, preferencesToken: string) {
     </td></tr>`,
   ].join('')
   return {
-    subject: 'Welcome to The Edge — pick your teams.',
-    html: wrapEmail({ title: 'Welcome to The Edge', preheader: 'You\'re in. Pick your teams to get your first morning brief.', body }),
+    subject: 'Welcome to x9Lab — pick your teams.',
+    html: wrapEmail({ title: 'Welcome to x9Lab', preheader: 'You\'re in. Pick your teams to get your first morning brief.', body }),
     text: [
-      'Welcome to The Edge.',
+      'Welcome to x9Lab.',
       '',
       'Pick your teams: ' + preferencesUrl,
       '',
@@ -164,8 +164,8 @@ export function loginLinkEmail(email: string, token: string) {
     transactionalFooter(),
   ].join('')
   return {
-    subject: 'Your sign-in link · The Edge',
-    html: wrapEmail({ title: 'Sign in — The Edge', preheader: 'Your one-time sign-in link for The Edge.', body }),
-    text: ['Sign in to The Edge', '', loginUrl, '', 'Expires in 30 minutes. Didn\'t request this? Ignore it.'].join('\n'),
+    subject: 'Your sign-in link · x9Lab',
+    html: wrapEmail({ title: 'Sign in — x9Lab', preheader: 'Your one-time sign-in link for x9Lab.', body }),
+    text: ['Sign in to x9Lab', '', loginUrl, '', 'Expires in 30 minutes. Didn\'t request this? Ignore it.'].join('\n'),
   }
 }

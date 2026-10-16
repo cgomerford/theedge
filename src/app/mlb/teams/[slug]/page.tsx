@@ -31,9 +31,9 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const team = findTeamBySlug(slug)
-  if (!team) return { title: 'Team not found · The Edge' }
+  if (!team) return { title: 'Team not found · x9Lab' }
   return {
-    title: `${team.name} — season, staff, offense & roster · The Edge`,
+    title: `${team.name} — season, staff, offense & roster · x9Lab`,
     description: `${team.name} profile: how the season has gone, rotation and bullpen ranks, pitch mix, offense, defense, ABS challenges, roster and schedule.`,
   }
 }

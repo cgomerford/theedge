@@ -20,10 +20,11 @@ Read this file at the start of every session. It is the source of truth for how 
 The Edge takes advanced stats and makes them legible to casual fans through **tables, charts and graphics**, while keeping enough depth for hardcore and fantasy users. Prose narrative is supporting material, **not** the core format (it has been deliberately deprioritized).
 
 ### Hard content rules (non-negotiable)
-- **Not a betting/tips product.** No "picks", "locks", "odds", "value bet", or any gambling-adjacent language anywhere (UI, emails, social, code comments that surface to users). Use **"reads", "leans", "factors"**.
-- **The raw Edge Score is internal only.** It must never appear on any public surface, email, or social copy.
-- Public display uses **factor-count language**: "X of 8 factors lean TEAM". Do **not** build percentage win-probability meters, "58% | 42%" splits, or confidence gauges derived from the Edge Score.
-- Social/X content: factor-count language only, no raw scores, no picks. **Links go in replies, not post bodies.**
+- **Not a betting/tips product, and no prediction language.** Use the scout vocabulary below. The banned-word list lives in `scripts/checks/copy-lint.ts` (source of truth).
+- **Scout vocabulary:** The question · The story so far · Availability · Usage & role · How they win · Where they're vulnerable · What changed · Matchup notes · Situational · Venue · X-factor · What to watch · What we flagged, what happened.
+- **The raw Edge Score is internal only.** It must never appear on any public surface, email, or social copy. No lean, tilt, factor-count or win-probability displays. <!-- copy-lint-ignore -->
+- Run `bash scripts/checks/guard.sh <changed paths>` on every changed path.
+- X links: a two-week A/B of root-post link vs reply link is running (Growth). Don't hard-code either rule.
 - **Empty state over fabricated data. Always.**
 
 ---
@@ -145,7 +146,7 @@ Live fan-out to external APIs during page render was the root cause of every per
 5. SEO (homepage copy, team/player discovery terms), mobile pass, Stripe once verified.
 
 **Where the review conflicts with house rules — house rules win:**
-- Review suggested a "who has the edge" percentage meter → use **factor counts / tilt bars** instead.
+- Review suggested a "who has the edge" percentage meter → use **Matchup notes** (both numbers, the sample, the rank of 32) instead. <!-- copy-lint-ignore -->
 - Review suggested publishing "our edges were X% accurate" → **do not build without George deciding the framing** (risks reading as betting-adjacent).
 - Review suggested Chart.js/Plotly and SportsDataIO → stay on **Recharts** and free public APIs.
 - Review favoured a long LLM narrative as the hero → narrative stays **supporting**.
@@ -168,7 +169,7 @@ Live fan-out to external APIs during page render was the root cause of every per
 - When removing dead code (e.g. the ~190-line hot-streaks / `scoutInputs` block in `page.tsx`), confirm what's dead before deleting.
 
 **Before you finish any task, check:**
-- [ ] No betting language; no raw Edge Score exposed
+- [ ] No betting language; no raw Edge Score exposed <!-- copy-lint-ignore -->
 - [ ] `isPro` passed as a required prop, never defaulted
 - [ ] `Number()` coercion on Supabase numerics; pagination if >1,000 rows
 - [ ] No live Savant/MLB fan-out added to a render path

@@ -202,7 +202,7 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
               className="bg-[#FAF8F3] border border-stone-200 rounded-xl p-5"
             >
               <div className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] mb-1">
-                ⊕ The Edge · Rolling {windowSize}-game {stat?.label ?? ''}
+                ⊕ x9Lab · Rolling {windowSize}-game {stat?.label ?? ''}
               </div>
               {loading ? (
                 <p className="text-xs font-serif italic text-stone-400 py-16 text-center">Loading…</p>

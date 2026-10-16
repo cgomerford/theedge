@@ -127,7 +127,7 @@ export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team
           <Field name={`${visitor ? '☒' : '☐'} Visitor:`} flex={1.5}>{visitor ? team.name : opp.name}</Field><Field name="Date:">{sc.date}</Field><Field name="End Time:">{sc.endTime}</Field><Field name="Wind:">{sc.wind}</Field>
         </div>
         <div style={{ display: 'flex' }}>
-          <Field name={`${visitor ? '☐' : '☒'} Home:`} flex={1.5}>{visitor ? opp.name : team.name}</Field><Field name="Scorer:">The Edge</Field><Field name="Time of Game:">{sc.timeOfGame}</Field><Field name="Weather:">{sc.weather}</Field>
+          <Field name={`${visitor ? '☐' : '☒'} Home:`} flex={1.5}>{visitor ? opp.name : team.name}</Field><Field name="Scorer:">x9Lab</Field><Field name="Time of Game:">{sc.timeOfGame}</Field><Field name="Weather:">{sc.weather}</Field>
         </div>
       </div>
 

@@ -5,7 +5,7 @@
 // src/components/nfl-edge/preview/PreviewClient.tsx
 //
 // The interactive parts of the Game Preview (everything else on the page is server-rendered):
-//   FactorExplorer   radar of the club-quality factors + a clickable factor table with plain-English explanations
+//   MatchupNotes     head-to-head unit rows (both values, sample n, rank of 32); tap a row for what it measures
 //   QbCards          side-by-side starting QBs; a button opens a modal with season percentiles + last 3 games
 //   DepthGrid        likely starters as position-pill cards; tap a player for season + last-3 modal
 //   KeyPlayerCards   key players with a matchup chip, a mini chart, and a breakdown modal
@@ -13,8 +13,7 @@
 // Props are plain data only (no functions cross the server/client boundary).
 
 import { useEffect, useState } from 'react'
-import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from 'recharts'
-import type { Factor } from '@/lib/nfl-edge/factors'
+import { formatNote, type MatchupNote } from '@/lib/nfl-edge/matchup-notes'
 import type { GameLine, PlayerCard, QbCardData } from '@/lib/nfl-edge/players'
 import type { KeyPlayer } from '@/lib/nfl-edge/preview'
 import { ordinal } from '@/lib/ordinal'
@@ -22,7 +21,6 @@ import { C, MONO, SANS, DISPLAY } from '@/components/team/ui'
 
 export type TeamLite = { id: string; nick: string; color: string; textOn: string; logo: string }
 
-const AXIS = { fontSize: 10.5, fontFamily: MONO, fill: '#5b5347' }
 const injColor = { Out: '#D4533B', Doubtful: '#E58A2B', Questionable: '#E8C22E' } as const
 
 function Dot({ status, practice }: { status: 'Out' | 'Doubtful' | 'Questionable' | null; practice?: string | null }) {
@@ -66,67 +64,37 @@ function Bars({ rows, color }: { rows: { label: string; pct: number; display: st
   )
 }
 
-/** ── Factors ────────────────────────────────────────────────────────────── */
-export function FactorExplorer({ factors, home, away }: { factors: Factor[]; home: TeamLite; away: TeamLite }) {
+/** ── Matchup notes ───────────────────────────────────────────────────────── */
+export function MatchupNotes({ notes, home, away }: { notes: MatchupNote[]; home: TeamLite; away: TeamLite }) {
   const [open, setOpen] = useState<string | null>(null)
-  const radar = factors.filter(f => f.homePct != null && f.awayPct != null).map(f => ({ axis: f.label, home: f.homePct as number, away: f.awayPct as number }))
-  const leanName = (f: Factor) => (f.lean === 'home' ? home.id : f.lean === 'away' ? away.id : 'Even')
+  const rank = (r: number | null) => (r ? ` (${ordinal(r)} of 32)` : '')
   return (
-    <div className="tp-grid-2" style={{ alignItems: 'start' }}>
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
-        <div style={{ fontFamily: SANS, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, marginBottom: 6 }}>Club profile · league percentile</div>
-        {radar.length >= 3 ? (
-          <div style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radar} outerRadius="72%">
-                <PolarGrid stroke="#e7e2d8" />
-                <PolarAngleAxis dataKey="axis" tick={AXIS} />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name={away.nick} dataKey="away" stroke={away.color} fill={away.color} fillOpacity={0.22} strokeWidth={2} />
-                <Radar name={home.nick} dataKey="home" stroke={home.color} fill={home.color} fillOpacity={0.22} strokeWidth={2} />
-                <Tooltip formatter={(v) => `${v}th percentile`} contentStyle={{ fontFamily: MONO, fontSize: 11, borderRadius: 8 }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p style={{ fontSize: 12, color: C.faint, fontStyle: 'italic', padding: '40px 0', textAlign: 'center', margin: 0 }}>Not enough played games for a profile yet.</p>
-        )}
-        <div style={{ display: 'flex', gap: 14, fontFamily: MONO, fontSize: 10, color: '#5b5347', justifyContent: 'center' }}>
-          <span><b style={{ color: away.color }}>■</b> {away.nick}</span><span><b style={{ color: home.color }}>■</b> {home.nick}</span>
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: C.faint, textAlign: 'center', marginTop: 4 }}>Farther from the centre = stronger relative to all 32 clubs.</div>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px,1fr) 70px 70px', gap: 8, padding: '0 2px 6px', fontFamily: MONO, fontSize: 9, color: C.faint, textTransform: 'uppercase' }}>
+        <span /><span style={{ textAlign: 'right' }}>{away.id}</span><span style={{ textAlign: 'right' }}>{home.id}</span>
       </div>
-
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
-        <div style={{ fontFamily: SANS, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, marginBottom: 8 }}>Factor table · tap a row</div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {factors.map(f => {
-            const on = open === f.key
-            return (
-              <div key={f.key} style={{ borderTop: `1px solid ${C.soft}` }}>
-                <button onClick={() => setOpen(on ? null : f.key)} aria-expanded={on} style={{ all: 'unset', cursor: 'pointer', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 62px 62px 74px', gap: 8, alignItems: 'center', padding: '9px 2px', width: '100%', boxSizing: 'border-box' }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink }}>{f.label}</span>
-                  <span style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 12, textAlign: 'right', fontWeight: f.lean === 'away' ? 800 : 400 }}>{f.awayDisplay}</span>
-                  <span style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 12, textAlign: 'right', fontWeight: f.lean === 'home' ? 800 : 400 }}>{f.homeDisplay}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 9.5, textAlign: 'center', padding: '3px 0', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '.06em',
-                    background: f.lean === 'home' ? home.color : f.lean === 'away' ? away.color : C.soft, color: f.lean === 'home' ? home.textOn : f.lean === 'away' ? away.textOn : C.mute }}>{leanName(f)}</span>
-                </button>
-                {on && (
-                  <div style={{ padding: '2px 2px 12px', fontSize: 12.5, color: '#5b5347', lineHeight: 1.5 }}>
-                    {f.plain}
-                    <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, marginTop: 4 }}>
-                      {away.id} {f.awayDisplay}{f.awayRank ? ` (${ordinal(f.awayRank)} of 32)` : ''} · {home.id} {f.homeDisplay}{f.homeRank ? ` (${ordinal(f.homeRank)} of 32)` : ''} · sample: {f.sample}
-                    </div>
-                  </div>
-                )}
+      {notes.map(n => {
+        const on = open === n.id
+        const tooSmall = n.home.rank == null && n.away.rank == null
+        return (
+          <div key={n.id} style={{ borderTop: `1px solid ${C.soft}` }}>
+            <button onClick={() => setOpen(on ? null : n.id)} aria-expanded={on} style={{ all: 'unset', cursor: 'pointer', display: 'grid', gridTemplateColumns: 'minmax(120px,1fr) 70px 70px', gap: 8, alignItems: 'center', padding: '9px 2px', width: '100%', boxSizing: 'border-box' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink }}>{n.label}</span>
+              <span style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 12.5, textAlign: 'right', fontWeight: 700 }}>{formatNote(n.away.value, n.unit)}</span>
+              <span style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 12.5, textAlign: 'right', fontWeight: 700 }}>{formatNote(n.home.value, n.unit)}</span>
+            </button>
+            {on && (
+              <div style={{ padding: '2px 2px 12px', fontSize: 12.5, color: '#5b5347', lineHeight: 1.5 }}>
+                {n.foot}
+                <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, marginTop: 4 }}>
+                  {away.id} {formatNote(n.away.value, n.unit)}{rank(n.away.rank)}, n={n.away.n} · {home.id} {formatNote(n.home.value, n.unit)}{rank(n.home.rank)}, n={n.home.n}
+                  {tooSmall ? ' · rank shown after 3 games (n too small)' : ''}
+                </div>
               </div>
-            )
-          })}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 62px 62px 74px', gap: 8, borderTop: `1px solid ${C.line}`, padding: '8px 2px 0', fontFamily: MONO, fontSize: 9, color: C.faint, textTransform: 'uppercase' }}>
-            <span /> <span style={{ textAlign: 'right' }}>{away.id}</span><span style={{ textAlign: 'right' }}>{home.id}</span><span style={{ textAlign: 'center' }}>Leans</span>
+            )}
           </div>
-        </div>
-      </div>
+        )
+      })}
     </div>
   )
 }

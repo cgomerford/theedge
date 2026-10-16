@@ -5,7 +5,7 @@
 // Expanded, downloadable version of a SeriesTopPerformers chip — same
 // export mechanism as the admin dashboard's PostGameXCardBatter/Pitcher
 // (html-to-image, falling back to html2canvas, same as that component
-// uses), and the same "The Edge · edgereportdaily.com" watermark footer
+// uses), and the same "x9Lab · edgereportdaily.com" watermark footer
 // those admin cards already carry, so a downloaded PNG is traceable back
 // to the site if it gets shared around.
 
@@ -165,7 +165,7 @@ export default function PerformerCardModal({ performer, onClose }: { performer: 
         </div>
 
         <div className="text-center pt-3 border-t border-stone-100">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">The Edge · edgereportdaily.com</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · edgereportdaily.com</span>
         </div>
       </div>
     </DetailModal>

@@ -5,7 +5,7 @@ import SiteHeader from '@/components/SiteHeader'
 import PlayersDashboard from '@/components/PlayersDashboard'
 import { getCurrentSubscriber } from '@/lib/auth'
 
-export const metadata = { title: 'Dashboard - The Edge' }
+export const metadata = { title: 'Dashboard - x9Lab' }
 
 export default async function LabPage() {
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {

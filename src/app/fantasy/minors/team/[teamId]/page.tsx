@@ -20,9 +20,9 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params
   const team = await getMinorLeagueTeam(Number(teamId))
-  if (!team) return { title: 'Minor League Team · The Edge' }
+  if (!team) return { title: 'Minor League Team · x9Lab' }
   return {
-    title: `${team.name} · ${team.level} · The Edge`,
+    title: `${team.name} · ${team.level} · x9Lab`,
     description: `Full roster and recent form for the ${team.name} — ${team.parentOrgName ?? ''} affiliate.`,
   }
 }

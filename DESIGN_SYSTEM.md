@@ -117,14 +117,16 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 
 - **Free page first, Pro "expands" it.** Every section ends with one `ProPanel` that extends a concept already on the page.
 - `isPro` is a **required prop and is never defaulted** (a default of `true` once leaked Pro to logged-out users).
-- Locked state = a card with the feature list and an upgrade link — **no numbers, no blurred fake charts** (empty state over fabricated data).
+- Locked state = a card with the feature list and an upgrade link — **no numbers** (empty state over fabricated data). Never blur real data. The only allowed blur is the Pro wall's number-free module outline: a static SVG silhouette with no values, rendered server-side with no data in the HTML.
 - **Gate on the server.** For non-Pro, the Pro children must not be constructed and Pro data must not be fetched or shipped in the HTML/RSC payload. APIs use `requirePro()` (`src/lib/require-pro.ts`), route layouts use `isProViewer()`.
 - Local dev unlocks Pro (`next dev` only); add `?pro=0` to a page (or cookie `edge_force_locked=1` for APIs/layouts) to preview the locked state.
 
 ## 6. Content rules (unchanged, non-negotiable)
 
-- Not a betting/tips product: **"reads", "leans", "factors"** — no picks, locks, odds, value bets.
-- The raw Edge Score never appears on a public surface; use factor counts ("X of 8 factors lean TEAM").
+- Not a betting/tips product and no prediction language. **Scout vocabulary:** The question · The story so far · Availability · Usage & role · How they win · Where they're vulnerable · What changed · Matchup notes · Situational · Venue · X-factor · What to watch · What we flagged, what happened. Banned words: `scripts/checks/copy-lint.ts`.
+- The raw Edge Score never appears on a public surface. <!-- copy-lint-ignore -->
+- Bebas Neue and Fraunces are retired for new UI.
+- Gate on the server.
 - Descriptions of what happened, with the sample behind them — not predictions. Footnote the source and method on every chart.
 - Charts: **Recharts** only.
 

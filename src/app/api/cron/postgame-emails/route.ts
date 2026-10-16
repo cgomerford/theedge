@@ -105,7 +105,7 @@ async function sendPostgameEmail(subject: string, html: string): Promise<boolean
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'The Edge <postgame@edgereportdaily.com>',
+        from: 'x9Lab <postgame@edgereportdaily.com>',
         // TODO: swap for your actual audience/segment mechanism — this
         // assumes a single "postgame" list id, not per-team subscriptions.
         to: process.env.POSTGAME_AUDIENCE_ID,

@@ -17,7 +17,7 @@ import NflQbRotatingLeaderboard from '@/components/nfl/NflQbRotatingLeaderboard'
 import { NflQbCoverageChart, NflQbPressureChart, NflQbFormationChart } from '@/components/nfl/NflQbCoveragePressureFormation'
 import type {
   QbNgsSeasonProfile, QbNgsWeeklyPoint, QbWeeklyGridRow,
-  QbZoneProfile, ZoneLeagueAverage, QbRadarProfile, FantasyProjectionRow,
+  QbZoneProfile, ZoneLeagueAverage, QbRadarProfile,
   QbCoverageSplit, QbPressureSplit, QbFormationSplit,
 } from '@/lib/nfl/queries'
 
@@ -35,7 +35,7 @@ function Cube({ title, explainer, children }: { title: string; explainer: string
 
 export default function NflQbRoomClient({
   statsSeason, profiles, defaultQb, defaultWeekly, weeklyGrid,
-  defaultZoneProfile, zoneLeagueAvg, defaultRadar, fantasyProjections,
+  defaultZoneProfile, zoneLeagueAvg, defaultRadar,
   defaultCoverage, defaultPressure, defaultFormation,
 }: {
   statsSeason: number
@@ -46,7 +46,6 @@ export default function NflQbRoomClient({
   defaultZoneProfile: QbZoneProfile | null
   zoneLeagueAvg: ZoneLeagueAverage[]
   defaultRadar: QbRadarProfile | null
-  fantasyProjections: FantasyProjectionRow[]
   defaultCoverage: QbCoverageSplit[]
   defaultPressure: QbPressureSplit[]
   defaultFormation: QbFormationSplit[]
@@ -99,7 +98,7 @@ export default function NflQbRoomClient({
   return (
     <main style={{ maxWidth: 1600, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px 24px 60px' }}>
       <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-        § The Edge · NFL {statsSeason}
+        § x9Lab · NFL {statsSeason}
       </p>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: '4px 0 8px', color: '#1A1A1A' }}>QB Room</h1>
       <p style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#78716C', maxWidth: 620, marginBottom: 28 }}>
@@ -120,7 +119,7 @@ export default function NflQbRoomClient({
             <Cube title="League Distribution" explainer="Every qualified QB's average depth of target, plotted on one line.">
               <NflQbBeeswarm profiles={profiles} />
             </Cube>
-            <Cube title="Past the Sticks, or YAC?" explainer="Positive = average attempt clears the first-down marker. Negative = scheme leans on yards after catch.">
+            <Cube title="Past the Sticks, or YAC?" explainer="Positive = average attempt clears the first-down marker. Negative = scheme relies on yards after catch.">
               <NflQbAirToSticksChart profiles={profiles} />
             </Cube>
             <Cube title="Depth vs Difficulty" explainer="X: how deep they aim. Y: how often into tight coverage. Top-right is the hardest throw profile in football.">
@@ -133,24 +132,6 @@ export default function NflQbRoomClient({
               <NflQbWeeklyHeatmap rows={weeklyGrid} />
             </Cube>
           </div>
-
-          {fantasyProjections.length > 0 && (
-            <div style={{ marginBottom: 28 }}>
-              <Cube title="Fantasy Projections, This Week" explainer="Forward-looking projections for the upcoming week's slate.">
-                <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 20 }}>
-                  {fantasyProjections.map((f, i) => (
-                    <div key={f.gsisId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(26,26,26,0.06)' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: i === 0 ? '#FF5722' : '#D4D0C8', width: 20 }}>{i + 1}</span>
-                      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 700, flex: 1 }}>
-                        {f.fullName} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 400, color: '#78716C' }}>· {f.teamId}{f.opponentTeam ? ` vs ${f.opponentTeam}` : ''}</span>
-                      </span>
-                      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 700, color: i === 0 ? '#FF5722' : '#1A1A1A' }}>{f.statValue.toFixed(1)} pts</span>
-                    </div>
-                  ))}
-                </div>
-              </Cube>
-            </div>
-          )}
 
           <div style={{ borderTop: '2px solid rgba(26,26,26,0.08)', paddingTop: 24 }}>
             <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, margin: '0 0 8px' }}>Player Deep Dive</h2>

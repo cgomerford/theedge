@@ -16,7 +16,7 @@ import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
 import { getLeaders } from '@/lib/lab'
 
 export const metadata = {
-  title: 'Pitching Lab · The Edge',
+  title: 'Pitching Lab · x9Lab',
   description: 'Full arsenal breakdown, count tendency, pitch sequencing, and hot zones for any MLB pitcher.',
 }
 

@@ -12,7 +12,7 @@ import GamePreview from '@/components/nfl-edge/preview/GamePreview'
 import { getGameBySlug, getSeasonGames } from '@/lib/nfl-edge/games'
 import { getNflTeams } from '@/lib/nfl-edge/teams'
 import { getLeagueForm, leagueRates } from '@/lib/nfl-edge/form'
-import { computeEdgeRead } from '@/lib/nfl-edge/factors'
+import { getMatchupNotes } from '@/lib/nfl-edge/matchup-notes'
 import { getQbCard, getTeamPlayers, getTeamUsage, type PlayerCard } from '@/lib/nfl-edge/players'
 import { getNflTicker, recordStr, recordsFrom, starterQbId } from '@/lib/nfl-edge/slate'
 import { buildKeyPlayers, buildSnapshot, getRecentForm } from '@/lib/nfl-edge/preview'
@@ -26,9 +26,9 @@ export async function generateMetadata({ params }: Props) {
   const game = await getGameBySlug(slug)
   const teams = await getNflTeams()
   const h = game && teams.get(game.homeId), a = game && teams.get(game.awayId)
-  if (!game || !h || !a) return { title: 'NFL Game · The Edge' }
-  const title = `${a.nick} at ${h.nick} — Game Preview · The Edge`
-  const description = `Week ${game.week} ${a.name} at ${h.name}: the factor read, starting quarterbacks, likely starters and key players.`
+  if (!game || !h || !a) return { title: 'NFL Game · x9Lab' }
+  const title = `${a.nick} at ${h.nick} — Game Preview · x9Lab`
+  const description = `Week ${game.week} ${a.name} at ${h.name}: matchup notes, starting quarterbacks, likely starters and key players.`
   return { title, description, openGraph: { title, description, type: 'article' }, twitter: { card: 'summary_large_image', title, description } }
 }
 
@@ -48,8 +48,8 @@ export default async function NflGamePreviewPage({ params }: Props) {
     getSeasonGames(game.season),
   ])
   const lr = leagueRates(lf)
-  const [read, homePlayers, awayPlayers, form] = await Promise.all([
-    computeEdgeRead({ game, lf, homeQbId: hq, awayQbId: aq }),
+  const notes = getMatchupNotes({ game, lf })
+  const [homePlayers, awayPlayers, form] = await Promise.all([
     getTeamPlayers(game.homeId, game.season, game.week, hq),
     getTeamPlayers(game.awayId, game.season, game.week, aq),
     getRecentForm(game),
@@ -78,7 +78,7 @@ export default async function NflGamePreviewPage({ params }: Props) {
       <SportLiveTicker mlbGames={mlbTicker} nflGames={ticker} defaultSport="nfl" />
       <GamePreview
         game={game} home={home} away={away} homeRec={rec(home.id)} awayRec={rec(away.id)}
-        read={read}
+        notes={notes}
         snapshot={buildSnapshot(lr, home.id, away.id, { home: pts(home.id), away: pts(away.id) })}
         qbs={[awayQb, homeQb]} weapons={[weapon(awayUse), weapon(homeUse)]}
         homePlayers={homePlayers} awayPlayers={awayPlayers}

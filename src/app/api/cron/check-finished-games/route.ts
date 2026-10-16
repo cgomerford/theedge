@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
           })
 
           await resend.emails.send({
-            from: 'The Edge <hello@edgereportdaily.com>',
+            from: 'x9Lab <hello@edgereportdaily.com>',
             to: sub.email,
             subject: email.subject,
             html: email.html,

@@ -21,14 +21,14 @@ export async function GET(req: NextRequest) {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Unsubscribed · The Edge</title>
+  <title>Unsubscribed · x9Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body style="font-family: Georgia, serif; background: #f4f1ea; color: #1a1a1a; max-width: 480px; margin: 80px auto; padding: 40px 20px; text-align: center;">
   <h1 style="font-size: 28px; font-weight: 600; margin: 0 0 16px;">You're unsubscribed.</h1>
-  <p style="font-size: 16px; line-height: 1.5; color: #555; margin: 0 0 24px;">We've removed <strong>${escapeHtml(email)}</strong> from The Edge. You won't hear from us again.</p>
+  <p style="font-size: 16px; line-height: 1.5; color: #555; margin: 0 0 24px;">We've removed <strong>${escapeHtml(email)}</strong> from x9Lab. You won't hear from us again.</p>
   <p style="font-size: 14px; color: #888; margin: 0 0 32px;">If this was a mistake, you can <a href="https://edgereportdaily.com" style="color: #ff5722;">resubscribe here</a>.</p>
-  <a href="https://edgereportdaily.com" style="display: inline-block; background: #1a1a1a; color: #dcfa3c; padding: 12px 24px; text-decoration: none; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 14px;">Back to The Edge →</a>
+  <a href="https://edgereportdaily.com" style="display: inline-block; background: #1a1a1a; color: #dcfa3c; padding: 12px 24px; text-decoration: none; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; font-size: 14px;">Back to x9Lab →</a>
 </body>
 </html>`,
     { headers: { 'Content-Type': 'text/html; charset=utf-8' } }

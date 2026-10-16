@@ -9,7 +9,7 @@
  *   - Confidence tier pill
  *   - 8 factor bars
  *   - One-line summary
- *   - The Edge branding
+ *   - x9Lab branding
  *
  * Usage: render at /mlb/[slug]/share
  * Screenshot with browser devtools at exactly 1200×628 and schedule via Buffer/Hypefury.
@@ -123,7 +123,7 @@ export default function ShareCard({
           fontSize: 13, fontWeight: 700, color: '#FF5722',
           letterSpacing: '0.12em', textTransform: 'uppercase',
         }}>
-          THE EDGE · edgereportdaily.com
+          X9LAB · edgereportdaily.com
         </div>
         <div style={{
           fontSize: 12, color: 'rgba(255,255,255,0.35)',

@@ -1,6 +1,6 @@
 // src/lib/email/layout.ts
 //
-// Shared shell for every email The Edge sends.
+// Shared shell for every email x9Lab sends.
 // Owns: HTML head, body wrapper, masthead, footer, hairlines, kickers.
 // Editorial Monocle/FT briefing feel — one source of truth for brand tokens.
 //
@@ -81,7 +81,7 @@ export function masthead(dateStr: string): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr>
         <td style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
-          The&nbsp;Edge<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;Daily&nbsp;Briefing
+          x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;Daily&nbsp;Briefing
         </td>
         <td align="right" style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
           ${dateStr}
@@ -140,7 +140,7 @@ export function transactionalFooter(): string {
   return `
   <tr><td class="brief-pad" style="padding:24px 40px 32px;">
     <div style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
-      The&nbsp;Edge<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
+      x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
     </div>
   </td></tr>`
 }

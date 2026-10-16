@@ -7,7 +7,7 @@ import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { getCurrentSubscriber } from '@/lib/auth'
 
-export const metadata = { title: 'Welcome to Pro · The Edge' }
+export const metadata = { title: 'Welcome to Pro · x9Lab' }
 export const dynamic = 'force-dynamic'
 
 export default async function ProSuccessPage() {

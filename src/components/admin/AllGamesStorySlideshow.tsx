@@ -143,7 +143,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         title: 'SCOUTING REPORT',
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5">
-            <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">THE EDGE</p>
+            <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">X9LAB</p>
             <h1 className="text-3xl font-bold leading-tight uppercase" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
               {current.matchup}
             </h1>
@@ -264,7 +264,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
               #{active + 1}
             </div>
             <p className="text-stone-400 text-sm">of {games.length} games on slate</p>
-            <p className="text-xs text-[#FF5722] mt-6 font-mono tracking-widest font-bold">THE EDGE READS</p>
+            <p className="text-xs text-[#FF5722] mt-6 font-mono tracking-widest font-bold">X9LAB READS</p>
           </div>
         ),
       },

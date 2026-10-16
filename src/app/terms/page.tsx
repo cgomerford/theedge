@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Terms of Use · The Edge",
-  description: "The rules of using The Edge.",
+  title: "Terms of Use · x9Lab",
+  description: "The rules of using x9Lab.",
 }
 
 import SiteHeader from '@/components/SiteHeader'
@@ -24,14 +24,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">What this is</h2>
             <p>
-              The Edge is a free informational service that publishes statistical analysis of sporting events. By using this site or subscribing to our emails, you agree to these terms.
+              x9Lab is a free informational service that publishes statistical analysis of sporting events. By using this site or subscribing to our emails, you agree to these terms.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Information only</h2>
             <p>
-              The Edge provides statistical information and analysis for educational and entertainment purposes. We do not provide gambling advice, picks, recommendations, or financial advice of any kind. Any decisions you make based on information from The Edge are entirely your own. We are not liable for any losses, financial or otherwise, resulting from use of our content.
+              x9Lab provides statistical information and analysis for educational and entertainment purposes. We do not provide gambling advice, picks, recommendations, or financial advice of any kind. Any decisions you make based on information from x9Lab are entirely your own. We are not liable for any losses, financial or otherwise, resulting from use of our content.
             </p>
           </section>
 
@@ -45,14 +45,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Acceptable use</h2>
             <p>
-              You may use The Edge for personal, non-commercial purposes. You may not scrape, redistribute, or republish our content (paid or otherwise) without permission. You may share individual pages or quote briefly with attribution.
+              You may use x9Lab for personal, non-commercial purposes. You may not scrape, redistribute, or republish our content (paid or otherwise) without permission. You may share individual pages or quote briefly with attribution.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Trademarks & data sources</h2>
             <p>
-              Team names, league names, and player names are trademarks of their respective owners. The Edge is not affiliated with, endorsed by, or sponsored by any professional sports league or team. All third-party trademarks are used for informational reference only.
+              Team names, league names, and player names are trademarks of their respective owners. x9Lab is not affiliated with, endorsed by, or sponsored by any professional sports league or team. All third-party trademarks are used for informational reference only.
             </p>
           </section>
 

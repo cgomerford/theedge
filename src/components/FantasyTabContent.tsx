@@ -263,7 +263,7 @@ function MethodologyPanel() {
         </div>
 
         <p className="font-mono text-[9px] text-stone-400 leading-relaxed border-t border-stone-100 pt-3">
-          Projections are probabilistic estimates, not guarantees. The Edge provides analysis only. Always consider the full context and your own judgment when making fantasy decisions.
+          Projections are probabilistic estimates, not guarantees. x9Lab provides analysis only. Always consider the full context and your own judgment when making fantasy decisions.
         </p>
       </div>
     </div>

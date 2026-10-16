@@ -56,7 +56,7 @@ export function Frame({ title, sub, away, home, final, children }: FrameProps) {
       <div style={{ display: 'flex', flex: 1, padding: '26px 56px 20px' }}>{children}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.ink, color: C.cream, padding: '0 56px', height: 64 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-          <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 34, letterSpacing: -1 }}>The Edge</div>
+          <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 34, letterSpacing: -1 }}>x9Lab</div>
           <div style={{ display: 'flex', fontSize: 18, color: C.yellow }}>edgereportdaily.com</div>
         </div>
         <div style={{ display: 'flex', fontSize: 16, color: '#a8a29e' }}>Information, not advice.</div>

@@ -133,7 +133,7 @@ const NFL_SUB_LINKS = [
 const ABOUT_SUB_LINKS = [
   { href: '/articles',     label: 'Articles' },
   { href: '/about',        label: 'About' },
-  { href: '/why-edge',     label: 'Why The Edge' },
+  { href: '/why-edge',     label: 'Why x9Lab' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/pricing',      label: 'Pricing' },
   { href: '/track-record', label: 'Past Games' },
@@ -671,10 +671,11 @@ export default function SiteHeader({ variant = 'page' }: Props) {
 
               <Link
                 href="/"
-                className="font-serif font-black text-2xl tracking-tight text-stone-900 hover:opacity-70 transition flex items-baseline shrink-0"
-                style={{ fontFamily: 'Fraunces, serif' }}
+                aria-label="x9Lab home"
+                className="hover:opacity-70 transition flex items-center shrink-0"
               >
-                The Edge<span className="text-[#FF5722]">.</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/x9labs-mark.png" alt="x9Lab" height={40} style={{ height: 40, width: 'auto', display: 'block' }} />
               </Link>
 
               <div className="hidden md:block w-px h-6 bg-stone-300 mx-4 lg:mx-6 shrink-0" />

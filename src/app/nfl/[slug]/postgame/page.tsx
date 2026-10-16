@@ -20,8 +20,8 @@ export async function generateMetadata({ params }: Props) {
   const game = await getGameBySlug(slug)
   const teams = await getNflTeams()
   const h = game && teams.get(game.homeId), a = game && teams.get(game.awayId)
-  if (!game || !h || !a) return { title: 'NFL Postgame · The Edge' }
-  const title = `${a.nick} at ${h.nick} — Postgame · The Edge`
+  if (!game || !h || !a) return { title: 'NFL Postgame · x9Lab' }
+  const title = `${a.nick} at ${h.nick} — Postgame · x9Lab`
   return { title, description: `What happened: ${a.name} at ${h.name}, Week ${game.week}. Win-probability swings, top performers, team stats and scoring drives.` }
 }
 

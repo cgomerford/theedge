@@ -1,0 +1,273 @@
+{
+  "seasonSeries": [
+    {
+      "id": 2026020022,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-10-03",
+      "startTimeUTC": "2026-10-03T23:00:00Z",
+      "easternUTCOffset": "-04:00",
+      "venueUTCOffset": "-04:00",
+      "gameState": "OFF",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 16,
+        "abbrev": "CHI",
+        "score": 3
+      },
+      "homeTeam": {
+        "id": 7,
+        "abbrev": "BUF",
+        "score": 4
+      },
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      }
+    },
+    {
+      "id": 2026020305,
+      "season": 20262027,
+      "gameType": 2,
+      "gameDate": "2026-11-12",
+      "startTimeUTC": "2026-11-13T01:00:00Z",
+      "easternUTCOffset": "-05:00",
+      "venueUTCOffset": "-06:00",
+      "gameState": "FUT",
+      "gameScheduleState": "OK",
+      "awayTeam": {
+        "id": 7,
+        "abbrev": "BUF"
+      },
+      "homeTeam": {
+        "id": 16,
+        "abbrev": "CHI"
+      },
+      "gameOutcome": {
+        "lastPeriodType": "REG"
+      }
+    }
+  ],
+  "seasonSeriesWins": {
+    "awayTeamWins": 0,
+    "homeTeamWins": 1
+  },
+  "gameInfo": {
+    "referees": [
+      {
+        "fullName": {
+          "default": "Cody Beach"
+        },
+        "sweaterNumber": 12
+      },
+      {
+        "fullName": {
+          "default": "Frederick L'Ecuyer"
+        },
+        "sweaterNumber": 17
+      }
+    ],
+    "linesmen": [
+      {
+        "fullName": {
+          "default": "Scott Cherrey"
+        },
+        "sweaterNumber": 50
+      },
+      {
+        "fullName": {
+          "default": "Anthony Lapointe"
+        },
+        "sweaterNumber": 63
+      }
+    ],
+    "awayTeam": {
+      "headCoach": {
+        "default": "Jeff Blashill"
+      },
+      "scratches": [
+        {
+          "id": 8478233,
+          "firstName": {
+            "default": "Andrew"
+          },
+          "lastName": {
+            "default": "Mangiapane"
+          }
+        },
+        {
+          "id": 8481524,
+          "firstName": {
+            "default": "Bowen"
+          },
+          "lastName": {
+            "default": "Byram"
+          }
+        },
+        {
+          "id": 8483506,
+          "firstName": {
+            "default": "Sam"
+          },
+          "lastName": {
+            "default": "Rinzel"
+          }
+        }
+      ]
+    },
+    "homeTeam": {
+      "headCoach": {
+        "default": "Lindy Ruff"
+      },
+      "scratches": [
+        {
+          "id": 8476891,
+          "firstName": {
+            "default": "Matt"
+          },
+          "lastName": {
+            "default": "Grzelcyk"
+          }
+        },
+        {
+          "id": 8479941,
+          "firstName": {
+            "default": "Justin"
+          },
+          "lastName": {
+            "default": "Danforth"
+          }
+        },
+        {
+          "id": 8482896,
+          "firstName": {
+            "default": "Tyson"
+          },
+          "lastName": {
+            "default": "Kozak"
+          }
+        }
+      ]
+    }
+  },
+  "linescore": {
+    "byPeriod": [
+      {
+        "periodDescriptor": {
+          "number": 1,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "away": 2,
+        "home": 1
+      },
+      {
+        "periodDescriptor": {
+          "number": 2,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "away": 1,
+        "home": 1
+      },
+      {
+        "periodDescriptor": {
+          "number": 3,
+          "periodType": "REG",
+          "maxRegulationPeriods": 3
+        },
+        "away": 0,
+        "home": 2
+      }
+    ],
+    "totals": {
+      "away": 3,
+      "home": 4
+    }
+  },
+  "shotsByPeriod": [
+    {
+      "periodDescriptor": {
+        "number": 1,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "away": 5,
+      "home": 13
+    },
+    {
+      "periodDescriptor": {
+        "number": 2,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "away": 4,
+      "home": 8
+    },
+    {
+      "periodDescriptor": {
+        "number": 3,
+        "periodType": "REG",
+        "maxRegulationPeriods": 3
+      },
+      "away": 6,
+      "home": 7
+    }
+  ],
+  "teamGameStats": [
+    {
+      "category": "sog",
+      "awayValue": 15,
+      "homeValue": 28
+    },
+    {
+      "category": "faceoffWinningPctg",
+      "awayValue": 0.47541,
+      "homeValue": 0.52459
+    },
+    {
+      "category": "faceoffWins",
+      "awayValue": "29/61",
+      "homeValue": "32/61"
+    },
+    {
+      "category": "powerPlay",
+      "awayValue": "0/2",
+      "homeValue": "0/3"
+    },
+    {
+      "category": "powerPlayPctg",
+      "awayValue": 0.0,
+      "homeValue": 0.0
+    },
+    {
+      "category": "pim",
+      "awayValue": 6,
+      "homeValue": 4
+    },
+    {
+      "category": "hits",
+      "awayValue": 18,
+      "homeValue": 29
+    },
+    {
+      "category": "blockedShots",
+      "awayValue": 11,
+      "homeValue": 8
+    },
+    {
+      "category": "giveaways",
+      "awayValue": 18,
+      "homeValue": 22
+    },
+    {
+      "category": "takeaways",
+      "awayValue": 4,
+      "homeValue": 3
+    }
+  ]
+}

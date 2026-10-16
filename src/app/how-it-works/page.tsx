@@ -3,7 +3,7 @@ import SignupForm from '@/components/SignupForm'
 import Link from 'next/link'
 
 export const metadata = {
-  title: "How it works · The Edge",
+  title: "How it works · x9Lab",
   description: "Three steps. Five minutes. Three hours before first pitch.",
 }
 

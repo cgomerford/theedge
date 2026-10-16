@@ -5,7 +5,7 @@ import NflOffCoordinatorClient from './NflOffCoordinatorClient'
 import { getOffCoordinatorLeaderboard, getActiveStatsSeason } from '@/lib/nfl/queries'
 
 export const metadata = {
-  title: 'Offensive Coordinator · NFL Scheme Breakdown · The Edge',
+  title: 'Offensive Coordinator · NFL Scheme Breakdown · x9Lab',
   description: 'Every NFL team\'s most-used formation, personnel, and run/pass split — with real playbook-style diagrams.',
 }
 

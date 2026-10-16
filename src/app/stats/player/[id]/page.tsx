@@ -34,21 +34,21 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const team = sp.team ?? ''
   const pos = sp.pos ?? ''
 
-  let description = `${name} stats and season trend, game by game, on The Edge.`
+  let description = `${name} stats and season trend, game by game, on x9Lab.`
   try {
     const stats = await getPlayerSeasonStats(subject, Number(id), new Date().getFullYear())
     const lookup = Object.fromEntries(stats.map(s => [s.key, s.value]))
     if (subject === 'batter' && lookup.avg && lookup.avg !== '—') {
-      description = `${name}${team ? ` (${team})` : ''} — ${lookup.avg}/${lookup.obp}/${lookup.slg}, ${lookup.homeRuns} HR, ${lookup.rbi} RBI. Full season progression, game by game, on The Edge.`
+      description = `${name}${team ? ` (${team})` : ''} — ${lookup.avg}/${lookup.obp}/${lookup.slg}, ${lookup.homeRuns} HR, ${lookup.rbi} RBI. Full season progression, game by game, on x9Lab.`
     } else if (subject === 'pitcher' && lookup.era && lookup.era !== '—') {
-      description = `${name}${team ? ` (${team})` : ''} — ${lookup.era} ERA, ${lookup.whip} WHIP, ${lookup.strikeOuts} K. Full season progression, game by game, on The Edge.`
+      description = `${name}${team ? ` (${team})` : ''} — ${lookup.era} ERA, ${lookup.whip} WHIP, ${lookup.strikeOuts} K. Full season progression, game by game, on x9Lab.`
     }
   } catch {
     // Falls back to the generic description above — a stats-fetch hiccup
     // shouldn't block the page or leave metadata blank.
   }
 
-  const title = `${name}${pos ? ` (${pos})` : ''} Stats & Season Trend · The Edge`
+  const title = `${name}${pos ? ` (${pos})` : ''} Stats & Season Trend · x9Lab`
   const canonical = `https://edgereportdaily.com/stats/player/${id}`
 
   return {

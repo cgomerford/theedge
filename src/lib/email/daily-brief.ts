@@ -69,7 +69,7 @@ function topFactorLabels(scores: ComponentScores, count: number): string[] {
 
 function buildSubject(teamLabel: string, games: BriefGameContext[]): string {
   if (games.length === 0) {
-    return `${teamLabel} tonight · The Edge`
+    return `${teamLabel} tonight · x9Lab`
   }
 
   // Same "most decisive game" selection as before — prefers a real edge
@@ -101,7 +101,7 @@ function buildSubject(teamLabel: string, games: BriefGameContext[]): string {
     }
   }
 
-  return `${awayShort} vs ${homeShort} · ${gameTime}${factorStr} · The Edge`
+  return `${awayShort} vs ${homeShort} · ${gameTime}${factorStr} · x9Lab`
 }
 
 // ─── Team label ───────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ function buildPlainText(
   unsubscribeUrl: string,
 ): string {
   const dateStr = formatDate()
-  const header = `THE EDGE · DAILY BRIEFING · ${dateStr.toUpperCase()}\n\nFive-minute brief for ${teamLabel}.\n`
+  const header = `X9LAB · DAILY BRIEFING · ${dateStr.toUpperCase()}\n\nFive-minute brief for ${teamLabel}.\n`
 
   const gameSections = games.map(ctx => {
     const awayName = ctx.game.teams.away.team.name
@@ -232,7 +232,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBriefOutput {
     ?? `${gameCount} game${gameCount === 1 ? '' : 's'} for ${teamLabel} tonight.`
 
   const html = wrapEmail({
-    title: `The Edge — Daily Briefing — ${dateStr}`,
+    title: `x9Lab — Daily Briefing — ${dateStr}`,
     preheader,
     body: bodyParts.join(''),
   })

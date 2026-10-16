@@ -101,7 +101,7 @@ export function generateKeyPlayersTweetCopy(candidates: KeyPlayerCandidate[], te
   const cards = candidates.map(toDisplayCard)
   const top = cards[0]
   if (!top) {
-    return `Top 3 Key Players for ${teamName} this series — full breakdown on The Edge.`
+    return `Top 3 Key Players for ${teamName} this series — full breakdown on x9Lab.`
   }
 
   return [
@@ -109,7 +109,7 @@ export function generateKeyPlayersTweetCopy(candidates: KeyPlayerCandidate[], te
     ``,
     `${top.playerName}${top.subLabel ? ` (${top.subLabel})` : ''} leads the read: ${leanText(top.score).toLowerCase()}.`,
     ``,
-    `Full zone + pitch-type breakdown on The Edge.`,
+    `Full zone + pitch-type breakdown on x9Lab.`,
     ``,
     `#${teamName.replace(/\s+/g, '')} #MLB`,
   ].join('\n')
@@ -299,7 +299,7 @@ function ShareCardInner({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 20,
         borderTop: '1.5px solid rgba(26,26,26,0.12)',
       }}>
-        <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, color: '#1A1A1A' }}>The Edge</div>
+        <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, color: '#1A1A1A' }}>x9Lab</div>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
       </div>
 
@@ -314,7 +314,7 @@ function ShareCardInner({
               fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 17, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
-              THE EDGE · EDGEREPORTDAILY.COM
+              X9LAB · EDGEREPORTDAILY.COM
             </span>
           ))}
         </div>

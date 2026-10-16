@@ -140,7 +140,7 @@ export type FantasyCardsInput = {
 
 // ─── System prompt (cached) ───────────────────────────────────────────────────
 
-const FANTASY_SYSTEM_PROMPT = `You are a fantasy baseball analyst for The Edge — a data-driven MLB brief.
+const FANTASY_SYSTEM_PROMPT = `You are a fantasy baseball analyst for x9Lab — a data-driven MLB brief.
 
 VOICE: Direct, specific, no filler. Reference real stats. Short punchy sentences.
 Never use betting language. Never invent stats not provided. Honest ratings — a good pitcher in a bad spot can still be SIT.

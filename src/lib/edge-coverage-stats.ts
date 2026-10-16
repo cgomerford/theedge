@@ -7,7 +7,7 @@
 // count of reports actually generated — that would be more precise but
 // needs a real query against whatever table tracks that, which hasn't
 // been confirmed yet. This is a defensible proxy: every completed game
-// in the date range is a game The Edge would have covered.
+// in the date range is a game x9Lab would have covered.
 //
 // REPORTS_START_DATE below is a placeholder — confirm the actual date
 // the first daily report went out and update it.

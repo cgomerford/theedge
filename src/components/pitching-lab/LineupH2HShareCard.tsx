@@ -73,9 +73,9 @@ export function generateLineupH2HTweetCopy(
   if (toughest) {
     lines.push(`${toughest.name} has owned him: ${toughest.h}-for-${toughest.ab} (${fmtRate(toughest.h / toughest.ab)}) career.`)
   } else {
-    lines.push(`Real career matchup history for the full ${kind} — full breakdown on The Edge.`)
+    lines.push(`Real career matchup history for the full ${kind} — full breakdown on x9Lab.`)
   }
-  lines.push('', 'Full lineup H2H breakdown on The Edge.', '', `#MLB #${opponentName.replace(/\s+/g, '')}`)
+  lines.push('', 'Full lineup H2H breakdown on x9Lab.', '', `#MLB #${opponentName.replace(/\s+/g, '')}`)
   return lines.join('\n')
 }
 
@@ -157,7 +157,7 @@ function ShareCardInner({ pitcherId, pitcherName, pitcherTeamId, opponentName, o
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 18,
         borderTop: '1.5px solid rgba(26,26,26,0.12)', marginTop: 12,
       }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>THE EDGE</div>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>X9LAB</div>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
       </div>
 
@@ -172,7 +172,7 @@ function ShareCardInner({ pitcherId, pitcherName, pitcherTeamId, opponentName, o
               fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
-              THE EDGE · EDGEREPORTDAILY.COM
+              X9LAB · EDGEREPORTDAILY.COM
             </span>
           ))}
         </div>

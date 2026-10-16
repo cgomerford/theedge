@@ -65,7 +65,7 @@ export default function ScoutStorySlideshow({
         title: 'SCOUTING REPORT',
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-6">
-            <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">THE EDGE</p>
+            <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">X9LAB</p>
             <h1 className="text-3xl font-bold leading-none" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
               {awayName}
               <span className="block text-stone-500 text-xl my-2">@</span>

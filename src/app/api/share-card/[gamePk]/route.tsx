@@ -123,7 +123,7 @@ const homeShort = shareDisplayName(pred.home_team)
         >
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
             <span style={{ fontSize: '42px', fontWeight: 900, letterSpacing: '-1px' }}>
-              The Edge
+              x9Lab
             </span>
             <span style={{ fontSize: '42px', fontWeight: 900, color: '#FF5722' }}>.</span>
           </div>

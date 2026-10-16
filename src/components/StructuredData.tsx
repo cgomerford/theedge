@@ -29,13 +29,13 @@ export function WebSiteSchema() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'The Edge',
-    alternateName: 'The Edge Daily',
+    name: 'x9Lab',
+    alternateName: 'x9Lab Analytics',
     url: SITE_URL,
     description: 'Pre-game intelligence briefs for MLB fans and fantasy players. Daily Edge Scores, streamer picks, and matchup analysis.',
     publisher: {
       '@type': 'Organization',
-      name: 'The Edge',
+      name: 'x9Lab',
       url: SITE_URL,
       logo: {
         '@type': 'ImageObject',
@@ -137,12 +137,12 @@ export function ArticleSchema({
     image: imageUrl ?? `${SITE_URL}/og-image.png`,
     author: {
       '@type': 'Organization',
-      name: 'The Edge',
+      name: 'x9Lab',
       url: SITE_URL,
     },
     publisher: {
       '@type': 'Organization',
-      name: 'The Edge',
+      name: 'x9Lab',
       url: SITE_URL,
       logo: {
         '@type': 'ImageObject',

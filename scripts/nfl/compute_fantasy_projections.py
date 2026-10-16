@@ -1,3 +1,4 @@
+# RETIRED 8 Oct 2026 (no projections). Not scheduled.
 """
 scripts/nfl/compute_fantasy_projections.py
 

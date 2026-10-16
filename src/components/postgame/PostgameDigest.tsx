@@ -41,7 +41,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
       {/* header */}
       <div className="flex items-baseline justify-between border-b-[3px] pb-3 mb-4" style={{ borderColor: INK }}>
         <div className="font-serif font-extrabold text-lg">
-          <span style={{ color: ORANGE }}>⊕</span> THE EDGE <span className="font-normal text-stone-500 text-sm">postgame digest</span>
+          <span style={{ color: ORANGE }}>⊕</span> X9LAB <span className="font-normal text-stone-500 text-sm">postgame digest</span>
         </div>
         <div className="font-mono text-[9px] uppercase tracking-widest text-stone-500">
           {report.gameDate}{report.gameNumber > 1 ? ` · Game ${report.gameNumber}` : ''}

@@ -12,7 +12,7 @@ const SNIP_CHAR_TARGET = 400
 export function buildGameSnip(read: TodaysRead): Snip {
   const hashtag = '#' + shareDisplayName(read.lean_team).replace(/\s+/g, '')
 
-  const header     = `\u2295 THE EDGE`
+  const header     = `\u2295 X9LAB`
   const factorLine = `${read.factor_count} of 8 factors lean ${read.lean_team} tonight vs ${read.other_team}.`
   const closer     = `Not a tip \u2014 just where the data points.`
   const tags       = `#MLB ${hashtag}`

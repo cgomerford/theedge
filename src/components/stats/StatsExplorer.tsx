@@ -546,7 +546,7 @@ export default function StatsExplorer({ isSignedIn }: { isPro?: boolean; isSigne
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">⊕ The Edge · MLB</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">⊕ x9Lab · MLB</div>
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 mb-1">The Stats</h1>
           <p className="font-serif italic text-stone-500 max-w-xl">Every player, every number, side by side.</p>
         </div>

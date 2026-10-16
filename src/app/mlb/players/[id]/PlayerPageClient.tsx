@@ -391,7 +391,7 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
         </div>
         <div>
           <div className="font-sans text-sm font-bold text-stone-900 leading-tight">{playerName}</div>
-          <div className="font-mono text-[9px] text-stone-400 uppercase tracking-widest">{teamAbbr} · Season Progression · ⊕ The Edge</div>
+          <div className="font-mono text-[9px] text-stone-400 uppercase tracking-widest">{teamAbbr} · Season Progression · ⊕ x9Lab</div>
         </div>
       </div>
     )
@@ -1055,7 +1055,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Share card preview</p>
                 <div ref={cardRef} className="w-full max-w-md mx-auto" style={{ background: '#FAF8F3', border: '1px solid #1A1A1A', padding: 28, fontFamily: 'Fraunces, serif' }}>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.15em', color: '#FF5722', textTransform: 'uppercase', marginBottom: 10 }}>
-                    ⊕ The Edge · Last {windowSize} Games
+                    ⊕ x9Lab · Last {windowSize} Games
                   </div>
                   <div style={{ height: 3, background: teamColor, width: 48, marginBottom: 14, borderRadius: 2 }} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
@@ -1097,7 +1097,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
 
               {showReferralPrompt && (
                 <div className="border border-[#FF5722]/30 bg-[#FFF3E0] rounded-xl p-4 mb-8 text-center">
-                  <p className="font-sans text-sm text-stone-800 mb-2">Nice card. Invite 2 friends to The Edge and get a free month of Pro.</p>
+                  <p className="font-sans text-sm text-stone-800 mb-2">Nice card. Invite 2 friends to x9Lab and get a free month of Pro.</p>
                   <Link href="/account/referrals" className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] hover:underline">Get your invite link →</Link>
                 </div>
               )}

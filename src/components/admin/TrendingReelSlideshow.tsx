@@ -239,7 +239,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
                 className="absolute inset-0 pt-14 pb-8 px-7 flex flex-col items-center text-center animate-in"
                 style={{ color: '#1A1A1A' }}
               >
-                <p className="font-mono text-[10px] tracking-[0.3em] mb-1" style={{ color: '#8a8a85' }}>⊕ THE EDGE</p>
+                <p className="font-mono text-[10px] tracking-[0.3em] mb-1" style={{ color: '#8a8a85' }}>⊕ X9LAB</p>
                 <p className="font-mono text-[10px] tracking-[0.2em] font-bold mb-6" style={{ color: '#FF5722' }}>
                   {LEVEL_LABEL[level]} TRENDING · #{index + 1}
                 </p>

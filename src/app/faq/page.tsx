@@ -2,28 +2,28 @@ import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'FAQ · The Edge',
-  description: 'Common questions about The Edge — what it is, how it works, and what it isn\'t.',
+  title: 'FAQ · x9Lab',
+  description: 'Common questions about x9Lab — what it is, how it works, and what it isn\'t.',
 }
 
 const FAQS = [
   {
-    section: '§ What is The Edge',
+    section: '§ What is x9Lab',
     items: [
       {
-        q: 'What is The Edge?',
-        a: 'The Edge is a daily sports analysis platform that publishes pre-game statistical breakdowns for MLB (and soon NFL, NBA, and NHL). We pull advanced metrics — Statcast data, pitcher arsenals, bullpen availability, weather, and more — and turn them into a scannable 5-minute read before each game.',
+        q: 'What is x9Lab?',
+        a: 'x9Lab is a daily sports analysis platform that publishes pre-game statistical breakdowns for MLB (and soon NFL, NBA, and NHL). We pull advanced metrics — Statcast data, pitcher arsenals, bullpen availability, weather, and more — and turn them into a scannable 5-minute read before each game.',
       },
       {
         q: 'Who is it for?',
-        a: 'MLB fans who want more than just scores, and fantasy baseball players who want to make smarter Start/Sit decisions. You don\'t need to be a data scientist — we translate the numbers into plain English. If you\'ve ever wanted to understand why a pitcher is struggling beyond "he had a bad night," The Edge is for you.',
+        a: 'MLB fans who want more than just scores, and fantasy baseball players who want to make smarter Start/Sit decisions. You don\'t need to be a data scientist — we translate the numbers into plain English. If you\'ve ever wanted to understand why a pitcher is struggling beyond "he had a bad night," x9Lab is for you.',
       },
       {
         q: 'How is it different from Baseball Savant or The Athletic?',
-        a: 'Baseball Savant shows you the raw data — it\'s powerful but dense. The Athletic gives you long-form storytelling — excellent, but a 20-minute read. The Edge sits between them: we take the same advanced metrics and give you the strategic story in 5 minutes, timed to land before first pitch.',
+        a: 'Baseball Savant shows you the raw data — it\'s powerful but dense. The Athletic gives you long-form storytelling — excellent, but a 20-minute read. x9Lab sits between them: we take the same advanced metrics and give you the strategic story in 5 minutes, timed to land before first pitch.',
       },
       {
-        q: 'Is The Edge free?',
+        q: 'Is x9Lab free?',
         a: 'Yes. The core daily brief — Edge Score, The Story, starting pitcher breakdown, and two key components — is free, always. Pro subscribers unlock all 8 components, deeper analytics, the Bullpen Fatigue Tracker, and eventually fantasy league sync. Pro is £4/month or £40/year for our first 100 founding members, then £6/month or £60/year.',
       },
     ],
@@ -37,7 +37,7 @@ const FAQS = [
       },
       {
         q: 'What is the Edge Score?',
-        a: 'The Edge Score is our proprietary composite rating, running from -100 (strong away edge) to +100 (strong home edge). It\'s built from 8 components: starting pitching (xFIP-adjusted), bullpen strength (WPA/LI), team offence (wRC+), defence, pitcher-batter matchups, park factors, weather, and rest/travel. Each component is weighted and combined into a single number that tells you which side of the game has the genuine statistical advantage.',
+        a: 'x9Lab Score is our proprietary composite rating, running from -100 (strong away edge) to +100 (strong home edge). It\'s built from 8 components: starting pitching (xFIP-adjusted), bullpen strength (WPA/LI), team offence (wRC+), defence, pitcher-batter matchups, park factors, weather, and rest/travel. Each component is weighted and combined into a single number that tells you which side of the game has the genuine statistical advantage.',
       },
       {
         q: 'Why xFIP and not ERA for pitchers?',
@@ -58,14 +58,14 @@ const FAQS = [
     items: [
       {
         q: 'Is this a gambling tip site?',
-        a: 'No. The Edge is an information-only platform. We provide statistical analysis for educational and entertainment purposes. We do not give gambling advice, picks, or recommendations of any kind. Our Edge Score is an analytical tool — not a betting line. We deliberately avoid betting language in all our content.',
+        a: 'No. x9Lab is an information-only platform. We provide statistical analysis for educational and entertainment purposes. We do not give gambling advice, picks, or recommendations of any kind. Our Edge Score is an analytical tool — not a betting line. We deliberately avoid betting language in all our content.',
       },
       {
-        q: 'Can I use The Edge to inform bets?',
-        a: 'We can\'t stop you reading our analysis and making your own decisions — that\'s your right. But The Edge does not endorse, encourage, or facilitate gambling. If you choose to gamble, please do so responsibly. The UK\'s GamCare (gamcare.org.uk) and BeGambleAware (begambleaware.org) offer free support.',
+        q: 'Can I use x9Lab to inform bets?',
+        a: 'We can\'t stop you reading our analysis and making your own decisions — that\'s your right. But x9Lab does not endorse, encourage, or facilitate gambling. If you choose to gamble, please do so responsibly. The UK\'s GamCare (gamcare.org.uk) and BeGambleAware (begambleaware.org) offer free support.',
       },
       {
-        q: 'Is The Edge affiliated with MLB, any team, or any sportsbook?',
+        q: 'Is x9Lab affiliated with MLB, any team, or any sportsbook?',
         a: 'No. We are entirely independent. Team names and league names are trademarks of their respective owners — we use them for informational reference only. We are not sponsored by, affiliated with, or endorsed by any professional sports league, team, or gambling operator.',
       },
     ],
@@ -114,7 +114,7 @@ export default function FAQPage() {
             FAQ.
           </h1>
           <p className="text-lg text-stone-600 font-serif leading-relaxed max-w-xl">
-            What The Edge is, how the data works, and — importantly — what it isn&apos;t.
+            What x9Lab is, how the data works, and — importantly — what it isn&apos;t.
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export default function FAQPage() {
 
         {/* Legal note */}
         <p className="text-center text-[11px] font-mono text-stone-400 mt-8 uppercase tracking-wider">
-          The Edge · Information only · Not gambling advice ·{' '}
+          x9Lab · Information only · Not gambling advice ·{' '}
           <Link href="/terms" className="hover:text-stone-600 transition">Terms</Link>
           {' · '}
           <Link href="/privacy" className="hover:text-stone-600 transition">Privacy</Link>

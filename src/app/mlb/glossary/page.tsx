@@ -57,7 +57,7 @@ function StatCard({ stat, isOpen, onToggle, registerRef }: {
               </div>
               {stat.usedIn && stat.usedIn.length > 0 && (
                 <div className="mt-3">
-                  <div className="text-[9px] uppercase tracking-wide font-bold text-[#8A8577] mb-1">Where this shows up on The Edge</div>
+                  <div className="text-[9px] uppercase tracking-wide font-bold text-[#8A8577] mb-1">Where this shows up on x9Lab</div>
                   <ul className="text-[11px] text-[#57534E] list-disc list-inside space-y-0.5">
                     {stat.usedIn.map(u => <li key={u}>{u}</li>)}
                   </ul>
@@ -144,7 +144,7 @@ function GlossaryPageInner() {
         <div>
           <div className="text-[26px] font-black text-[#1A1A1A] tracking-tight">Stats glossary</div>
           <div className="text-[13px] text-[#57534E] mt-1 max-w-[640px]">
-            Every stat used somewhere on The Edge — what it measures, why it&apos;s worth trusting (or treating with
+            Every stat used somewhere on x9Lab — what it measures, why it&apos;s worth trusting (or treating with
             caution), and a quick visual for how it&apos;s actually calculated. Standard stats are counted straight
             from the box score; Statcast/Advanced stats are tracked directly off pitch, swing, and ball-flight data,
             or modeled from it.

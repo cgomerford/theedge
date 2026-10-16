@@ -35,7 +35,6 @@ export type TickerCard = {
   homeScore: number | null
   phase: 'upcoming' | 'live' | 'awaiting' | 'final'
   label: string                 // kickoff time, "FINAL", or "UNDERWAY"
-  lean: { kind: 'lean' | 'even' | 'pending'; text: string }
 }
 export type TickerWeekData = { key: 'prev' | 'this' | 'next'; label: string; week: number; cards: TickerCard[] }
 
@@ -84,17 +83,13 @@ export function NflTicker({ weeks }: { weeks: TickerWeekData[] }) {
                 </div>
                 {([[c.away, c.awayScore], [c.home, c.homeScore]] as const).map(([t, sc], i) => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: i === 0 ? 3 : 6 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={t.logo} alt="" width={18} height={18} style={{ flexShrink: 0, objectFit: 'contain' }} />
                     <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{t.id}</span>
                     {final && sc != null
                       ? <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 16, color: '#1A1A1A', lineHeight: 1 }}>{sc}</span>
                       : <span style={{ fontFamily: FONT, fontSize: 9, color: '#A3A3A3' }}>{t.rec}</span>}
                   </div>
                 ))}
-                {c.lean.kind === 'lean' && <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#FF5722', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>{c.lean.text}</div>}
-                {c.lean.kind === 'even' && <div style={{ fontFamily: FONT, fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>Even match-up</div>}
-                {c.lean.kind === 'pending' && <div style={{ fontFamily: FONT, fontSize: 8, color: '#D4D0C8', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>{final ? 'Postgame report' : 'Edge coming'}</div>}
+                {final && <div style={{ fontFamily: FONT, fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em', borderTop: '1px solid rgba(26,26,26,0.06)', paddingTop: 5 }}>Postgame report</div>}
               </div>
             )
           })}

@@ -6,7 +6,7 @@ import FantasyPlayerCard from '@/components/fantasy/FantasyPlayerCard'
 
 export const revalidate = 1800
 export const metadata = {
-  title: 'Streamer Board · The Fantasy Desk · The Edge',
+  title: 'Streamer Board · The Fantasy Desk · x9Lab',
   description: 'Seven days of pitcher streamer picks — every arm, every matchup, with the math behind each call.',
 }
 

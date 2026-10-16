@@ -230,7 +230,7 @@ export async function buildSnips(
     title: '\u2295 Edge of the Day',
     why: 'anchor post \u00b7 08:00 UK window',
     body:
-`\u2295 THE EDGE OF THE DAY
+`\u2295 X9LAB OF THE DAY
 
 ${top.factor_count} of 8 factors lean toward ${top.lean_team} tonight against ${top.other_team}.
 

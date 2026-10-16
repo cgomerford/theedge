@@ -2,8 +2,8 @@ import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'NFL Preview · The Edge',
-  description: 'NFL game analysis from The Edge — advanced metrics, matchup breakdowns, and the strategic story before kick-off. Coming soon.',
+  title: 'NFL Preview · x9Lab',
+  description: 'NFL game analysis from x9Lab — advanced metrics, matchup breakdowns, and the strategic story before kick-off. Coming soon.',
 }
 
 export default function NFLPreviewPage() {
@@ -37,7 +37,7 @@ export default function NFLPreviewPage() {
         <div className="bg-stone-100 border border-stone-200 px-4 py-3 flex items-start gap-3">
           <span className="text-orange-600 font-mono text-xs font-bold shrink-0 mt-0.5">DEMO</span>
           <p className="text-xs text-stone-600 leading-relaxed">
-            This is a preview of what NFL coverage on The Edge will look like.
+            This is a preview of what NFL coverage on x9Lab will look like.
             The data below is illustrative — real game analysis goes live when NFL season opens.{' '}
             <Link href="/#signup" className="text-orange-600 hover:underline font-semibold">
               Sign up free to get notified.
@@ -81,7 +81,7 @@ export default function NFLPreviewPage() {
             a San Francisco secondary breaking in two new starters. Expect early structural aggression
             from Andy Reid downfield.&rdquo;
           </p>
-          <div className="text-right text-[11px] font-mono uppercase tracking-widest text-stone-400">— BY THE EDGE</div>
+          <div className="text-right text-[11px] font-mono uppercase tracking-widest text-stone-400">— BY X9LAB</div>
         </section>
 
         {/* Edge Indicator */}
@@ -89,7 +89,7 @@ export default function NFLPreviewPage() {
           <div className="flex justify-between items-start mb-6 gap-4">
             <div className="min-w-0">
               <div className="text-xs font-mono uppercase tracking-widest text-orange-500 font-bold mb-1">
-                ⊕ THE EDGE INDICATOR · V2
+                ⊕ X9LAB INDICATOR · V2
               </div>
               <div className="text-5xl font-serif font-black text-yellow-400 leading-none">+4</div>
               <div className="text-xs font-mono uppercase tracking-widest text-stone-400 mt-1">EDGE FAVORS</div>
@@ -302,7 +302,7 @@ export default function NFLPreviewPage() {
       {/* Footer */}
       <footer className="w-full max-w-3xl mx-auto px-4 sm:px-6 pb-8 pt-6 mt-4 border-t border-stone-200 text-center sm:text-left">
         <p className="text-[11px] text-stone-400 font-mono leading-relaxed">
-          The Edge — statistical analysis only. Not gambling advice. · {' '}
+          x9Lab — statistical analysis only. Not gambling advice. · {' '}
           <Link href="/faq" className="hover:text-stone-600 transition">FAQ</Link>
           {' · '}
           <Link href="/terms" className="hover:text-stone-600 transition">Terms</Link>

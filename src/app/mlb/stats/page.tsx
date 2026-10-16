@@ -4,7 +4,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import StatsSearchPage from '@/components/StatsSearchPage'
 
 export const metadata = {
-  title: 'Stats Search · The Edge',
+  title: 'Stats Search · x9Lab',
   description: 'Search any real MLB stat — box score, fielding, and Statcast — and get a live leaderboard.',
 }
 

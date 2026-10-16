@@ -6,7 +6,7 @@
 // and anywhere that needs to pick one sport to show first.
 //
 // The logic is date-based, not dynamic. It answers:
-// "If a user opens The Edge today, what sport do they care about?"
+// "If a user opens x9Lab today, what sport do they care about?"
 //
 // MLB season: ~late March – early October
 // NFL season: ~early September – early February

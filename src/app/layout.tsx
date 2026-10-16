@@ -44,7 +44,7 @@ const bebas = Bebas_Neue({
 })
 
 export const metadata: Metadata = {
-  title: "The Edge — Pre-game brief for the analytics era",
+  title: "x9Lab — Analytics for the fan",
   description: "Statcast, advanced metrics, and the data that explains tonight's game. Free daily email.",
 };
 

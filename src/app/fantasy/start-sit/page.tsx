@@ -10,7 +10,7 @@ import StartSitBoard from './StartSitBoard'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Start/Sit & Waiver Wire · The Edge Fantasy Desk',
+  title: 'Start/Sit & Waiver Wire · x9Lab Fantasy Desk',
   description:
     "Today's streamer starts and waiver-wire targets — signal-scored with real ESPN ownership so you know what's actually available.",
 }

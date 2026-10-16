@@ -1144,7 +1144,7 @@ export default function MLBHomepage({
       <Ticker games={games} predictions={predictions} />
 
       {/* 2. MAIN CONTAINER — main column + sidebar. "Around the league"
-          news is pulled for now; the sidebar just carries The Edge's own
+          news is pulled for now; the sidebar just carries x9Lab's own
           articles. */}
       <div className="mlb-main">
         <div className="mlb-layout">

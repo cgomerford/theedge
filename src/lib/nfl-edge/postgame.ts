@@ -136,9 +136,9 @@ export async function getQbNights(game: NflGame, payload: PostgamePayload | null
   return out
 }
 
-export type ScoreRow = { id: string; name: string; team: string; pos: string; expected: number; actual: number; hit: boolean; basis: string }
+export type ScoreRow = { id: string; name: string; team: string; pos: string; avgBefore: number; avgGames: number; actual: number }
 
-/** Key Players scorecard: top-3 skill players per side by usage BEFORE this game; did each beat their own per-game yardage? */
+/** Key Players scorecard: top-3 skill players per side by usage BEFORE this game; tonight's yardage next to each one's own per-game average. */
 export async function getKeyScorecard(game: NflGame): Promise<ScoreRow[]> {
   const rows = await fetchAll<OffRow>(
     (a, b) => createAdminClient().from('nfl_player_stats_weekly').select(OFF_COLS).eq('season', game.season).lte('week', game.week).in('team_id', [game.homeId, game.awayId]).neq('position', 'QB').range(a, b),
@@ -153,9 +153,9 @@ export async function getKeyScorecard(game: NflGame): Promise<ScoreRow[]> {
     for (const p of usage) {
       const isRb = p.rs[0].position === 'RB' || p.rs[0].position === 'FB'
       const yds = (r: OffRow) => (isRb ? N(r.rushing_yards) : N(r.receiving_yards))
-      const expected = p.rs.reduce((s, r) => s + yds(r), 0) / p.rs.length
+      const avgBefore = p.rs.reduce((s, r) => s + yds(r), 0) / p.rs.length
       const tonight = mine.find(r => r.player_id === p.id && r.week === game.week)
-      out.push({ id: p.id, name: p.rs[0].player_name, team: t, pos: p.rs[0].position, expected, actual: tonight ? yds(tonight) : 0, hit: (tonight ? yds(tonight) : 0) >= expected, basis: `${p.rs.length} prior game${p.rs.length === 1 ? '' : 's'}` })
+      out.push({ id: p.id, name: p.rs[0].player_name, team: t, pos: p.rs[0].position, avgBefore, avgGames: p.rs.length, actual: tonight ? yds(tonight) : 0 })
     }
   }
   return out

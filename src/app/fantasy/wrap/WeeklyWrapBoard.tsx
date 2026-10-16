@@ -184,7 +184,7 @@ export default function WeeklyWrapBoard({ data }: { data: WeeklyWrapData }) {
     weekWindow.label, transactions.trades, transactions.dfaRelease, transactions.recalled, transactions.optioned,
   )
   const fullWrapText = [
-    `⚾ THE EDGE — WEEKLY WRAP · ${weekWindow.label}`,
+    `⚾ X9LAB — WEEKLY WRAP · ${weekWindow.label}`,
     '',
     ownershipText,
     '',

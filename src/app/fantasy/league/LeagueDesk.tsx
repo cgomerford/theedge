@@ -268,7 +268,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6">
         <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-widest font-bold mb-1">
-          ⊕ The Edge · My League
+          ⊕ x9Lab · My League
           {isPro && <span className="ml-2 text-emerald-700">· Pro</span>}
         </div>
         <div className="flex items-baseline justify-between gap-4 flex-wrap">

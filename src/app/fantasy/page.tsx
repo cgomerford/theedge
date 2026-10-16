@@ -16,7 +16,7 @@ import FantasyHub from './Fantasyhub'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Fantasy Desk · The Edge',
+  title: 'Fantasy Desk · x9Lab',
   description:
     "Who to start, sit, grab, and trade. Real ESPN roster rates, not vibes.",
 }

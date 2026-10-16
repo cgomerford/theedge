@@ -2,8 +2,9 @@ import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'NHL Preview · The Edge',
-  description: 'NHL game analysis from The Edge — ice metrics, goaltending data, and the strategic story before puck drop. Coming soon.',
+  robots: { index: false, follow: false },
+  title: 'NHL Preview · x9Lab',
+  description: 'NHL game analysis from x9Lab — ice metrics, goaltending data, and the strategic story before puck drop. Coming soon.',
 }
 
 export default function NHLPreviewPage() {
@@ -37,7 +38,7 @@ export default function NHLPreviewPage() {
         <div className="bg-stone-100 border border-stone-200 px-4 py-3 flex items-start gap-3">
           <span className="text-orange-600 font-mono text-xs font-bold shrink-0 mt-0.5">DEMO</span>
           <p className="text-xs text-stone-600 leading-relaxed">
-            This is a preview of what NHL coverage on The Edge will look like.
+            This is a preview of what NHL coverage on x9Lab will look like.
             The data below is illustrative — real game analysis goes live when coverage launches.{' '}
             <Link href="/#signup" className="text-orange-600 hover:underline font-semibold">
               Sign up free to get notified.
@@ -81,7 +82,7 @@ export default function NHLPreviewPage() {
             5v5 shot generation at home has been relentless, and Vasilevskiy&apos;s back-to-back rest
             advantage narrows the gap more than the raw numbers suggest.&rdquo;
           </p>
-          <div className="text-right text-[11px] font-mono uppercase tracking-widest text-stone-400">— BY THE EDGE</div>
+          <div className="text-right text-[11px] font-mono uppercase tracking-widest text-stone-400">— BY X9LAB</div>
         </section>
 
         {/* Edge Indicator */}
@@ -89,7 +90,7 @@ export default function NHLPreviewPage() {
           <div className="flex justify-between items-start mb-6 gap-4">
             <div className="min-w-0">
               <div className="text-xs font-mono uppercase tracking-widest text-orange-500 font-bold mb-1">
-                ⊕ THE EDGE INDICATOR · V2
+                ⊕ X9LAB INDICATOR · V2
               </div>
               <div className="text-5xl font-serif font-black text-yellow-400 leading-none">-2.1</div>
               <div className="text-xs font-mono uppercase tracking-widest text-stone-400 mt-1">EDGE FAVORS</div>
@@ -396,7 +397,7 @@ export default function NHLPreviewPage() {
       {/* Footer */}
       <footer className="w-full max-w-3xl mx-auto px-4 sm:px-6 pb-8 pt-6 mt-4 border-t border-stone-200 text-center sm:text-left">
         <p className="text-[11px] text-stone-400 font-mono leading-relaxed">
-          The Edge — statistical analysis only. Not gambling advice. · {' '}
+          x9Lab — statistical analysis only. Not gambling advice. · {' '}
           <Link href="/faq" className="hover:text-stone-600 transition">FAQ</Link>
           {' · '}
           <Link href="/terms" className="hover:text-stone-600 transition">Terms</Link>

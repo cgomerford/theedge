@@ -193,11 +193,11 @@ export default function WhyEdgeClient({ stats }: Props) {
 
         {/* Title */}
         <h1 className="text-5xl sm:text-6xl font-black tracking-tight leading-[1.05] mb-5 font-serif text-[#1A1A1A]">
-          Why The Edge<span className="text-[#FF5722]">.</span>
+          Why x9Lab<span className="text-[#FF5722]">.</span>
         </h1>
         <p className="text-lg sm:text-xl text-stone-500 leading-relaxed mb-10 font-serif italic">
           The same game renders differently depending on how you watch it.
-          The Edge meets you at your level — free for fans, deeper for analysts.
+          x9Lab meets you at your level — free for fans, deeper for analysts.
         </p>
 
         <hr className="border-stone-200 mb-10" />
@@ -250,7 +250,7 @@ export default function WhyEdgeClient({ stats }: Props) {
               <div className="bg-[#1A1A1A] px-5 py-4 flex items-start justify-between gap-4">
                 <div>
                   <div className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mb-1">
-                    The Edge · {level.who}
+                    x9Lab · {level.who}
                   </div>
                   <div className="font-serif text-xl font-bold text-[#FAF8F3]">
                     Phillies @ Mets
@@ -446,7 +446,7 @@ export default function WhyEdgeClient({ stats }: Props) {
             <div className="border border-stone-200 overflow-hidden">
               <div className="bg-[#1A1A1A] flex items-start justify-between p-5">
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mb-1">The Edge · Tonight&apos;s brief</p>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mb-1">x9Lab · Tonight&apos;s brief</p>
                   <p className="font-serif text-xl font-black text-[#FAF8F3]">Cubs @ Cardinals</p>
                   <p className="font-mono text-[9px] text-stone-500 mt-1">Wrigley Field · 7:40 PM CT</p>
                 </div>
@@ -482,7 +482,7 @@ export default function WhyEdgeClient({ stats }: Props) {
                   <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 font-bold">AI Overview</p>
                 </div>
                 <div className="px-4 py-3 bg-orange-50 border-b border-orange-100">
-                  <p className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] font-bold">The Edge</p>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] font-bold">x9Lab</p>
                 </div>
               </div>
               {GAPS.map((g, i) => (
@@ -500,7 +500,7 @@ export default function WhyEdgeClient({ stats }: Props) {
             <div className="bg-[#1A1A1A] p-6 text-center">
               <p className="font-serif font-black text-xl text-[#FAF8F3] italic">
                 &ldquo;An AI summary tells you what happened.<br />
-                The Edge tells you what matters.&rdquo;
+                x9Lab tells you what matters.&rdquo;
               </p>
             </div>
           </div>

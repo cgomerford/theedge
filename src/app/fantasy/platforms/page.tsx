@@ -6,7 +6,7 @@ import PlatformBreakdown from '@/components/fantasy/PlatformBreakdown'
 
 export const revalidate = 1800
 export const metadata = {
-  title: 'Platforms · The Fantasy Desk · The Edge',
+  title: 'Platforms · The Fantasy Desk · x9Lab',
   description: 'Same pitcher, five platforms, five point totals. See which platform rewards tonight\'s streamers the most.',
 }
 

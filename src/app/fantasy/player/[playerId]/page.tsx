@@ -19,9 +19,9 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata({ params }: { params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   const ctx = await getPlayerSignalContext(Number(playerId))
-  if (!ctx) return { title: 'Player · The Edge Fantasy Desk' }
+  if (!ctx) return { title: 'Player · x9Lab Fantasy Desk' }
   return {
-    title: `${ctx.meta.fullName} · The Edge Fantasy Desk`,
+    title: `${ctx.meta.fullName} · x9Lab Fantasy Desk`,
     description: `Recent form, Statcast signals, and the read on ${ctx.meta.fullName}.`,
   }
 }

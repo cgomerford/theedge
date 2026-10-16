@@ -61,7 +61,7 @@ export default function CookieConsent() {
               ⊕ Cookies
             </div>
             <p className="text-sm font-serif leading-relaxed">
-              We use analytics cookies to understand how visitors use The Edge. No advertising, no tracking pixels — just helping us build a better product.{' '}
+              We use analytics cookies to understand how visitors use x9Lab. No advertising, no tracking pixels — just helping us build a better product.{' '}
               <a href="/privacy" className="underline hover:text-yellow-300">
                 Learn more
               </a>

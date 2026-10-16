@@ -6,7 +6,7 @@ import LeagueDesk from './LeagueDesk'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'My League · The Edge Fantasy Desk',
+  title: 'My League · x9Lab Fantasy Desk',
   description:
     'Upload your roster, grade the team, and get real start/sit/waiver/trade calls from ESPN ownership plus remaining MLB schedule.',
 }

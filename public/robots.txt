@@ -11,5 +11,9 @@ Disallow: /admin/
 Disallow: /_next/
 Disallow: /preferences/
 
+# NHL prototype: private, noindex, maintenance-gated (see src/lib/maintenance-gates.ts)
+Disallow: /nhl/
+Disallow: /preview/nhl
+
 # Point crawlers at the sitemap
 Sitemap: https://edgereportdaily.com/sitemap.xml

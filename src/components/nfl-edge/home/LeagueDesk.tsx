@@ -80,7 +80,7 @@ export function CoverageSection({ desk, board, teams, currentSeason }: { desk: C
   }
   const shells: [string, number | null][] = [['Cover 3', avg(r => r.cover3)], ['Cover 1', avg(r => r.cover1)], ['Cover 2', avg(r => r.cover2)], ['Cover 4', avg(r => r.cover4)], ['Cover 6', avg(r => r.cover6)]]
   return (
-    <HomeSection id="coverage" title="Coverage desk" sub="How defenses line up against the pass: man vs zone, the shells they lean on, and how often they send extra rushers.">
+    <HomeSection id="coverage" title="Coverage desk" sub="How defenses line up against the pass: man vs zone, the shells they rely on, and how often they send extra rushers.">
       <div className="tp-grid-2" style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)' }}>
         <Card title="Man vs zone" note={desk ? `${desk.season} season` : undefined}>
           {rows.length ? (

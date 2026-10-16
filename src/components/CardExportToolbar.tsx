@@ -82,7 +82,7 @@ export default function CardExportToolbar({
 
   function handleTweet() {
     handleDownload()
-    const text = encodeURIComponent(`${fileName.replace(/-/g, ' ')} — via The Edge`)
+    const text = encodeURIComponent(`${fileName.replace(/-/g, ' ')} — via x9Lab`)
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener')
     setOpen(false)
   }

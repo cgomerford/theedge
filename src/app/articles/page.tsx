@@ -4,8 +4,8 @@ import SiteHeader from '@/components/SiteHeader';
 import { createAdminClient } from '@/lib/supabase';
 
 export const metadata: Metadata = {
-  title: 'Articles — The Edge',
-  description: 'Analysis, breakdowns, and reads from The Edge.',
+  title: 'Articles — x9Lab',
+  description: 'Analysis, breakdowns, and reads from x9Lab.',
 };
 
 export const revalidate = 1800;
@@ -74,7 +74,7 @@ export default async function ArticlesIndexPage() {
                 marginBottom: 6,
               }}
             >
-              § The Edge Report
+              § x9Lab
             </div>
             <h1
               style={{

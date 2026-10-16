@@ -84,7 +84,7 @@ export async function generateMetadata({ params }: Props) {
   const displayDate = dateStr
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : ''
-  const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · The Edge`
+  const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · x9Lab`
   const description = `Pre-game analysis and a data-driven read for ${matchup}.`
   return {
     title, description,

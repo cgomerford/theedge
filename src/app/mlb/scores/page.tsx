@@ -8,7 +8,7 @@ import { getScheduleForDate } from '@/lib/mlb'
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Live Scores & Matchups · The Edge',
+  title: 'Live Scores & Matchups · x9Lab',
   description: 'Live out-of-town scoreboard and structural matchup breakdowns for every MLB game today.',
 }
 

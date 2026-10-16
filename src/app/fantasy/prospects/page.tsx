@@ -16,7 +16,7 @@ import ProspectsBoard from './ProspectsBoard'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Prospect Watch · The Edge Fantasy Desk',
+  title: 'Prospect Watch · x9Lab Fantasy Desk',
   description: 'Minor league standouts and call-up-adjacent prospects worth stashing, organized by organization.',
 }
 

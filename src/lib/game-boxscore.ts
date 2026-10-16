@@ -62,10 +62,11 @@ export type GameBoxScore = {
   }
 }
 
-export async function getGameBoxScore(gamePk: number): Promise<GameBoxScore | null> {
+/** `fresh` skips the 5-minute data cache: admin exports must never show a mid-game box score. */
+export async function getGameBoxScore(gamePk: number, opts: { fresh?: boolean } = {}): Promise<GameBoxScore | null> {
   try {
     const url = `${MLB_API}/game/${gamePk}/boxscore`
-    const res = await fetch(url, { next: { revalidate: 300 } })
+    const res = await fetch(url, opts.fresh ? { cache: 'no-store' } : { next: { revalidate: 300 } })
     if (!res.ok) return null
     const data = await res.json()
 

@@ -9,7 +9,7 @@ type Props = {
 }
 
 export const metadata = {
-  title: "Pick your teams · The Edge",
+  title: "Pick your teams · x9Lab",
   description: "Tell us which teams to follow. We'll only send briefs for games you care about.",
 }
 
@@ -55,7 +55,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
               ✓ You&apos;re in
             </div>
             <p className="font-serif text-lg">
-              Welcome to The Edge. Pick your teams below — we&apos;ll start sending briefs tomorrow morning.
+              Welcome to x9Lab. Pick your teams below — we&apos;ll start sending briefs tomorrow morning.
             </p>
           </div>
         )}

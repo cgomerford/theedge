@@ -14,6 +14,8 @@ export const MAINTENANCE_GATED_PREFIXES: readonly string[] = [
   '/fantasy',
   '/nfl',
   '/preview/nfl',
+  '/nhl',
+  '/preview/nhl',
 ]
 
 export function isMaintenanceGated(pathname: string): boolean {

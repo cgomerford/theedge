@@ -5,7 +5,7 @@ import NflDefCoordinatorClient from './NflDefCoordinatorClient'
 import { getDefCoordinatorLeaderboard, getActiveStatsSeason } from '@/lib/nfl/queries'
 
 export const metadata = {
-  title: "Defensive Coordinator · NFL Coverage Breakdown · The Edge",
+  title: "Defensive Coordinator · NFL Coverage Breakdown · x9Lab",
   description: "Every NFL team's most-used coverage shell and the coverage they've been most susceptible to — with real playbook-style diagrams.",
 }
 

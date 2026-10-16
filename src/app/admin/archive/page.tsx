@@ -211,7 +211,7 @@ export default async function AdminArchive({
         {/* ── TOPBAR ─────────────────────────────────────── */}
         <div className="topbar">
           <div className="brand">
-            <span className="mark">⊕</span> THE EDGE <span className="sub">/ admin / archive</span>
+            <span className="mark">⊕</span> X9LAB <span className="sub">/ admin / archive</span>
           </div>
           <div className="topmeta">
             Slate {fmtDate(slateDate)} · <a href="/admin/dashboard" style={{ color: 'inherit' }}>← Dashboard</a>

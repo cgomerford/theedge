@@ -27,9 +27,9 @@ export default function HomeFooter() {
             Contact
           </a>
         </div>
-        <div className="mb-4 text-stone-400">© 2026 The Edge · Unbiased Cross-Sport Modeling Feed</div>
+        <div className="mb-4 text-stone-400">© 2026 x9Lab · Unbiased Cross-Sport Modeling Feed</div>
         <div className="text-stone-400 leading-relaxed max-w-2xl normal-case tracking-normal">
-          The Edge provides purely statistical raw metrics and programmatic model calculations. We
+          x9Lab provides purely statistical raw metrics and programmatic model calculations. We
           do not offer or promote sports gambling advice, structured picks, or wagering
           recommendations.
         </div>

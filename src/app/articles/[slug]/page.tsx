@@ -25,20 +25,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const article = await getArticleBySlug(slug);
 
   if (!article) {
-    return { title: 'Article not found — The Edge' };
+    return { title: 'Article not found — x9Lab' };
   }
 
   const canonicalUrl = `${SITE_URL}/articles/${article.slug}`;
 
   return {
-    title: `${article.title} — The Edge`,
+    title: `${article.title} — x9Lab`,
     description: article.excerpt ?? undefined,
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: article.title,
       description: article.excerpt ?? undefined,
       url: canonicalUrl,
-      siteName: 'The Edge',
+      siteName: 'x9Lab',
       images: article.hero_image ? [article.hero_image] : undefined,
       type: 'article',
       publishedTime: article.published_at ?? undefined,
@@ -111,7 +111,7 @@ export default async function ArticlePage({ params }: PageProps) {
     datePublished: article.published_at ?? undefined,
     dateModified: article.updated_at,
     author: { '@type': 'Person', name: article.author },
-    publisher: { '@type': 'Organization', name: 'The Edge', url: SITE_URL },
+    publisher: { '@type': 'Organization', name: 'x9Lab', url: SITE_URL },
     mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
   };
 
@@ -176,13 +176,13 @@ export default async function ArticlePage({ params }: PageProps) {
                 fontSize: 11,
               }}
             >
-              <span style={{ opacity: 0.6 }}>The Edge Report™ · edgereportdaily.com</span>
+              <span style={{ opacity: 0.6 }}>x9Lab · edgereportdaily.com</span>
 
               
                 <a href={X_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="The Edge on X"
+                aria-label="x9Lab on X"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1A1A1A', textDecoration: 'none' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -245,14 +245,14 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {otherArticles.length > 0 && (
               <div style={railCardStyle}>
-                <div style={railHeadStyle}>More from The Edge</div>
+                <div style={railHeadStyle}>More from x9Lab</div>
                 {otherArticles.map((a) => (
                   <Link key={a.id} href={`/articles/${a.slug}`} style={otherArticleLinkStyle}>
                     <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, lineHeight: 1.3, marginBottom: 4 }}>
                       {a.title}
                     </div>
                     <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, opacity: 0.5 }}>
-                      {a.team_tags.join(', ') || 'The Edge'}
+                      {a.team_tags.join(', ') || 'x9Lab'}
                     </div>
                   </Link>
                 ))}

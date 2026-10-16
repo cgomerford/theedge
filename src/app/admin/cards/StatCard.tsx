@@ -101,7 +101,7 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
             fontWeight: 700,
           }}
         >
-          ⊕ THE EDGE
+          ⊕ X9LAB
         </div>
       </div>
 

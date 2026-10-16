@@ -43,3 +43,8 @@ next-env.d.ts
 # python bytecode
 __pycache__/
 *.pyc
+
+# Pitch-level models pipeline (large local data and throwaway check scripts)
+models/data/
+models/scratch/
+models/venv/

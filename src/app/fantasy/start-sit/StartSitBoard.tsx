@@ -589,7 +589,7 @@ export default function StartSitBoard({
           fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: COLORS.orange, fontWeight: 700, marginBottom: 6,
         }}>
-          ⊕ The Edge · Fantasy Desk · {isPro ? 'Pro' : 'Free'}
+          ⊕ x9Lab · Fantasy Desk · {isPro ? 'Pro' : 'Free'}
         </div>
         <h1 style={{
           fontFamily: 'Fraunces, ui-serif, Georgia, serif',

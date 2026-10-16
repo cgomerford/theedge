@@ -25,9 +25,9 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const profile = await getPlayerProfile(id);
-  if (!profile) return { title: "Player · The Edge" };
+  if (!profile) return { title: "Player · x9Lab" };
   return {
-    title: `${profile.fullName} — ${profile.teamId} ${profile.position} · The Edge`,
+    title: `${profile.fullName} — ${profile.teamId} ${profile.position} · x9Lab`,
     description: `Full statistical profile for ${profile.fullName}: career stats, percentiles, and comparable players.`,
   };
 }

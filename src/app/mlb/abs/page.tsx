@@ -15,7 +15,7 @@ import { AbsChallengeGrid } from '@/components/MlbDeepDives'
 import AbsRadarSection from '@/components/AbsRadarSection'
 
 export const metadata = {
-  title: 'ABS Challenges · The Edge',
+  title: 'ABS Challenges · x9Lab',
   description: "Who challenges the Automated Ball-Strike system, how often it works, and who's the best all-round challenger in baseball.",
 }
 

@@ -7,7 +7,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 
 export const revalidate = 3600
 export const metadata = {
-  title: 'Two-Start Pitchers · The Fantasy Desk · The Edge',
+  title: 'Two-Start Pitchers · The Fantasy Desk · x9Lab',
   description: 'Every pitcher scheduled for two starts this week, ranked by matchup difficulty. Critical for weekly H2H fantasy leagues.',
 }
 
