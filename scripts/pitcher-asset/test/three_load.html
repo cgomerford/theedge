@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>pitcher.glb loads in three.js</title>
+<!-- Acceptance test: three's own GLTFLoader + DRACOLoader must load /public/models/pitcher.glb. Result is written to #out as JSON. -->
+<pre id="out">running…</pre>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+const out = document.getElementById('out');
+try {
+  const draco = new DRACOLoader();
+  draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+  const loader = new GLTFLoader().setDRACOLoader(draco);
+  const gltf = await loader.loadAsync('/public/models/pitcher.glb');
+  let skinned = 0, tris = 0, bones = new Set(), extras = null, hasFace = false;
+  gltf.scene.traverse(o => {
+    if (o.isSkinnedMesh) { skinned++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; o.skeleton.bones.forEach(b => bones.add(b.name)); }
+    if (o.userData && o.userData.releaseFrame !== undefined) extras = o.userData;
+  });
+  const mixer = new THREE.AnimationMixer(gltf.scene);
+  const clips = gltf.animations.map(c => ({ name: c.name, duration: +c.duration.toFixed(3), tracks: c.tracks.length }));
+  const delivery = THREE.AnimationClip.findByName(gltf.animations, 'delivery');
+  const action = mixer.clipAction(delivery); action.play(); mixer.update(1.5);        // advance to ~the release and make sure it evaluates
+  const hips = gltf.scene.getObjectByName('mixamorig:Hips') || gltf.scene.getObjectByName('mixamorigHips');
+  out.textContent = JSON.stringify({ ok: true, skinnedMeshes: skinned, triangles: Math.round(tris), bones: bones.size,
+    hasMixamoHips: !!hips, clips, extras: extras && { releaseFrame: extras.releaseFrame, fps: extras.fps, stretchFrame: extras.stretchFrame } }, null, 1);
+} catch (e) { out.textContent = JSON.stringify({ ok: false, error: String(e && e.message || e) }); }
+document.title = 'done';
+</script>
