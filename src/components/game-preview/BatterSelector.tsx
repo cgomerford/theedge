@@ -121,7 +121,7 @@ export default function BatterSelector({
               season={season}
             />
             <div className="pt-3 border-t border-stone-100">
-              <LabFunnelLink href={`/mlb/batting-lab/${selected.player_id}`} label={`See ${selected.player_name} in Batting Lab`} isPro={isPro} />
+              <LabFunnelLink href={`/mlb/lab/batting-lab/${selected.player_id}`} label={`See ${selected.player_name} in Batting Lab`} isPro={isPro} />
             </div>
           </div>
         </DetailModal>
@@ -136,7 +136,7 @@ export default function BatterSelector({
               <p className="text-xs font-sans italic text-stone-400 py-4">Hot-zone data unavailable for this batter yet.</p>
             )}
             <div className="pt-3 border-t border-stone-100">
-              <LabFunnelLink href={`/mlb/batting-lab/${selected.player_id}`} label={`See ${selected.player_name} in Batting Lab`} isPro={isPro} />
+              <LabFunnelLink href={`/mlb/lab/batting-lab/${selected.player_id}`} label={`See ${selected.player_name} in Batting Lab`} isPro={isPro} />
             </div>
           </div>
         </DetailModal>

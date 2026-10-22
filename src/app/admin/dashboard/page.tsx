@@ -11,6 +11,8 @@ import GamePreviewBuilder from '@/components/admin/game-preview/GamePreviewBuild
 import ScoutGraphicBuilder, { type BuilderGame, type BuilderPitcherSide, type BuilderRosterBatter } from '@/components/admin/scout-graphic/ScoutGraphicBuilder'
 import InGameXCardSection from '@/components/admin/InGameXCardSection'
 import PostseasonBracketBuilder from '@/components/admin/PostseasonBracketBuilder'
+import TeamSnapshotBuilder from '@/components/admin/TeamSnapshotBuilder'
+import { getTeamSnapshots, getPostseasonSnapshots } from '@/lib/admin-team-card'
 import PitcherReel from '@/components/admin/PitcherReel'
 import PostgameReel from '@/components/admin/PostgameReel'
 import BatterReel from '@/components/admin/BatterReel'
@@ -91,6 +93,10 @@ export default async function AdminDashboard({
   // `reads` still feeds the other dashboard sections, unchanged.
   const slateSchedule = await getScheduleForDate(slateDate)
   const reads = await getTodaysReads(slateDate)
+  const [teamSnapshots, postseasonSnapshots] = await Promise.all([
+    getTeamSnapshots(new Date().getFullYear()),
+    getPostseasonSnapshots(new Date().getFullYear()),
+  ])
 
   const gamesWithReports = await Promise.all(
     reads.map(async (r) => {
@@ -344,6 +350,15 @@ export default async function AdminDashboard({
             <span className="tag">X post · 16:9 · Wild Card / DS / CS / World Series · fully manual</span>
           </div>
           <PostseasonBracketBuilder />
+        </section>
+
+        <section className="sec card">
+          <div className="sechead">
+            <span className="glyph">§</span>
+            <h2>Team Snapshot Graphic</h2>
+            <span className="tag">X post · 4:5 · one club · record, offense, pitching, bullpen ranks · regular season or postseason · no player headshots</span>
+          </div>
+          <TeamSnapshotBuilder regular={teamSnapshots} postseason={postseasonSnapshots} />
         </section>
 
         <section className="sec card">

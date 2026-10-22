@@ -64,6 +64,7 @@ Live fan-out to external APIs during page render was the root cause of every per
 **The pattern:** `cron (GitHub Actions) → Python script → Supabase table → page reads cached row(s)`.
 
 - Never fetch Baseball Savant CSVs in the render path — they exceed the Next.js 2 MB fetch-cache ceiling. Precompute and store.
+  - **Deliberate exception (2026-10-17, at George's request):** the Pro-only *stacked-filter* search on `/mlb/stats` pulls Savant day-by-day from the API route (`src/lib/savant-pa.ts` → `pa-query.ts`) with no database — plate appearances are built in memory and cached per game day (memory + OS temp dir). It never runs during page render, uses `cache: 'no-store'`, loads a bounded batch of days per request and returns progress until the range is complete. Don't copy this pattern into pages or crons.
 - Schema locked → data layer confirmed → precompute cron → **then** page wiring. In that order.
 - **Single writer per Supabase table.** Never let two scripts write the same column; document table ownership in a code comment at the top of the writer.
 - Slow upstream cron dependencies matter: e.g. `compute_regression_watch.py` (10:00 UTC) must run *after* `fetch_ultimate_team_pool.py` and the pitcher-stats refresh. When adding a cron, state what it depends on and pick the time accordingly.
@@ -125,8 +126,10 @@ Live fan-out to external APIs during page render was the root cause of every per
 ## 6. Brand & design system
 
 - Colors: cream `#FAF8F3`, orange `#FF5722`, yellow `#FDE047`, black `#1A1A1A`
-- Type (**updated 2026-09-20 — see `DESIGN_SYSTEM.md`**): **Outfit** for body, ALL headers and ALL bold text (the rounded brand face, `var(--font-outfit)`); **JetBrains Mono** only for light small labels, axis ticks, footnotes and plain numbers. **Bebas Neue and Fraunces are retired on new pages** — do not use them for headers or body.
-  - Always use the `next/font` CSS variables (import `SANS` / `MONO` / `DISPLAY` from `src/components/team/ui.tsx`), never a literal family name — `next/font` hashes family names, so a string like `'Fraunces, serif'` silently falls back to the system font.
+- **Type — ONE FONT, EVER (updated 2026-10-17): Outfit.** Outfit (the rounded brand face, `var(--font-outfit)`) is the **only** font on the site, for body, headers, bold, labels, axis ticks, footnotes and numbers. **No monospace, no squared/blocky faces (JetBrains Mono, Space Mono, Courier), no condensed caps (Bebas Neue), no serif (Fraunces, Georgia), no handwriting (Caveat), no Inter.** Do not add a second font for any reason — differentiate with weight, size, colour, letter-spacing and `font-variant-numeric: tabular-nums`, not another family.
+  - Enforced three ways: `layout.tsx` loads only Outfit; `globals.css` aliases every legacy `--font-*` variable to Outfit and forces `font-family: var(--font-outfit) !important` on all elements (this also catches hard-coded names like `'Space Mono'` and SVG text); and `MONO` in `src/components/team/ui.tsx` is now just an alias of `SANS` (kept so old imports compile). Never re-add another `next/font` import or reintroduce a literal family name.
+  - Always use the `next/font` CSS variable (import `SANS` from `src/components/team/ui.tsx`), never a literal family name — `next/font` hashes family names, so a literal string silently falls back to the system font.
+  - Image exports (Satori/OG cards in `src/lib/postgame/cards/`) can't read CSS variables and still bundle their own font files; when you next touch them, load **Outfit only** (drop the JetBrains Mono file).
 - **NFL (and every new sport) must use this same design system** — fonts, colours, `Section`/`Card`/`Tile`/`RankBars`, the `ProPanel` Pro pattern and the team-coloured-hero page shape. Read `DESIGN_SYSTEM.md` (incl. its §7 NFL checklist) before building any NFL page; reuse the shared components instead of restyling. NFL ranks are among **32** clubs, not 30.
 - **Rounded cards (14px) on team / player pages** (the old "zero border-radius" rule is retired for these; other legacy pages keep their existing style until they are redesigned)
 - Section markers: `⊕` / `§`

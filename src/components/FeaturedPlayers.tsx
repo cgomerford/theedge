@@ -29,7 +29,7 @@ export default function FeaturedPlayers({ title, statLabel, leaders, labPath, fm
         {leaders.map(p => (
           <Link
             key={p.personId}
-            href={`/mlb/${labPath}/${p.personId}`}
+            href={`/mlb/lab/${labPath}/${p.personId}`}
             className="flex items-center gap-2.5 rounded-lg border border-stone-200 bg-white px-3 py-2.5 hover:border-[#FF5722] transition"
           >
             <img

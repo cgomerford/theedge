@@ -72,7 +72,7 @@ function ClashCard({ h }: { h: Hitter }) {
       </div>
       <div className="flex items-center justify-between mt-1.5 text-[9px] font-mono text-stone-400">
         <span>n={c?.pitches ?? 0}{thinAll ? ' · thin' : ''}</span>
-        <Link href={`/mlb/batting-lab/${h.id}/hot-zones`} className="text-orange-600 hover:text-orange-700 uppercase tracking-wider">Batting Lab →</Link>
+        <Link href={`/mlb/lab/batting-lab/${h.id}/hot-zones`} className="text-orange-600 hover:text-orange-700 uppercase tracking-wider">Batting Lab →</Link>
       </div>
     </div>
   )

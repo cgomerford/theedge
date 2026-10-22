@@ -3,10 +3,10 @@
 // League/Search entry point for the Pitching Lab: search any real pitcher
 // (same real MLB /people/search typeahead used across this app —
 // src/lib/lab.ts's searchPeople via /api/lab/search) and jump straight to
-// their /mlb/pitching-lab/[playerId] shell (Overview / Location Lab / etc).
+// their /mlb/lab/pitching-lab/[playerId] shell (Overview / Location Lab / etc).
 //
 // 2026-09-13: no longer renders the pitcher's data inline — that moved to
-// the dynamic-route Pitcher shell (src/app/mlb/pitching-lab/[playerId]/)
+// the dynamic-route Pitcher shell (src/app/mlb/lab/pitching-lab/[playerId]/)
 // so it gets its own URL, tab nav, and Location Lab deep-dive instead of
 // living entirely on this search page.
 
@@ -45,7 +45,7 @@ export default function PitchingLabExplorer() {
   const visibleResults = useMemo(() => (query.trim().length >= 3 ? results : []), [query, results])
 
   function goToPitcher(id: number) {
-    router.push(`/mlb/pitching-lab/${id}`)
+    router.push(`/mlb/lab/pitching-lab/${id}`)
   }
 
   return (

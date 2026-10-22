@@ -1,0 +1,33 @@
+name: contact-profile
+
+# Single writer of batter_contact_profile (scripts/build_contact_profile.py).
+# Reads Baseball Savant directly, one game day per request (this season only: earlier seasons are already stored and a run only replaces the seasons it writes).
+# Depends on nothing else. Sunday 03:00 UTC: the Savant-heavy jobs run one per day at different hours (swing-decisions Mon, shape-bins Tue, shape-pitcher Wed,
+# shape-monthly Thu, shape-cells Fri, shape-locations Sat; contact-profile 03:00, batter-tto 05:00 and swing-monthly 07:00 on Sunday) so they never overlap.
+# The builder is a dry run unless --write is passed, so this workflow passes it (and --wait 0: no abort window in CI).
+# Python crons live only in GitHub Actions (Vercel cannot run them), so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  contact-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build batter_contact_profile
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          # the season being played: before March 20 it is still last year's, so an off-season run never fails on an empty season
+          SEASON=$(python -c "from datetime import date; t = date.today(); print(t.year - 1 if (t.month, t.day) < (3, 20) else t.year)")
+          python scripts/build_contact_profile.py --first-season "$SEASON" --write --wait 0

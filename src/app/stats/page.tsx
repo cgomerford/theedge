@@ -1,37 +1,16 @@
 // src/app/stats/page.tsx
+//
+// The stats hub now lives at /mlb/stats. This keeps old links and bookmarks
+// working (query-string filters are carried over). /stats/player/[id] is unchanged.
 
-import SiteHeader from '@/components/SiteHeader'
-import StatsExplorer from '@/components/stats/StatsExplorer'
-import { getCurrentSubscriber } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
-export const metadata = { title: 'The Stats · x9Lab' }
-
-export default async function StatsPage() {
-  // DEV-ONLY bypass — same pattern as /lab. Gated on NODE_ENV so it can't
-  // accidentally run in production.
-  if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
-    return (
-      <main className="min-h-screen bg-[#FAF8F3]">
-        <SiteHeader />
-        <StatsExplorer isPro={false} isSignedIn={true} />
-      </main>
-    )
+export default async function StatsRedirect({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === 'string') qs.set(k, v)
+    else if (Array.isArray(v)) v.forEach(x => qs.append(k, x))
   }
-
-  // Public page — no sign-in required, same pattern as
-  // /stats/player/[id]/page.tsx. isPro/isSignedIn passed through so
-  // StatsExplorer gates its own Pro-only content internally.
-  const subscriber = await getCurrentSubscriber()
-
-  // isPro must never default to true — same rule as everywhere else in this
-  // codebase, after the live isPro-leak bug. ?? false, not ?? true.
-  const isPro = subscriber?.is_pro ?? false
-  const isSignedIn = !!subscriber
-
-  return (
-    <main className="min-h-screen bg-[#FAF8F3]">
-      <SiteHeader />
-      <StatsExplorer isPro={isPro} isSignedIn={isSignedIn} />
-    </main>
-  )
+  redirect(`/mlb/stats${qs.toString() ? `?${qs}` : ''}`)
 }

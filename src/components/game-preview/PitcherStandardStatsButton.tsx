@@ -38,7 +38,7 @@ export default function PitcherStandardStatsButton({ data, isPro }: { data: Star
           <div className="space-y-4">
             <PitcherStandardStats data={data} />
             <div className="pt-3 border-t border-stone-100">
-              <LabFunnelLink href={`/mlb/pitching-lab/${data.pitcherId}`} label={`See ${data.pitcherName} in Pitching Lab`} isPro={isPro} />
+              <LabFunnelLink href={`/mlb/lab/pitching-lab/${data.pitcherId}`} label={`See ${data.pitcherName} in Pitching Lab`} isPro={isPro} />
             </div>
           </div>
         </DetailModal>

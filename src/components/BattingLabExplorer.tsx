@@ -2,7 +2,7 @@
 //
 // Search/entry point for the standalone Batting Lab — same real MLB
 // /people/search typeahead used everywhere else (src/lib/lab.ts's
-// searchPeople via /api/lab/search), jumping to /mlb/batting-lab/[id].
+// searchPeople via /api/lab/search), jumping to /mlb/lab/batting-lab/[id].
 // Mirrors PitchingLabExplorer.tsx exactly, batter side.
 
 'use client'
@@ -38,7 +38,7 @@ export default function BattingLabExplorer() {
   const visibleResults = useMemo(() => (query.trim().length >= 3 ? results : []), [query, results])
 
   function goToBatter(id: number) {
-    router.push(`/mlb/batting-lab/${id}`)
+    router.push(`/mlb/lab/batting-lab/${id}`)
   }
 
   return (

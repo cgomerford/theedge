@@ -594,7 +594,7 @@ function KeyPlayerDetailModal({ data, isFinal, result, rating, onClose }: {
 }) {
   const isPitcher = data.kind === 'pitcher'
   const surname = lastName(data.playerName)
-  const labHref = isPitcher ? `/mlb/pitching-lab/${data.playerId}/overlay` : `/mlb/batting-lab/${data.playerId}/hot-zones`
+  const labHref = isPitcher ? `/mlb/lab/pitching-lab/${data.playerId}/overlay` : `/mlb/lab/batting-lab/${data.playerId}/hot-zones`
   // Pitchers get a "Combined lineup" view up front, ahead of each hitter.
   const lineup = useMemo(() => (isPitcher ? buildLineupOption(data.matchupOptions) : null), [isPitcher, data.matchupOptions])
   const options = useMemo(() => (lineup ? [lineup, ...data.matchupOptions] : data.matchupOptions), [lineup, data.matchupOptions])

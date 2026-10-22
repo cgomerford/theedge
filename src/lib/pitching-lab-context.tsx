@@ -2,7 +2,7 @@
 
 // src/lib/pitching-lab-context.tsx
 //
-// Shared data layer for the /mlb/pitching-lab/[playerId] shell. Fetches
+// Shared data layer for the /mlb/lab/pitching-lab/[playerId] shell. Fetches
 // once from /api/mlb/pitching-lab (same real data every tab needs — full
 // stats, movement, count tendency, sequencing, hot zones, zone arsenal)
 // and hands it to every tab page via context, instead of each tab

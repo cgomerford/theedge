@@ -14,11 +14,11 @@ Referenced from `CLAUDE.md` §6.
 | Role | Font | Where it is used |
 |---|---|---|
 | **Base text, ALL headers, ALL bold, big numbers** | **Outfit** (the rounded brand face; free stand-in for Effra) | body copy, section titles, hero names, stat-tile values, table names, bold values, rank chips, card titles, `<b>` / `<strong>` |
-| **Light labels & plain numbers** | **JetBrains Mono** | small uppercase kickers, axis ticks, footnotes, non-bold table numbers, tab labels |
+| **Labels, axis ticks, footnotes, numbers** | **Outfit** (lighter weight / smaller size) | small uppercase kickers, axis ticks, footnotes, table numbers, tab labels — same family, differentiated by weight, size and letter-spacing |
 | ~~Bebas Neue~~ | **not used on new pages** | it was the old display face (condensed all-caps). Do not use it for headers |
 | ~~Fraunces~~ | **not used on new pages** | it was the old serif. Do not use it for body, headers or "italic notes" |
 
-**Headers and bold are rounded (Outfit), never condensed caps and never mono.**
+**ONE FONT EVER: Outfit.** No monospace, no squared faces, no condensed caps, no serif, no handwriting — anywhere on the site (CLAUDE.md §6). Headers and bold are Outfit 700–800; labels are Outfit at lighter weight.
 If something is bold or a heading, it is Outfit at weight 700–800.
 
 ### How fonts are wired (do not get this wrong)
@@ -27,7 +27,7 @@ Fonts are loaded once in `src/app/layout.tsx` with `next/font` and exposed as CS
 
 ```
 --font-outfit     → Outfit        (also --font-sans in globals.css; the sitewide default)
---font-jetbrains  → JetBrains Mono (--font-mono)
+--font-jetbrains  → alias of Outfit (kept only so old references resolve; JetBrains Mono is no longer loaded)
 ```
 
 **Always reference the variables, never a literal family name.** `next/font` hashes its
@@ -39,7 +39,7 @@ In code, import the constants — do not retype them:
 ```ts
 import { SANS, MONO, DISPLAY, DISPLAY_WEIGHT, C } from '@/components/team/ui'
 // SANS    = 'var(--font-outfit), system-ui, sans-serif'
-// MONO    = 'var(--font-jetbrains), ui-monospace, monospace'
+// MONO    = SANS  (alias — there is no second font)
 // DISPLAY = SANS          (headers/big numbers use Outfit…)
 // DISPLAY_WEIGHT = 800    (…at heavy weight; every DISPLAY use sets fontWeight: 800)
 ```
@@ -53,8 +53,8 @@ import { SANS, MONO, DISPLAY, DISPLAY_WEIGHT, C } from '@/components/team/ui'
 | Stat tile / hero stat value | Outfit 800, 26–30px, tabular numbers |
 | Card title / kicker | small caps, 10px, letter-spacing `.14em`, **bold → Outfit**, orange |
 | Body / descriptions | Outfit 13–15px, colour `#5b5347` |
-| Footnotes / sources | JetBrains Mono 9.5px, `#a89e8c` |
-| Data numbers in tables | Mono is fine when not bold; **bold values are Outfit** with `fontVariantNumeric: 'tabular-nums'` |
+| Footnotes / sources | Outfit 9.5px, `#a89e8c` |
+| Data numbers in tables | Outfit with `fontVariantNumeric: 'tabular-nums'` (bold for emphasis) |
 
 ### Embedded / legacy components
 
@@ -95,7 +95,7 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 - **Rounded cards (14px) are used on team / player pages** — this is the documented
   exception to the old "zero border-radius" rule. New sport pages follow the team-page look.
 - Page width `max-width: 1240px`, `24px` side padding.
-- Section marker `§ 01` (mono, orange) before each section title; `⊕` before kickers.
+- Section marker `§ 01` (Outfit, orange) before each section title; `⊕` before kickers.
 - **Responsive layout uses a `<style>` block with plain CSS `@media`** (`.tp-grid-2`, `.tp-grid-3`,
   `.tp-tiles`, `.tp-tiles-2`, `.tp-cards`, breakpoint 900px). Tailwind responsive classes are
   unreliable under Turbopack.
@@ -134,7 +134,7 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 
 ## 7. NFL checklist — apply this when building NFL pages
 
-1. **Fonts:** Outfit for headers/bold/body, JetBrains Mono for light labels and footnotes. **No Bebas Neue, no Fraunces.** Import `SANS` / `MONO` / `DISPLAY` from `components/team/ui.tsx`; never write a literal family name.
+1. **Fonts:** Outfit for everything — one font ever. **No JetBrains Mono / any monospace, no Bebas Neue, no Fraunces.** Import `SANS` / `MONO` / `DISPLAY` from `components/team/ui.tsx`; never write a literal family name.
 2. **Reuse, don't fork:** start from `Section`, `Card`, `Tile`, `RankBars`, `ProPanel`, `ProfileTabs`. If `team/ui.tsx` is too MLB-named for you, move the shared pieces to a sport-neutral folder (e.g. `src/components/profile-ui/`) and re-export from `team/ui.tsx` — don't copy the file.
 3. **Ranks are among 32 clubs**, not 30 — the helpers take `of` from the data; don't hard-code 30 in copy ("rank among 30" text, `maxRank = 30`).
 4. **Same page shape:** team-coloured hero → sticky section nav → numbered `§` sections → Pro `ProPanel` at the end of each section → source/method footnote.
@@ -145,11 +145,11 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 
 ## 8. Exports (X graphics, share cards, story slides, sheets)
 
-Anything exported as an image follows the same fonts — **Outfit 800 for headers/bold, JetBrains Mono for light labels; no Bebas Neue.** How each kind of export loads them:
+Anything exported as an image follows the same fonts — **Outfit only — 800 for headers/bold, lighter Outfit for labels; no monospace, no Bebas Neue.** How each kind of export loads them:
 
 | Export kind | Where | How the font is loaded |
 |---|---|---|
-| **Server-rendered X graphics** (`next/og` / Satori, 1600×900) | `src/lib/postgame/cards/*`, route `api/postgame-card/[gamePk]` | Satori cannot read CSS variables — it needs real font files. Static **`Outfit-700.woff` / `Outfit-800.woff`** and JetBrains Mono live in `src/lib/postgame/cards/fonts/` and are loaded in `frame.tsx` (`DISPLAY = 'Outfit'`, with `fontWeight: 800`). `next.config.ts` traces that folder into the route. WOFF/TTF/OTF only — **not WOFF2**, and not variable fonts. |
+| **Server-rendered X graphics** (`next/og` / Satori, 1600×900) | `src/lib/postgame/cards/*`, route `api/postgame-card/[gamePk]` | Satori cannot read CSS variables — it needs real font files. Static **`Outfit-700.woff` / `Outfit-800.woff`** live in `src/lib/postgame/cards/fonts/` (the old JetBrains Mono file there is to be dropped — Outfit only) and are loaded in `frame.tsx` (`DISPLAY = 'Outfit'`, with `fontWeight: 800`). `next.config.ts` traces that folder into the route. WOFF/TTF/OTF only — **not WOFF2**, and not variable fonts. |
 | **DOM-captured cards** (`html-to-image` → PNG) | `KeyPlayersShareCard`, `Top3ShareCard`, `ShareCard`, `ScoutStorySlideshow`, story/teaser components | `fontFamily: 'var(--font-outfit), system-ui, sans-serif'` + `fontWeight: 800`. Never a literal `'Outfit'`/`'Bebas Neue'` string (next/font hashes names). |
 | **`next/font` in a sheet component** | `postgame/ScorecardSheet.tsx` | `Outfit({ weight: ['800'] })` and `display.className`. |
 

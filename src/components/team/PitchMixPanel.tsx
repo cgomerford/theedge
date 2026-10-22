@@ -124,7 +124,7 @@ export default async function PitchMixPanel({ team, season, pitchers, starters, 
         isPro={isPro} title="Pitch quality by type"
         blurb="How hard each pitch type gets hit and how often it finishes at-bats — vs MLB."
         features={['xwOBA against, hard-hit % and put-away % for every pitch type', 'Strikeout rate and batting average against by pitch', 'Average horizontal and vertical break vs the league', 'Each starter\'s best and worst pitch by xwOBA']}
-        labHref={`/mlb/pitching-lab`} labLabel="Go pitch-by-pitch in the Pitching Lab"
+        labHref={`/mlb/lab/pitching-lab`} labLabel="Go pitch-by-pitch in the Pitching Lab"
       >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: MONO, fontSize: 11, minWidth: 560 }}>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swing Lab · Decisions (mockup)</title>
+<!-- MOCKUP ONLY. Every number is synthetic, generated in this page from seeded RNGs so layout, toggles,
+     hatched cells, the Free/Pro split and the empty states can be judged. Nothing here is real league data.
+
+     Row types the app receives (swapping demo for real = replacing ROWS / LEAGUE / LADDER):
+
+       batter_swing_decisions { batter_id, season, count_group ('even'|'hitters'|'two_strike'),
+         family ('fastball'|'breaking'|'offspeed'), p_throws ('R'|'L'), zone_r (0-4 top to bottom),
+         zone_c (0-4 catcher's view left to right), n_pitches, swing_rate, decision_value_per100,
+         reliability ('ok'|'thin') }
+       swing_decision_league { count_group, zone_r, zone_c, family, p_throws, coord_era,
+         rv_swing_mean, rv_take_mean, n }  + swing_rate  <-- not in the spec'd league table; the detail panel needs it
+       batter_count_ladder { batter_id, season, balls, strikes, family, p_throws, n_pitches, swing_rate }
+         (the league's swing rate per count/family is joined in from the league side)
+
+     Selection / Aggression are derived from the cell rows: a pitch is "hittable" when the league's swing beats
+     its take in that cell (rv_swing_mean >= rv_take_mean), "swing-losing" otherwise.
+       Selection  = share of swing-losing pitches he took (chase_rate = 1 - Selection)
+       Aggression = share of hittable pitches he swung at (hittable_taken_rate = 1 - Aggression)
+
+     In the app: Outfit comes from var(--font-outfit); charts become Recharts; the Pro parts are built
+     server-side only for Pro viewers (Free gets a locked card with a feature list and no numbers). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#FAF8F3; --card:#fff; --line:#e7e2d8; --soft:#f1eee6; --ink:#1A1A1A; --mute:#8a8275; --faint:#a89e8c;
+  --body:#5b5347; --orange:#FF5722; --yellow:#FDE047; --good:#1D9E75; --bad:#D4533B;
+  --f:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box;font-family:var(--f)}
+html,body{margin:0;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+
+/* mockup control strip (not part of the product) */
+.mock{background:#1A1A1A;color:#fff;padding:8px 24px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:12px}
+.mock b{letter-spacing:.14em;font-size:10px;color:var(--yellow)}
+.mock .note{color:#aaa;margin-left:auto}
+.mock .seg button{background:transparent;border-color:#555;color:#ddd;padding:4px 12px;font-size:12px}
+.mock .seg button.on{background:var(--yellow);color:#1A1A1A;border-color:var(--yellow)}
+
+/* segmented control (same look as the Shape Lab pitch toggle) */
+.seg{display:inline-flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pro-badge{display:inline-block;background:var(--yellow);color:#1A1A1A;font-weight:800;font-size:9px;letter-spacing:.1em;border-radius:5px;padding:2px 6px;vertical-align:middle}
+
+/* lab shell header */
+.shell{border-bottom:1px solid var(--line)}
+.shell .in{max-width:1240px;margin:0 auto;padding:18px 24px 0}
+.who{display:flex;align-items:center;gap:14px}
+.av{width:48px;height:48px;border-radius:50%;background:var(--soft);border:1px solid var(--line);display:grid;place-items:center;font-weight:800;color:var(--mute)}
+.kick{font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange);text-transform:uppercase}
+.who h2{margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-top:10px}
+.tabs span{white-space:nowrap;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:10px 12px;border-bottom:3px solid transparent}
+.tabs span.on{color:var(--ink);border-color:var(--orange)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 90px}
+.head{margin:30px 0 16px}
+.head h1{margin:2px 0 6px;font-weight:800;font-size:clamp(28px,4.4vw,44px);letter-spacing:-.02em;line-height:1.05}
+.head p{margin:0;color:var(--body);font-size:15px;max-width:720px}
+
+.sec{margin-top:38px}
+.sec h2{margin:0 0 4px;font-weight:800;font-size:28px;letter-spacing:-.01em}
+.sec h2 i{font-style:normal;color:var(--orange);font-size:15px;letter-spacing:.06em;margin-right:10px;font-weight:700}
+.sec .lede{color:var(--body);font-size:14px;margin:0 0 14px;max-width:760px}
+
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.tile .k{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--mute);text-transform:uppercase}
+.tile .v{font-weight:800;font-size:30px;line-height:1.15;margin-top:2px}
+.tile .s{font-size:12px;color:var(--mute)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 3px;font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase}
+.card h3::before{content:"⊕ "}
+.cap{color:var(--body);font-size:13px;margin:0 0 12px}
+.foot{font-size:9.5px;color:var(--faint);margin-top:12px;line-height:1.5}
+
+.bars{display:flex;gap:26px;flex-wrap:wrap;margin:22px 0 0}
+.bars .grp .lbl{font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange);text-transform:uppercase;margin-bottom:6px}
+.defn{font-size:11px;color:var(--mute);margin-top:5px}
+.freebar{margin-top:22px;font-size:13px;color:var(--mute)}
+
+.lab{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+
+/* decision grid */
+.gridwrap{display:grid;grid-template-columns:auto 1fr;gap:6px}
+.rowlbls{display:grid;grid-template-rows:repeat(5,1fr);gap:4px}
+.rowlbls span,.collbls span{font-size:10px;letter-spacing:.08em;font-weight:600;color:var(--faint);text-transform:uppercase;display:flex;align-items:center}
+.rowlbls span{justify-content:flex-end;padding-right:4px;max-width:54px;text-align:right;line-height:1.1}
+.collbls{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;grid-column:2}
+.collbls span{justify-content:center;text-align:center;line-height:1.1}
+.zg{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:4px}
+.cell{aspect-ratio:1/1;border:1px solid transparent;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;min-width:0}
+.cell b{font-size:clamp(13px,2.1vw,20px);font-weight:800;line-height:1}
+.cell small{font-size:clamp(9px,1.2vw,11px);font-weight:600;opacity:.8}
+.cell.inz{border-color:var(--ink);border-width:2px}
+.cell.sel{box-shadow:0 0 0 3px var(--yellow),0 0 0 5px var(--ink)}
+.cell.hatch{background:repeating-linear-gradient(135deg,#f7f4ec 0 6px,#e7e2d8 6px 7px);color:var(--faint)}
+.cell.hatch b{font-size:clamp(11px,1.5vw,14px);font-weight:700}
+
+.legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--mute)}
+.ramp{display:inline-flex;height:10px;width:170px;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.sw{display:inline-block;width:16px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.sw.h{background:repeating-linear-gradient(135deg,#f7f4ec 0 4px,#d9d3c4 4px 5px)}
+.sw.z{border:2px solid var(--ink);background:#fff}
+
+/* detail panel */
+.detail h4{margin:0 0 2px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.detail .where{font-size:12px;color:var(--mute);margin-bottom:12px}
+.dv{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.dv b{font-size:40px;font-weight:800;line-height:1}
+.dv span{font-size:12px;color:var(--mute)}
+.rows{width:100%;border-collapse:collapse;font-size:13px}
+.rows td{padding:7px 0;border-top:1px solid var(--line)}
+.rows td:last-child{text-align:right;font-weight:700}
+.rows td small{font-weight:500;color:var(--mute)}
+.sent{margin:12px 0 0;color:var(--body);font-size:13px}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.list li:first-child{border-top:0}
+.list li span{color:var(--body)}
+.list li b{white-space:nowrap}
+.list li em{font-style:normal;color:var(--mute);font-weight:500;font-size:11px;margin-left:5px}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+
+/* pitch list */
+.plwrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.pl{width:100%;border-collapse:collapse;font-size:12.5px}
+.pl th{position:sticky;top:0;background:var(--soft);text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:7px 10px;font-weight:700}
+.pl td{padding:6px 10px;border-top:1px solid var(--line);white-space:nowrap}
+.pl .sw-y{font-weight:700}
+
+/* count ladder */
+.lr{display:grid;grid-template-columns:44px 1fr 250px;gap:10px;align-items:center;padding:5px 0}
+.lr .ll{font-weight:800;font-size:14px}
+.lt{position:relative;height:16px;background:var(--soft);border-radius:8px;overflow:hidden}
+.lb{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:8px}
+.lb.thin{background:repeating-linear-gradient(135deg,#d9d3c4 0 4px,#efe9dc 4px 5px)}
+.lk{position:absolute;top:0;bottom:0;width:3px;background:var(--orange);transform:translateX(-1px)}
+.lv{font-size:13px;white-space:nowrap}
+.lv em{font-style:normal;color:var(--mute);font-size:11px;margin-left:4px}
+.lsep{border-top:1px dashed var(--line);margin:4px 0}
+
+/* dumbbell */
+.dr{display:grid;grid-template-columns:190px 1fr 210px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.dr:first-of-type{border-top:0}
+.dl{font-weight:700;font-size:13px}
+.dl small{display:block;font-weight:500;color:var(--mute);font-size:11px}
+.dt{position:relative;height:22px}
+.dt::before{content:"";position:absolute;left:0;right:0;top:10px;height:2px;background:var(--soft)}
+.dline{position:absolute;top:9px;height:4px;background:var(--ink);opacity:.35;border-radius:2px}
+.dot{position:absolute;top:3px;width:16px;height:16px;border-radius:50%;transform:translateX(-8px);border:2.5px solid var(--ink)}
+.dot.s{background:#fff}.dot.n{background:var(--ink)}
+.dd{font-size:13px;white-space:nowrap}
+.dd small{color:var(--mute);font-size:11px}
+
+.empty{border:1px dashed var(--line);border-radius:14px;padding:40px 20px;text-align:center;background:#fff}
+.empty b{display:block;font-size:20px;font-weight:800;margin-bottom:4px}
+.empty span{color:var(--mute);font-size:13px}
+.lock{border:1px solid var(--line);border-radius:14px;background:#fff;padding:20px}
+.lock h3{margin:6px 0;font-size:16px;font-weight:800}
+.lock ul{margin:8px 0 14px;padding-left:18px;color:var(--body);font-size:13px}
+.lock a{display:inline-block;background:var(--ink);color:#fff;text-decoration:none;font-weight:700;font-size:13px;border-radius:999px;padding:7px 16px}
+
+@media(max-width:900px){
+  .lab,.two{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}.mock .note{margin-left:0}
+  .lr{grid-template-columns:40px 1fr}.lr .lv{grid-column:1/-1;padding-left:50px;white-space:normal}
+  .dr{grid-template-columns:1fr;gap:6px}
+}
+</style>
+</head>
+<body>
+
+<div class="mock">
+  <b>MOCKUP · DEMO DATA</b>
+  <span>Sample size:</span>
+  <div class="seg" id="sampleSeg">
+    <button data-n="2700" class="on">Full season (n≈2,700)</button>
+    <button data-n="240">Thin (n≈240): empty state</button>
+  </div>
+  <span>Viewer:</span>
+  <div class="seg" id="viewerSeg">
+    <button data-viewer="pro" class="on">Pro</button>
+    <button data-viewer="free">Free</button>
+  </div>
+  <span class="note">Seeded fake data.</span>
+</div>
+
+<div class="shell"><div class="in">
+  <div class="who">
+    <div class="av">DH</div>
+    <div><div class="kick">Demo club · Batter</div><h2>Demo Hitter</h2></div>
+  </div>
+  <div class="tabs">
+    <span>Overview</span><span>Vs Arsenal</span><span>Location Lab</span><span>Hot Zone Overlay</span>
+    <span>Sequencing</span><span>Trends</span><span>H2H</span><span class="on">Decisions</span>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <div class="head">
+    <div class="kick">Decisions</div>
+    <h1>Where he gives it away, where he punishes it</h1>
+    <p>Results come after the choice. This page judges the choice itself: for each count, pitch family and spot, what the league’s swing-or-take average is worth, and what he did instead.</p>
+  </div>
+
+  <div id="controls"></div>
+
+  <div class="sec">
+    <h2><i>§ 01</i>The question</h2>
+    <p class="lede">Is he taking the pitches that lose value to swing at, and swinging at the ones that gain value? Then, count by count, where does his aggression sit?</p>
+    <div class="tiles" id="tiles"></div>
+    <div id="ladder" style="margin-top:16px"></div>
+  </div>
+
+  <div id="rest"></div>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+/* ============================== constants ============================== */
+const COUNTS = [
+  {key:'even',       label:'Even',       defn:'0-0 and 1-1',                  list:['0-0','1-1']},
+  {key:'hitters',    label:'Hitter’s',   defn:'1-0, 2-0, 3-0, 2-1, 3-1',      list:['1-0','2-0','3-0','2-1','3-1']},
+  {key:'two_strike', label:'Two-strike', defn:'any count with two strikes',   list:['0-2','1-2','2-2','3-2']},
+];
+const FAMILIES = [
+  {key:'fastball', label:'Fastballs', types:['4-Seam','4-Seam','Sinker','Cutter']},
+  {key:'breaking', label:'Breaking',  types:['Slider','Slider','Curveball','Sweeper']},
+  {key:'offspeed', label:'Offspeed',  types:['Changeup','Changeup','Splitter']},
+];
+const HANDS = [{key:'all',label:'All pitchers'},{key:'R',label:'vs RHP'},{key:'L',label:'vs LHP'}];
+const FKEYS = FAMILIES.map(x=>x.key);
+const GATE = {season:300, group:100, cell:15, count:30};
+const ROWL = ['Above zone','High','Middle','Low','Below zone'];
+const COLL = ['Wide in','In','Middle','Away','Wide away']; // demo hitter bats right: catcher's view left = inside
+const inZone = (r,c) => r>=1 && r<=3 && c>=1 && c<=3;
+const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ============================== demo data ============================== */
+/* league baseline per count_group × cell × family × pitcher hand (batter-perspective run value per pitch) */
+function buildLeague(){
+  const out=[];
+  for(const g of COUNTS) for(const f of FKEYS) for(const h of ['R','L']) for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const d=Math.hypot(r-2,c-2), z=inZone(r,c);
+    let s = z ? 0.82-0.17*d : 0.46-0.17*(d-1.5);
+    if(!z){
+      if(f==='breaking' && r>=3) s+=0.08;
+      if(f==='fastball' && r<=1) s+=0.05;
+      if(f==='offspeed' && r>=3) s+=0.06;
+      if(h==='L' && f==='breaking' && c>=3) s+=0.03;
+    }
+    if(g.key==='two_strike') s+=0.10;
+    if(g.key==='hitters' && !z) s-=0.08;
+    s=clamp(s,0.03,0.94);
+    const take = z ? (g.key==='two_strike' ? -0.12 : g.key==='hitters' ? -0.03 : -0.05) : (g.key==='two_strike' ? 0.010 : 0.020);
+    const swing = z ? -0.012 + 0.04*(1-d/1.6) : (g.key==='two_strike' ? -0.040 : -0.058) - 0.015*Math.max(0,d-2);
+    out.push({count_group:g.key,zone_r:r,zone_c:c,family:f,p_throws:h,coord_era:2026,
+      rv_swing_mean:+swing.toFixed(4),rv_take_mean:+take.toFixed(4),swing_rate:+s.toFixed(3),
+      n:Math.round(9000*(z?1.4:0.5)*(f==='fastball'?1.8:f==='breaking'?1:0.55)*(h==='R'?2.6:1))});
+  }
+  return out;
+}
+const LEAGUE = buildLeague();
+const LG = new Map(LEAGUE.map(x=>[`${x.count_group}|${x.family}|${x.p_throws}|${x.zone_r}|${x.zone_c}`,x]));
+const lgOf = x => LG.get(`${x.count_group}|${x.family}|${x.p_throws}|${x.zone_r}|${x.zone_c}`);
+
+/* his tendencies as swing-rate offsets from the league (RHB, catcher's view); `recent` bends the last-30-day sample */
+function tilt(g,f,r,c,h,recent){
+  let t=0;
+  if(f==='breaking' && r>=3 && c>=3) t+=0.20;                          // chases low-away breaking
+  if(f==='offspeed' && r>=3 && c>=2) t+=0.12;
+  if(f==='fastball' && r===0 && c>=1 && c<=3) t-=0.09;                 // lays off the high fastball
+  if(f==='fastball' && g!=='two_strike' && inZone(r,c) && r<=2 && c<=2) t+=0.10; // attacks middle-in
+  if(g==='two_strike' && r===3 && c===3) t-=0.12;                      // takes low-away strikes with two strikes
+  if(f==='breaking' && g==='hitters' && inZone(r,c)) t-=0.08;
+  if(h==='L' && f==='breaking' && r>=3 && c>=3) t+=0.06;
+  if(recent){
+    if(f==='breaking' && r>=3 && c>=3) t-=0.13;                        // lately chasing less
+    if(f==='fastball' && inZone(r,c) && r>=1 && r<=2) t+=0.05;
+  }
+  return t;
+}
+
+/* exact batter_swing_decisions rows */
+function buildRows(total,seed,recent){
+  const R=rng(seed), rows=[];
+  const gShare={even:0.36,hitters:0.24,two_strike:0.28}, fShare={fastball:0.55,breaking:0.30,offspeed:0.15}, hShare={R:0.72,L:0.28};
+  for(const g of COUNTS) for(const f of FKEYS) for(const h of ['R','L']){
+    const w=[]; let sw=0;
+    for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+      const d=Math.hypot(r-2,c-2), z=inZone(r,c);
+      let x = z ? (f==='fastball'?1.6:f==='breaking'?0.9:1.0)*(1.25-0.2*d) : (f==='breaking'?0.9:0.55)*Math.max(0.12,0.9-0.25*(d-1.4));
+      if(f==='breaking' && r>=3) x*=1.5;
+      w.push(x); sw+=x;
+    }
+    let i=0;
+    for(let r=0;r<5;r++) for(let c=0;c<5;c++,i++){
+      const n=Math.round(total*gShare[g.key]*fShare[f]*hShare[h]*w[i]/sw);
+      const L=LG.get(`${g.key}|${f}|${h}|${r}|${c}`);
+      const s=clamp(L.swing_rate+tilt(g.key,f,r,c,h,recent)+(R()-0.5)*0.06,0.01,0.92);
+      let k=0; for(let j=0;j<n;j++) if(R()<s) k++;
+      const rate=n?k/n:0;
+      const dv=(rate-L.swing_rate)*(L.rv_swing_mean-L.rv_take_mean)*100+(R()-0.5)*0.5;
+      rows.push({batter_id:0,season:2026,count_group:g.key,family:f,p_throws:h,zone_r:r,zone_c:c,
+        n_pitches:n,swing_rate:+rate.toFixed(3),decision_value_per100:+dv.toFixed(2),reliability:n>=GATE.cell?'ok':'thin'});
+    }
+  }
+  return rows;
+}
+
+/* batter_count_ladder rows (all 12 counts) + the league swing rate per count/family */
+const LCOUNTS=[[0,0,.26,.27],[1,0,.10,.37],[2,0,.04,.33],[3,0,.01,.08],[0,1,.12,.45],[1,1,.10,.46],[2,1,.06,.47],[3,1,.03,.50],[0,2,.09,.55],[1,2,.09,.56],[2,2,.06,.55],[3,2,.04,.62]];
+const FADJ={fastball:0.03,breaking:-0.05,offspeed:-0.08};
+const lgCount=(b,s,f)=>{const x=LCOUNTS.find(y=>y[0]===b&&y[1]===s);return clamp(x[3]+FADJ[f],0.03,0.9)};
+function buildLadder(total,seed){
+  const R=rng(seed), rows=[], fShare={fastball:0.55,breaking:0.30,offspeed:0.15}, hShare={R:0.72,L:0.28};
+  for(const [b,s,share] of LCOUNTS) for(const f of FKEYS) for(const h of ['R','L']){
+    const n=Math.round(total*share*fShare[f]*hShare[h]);
+    const early = s===0&&b<=2 ? 0.08 : 0, late = s===2 ? -0.07 : 0;
+    const p=clamp(lgCount(b,s,f)+early+late+(R()-0.5)*0.04,0.01,0.92);
+    let k=0; for(let j=0;j<n;j++) if(R()<p) k++;
+    rows.push({batter_id:0,season:2026,balls:b,strikes:s,family:f,p_throws:h,n_pitches:n,swing_rate:+(n?k/n:0).toFixed(3)});
+  }
+  return rows;
+}
+
+/* ============================== state ============================== */
+let TOTAL=2700, ROWS, LADDER, L30;
+const L30FRAC=0.13;
+function rebuild(){
+  ROWS=buildRows(TOTAL,20261017,false);
+  LADDER=buildLadder(TOTAL,4242);
+  L30=buildRows(Math.round(TOTAL*L30FRAC),777,true);
+}
+rebuild();
+const S={count:'even',family:'fastball',hand:'all',sel:null,viewer:'pro'};
+const $=id=>document.getElementById(id);
+const pct=x=>Math.round(x*100)+'%';
+const sgn=(v,d=1)=>{const t=Math.abs(v).toFixed(d);return (+t===0?'':v>0?'+':'−')+t};
+const fmt=n=>n.toLocaleString('en-US');
+const cellName=(r,c)=>`${ROWL[r]} · ${COLL[c]}`;
+const famLabel=k=>FAMILIES.find(f=>f.key===k).label.toLowerCase();
+const handLabel=h=>h==='all'?'all pitchers':h==='R'?'right-handers':'left-handers';
+const isPro=()=>S.viewer==='pro';
+const seasonN=()=>LADDER.reduce((a,x)=>a+x.n_pitches,0); // every pitch seen, all 12 counts (the grid covers the three count groups only)
+const l30N=()=>Math.round(TOTAL*L30FRAC);
+
+/* ============================== aggregation ============================== */
+const pass=(x,count,family,hand)=>(count==null||x.count_group===count)&&(family==null||x.family===family)&&(hand==null||hand==='all'||x.p_throws===hand);
+const filt=(rows,count,family,hand)=>rows.filter(x=>pass(x,count,family,hand));
+
+function agg(rows){
+  let n=0,s=0,l=0,d=0,g=0;
+  for(const x of rows){const L=lgOf(x),m=x.n_pitches;
+    n+=m; s+=m*x.swing_rate; l+=m*L.swing_rate; d+=m*x.decision_value_per100; g+=m*(L.rv_swing_mean-L.rv_take_mean)*100;}
+  return n?{n,swing:s/n,lg:l/n,dv:d/n,gap:g/n}:{n:0,swing:null,lg:null,dv:null,gap:null};
+}
+function summ(rows){
+  const gapOf=x=>{const L=lgOf(x);return L.rv_swing_mean-L.rv_take_mean};
+  return {
+    all:agg(rows), junk:agg(rows.filter(x=>gapOf(x)<0)), hit:agg(rows.filter(x=>gapOf(x)>=0)),
+    out:agg(rows.filter(x=>!inZone(x.zone_r,x.zone_c))), mid:agg(rows.filter(x=>x.zone_r===2&&x.zone_c===2)),
+  };
+}
+function cells(count,family,hand){
+  const rows=filt(ROWS,count,family,hand), out=[];
+  for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+    const a=agg(rows.filter(x=>x.zone_r===r&&x.zone_c===c));
+    out.push({r,c,...a,ok:a.n>=GATE.cell});
+  }
+  return out;
+}
+
+/* diverging colour: orange (giving value away) ← white → green (better than league), capped at ±3 per 100 */
+const CAP=3;
+function tone(v){
+  const a=clamp(Math.abs(v)/CAP,0,1), base=v>=0?[29,158,117]:[255,87,34];
+  const mix=base.map(ch=>Math.round(255+(ch-255)*(0.12+0.88*a)));
+  return {bg:`rgb(${mix})`,fg:a>0.55?'#fff':'#1A1A1A'};
+}
+document.documentElement.style.setProperty('--ramp',`linear-gradient(90deg,${[-3,-1.5,0,1.5,3].map(v=>tone(v).bg).join(',')})`);
+
+/* ============================== pieces ============================== */
+function seg(items,cur,attr){
+  return `<div class="seg" role="group">${items.map(i=>`<button data-${attr}="${i.key}" aria-pressed="${i.key===cur}" class="${i.key===cur?'on':''}">${i.label}</button>`).join('')}</div>`;
+}
+function lockCard(title,features){
+  return `<div class="lock"><span class="pro-badge">PRO</span><h3>${title}</h3><ul>${features.map(f=>`<li>${f}</li>`).join('')}</ul><a href="#">Upgrade to Pro</a></div>`;
+}
+const empty=(t,s)=>`<div class="empty"><b>${t}</b><span>${s}</span></div>`;
+
+function renderControls(){
+  if(!isPro()){
+    $('controls').innerHTML=`<div class="freebar">Free shows the season summary. Filters by count, pitch family and pitcher hand are part of Pro.</div>`;
+    return;
+  }
+  const cntDef=COUNTS.find(c=>c.key===S.count).defn;
+  $('controls').innerHTML=`<div class="bars">
+    <div class="grp"><div class="lbl">Count (grid)</div>${seg(COUNTS,S.count,'count')}<div class="defn">${cntDef}</div></div>
+    <div class="grp"><div class="lbl">Pitch family</div>${seg(FAMILIES,S.family,'family')}</div>
+    <div class="grp"><div class="lbl">Pitcher hand</div>${seg(HANDS,S.hand,'hand')}</div>
+  </div>`;
+}
+
+/* summary rows for tiles and ladder: Pro follows family + pitcher hand; Free sees the whole season */
+const sumRows=()=>isPro()?filt(ROWS,null,S.family,S.hand):ROWS;
+
+function renderTiles(){
+  const thin=seasonN()<GATE.season, M=summ(sumRows());
+  const tile=(k,val,s)=>`<div class="tile"><div class="k">${k}</div><div class="v">${val}</div><div class="s">${s}</div></div>`;
+  const rate=(k,a,lg,note)=>{
+    if(thin) return tile(k,'—',`under ${GATE.season} pitches this season`);
+    if(a.n<GATE.cell) return tile(k,'—',`n = ${a.n} (under ${GATE.cell})`);
+    const v=lg(a);
+    return tile(k,pct(v[0]),`n = ${fmt(a.n)} · league ${pct(v[1])} · ${note}`);
+  };
+  const ctx=isPro()?`${famLabel(S.family)} · ${handLabel(S.hand)}`:'all pitches';
+  $('tiles').innerHTML=
+    rate('Selection',M.junk,a=>[1-a.swing,1-a.lg],'takes where a swing loses value')+
+    rate('Aggression',M.hit,a=>[a.swing,a.lg],'swings where a swing gains value')+
+    rate('Outside-zone take rate',M.out,a=>[1-a.swing,1-a.lg],'same pitches')+
+    rate('Middle-middle swing rate',M.mid,a=>[a.swing,a.lg],'same pitches')+
+    tile('Pitches in view',fmt(M.all.n),`${ctx} · season total ${fmt(seasonN())}`);
+}
+
+function renderLadder(){
+  if(seasonN()<GATE.season){ $('ladder').innerHTML=''; return; }
+  const fam=isPro()?S.family:null, hand=isPro()?S.hand:'all';
+  const rows=LADDER.filter(x=>(fam==null||x.family===fam)&&(hand==='all'||x.p_throws===hand));
+  let h='';
+  LCOUNTS.forEach(([b,s],i)=>{
+    const rs=rows.filter(x=>x.balls===b&&x.strikes===s), n=rs.reduce((a,x)=>a+x.n_pitches,0);
+    const his=n?rs.reduce((a,x)=>a+x.n_pitches*x.swing_rate,0)/n:0, lg=n?rs.reduce((a,x)=>a+x.n_pitches*lgCount(b,s,x.family),0)/n:0;
+    const thin=n<GATE.count, dom=0.8;
+    if(i>0&&s===0&&LCOUNTS[i-1][1]!==0) h+='<div class="lsep"></div>';
+    h+=`<div class="lr"><span class="ll">${b}-${s}</span>
+      <div class="lt">${thin?'<i class="lb thin" style="width:100%"></i>':`<i class="lb" style="width:${his/dom*100}%"></i><i class="lk" style="left:${lg/dom*100}%"></i>`}</div>
+      <span class="lv">${thin?`<em>n = ${n}, not estimated</em>`:`<b>${pct(his)}</b><em>league ${pct(lg)} · ${sgn(Math.round((his-lg)*100),0)} pts · n=${fmt(n)}</em>`}</span></div>`;
+  });
+  $('ladder').innerHTML=`<div class="card"><h3>The count ladder</h3>
+    <p class="cap">Swing rate in each count (bar) against the league’s on the same pitches (orange tick). ${isPro()?`${famLabel(S.family)} · ${handLabel(S.hand)}.`:'All pitches.'} Counts under ${GATE.count} pitches are hatched.</p>${h}
+    <p class="foot">Source: Baseball Savant via pybaseball. Swing rate = swings ÷ pitches seen in that count. The ${GATE.count}-pitch minimum for a single count is a proposed gate.</p></div>`;
+}
+
+/* ---------- pitch list: stand-in for the later pitch-level fetch (up to 50 pitches with outcome) ---------- */
+const ZB=[4.17,3.5,2.83,2.17,1.5,0.83];
+function genPitches(r,c){
+  const rows=ROWS.filter(x=>x.zone_r===r&&x.zone_c===c&&pass(x,S.count,S.family,S.hand)&&x.n_pitches>0);
+  const R=rng(r*977+c*131+S.count.length*7+S.family.length*3+(S.hand==='all'?0:S.hand==='R'?11:13)), out=[];
+  const cd=COUNTS.find(k=>k.key===S.count), fam=FAMILIES.find(f=>f.key===S.family), z=inZone(r,c);
+  for(const x of rows){
+    const swings=Math.round(x.swing_rate*x.n_pitches);
+    const flags=Array.from({length:x.n_pitches},(_,i)=>i<swings);
+    for(let i=flags.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[flags[i],flags[j]]=[flags[j],flags[i]]}
+    for(const sw of flags){
+      let res; const u=R();
+      if(sw){ const wh=z?0.18:0.38; res=u<wh?'Swinging strike':u<wh+0.30?'Foul':R()<(z?0.33:0.22)?'In play · hit':'In play · out'; }
+      else  { res=R()<(z?0.90:0.15)?'Called strike':'Ball'; }
+      out.push({day:Math.floor(R()*185),count:cd.list[Math.floor(R()*cd.list.length)],pitch:fam.types[Math.floor(R()*fam.types.length)],
+        hand:x.p_throws+'HP',x:(c-2)*0.557+(R()-0.5)*0.557,z:ZB[r+1]+R()*(ZB[r]-ZB[r+1]),swing:sw,res});
+    }
+  }
+  out.sort((a,b)=>a.day-b.day);
+  return {total:out.length,list:out.slice(0,50)};
+}
+function dayLabel(d){ // d = days back from Sep 28
+  const dt=new Date(2026,8,28-d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+/* ---------- sections 02-04 ---------- */
+function renderRest(){
+  if(seasonN()<GATE.season){
+    $('rest').innerHTML=`<div class="sec">${empty(`Not enough pitches yet (n = ${fmt(seasonN())} of ${GATE.season} needed)`,`The decision grid appears once a season has ${GATE.season} pitches in the 2026 location era.`)}</div>`;
+    return;
+  }
+  if(!isPro()){
+    $('rest').innerHTML=`
+      <div class="sec"><h2><i>§ 02</i>The decision grid</h2>${lockCard('Decision grid',['A 5×5 grid of where he gives pitches away and where he punishes mistakes','Filter by count, pitch family and pitcher hand','Tap a spot to see the swing rate against the league and up to 50 of the pitches behind it'])}</div>
+      <div class="sec"><h2><i>§ 03</i>What changed</h2>${lockCard('Last 30 days vs season',['Selection, Aggression and decision value, last 30 days against the season','Same minimum-pitch gates as the season view'])}</div>`;
+    return;
+  }
+  const grpN=filt(ROWS,S.count,null,null).reduce((a,x)=>a+x.n_pitches,0);
+  let grid;
+  if(grpN<GATE.group){
+    grid=empty(`Not enough pitches in these counts (n = ${fmt(grpN)} of ${GATE.group} needed)`,'Try another count group.');
+  } else {
+    grid=`<div class="lab">
+      <div class="card">
+        <h3>The decision grid</h3>
+        <p class="cap">Catcher’s view, right-handed batter. Colour is his decision value against the league’s average choice in the same count, spot and pitch family. Tap a cell.</p>
+        <div class="gridwrap">
+          <div class="rowlbls">${ROWL.map(l=>`<span>${l}</span>`).join('')}</div>
+          <div class="zg" id="zg"></div>
+          <div class="collbls">${COLL.map(l=>`<span>${l}</span>`).join('')}</div>
+        </div>
+        <div class="legend">
+          <span>Giving value away</span><span class="ramp" style="background:var(--ramp)"></span><span>Better than league</span>
+          <span>(±${CAP} runs per 100 pitches, capped)</span>
+          <span><i class="sw z"></i>Rulebook zone</span><span><i class="sw h"></i>Under ${GATE.cell} pitches: not estimated</span>
+        </div>
+      </div>
+      <div class="card detail" id="detail"></div>
+    </div>
+    <div class="card" id="pitches" style="margin-top:16px"></div>
+    <div class="two">
+      <div class="card"><h3>How he wins</h3><p class="cap">Spots where his choice beats the league’s, in this view.</p><ul class="list" id="wins"></ul></div>
+      <div class="card"><h3>Where he’s vulnerable</h3><p class="cap">Spots where his choice trails the league’s, in this view.</p><ul class="list" id="losses"></ul></div>
+    </div>`;
+  }
+  const valid=empty('Not computed yet','Split-half reliability of decision value per 100 pitches, and its same-season correlation with wOBA, are published here once computed on real data. No number is shown until then.').replace('class="empty"','class="empty" style="border:0;padding:12px 0 4px;text-align:left;background:none"');
+  $('rest').innerHTML=`<div class="sec"><h2><i>§ 02</i>The decision grid</h2>
+      <p class="lede">${COUNTS.find(c=>c.key===S.count).label} counts · ${famLabel(S.family)} · ${handLabel(S.hand)}.</p>${grid}</div>
+    <div class="sec"><h2><i>§ 03</i>What changed</h2>
+      <p class="lede">Last 30 days against the season, all counts and pitch families, under the same minimum-pitch gates.</p>${changedHtml()}</div>
+    <div class="sec"><h2><i>§ 04</i>Method</h2><div class="card"><h3>Validation</h3>${valid}</div></div>`;
+  if(grpN>=GATE.group){ renderGrid(); renderDetail(); renderPitches(); renderLists(); }
+}
+
+function renderGrid(){
+  const cs=cells(S.count,S.family,S.hand); let h='';
+  for(const x of cs){
+    const thin=!x.ok, sel=S.sel&&S.sel[0]===x.r&&S.sel[1]===x.c, t=tone(x.dv??0);
+    const cls=`cell${inZone(x.r,x.c)?' inz':''}${thin?' hatch':''}${sel?' sel':''}`;
+    const label=`${cellName(x.r,x.c)}. ${thin?`Only ${x.n} pitches, not estimated`:`Decision value ${sgn(x.dv)} per 100, ${x.n} pitches`}`;
+    h+=`<button class="${cls}" style="${thin?'':`background:${t.bg};color:${t.fg}`}" data-r="${x.r}" data-c="${x.c}" aria-pressed="${!!sel}" aria-label="${label}">
+      <b>${thin?'n='+x.n:sgn(x.dv)}</b>${thin?'':`<small>n=${x.n}</small>`}</button>`;
+  }
+  $('zg').innerHTML=h;
+}
+
+function renderDetail(){
+  const d=$('detail');
+  if(!S.sel){ d.innerHTML=`<h3>This spot</h3><p class="cap">Tap a cell to see what he did here against the league.</p>`; return; }
+  const [r,c]=S.sel, x=cells(S.count,S.family,S.hand)[r*5+c], z=inZone(r,c);
+  const head=`<h3>This spot</h3><h4>${cellName(r,c)}</h4><div class="where">${z?'Inside the rulebook zone':'Outside the rulebook zone'} · ${famLabel(S.family)} · ${COUNTS.find(k=>k.key===S.count).label.toLowerCase()} counts · ${handLabel(S.hand)}</div>`;
+  if(!x.ok){
+    d.innerHTML=head+`<div class="empty" style="padding:26px 14px"><b style="font-size:16px">Not estimated (n = ${x.n} of ${GATE.cell} needed)</b><span>Too few pitches in this spot to say what the choice was worth.</span></div>`;
+    return;
+  }
+  const diff=Math.round((x.swing-x.lg)*100);
+  d.innerHTML=head+`
+    <div class="dv"><b class="${x.dv>=0?'pos':'neg'}">${sgn(x.dv)}</b><span>runs per 100 pitches, against the league’s average choice</span></div>
+    <table class="rows">
+      <tr><td>Pitches seen</td><td>${fmt(x.n)}</td></tr>
+      <tr><td>He swung at</td><td>${pct(x.swing)}</td></tr>
+      <tr><td>League swings at</td><td>${pct(x.lg)} <small>(${diff===0?'level':sgn(diff,0)+' pts for him'})</small></td></tr>
+      <tr><td>League: a swing here vs a take<br><small>per 100 pitches</small></td><td>${sgn(x.gap)}</td></tr>
+    </table>
+    <p class="sent">He swung at ${pct(x.swing)} of the ${fmt(x.n)} ${famLabel(S.family)} he saw here; the league swings at ${pct(x.lg)}. Across the league, a swing in this spot has been worth ${sgn(x.gap)} runs per 100 pitches ${x.gap>=0?'more':'less'} than a take.</p>`;
+}
+
+function renderPitches(){
+  const el=$('pitches');
+  if(!S.sel){ el.innerHTML=`<h3>The pitches behind it</h3><p class="cap">Tap a cell to list the pitches in it.</p>`; return; }
+  const [r,c]=S.sel, x=cells(S.count,S.family,S.hand)[r*5+c];
+  const head=`<h3>The pitches behind it</h3>`;
+  if(!x.ok){ el.innerHTML=head+`<p class="cap">${cellName(r,c)}: under ${GATE.cell} pitches, so the list is not shown.</p>`; return; }
+  const P=genPitches(r,c);
+  el.innerHTML=head+`<p class="cap">${cellName(r,c)} · showing ${P.list.length} of ${fmt(P.total)} pitches (most recent first), with the outcome of each.</p>
+    <div class="plwrap"><table class="pl"><thead><tr><th>Date</th><th>Count</th><th>Pitch</th><th>Pitcher</th><th>Location (ft)</th><th>Choice</th><th>Outcome</th></tr></thead><tbody>
+    ${P.list.map(p=>`<tr><td>${dayLabel(p.day)}</td><td>${p.count}</td><td>${p.pitch}</td><td>${p.hand}</td><td>${p.x.toFixed(2)}, ${p.z.toFixed(2)}</td><td class="${p.swing?'sw-y':''}">${p.swing?'Swing':'Take'}</td><td>${p.res}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="foot">Source: Baseball Savant via pybaseball. Location is plate_x, plate_z (catcher’s view, 2026 era). In the app this list is a pitch-level request made when a cell is tapped, never part of page render.</p>`;
+}
+
+function listItems(cs,cls){
+  if(!cs.length) return `<li><span style="color:var(--mute)">No spot with enough pitches in this view.</span></li>`;
+  return cs.map(x=>`<li><span>${cellName(x.r,x.c)}<em>n=${x.n}</em></span><b class="${cls}">${sgn(x.dv)}</b></li>`).join('');
+}
+function renderLists(){
+  const ok=cells(S.count,S.family,S.hand).filter(x=>x.ok);
+  $('wins').innerHTML=listItems(ok.filter(x=>x.dv>0).sort((a,b)=>b.dv-a.dv).slice(0,3),'pos');
+  $('losses').innerHTML=listItems(ok.filter(x=>x.dv<0).sort((a,b)=>a.dv-b.dv).slice(0,3),'neg');
+}
+
+/* ---------- what changed: last 30 days vs season ---------- */
+function changedHtml(){
+  const nL=l30N();
+  if(nL<GATE.season) return empty(`Not enough pitches in the last 30 days (n = ${fmt(nL)} of ${GATE.season} needed)`,'The comparison appears once the last 30 days reach the same minimum as the season view.');
+  const A=summ(ROWS), B=summ(L30);
+  const defs=[
+    {k:'Selection',a:1-A.junk.swing,b:1-B.junk.swing,na:A.junk.n,nb:B.junk.n,dom:[0.3,0.9],rate:1},
+    {k:'Aggression',a:A.hit.swing,b:B.hit.swing,na:A.hit.n,nb:B.hit.n,dom:[0.3,0.9],rate:1},
+    {k:'Outside-zone take rate',a:1-A.out.swing,b:1-B.out.swing,na:A.out.n,nb:B.out.n,dom:[0.3,0.9],rate:1},
+    {k:'Middle-middle swing rate',a:A.mid.swing,b:B.mid.swing,na:A.mid.n,nb:B.mid.n,dom:[0.3,1],rate:1},
+    {k:'Decision value',a:A.all.dv,b:B.all.dv,na:A.all.n,nb:B.all.n,dom:[-2,2],rate:0},
+  ];
+  const rows=defs.map(m=>{
+    if(m.nb<GATE.cell||m.na<GATE.cell) return `<div class="dr"><div class="dl">${m.k}<small>L30 n=${m.nb} · season n=${fmt(m.na)}</small></div><div class="dt"></div><div class="dd"><small>Not estimated</small></div></div>`;
+    const p=v=>clamp((v-m.dom[0])/(m.dom[1]-m.dom[0]),0,1)*100, a=p(m.a), b=p(m.b);
+    const delta=m.rate?`${sgn(Math.round((m.b-m.a)*100),0)} pts`:`${sgn(m.b-m.a)} per 100`;
+    const val=v=>m.rate?pct(v):sgn(v)+' /100';
+    return `<div class="dr"><div class="dl">${m.k}<small>L30 n=${fmt(m.nb)} · season n=${fmt(m.na)}</small></div>
+      <div class="dt"><i class="dline" style="left:${Math.min(a,b)}%;width:${Math.abs(a-b)}%"></i><i class="dot s" style="left:${a}%"></i><i class="dot n" style="left:${b}%"></i></div>
+      <div class="dd"><b>${val(m.b)}</b> <small>from ${val(m.a)} · ${delta}</small></div></div>`;
+  }).join('');
+  return `<div class="card"><h3>Last 30 days vs season</h3>
+    <p class="cap">Hollow dot: season. Filled dot: last 30 days. Decision value is per 100 pitches across every spot.</p>${rows}
+    <p class="foot">Source: Baseball Savant via pybaseball. Same method and minimums as the season view; last-30-day sample n = ${fmt(nL)}.</p></div>`;
+}
+
+/* ============================== render ============================== */
+function ensureSel(){
+  if(S.sel||!isPro()) return;
+  const ok=cells(S.count,S.family,S.hand).filter(x=>x.ok).sort((a,b)=>Math.abs(b.dv)-Math.abs(a.dv))[0];
+  if(ok) S.sel=[ok.r,ok.c];
+}
+function render(){
+  ensureSel(); renderControls(); renderTiles(); renderLadder(); renderRest();
+  $('foot').innerHTML=`Source: Baseball Savant via pybaseball. Method: league run value of swing vs take by count × location cell × pitch family × pitcher hand; decision value = his choice minus the cell’s average, per 100 pitches. Cells under ${GATE.cell} pitches are hatched. Minimums: ${GATE.season} pitches for the season view, ${GATE.group} per count group. Only 2026-era plate locations are shown; eras are never mixed in one chart. Inspired by Baseball Prospectus’s SEAGER framework; not a replica. Demo data in this mockup.`;
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.closest('#sampleSeg')){
+    TOTAL=+b.dataset.n; rebuild(); S.sel=null;
+    document.querySelectorAll('#sampleSeg button').forEach(x=>x.classList.toggle('on',x===b)); render();
+  } else if(b.closest('#viewerSeg')){
+    S.viewer=b.dataset.viewer; S.sel=null;
+    document.querySelectorAll('#viewerSeg button').forEach(x=>x.classList.toggle('on',x===b)); render();
+  } else if(b.dataset.count){S.count=b.dataset.count;S.sel=null;render()}
+  else if(b.dataset.family){S.family=b.dataset.family;S.sel=null;render()}
+  else if(b.dataset.hand){S.hand=b.dataset.hand;S.sel=null;render()}
+  else if(b.dataset.r){S.sel=[+b.dataset.r,+b.dataset.c];renderGrid();renderDetail();renderPitches()}
+});
+
+/* guard: demo rows must match the spec'd row shape exactly */
+const KEYS='batter_id,season,count_group,family,p_throws,zone_r,zone_c,n_pitches,swing_rate,decision_value_per100,reliability'.split(',');
+console.assert(ROWS.every(r=>KEYS.every(k=>k in r)&&Object.keys(r).length===KEYS.length),'row shape drifted from batter_swing_decisions');
+render();
+</script>
+</body>
+</html>

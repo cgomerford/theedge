@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pitch View Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF8F3;--card:#fff;--ink:#1A1A1A;--orange:#FF5722;--line:#e7e2d8;--soft:#f1eee6;--mute:#8a8275;--faint:#a89e8c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:22px 24px 40px}
+.kick{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase}
+h1{font-weight:800;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;line-height:1;margin:6px 0 4px}
+.sub{color:var(--mute);font-size:14px;margin-bottom:16px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab,.chip,.pill{font:600 13px 'Outfit',sans-serif;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--ink)}
+.tab.on,.chip.on,.pill.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.chip.on i{box-shadow:0 0 0 2px var(--cream)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+#stage{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:var(--cream);border:1px solid var(--line)}
+@media(max-width:640px){#stage{aspect-ratio:1/1}}
+canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.lbl{position:absolute;transform:translate(-50%,-50%);font:600 11px 'Outfit';color:var(--ink);pointer-events:none;white-space:nowrap;display:none}
+.lbl.pillw{background:var(--ink);color:var(--cream);border-radius:999px;padding:1px 7px;font-size:10px}
+.lbl.or{background:var(--orange);color:#fff;border-radius:999px;padding:2px 9px}
+.lbl.t{color:var(--mute);font-weight:600;font-size:10px}
+#zoomnote{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--mute);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.big{font-weight:800;font-size:44px;letter-spacing:-.02em;line-height:1}.big small{font-size:15px;font-weight:600;color:var(--mute);margin-left:4px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--cream)}
+.tile .v{font-weight:800;font-size:26px;line-height:1.05}.tile .v small{font-size:12px;color:var(--mute);font-weight:600;margin-left:3px}
+.tile .l{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--mute);margin-top:3px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+p.note{font-size:13px;line-height:1.5;color:#5b5347;margin:8px 0}
+.leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#5b5347;margin-top:8px}
+.leg b{display:inline-block;width:22px;height:0;border-top:3px solid var(--orange);vertical-align:middle;margin-right:6px}
+.leg b.d{border-top:2px dashed #6b6558}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:800;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--soft)}
+th:first-child,td:first-child{text-align:left}
+tr.sel td{background:#fff3ee}tr.small td{color:var(--faint)}
+.hl{background:#fff3ee}
+.foot{font-size:10px;color:var(--faint);margin-top:12px;line-height:1.5}
+</style></head><body><div class="wrap">
+<div class="kick">⊕ Pitch · what changed</div>
+<h1 id="title"></h1><div class="sub" id="sub"></div>
+<div class="tabs"><button class="tab on" data-tab="release">Release point</button><button class="tab" data-tab="move">Pitch movement</button></div>
+<div class="grid">
+ <div>
+  <div id="stage"><canvas id="c"></canvas><div id="labels"></div><div id="zoomnote"></div></div>
+  <div class="row" id="cams"></div>
+  <div class="row"><span class="kick" style="margin-right:4px">Month</span><span id="chips" class="row" style="margin:0"></span></div>
+ </div>
+ <div class="card" id="panel"></div>
+</div>
+<div class="card" style="margin-top:16px"><div class="kick">Month by month</div><div id="tbl"></div>
+<div class="foot" id="foot"></div></div>
+</div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const DATA = {"pitcher":{"id":650911,"name":"Cristopher S\u00e1nchez","team":"PHI","hand":"L","pitch":"SI","pitchName":"Sinker","season":2026},"months":[{"month":"2026-03","n":45,"release_pos_x":1.9142,"release_pos_y":53.5107,"release_pos_z":6.0707,"release_extension":6.9844,"release_speed":94.4333,"release_spin_rate":2147.7333,"vx0":-9.1933,"vy0":-137.099,"vz0":-5.4836,"ax":22.9082,"ay":31.3555,"az":-25.9628,"plate_x":-0.1637,"plate_z":2.0474,"sz_top":3.2239,"sz_bot":1.627,"ivb":4.87,"hb":19.86},{"month":"2026-04","n":253,"release_pos_x":1.8728,"release_pos_y":53.5851,"release_pos_z":6.0384,"release_extension":6.9154,"release_speed":94.7609,"release_spin_rate":2123.4506,"vx0":-8.8572,"vy0":-137.6256,"vz0":-5.3038,"ax":21.3836,"ay":31.2765,"az":-26.7411,"plate_x":-0.1802,"plate_z":2.0551,"sz_top":3.2265,"sz_bot":1.6283,"ivb":4.16,"hb":18.32},{"month":"2026-05","n":201,"release_pos_x":1.8992,"release_pos_y":53.5869,"release_pos_z":5.9997,"release_extension":6.9124,"release_speed":95.408,"release_spin_rate":2143.597,"vx0":-8.7244,"vy0":-138.594,"vz0":-4.9762,"ax":21.4624,"ay":31.3559,"az":-26.9182,"plate_x":-0.0912,"plate_z":2.1779,"sz_top":3.254,"sz_bot":1.6422,"ivb":4.01,"hb":18.16},{"month":"2026-06","n":234,"release_pos_x":1.9302,"release_pos_y":53.571,"release_pos_z":6.0615,"release_extension":6.9299,"release_speed":95.6214,"release_spin_rate":2145.4872,"vx0":-8.269,"vy0":-138.9798,"vz0":-5.0344,"ax":21.2274,"ay":30.0306,"az":-26.259,"plate_x":0.1064,"plate_z":2.2895,"sz_top":3.2242,"sz_bot":1.6272,"ivb":4.6,"hb":17.95},{"month":"2026-07","n":160,"release_pos_x":1.9787,"release_pos_y":53.7498,"release_pos_z":6.0485,"release_extension":6.7519,"release_speed":94.9788,"release_spin_rate":2105.1062,"vx0":-8.5224,"vy0":-138.0454,"vz0":-5.1782,"ax":20.228,"ay":28.8339,"az":-26.7662,"plate_x":-0.0273,"plate_z":2.148,"sz_top":3.2232,"sz_bot":1.6266,"ivb":4.18,"hb":17.23},{"month":"2026-08","n":267,"release_pos_x":2.0096,"release_pos_y":53.6722,"release_pos_z":6.0662,"release_extension":6.827,"release_speed":94.7285,"release_spin_rate":2098.2547,"vx0":-8.5123,"vy0":-137.6692,"vz0":-4.6615,"ax":20.7364,"ay":29.724,"az":-26.4624,"plate_x":0.045,"plate_z":2.3707,"sz_top":3.2074,"sz_bot":1.6187,"ivb":4.58,"hb":17.79},{"month":"2026-09","n":242,"release_pos_x":1.7314,"release_pos_y":53.6283,"release_pos_z":6.1146,"release_extension":6.8715,"release_speed":95.1888,"release_spin_rate":2130.1777,"vx0":-8.5885,"vy0":-138.2788,"vz0":-4.768,"ax":22.1913,"ay":31.5553,"az":-26.4599,"plate_x":-0.1598,"plate_z":2.3899,"sz_top":3.1925,"sz_bot":1.6112,"ivb":4.49,"hb":18.96}]};
+const $ = id => document.getElementById(id), V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const P = DATA.pitcher, M = DATA.months, MIN_N = 50, ZP = -17 / 12, RUBBER_Y = 60.5;
+const S = P.hand === 'L' ? 1 : -1;                      // arm side is +x for a left-hander, -x for a right-hander (catcher's view, +x toward first base)
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], lab = r => MON[+r.month.slice(5) - 1];
+const col = i => new THREE.Color('#c4b9a0').lerp(new THREE.Color('#FF5722'), M.length > 1 ? i / (M.length - 1) : 1);
+const hex = i => '#' + col(i).getHexString();
+const full = M.map((r, i) => i).filter(i => M[i].n >= MIN_N), base = full[0], lastI = full[full.length - 1];
+$('title').textContent = P.pitchName; $('sub').textContent = P.name + ' · ' + P.team + ' · ' + P.season + ' regular season · throws ' + (P.hand === 'L' ? 'left' : 'right');
+
+// ---------- Statcast constant-acceleration path, anchored at the recorded plate crossing (scene: +x 1B side, +y up, -z toward the pitcher) ----------
+const root = (vy, ay, y) => { const a = .5 * ay, b = vy, c = 50 - y; return (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a); };
+M.forEach((r, i) => {
+  const tp = root(r.vy0, r.ay, ZP * -1), tr = root(r.vy0, r.ay, r.release_pos_y);
+  const x50 = r.plate_x - r.vx0 * tp - .5 * r.ax * tp * tp, z50 = r.plate_z - r.vz0 * tp - .5 * r.az * tp * tp;
+  r.T = tp - tr; r.tr = tr;
+  r.at = t => { const u = r.tr + t; return V3(x50 + r.vx0 * u + .5 * r.ax * u * u, z50 + r.vz0 * u + .5 * r.az * u * u, -(50 + r.vy0 * u + .5 * r.ay * u * u)); };
+  r.ref = t => { const k = (t / r.T) ** 2, a = r.at(t); return V3(a.x - S * r.hb / 12 * k, a.y - r.ivb / 12 * k, a.z); };   // the same pitch with no spin movement
+  r.pts = Array.from({ length: 61 }, (_, j) => r.at(r.T * j / 60)); r.refPts = Array.from({ length: 61 }, (_, j) => r.ref(r.T * j / 60));
+  r.rel = V3(r.release_pos_x, r.release_pos_z, -r.release_pos_y);
+});
+
+// ---------- scene ----------
+const canvas = $('c'), renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xFAF8F3);
+const INK = 0x1A1A1A, OR = 0xFF5722, line = (pts, c, o = 1, dashed) => { const g = new THREE.BufferGeometry().setFromPoints(pts), m = dashed ? new THREE.LineDashedMaterial({ color: c, dashSize: dashed, gapSize: dashed * .7, transparent: true, opacity: o }) : new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: o }); const l = new THREE.Line(g, m); if (dashed) l.computeLineDistances(); return l; };
+const base3 = new THREE.Group(); scene.add(base3);                         // the lane: ground grid, rubber, mound, plate, zone
+{ const g = []; for (let x = -6; x <= 6; x += 2) g.push(V3(x, 0, -66), V3(x, 0, 2)); for (let z = -66; z <= 2; z += 6) g.push(V3(-6, 0, z), V3(6, 0, z));
+  base3.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(g), new THREE.LineBasicMaterial({ color: 0xd9d2c1 })));
+  const mound = new THREE.Mesh(new THREE.LatheGeometry([[0, .83], [6.5, .83], [9, .02]].map(([x, y]) => new THREE.Vector2(x, y)), 40), new THREE.MeshBasicMaterial({ color: 0xece4d2 })); mound.position.z = -59.5; base3.add(mound);
+  const rub = new THREE.Mesh(new THREE.BoxGeometry(2, .12, .5), new THREE.MeshBasicMaterial({ color: INK })); rub.position.set(0, .9, -RUBBER_Y); base3.add(rub);
+  const sh = new THREE.Shape(); sh.moveTo(-.708, 0); sh.lineTo(.708, 0); sh.lineTo(.708, -.708); sh.lineTo(0, -1.417); sh.lineTo(-.708, -.708); sh.closePath();
+  const plate = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })); plate.rotation.x = -Math.PI / 2; plate.position.y = .02; base3.add(plate);
+  const w = 17 / 12 + 2.9 / 12, zt = M.reduce((a, r) => a + r.sz_top, 0) / M.length, zb = M.reduce((a, r) => a + r.sz_bot, 0) / M.length;
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, zt - zb, 17 / 12)), new THREE.LineBasicMaterial({ color: 0x6b6558 })); e.position.set(0, (zt + zb) / 2, -17 / 24); base3.add(e);
+  const gp = []; for (let i = 1; i < 3; i++) { gp.push(V3(-w / 2 + w * i / 3, zb, ZP), V3(-w / 2 + w * i / 3, zt, ZP), V3(-w / 2, zb + (zt - zb) * i / 3, ZP), V3(w / 2, zb + (zt - zb) * i / 3, ZP)); }
+  base3.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gp), new THREE.LineBasicMaterial({ color: 0xd2cab8 }))); }
+const relG = new THREE.Group(), movG = new THREE.Group(); scene.add(relG, movG);
+
+// release tab: April (first full month) is the origin of the inch grid; dots are the recorded mean release points
+const O = M[base].rel.clone();
+{ const gl = [], R = 5 / 12;      // three crossing grid planes through the origin, 1 in apart, +/-5 in
+  for (let k = -5; k <= 5; k++) { const d = k / 12; gl.push(V3(O.x + d, O.y - R, O.z), V3(O.x + d, O.y + R, O.z), V3(O.x - R, O.y + d, O.z), V3(O.x + R, O.y + d, O.z));
+    gl.push(V3(O.x, O.y + d, O.z - R), V3(O.x, O.y + d, O.z + R), V3(O.x, O.y - R, O.z + d), V3(O.x, O.y + R, O.z + d));
+    gl.push(V3(O.x + d, O.y, O.z - R), V3(O.x + d, O.y, O.z + R), V3(O.x - R, O.y, O.z + d), V3(O.x + R, O.y, O.z + d)); }
+  relG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(gl), new THREE.LineBasicMaterial({ color: 0xcfc7b3, transparent: true, opacity: .55 })));
+  const ax = [V3(O.x - R, O.y, O.z), V3(O.x + R, O.y, O.z), V3(O.x, O.y - R, O.z), V3(O.x, O.y + R, O.z), V3(O.x, O.y, O.z - R), V3(O.x, O.y, O.z + R)];
+  relG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ax), new THREE.LineBasicMaterial({ color: 0x8a8275 }))); }
+const dots = M.map((r, i) => { const small = r.n < MIN_N, m = new THREE.Mesh(new THREE.SphereGeometry(.022, 20, 14), new THREE.MeshBasicMaterial({ color: col(i), transparent: true, opacity: small ? .5 : 1 }));
+  m.position.copy(r.rel); relG.add(m); const ring = new THREE.Mesh(new THREE.RingGeometry(.03, .036, 32), new THREE.MeshBasicMaterial({ color: INK, side: THREE.DoubleSide })); ring.position.copy(r.rel); ring.visible = false; ring.userData.i = i; relG.add(ring);
+  return { m, ring }; });
+relG.add(line(full.map(i => M[i].rel), 0x6b6558, .8));
+const trailBall = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: OR })); movG.add(trailBall);
+const refBall = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshBasicMaterial({ color: 0x6b6558 })); movG.add(refBall);
+let movObjs = [];
+function buildMove() {
+  movObjs.forEach(o => { movG.remove(o); o.geometry && o.geometry.dispose(); }); movObjs = [];
+  const add = o => { movG.add(o); movObjs.push(o); return o; };
+  M.forEach((r, i) => { if (i === sel) return; const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(vpts(r)), 60, .035, 6), new THREE.MeshBasicMaterial({ color: col(i), transparent: true, opacity: allOn ? .55 : 0 })); t.visible = allOn; add(t); });
+  const r = M[sel]; add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(vpts(r)), 80, .07, 8), new THREE.MeshBasicMaterial({ color: OR })));
+  add(line(r.refPts, 0x6b6558, 1, .9));
+  const a = visAt(r, r.T), q = r.ref(r.T), c = V3(a.x, q.y, a.z);
+  add(line([q, c], INK, 1)); add(line([c, a], INK, 1));
+  for (const [p, v] of [[q, 0x6b6558], [a, OR]]) { const m = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), new THREE.MeshBasicMaterial({ color: v })); m.position.copy(p); add(m); }
+  const rl = new THREE.Mesh(new THREE.SphereGeometry(.18, 16, 12), new THREE.MeshBasicMaterial({ color: INK })); rl.position.copy(r.at(0)); add(rl);
+  movObjs.dim = { q, c, a };
+}
+
+// ---------- camera: drag to orbit, presets ease in ----------
+const camera = new THREE.PerspectiveCamera(30, 16 / 10, .02, 400);
+let tab = 'release', sel = lastI, allOn = false, speed = 1, clock = 0, playing = true, ex = 1;   // ex: how much the spin-induced part of the path is stretched on screen (1 = true size)
+const visAt = (r, t) => { const a = r.at(t), q = r.ref(t); return q.clone().add(a.sub(q).multiplyScalar(ex)); };
+const vpts = r => r.pts.map((p, j) => r.refPts[j].clone().add(p.clone().sub(r.refPts[j]).multiplyScalar(ex)));
+const view = { tgt: V3(0, 0, 0), az: 0, el: 0, dist: 10, fov: 30 }, goal = { ...view, tgt: view.tgt.clone() };
+const PRESETS = {
+  release: { 'Catcher view': { az: 0, el: 0, dist: 2.3, fov: 22 }, 'Side': { az: -90, el: 0, dist: 2.3, fov: 22 }, 'Top': { az: 0, el: 89, dist: 2.3, fov: 22 }, 'Behind the mound': { az: 180, el: 0, dist: 2.3, fov: 22 } },
+  move: { 'Lane': { az: 12, el: 9, dist: 70, fov: 28, tgt: V3(0, 3.5, -30) }, 'Plate end': { az: 0, el: 3, dist: 9, fov: 24, tgt: V3(0, 2.6, -1.4) }, 'Side': { az: -90, el: 2, dist: 80, fov: 26, spanH: 68, tgt: V3(0, 3.5, -30) }, 'Top': { az: 0, el: 89, dist: 85, fov: 26, spanV: 68, tgt: V3(0, 0, -30) } } };
+// az 0 = looking from the plate toward the mound (catcher's view); positive az swings the camera toward the first-base side
+let camName = 'Catcher view';
+function setCam(name, snap) { camName = name; const p = PRESETS[tab][name]; const asp = canvas.clientWidth / (canvas.clientHeight || 1) || 1.6; Object.assign(goal, { az: p.az, el: p.el, dist: p.spanH ? p.spanH / (2 * Math.tan(p.fov * Math.PI / 360) * asp) : p.spanV ? p.spanV / (2 * Math.tan(p.fov * Math.PI / 360)) : p.dist, fov: p.fov }); goal.tgt = (p.tgt || (tab === 'release' ? O.clone() : V3(0, 3, -30))).clone(); if (snap) { Object.assign(view, goal); view.tgt = goal.tgt.clone(); } drawCams(); }
+function drawCams() { $('cams').innerHTML = Object.keys(PRESETS[tab]).map(n => '<button class="pill' + (n === camName ? ' on' : '') + '" data-cam="' + n + '">' + n + '</button>').join('') + (tab === 'move' ? '<button class="pill' + (ex > 1 ? ' on' : '') + '" id="ex">Exaggerate ×4</button><button class="pill' + (allOn ? ' on' : '') + '" id="all">All months</button><button class="pill" id="play">' + (playing ? 'Pause' : 'Play') + '</button><button class="pill" id="spd">' + (speed === 1 ? '1×' : speed + '×') + '</button>' : '');
+  document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam)); const a = $('all'); if (a) { $('ex').onclick = () => { ex = ex === 1 ? 4 : 1; buildMove(); drawCams(); $('zoomnote').textContent = ex > 1 ? 'Break drawn 4× larger than real so it can be seen. The numbers are true size.' : ''; }; a.onclick = () => { allOn = !allOn; buildMove(); drawCams(); }; $('play').onclick = () => { playing = !playing; drawCams(); }; $('spd').onclick = () => { speed = speed === 1 ? .25 : 1; drawCams(); }; } }
+let drag = null; canvas.onpointerdown = e => { drag = [e.clientX, e.clientY]; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = 'grabbing'; };
+canvas.onpointerup = () => { drag = null; canvas.style.cursor = 'grab'; };
+canvas.onpointermove = e => { if (!drag) return; goal.az -= (e.clientX - drag[0]) * .3; goal.el = Math.max(-5, Math.min(89, goal.el + (e.clientY - drag[1]) * .3)); drag = [e.clientX, e.clientY]; camName = ''; drawCams(); };
+canvas.onwheel = e => { e.preventDefault(); goal.dist = Math.max(1.5, Math.min(120, goal.dist * (1 + e.deltaY * .001))); };
+
+// ---------- labels ----------
+const L = {}; const mkL = (k, cls) => { const d = document.createElement('div'); d.className = 'lbl ' + cls; $('labels').appendChild(d); L[k] = d; return d; };
+M.forEach((r, i) => mkL('m' + i, 'pillw')); ['hb', 'ivb', 'ref', 'act'].forEach(k => mkL(k, k === 'act' ? 'or' : 'pillw')); ['gx0', 'gx1', 'gy0', 'gy1'].forEach(k => mkL(k, 't'));
+const proj = (el, p, txt, show = true) => { const v = p.clone().project(camera); const ok = show && v.z < 1 && Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.05; el.style.display = ok ? 'block' : 'none'; if (ok) { if (txt != null) el.textContent = txt; el.style.left = (v.x * .5 + .5) * canvas.clientWidth + 'px'; el.style.top = (-v.y * .5 + .5) * canvas.clientHeight + 'px'; } };
+
+// ---------- UI ----------
+const f1 = v => v.toFixed(1), inch = (a, b) => (b - a) * 12, sg = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+function drawChips() { $('chips').innerHTML = M.map((r, i) => '<button class="chip' + (i === sel ? ' on' : '') + '" data-m="' + i + '"><i style="background:' + hex(i) + '"></i>' + lab(r) + '</button>').join(''); document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { sel = +b.dataset.m; if (tab === 'move') { buildMove(); clock = 0; } drawChips(); drawPanel(); drawTable(); }); }
+function drawTable() {
+  const rows = M.map((r, i) => '<tr class="' + (i === sel ? 'sel ' : '') + (r.n < MIN_N ? 'small' : '') + '"><td><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + hex(i) + ';margin-right:7px"></i>' + lab(r) + (r.n < MIN_N ? ' *' : '') + '</td><td>' + r.n + '</td>'
+    + '<td' + (tab === 'release' ? ' class="hl"' : '') + '>' + r.release_pos_x.toFixed(2) + '</td><td' + (tab === 'release' ? ' class="hl"' : '') + '>' + r.release_pos_z.toFixed(2) + '</td><td' + (tab === 'release' ? ' class="hl"' : '') + '>' + r.release_extension.toFixed(2) + '</td>'
+    + '<td' + (tab === 'move' ? ' class="hl"' : '') + '>' + r.release_speed.toFixed(1) + '</td><td' + (tab === 'move' ? ' class="hl"' : '') + '>' + r.ivb.toFixed(1) + '</td><td' + (tab === 'move' ? ' class="hl"' : '') + '>' + r.hb.toFixed(1) + '</td></tr>').join('');
+  $('tbl').innerHTML = '<table><tr><th>Month</th><th>Pitches</th><th>Release x (ft)</th><th>Height (ft)</th><th>Extension (ft)</th><th>Speed (mph)</th><th>Vertical (in)</th><th>Horizontal (in)</th></tr>' + rows + '</table>';
+  $('foot').textContent = '* Under ' + MIN_N + ' pitches: drawn faint and left out of the change figures. Release x is measured from the middle of the rubber (positive toward first base, catcher\'s view). Vertical = rise compared with a pitch with no spin; horizontal = arm-side run. Source: Baseball Savant pitch data, monthly means. Not affiliated with MLB.';
+}
+function drawPanel() {
+  const r = M[sel], a = M[base], z = M[lastI];
+  if (tab === 'release') {
+    const dx = inch(a.release_pos_x, z.release_pos_x), dz = inch(a.release_pos_z, z.release_pos_z), de = inch(a.release_extension, z.release_extension);
+    const xs = full.map(i => M[i].release_pos_x), zs = full.map(i => M[i].release_pos_z), win = Math.max(...xs) - Math.min(...xs), winz = Math.max(...zs) - Math.min(...zs);
+    $('panel').innerHTML = '<div class="kick">What changed · ' + lab(a) + ' to ' + lab(z) + '</div>'
+      + '<div class="tiles"><div class="tile"><div class="v">' + sg(dx) + '<small>in</small></div><div class="l">Side to side</div></div><div class="tile"><div class="v">' + sg(dz) + '<small>in</small></div><div class="l">Height</div></div><div class="tile"><div class="v">' + sg(de) + '<small>in</small></div><div class="l">Extension</div></div><div class="tile"><div class="v">' + f1(win * 12) + '<small>in</small></div><div class="l">Widest swing, side to side</div></div></div>'
+      + '<p class="note">Between ' + lab(a) + ' and ' + lab(z) + ' the release point moved ' + Math.abs(dx).toFixed(1) + ' in toward the ' + (dx < 0 ? 'third-base' : 'first-base') + ' side, ' + Math.abs(dz).toFixed(1) + ' in ' + (dz >= 0 ? 'higher' : 'lower') + ' and ' + Math.abs(de).toFixed(1) + ' in ' + (de >= 0 ? 'farther from' : 'closer to') + ' the rubber. Across the months with enough pitches it stayed inside a ' + f1(win * 12) + ' in by ' + f1(winz * 12) + ' in box.</p>'
+      + '<p class="note"><b>' + lab(r) + '</b>: ' + r.release_pos_x.toFixed(2) + ' ft side to side, ' + r.release_pos_z.toFixed(2) + ' ft high, ' + r.release_extension.toFixed(2) + ' ft of extension (' + r.n + ' pitches).</p>'
+      + '<div class="leg"><span>Each dot is one month\'s average release point. Grid squares are 1 in; the dark cross is ' + lab(a) + '.</span></div>';
+    $('zoomnote').textContent = 'Zoomed in: grid is 1 in per square';
+  } else {
+    $('panel').innerHTML = '<div class="kick">How it moves · ' + lab(r) + '</div><div class="big">' + r.release_speed.toFixed(1) + '<small>mph</small></div><div style="color:var(--mute);font-size:13px;margin-top:2px">' + r.T.toFixed(2) + ' s from release to the plate · ' + r.release_spin_rate.toFixed(0) + ' rpm · ' + r.n + ' pitches</div>'
+      + '<div class="tiles"><div class="tile"><div class="v">' + r.ivb.toFixed(1) + '<small>in</small></div><div class="l">Vertical break</div></div><div class="tile"><div class="v">' + r.hb.toFixed(1) + '<small>in</small></div><div class="l">Horizontal, ' + (P.hand === 'L' ? 'arm side' : 'arm side') + '</div></div></div>'
+      + '<p class="note">The grey dashed line is the same pitch with no spin. It sags with gravity and goes straight sideways. The orange line is the pitch as thrown. At the plate the two are ' + r.ivb.toFixed(1) + ' in apart vertically (the pitch carries that much higher) and ' + r.hb.toFixed(1) + ' in apart horizontally (it runs toward the ' + (S > 0 ? 'first-base' : 'third-base') + ' side).</p>'
+      + '<div class="leg"><span><b></b>As thrown</span><span><b class="d"></b>No spin</span></div>';
+    $('zoomnote').textContent = '';
+  }
+}
+function setTab(t) { tab = t; document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); relG.visible = t === 'release'; movG.visible = t === 'move'; if (t === 'move') { buildMove(); clock = 0; } camName = t === 'release' ? 'Catcher view' : 'Lane'; ex = 1; setCam(camName, true); drawPanel(); drawTable(); Object.values(L).forEach(d => d.style.display = 'none'); }
+document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+// ---------- loop ----------
+let last = performance.now() / 1000;
+function frame(now) {
+  const dt = Math.min(.05, now - last); last = now;
+  const k = 1 - Math.pow(.0005, dt); ['az', 'el', 'dist', 'fov'].forEach(p => view[p] += (goal[p] - view[p]) * k); view.tgt.lerp(goal.tgt, k);
+  const az = view.az * Math.PI / 180, el = view.el * Math.PI / 180;
+  camera.position.set(view.tgt.x + view.dist * Math.sin(az) * Math.cos(el), view.tgt.y + view.dist * Math.sin(el), view.tgt.z + view.dist * Math.cos(az) * Math.cos(el));
+  camera.up.set(0, el > 1.4 ? 0 : 1, el > 1.4 ? -1 : 0); camera.lookAt(view.tgt); camera.fov = view.fov;
+  const w = canvas.clientWidth, h = canvas.clientHeight; if (canvas.width !== Math.round(w * renderer.getPixelRatio())) renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+  const pxFt = p => h / (2 * camera.position.distanceTo(p) * Math.tan(camera.fov * Math.PI / 360));
+  if (tab === 'release') {
+    dots.forEach((d, i) => { d.ring.visible = i === sel; d.m.scale.setScalar(i === sel ? 1.35 : 1); proj(L['m' + i], M[i].rel.clone().add(V3(0, (i % 2 ? -1 : 1) * .06, 0)), lab(M[i]), true); });
+    for (let i = 0; i < M.length; i++) L['m' + i].style.opacity = i === sel ? 1 : .8;
+    ['hb', 'ivb', 'ref', 'act'].forEach(k => L[k].style.display = 'none');
+    const R = 5 / 12; proj(L.gx0, V3(O.x - R, O.y - R - .03, O.z), '−5 in'); proj(L.gx1, V3(O.x + R, O.y - R - .03, O.z), '+5 in'); proj(L.gy0, V3(O.x - R - .06, O.y - R, O.z), ''); proj(L.gy1, V3(O.x - R - .06, O.y + R, O.z), '+5 in');
+    if (camName !== 'Catcher view') ['gx0', 'gx1', 'gy0', 'gy1'].forEach(k => L[k].style.display = 'none'); L.gy0.style.display = 'none';
+  } else {
+    ['gx0', 'gx1', 'gy0', 'gy1'].forEach(k => L[k].style.display = 'none'); M.forEach((_, i) => L['m' + i].style.display = 'none');
+    const r = M[sel]; if (playing) clock += dt * speed; const hold = .7, cyc = r.T + hold, t = Math.min(clock % cyc, r.T);
+    const a = visAt(r, t), q = r.ref(t); trailBall.position.copy(a); trailBall.scale.setScalar(Math.max(2.9 / 24, 5 / pxFt(a))); refBall.position.copy(q); refBall.scale.setScalar(Math.max(2.9 / 24, 4 / pxFt(q)));
+    const D = movObjs.dim; if (D) { const near = camName === 'Plate end' || ex > 1 || camName === ''; proj(L.hb, D.q.clone().lerp(D.c, .5), (r.hb).toFixed(1) + ' in across', near); proj(L.ivb, D.c.clone().lerp(D.a, .5), (r.ivb).toFixed(1) + ' in up', near); proj(L.ref, D.q, 'no spin', near); proj(L.act, D.a, r.release_speed.toFixed(1) + ' mph', near); }
+  }
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(t => frame(t / 1000));
+drawChips(); setTab('release'); window.__pv = { setTab, setCam, M, get view() { return view; } };
+</script></body></html>

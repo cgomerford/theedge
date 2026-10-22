@@ -1,0 +1,58 @@
+// src/app/mlb/lab/pitch-shape/page.tsx
+//
+// Pitch Shape Lab landing = the Shape Sandbox (public). A static route, so it wins over the
+// /mlb/lab/[slug] "coming soon" stub. Per-pitcher shape lives in the Pitching Lab's Shape tab. Free: four-seam + sweeper. Pro: every pitch type, outcome profile, slot
+// context and compare. isPro comes from the real session; locked pitch types are refused by the API
+// as well as dimmed in the UI.
+
+import type { Metadata } from 'next'
+import SiteHeader from '@/components/SiteHeader'
+import MLBSubNav from '@/components/MLBSubNav'
+import SandboxClient from '@/components/pitch-shape/SandboxClient'
+import PitchFinder from '@/components/pitch-shape/PitchFinder'
+import { Empty } from '@/components/team/ui'
+import { isProViewer } from '@/lib/require-pro'
+import Link from 'next/link'
+import { getAvailablePitchTypes } from '@/lib/pitch-shape/data'
+
+export const metadata: Metadata = {
+  title: 'Pitch Shape Lab · The Edge',
+  description: 'Find where pitches work on the shape map, who throws them, and dial in any shape to see what pitches like it have produced.',
+}
+export const dynamic = 'force-dynamic'
+
+export default async function ShapeSandboxPage() {
+  const isPro = await isProViewer()
+  const pitchTypes = await getAvailablePitchTypes()
+  return (
+    <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
+      <SiteHeader variant="page" />
+      <MLBSubNav />
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+        <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722' }}>⊕ MLB · LAB</div>
+        <h1 style={{ margin: '2px 0 6px', fontWeight: 800, fontSize: 'clamp(34px,5.6vw,52px)', letterSpacing: '-.02em', lineHeight: 1 }}>Pitch Shape Lab</h1>
+        <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 18px', lineHeight: 1.5 }}>
+          Where on the map are pitches most effective, and who throws one from there? Every pitch has a shape. Compare it with the league’s pitches shaped like it and you can see which spots work and whose results are ahead of, or behind, their shape. <b>A description of what happened, not a forecast.</b>
+        </p>
+        <p style={{ fontSize: 13, margin: '0 0 18px' }}>
+          Looking for one pitcher? <Link href="/mlb/lab/pitching-lab" style={{ color: '#FF5722', fontWeight: 700 }}>Open the Pitching Lab</Link> and use its Shape tab.
+        </p>
+        {pitchTypes.length === 0
+          ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
+          : (
+            <>
+              <PitchFinder isPro={isPro} pitchTypes={pitchTypes} />
+              <div style={{ margin: '40px 0 10px', borderTop: '1px solid #1A1A1A', paddingTop: 14 }}>
+                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722' }}>§ 02</div>
+                <h2 style={{ margin: '2px 0 4px', fontWeight: 800, fontSize: 28, letterSpacing: '-.01em' }}>Dial in a shape</h2>
+                <p style={{ color: '#5b5347', fontSize: 14, maxWidth: 720, margin: '0 0 14px' }}>
+                  Set a velocity, ride, run and arm angle and see what pitches shaped like it have produced.
+                </p>
+              </div>
+              <SandboxClient isPro={isPro} pitchTypes={pitchTypes} />
+            </>
+          )}
+      </div>
+    </main>
+  )
+}

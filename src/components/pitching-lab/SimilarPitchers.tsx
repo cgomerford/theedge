@@ -37,7 +37,7 @@ export default function SimilarPitchers({ pitcherId, season }: { pitcherId: numb
         {similar.map(s => (
           <Link
             key={s.playerId}
-            href={`/mlb/pitching-lab/${s.playerId}`}
+            href={`/mlb/lab/pitching-lab/${s.playerId}`}
             className="flex flex-col items-center text-center rounded-lg border border-stone-100 p-3 hover:border-[#FF5722] transition"
           >
             <img src={mlbHeadshot(s.playerId)} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', background: '#F4F1EA' }} />

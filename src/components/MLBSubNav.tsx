@@ -13,10 +13,8 @@
  *   /mlb/abs          — ABS Challenges (exists)
  *   /mlb/stats        — Stats search (exists — /mlb/leaders now just redirects here)
  *   /mlb/glossary     — Stats glossary (exists)
- *   /mlb/pitching-lab — Pitching Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
- *   /mlb/batting-lab  — Batting Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
+ *   /mlb/lab/batting-lab  — Batting Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
  *   /track-record     — Past Games (exists)
- *   /fantasy          — Fantasy Desk (exists, Pro gated)
  *
  * Kept identical to SiteHeader.tsx's MLB_SUB_LINKS (same hrefs, labels,
  * order, pro flags) — the main header's MLB dropdown and this sub header
@@ -39,10 +37,10 @@ const MLB_NAV: NavItem[] = [
   { href: '/mlb/abs',          label: 'ABS Challenges' },
   { href: '/mlb/stats',        label: 'Stats'         },
   { href: '/mlb/glossary',     label: 'Glossary'      },
-  { href: '/mlb/pitching-lab', label: 'Pitching Lab', pro: true },
-  { href: '/mlb/batting-lab',  label: 'Batting Lab',  pro: true },
+  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab',  pro: true },
+  { href: '/mlb/lab/contact',      label: 'Contact Lab' },
+  { href: '/mlb/lab/platoon',      label: 'Platoon Lab' },
   { href: '/track-record',     label: 'Track Record'  },
-  { href: '/fantasy',          label: 'Fantasy',  pro: true },
 ]
 
 export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {

@@ -1,0 +1,30 @@
+name: swing-decisions
+
+# Single writer of swing_decision_league, swing_decision_league_count and batter_swing_decisions
+# (scripts/build_swing_decisions.py). Depends on nothing else: it reads Baseball Savant directly, one game day per request
+# (March 15 of the season to yesterday, ~190 days).
+# Monday 06:00 UTC, so it never overlaps the Savant-heavy shape jobs (shape-bins Tue, shape-pitcher Wed, shape-monthly Thu,
+# shape-cells Fri). The 'l30' window ends on the last game day read, so a Monday run covers the week just finished.
+# Python crons live only in GitHub Actions (Vercel cannot run them), so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  build-swing-decisions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build swing decisions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_swing_decisions.py

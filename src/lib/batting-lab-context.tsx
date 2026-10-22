@@ -2,7 +2,7 @@
 
 // src/lib/batting-lab-context.tsx
 //
-// Shared data layer for the /mlb/batting-lab/[playerId] shell — same
+// Shared data layer for the /mlb/lab/batting-lab/[playerId] shell — same
 // pattern as pitching-lab-context.tsx: fetch once, hand it to every tab
 // via context instead of each tab re-fetching independently.
 

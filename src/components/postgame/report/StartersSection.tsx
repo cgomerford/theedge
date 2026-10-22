@@ -48,7 +48,7 @@ function Card({ s, ctx }: { s: StarterNight; ctx: PostgameContext }) {
         <p className="text-[9px] font-mono uppercase tracking-wider text-stone-400">Pitch · <span style={{ color }}>▬</span> tonight / <span className="text-stone-400">▬</span> usual</p>
       </div>
       <ul className="space-y-2">{s.mix.map((m) => <MixBar key={m.code} m={m} color={color} />)}</ul>
-      <Link href={`/mlb/pitching-lab/${s.id}`} className="inline-block mt-3 text-[10px] font-mono uppercase tracking-widest text-orange-600 font-semibold hover:text-orange-700">Open {s.name.split(' ').slice(-1)[0]} in the Pitching Lab →</Link>
+      <Link href={`/mlb/lab/pitching-lab/${s.id}`} className="inline-block mt-3 text-[10px] font-mono uppercase tracking-widest text-orange-600 font-semibold hover:text-orange-700">Open {s.name.split(' ').slice(-1)[0]} in the Pitching Lab →</Link>
     </div>
   )
 }

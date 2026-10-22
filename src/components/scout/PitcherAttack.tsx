@@ -39,7 +39,7 @@ function Header({ meta }: { meta: AttackMeta }) {
         <p className="text-[13px] font-sans font-bold text-stone-900 leading-tight truncate">{meta.pitcherName}</p>
         <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400">{meta.abbr} probable starter</p>
       </div>
-      {meta.pitcherId && <Link href={`/mlb/pitching-lab/${meta.pitcherId}/overlay`} className="ml-auto text-[9px] font-mono uppercase tracking-widest text-orange-600 hover:text-orange-700 shrink-0">Pitching Lab →</Link>}
+      {meta.pitcherId && <Link href={`/mlb/lab/pitching-lab/${meta.pitcherId}/overlay`} className="ml-auto text-[9px] font-mono uppercase tracking-widest text-orange-600 hover:text-orange-700 shrink-0">Pitching Lab →</Link>}
     </div>
   )
 }

@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, JetBrains_Mono, Bebas_Neue, Outfit } from 'next/font/google';
+import { Outfit } from 'next/font/google';
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieConsent from "@/components/CookieConsent";
 import BottomNav from '@/components/BottomNav'
 
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
-  display: 'swap',
-})
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
 
+// ONE FONT, SITEWIDE: Outfit. Nothing else is loaded (see CLAUDE.md §6). Old --font-* variables are aliased
+// to Outfit in globals.css so legacy references can't bring another face back.
+//
 // The site's actual brand typeface is Effra (licensed Monotype/Dalton Maag
 // — not on Google Fonts). Outfit is the free stand-in, chosen for shape
 // similarity — this used to be loaded via a per-page <style>/@import
@@ -30,18 +23,7 @@ const outfit = Outfit({
   display: 'swap',
 })
 
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains',
-  display: 'swap',
-})
 
-const bebas = Bebas_Neue({
-  subsets: ['latin'],
-  variable: '--font-bebas',
-  display: 'swap',
-  weight: '400',
-})
 
 export const metadata: Metadata = {
   title: "x9Lab — Analytics for the fan",
@@ -50,8 +32,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable} ${jetbrains.variable} ${bebas.variable} ${outfit.variable}`}>
-      <body className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable} ${outfit.variable} antialiased`}>
+    <html lang="en" className={outfit.variable}>
+      <body className="antialiased">
         <GoogleAnalytics />
         {children}
         <BottomNav />

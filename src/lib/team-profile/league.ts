@@ -40,7 +40,7 @@ export function ipToDecimal(v: unknown): number {
   return (parseInt(whole, 10) || 0) + (frac === '1' ? 1 / 3 : frac === '2' ? 2 / 3 : 0)
 }
 
-async function mlbJson(url: string, tag: string): Promise<any | null> {
+export async function mlbJson(url: string, tag: string): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: REVALIDATE }, signal: AbortSignal.timeout(12000) })
     if (!res.ok) {
@@ -99,7 +99,7 @@ export type LeagueTables = { season: number; cFIP: number; rows: LeagueTeamRow[]
 
 // ─── line builders ────────────────────────────────────────────────────────
 
-function hitLine(s: Record<string, unknown> | undefined): HitLine | null {
+export function hitLine(s: Record<string, unknown> | undefined): HitLine | null {
   if (!s) return null
   const pa = Number(s.plateAppearances ?? 0)
   const ab = Number(s.atBats ?? 0)
@@ -118,7 +118,7 @@ function hitLine(s: Record<string, unknown> | undefined): HitLine | null {
   }
 }
 
-function pitLine(s: Record<string, unknown> | undefined, cFIP: number): PitLine | null {
+export function pitLine(s: Record<string, unknown> | undefined, cFIP: number): PitLine | null {
   if (!s) return null
   const ip = ipToDecimal(s.inningsPitched)
   const bf = Number(s.battersFaced ?? 0)
@@ -141,8 +141,8 @@ function pitLine(s: Record<string, unknown> | undefined, cFIP: number): PitLine 
 
 // ─── loader ───────────────────────────────────────────────────────────────
 
-type Split = { team?: { id?: number; name?: string }; stat?: Record<string, unknown>; split?: { code?: string } }
-const splitsOf = (json: any): Split[] => json?.stats?.[0]?.splits ?? []
+export type Split = { team?: { id?: number; name?: string }; stat?: Record<string, unknown>; split?: { code?: string } }
+export const splitsOf = (json: any): Split[] => json?.stats?.[0]?.splits ?? []
 
 export const getLeagueTables = cache(async (season: number): Promise<LeagueTables | null> => {
   const q = `season=${season}&sportIds=1&limit=100`

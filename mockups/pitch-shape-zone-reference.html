@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitch Shape Lab · strike-zone reference (mockup)</title>
+<!-- MOCKUP ONLY. Both heat maps are synthetic, drawn in the page so the two ideas can be compared. Nothing here is real
+     league data.
+
+     The map is arm-side break (in) x induced vertical break (in): pitch MOVEMENT, not where a pitch crosses the plate.
+     A strike zone is a plate LOCATION (17 in wide, about 19 in tall), so there are two honest ways to show it:
+       A  SCALE INSET   the zone drawn small in a corner of the movement map, with its inch dimensions, so break can be
+                        judged against the zone's size. A checkbox shows the zone at TRUE scale on the map's inch axes
+                        to show why it is an inset: on a 24 in window it covers most of the map.
+       B  LOCATION PANEL a batter's-view panel beside the map: where the pitches near the spot you point at on the
+                        movement map cross the plate, with the zone outlined. (In the app this needs a new precomputed
+                        table of plate-location cells keyed to the movement cells, built like pitch_shape_cells.) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF8F3;--line:#e7e2d8;--soft:#f1eee6;--ink:#1A1A1A;--mute:#8a8275;--faint:#a89e8c;--body:#5b5347;--orange:#FF5722;--yellow:#FDE047;--f:'Outfit',system-ui,sans-serif}
+*{box-sizing:border-box;font-family:var(--f)}
+html,body{margin:0;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
+button,label{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.mock{background:#1A1A1A;color:#fff;padding:8px 24px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:12px}
+.mock b{letter-spacing:.14em;font-size:10px;color:var(--yellow)}
+.mock .note{color:#aaa;margin-left:auto}
+.seg{display:inline-flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid #555;background:transparent;color:#ddd;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+.seg button.on{background:var(--yellow);color:#1A1A1A;border-color:var(--yellow)}
+.pill{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 80px}
+.kick{font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange);text-transform:uppercase}
+h1{margin:20px 0 4px;font-weight:800;font-size:clamp(28px,4vw,40px);letter-spacing:-.02em;line-height:1.05}
+.lede{color:var(--body);font-size:14px;max-width:760px;margin:0 0 14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.row .k{font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange);text-transform:uppercase;margin-right:4px}
+.cols{display:grid;gap:18px;grid-template-columns:1fr 1.45fr;align-items:start;margin-top:14px}
+.cols.one{grid-template-columns:minmax(0,640px)}
+.cols.onewide{grid-template-columns:minmax(0,900px)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.card h3{margin:0 0 2px;font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase}
+.card h3::before{content:"⊕ "}
+.card .t{font-weight:800;font-size:18px;margin:0 0 2px}
+.card .cap{color:var(--body);font-size:12.5px;margin:0 0 12px}
+.inner{display:grid;gap:16px;align-items:start}
+.inner.two{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.mapbox{position:relative;aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:crosshair;background:var(--soft)}
+.mapbox canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.mapbox svg{position:absolute;inset:0;width:100%;height:100%}
+.axes{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.12em;font-weight:800;color:var(--mute);margin:4px 0 6px}
+.legend{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--mute)}
+.ramp{display:flex;height:10px;border-radius:3px;overflow:hidden}.ramp i{width:20px;height:10px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600;margin-top:10px}
+.foot{font-size:9.5px;color:var(--faint);margin:10px 0 0;line-height:1.5}
+.locbox{position:relative;aspect-ratio:4/5;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--soft)}
+.locbox canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.locbox svg{position:absolute;inset:0;width:100%;height:100%}
+.stat{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-top:1px solid var(--line);padding:6px 0}
+.stat b{font-weight:800}
+.verdict{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.verdict .card p{margin:4px 0;font-size:13px;color:var(--body)}
+.verdict .card b.h{color:var(--ink)}
+@media(max-width:900px){.cols,.inner.two,.verdict{grid-template-columns:1fr}.mock .note{margin-left:0}}
+</style>
+</head>
+<body>
+
+<div class="mock">
+  <b>MOCKUP · SYNTHETIC DATA</b>
+  <span>Compare:</span>
+  <div class="seg" id="viewSeg">
+    <button data-v="both" class="on">A and B together</button>
+    <button data-v="a">A · scale inset</button>
+    <button data-v="b">B · location panel</button>
+  </div>
+  <span class="note">Hover the movement map. Nothing here is real data.</span>
+</div>
+
+<div class="wrap">
+  <div class="kick">Pitch Shape Lab · The Pitch Map</div>
+  <h1>Putting the strike zone next to the movement map</h1>
+  <p class="lede">The map plots how much a pitch moves (inches), not where it crosses the plate (feet), so a zone drawn on it would sit at an arbitrary spot. Two ways to give the zone as a reference.</p>
+
+  <div class="row">
+    <span class="k">Pitch</span><button class="pill on">Four-seam</button><button class="pill">Sweeper</button><button class="pill">Slider</button><button class="pill">Sinker</button>
+    <span class="k" style="margin-left:10px">Show</span><button class="pill on">Whiffs per swing</button><button class="pill">Where pitches live</button>
+  </div>
+
+  <div class="cols" id="cols">
+    <section class="card" id="cardA">
+      <h3>A · Scale inset</h3>
+      <p class="t">The zone, drawn to size</p>
+      <p class="cap">Movement map with the strike zone in the corner at ¼ scale, labelled in inches. Tick the box to see it at true scale on the same inch axes.</p>
+      <div class="mapbox" id="mapA"><canvas></canvas><svg id="svgA" viewBox="0 0 240 240" preserveAspectRatio="none"></svg></div>
+      <div class="axes"><span>↑ INDUCED VERTICAL BREAK (IN)</span><span>ARM-SIDE BREAK (IN) →</span></div>
+      <div class="legend">Whiffs per swing <span>7%</span><span class="ramp" id="rampA"></span><span>41%</span></div>
+      <label class="chk"><input type="checkbox" id="trueScale"> Show the zone at true scale (17 × 19 in)</label>
+      <p class="foot">Scale only. The zone is not placed by pitch location: movement and location are different measurements. 17 in = plate width; 19 in = this season’s average zone height.</p>
+    </section>
+
+    <section class="card" id="cardB">
+      <h3>B · Location panel</h3>
+      <p class="t">Where those pitches cross the plate</p>
+      <p class="cap">Point at a spot on the movement map. The panel shows where pitches near that spot cross the plate, batter’s view, with the zone outlined.</p>
+      <div class="inner two">
+        <div>
+          <div class="mapbox" id="mapB"><canvas></canvas><svg id="svgB" viewBox="0 0 240 240" preserveAspectRatio="none"></svg></div>
+          <div class="axes"><span>↑ INDUCED VERTICAL BREAK (IN)</span><span>ARM-SIDE BREAK (IN) →</span></div>
+          <div class="legend">Whiffs per swing <span>7%</span><span class="ramp" id="rampB"></span><span>41%</span></div>
+        </div>
+        <div>
+          <div class="locbox" id="loc"><canvas></canvas><svg id="svgL" viewBox="0 0 160 200" preserveAspectRatio="none"></svg></div>
+          <div class="stat"><span>Spot on the map</span><b id="spot">—</b></div>
+          <div class="stat"><span>Inside the zone</span><b id="inz">—</b></div>
+          <div class="stat"><span>Pitches within ±1 in</span><b id="npit">—</b></div>
+        </div>
+      </div>
+      <p class="foot">Synthetic. In the app: a precomputed plate-location table per movement cell (pitches counted by 0.1 ft cell, same pipeline as pitch_shape_cells); a spot with too few pitches shows no panel instead of a guess. Batter’s view, inside on the left, whichever side he bats.</p>
+    </section>
+  </div>
+
+  <div class="verdict">
+    <div class="card"><h3>A · Scale inset</h3><p><b class="h">Good:</b> no new data, ships in a day, never misleads if labelled “scale only”.</p><p><b class="h">Limit:</b> it answers “how big is the zone next to this much break”, not “where do these pitches end up”.</p></div>
+    <div class="card"><h3>B · Location panel</h3><p><b class="h">Good:</b> answers “where do pitches with this shape live relative to the zone”, which the movement map alone cannot.</p><p><b class="h">Cost:</b> one new precomputed table and a weekly build, plus a thin-sample rule for sparse spots.</p></div>
+  </div>
+</div>
+
+<script>
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const H0=-4,H1=20,V0=5,V1=29,N=240;            // 24 in window, 10 px per inch on the canvas
+const AVG={hb:8,iv:17,sdh:3.2,sdv:2.6};
+const RAMP=['#fdf1e8','#f9d8c2','#f4b592','#ee8c62','#e8613a','#c4421e','#8b2a10'];
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+function ramp(t){t=clamp(t,0,1)*(RAMP.length-1);const i=Math.min(RAMP.length-2,Math.floor(t)),f=t-i,a=hex(RAMP[i]),b=hex(RAMP[i+1]);return a.map((v,k)=>Math.round(v+(b[k]-v)*f))}
+['rampA','rampB'].forEach(id=>document.getElementById(id).innerHTML=RAMP.map(c=>`<i style="background:${c}"></i>`).join(''));
+const hash=(x,y)=>{let h=Math.imul(x*374761393+y*668265263,1274126177);h=(h^h>>>13)*1274126177;return((h^h>>>16)>>>0)/4294967296};
+
+/* synthetic movement map: where pitches live (a blob) and a whiff rate that climbs with ride and run */
+function field(hb,iv){
+  const d=((hb-AVG.hb)/11.5)**2+((iv-16)/10.5)**2;
+  if(d>1) return null;
+  const w=0.08+0.30*clamp((iv-8)/18,0,1)+0.09*clamp((hb-11)/8,0,1)+(1-d)*0*0;
+  return clamp(w+(hash(Math.round(hb*4),Math.round(iv*4))-0.5)*0.05,0.07,0.41);
+}
+function drawMap(box){
+  const cv=box.querySelector('canvas');cv.width=N;cv.height=N;
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const hb=H0+(x+.5)/10,iv=V1-(y+.5)/10,v=field(hb,iv),i=(y*N+x)*4;
+    const c=v==null?[241,238,230]:ramp((v-0.07)/(0.41-0.07));
+    img.data[i]=c[0];img.data[i+1]=c[1];img.data[i+2]=c[2];img.data[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+const px=hb=>(hb-H0)*10, py=iv=>(V1-iv)*10;
+function marks(svg,probe){
+  let s=`<ellipse cx="${px(AVG.hb)}" cy="${py(AVG.iv)}" rx="${AVG.sdh*10}" ry="${AVG.sdv*10}" fill="none" stroke="#1A1A1A" stroke-width="1.4" stroke-dasharray="5 3"/>
+  <line x1="${px(AVG.hb)-7}" x2="${px(AVG.hb)+7}" y1="${py(AVG.iv)}" y2="${py(AVG.iv)}" stroke="#fff" stroke-width="2"/><line y1="${py(AVG.iv)-7}" y2="${py(AVG.iv)+7}" x1="${px(AVG.hb)}" x2="${px(AVG.hb)}" stroke="#fff" stroke-width="2"/>`;
+  if(probe) s+=`<circle cx="${px(probe.hb)}" cy="${py(probe.iv)}" r="10" fill="none" stroke="#1A1A1A" stroke-width="2"/><circle cx="${px(probe.hb)}" cy="${py(probe.iv)}" r="3" fill="#FDE047" stroke="#1A1A1A" stroke-width="1.5"/>`;
+  return s;
+}
+
+/* ---- A: scale inset ---- */
+const ZW=17,ZH=19;                                   // inches
+function zoneIcon(x,y,s,label){                      // x,y = top-left in svg units, s = svg units per inch
+  const w=ZW*s,h=ZH*s;let g=`<g>`;
+  g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(255,255,255,.82)" stroke="#1A1A1A" stroke-width="1.6"/>`;
+  for(let i=1;i<3;i++) g+=`<line x1="${x+w*i/3}" x2="${x+w*i/3}" y1="${y}" y2="${y+h}" stroke="#a89e8c" stroke-width=".8"/><line y1="${y+h*i/3}" y2="${y+h*i/3}" x1="${x}" x2="${x+w}" stroke="#a89e8c" stroke-width=".8"/>`;
+  g+=`<text x="${x+w/2}" y="${y-4}" font-size="8" font-weight="800" text-anchor="middle" fill="#1A1A1A">17 in</text>`;
+  g+=`<text x="${x-4}" y="${y+h/2}" font-size="8" font-weight="800" text-anchor="end" fill="#1A1A1A" transform="rotate(-90 ${x-4} ${y+h/2})">19 in</text>`;
+  if(label) g+=`<text x="${x}" y="${y+h+10}" font-size="7.5" font-weight="700" fill="#5b5347">${label}</text>`;
+  return g+`</g>`;
+}
+function renderA(){
+  const svg=document.getElementById('svgA'),tr=document.getElementById('trueScale').checked;
+  let s=marks(svg,null);
+  if(tr){                                            // true scale: 10 svg units per inch, centred on the map
+    const x=120-ZW*5,y=120-ZH*5;
+    s+=`<rect x="${x}" y="${y}" width="${ZW*10}" height="${ZH*10}" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-dasharray="7 4"/>`;
+    for(let i=1;i<3;i++) s+=`<line x1="${x+ZW*10*i/3}" x2="${x+ZW*10*i/3}" y1="${y}" y2="${y+ZH*10}" stroke="#1A1A1A" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3 3"/><line y1="${y+ZH*10*i/3}" y2="${y+ZH*10*i/3}" x1="${x}" x2="${x+ZW*10}" stroke="#1A1A1A" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${x+4}" y="${y+12}" font-size="8" font-weight="800" fill="#1A1A1A">True scale: 17 × 19 in</text>`;
+  } else {
+    s+=`<rect x="6" y="150" width="86" height="84" rx="6" fill="rgba(250,248,243,.9)" stroke="#e7e2d8"/>`;
+    s+=zoneIcon(22,166,2.5,'Strike zone · ¼ scale');
+  }
+  svg.innerHTML=s;
+}
+/* ---- B: location panel ---- */
+const LW=160,LH=200;                                 // loc canvas px; x -2..2 ft, z 0.4..4.4 ft  (40 px/ft)
+const lx=x=>(x+2)*40, lz=z=>(4.4-z)*40;
+const ZONE={x0:-0.708,x1:0.708,z0:1.62,z1:3.21};
+function locDensity(probe){
+  const mx=(probe.hb-AVG.hb)*0.055-0.05, mz=2.35+(probe.iv-17)*0.06, sx=0.62, sz=0.62;
+  return (x,z)=>Math.exp(-0.5*(((x-mx)/sx)**2+((z-mz)/sz)**2));
+}
+function renderB(probe){
+  const cv=document.querySelector('#loc canvas');cv.width=LW;cv.height=LH;
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(LW,LH),f=locDensity(probe);
+  let tot=0,inz=0;
+  for(let y=0;y<LH;y++)for(let x=0;x<LW;x++){
+    const X=-2+(x+.5)/40,Z=4.4-(y+.5)/40,d=f(X,Z),i=(y*LW+x)*4;
+    tot+=d;if(X>=ZONE.x0&&X<=ZONE.x1&&Z>=ZONE.z0&&Z<=ZONE.z1) inz+=d;
+    const c=d<0.04?[241,238,230]:ramp(d);img.data[i]=c[0];img.data[i+1]=c[1];img.data[i+2]=c[2];img.data[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const x0=lx(ZONE.x0),x1=lx(ZONE.x1),z0=lz(ZONE.z1),z1=lz(ZONE.z0),w=x1-x0,h=z1-z0;
+  let s=`<rect x="${x0}" y="${z0}" width="${w}" height="${h}" fill="none" stroke="#1A1A1A" stroke-width="2"/>`;
+  for(let i=1;i<3;i++) s+=`<line x1="${x0+w*i/3}" x2="${x0+w*i/3}" y1="${z0}" y2="${z1}" stroke="#1A1A1A" stroke-opacity=".4" stroke-width="1"/><line y1="${z0+h*i/3}" y2="${z0+h*i/3}" x1="${x0}" x2="${x1}" stroke="#1A1A1A" stroke-opacity=".4" stroke-width="1"/>`;
+  const py0=lz(0.55);                                // home plate, batter's view
+  s+=`<polygon points="${lx(-0.708)},${py0} ${lx(0.708)},${py0} ${lx(0.708)},${py0+9} ${lx(0)},${py0+17} ${lx(-0.708)},${py0+9}" fill="#fff" stroke="#1A1A1A" stroke-width="1.4"/>`;
+  s+=`<text x="6" y="12" font-size="8" font-weight="800" fill="#5b5347">INSIDE ←</text><text x="154" y="12" font-size="8" font-weight="800" text-anchor="end" fill="#5b5347">→ AWAY</text>`;
+  document.getElementById('svgL').innerHTML=s;
+  document.getElementById('spot').textContent=`HB ${probe.hb.toFixed(1)} · IVB ${probe.iv.toFixed(1)}`;
+  document.getElementById('inz').textContent=`${Math.round(inz/tot*100)}%`;
+  document.getElementById('npit').textContent=(Math.round(900+field(probe.hb,probe.iv)*0+ (1-((probe.hb-AVG.hb)/11.5)**2-((probe.iv-16)/10.5)**2)*1800)).toLocaleString('en-US')+' (synthetic)';
+}
+function bindProbe(box,svgId){
+  const svg=document.getElementById(svgId);
+  const set=p=>{svg.innerHTML=marks(svg,p);renderB(p)};
+  box.addEventListener('mousemove',e=>{const r=box.getBoundingClientRect();set({hb:H0+(e.clientX-r.left)/r.width*(H1-H0),iv:V1-(e.clientY-r.top)/r.height*(V1-V0)})});
+  box.addEventListener('mouseleave',()=>set({hb:AVG.hb,iv:AVG.iv}));
+  set({hb:AVG.hb,iv:AVG.iv});
+}
+
+drawMap(document.getElementById('mapA'));drawMap(document.getElementById('mapB'));
+renderA();document.getElementById('trueScale').addEventListener('change',renderA);
+bindProbe(document.getElementById('mapB'),'svgB');
+
+document.getElementById('viewSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#viewSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  const v=b.dataset.v,cols=document.getElementById('cols');
+  document.getElementById('cardA').style.display=v==='b'?'none':'';
+  document.getElementById('cardB').style.display=v==='a'?'none':'';
+  cols.className='cols'+(v==='a'?' one':v==='b'?' onewide':'');
+});
+</script>
+</body>
+</html>

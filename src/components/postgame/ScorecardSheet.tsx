@@ -7,11 +7,11 @@
 // pos / 10 innings / AB R H RBI), SUMS, pitchers, catchers, umpires.
 // Notation conventions are explained on the sheet itself (see lib/postgame/scorecard.ts).
 
-import { Outfit, Caveat } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import type { Base, PlateAppearance, Scorecard, TeamSheet } from '@/lib/postgame/scorecard'
 
-const hand = Caveat({ subsets: ['latin'], weight: ['500', '700'], display: 'swap' })
-const display = Outfit({ subsets: ['latin'], weight: ['800'], display: 'swap' })   // rounded brand face (was Bebas Neue — retired)
+// One font sitewide (CLAUDE.md §6): the old handwriting face is retired — scores use Outfit too.
+const display = Outfit({ subsets: ['latin'], weight: ['800'], display: 'swap' })   // rounded brand face — the only font
 
 // Edge palette: cream paper, black printed form + pen, orange for hits / base paths / RBI, yellow for runs scored
 const INK = '#1A1A1A'            // pen
@@ -36,7 +36,7 @@ function Written({ children, size, x, y, seed, anchor = 'middle', weight = 500, 
   const rot = wob(seed, 3)
   return (
     <text x={x + wob(seed + 1, 1.2)} y={y + wob(seed + 2, 1)} fontSize={size} fontWeight={weight} textAnchor={anchor} fill={color}
-      transform={`rotate(${rot.toFixed(1)} ${x} ${y})${flip ? ` translate(${2 * x} 0) scale(-1 1)` : ''}`} className={hand.className}>{children}</text>
+      transform={`rotate(${rot.toFixed(1)} ${x} ${y})${flip ? ` translate(${2 * x} 0) scale(-1 1)` : ''}`} className={display.className}>{children}</text>
   )
 }
 
@@ -97,13 +97,13 @@ const label: React.CSSProperties = { fontFamily: 'Helvetica, Arial, sans-serif',
 function Field({ name, children, flex = 1 }: { name: string; children?: React.ReactNode; flex?: number }) {
   return (
     <div style={{ ...frame({ borderWidth: '0 1px 1px 0' }), flex, padding: '2px 6px', display: 'flex', alignItems: 'baseline', gap: 6, minHeight: 26 }}>
-      <span style={label}>{name}</span><span className={hand.className} style={{ color: INK, fontSize: 19, fontWeight: 500 }}>{children}</span>
+      <span style={label}>{name}</span><span className={display.className} style={{ color: INK, fontSize: 19, fontWeight: 500 }}>{children}</span>
     </div>
   )
 }
 
 function Written2({ children, size = 18, weight = 500 }: { children: React.ReactNode; size?: number; weight?: number }) {
-  return <span className={hand.className} style={{ color: INK, fontSize: size, fontWeight: weight }}>{children}</span>
+  return <span className={display.className} style={{ color: INK, fontSize: size, fontWeight: weight }}>{children}</span>
 }
 
 export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team: TeamSheet; opp: TeamSheet; visitor: boolean }) {
@@ -114,8 +114,8 @@ export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team
     <section style={{ background: PAPER, padding: 22, width: 'fit-content', boxShadow: '0 1px 0 #d8d4c8, 0 14px 40px rgba(0,0,0,.12)', color: PRINT }}>
       <div style={{ background: PRINT, color: PAPER, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', margin: '-22px -22px 14px', borderBottom: `4px solid ${ORANGE}` }}>
         <span className={display.className} style={{ fontSize: 28, fontWeight: 800, letterSpacing: '.02em', lineHeight: 1 }}>THE <span style={{ color: ORANGE }}>EDGE</span> · SCORECARD</span>
-        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: YELLOW }}>⊕ {team.name} batting</span>
-        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, letterSpacing: '.08em', opacity: .75 }}>edgereportdaily.com</span>
+        <span style={{ fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: YELLOW }}>⊕ {team.name} batting</span>
+        <span style={{ fontSize: 11, letterSpacing: '.08em', opacity: .75 }}>edgereportdaily.com</span>
       </div>
 
       {/* header block */}

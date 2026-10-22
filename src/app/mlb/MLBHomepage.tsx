@@ -586,7 +586,7 @@ function LeaderPanel({
       <div>
         {leaders.slice(0, 5).map((l, i) => (
           <div key={l.personId} style={{ position: 'relative' }} onMouseEnter={() => handleHover(l.personId)} onMouseLeave={() => setHoveredId(null)}>
-            <Link href={`/stats?player=${l.personId}`} style={{ textDecoration: 'none', display: 'block' }}>
+            <Link href={`/mlb/stats?player=${l.personId}`} style={{ textDecoration: 'none', display: 'block' }}>
               <div
                 style={{
                   display: 'flex',
@@ -671,7 +671,7 @@ function Leaders({ statLeaders }: { statLeaders: Record<string, MLBStatLeader[]>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid rgba(26,26,26,0.08)', marginTop: 16 }}>
-        <Link href="/stats" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>
+        <Link href="/mlb/stats" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>
           Full leaderboards →
         </Link>
         <Link href="/lab" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#A3A3A3', textDecoration: 'none' }}>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitch Shape Lab + Shape Sandbox · The Edge (mockup)</title>
+<!-- MOCKUP ONLY. All numbers are synthetic sample data generated in the page so layout, gating and empty
+     states can be judged. Nothing here is real league data. In the app: Outfit comes from var(--font-outfit),
+     charts become Recharts, and data comes from pitch_shape_bins / pitch_shape_pitcher. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#FAF8F3; --card:#fff; --line:#e7e2d8; --soft:#f1eee6; --ink:#1A1A1A; --mute:#8a8275; --faint:#a89e8c;
+  --body:#5b5347; --orange:#FF5722; --yellow:#FDE047; --good:#1D9E75; --bad:#D4533B;
+  --team:#002D72; --team-ink:#fff;
+  --f:'Outfit',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
+*{font-family:var(--f)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+a{color:inherit}
+
+/* mockup control strip (not part of the product) */
+.mock{background:#1A1A1A;color:#fff;padding:8px 24px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:12px;position:sticky;top:0;z-index:50}
+.mock b{letter-spacing:.14em;font-size:10px;color:var(--yellow)}
+.seg{display:inline-flex;border:1px solid #555;border-radius:999px;overflow:hidden}
+.seg button{background:transparent;border:0;color:#ddd;padding:5px 13px;font-size:12px;font-weight:600}
+.seg button.on{background:var(--yellow);color:#1A1A1A}
+.mock .note{color:#aaa;margin-left:auto}
+
+.nav{display:flex;align-items:center;gap:18px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--cream)}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.02em}.logo b{color:var(--orange)}
+.nav a{text-decoration:none;font-size:13px;color:var(--mute)}
+.nav .sp{flex:1}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 100px}
+
+/* hero */
+.hero{background:var(--team);color:var(--team-ink);border-radius:14px;margin-top:20px;padding:24px 26px;display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.hero .kick{font-size:10px;letter-spacing:.14em;font-weight:700;opacity:.85;text-transform:uppercase}
+.hero h1{margin:4px 0 6px;font-weight:800;font-size:clamp(34px,5.6vw,56px);letter-spacing:-.02em;line-height:1}
+.hero .sub{opacity:.9;font-size:14px}
+.hero .stats{margin-left:auto;display:flex;gap:26px;flex-wrap:wrap}
+.hero .st b{display:block;font-weight:800;font-size:28px;line-height:1.05}
+.hero .st span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.8;font-weight:600}
+.pro-badge{display:inline-block;background:var(--yellow);color:#1A1A1A;font-weight:800;font-size:9px;letter-spacing:.1em;border-radius:5px;padding:2px 6px;vertical-align:middle}
+
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-top:16px;position:sticky;top:41px;background:var(--cream);z-index:20}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:11px 14px;font-weight:600;font-size:13px;color:var(--mute);white-space:nowrap}
+.tabs button.on{color:var(--ink);border-color:var(--orange)}
+.tabs .new{color:var(--orange);font-size:9px;font-weight:800;letter-spacing:.1em;margin-left:5px}
+
+.pitchbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:18px 0 4px}
+.pitchbar .lbl{font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange);text-transform:uppercase;margin-right:4px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-weight:600;font-size:13px}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip small{font-size:10px;opacity:.7;margin-left:4px;font-weight:500}
+
+/* sections */
+.sec{margin-top:38px}
+.sec h2{margin:0;font-weight:800;font-size:30px;letter-spacing:-.01em}
+.sec h2 i{font-style:normal;color:var(--orange);font-size:15px;letter-spacing:.06em;margin-right:10px;font-weight:700}
+.sec .lede{color:var(--body);font-size:15px;margin:6px 0 16px;max-width:760px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 3px;font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase}
+.card h3::before{content:"⊕ "}
+.card .cap{color:var(--body);font-size:13px;margin:0 0 12px}
+.foot{font-size:9.5px;color:var(--faint);margin-top:10px;line-height:1.45}
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.tile .k{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--mute);text-transform:uppercase}
+.tile .v{font-weight:800;font-size:28px;line-height:1.15;margin-top:2px}
+.tile .s{font-size:12px;color:var(--mute)}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}.hero .stats{margin-left:0}}
+
+/* gate badges / empty states */
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;border-radius:6px;padding:3px 7px;text-transform:uppercase}
+.badge.ok{background:#e3f3ec;color:#0f6e52}
+.badge.wide{background:#fbf1d2;color:#7a5a05}
+.badge.none{background:#f1eee6;color:var(--mute)}
+.empty{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mute);font-size:13px;background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(0,0,0,.025) 7px 8px)}
+.empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+
+/* movement map */
+.mapwrap{position:relative}
+svg text{font-weight:500}
+.legend{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mute);margin-top:6px;flex-wrap:wrap}
+.ramp{display:flex;height:10px;border-radius:3px;overflow:hidden}
+.ramp span{width:22px;height:10px}
+.hatch{width:14px;height:10px;border:1px solid var(--line);background:repeating-linear-gradient(135deg,#fff 0 3px,#e7e2d8 3px 4px)}
+.key{display:inline-flex;align-items:center;gap:5px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ink);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--ink)}
+.ell{width:14px;height:9px;border:1.5px solid var(--ink);border-radius:50%}
+
+/* outcome bars */
+.orow{display:grid;grid-template-columns:130px 1fr 112px;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--soft)}
+.orow:first-of-type{border-top:0}
+.orow .n{font-weight:700;font-size:13px}.orow .n small{display:block;font-weight:500;font-size:11px;color:var(--mute)}
+.track{position:relative;height:16px;background:var(--soft);border-radius:4px}
+.fill{position:absolute;left:0;top:0;bottom:0;background:var(--orange);border-radius:0 4px 4px 0}
+.lg{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.lg::after{content:"lg";position:absolute;top:-13px;left:-6px;font-size:9px;color:var(--mute);font-weight:700}
+.orow .val{text-align:right;font-weight:800;font-size:15px}.orow .val small{display:block;font-weight:500;color:var(--mute);font-size:11px}
+
+/* slot strip */
+.slots{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;align-items:end;height:150px}
+.slot{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;text-align:center;font-size:11px;color:var(--mute)}
+.slot .bar{width:100%;border-radius:4px 4px 0 0;background:var(--orange);min-height:2px;position:relative}
+.slot.g .bar{background:repeating-linear-gradient(135deg,#fff 0 3px,#e7e2d8 3px 4px);border:1px dashed var(--line);height:26px!important}
+.slot.cur .bar{box-shadow:0 0 0 2px var(--ink)}
+.slot b{color:var(--ink);font-size:12px;font-weight:800;margin-bottom:2px}
+.slotlbl{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;font-size:11px;font-weight:700;margin-top:4px}
+.slotlbl span.cur{color:var(--orange)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);text-align:left;padding:6px 8px;font-weight:700;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--soft)}
+td.r,th.r{text-align:right}
+.mini{display:inline-block;height:8px;border-radius:2px;background:var(--orange);vertical-align:middle;margin-right:6px}
+
+/* shift */
+.shift{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.sh{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.sh .k{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--mute);text-transform:uppercase}
+.sh .a{display:flex;align-items:baseline;gap:8px;margin-top:3px}
+.sh .a s{color:var(--faint);font-size:15px;text-decoration:none;font-weight:600}
+.sh .a b{font-size:24px;font-weight:800}
+.sh .d{font-size:12px;font-weight:700;margin-top:2px}
+.sh .nn{font-size:11px;color:var(--mute)}
+@media(max-width:900px){.shift{grid-template-columns:1fr 1fr}}
+
+/* pro panel */
+.pro{margin-top:16px;border:1.5px solid var(--ink);border-radius:14px;overflow:hidden;background:#fff}
+.pro>.hd{background:var(--ink);color:#fff;padding:9px 16px;display:flex;gap:10px;align-items:center;font-weight:700;font-size:13px}
+.pro .bd{padding:16px}
+.pro ul{margin:6px 0 12px;padding-left:18px;color:var(--body);font-size:13px}
+.btn{display:inline-block;background:var(--orange);color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;text-decoration:none}
+.lockedcard{border:1.5px dashed var(--ink);border-radius:14px;padding:20px;background:#fff}
+.lockedcard h4{margin:0 0 4px;font-size:17px;font-weight:800}
+
+/* sandbox */
+.sbx{display:grid;grid-template-columns:330px 1fr;gap:16px;margin-top:18px}
+@media(max-width:900px){.sbx{grid-template-columns:1fr}}
+.ctl label{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.1em;font-weight:700;text-transform:uppercase;color:var(--mute);margin-top:14px}
+.ctl label b{color:var(--ink);font-size:14px;letter-spacing:0}
+input[type=range]{width:100%;accent-color:var(--orange)}
+select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;font-weight:600}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.row .chip{padding:5px 11px}
+.chip.lock{opacity:.75}
+.chip.lock::after{content:"PRO";margin-left:6px;background:var(--yellow);color:#1A1A1A;font-size:8.5px;font-weight:800;letter-spacing:.08em;padding:1px 5px;border-radius:4px}
+.toggle{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-top:16px}
+.ab{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ab.single{grid-template-columns:1fr}
+.read{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.read.A{border-top:4px solid var(--orange)}.read.B{border-top:4px solid var(--ink)}
+.read .t{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.read .sentence{font-size:14px;color:var(--body);margin:6px 0 8px}
+.read .sentence b{color:var(--ink)}
+.tt{position:fixed;pointer-events:none;background:#1A1A1A;color:#fff;font-size:12px;padding:7px 10px;border-radius:8px;z-index:99;display:none;max-width:260px;line-height:1.4}
+.tt b{font-weight:800}
+.method p{color:var(--body);font-size:13.5px;margin:6px 0}
+.gates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+@media(max-width:900px){.gates{grid-template-columns:1fr}}
+.gate{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.gate b{font-size:20px;font-weight:800;display:block}.gate span{font-size:11px;color:var(--mute)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="mock">
+  <b>MOCKUP</b>
+  <span>Page</span>
+  <div class="seg" id="segPage"><button data-v="lab" class="on">Pitching Lab · Shape tab</button><button data-v="sbx">/mlb/tools/shape-sandbox</button></div>
+  <span>Viewing as</span>
+  <div class="seg" id="segTier"><button data-v="free">Free</button><button data-v="pro" class="on">Pro</button></div>
+  <span class="note">Synthetic sample data — not real pitches</span>
+</div>
+
+<div class="nav"><div class="logo">The <b>Edge</b></div><a href="#">MLB</a><a href="#">Teams</a><a href="#">Players</a><a href="#">Tools</a><span class="sp"></span><a href="#">Log in</a></div>
+
+<div class="tt" id="tt"></div>
+
+<!-- ======================= PITCHING LAB · SHAPE TAB ======================= -->
+<div class="wrap" id="viewLab">
+  <div class="hero">
+    <div>
+      <div class="kick">Pitching Lab · RHP · Sample Club</div>
+      <h1>Sample Pitcher</h1>
+      <div class="sub">Pitch Shape · 2026 season · span 2024–2026 for league neighborhoods</div>
+    </div>
+    <div class="stats" id="heroStats"></div>
+  </div>
+
+  <div class="tabs" id="labTabs">
+    <button>Overview</button><button>Arsenal</button><button>Location</button><button class="on">Shape<span class="new">NEW · REPLACES STUFF</span></button><button>Sequencing</button><button>H2H</button><button>Trends</button>
+  </div>
+
+  <div class="pitchbar"><span class="lbl">Pitch</span><span id="labChips"></span></div>
+
+  <!-- § 01 -->
+  <section class="sec">
+    <h2><i>§ 01</i>The question</h2>
+    <p class="lede" id="qLede"></p>
+    <div class="tiles" id="qTiles"></div>
+    <div class="foot">Shape = velocity, induced vertical break (IVB), horizontal break (HB, arm-side positive; left-handers flipped) and arm slot. Neighborhood = the same pitch type and hand within ±1 bin of his average shape, 2024–2026. Source: Baseball Savant pitch-level data.</div>
+  </section>
+
+  <!-- § 02 -->
+  <section class="sec">
+    <h2><i>§ 02</i>How they win</h2>
+    <p class="lede">Where his pitch sits among every pitch of its type thrown with a similar shape — and what batters have done against pitches shaped like it.</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>Movement map</h3>
+        <p class="cap">Each square is a 2-inch movement cell, coloured by whiffs per swing across the league. Dots are his pitches; the ring covers ±1 SD.</p>
+        <div class="mapwrap"><svg id="labMap" viewBox="0 0 540 520" width="100%" role="img" aria-label="Movement map"></svg></div>
+        <div class="legend" id="mapLegend"></div>
+        <div class="foot">Whiff% = whiffs ÷ swings. Cells under 150 swings (all velocities, all arm slots) are hatched, not coloured. League sample 2024–2026, right-handed pitchers of this type.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div id="proOutcome"></div>
+        <div id="proSlot"></div>
+      </div>
+    </div>
+    <div id="proCounts"></div>
+  </section>
+
+  <!-- § 03 -->
+  <section class="sec">
+    <h2><i>§ 03</i>Where they're vulnerable</h2>
+    <p class="lede">Shape neighborhoods where he throws this pitch and contact has been hardest (expected wOBA on contact), with the batted-ball sample behind each.</p>
+    <div id="proVuln"></div>
+  </section>
+
+  <!-- § 04 -->
+  <section class="sec">
+    <h2><i>§ 04</i>What changed</h2>
+    <p class="lede">His average shape this season against last, and what the matching neighborhood produced each year.</p>
+    <div id="proChanged"></div>
+  </section>
+
+  <!-- § 05 -->
+  <section class="sec method">
+    <h2><i>§ 05</i>Method</h2>
+    <div class="card">
+      <p><b>Neighborhood lookup.</b> We take the bin his average shape falls in, plus one bin either side in velocity (1 mph), IVB (2 in) and HB (2 in) — at most 27 bins, same pitch type, hand and arm-slot band (10°). Bins closer to his shape count a little more. Rates come from summed counts, never from averaging rates.</p>
+      <div class="gates">
+        <div class="gate"><b>150 swings</b><span>before we show whiff%</span></div>
+        <div class="gate"><b>300 pitches</b><span>before we show CSW%</span></div>
+        <div class="gate"><b>100 batted balls</b><span>before we show xwOBA on contact</span></div>
+      </div>
+      <p>If a neighborhood is too thin we widen to ±2 bins and say so. If it is still too thin we show an empty state — no number.</p>
+      <p><b>How closely this description matches what happened.</b> Two public checks, recomputed by the validation job:</p>
+      <div class="grid2" style="grid-template-columns:1fr 1fr;margin-top:8px">
+        <div class="tile"><div class="k">Stability across seasons</div><div class="v">r = 0.71</div><div class="s">Whiff% of the same shape bin in 2025 vs 2026, n-weighted · 412 bins with ≥300 swings in both years</div></div>
+        <div class="tile"><div class="k">Match within a season</div><div class="v">r = 0.58</div><div class="s">Neighborhood whiff% vs the pitch's own whiff% · 1,180 pitcher-pitches with ≥150 swings</div></div>
+      </div>
+      <div class="foot">Sample values for the mockup. These describe how closely the shape description lines up with results already recorded; they say nothing about future games.</div>
+    </div>
+  </section>
+</div>
+
+<!-- ======================= SHAPE SANDBOX ======================= -->
+<div class="wrap hidden" id="viewSbx">
+  <div style="margin-top:22px">
+    <div class="kick" style="font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--orange)">⊕ MLB · TOOLS</div>
+    <h1 style="margin:2px 0 6px;font-weight:800;font-size:clamp(34px,5.6vw,52px);letter-spacing:-.02em;line-height:1">Shape Sandbox</h1>
+    <p style="color:var(--body);font-size:15px;max-width:720px;margin:0">Dial in a pitch shape and see what pitches like it have done. <b>Pitches shaped like this have produced X% whiffs per swing (n = …)</b> — a description of what happened, not a forecast.</p>
+  </div>
+
+  <div class="sbx">
+    <div class="card ctl" id="ctl">
+      <h3>Build a pitch</h3>
+      <label>Pitch type</label>
+      <div class="row" id="sbType"></div>
+      <label>Throws</label>
+      <div class="row" id="sbHand"><button class="chip on" data-v="R">Right</button><button class="chip" data-v="L">Left</button></div>
+      <label>Drop a real pitch</label>
+      <select id="sbDrop"></select>
+      <div id="sbSliders"></div>
+      <div class="toggle"><input type="checkbox" id="cmp"><label for="cmp" style="display:inline;margin:0;color:var(--ink);letter-spacing:0;font-size:13px;text-transform:none">Compare two shapes (A vs B)</label></div>
+      <div id="cmpNote" class="foot hidden">Sliders edit shape <b>A</b>. Pick "Edit B" to move the second shape.</div>
+      <div class="row hidden" id="editWho"><button class="chip on" data-v="A">Edit A</button><button class="chip" data-v="B">Edit B</button></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div id="sbLocked" class="lockedcard hidden"></div>
+      <div id="sbMain">
+        <div class="card">
+          <h3>Live readout</h3>
+          <div class="ab" id="readouts"></div>
+        </div>
+        <div class="grid2" style="margin-top:16px">
+          <div class="card">
+            <h3>Where it sits</h3>
+            <p class="cap">League outcome space for this pitch type. Your shape is the crosshair.</p>
+            <svg id="sbMap" viewBox="0 0 540 520" width="100%" role="img" aria-label="Sandbox movement map"></svg>
+            <div class="legend" id="sbLegend"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card"><h3>Outcome profile</h3><p class="cap">Neighborhood vs the league average for this pitch type.</p><div id="sbBars"></div></div>
+            <div class="card"><h3>Same shape, other arm slots</h3><p class="cap">Whiff% for this velocity / IVB / HB at each arm-angle band.</p><div id="sbSlots"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">Neighborhood = ±1 bin in velocity, IVB and HB (widened to ±2 when thin), same pitch type, hand and arm-slot band. Gates: 150 swings for whiff%, 300 pitches for CSW%, 100 batted balls for xwOBA on contact. League sample 2024–2026.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   SYNTHETIC MODEL — stands in for pitch_shape_bins in this mockup only.
+   Real app: fetch target bin ±1 from Supabase, sum counts, rates = sums.
+   ===================================================================== */
+const TYPES = {
+  FF:{name:'Four-seam', free:true,  c:{velo:94,ivb:16,hb:8,  slot:40}, sd:{ivb:3.6,hb:4.2,velo:2.2}, a:.011, b:-.003, base:{whiff:.23,csw:.29,gb:.30,xw:.372}},
+  ST:{name:'Sweeper',   free:true,  c:{velo:83,ivb:1, hb:-15,slot:35}, sd:{ivb:3.4,hb:3.6,velo:2.0}, a:-.003,b:-.010, base:{whiff:.34,csw:.32,gb:.44,xw:.332}},
+  SL:{name:'Slider',    free:false, c:{velo:86,ivb:2, hb:-6, slot:40}, sd:{ivb:3.2,hb:3.2,velo:2.0}, a:-.004,b:-.011, base:{whiff:.33,csw:.31,gb:.46,xw:.318}},
+  SI:{name:'Sinker',    free:false, c:{velo:94,ivb:8, hb:16, slot:30}, sd:{ivb:3.4,hb:3.8,velo:2.2}, a:-.008,b:-.004, base:{whiff:.16,csw:.25,gb:.52,xw:.362}},
+  CH:{name:'Changeup',  free:false, c:{velo:86,ivb:6, hb:15, slot:40}, sd:{ivb:3.6,hb:3.8,velo:2.2}, a:-.006,b:.005,  base:{whiff:.31,csw:.30,gb:.47,xw:.316}},
+  CU:{name:'Curveball', free:false, c:{velo:79,ivb:-8,hb:-9, slot:40}, sd:{ivb:3.6,hb:3.6,velo:2.2}, a:-.009,b:-.003, base:{whiff:.30,csw:.31,gb:.50,xw:.300}},
+};
+const CELL=2, N=20;                       // 20×20 cells of 2in
+const GATE={swings:150,pitches:300,bbe:100};
+const clamp=(x,l,h)=>Math.max(l,Math.min(h,x));
+const gauss=(z)=>Math.exp(-.5*z*z);
+
+function winOf(t){const c=TYPES[t].c;return {h0:c.hb-N*CELL/2, i0:c.ivb-N*CELL/2};}
+function cellCenter(t,cx,cy){const w=winOf(t);return {h:w.h0+cx*CELL+CELL/2,i:w.i0+cy*CELL+CELL/2};}
+function dens2(t,h,i){const T=TYPES[t];return gauss((h-T.c.hb)/(T.sd.hb*1.35))*gauss((i-T.c.ivb)/(T.sd.ivb*1.35));}
+const handF=H=>H==='L'?.27:1;
+function ripple(h,i){return .012*Math.sin(h*.9+i*.55)+.008*Math.cos(h*.37-i*.8);}
+
+function whiffAt(t,h,i,v,slot){
+  const T=TYPES[t], c=T.c;
+  let r=T.base.whiff+T.a*(i-c.ivb)+T.b*(h-c.hb)+.004*(v-c.velo)-.0016*Math.abs(slot-c.slot)+ripple(h,i);
+  return clamp(r,.03,.62);
+}
+const cswFrom=w=>clamp(.16+.55*w,.1,.6);
+function gbAt(t,h,i){const T=TYPES[t];return clamp(T.base.gb-.011*(i-T.c.ivb)+.002*(h-T.c.hb)*(T.c.hb>0?1:-1)*-1,.12,.75);}
+function xwAt(t,h,i){const T=TYPES[t];return clamp(T.base.xw+.0042*(i-T.c.ivb)-.0012*Math.abs(h-T.c.hb)*.5+ripple(h+3,i)*.4,.2,.55);}
+
+/* Neighborhood: ±r bins in velo(1mph)/IVB(2in)/HB(2in); same slot band; counts summed, rates from sums */
+function neighborhood(t,H,v,i,h,slot,r){
+  const T=TYPES[t]; let sw=0,wsw=0,wh=0,gbN=0,xwN=0,wbbe=0,bbe=0;
+  const slotF=gauss((slot-T.c.slot)/11);
+  const hb=Math.round(h/CELL), ib=Math.round(i/CELL), vb=Math.round(v);
+  for(let dh=-r;dh<=r;dh++)for(let di=-r;di<=r;di++)for(let dv=-r;dv<=r;dv++){
+    const hh=(hb+dh)*CELL, ii=(ib+di)*CELL, vv=vb+dv;
+    const dist=Math.sqrt(dh*dh+di*di+dv*dv), w=1/(1+.5*dist);
+    const n=44*dens2(t,hh,ii)*gauss((vv-T.c.velo)/(T.sd.velo*1.35))*slotF*handF(H);
+    sw+=n; wsw+=w*n; wh+=w*n*whiffAt(t,hh,ii,vv,slot);
+    const nb=n*.30; bbe+=nb; wbbe+=w*nb; gbN+=w*nb*gbAt(t,hh,ii); xwN+=w*nb*xwAt(t,hh,ii);
+  }
+  const pitches=sw/.47;
+  const out={r,swings:Math.round(sw),pitches:Math.round(pitches),bbe:Math.round(bbe)};
+  out.whiff = sw>=GATE.swings && wsw>0 ? wh/wsw : null;
+  out.csw   = pitches>=GATE.pitches && wsw>0 ? cswFrom(wh/wsw) : null;
+  out.gb    = bbe>=GATE.bbe && wbbe>0 ? gbN/wbbe : null;
+  out.xw    = bbe>=GATE.bbe && wbbe>0 ? xwN/wbbe : null;
+  return out;
+}
+/* widen ±1 → ±2 → empty. Each metric is gated independently. */
+function lookup(t,H,v,i,h,slot){
+  const a=neighborhood(t,H,v,i,h,slot,1);
+  const b=neighborhood(t,H,v,i,h,slot,2);
+  const pick=k=>a[k]!=null?{val:a[k],r:1}:(b[k]!=null?{val:b[k],r:2}:{val:null,r:0});
+  return {a,b,whiff:pick('whiff'),csw:pick('csw'),gb:pick('gb'),xw:pick('xw'),
+    swings:a.whiff!=null?a.swings:b.swings, pitches:a.csw!=null?a.pitches:b.pitches, bbe:a.xw!=null?a.bbe:b.bbe,
+    reach:a.whiff!=null?1:(b.whiff!=null?2:0)};
+}
+const pct=(x,d=1)=>x==null?'—':(x*100).toFixed(d)+'%';
+const woba=x=>x==null?'—':x.toFixed(3).replace(/^0/,'');
+const sgn=(x,d=1)=>(x>=0?'+':'−')+Math.abs(x).toFixed(d);
+const fmt=n=>n.toLocaleString();
+
+/* sequential single-hue ramp (cream → orange → deep rust) */
+const RAMP=['#FFF3EA','#FFD9C2','#FFB48A','#FF8A55','#FF5722','#D63A0E','#9B2A09'];
+function ramp(x,lo,hi){const t=clamp((x-lo)/(hi-lo),0,1)*(RAMP.length-1);return RAMP[Math.round(t)];}
+
+/* ---------- movement map (SVG; Recharts ScatterChart + custom cell shape in the app) ---------- */
+const M={l:46,t:12,w:460,h:460}, SC=M.w/N;
+function drawMap(svg,t,o={}){
+  const T=TYPES[t], w=winOf(t); let s='';
+  // sample range of whiff for the legend
+  const lo=.10,hi=.50;
+  for(let cx=0;cx<N;cx++)for(let cy=0;cy<N;cy++){
+    const {h,i}=cellCenter(t,cx,cy);
+    const swings=Math.round(2200*dens2(t,h,i)*handF(o.hand||'R'));
+    const x=M.l+cx*SC, y=M.t+(N-1-cy)*SC;
+    const gated=swings<GATE.swings;
+    const wh=whiffAt(t,h,i,T.c.velo,T.c.slot);
+    const tip=gated?`<b>HB ${sgn(h,0)} in · IVB ${sgn(i,0)} in</b><br>${fmt(swings)} swings — under the 150 minimum, no rate shown`
+                   :`<b>HB ${sgn(h,0)} in · IVB ${sgn(i,0)} in</b><br>Whiff ${pct(wh)} per swing<br>n = ${fmt(swings)} swings`;
+    s+=`<rect class="cell" x="${x}" y="${y}" width="${SC-1}" height="${SC-1}" rx="2" fill="${gated?'url(#hatch)':ramp(wh,lo,hi)}" stroke="${gated?'#e7e2d8':'none'}" data-tip="${tip.replace(/"/g,'&quot;')}"/>`;
+  }
+  // axes
+  for(let k=0;k<=4;k++){
+    const hv=Math.round((w.h0+k*10)/5)*5, x=M.l+((hv-w.h0)/(N*CELL))*M.w;
+    s+=`<text x="${x}" y="${M.t+M.h+16}" font-size="11" fill="#8a8275" text-anchor="middle">${hv}</text>`;
+    const iv=Math.round((w.i0+k*10)/5)*5, y=M.t+M.h-((iv-w.i0)/(N*CELL))*M.h;
+    s+=`<text x="${M.l-8}" y="${y+4}" font-size="11" fill="#8a8275" text-anchor="end">${iv}</text>`;
+  }
+  s+=`<text x="${M.l+M.w/2}" y="${M.t+M.h+36}" font-size="11" fill="#5b5347" text-anchor="middle" font-weight="600">Horizontal break (in) · arm-side →</text>`;
+  s+=`<text transform="translate(12 ${M.t+M.h/2}) rotate(-90)" font-size="11" fill="#5b5347" text-anchor="middle" font-weight="600">Induced vertical break (in)</text>`;
+  const px=h=>M.l+((h-w.h0)/(N*CELL))*M.w, py=i=>M.t+M.h-((i-w.i0)/(N*CELL))*M.h;
+  // pitcher overlay
+  if(o.pitcher){
+    const P=o.pitcher;
+    if(P.prev){s+=`<line x1="${px(P.prev.hb)}" y1="${py(P.prev.ivb)}" x2="${px(P.hb)}" y2="${py(P.ivb)}" stroke="#1A1A1A" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="${px(P.prev.hb)}" cy="${py(P.prev.ivb)}" r="5" fill="#fff" stroke="#1A1A1A" stroke-width="1.5"/>
+      <text x="${px(P.prev.hb)+8}" y="${py(P.prev.ivb)+16}" font-size="10" font-weight="700" fill="#1A1A1A">2025</text>`;}
+    let seed=7; const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+    const g=()=>{let u=0;for(let k=0;k<6;k++)u+=rnd();return (u-3)/Math.sqrt(.5)*0.7;};
+    for(let k=0;k<46;k++){
+      const hh=P.hb+g()*P.sdHb, ii=P.ivb+g()*P.sdIvb;
+      s+=`<circle cx="${px(hh)}" cy="${py(ii)}" r="3.3" fill="#1A1A1A" fill-opacity=".78" stroke="#fff" stroke-width="1.3"/>`;
+    }
+    s+=`<ellipse cx="${px(P.hb)}" cy="${py(P.ivb)}" rx="${P.sdHb/(N*CELL)*M.w}" ry="${P.sdIvb/(N*CELL)*M.h}" fill="none" stroke="#1A1A1A" stroke-width="1.8"/>`;
+    s+=`<circle cx="${px(P.hb)}" cy="${py(P.ivb)}" r="6" fill="#FDE047" stroke="#1A1A1A" stroke-width="2"/>`;
+  }
+  // sandbox markers
+  (o.markers||[]).forEach(m=>{
+    const x=px(m.hb), y=py(m.ivb), col=m.col;
+    s+=`<g><line x1="${x-14}" y1="${y}" x2="${x+14}" y2="${y}" stroke="${col}" stroke-width="2.5"/><line x1="${x}" y1="${y-14}" x2="${x}" y2="${y+14}" stroke="${col}" stroke-width="2.5"/>
+      <circle cx="${x}" cy="${y}" r="7" fill="#fff" stroke="${col}" stroke-width="2.5"/><text x="${x}" y="${y+4}" font-size="9.5" text-anchor="middle" font-weight="800" fill="${col}">${m.lab}</text></g>`;
+  });
+  svg.innerHTML=`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#fff"/><line x1="0" y1="0" x2="0" y2="6" stroke="#e7e2d8" stroke-width="2"/></pattern></defs>`+s;
+}
+function legendHTML(withPitcher){
+  return `<span>Whiff per swing</span><span>10%</span><span class="ramp">${RAMP.map(c=>`<span style="background:${c}"></span>`).join('')}</span><span>50%</span>
+  <span class="key"><span class="hatch"></span>under 150 swings</span>${withPitcher?`<span class="key"><span class="dot"></span>his pitches</span><span class="key"><span class="ell"></span>±1 SD</span>`:''}`;
+}
+
+/* ---------- outcome bars ---------- */
+function barsHTML(L,t){
+  const B=TYPES[t].base;
+  const rows=[
+    {n:'Whiff%',sub:'per swing',m:L.whiff,lg:B.whiff,scale:.6,f:pct,cnt:`n = ${fmt(L.swings)} swings`,need:`needs ${GATE.swings} swings`,have:L.swings},
+    {n:'CSW%',sub:'called + swinging strikes, per pitch',m:L.csw,lg:cswFrom(B.whiff),scale:.6,f:pct,cnt:`n = ${fmt(L.pitches)} pitches`,need:`needs ${GATE.pitches} pitches`,have:L.pitches},
+    {n:'GB%',sub:'per batted ball',m:L.gb,lg:B.gb,scale:.8,f:pct,cnt:`n = ${fmt(L.bbe)} BBE`,need:`needs ${GATE.bbe} batted balls`,have:L.bbe},
+    {n:'xwOBA on contact',sub:'per batted ball',m:L.xw,lg:B.xw,scale:.6,f:woba,cnt:`n = ${fmt(L.bbe)} BBE`,need:`needs ${GATE.bbe} batted balls`,have:L.bbe},
+  ];
+  return rows.map(r=>{
+    if(r.m.val==null) return `<div class="orow"><div class="n">${r.n}<small>${r.sub}</small></div><div class="empty" style="padding:6px 10px;font-size:12px">Not enough sample — ${r.need} (has ${fmt(r.have)})</div><div class="val">—</div></div>`;
+    const wide=r.m.r===2?`<span class="badge wide">±2 bins</span>`:'';
+    return `<div class="orow"><div class="n">${r.n}<small>${r.sub}</small></div>
+      <div class="track" title="league average ${r.f(r.lg)}"><div class="fill" style="width:${r.m.val/r.scale*100}%"></div><div class="lg" style="left:${r.lg/r.scale*100}%"></div></div>
+      <div class="val">${r.f(r.m.val)} ${wide}<small>${r.cnt} · lg ${r.f(r.lg)}</small></div></div>`;
+  }).join('');
+}
+
+/* ---------- slot strip ---------- */
+const SLOTS=[20,30,40,50,60,70,80,90];
+function slotHTML(t,H,v,i,h,curSlot){
+  const cols=SLOTS.map(sl=>{
+    const a=neighborhood(t,H,v,i,h,sl,1), b=a.whiff==null?neighborhood(t,H,v,i,h,sl,2):a;
+    const val=a.whiff!=null?a.whiff:b.whiff; const wide=a.whiff==null&&b.whiff!=null;
+    const cur=Math.floor(curSlot/10)*10===sl;
+    if(val==null) return `<div class="slot g ${cur?'cur':''}"><div class="bar"></div><span>n=${fmt(b.swings)}</span></div>`;
+    return `<div class="slot ${cur?'cur':''}"><b>${pct(val,0)}${wide?'*':''}</b><div class="bar" style="height:${val/.6*110}px"></div><span>n=${fmt(wide?b.swings:a.swings)}</span></div>`;
+  }).join('');
+  const lbl=SLOTS.map(sl=>`<span class="${Math.floor(curSlot/10)*10===sl?'cur':''}">${sl}°</span>`).join('');
+  return `<div class="slots">${cols}</div><div class="slotlbl">${lbl}</div>
+    <div class="foot">Arm angle band · whiff% per swing for this exact velocity / IVB / HB. * widened to ±2 bins. Hatched = under 150 swings, no rate shown. Ring = the band he throws from.</div>`;
+}
+
+/* ---------- tooltip ---------- */
+const tt=document.getElementById('tt');
+document.addEventListener('mousemove',e=>{
+  const el=e.target.closest&&e.target.closest('[data-tip]');
+  if(!el){tt.style.display='none';return;}
+  tt.innerHTML=el.getAttribute('data-tip');tt.style.display='block';
+  tt.style.left=Math.min(e.clientX+14,innerWidth-270)+'px';tt.style.top=(e.clientY+14)+'px';
+});
+
+/* ======================= LAB VIEW ======================= */
+const PITCHER={
+  name:'Sample Pitcher',
+  SL:{hb:-6.8,ivb:1.6,velo:86.2,slot:42,sdHb:2.5,sdIvb:2.2,prev:{hb:-5.4,ivb:0.4,velo:86.9,slot:44,n:612},n:488},
+  FF:{hb:8.9,ivb:17.4,velo:94.3,slot:42,sdHb:3.0,sdIvb:2.8,prev:{hb:8.2,ivb:16.1,velo:94.8,slot:44,n:1021},n:1105},
+  CH:{hb:14.6,ivb:6.5,velo:87.0,slot:42,sdHb:2.8,sdIvb:2.6,prev:{hb:15.2,ivb:6.0,velo:87.4,slot:44,n:244},n:262},
+};
+const LAB_TYPES=['SL','FF','CH'];
+let labPitch='SL', isPro=true;
+function labRender(){
+  const t=labPitch, T=TYPES[t], P=PITCHER[t], slotBand=Math.floor(P.slot/10)*10;
+  const L=lookup(t,'R',P.velo,P.ivb,P.hb,slotBand);
+  const Lp=lookup(t,'R',P.prev.velo,P.prev.ivb,P.prev.hb,Math.floor(P.prev.slot/10)*10);
+
+  document.getElementById('heroStats').innerHTML=
+    `<div class="st"><b>${P.velo.toFixed(1)}</b><span>${T.name} mph</span></div>
+     <div class="st"><b>${sgn(P.ivb)}"</b><span>Induced vert.</span></div>
+     <div class="st"><b>${sgn(P.hb)}"</b><span>Horiz. break</span></div>
+     <div class="st"><b>${P.slot}°</b><span>Arm angle</span></div>`;
+
+  document.getElementById('labChips').innerHTML=LAB_TYPES.map(k=>`<button class="chip ${k===t?'on':''}" data-k="${k}">${TYPES[k].name}<small>n=${fmt(PITCHER[k].n)}</small></button>`).join(' ');
+  document.querySelectorAll('#labChips .chip').forEach(b=>b.onclick=()=>{labPitch=b.dataset.k;labRender();});
+
+  const lc=T.name.toLowerCase();
+  document.getElementById('qLede').innerHTML=`<b>Is his ${lc}'s shape doing the work?</b> Pitches shaped like his — same type, hand, velocity, ride, run and arm slot — have produced the results below. Compare them with his own.`;
+  const wTxt=L.whiff.val==null?'—':pct(L.whiff.val);
+  document.getElementById('qTiles').innerHTML=`
+    <div class="tile"><div class="k">Shape neighborhood whiff%</div><div class="v">${wTxt}</div><div class="s">${L.whiff.val==null?'Not enough swings':`n = ${fmt(L.swings)} swings`}${L.reach===2?' · widened to ±2 bins':''}</div></div>
+    <div class="tile"><div class="k">League avg · ${T.name.toLowerCase()}</div><div class="v">${pct(T.base.whiff)}</div><div class="s">all shapes, same hand</div></div>
+    <div class="tile"><div class="k">His own whiff%</div><div class="v">${pct(clamp(L.whiff.val!=null?L.whiff.val+.021:T.base.whiff,0,1))}</div><div class="s">n = ${fmt(Math.round(P.n*.46))} swings, 2026</div></div>
+    <div class="tile"><div class="k">His shape vs neighborhood</div><div class="v">${L.whiff.val!=null?sgn((L.whiff.val+.021-L.whiff.val)*100)+' pts':'—'}</div><div class="s">his results minus the shape's results</div></div>`;
+
+  drawMap(document.getElementById('labMap'),t,{pitcher:P});
+  document.getElementById('mapLegend').innerHTML=legendHTML(true);
+
+  const locked=(title,feats,id)=>`<div class="lockedcard"><span class="pro-badge">PRO</span><h4>${title}</h4><ul style="margin:6px 0 12px;padding-left:18px;color:var(--body);font-size:13px">${feats.map(f=>`<li>${f}</li>`).join('')}</ul><a class="btn" href="#">Unlock with Pro</a></div>`;
+
+  // §02 outcome + slot
+  document.getElementById('proOutcome').innerHTML = isPro
+    ? `<div class="card"><h3>Outcome profile</h3><p class="cap">Separates "the shape misses bats" from "the shape suppresses damage". Neighborhood vs league average for ${lc}s.</p>${barsHTML(L,t)}<div class="foot">Black tick = league average for this pitch type. Each row has its own sample gate.</div></div>`
+    : locked('Outcome profile',['Whiff%, CSW%, GB% and xwOBA on contact for his shape neighborhood','Compared with the league average for the pitch type','Sample size shown for every row']);
+  document.getElementById('proSlot').innerHTML = isPro
+    ? `<div class="card"><h3>Slot context</h3><p class="cap">The same shape from other arm angles. Ride reads differently from a 30° slot than a 60° slot.</p>${slotHTML(t,'R',P.velo,P.ivb,P.hb,P.slot)}</div>`
+    : locked('Slot context strip',['The same shape\'s outcomes in every arm-slot band','Shows where his ride or run is unusual for his slot']);
+
+  // Pro panel: counts
+  const cs=[['Ahead in count',.045,.31],['Even count',0,.36],['Behind in count',-.04,.33]];
+  document.getElementById('proCounts').innerHTML = isPro
+    ? `<div class="pro"><div class="hd"><span class="pro-badge">PRO</span>Expand: this shape by count</div><div class="bd"><table><thead><tr><th>Count state</th><th class="r">Whiff% per swing</th><th class="r">Swings</th></tr></thead><tbody>${cs.map(c=>`<tr><td>${c[0]}</td><td class="r"><b>${L.whiff.val==null?'—':pct(L.whiff.val+c[1])}</b></td><td class="r">${fmt(Math.round(L.swings*c[2]))}</td></tr>`).join('')}</tbody></table><div class="foot">Uses balls / strikes from the pitch rows. Same gates apply; a split under 150 swings shows —.</div></div></div>`
+    : `<div class="pro"><div class="hd"><span class="pro-badge">PRO</span>Expand: this shape by count</div><div class="bd"><ul><li>Whiff% for the same shape when ahead, even and behind</li><li>Sample behind every split</li></ul><a class="btn" href="#">Unlock with Pro</a></div></div>`;
+
+  // §03 vulnerable
+  const spots=[['Flatter, less run',P.ivb+0*P.sdIvb,P.hb+1.3*P.sdHb],['More ride, same run',P.ivb+1.4*P.sdIvb,P.hb],['Sits up, loses velocity',P.ivb+.5*P.sdIvb,P.hb+.2*P.sdHb],['Extra run, drops',P.ivb-1.9*P.sdIvb,P.hb-2.1*P.sdHb]];
+  const vrows=spots.map((sp,k)=>{
+    const vv=P.velo+(k===2?-2.5:0); const Q=lookup(t,'R',vv,sp[1],sp[2],Math.floor(P.slot/10)*10);
+    const share=[.34,.21,.27,.05][k];
+    return {lab:sp[0],hb:sp[2],ivb:sp[1],Q,share};
+  }).sort((a,b)=>(b.Q.xw.val||0)-(a.Q.xw.val||0));
+  document.getElementById('proVuln').innerHTML = isPro
+    ? `<div class="card"><table><thead><tr><th>Neighborhood</th><th>Where (HB / IVB)</th><th class="r">His pitches here</th><th class="r">xwOBA on contact</th><th class="r">Batted balls</th></tr></thead><tbody>${vrows.map(r=>`<tr><td><b>${r.lab}</b></td><td>${sgn(r.hb)}" / ${sgn(r.ivb)}"</td><td class="r"><span class="mini" style="width:${r.share*100}px"></span>${Math.round(r.share*100)}%</td><td class="r">${r.Q.xw.val==null?`<span class="badge none">Not enough sample</span>`:`<b>${woba(r.Q.xw.val)}</b> ${r.Q.xw.r===2?'<span class="badge wide">±2</span>':''}`}</td><td class="r">${fmt(r.Q.bbe)}</td></tr>`).join('')}</tbody></table>
+      <div class="foot">League xwOBA on contact for ${lc}s: ${woba(T.base.xw)}. A neighborhood needs ≥100 batted balls (2024–2026) before a number is shown; thinner ones are left blank rather than estimated.</div></div>
+      <div class="pro" style="margin-top:12px"><div class="hd"><span class="pro-badge">PRO</span>Expand: by batter side</div><div class="bd"><table><thead><tr><th>Batter</th><th class="r">xwOBA on contact</th><th class="r">Batted balls</th></tr></thead><tbody><tr><td>vs left-handed</td><td class="r"><b>${woba(T.base.xw+.012)}</b></td><td class="r">${fmt(Math.round(vrows[0].Q.bbe*.4))}</td></tr><tr><td>vs right-handed</td><td class="r"><b>${woba(T.base.xw-.008)}</b></td><td class="r">${fmt(Math.round(vrows[0].Q.bbe*.6))}</td></tr></tbody></table></div></div>`
+    : locked('Where the shape runs into damage',['Neighborhoods ranked by xwOBA on contact, with batted-ball counts','How often he throws into each one','Split by batter side (Pro)']);
+
+  // §04 changed
+  const d=(a,b)=>b-a;
+  const sh=[['Velocity (mph)',P.prev.velo,P.velo,1],['Induced vert. (in)',P.prev.ivb,P.ivb,1],['Horiz. break (in)',P.prev.hb,P.hb,1],['Arm angle (°)',P.prev.slot,P.slot,0]];
+  document.getElementById('proChanged').innerHTML = isPro
+    ? `<div class="shift">${sh.map(s=>`<div class="sh"><div class="k">${s[0]}</div><div class="a"><s>${s[1].toFixed(s[3])}</s><span>→</span><b>${s[2].toFixed(s[3])}</b></div><div class="d">${sgn(d(s[1],s[2]),s[3])}</div><div class="nn">2025 n=${fmt(P.prev.n)} · 2026 n=${fmt(P.n)}</div></div>`).join('')}</div>
+      <div class="grid2" style="margin-top:14px;grid-template-columns:1fr 1fr">
+        <div class="card"><h3>Same neighborhood, two seasons</h3><p class="cap">Whiff% of the bin his average shape fell in each year.</p>
+          <table><tbody><tr><td>2025 shape</td><td class="r"><b>${pct(Lp.whiff.val)}</b></td><td class="r">n = ${fmt(Lp.swings)}</td></tr><tr><td>2026 shape</td><td class="r"><b>${pct(L.whiff.val)}</b></td><td class="r">n = ${fmt(L.swings)}</td></tr></tbody></table>
+          <div class="foot">The dashed line on the movement map in § 02 traces the same shift.</div></div>
+        <div class="pro" style="margin-top:0"><div class="hd"><span class="pro-badge">PRO</span>Expand: month by month</div><div class="bd"><svg viewBox="0 0 300 90" width="100%" role="img" aria-label="Monthly average velocity"><polyline fill="none" stroke="#FF5722" stroke-width="2" points="10,30 60,36 110,34 160,48 210,52 260,58"/>${[10,60,110,160,210,260].map((x,k)=>`<circle cx="${x}" cy="${[30,36,34,48,52,58][k]}" r="3.5" fill="#FF5722" stroke="#fff" stroke-width="1.5"/><text x="${x}" y="82" font-size="10" fill="#8a8275" text-anchor="middle">${['Apr','May','Jun','Jul','Aug','Sep'][k]}</text>`).join('')}</svg><div class="foot">Monthly average ${lc} velocity (sample). Months under 50 pitches are left off.</div></div></div>
+      </div>`
+    : locked('What changed in his shape',['This season vs last: velocity, ride, run and arm angle, each with n','The matching neighborhood\'s whiff% in each year','Month-by-month shape trend (Pro)']);
+}
+
+/* ======================= SANDBOX VIEW ======================= */
+const SB={t:'FF',H:'R',A:{},B:{},who:'A',cmp:false};
+function defaults(t){const c=TYPES[t].c;return {velo:c.velo,ivb:c.ivb,hb:c.hb,slot:c.slot};}
+const SLIDERS=[['velo','Velocity','mph',1],['ivb','Induced vert. break','in',1],['hb','Horizontal break (arm-side +)','in',1],['slot','Arm angle','°',1]];
+const DROPS=[
+  {l:'Sample RHP A · four-seam',t:'FF',H:'R',s:{velo:97.1,ivb:18.6,hb:7.4,slot:45}},
+  {l:'Sample RHP B · four-seam',t:'FF',H:'R',s:{velo:92.3,ivb:13.2,hb:11.1,slot:30}},
+  {l:'Sample LHP C · four-seam',t:'FF',H:'L',s:{velo:94.0,ivb:16.8,hb:9.0,slot:50}},
+  {l:'Sample RHP D · sweeper',t:'ST',H:'R',s:{velo:84.6,ivb:2.4,hb:-17.8,slot:38}},
+  {l:'Sample RHP E · sweeper',t:'ST',H:'R',s:{velo:81.9,ivb:-1.1,hb:-12.6,slot:62}},
+  {l:'Sample RHP F · changeup (Pro)',t:'CH',H:'R',s:{velo:87.2,ivb:7.0,hb:16.1,slot:40}},
+];
+function sbRange(k,t){const c=TYPES[t].c;
+  return {velo:[c.velo-8,c.velo+8],ivb:[c.ivb-18,c.ivb+18],hb:[c.hb-18,c.hb+18],slot:[10,90]}[k];}
+function sbRenderControls(){
+  document.getElementById('sbType').innerHTML=Object.keys(TYPES).map(k=>{
+    const lock=!TYPES[k].free && !isPro;
+    return `<button class="chip ${k===SB.t?'on':''} ${lock?'lock':''}" data-k="${k}">${TYPES[k].name}</button>`;}).join('');
+  document.querySelectorAll('#sbType .chip').forEach(b=>b.onclick=()=>{
+    SB.t=b.dataset.k;SB.A=defaults(SB.t);SB.B={...SB.A,hb:SB.A.hb+(SB.t==='ST'?-3:3),ivb:SB.A.ivb+2};sbRender(true);});
+  document.querySelectorAll('#sbHand .chip').forEach(b=>{b.classList.toggle('on',b.dataset.v===SB.H);b.onclick=()=>{SB.H=b.dataset.v;sbRender(true);};});
+  document.getElementById('sbDrop').innerHTML=`<option value="">Pick a pitcher's average shape…</option>`+DROPS.map((d,k)=>`<option value="${k}">${d.l}</option>`).join('');
+  document.getElementById('sbDrop').onchange=e=>{if(e.target.value==='')return;const d=DROPS[+e.target.value];SB.t=d.t;SB.H=d.H;SB[SB.who]={...d.s};sbRender(true);};
+  const cur=SB[SB.who];
+  document.getElementById('sbSliders').innerHTML=SLIDERS.map(([k,l,u])=>{const r=sbRange(k,SB.t);return `<label>${l}<b>${cur[k].toFixed(k==='slot'?0:1)}${u==='°'?'°':' '+u}</b></label><input type="range" data-k="${k}" min="${r[0]}" max="${r[1]}" step="${k==='slot'?1:.1}" value="${cur[k]}">`;}).join('');
+  document.querySelectorAll('#sbSliders input').forEach(inp=>inp.oninput=()=>{SB[SB.who][inp.dataset.k]=+inp.value;sbRender(false);
+    const lab=inp.previousElementSibling.querySelector('b');const k=inp.dataset.k;lab.textContent=(+inp.value).toFixed(k==='slot'?0:1)+(k==='slot'?'°':k==='velo'?' mph':' in');});
+  document.getElementById('cmp').onchange=e=>{SB.cmp=e.target.checked;SB.who='A';sbRender(true);};
+  document.getElementById('cmp').checked=SB.cmp;
+  document.getElementById('editWho').classList.toggle('hidden',!SB.cmp);
+  document.getElementById('cmpNote').classList.toggle('hidden',!SB.cmp);
+  document.querySelectorAll('#editWho .chip').forEach(b=>{b.classList.toggle('on',b.dataset.v===SB.who);b.onclick=()=>{SB.who=b.dataset.v;sbRender(true);};});
+}
+function sentence(t,L,H){
+  const T=TYPES[t];
+  if(L.whiff.val==null) return `<div class="empty"><b>Not enough pitches like this</b>Only ${fmt(L.swings)} swings in the ±2-bin neighborhood (needs ${GATE.swings}). We don't estimate — try a shape closer to the middle of the map.</div>`;
+  return `<div class="sentence">${H==='L'?'Left-handed':'Right-handed'} ${T.name.toLowerCase()}s shaped like this have produced <b>${pct(L.whiff.val)} whiffs per swing</b> (n = ${fmt(L.swings)} swings).</div>`;
+}
+function readoutHTML(who,s){
+  const L=lookup(SB.t,SB.H,s.velo,s.ivb,s.hb,Math.floor(s.slot/10)*10);
+  const status=L.reach===1?`<span class="badge ok">±1 bin</span>`:L.reach===2?`<span class="badge wide">widened to ±2</span>`:`<span class="badge none">Too thin</span>`;
+  const B=TYPES[SB.t].base;
+  const mini=(n,v,f,lg)=>`<div><div style="font-size:10px;letter-spacing:.1em;font-weight:700;color:var(--mute);text-transform:uppercase">${n}</div><div style="font-size:20px;font-weight:800">${v==null?'—':f(v)}</div><div style="font-size:11px;color:var(--mute)">lg ${f(lg)}</div></div>`;
+  return {L,html:`<div class="read ${who}"><div class="t"><span>${SB.cmp?'Shape '+who:'This shape'}</span>${status}</div>${sentence(SB.t,L,SB.H)}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${mini('Whiff%',L.whiff.val,pct,B.whiff)}${mini('CSW%',L.csw.val,pct,cswFrom(B.whiff))}${mini('GB%',L.gb.val,pct,B.gb)}${mini('xwOBAcon',L.xw.val,woba,B.xw)}</div>
+    <div class="foot" style="margin-top:8px">${fmt(L.swings)} swings · ${fmt(L.pitches)} pitches · ${fmt(L.bbe)} batted balls in the neighborhood</div></div>`};
+}
+function sbRender(rebuild){
+  const lockedType = !TYPES[SB.t].free && !isPro;
+  if(rebuild) sbRenderControls();
+  document.getElementById('sbLocked').classList.toggle('hidden',!lockedType);
+  document.getElementById('sbMain').classList.toggle('hidden',lockedType);
+  if(lockedType){
+    document.getElementById('sbLocked').innerHTML=`<span class="pro-badge">PRO</span><h4>${TYPES[SB.t].name} shapes are part of Pro</h4><p style="color:var(--body);font-size:13px;margin:4px 0 8px">Free covers four-seam fastballs and sweepers. Pro opens every pitch type.</p><ul style="margin:0 0 12px;padding-left:18px;color:var(--body);font-size:13px"><li>Sinker, slider, changeup, curveball and cutter neighborhoods</li><li>Compare two shapes side by side</li><li>Slot context and the full outcome profile</li></ul><a class="btn" href="#">Unlock with Pro</a>`;
+    return;
+  }
+  const a=readoutHTML('A',SB.A), ro=[a.html]; let b=null;
+  if(SB.cmp){b=readoutHTML('B',SB.B);ro.push(b.html);}
+  const rd=document.getElementById('readouts');rd.className='ab'+(SB.cmp?'':' single');rd.innerHTML=ro.join('');
+  const markers=[{hb:SB.A.hb,ivb:SB.A.ivb,col:'#FF5722',lab:SB.cmp?'A':''}];
+  if(SB.cmp)markers.push({hb:SB.B.hb,ivb:SB.B.ivb,col:'#1A1A1A',lab:'B'});
+  drawMap(document.getElementById('sbMap'),SB.t,{markers,hand:SB.H});
+  document.getElementById('sbLegend').innerHTML=legendHTML(false);
+  const col=SB.cmp?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><b style="font-size:11px;color:var(--orange)">A</b>${barsHTML(a.L,SB.t)}</div><div><b style="font-size:11px">B</b>${barsHTML(b.L,SB.t)}</div></div>`:barsHTML(a.L,SB.t);
+  document.getElementById('sbBars').innerHTML=col;
+  document.getElementById('sbSlots').innerHTML=slotHTML(SB.t,SB.H,SB.A.velo,SB.A.ivb,SB.A.hb,SB.A.slot);
+}
+
+/* ======================= wiring ======================= */
+function setPage(v){
+  document.getElementById('viewLab').classList.toggle('hidden',v!=='lab');
+  document.getElementById('viewSbx').classList.toggle('hidden',v!=='sbx');
+  document.querySelectorAll('#segPage button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+}
+document.querySelectorAll('#segPage button').forEach(b=>b.onclick=()=>setPage(b.dataset.v));
+document.querySelectorAll('#segTier button').forEach(b=>b.onclick=()=>{
+  isPro=b.dataset.v==='pro';
+  document.querySelectorAll('#segTier button').forEach(x=>x.classList.toggle('on',x===b));
+  if(!isPro && !TYPES[SB.t].free){SB.t='FF';SB.A=defaults('FF');}
+  labRender(); sbRender(true);
+});
+SB.A=defaults('FF');SB.B={...SB.A,ivb:SB.A.ivb+2,hb:SB.A.hb+3};
+labRender(); sbRender(true);
+</script>
+</body>
+</html>

@@ -35,6 +35,9 @@ export type RawBatterPitch = {
   result: string | null // real events value if this pitch ended the PA, else the description
   pitcherId: number | null
   pitcherThrows: 'L' | 'R' | null
+  stand: 'L' | 'R' | null // batter's side for this pitch (switch hitters change) — the Swing Lab grid is drawn in the batter's frame
+  szTop: number | null // this batter's zone top/bottom (ft) for this pitch — the Swing Lab's inner three rows are thirds of it
+  szBot: number | null
   launchSpeed: number | null // real exit velo, only on balls in play
   launchAngle: number | null // real launch angle, only on balls in play
   batSpeed: number | null // real, only on swings
@@ -102,7 +105,7 @@ function numOrNaN(s: string): number {
 
 export async function getBatterPitchLog(batterId: number, season = SEASON_FALLBACK): Promise<BatterPitchLog | null> {
   return withSavantCache(
-    `pitch-log:${batterId}:${season}`,
+    `pitch-log:v2:${batterId}:${season}`, // v2: rows carry stand/szTop/szBot (Swing Lab)
     21600,
     () => fetchBatterPitchLog(batterId, season),
   )
@@ -139,6 +142,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
   const iPlateX = idx('plate_x'), iPlateZ = idx('plate_z')
   const iDesc = idx('description'), iEvents = idx('events')
   const iPitcher = idx('pitcher'), iPThrows = idx('p_throws')
+  const iStand = idx('stand'), iSzTop = idx('sz_top'), iSzBot = idx('sz_bot')
   const iLS = idx('launch_speed'), iLA = idx('launch_angle')
   const iBatSpeed = idx('bat_speed'), iSwingLen = idx('swing_length')
   const iZone = idx('zone')
@@ -166,6 +170,9 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
     const descVal = iDesc !== -1 ? cells[iDesc] : ''
     const pitcherId = iPitcher !== -1 ? Number(cells[iPitcher]) : NaN
     const pThrows = iPThrows !== -1 ? cells[iPThrows] : ''
+    const standRaw = iStand !== -1 ? cells[iStand] : ''
+    const szTop = iSzTop !== -1 ? numOrNaN(cells[iSzTop]) : NaN
+    const szBot = iSzBot !== -1 ? numOrNaN(cells[iSzBot]) : NaN
     const launchSpeed = iLS !== -1 ? numOrNaN(cells[iLS]) : NaN
     const launchAngle = iLA !== -1 ? numOrNaN(cells[iLA]) : NaN
     const batSpeed = iBatSpeed !== -1 ? numOrNaN(cells[iBatSpeed]) : NaN
@@ -185,6 +192,9 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
       result: eventsVal || descVal || null,
       pitcherId: Number.isNaN(pitcherId) ? null : pitcherId,
       pitcherThrows: pThrows === 'L' || pThrows === 'R' ? pThrows : null,
+      stand: standRaw === 'L' || standRaw === 'R' ? standRaw : null,
+      szTop: Number.isNaN(szTop) ? null : szTop,
+      szBot: Number.isNaN(szBot) ? null : szBot,
       launchSpeed: Number.isNaN(launchSpeed) ? null : launchSpeed,
       launchAngle: Number.isNaN(launchAngle) ? null : launchAngle,
       batSpeed: Number.isNaN(batSpeed) ? null : batSpeed,

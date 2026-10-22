@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pitch Shape Lab v2 Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* LAB LOOK, still Outfit-only: density, hairlines, readouts, tabular numbers, sample sizes on everything. No prose chapters. */
+:root{--cream:#FAF8F3;--card:#fff;--ink:#1A1A1A;--orange:#FF5722;--line:#e7e2d8;--soft:#f1eee6;--mute:#8a8275;--faint:#a89e8c;--good:#1D9E75;--bad:#D4533B}
+*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 24px 48px}
+.k{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--mute);text-transform:uppercase}
+.k.o{color:var(--orange)}
+.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+h1{font-weight:800;font-size:26px;letter-spacing:-.01em;margin:0}
+.bar .meta{margin-left:auto;display:flex;gap:16px}
+.bar .meta b{display:block;font-size:15px;font-weight:800}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.pill{font:600 12px 'Outfit',sans-serif;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.pill.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.pill small{opacity:.6;margin-left:4px;font-weight:600}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.stage{position:relative;height:400px;border:1px solid var(--line);border-radius:14px;background:
+ linear-gradient(var(--line) 1px,transparent 1px) 0 0/40px 40px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/40px 40px,#fff;display:grid;place-items:center;color:var(--faint);font-weight:600;font-size:13px}
+.stage .tag{position:absolute;left:12px;top:10px}
+.stage .ax{position:absolute;right:12px;bottom:10px;font-size:10px;letter-spacing:.12em;font-weight:800;color:var(--mute)}
+.side{position:sticky;top:96px;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.read{width:100%;border-collapse:collapse;font-size:13px}
+.read td{padding:6px 0;border-bottom:1px solid var(--soft)}
+.read tr:last-child td{border-bottom:0}
+.read td:first-child{color:var(--mute);font-size:10px;letter-spacing:.12em;font-weight:800;text-transform:uppercase}
+.read td.v{text-align:right;font-weight:800;font-size:15px}
+.read td.d{text-align:right;width:62px;font-size:11px;font-weight:700;color:var(--mute)}
+.read td.s{width:58px;text-align:right}
+.note{font-size:12px;line-height:1.5;color:#5b5347;margin:6px 0 0}
+.note b{color:var(--ink)}
+details summary{cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+.sec{margin-top:26px}
+.sec h2{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:2px 0 2px}
+.sec .sub{font-size:13px;color:var(--mute);margin:0 0 10px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tbl th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:800;text-align:right;padding:8px 10px;border-bottom:1px solid var(--ink);white-space:nowrap}
+.tbl td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--soft)}
+.tbl th:first-child,.tbl td:first-child{text-align:left;font-weight:800}
+.tbl tr.best td{background:#eef8f4}.tbl tr.worst td{background:#fdf1ee}
+.tbl .n{color:var(--faint);font-size:11px;margin-left:4px}
+.flag{display:inline-block;font-size:9px;letter-spacing:.1em;font-weight:800;border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:1px}
+.flag.g{background:var(--good);color:#fff}.flag.r{background:var(--bad);color:#fff}
+.inl{display:inline-block;height:6px;border-radius:3px;background:var(--orange);vertical-align:middle;margin-right:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+.foot{font-size:10.5px;color:var(--faint);margin-top:8px;line-height:1.5}
+.warn{background:#FFF7CC;border:1px solid #FDE047;border-radius:10px;padding:8px 12px;font-size:12px;margin-bottom:14px}
+</style></head><body><div class="wrap">
+
+<div class="warn"><b>MOCKUP.</b> Layout only. Apr numbers are Sánchez's real changeup readout; other months, deltas and the outcome columns are placeholders until the outcome columns are populated.</div>
+
+<!-- 1. INSTRUMENT BAR: replaces the red hero. Identity + one-line context, no big stats. -->
+<div class="bar">
+  <div><div class="k o">Pitch Shape Lab · LHP · PHI</div><h1>Cristopher Sánchez · Changeup · 2026</h1></div>
+  <div class="meta">
+    <div><span class="k">Pitches</span><b>1,171</b></div>
+    <div><span class="k">Months</span><b>Mar–Sep</b></div>
+    <div><span class="k">Min. sample</span><b>50 P</b></div>
+  </div>
+</div>
+
+<div class="ctl"><span class="k o">Pitch</span>
+  <button class="pill">Sinker<small>n=1,402</small></button><button class="pill on">Changeup<small>n=1,171</small></button><button class="pill">Slider<small>n=585</small></button>
+  <span style="flex:1"></span>
+  <span class="k">View</span><button class="pill">Release point</button><button class="pill on">Movement</button>
+</div>
+
+<div class="grid">
+  <div>
+    <!-- 2. SCOPE: the existing 3D model, smaller, with axis tags. -->
+    <div class="stage"><span class="k tag">Scope · catcher view · Apr</span>3D pitch model renders here<span class="ax">GRID 1 IN · EXAGGERATE ×1</span></div>
+    <div class="ctl"><span class="k">Camera</span><button class="pill">Lane</button><button class="pill on">Plate end</button><button class="pill">Side</button><button class="pill">Top</button>
+      <span class="k" style="margin-left:10px">Month</span><button class="pill">Mar</button><button class="pill on">Apr</button><button class="pill">May</button><button class="pill">Jun</button><button class="pill">Jul</button><button class="pill">Aug</button><button class="pill">Sep</button></div>
+  </div>
+
+  <!-- 3. READOUT RAIL (sticky): every number for the selected month, Δ vs first qualifying month, trend line. -->
+  <div class="side">
+    <div class="card">
+      <div class="k o">Readout · Apr · n=202</div>
+      <table class="read">
+        <tr><td>Velo</td><td class="v">86.1<small style="color:var(--mute);font-size:11px"> mph</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,10 9,9 18,8 27,6 36,7 45,4 54,3"/></svg></td></tr>
+        <tr><td>Spin</td><td class="v">2,006<small style="color:var(--mute);font-size:11px"> rpm</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,8 9,8 18,9 27,7 36,8 45,8 54,7"/></svg></td></tr>
+        <tr><td>IVB</td><td class="v">−1.8<small style="color:var(--mute);font-size:11px"> in</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,12 9,10 18,9 27,7 36,8 45,6 54,6"/></svg></td></tr>
+        <tr><td>HB (arm side)</td><td class="v">16.8<small style="color:var(--mute);font-size:11px"> in</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,7 9,8 18,8 27,9 36,8 45,8 54,9"/></svg></td></tr>
+        <tr><td>Release X</td><td class="v">+1.87<small style="color:var(--mute);font-size:11px"> ft</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,9 9,8 18,8 27,6 36,5 45,6 54,5"/></svg></td></tr>
+        <tr><td>Release Z</td><td class="v">6.04<small style="color:var(--mute);font-size:11px"> ft</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,8 9,8 18,7 27,7 36,8 45,7 54,7"/></svg></td></tr>
+        <tr><td>Extension</td><td class="v">6.92<small style="color:var(--mute);font-size:11px"> ft</small></td><td class="d">base</td><td class="s"><svg width="54" height="16"><polyline fill="none" stroke="#FF5722" stroke-width="1.6" points="0,9 9,9 18,8 27,7 36,7 45,6 54,6"/></svg></td></tr>
+      </table>
+      <div class="foot">Δ column = change vs the first month with 50+ pitches. Lines are month by month, Mar to Sep.</div>
+    </div>
+    <details class="card">
+      <summary><span class="k o">Notes · how to read this ▾</span></summary>
+      <p class="note"><b>Dashed line</b> = the same pitch with no spin. The gap at the plate is IVB and HB.</p>
+      <p class="note"><b>Release point</b> drift (side, height, extension) is what clubs track against a pitcher's own baseline.</p>
+      <p class="note"><b>Shape groups</b> (velo + IVB + HB + arm angle) are how clubs compare a pitch to similar arms.</p>
+    </details>
+  </div>
+</div>
+
+<!-- 4. MONTH LOG: the main analysis. Shape and results in one table, best/worst flagged per measure. -->
+<div class="sec">
+  <div class="k o">§ 01 · The story so far</div>
+  <h2>The shape of the changeup this season</h2>
+  <p class="sub">How the changeup changed over the year, month by month, next to the results in each month.</p>
+  <table class="tbl">
+    <thead><tr><th>Month</th><th>P</th><th>Velo</th><th>IVB</th><th>HB</th><th>Rel X</th><th>Rel Z</th><th>Ext</th><th>Whiff% /swing</th><th>Swings</th><th>xwOBA con</th><th>BBE</th></tr></thead>
+    <tbody>
+      <tr><td>Apr</td><td>202</td><td>86.1</td><td>−1.8</td><td>16.8</td><td>1.87</td><td>6.04</td><td>6.92</td><td>35.5 <span class="inl" style="width:36px"></span></td><td>110</td><td>.318</td><td>38</td></tr>
+      <tr class="best"><td>May<span class="flag g">BEST WHIFF</span></td><td>207</td><td>86.4</td><td>−1.2</td><td>16.7</td><td>1.94</td><td>6.05</td><td>6.98</td><td><b>41.2</b> <span class="inl" style="width:42px"></span></td><td>126</td><td>.301</td><td>44</td></tr>
+      <tr class="worst"><td>Jun<span class="flag r">WORST CONTACT</span></td><td>234</td><td>87.6</td><td>0.3</td><td>16.7</td><td>2.00</td><td>6.05</td><td>7.07</td><td>38.1 <span class="inl" style="width:38px"></span></td><td>134</td><td><b>.388</b></td><td>41</td></tr>
+      <tr><td>Jul</td><td>140</td><td>87.0</td><td>0.1</td><td>16.5</td><td>2.02</td><td>6.03</td><td>7.05</td><td>36.0 <span class="inl" style="width:36px"></span></td><td>88</td><td>.331</td><td>30</td></tr>
+      <tr><td>Aug</td><td>199</td><td>87.2</td><td>0.2</td><td>16.9</td><td>2.01</td><td>6.06</td><td>7.04</td><td>34.4 <span class="inl" style="width:34px"></span></td><td>118</td><td>.329</td><td>40</td></tr>
+      <tr><td>Sep</td><td>162</td><td>87.4</td><td>0.0</td><td>16.6</td><td>1.99</td><td>6.07</td><td>7.06</td><td>33.0 <span class="inl" style="width:33px"></span></td><td>101</td><td>.308</td><td>35</td></tr>
+    </tbody>
+  </table>
+  <div class="foot">Placeholder values except Jun shape. Green = best month for that measure, red = worst. A month needs 50+ pitches, and 40+ swings / 25+ balls in play for its results; thinner months show — and are left out of best/worst. Whiff% = whiffs ÷ swings. xwOBA con = expected wOBA on balls in play (lower is better for the pitcher).</div>
+
+  <div class="two" style="margin-top:12px">
+    <div class="card"><div class="k o">Whiffs per swing · trend</div>
+      <div style="font-weight:800;font-size:15px;margin:2px 0">Progressed? <span style="color:var(--bad)">Regressed</span> May → Sep (41.2% → 33.0%)</div>
+      <svg width="100%" height="60" viewBox="0 0 300 60" preserveAspectRatio="none"><polyline fill="none" stroke="#FF5722" stroke-width="2" points="10,34 60,12 110,22 160,32 210,38 260,46"/><circle cx="60" cy="12" r="4" fill="#1D9E75"/><circle cx="260" cy="46" r="4" fill="#D4533B"/></svg></div>
+    <div class="card"><div class="k o">xwOBA on contact · trend</div>
+      <div style="font-weight:800;font-size:15px;margin:2px 0">Little changed Apr → Sep (.318 → .308)</div>
+      <svg width="100%" height="60" viewBox="0 0 300 60" preserveAspectRatio="none"><polyline fill="none" stroke="#FF5722" stroke-width="2" points="10,30 60,22 110,6 160,34 210,32 260,24"/><circle cx="60" cy="22" r="4" fill="#1D9E75"/><circle cx="110" cy="6" r="4" fill="#D4533B"/></svg></div>
+  </div>
+</div>
+
+</div></body></html>

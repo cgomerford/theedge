@@ -19,10 +19,26 @@
      deliberate secondary choices (e.g. tabular numbers in mono), not the
      base body font anymore. */
   --font-sans: var(--font-outfit);
-  --font-serif: var(--font-fraunces);
-  --font-mono: var(--font-jetbrains);
-  --font-display: var(--font-bebas);
+  --font-serif: var(--font-outfit);
+  --font-mono: var(--font-outfit);
+  --font-display: var(--font-outfit);
 }
+
+/* ONE FONT EVER: Outfit. Legacy variable names resolve to it, so no component
+   can reintroduce Fraunces / JetBrains Mono / Bebas Neue / Inter. */
+:root {
+  --font-fraunces: var(--font-outfit);
+  --font-jetbrains: var(--font-outfit);
+  --font-bebas: var(--font-outfit);
+  --font-inter: var(--font-outfit);
+}
+
+/* Hard-coded font names ('Space Mono', Georgia, monospace, ...) and SVG text
+   cannot be fixed by variables, so one sitewide rule wins over them all. */
+html body, html body *, html body *::before, html body *::after {
+  font-family: var(--font-outfit), system-ui, sans-serif !important;
+}
+th, td { font-variant-numeric: tabular-nums; }
 
 body {
   background: var(--background);

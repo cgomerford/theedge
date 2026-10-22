@@ -22,10 +22,10 @@ export const C = {
 // Fonts come from the next/font CSS variables set in app/layout.tsx — NOT
 // literal family names (next/font hashes its family names, so 'Fraunces' as a
 // string never resolves). Outfit (the Effra stand-in) is the sitewide brand
-// default and is used for ALL headers and bold text; mono is only for light
-// small-caps labels and plain numbers.
+// default and is the ONLY font on the site (CLAUDE.md §6) — no monospace, no
+// squared faces. MONO is kept as an alias so existing imports keep working.
 export const SANS = 'var(--font-outfit), system-ui, sans-serif'
-export const MONO = 'var(--font-jetbrains), ui-monospace, monospace'
+export const MONO = SANS
 // Headers and big numbers use the rounded brand face (Outfit) at heavy weight —
 // NOT Bebas Neue (condensed caps). DISPLAY_WEIGHT is applied wherever DISPLAY is.
 export const DISPLAY = SANS

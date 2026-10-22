@@ -1,0 +1,28 @@
+name: shape-flights
+
+# Single writer of pitch_shape_flights (scripts/build_pitch_shape_flights.py).
+# Reads the current and previous regular season from Baseball Savant, one game day per request.
+# Thursday 06:00 UTC: after shape-bins (Tue) and shape-pitcher (Wed) so the three Savant-heavy jobs never overlap.
+# It does not depend on their output. Python crons live only in GitHub Actions, so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '0 6 * * 4'
+  workflow_dispatch:
+
+jobs:
+  build-shape-flights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build pitch shape flight rows
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_pitch_shape_flights.py

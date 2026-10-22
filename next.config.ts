@@ -3,6 +3,14 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   // the X-graphic route reads its font files at request time; make sure the deploy bundles them
   outputFileTracingIncludes: { '/api/postgame-card/[gamePk]': ['./src/lib/postgame/cards/fonts/**/*'] },
+  // Labs moved under /mlb/lab/ — permanent (308) so old bookmarks, emails and share-card
+  // links keep working. `:path*` also matches the bare index and every tab segment.
+  async redirects() {
+    return [
+      { source: '/mlb/pitching-lab/:path*', destination: '/mlb/lab/pitching-lab/:path*', permanent: true },
+      { source: '/mlb/batting-lab/:path*', destination: '/mlb/lab/batting-lab/:path*', permanent: true },
+    ]
+  },
   async headers() {
     return [
       {

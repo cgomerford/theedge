@@ -1,0 +1,29 @@
+name: shape-bins
+
+# Single writer of pitch_shape_bins (scripts/build_pitch_shape_bins.py).
+# Depends on nothing else: it reads Baseball Savant directly, one game day per request.
+# Weekly, Tuesday 06:00 UTC: it re-reads every regular-season day since 2024 (~1 hour, 4 days at a time), so it
+# is kept away from the Monday hot-zones (06:00) and velocity-range (09:00) jobs that also hit Savant.
+# Python crons live only in GitHub Actions (Vercel cannot run them), so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '0 6 * * 2'
+  workflow_dispatch:
+
+jobs:
+  build-shape-bins:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build pitch shape bins
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_pitch_shape_bins.py

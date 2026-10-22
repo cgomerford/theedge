@@ -604,9 +604,9 @@ venueDimensions = null,
         {/* § Starting Pitching — pro: arsenal, locations, TTO fatigue, sequencing */}
         <ReportSection title="Starting Pitching" locked={!isPro} teaser="Full pitch arsenal + locations, times-through-the-order fatigue, and count-by-count sequencing for both starters.">
           <div className="mb-2">
-            <LabFunnelLink href={awayPitcherId ? `/mlb/pitching-lab/${awayPitcherId}` : '/mlb/pitching-lab'} label={`See ${awayPitcherName} in Pitching Lab`} />
+            <LabFunnelLink href={awayPitcherId ? `/mlb/lab/pitching-lab/${awayPitcherId}` : '/mlb/lab/pitching-lab'} label={`See ${awayPitcherName} in Pitching Lab`} />
             <span className="text-stone-300 mx-2">·</span>
-            <LabFunnelLink href={homePitcherId ? `/mlb/pitching-lab/${homePitcherId}` : '/mlb/pitching-lab'} label={`See ${homePitcherName} in Pitching Lab`} />
+            <LabFunnelLink href={homePitcherId ? `/mlb/lab/pitching-lab/${homePitcherId}` : '/mlb/lab/pitching-lab'} label={`See ${homePitcherName} in Pitching Lab`} />
           </div>
           <div className="scout-section-grid">
             <div className="scout-stack">
@@ -647,9 +647,9 @@ venueDimensions = null,
         {/* § Batting & Lineups — pro: hot zones, spray, streaks */}
         <ReportSection title="Batting & Lineups" locked={!isPro} teaser="Lineup hot zones vs tonight's starter, spray charts, and who's hot/cold right now.">
           <div className="mb-2">
-            <LabFunnelLink href="/mlb/batting-lab" label={`${awayAbbr} lineup in Batting Lab`} />
+            <LabFunnelLink href="/mlb/lab/batting-lab" label={`${awayAbbr} lineup in Batting Lab`} />
             <span className="text-stone-300 mx-2">·</span>
-            <LabFunnelLink href="/mlb/batting-lab" label={`${homeAbbr} lineup in Batting Lab`} />
+            <LabFunnelLink href="/mlb/lab/batting-lab" label={`${homeAbbr} lineup in Batting Lab`} />
           </div>
           <div className="scout-section-grid">
             <div className="scout-stack">

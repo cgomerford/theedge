@@ -17,13 +17,13 @@ type LabSubject = 'batter' | 'pitcher'
 type LabTile = { seg: string; label: string; blurb: string }
 
 // Tab names mirror the lab layouts' own TABS arrays
-// (batting-lab/[playerId]/layout.tsx, pitching-lab/[playerId]/layout.tsx).
+// (mlb/lab/batting-lab/[playerId]/layout.tsx, pitching-lab/[playerId]/layout.tsx).
 // The pitching lab's "Edge+" tab is intentionally not promoted here — it's
 // built on the internal score, which stays off casual-facing surfaces.
 const LAB: Record<LabSubject, { name: string; base: string; pitch: string; tiles: LabTile[] }> = {
   batter: {
     name: 'Batting Lab',
-    base: '/mlb/batting-lab',
+    base: '/mlb/lab/batting-lab',
     pitch: 'how he handles every pitch type, where he does damage, and how pitchers attack him',
     tiles: [
       { seg: 'arsenal', label: 'Vs Arsenal', blurb: 'Results against each pitch type' },
@@ -36,7 +36,7 @@ const LAB: Record<LabSubject, { name: string; base: string; pitch: string; tiles
   },
   pitcher: {
     name: 'Pitching Lab',
-    base: '/mlb/pitching-lab',
+    base: '/mlb/lab/pitching-lab',
     pitch: 'every pitch in his arsenal, where he locates it, and how he sequences hitters',
     tiles: [
       { seg: 'arsenal', label: 'Arsenal', blurb: 'Velocity, movement, usage per pitch' },

@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import LabsMenu from '@/components/LabsMenu'
+import { LABS_MENU, STATUS_LABEL } from '@/lib/nav/labsMenu'
 
 // ─── MLB Data ─────────────────────────────────────────────────────────────────
 
@@ -35,92 +37,10 @@ const MLB_SUB_LINKS = [
   { href: '/mlb/abs',          label: 'ABS Challenges',  pro: false },
   { href: '/mlb/stats',        label: 'Stats',          pro: false },
   { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
-  { href: '/mlb/pitching-lab', label: 'Pitching Lab',   pro: true },
-  { href: '/mlb/batting-lab',  label: 'Batting Lab',    pro: true },
+  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab',    pro: true },
+  { href: '/mlb/lab/contact',      label: 'Contact Lab',     pro: false },
+  { href: '/mlb/lab/platoon',      label: 'Platoon Lab',     pro: false },
   { href: '/track-record',     label: 'Track Record',   pro: false },
-  { href: '/fantasy',          label: 'Fantasy',        pro: true },
-]
-
-// ─── NFL Data ─────────────────────────────────────────────────────────────────
-
-const NFL_DIVISIONS = [
-  {
-    label: 'AFC East',
-    teams: [
-      { slug: 'buf', name: 'Buffalo Bills' },
-      { slug: 'mia', name: 'Miami Dolphins' },
-      { slug: 'ne',  name: 'New England Patriots' },
-      { slug: 'nyj', name: 'New York Jets' },
-    ],
-  },
-  {
-    label: 'AFC North',
-    teams: [
-      { slug: 'bal', name: 'Baltimore Ravens' },
-      { slug: 'cin', name: 'Cincinnati Bengals' },
-      { slug: 'cle', name: 'Cleveland Browns' },
-      { slug: 'pit', name: 'Pittsburgh Steelers' },
-    ],
-  },
-  {
-    label: 'AFC South',
-    teams: [
-      { slug: 'hou', name: 'Houston Texans' },
-      { slug: 'ind', name: 'Indianapolis Colts' },
-      { slug: 'jax', name: 'Jacksonville Jaguars' },
-      { slug: 'ten', name: 'Tennessee Titans' },
-    ],
-  },
-  {
-    label: 'AFC West',
-    teams: [
-      { slug: 'den', name: 'Denver Broncos' },
-      { slug: 'kc',  name: 'Kansas City Chiefs' },
-      { slug: 'lv',  name: 'Las Vegas Raiders' },
-      { slug: 'lac', name: 'Los Angeles Chargers' },
-    ],
-  },
-  {
-    label: 'NFC East',
-    teams: [
-      { slug: 'dal', name: 'Dallas Cowboys' },
-      { slug: 'nyg', name: 'New York Giants' },
-      { slug: 'phi', name: 'Philadelphia Eagles' },
-      { slug: 'wsh', name: 'Washington Commanders' },
-    ],
-  },
-  {
-    label: 'NFC North',
-    teams: [
-      { slug: 'chi', name: 'Chicago Bears' },
-      { slug: 'det', name: 'Detroit Lions' },
-      { slug: 'gb',  name: 'Green Bay Packers' },
-      { slug: 'min', name: 'Minnesota Vikings' },
-    ],
-  },
-  {
-    label: 'NFC South',
-    teams: [
-      { slug: 'atl', name: 'Atlanta Falcons' },
-      { slug: 'car', name: 'Carolina Panthers' },
-      { slug: 'no',  name: 'New Orleans Saints' },
-      { slug: 'tb',  name: 'Tampa Bay Buccaneers' },
-    ],
-  },
-  {
-    label: 'NFC West',
-    teams: [
-      { slug: 'ari', name: 'Arizona Cardinals' },
-      { slug: 'lar', name: 'Los Angeles Rams' },
-      { slug: 'sf',  name: 'San Francisco 49ers' },
-      { slug: 'sea', name: 'Seattle Seahawks' },
-    ],
-  },
-]
-
-const NFL_SUB_LINKS = [
-  { href: '/nfl', label: 'Home', pro: false }
-
 ]
 
 // ─── About / More Data ────────────────────────────────────────────────────────
@@ -200,77 +120,8 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ─── NFL Mega Panel ───────────────────────────────────────────────────────────
-
-function NFLMegaPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-  style={{
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    background: '#fff',
-    borderBottom: '1px solid #e7e5e0',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-    zIndex: 50,
-  }}
-  onMouseLeave={onClose}
->
-      {/* Sub-nav */}
-      <div className="border-b border-stone-100 bg-white">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center gap-8 h-12">
-          {NFL_SUB_LINKS.map(link => (
-            <Link key={link.href} href={link.href} onClick={onClose}
-              className="font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
-              {link.label}
-            </Link>
-          ))}
-          <span className="ml-auto font-mono text-[9px] uppercase tracking-widest text-stone-400 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
-            Season starts Sep 9, 2026
-          </span>
-        </div>
-      </div>
-
-      {/* 8-division grid */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-x-6 gap-y-6">
-          {NFL_DIVISIONS.map(div => (
-            <div key={div.label}>
-              <div className="font-mono text-[9px] uppercase tracking-widest text-stone-400 mb-3 pb-1 border-b border-stone-100">
-                {div.label}
-              </div>
-              <div className="flex flex-col gap-2.5">
-                {div.teams.map(team => (
-                  <Link
-                    key={team.slug}
-                    href={`/nfl/teams/${team.slug}`}
-                    onClick={onClose}
-                    className="flex items-center gap-2 group"
-                  >
-                    <img
-                      src={`https://a.espncdn.com/i/teamlogos/nfl/500/${team.slug}.png`}
-                      alt=""
-                      className="w-5 h-5 object-contain shrink-0"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                    />
-                    <span className="font-sans text-[12px] text-stone-700 group-hover:text-stone-900 group-hover:underline transition leading-tight">
-                      {team.name.split(' ').slice(-1)[0]}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── About Dropdown Panel ─────────────────────────────────────────────────────
-// Deliberately narrow and anchored to the button (unlike MLB/NFL's full-width
+// Deliberately narrow and anchored to the button (unlike MLB's full-width
 // mega panels, which need the width for team grids) — five short links in a
 // full-width bar would look sparse and out of place.
 
@@ -398,6 +249,18 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
                   {link.pro && !isPro && <span style={proBadge}>PRO</span>}
                 </Link>
               ))}
+
+              <div style={{ ...sectionHead, marginTop: 32 }}>
+                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> Labs
+              </div>
+              {LABS_MENU.map(item => (
+                <Link key={item.href} href={item.href} onClick={onClose} style={menuLink}>
+                  {item.label}
+                  <span style={{ marginLeft: 8, fontFamily: 'var(--font-jetbrains), monospace', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8a8275' }}>
+                    {item.badge ?? STATUS_LABEL[item.status]}
+                  </span>
+                </Link>
+              ))}
               <div style={{ marginTop: 20 }}>
                 {MLB_DIVISIONS.slice(0, 3).map(div => (
                   <div key={div.label} style={{ marginBottom: 16 }}>
@@ -441,24 +304,9 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
               </div>
             </div>
 
-            {/* ─── COL 3: NFL + More ─── */}
+            {/* ─── COL 3: More ─── */}
             <div>
               <div style={sectionHead}>
-                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> NFL
-                <span style={{
-                  marginLeft: 8, fontFamily: 'Space Mono, monospace',
-                  fontSize: 9, letterSpacing: '0.12em',
-                  color: '#FF5722', border: '1px solid #FF572240',
-                  padding: '1px 6px',
-                }}>SEP 9</span>
-              </div>
-              {NFL_SUB_LINKS.map(link => (
-                <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
-                  {link.label}
-                </Link>
-              ))}
-
-              <div style={{ ...sectionHead, marginTop: 32 }}>
                 <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> More
               </div>
               {ABOUT_SUB_LINKS.map(link => (
@@ -589,7 +437,6 @@ type Props = { variant?: 'home' | 'page' }
 export default function SiteHeader({ variant = 'page' }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mlbOpen, setMlbOpen]       = useState(false)
-  const [nflOpen, setNflOpen]       = useState(false)
   const [aboutOpen, setAboutOpen]   = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isPro, setIsPro]           = useState(false)
@@ -597,7 +444,6 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
 
   const mlbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const nflTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const aboutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -613,9 +459,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
   // MLB hover handlers
   const openMlb = () => {
     if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
-    if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
     if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
-    setNflOpen(false)
     setAboutOpen(false)
     setMlbOpen(true)
   }
@@ -623,26 +467,11 @@ export default function SiteHeader({ variant = 'page' }: Props) {
     mlbTimerRef.current = setTimeout(() => setMlbOpen(false), 150)
   }
 
-  // NFL hover handlers
-  const openNfl = () => {
-    if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
-    if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
-    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
-    setMlbOpen(false)
-    setAboutOpen(false)
-    setNflOpen(true)
-  }
-  const closeNfl = () => {
-    nflTimerRef.current = setTimeout(() => setNflOpen(false), 150)
-  }
-
   // About hover handlers
   const openAbout = () => {
     if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
     if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
-    if (nflTimerRef.current) clearTimeout(nflTimerRef.current)
     setMlbOpen(false)
-    setNflOpen(false)
     setAboutOpen(true)
   }
   const closeAbout = () => {
@@ -692,20 +521,14 @@ export default function SiteHeader({ variant = 'page' }: Props) {
                   </button>
                 </div>
 
-                {/* NFL dropdown */}
-                <div className="relative h-full flex items-center" onMouseEnter={openNfl} onMouseLeave={closeNfl}>
-                  <button className={`py-2 font-sans text-[14px] transition flex items-center gap-1.5 ${nflOpen ? 'text-stone-900 font-bold' : 'text-stone-500 hover:text-stone-900'}`}>
-                    NFL
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`transition-transform ${nflOpen ? 'rotate-180' : ''}`}>
-                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </div>
 
 {/* Articles — standalone link, not a dropdown */}
                 <Link href="/articles" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition">
                   Articles
                 </Link>
+
+                {/* Labs — one data array drives it (src/lib/nav/labsMenu.ts) */}
+                <LabsMenu />
 
                 {/* About dropdown — replaces separate About / Why the Edge / Pricing / Past Games links */}
                 <div className="relative h-full flex items-center" onMouseEnter={openAbout} onMouseLeave={closeAbout}>
@@ -748,12 +571,6 @@ export default function SiteHeader({ variant = 'page' }: Props) {
           </div>
         )}
 
-        {/* NFL mega panel */}
-        {nflOpen && (
-          <div onMouseEnter={openNfl} onMouseLeave={closeNfl}>
-            <NFLMegaPanel onClose={() => setNflOpen(false)} />
-          </div>
-        )}
 
       </header>
 
