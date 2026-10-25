@@ -8,6 +8,7 @@
 // from MLB's own sp / rp situation splits (curl-verified) — so "bullpen ERA"
 // here is real relief ERA, not the whole staff.
 
+import type { ViewerTier } from '@/lib/require-pro-types'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import type { Team } from '@/lib/teams'
@@ -89,7 +90,7 @@ function BullpenBoard({ relievers }: { relievers: PitcherLine[] }) {
   )
 }
 
-export default function StaffSection({ team, profile: p, season, isPro }: { team: Team; profile: TeamProfile; season: number; isPro: boolean }) {
+export default function StaffSection({ team, profile: p, season, isPro, viewerTier }: { team: Team; profile: TeamProfile; season: number; isPro: boolean; viewerTier: ViewerTier }) {
   const row = p.row
   const pitchers = p.roster?.pitchers ?? []
   const starters = pitchers.filter(x => x.role === 'SP').sort((a, b) => b.gs - a.gs || b.ip - a.ip).slice(0, 6)
@@ -175,7 +176,7 @@ export default function StaffSection({ team, profile: p, season, isPro }: { team
 
       <div style={{ marginTop: 20 }}>
         <Suspense fallback={<Card title="What they throw"><Empty>Loading the staff&apos;s pitch mix…</Empty></Card>}>
-          <PitchMixPanel team={team} season={season} pitchers={pitchers} starters={starters} isPro={isPro} />
+          <PitchMixPanel team={team} season={season} pitchers={pitchers} starters={starters} viewerTier={viewerTier} />
         </Suspense>
       </div>
       <div style={{ marginTop: 16 }}><StaffPro team={team} profile={p} isPro={isPro} /></div>

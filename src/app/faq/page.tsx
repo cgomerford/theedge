@@ -29,7 +29,7 @@ const FAQS = [
       },
       {
         q: 'Is x9Lab free?',
-        a: 'Yes. The core daily brief — Edge Score, The Story, starting pitcher breakdown, and two key components — is free, always. Pro subscribers unlock all 8 components, deeper analytics, the Bullpen Fatigue Tracker, and eventually fantasy league sync. Pro is £4/month or £40/year for our first 100 founding members, then £6/month or £60/year.',
+        a: 'Yes. Game previews, scout reports, postgame reports and the daily email are free, always.',
       },
     ],
   },
@@ -68,19 +68,15 @@ const FAQS = [
     ],
   },
   {
-    section: 'Account & Pro',
+    section: 'Account',
     items: [
       {
         q: 'How do I sign up?',
         a: 'Drop your email on the homepage. We\'ll send a one-click verification link — no password needed. Pick which teams you follow and you\'re in. Takes about 30 seconds.',
       },
       {
-        q: 'When does Pro launch?',
-        a: 'We\'re targeting June 1, 2026. If you\'re reading this before then, get on the waitlist and we\'ll notify you the moment Pro goes live. Early subscribers will get a launch discount.',
-      },
-      {
-        q: 'Can I cancel Pro?',
-        a: 'Yes, any time. No cancellation fees, no awkward forms. If you cancel, you keep Pro access until the end of your billing period.',
+        q: 'Can I cancel?',
+        a: 'Yes, any time. No cancellation fees, no awkward forms. If you cancel, you keep access until the end of your billing period.',
       },
       {
         q: 'Do you store my payment details?',

@@ -231,17 +231,7 @@ function zoneLabelFor(zone: string, option: MatchupOption): string {
 
 function FactorRow({ f, locked }: { f: MatchupFactor; locked?: boolean }) {
   const against = f.direction === 'against'
-  if (locked) {
-    return (
-      <li className="flex items-center gap-3 px-3 py-2 rounded-xl bg-stone-50 border border-dashed border-stone-200">
-        <span className="w-[76px] flex justify-center text-stone-300 text-[15px]">⊕</span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-sans font-semibold text-stone-500 truncate">{f.title}</p>
-          <p className="text-[9px] font-mono uppercase tracking-wider text-amber-600">Pro · unlock the numbers</p>
-        </div>
-      </li>
-    )
-  }
+  if (locked) return null
   return (
     <li className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${against ? 'bg-rose-50/40 border-rose-100' : 'bg-white border-stone-150'}`}>
       <div className="w-[92px] min-h-[40px] flex items-center justify-center shrink-0">
@@ -571,17 +561,7 @@ function WhyThisWorks({ text }: { text: string | null }) {
 // ─── Locked popup — free users ────────────────────────────────────────────
 
 function LockedTeaser({ playerName, onClose }: { playerName: string; onClose: () => void }) {
-  return (
-    <DetailModal eyebrow="Key player breakdown" title={playerName} onClose={onClose}>
-      <div className="bg-stone-900 rounded-xl p-4 space-y-3">
-        <p className="text-[10px] uppercase tracking-widest text-amber-300 font-bold">⊕ Full matchup breakdown is a Pro feature</p>
-        <p className="text-[11px] text-stone-300 leading-relaxed">
-          All five matchup factors with the numbers behind them, hot-zone overlays across all 13 real zones, a pitch-by-pitch breakdown of why each pitch does or doesn&apos;t work, and a direct link into Batting/Pitching Lab.
-        </p>
-        <a href="/pricing" className="block text-center text-[10.5px] font-bold px-3 py-2 bg-amber-300 text-stone-900 rounded-lg">Unlock full breakdown →</a>
-      </div>
-    </DetailModal>
-  )
+  return null
 }
 
 // ─── Full popup — Pro ─────────────────────────────────────────────────────
@@ -705,7 +685,7 @@ function KeyPlayerCard({ data, isFinal, isPro, result }: {
           <div className="flex items-center gap-2">
             <span className="font-sans font-bold text-stone-900 text-[15px] leading-tight truncate tracking-tight">{data.playerName}</span>
             {isPitcher && <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-500 border border-stone-200 shrink-0">SP</span>}
-            {!isPro && <span className="text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 border border-amber-200 shrink-0">Pro</span>}
+            
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className={`inline-flex items-center gap-1.5 text-[12px] font-mono font-semibold ${lean.color}`}>

@@ -73,6 +73,7 @@ export default async function PlayerPage({
         data={data}
         initialSection={tab}
         isPro={isPro}
+        viewerTier={isPro ? 'pro' : subscriber ? 'member' : 'anon'}
         followSlot={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />}
         // Built ONLY for Pro: a non-Pro request never queries or renders trend data.
         trendsSlot={isPro ? (

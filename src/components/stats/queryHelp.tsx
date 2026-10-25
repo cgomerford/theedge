@@ -30,11 +30,11 @@ const WORDS: { label: string; says: string }[] = [
   { label: 'Inning', says: 'after the 6th inning · 9th inning · extra innings · late innings · first inning' },
   { label: 'Count', says: 'full count · two strikes · first pitch · ahead / behind in the count · 0-2 count' },
   { label: 'Outs & runners', says: 'two outs · bases loaded · runners in scoring position · bases empty · runners on' },
-  { label: 'Score', says: 'when leading · when trailing · tied game · late and close · trailing by 1-3 (Pro)' },
+  { label: 'Score', says: 'when leading · when trailing · tied game · late and close · trailing by 1-3' },
   { label: 'Who', says: 'vs lefties · vs righties · pinch hitters · starters · relievers · day games · night games · at home · on the road' },
-  { label: 'At-bat length', says: '16+ pitch at-bats · 8-pitch at-bats · long at-bats (Pro)' },
+  { label: 'At-bat length', says: '16+ pitch at-bats · 8-pitch at-bats · long at-bats' },
   { label: 'Stat', says: 'batting average · OPS · home runs · stolen bases · ERA · WHIP · errors · fielding percentage · …' },
-  { label: 'Show it as', says: 'by inning · by count · by month · by team · by position · leaders · last time it happened (Pro)' },
+  { label: 'Show it as', says: 'by inning · by count · by month · by team · by position · leaders · last time it happened' },
 ]
 
 const box: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 8, overflow: 'hidden' }

@@ -173,7 +173,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
         <span className="pv-k">Pitch</span>
         {pitchTypes.map(t => {
           const lockedT = !isPro && !isFree(t)
-          return <button key={t} type="button" disabled={lockedT} title={lockedT ? 'Pro' : undefined} className={`pv-pill${t === type ? ' on' : ''}`} style={lockedT ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => setType(t)}>{PITCH_NAMES[t] ?? t}{lockedT ? ' · Pro' : ''}</button>
+          return <button key={t} type="button" disabled={lockedT} className={`pv-pill${t === type ? ' on' : ''}`} style={lockedT ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => setType(t)}>{PITCH_NAMES[t] ?? t}{lockedT ? ' · Pro' : ''}</button>
         })}
         <span className="pv-k" style={{ marginLeft: 10 }}>Thrown by</span>
         <button type="button" className={`pv-pill${hand === 'R' ? ' on' : ''}`} onClick={() => setHand('R')}>Right-handers</button>

@@ -56,9 +56,7 @@ export function NotebookTray({ isPro }: { isPro: boolean }) {
     <div role="status" aria-live="polite" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40, background: C.ink, color: C.cream, padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderTop: `2px solid ${C.orange}` }}>
       <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.yellow }}>Notebook · {pins.length} pinned</span>
       <span style={{ fontFamily: SANS, fontSize: 12.5, flex: 1, minWidth: 180, opacity: .85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {upsell && !isPro
-          ? <>Pinning and exporting a notebook are part of Pro. <Link href="/pricing" style={{ color: C.yellow, fontWeight: 700 }}>Unlock with Pro →</Link></>
-          : pins.length ? pins.map(p => p.title).join(' · ') : 'Pin any chart to build your own read.'}
+        {pins.length ? pins.map(p => p.title).join(' · ') : 'Pin any chart to build your own read.'}
       </span>
       {isPro && <>
         <button onClick={clear} disabled={!pins.length} style={{ ...btn, background: 'transparent', color: C.cream, borderColor: '#555', opacity: pins.length ? 1 : .4 }}>Clear</button>

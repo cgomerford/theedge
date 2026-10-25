@@ -9,14 +9,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getPlayerPageData } from '@/lib/player-page'
-import { requirePro } from '@/lib/require-pro'
 
 export const revalidate = 3600
 
 export async function GET(req: NextRequest) {
-  // Pro-only data (Batting / Pitching Lab). Enforced server-side — the UI lock is not the gate.
-  const denied = await requirePro()
-  if (denied) return denied
+  // Public player bio (same data as the free player page).
   const { searchParams } = new URL(req.url)
   const playerId = Number(searchParams.get('playerId'))
   if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })

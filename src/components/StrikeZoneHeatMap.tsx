@@ -266,15 +266,6 @@ export default function StrikeZoneHeatMap({
             {hotZone?.ba != null && ` This batter hits ${hotZone.ba.toFixed(3)} in their hottest zone — pitch there at your peril.`}
           </div>
 
-          {!isPro && (
-            <div style={{
-              marginTop: 8, padding: '6px 10px',
-              background: '#FFF3E0', borderRadius: 6,
-              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#E65100',
-            }}>
-              ⊕ Pro — unlock xwOBA view to see which zones produce the most dangerous contact
-            </div>
-          )}
         </>
       )}
     </div>

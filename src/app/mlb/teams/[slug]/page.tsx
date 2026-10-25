@@ -91,6 +91,7 @@ export default async function TeamRoute({ params, searchParams }: Props) {
         season={season}
         todayET={todayET}
         isPro={isPro}
+        viewerTier={isPro ? 'pro' : subscriber ? 'member' : 'anon'}
         nextGame={nextGame}
         schedule={schedule}
         news={news}

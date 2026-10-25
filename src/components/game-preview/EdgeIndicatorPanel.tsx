@@ -801,17 +801,7 @@ function FactorDetailModal({
               </div>
               <ProDrillDown factorKey={factorKey} raw={raw} awayColor={awayColor} homeColor={homeColor} />
             </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 bg-stone-900 rounded-lg px-4 py-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-amber-300 font-bold mb-1">⊕ Pro — full drill-down</p>
-                <p className="text-xs text-stone-300">{meta.proTeaser}</p>
-              </div>
-              <a href="/pricing" onClick={(e) => e.stopPropagation()} className="shrink-0 text-[10px] font-bold px-3 py-1.5 bg-amber-300 text-stone-900 rounded whitespace-nowrap">
-                Unlock →
-              </a>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -920,12 +910,6 @@ export default function EdgeIndicatorPanel(props: EdgeIndicatorPanelProps) {
           {isPro && props.llm_narrative_pro && (
             <p className="text-[11.5px] text-stone-600 leading-relaxed">{props.llm_narrative_pro}</p>
           )}
-          {!isPro && props.llm_narrative_pro && (
-            <div className="flex items-center justify-between gap-3 bg-stone-900 rounded-lg px-3 py-2.5">
-              <p className="text-[10px] text-stone-300">⊕ Deeper analysis is a Pro feature</p>
-              <a href="/pricing" className="shrink-0 text-[9.5px] font-bold px-2.5 py-1 bg-amber-300 text-stone-900 rounded whitespace-nowrap">Unlock →</a>
-            </div>
-          )}
         </div>
       )}
 
@@ -956,14 +940,6 @@ export default function EdgeIndicatorPanel(props: EdgeIndicatorPanelProps) {
           />
         ))}
       </div>
-
-      {!isPro && (
-        <div className="mx-4 mb-3 bg-stone-900 rounded-lg px-3.5 py-3">
-          <p className="text-[10px] text-amber-300 font-bold uppercase tracking-wide mb-1">⊕ Pro · £4/mo founding rate</p>
-          <p className="text-[11px] text-stone-300 leading-snug mb-2">Full drill-down on every factor — every stat behind the numbers.</p>
-          <a href="/pricing" className="inline-block text-[10px] font-bold px-3 py-1.5 bg-amber-300 text-stone-900 rounded">See Pro pricing →</a>
-        </div>
-      )}
 
       {isPro && props.pro_takeaways && props.pro_takeaways.length > 0 && (
         <div className="px-4 pb-3 space-y-2">

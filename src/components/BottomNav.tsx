@@ -83,7 +83,7 @@ const TABS_LOGGED_OUT: Tab[] = [
     icon: <IconDiamond />,
   },
   {
-    key: 'pricing', label: 'Pro', href: '/pricing', match: ['/pricing'],
+    key: 'pricing', label: 'Labs', href: '/pricing', match: ['/pricing'],
     icon: <Target size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
   {

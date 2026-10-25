@@ -112,16 +112,8 @@ export function Chip({ on, onClick, children, title, solid = false }: { on: bool
 
 // ── Pro lock + exports ──────────────────────────────────────────────────
 
-export function ProLockBar({ features }: { features: string[] }) {
-  return (
-    <div data-noexport="1" style={{ border: '1.5px dashed #d8d2c4', borderRadius: 8, padding: '12px 16px', background: 'rgba(255,255,255,.55)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-      <ProBadge />
-      <span style={{ fontFamily: SANS, fontSize: 13, color: '#5b5347', flex: 1, minWidth: 220 }}>{features.join(' · ')}</span>
-      <Link href="/pricing" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', background: C.ink, color: C.cream, padding: '8px 12px', borderRadius: 8, textDecoration: 'none' }}>
-        Unlock with Pro →
-      </Link>
-    </div>
-  )
+export function ProLockBar(_props: { features: string[] }) {
+  return null
 }
 
 const smallBtn: React.CSSProperties = {

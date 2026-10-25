@@ -19,7 +19,7 @@ export default function ProfileTabs({ tabs, initial }: { tabs: ProfileTab[]; ini
   return (
     <Suspense fallback={null}>
       <Tabs
-        tabs={tabs.map(t => ({ id: t.id, label: t.label, badge: t.pro ? 'PRO' : undefined }))}
+        tabs={tabs.map(t => ({ id: t.id, label: t.label, badge: undefined }))}
         defaultTab={tabs[0]?.id}
         panels={Object.fromEntries(tabs.map(t => [t.id, <div key={t.id} style={{ paddingTop: 22 }}>{t.content}</div>]))}
         label="Player sections"

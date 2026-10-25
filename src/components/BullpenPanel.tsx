@@ -346,64 +346,9 @@ function Legend() {
 
 /* ── Paywall ─────────────────────────────────────────────────────────── */
 
+// Not Pro: nothing here. The page's own gate (if it has one) is the only upgrade prompt.
 function BullpenPaywall() {
-  return (
-    <div style={{
-      textAlign:    'center',
-      padding:      '48px 24px',
-      background:   '#FAF8F3',
-      borderRadius: 10,
-      border:       '1px dashed rgba(26,26,26,0.15)',
-    }}>
-      <div style={{
-        fontFamily:    'Red Hat Display, sans-serif',
-        fontSize:      10,
-        color:         '#FF5722',
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-        marginBottom:  12,
-      }}>
-        ⊕ Pro Feature
-      </div>
-      <p style={{
-        fontFamily:   'Red Hat Display, sans-serif',
-        fontSize:     16,
-        color:        '#1A1A1A',
-        marginBottom: 6,
-        lineHeight:   1.5,
-      }}>
-        Bullpen availability — who's actually ready tonight
-      </p>
-      <p style={{
-        fontFamily:   'system-ui, sans-serif',
-        fontSize:     13,
-        color:        '#6B6B6B',
-        margin:       '0 auto 24px',
-        maxWidth:     340,
-        lineHeight:   1.6,
-      }}>
-        Pitch load for every reliever over the last 3 days. Know before first pitch which arms are rested and which manager is going to the next man down.
-      </p>
-      <Link
-        href="/pricing"
-        style={{
-          display:        'inline-block',
-          background:     '#FF5722',
-          color:          '#FFFFFF',
-          fontFamily:     'Red Hat Display, sans-serif',
-          fontSize:       11,
-          fontWeight:     700,
-          padding:        '10px 22px',
-          borderRadius:   6,
-          textDecoration: 'none',
-          letterSpacing:  '0.05em',
-          textTransform:  'uppercase',
-        }}
-      >
-        Unlock Pro →
-      </Link>
-    </div>
-  )
+  return null
 }
 
 /* ── Main export ─────────────────────────────────────────────────────── */

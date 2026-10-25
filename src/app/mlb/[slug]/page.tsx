@@ -52,6 +52,7 @@ import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
 import SignupAsk from '@/components/signup/SignupAsk'
+import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
 import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
 import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
@@ -201,7 +202,7 @@ type TeamCtx = {
   pitcherId?: number; pitcherName?: string
 }
 type GameCtx = {
-  slug: string; isPro: boolean; gamePk: number; season: number
+  slug: string; isPro: boolean; viewerTier: ViewerTier; gamePk: number; season: number
   gameDateApi: string; gameDateIso: string; gameTimeFormatted: string; venueName: string
   home: TeamCtx; away: TeamCtx
 }
@@ -451,7 +452,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
   const venueInfo = getVenueInfo(venueName)
 
   const ctx: GameCtx = {
-    slug, isPro, gamePk: game.gamePk, season: new Date().getFullYear(),
+    slug, isPro, viewerTier: isPro ? 'pro' : subscriber ? 'member' : 'anon', gamePk: game.gamePk, season: new Date().getFullYear(),
     gameDateApi: game.gameDate?.split('T')[0] ?? dateMatch[1],
     gameDateIso: game.gameDate,
     gameTimeFormatted: new Date(game.gameDate).toLocaleTimeString('en-US', {
@@ -522,7 +523,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
                   <Suspense fallback={battingCardFallback}>
                     <TeamBatterCard
                       slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
-                      venueName={venueName} isPro={isPro}
+                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier}
                       opposingPitcherId={opp.pitcherId ?? null}
                       opposingPitcherName={opp.pitcherName ?? null}
                     />

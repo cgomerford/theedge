@@ -120,7 +120,7 @@ export default async function ScoutReportPage({ params, searchParams }: Props) {
         </div>
 
         <div className="px-4 py-6" style={centered}>
-          <ScoutReport game={game} gameDate={dateMatch[1]} isPro={isPro} />
+          <ScoutReport game={game} gameDate={dateMatch[1]} />
           <SignupAsk source="scout_report_end" />
         </div>
       </div>

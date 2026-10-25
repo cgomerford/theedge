@@ -131,7 +131,7 @@ export default function PitcherOverviewPage() {
       {/* Vs teammates + similar arsenal */}
       <div className="grid lg:grid-cols-2 gap-5">
         <TeammateComparison pitcherId={playerId} teamId={identity?.currentTeam?.id ?? null} season={SEASON} />
-        <SimilarPitchers pitcherId={playerId} season={SEASON} />
+        {data.isPro ? <SimilarPitchers pitcherId={playerId} season={SEASON} /> : null}
       </div>
 
       {/* Career stats */}

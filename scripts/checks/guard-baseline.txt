@@ -34,3 +34,5 @@ logos	src/components/admin/story-v5/teams.ts
 logos	src/components/admin/story-v5/__fixtures__/preview-849802.json
 fetch	src/components/signup/EmailSignupForm.tsx
 fetch	src/components/signup/FollowButton.tsx
+fetch	src/components/pro/ProCheckoutButton.tsx
+fetch	src/components/pro/ManageSubscriptionButton.tsx

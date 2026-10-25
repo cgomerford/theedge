@@ -4,9 +4,7 @@
 //
 //   isPro  → a native <details> card (server-rendered, no client JS) that
 //            expands in place to show the advanced view.
-//   !isPro → a locked card: what is inside, and an upgrade link. It shows NO
-//            numbers and no blurred fake chart — empty state over fabricated
-//            data (CLAUDE.md) — just a plain-language list of what unlocks.
+//   !isPro → nothing. Upgrade prompts live only in the page's one ProGate (src/components/pro/ProGate.tsx).
 //
 // `isPro` is a REQUIRED prop and never defaulted (CLAUDE.md gotcha: a default
 // of true once leaked Pro content to logged-out users). Callers must also NOT
@@ -26,8 +24,9 @@ const CSS = `
 .pp-chev{display:inline-block;transition:transform .15s}
 `
 
+// Plan names are not shown to anyone, so the PRO badge renders nothing (kept so existing imports compile).
 export function ProBadge() {
-  return <span style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 9, fontWeight: 700, letterSpacing: '.12em', background: '#FDE047', color: '#1A1A1A', padding: '3px 7px', borderRadius: 5 }}>PRO</span>
+  return null
 }
 
 export default function ProPanel({
@@ -46,29 +45,8 @@ export default function ProPanel({
   showLabLinkWhenOpen?: boolean
   children?: React.ReactNode
 }) {
-  if (!isPro) {
-    return (
-      <div style={{ border: '1.5px dashed #d8d2c4', borderRadius: 14, padding: 20, background: 'rgba(255,255,255,.55)' }}>
-        <style dangerouslySetInnerHTML={{ __html: CSS }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <ProBadge />
-          <span style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, color: '#1A1A1A', letterSpacing: '.02em' }}>{title}</span>
-        </div>
-        <p style={{ fontFamily: SANS, fontSize: 13, color: '#5b5347', margin: '8px 0 12px', lineHeight: 1.5, maxWidth: 680 }}>{blurb}</p>
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '6px 20px' }}>
-          {features.map(f => (
-            <li key={f} style={{ fontFamily: SANS, fontSize: 12.5, color: '#3a352c', display: 'flex', gap: 8, lineHeight: 1.4 }}>
-              <span style={{ color: '#FF5722', flexShrink: 0 }}>◆</span>{f}
-            </li>
-          ))}
-        </ul>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, marginTop: 16 }}>
-          <Link href={upgradeHref} style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', padding: '9px 14px', borderRadius: 8, textDecoration: 'none' }}>Unlock with Pro →</Link>
-          {labHref && <Link href={labHref} style={{ fontFamily: SANS, fontVariantNumeric: 'tabular-nums', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none', fontWeight: 700 }}>{labLabel ?? 'Open the lab'} →</Link>}
-        </div>
-      </div>
-    )
-  }
+  // Not Pro: nothing here. The page's single ProGate is the only place a visitor is asked to upgrade.
+  if (!isPro) return null
 
   return (
     <details className="pp-det" open={defaultOpen} style={{ border: '1px solid #e7e2d8', borderRadius: 14, background: '#fff' }}>

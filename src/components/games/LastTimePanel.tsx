@@ -169,23 +169,7 @@ export default function LastTimePanel({ game, play, pitch, isPro }: { game: ExGa
   const heading = past ? 'When had this happened before?' : 'When did this last happen?'
   const subject = mode === 'pitch' && pitch ? `pitch ${pitch.n}` : mode === 'contact' ? 'the batted ball' : 'this plate appearance'
 
-  if (!isPro) {
-    return (
-      <div style={{ fontFamily: SANS }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: C.orange, textTransform: 'uppercase' }}>⊕ {heading}</h3>
-        <div style={{ border: `1.5px dashed ${C.ink}`, borderRadius: 14, padding: 18, background: '#fff' }}>
-          <span style={{ display: 'inline-block', background: C.yellow, fontWeight: 800, fontSize: 9, letterSpacing: '.1em', borderRadius: 5, padding: '2px 6px' }}>PRO</span>
-          <h4 style={{ margin: '6px 0 4px', fontSize: 17, fontWeight: 800 }}>Find the last time something like this happened</h4>
-          <ul style={{ margin: '6px 0 12px', paddingLeft: 18, color: '#5b5347', fontSize: 13 }}>
-            <li>Choose any pitch, batted ball or whole plate appearance</li>
-            <li>Match it for this batter, against this pitcher or club, or across the lineup</li>
-            <li>Filter by season span and game type, with the sample behind every answer</li>
-          </ul>
-          <Link href="/pricing" style={{ display: 'inline-block', background: C.orange, color: '#fff', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Unlock with Pro</Link>
-        </div>
-      </div>
-    )
-  }
+  if (!isPro) return null
 
   const toggles: { k: keyof typeof on; label: string; off?: boolean }[] = [
     { k: 'outs', label: `${play.outs} out${play.outs === 1 ? '' : 's'}` },

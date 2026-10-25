@@ -121,7 +121,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
           We&apos;ll only send briefs for games featuring teams you follow.
           {subscriber.is_pro
             ? ' Pick as many as you like.'
-            : ' Free accounts can follow up to 3 teams — upgrade to Pro for unlimited.'}
+            : ' Free accounts can follow up to 3 teams.'}
         </p>
 
         <p className="text-sm font-mono text-stone-500 mb-12">

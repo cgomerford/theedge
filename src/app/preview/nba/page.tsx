@@ -209,11 +209,8 @@ export default function NBAPreviewPage() {
             <div className="bg-stone-900 text-stone-100 p-6 border border-stone-800 space-y-4 shadow-lg">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                 <div>
-                  <span className="text-[10px] font-mono tracking-widest text-yellow-400 font-bold uppercase">
-                    Pro is £4/month or £40/year for our first 100 founding members, then £6/month or £60/year.
-                  </span>
                   <h3 className="text-xl font-serif font-bold text-white tracking-tight mt-0.5">
-                    Unlock all 8 advanced metrics.
+                    All 8 advanced metrics.
                   </h3>
                 </div>
                 <Link

@@ -263,9 +263,7 @@ function PlayerColumn({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-stone-500">
                     {tip ? <MetricTip tip={tip}>{row.label}</MetricTip> : row.label}
                   </span>
-                  {locked ? (
-                    <span className="text-[10px] font-mono text-stone-300">Pro</span>
-                  ) : (
+                  {!locked && (
                     <span className="font-mono text-sm font-bold text-stone-900">
                       {row.seasonValue !== null ? row.seasonValue : '—'}
                     </span>
@@ -289,11 +287,6 @@ function PlayerColumn({
         </div>
       )}
 
-      {!isPro && (
-        <p className="text-[9px] font-mono text-stone-300 mt-3 pt-3 border-t border-stone-100">
-          Pro unlocks full metric breakdown + league percentile rank for every stat.
-        </p>
-      )}
     </div>
   )
 }

@@ -13,7 +13,6 @@ import XMark from '@/components/XMark'
 import Link from 'next/link'
 import type { ScoutSectionMeta } from './sections'
 
-const TIER_LABEL = { free: 'Free', teaser: 'Free teaser · Pro full', pro: 'Pro' } as const
 
 export default function ScoutSection({
   meta, locked, compact = false, children,
@@ -31,17 +30,9 @@ export default function ScoutSection({
           <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold"><XMark /> {String(meta.num).padStart(2, '0')}</p>
           <h2 className={`font-sans font-bold text-stone-900 tracking-tight leading-tight mt-0.5 ${compact ? 'text-[14px]' : 'text-[17px]'}`}>{meta.title}</h2>
         </div>
-        <span className={`shrink-0 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
-          meta.tier === 'pro' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-stone-100 text-stone-500 border-stone-200'
-        }`}>{TIER_LABEL[meta.tier]}</span>
       </div>
 
-      {live && locked ? (
-        <div className="rounded-xl bg-stone-50 border border-stone-200 px-4 py-5 text-center">
-          <p className="text-[12px] font-sans text-stone-500 leading-relaxed">This section is part of the Pro Scout Report.</p>
-          <Link href="/pricing" className="inline-block mt-2 text-[10px] font-mono uppercase tracking-widest text-orange-600 font-semibold hover:text-orange-700">See Pro →</Link>
-        </div>
-      ) : live ? (
+      {live ? (
         children
       ) : (
         <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50 p-3">

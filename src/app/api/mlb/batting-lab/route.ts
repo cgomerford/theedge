@@ -13,7 +13,7 @@ import { getBatterSeasonStats, getBatterStatcast, type BatterStatcast } from '@/
 import { getBatterBatSpeedProfile } from '@/lib/batter-bat-speed'
 import { getMetricPercentile, LEADER_METRICS } from '@/lib/lab'
 import { MLB_TEAMS } from '@/lib/teams'
-import { requirePro } from '@/lib/require-pro'
+import { isProViewer } from '@/lib/require-pro'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -52,20 +52,20 @@ function formatStatcastRows(sc: BatterStatcast | null): { key: string; label: st
 }
 
 export async function GET(req: NextRequest) {
-  // Pro-only data (Batting / Pitching Lab). Enforced server-side — the UI lock is not the gate.
-  const denied = await requirePro()
-  if (denied) return denied
   const { searchParams } = new URL(req.url)
   const batterId = Number(searchParams.get('batterId'))
   if (!batterId) return NextResponse.json({ error: 'Missing batterId' }, { status: 400 })
 
   const season = new Date().getFullYear()
 
+  // Overview fields (bio, season line, Statcast quality-of-contact rows, percentiles) are free. The raw Statcast object and
+  // the bat-speed profile are Pro-only and neither fetched nor returned for anyone else.
+  const isPro = await isProViewer()
   const [personRes, seasonStats, statcast, batSpeed, ...percentileResults] = await Promise.all([
     fetch(`${MLB_API}/people/${batterId}?hydrate=currentTeam`, { next: { revalidate: 3600 } }),
     getBatterSeasonStats(batterId),
     getBatterStatcast(batterId),
-    getBatterBatSpeedProfile(batterId),
+    isPro ? getBatterBatSpeedProfile(batterId) : Promise.resolve(null),
     ...HITTING_PERCENTILE_KEYS.map(k => getMetricPercentile(k, season, batterId)),
   ])
 
@@ -116,6 +116,7 @@ export async function GET(req: NextRequest) {
   }))
 
   return NextResponse.json({
+    isPro,
     id: batterId,
     name,
     abbr,
@@ -123,7 +124,7 @@ export async function GET(req: NextRequest) {
     bio,
     seasonStatRows: [...seasonStatRows, ...formatStatcastRows(statcast)],
     percentileRows,
-    statcast,
+    statcast: isPro ? statcast : null,
     batSpeed,
   })
 }

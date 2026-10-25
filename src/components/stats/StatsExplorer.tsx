@@ -276,7 +276,7 @@ function StatsGrid({
                 <button
                   onClick={() => toggleCompare(p.id)}
                   disabled={!selected && compare.size >= compareLimit}
-                  title={!selected && compare.size >= compareLimit ? (compareLimit === 2 ? 'Free compares up to 2 — upgrade to Pro for 6' : `Compare is capped at ${compareLimit} — remove one first`) : undefined}
+                  title={!selected && compare.size >= compareLimit ? (compareLimit === 2 ? 'Compare is capped at 2 — remove one first' : `Compare is capped at ${compareLimit} — remove one first`) : undefined}
                   className={`w-6 h-6 rounded-full border text-xs transition-colors ${
                     selected
                       ? 'bg-[#FF5722] border-[#FF5722] text-white'

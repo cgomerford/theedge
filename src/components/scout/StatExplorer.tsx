@@ -42,7 +42,7 @@ type Layers = { dots: boolean; overlay: 'none' | 'other' | string }   // string 
 const shortDate = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`
 
 function ProChip() {
-  return <span className="ml-1 text-[8px] font-mono uppercase tracking-wider px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 align-middle">Pro</span>
+  return null
 }
 
 function windowValues(club: ExplorerClub, key: string, w: number): (number | null)[] {
@@ -325,7 +325,7 @@ export default function StatExplorer({ stats, clubs, meta, tiles, defaultStat, d
               <Link href="/pricing" className="text-[10.5px] font-sans text-orange-600 hover:text-orange-700 underline decoration-dotted">Compare clubs or stats on one chart — Pro</Link>
             )}
           </label>
-          <p className="text-[10px] font-sans text-stone-400">Flag a player&apos;s starts under each chart{!isPro && ' (Pro)'}.</p>
+          <p className="text-[10px] font-sans text-stone-400">Flag a player&apos;s starts under each chart.</p>
         </div>
       </div>
 

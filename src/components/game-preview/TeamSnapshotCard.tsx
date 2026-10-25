@@ -62,29 +62,17 @@ export default function TeamSnapshotCard({
           the Scout Report goes into, previewed here so there's a reason
           to unlock without leaving the game preview. */}
       {seasonStats && (
-        isPro ? (
           <div className="mb-3 pt-3 border-t border-stone-100">
-            <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-1">More this season</p>
-            <div className="grid grid-cols-2 gap-x-3">
-              <StatRow label="OBP" value={seasonStats.obp} />
-              <StatRow label="SLG" value={seasonStats.slg} />
-              <StatRow label="Runs" value={String(seasonStats.runs)} />
-              <StatRow label="SB" value={String(seasonStats.stolenBases)} />
-              <StatRow label="BB / K" value={`${seasonStats.walks} / ${seasonStats.strikeOuts}`} />
-              <StatRow label="W-L (SV)" value={`${seasonStats.wins}-${seasonStats.losses} (${seasonStats.saves})`} />
-            </div>
+          <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-1">More this season</p>
+          <div className="grid grid-cols-2 gap-x-3">
+            <StatRow label="OBP" value={seasonStats.obp} />
+            <StatRow label="SLG" value={seasonStats.slg} />
+            <StatRow label="Runs" value={String(seasonStats.runs)} />
+            <StatRow label="SB" value={String(seasonStats.stolenBases)} />
+            <StatRow label="BB / K" value={`${seasonStats.walks} / ${seasonStats.strikeOuts}`} />
+            <StatRow label="W-L (SV)" value={`${seasonStats.wins}-${seasonStats.losses} (${seasonStats.saves})`} />
           </div>
-        ) : (
-          <div className="mb-3 pt-3 border-t border-stone-100">
-            <div className="flex items-center justify-between gap-3 bg-stone-900 rounded-lg px-3 py-2.5">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-amber-300 font-bold mb-0.5">⊕ More season stats</p>
-                <p className="text-[10px] text-stone-300">OBP · SLG · Runs · SB · BB/K · W-L</p>
-              </div>
-              <a href="/pricing" className="shrink-0 text-[9.5px] font-bold px-2.5 py-1.5 bg-amber-300 text-stone-900 rounded whitespace-nowrap">Unlock →</a>
-            </div>
-          </div>
-        )
+        </div>
       )}
 
       <div className="mb-3">

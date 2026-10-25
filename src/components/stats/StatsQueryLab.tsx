@@ -393,11 +393,11 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
       if (state.from == null) { state.from = CURRENT_SEASON; state.to = CURRENT_SEASON }
       notes.push(...describeDeep({ stack: [], who: mu.who }))
     } else if (!isPro && extractMatchup(s)?.team) {
-      notes.push('Player-vs-club searches are a Pro feature')
+      notes.push('Player-vs-club searches are not available on your account')
     }
     const grp = state.group ?? q.group
     if (state.deep && !isPro) {
-      notes.push('Stacking filters is a Pro feature — applied the first one only')
+      notes.push('Stacking filters is not available on your account — applied the first one only')
       state.split = state.deep.stack[0] ?? ''
       state.deep = null
     }
@@ -410,7 +410,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
     setUnderstood(notes)
     setChosen(picked.length ? picked : [state.metric])
     if (state.view === 'recent' && !isPro) {
-      notes.push('The last-happened finder is a Pro feature — showing the overall numbers')
+      notes.push('The last-happened finder is not available on your account — showing the overall numbers')
       state.view = 'summary'
     }
     setOutput('table')
@@ -497,7 +497,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
             {(['simple', 'pro'] as const).map(m => (
               <button key={m} type="button" aria-pressed={mode === m} onClick={() => switchMode(m)}
                 style={{ fontFamily: SANS, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', padding: '7px 16px', borderRadius: 4, background: mode === m ? C.ink : 'transparent', color: mode === m ? '#fff' : C.mute }}>
-                {m === 'simple' ? 'Simple' : 'Pro filters'}
+                {m === 'simple' ? 'Simple' : 'More filters'}
               </button>
             ))}
           </div>
@@ -671,7 +671,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
             {q.group !== 'fielding' && (
               <Field label="How many at once" hint="Quick: one situation at a time, any year — fast. Stack filters: combine as many as you like (7th inning or later AND runners in scoring position AND a 6+ pitch at-bat). Stacking loads every pitch, so the first search is slower.">
                 <SegBar<'quick' | 'deep'> value={engineDeep ? 'deep' : 'quick'} onChange={v => setEngine(v === 'deep')}
-                  options={[{ key: 'quick', label: 'One situation · quick' }, { key: 'deep', label: 'Stack filters · Pro' }]} />
+                  options={[{ key: 'quick', label: 'One situation · quick' }, { key: 'deep', label: 'Stack filters' }]} />
               </Field>
             )}
             {engineDeep && q.group !== 'fielding' ? (

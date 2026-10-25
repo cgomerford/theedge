@@ -64,8 +64,10 @@ function Skeleton() {
   )
 }
 
-export default function ScoutReport({ game, gameDate, isPro }: { game: MLBGame; gameDate: string; isPro: boolean }) {
-  const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro,
+// The Scout Report has no Pro gate: every section is free for everyone. `ctx.isPro` stays true on purpose so the sections
+// that used to hold back extras (flag games, overlays, the full watch-for list) show them to all readers.
+export default function ScoutReport({ game, gameDate }: { game: MLBGame; gameDate: string }) {
+  const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro: true,
     venueId: (game.venue as { id?: number }).id ?? null, venueName: game.venue.name, dayNight: game.dayNight ?? null }
   const withStatus = SCOUT_SECTIONS.map((meta) => ({ ...meta, status: SECTION_BODIES[meta.id] ? ('live' as const) : ('planned' as const) }))
   const live = withStatus.filter((s) => s.status === 'live')
@@ -95,7 +97,7 @@ export default function ScoutReport({ game, gameDate, isPro }: { game: MLBGame; 
         </nav>
 
         {live.map((meta) => (
-          <ScoutSection key={meta.id} meta={meta} locked={meta.tier === 'pro' && !isPro}>
+          <ScoutSection key={meta.id} meta={meta} locked={false}>
             <Suspense fallback={<Skeleton />}>{SECTION_BODIES[meta.id]?.(ctx)}</Suspense>
           </ScoutSection>
         ))}
@@ -104,7 +106,7 @@ export default function ScoutReport({ game, gameDate, isPro }: { game: MLBGame; 
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-semibold mb-2">Coming next</p>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {planned.map((meta) => <ScoutSection key={meta.id} meta={meta} locked={meta.tier === 'pro' && !isPro} compact />)}
+              {planned.map((meta) => <ScoutSection key={meta.id} meta={meta} locked={false} compact />)}
             </div>
           </div>
         )}

@@ -1,13 +1,9 @@
 // src/app/mlb/lab/pitching-lab/[playerId]/layout.tsx
 //
-// SERVER layout: the Pro gate for every /mlb/lab/pitching-lab/[playerId]/* page. The
-// lab UI itself (LabShell.tsx — the old client layout, unchanged) only renders
-// for Pro members; everyone else gets the locked screen and none of the lab's
-// client code or data requests run. The lab's data APIs are gated separately
-// (lib/require-pro.ts), so bypassing this page doesn't reach the data either.
+// SERVER layout for every /mlb/lab/pitching-lab/[playerId]/* page: 404s unknown ids, sets the title, wraps the lab shell.
+// The Overview tab is free; every other tab lives in the (pro) route group behind the page's one ProGate. The lab's
+// data API (/api/mlb/pitching-lab) only returns the overview fields to people without Pro.
 
-import { isProViewer } from '@/lib/require-pro'
-import LabLocked from '@/components/LabLocked'
 import LabShell from './LabShell'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -30,6 +26,5 @@ export default async function PitchingLabGate({ children, params }: { children: 
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
-  if (!(await isProViewer())) return <LabLocked lab="pitching" playerId={Number(playerId) || 0} />
   return <LabShell playerName={person.fullName}>{children}</LabShell>
 }

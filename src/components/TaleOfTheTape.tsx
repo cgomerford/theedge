@@ -428,7 +428,7 @@ export default function TaleOfTheTape(props: Props) {
                       {p.avg_velo ? `${p.avg_velo}mph · ` : ''}{Math.round(p.usage_pct ?? 0)}%
                     </span>
                   </span>
-                  {!isPro && <span className="tt-lock">Pro</span>}
+                  
                 </button>
               ))}
             </div>
@@ -497,7 +497,7 @@ export default function TaleOfTheTape(props: Props) {
         {!isPro && (
           <div className="tt-prohint">
             <Link href="/pricing">
-              <span className="tt-pmark">⊕ Pro</span> — tap a pitch, flip sides, or pick any matchup on the field
+              tap a pitch, flip sides, or pick any matchup on the field
             </Link>
           </div>
         )}

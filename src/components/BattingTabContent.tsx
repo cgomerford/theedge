@@ -460,18 +460,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
 
           {/* ── FORM ── */}
             {activeTab === 'form' && (
-              !isPro ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
-                  <p className="font-serif text-stone-700 text-base">Recent form — last 7/14/30 day splits and OPS trend</p>
-                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
-                    See whether this batter is heating up or cooling off, and how they hit against lefties vs righties.
-                  </p>
-                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
-                    Unlock Pro →
-                  </a>
-                </div>
-              ) : (
+              !isPro ? null : (
               <div className="space-y-3">
                 {splits ? (
                   <>
@@ -538,18 +527,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
 
             {/* ── SPRAY CHART ── */}
             {activeTab === 'spray' && (
-              !isPro ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
-                  <p className="font-serif text-stone-700 text-base">Spray chart — where this batter hits the ball</p>
-                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
-                    Every ball in play this season, mapped on the field. See pull tendency and home run locations.
-                  </p>
-                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
-                    Unlock Pro →
-                  </a>
-                </div>
-              ) : (
+              !isPro ? null : (
                 <SprayChart
                   playerId={batter.player_id}
                   playerName={batter.player_name}
@@ -561,18 +539,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
 
             {/* ── HOT ZONES ── */}
             {activeTab === 'zones' && (
-              !isPro ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
-                  <p className="font-serif text-stone-700 text-base">Hot zones — where pitchers should and shouldn't throw</p>
-                  <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
-                    A 9-zone breakdown of batting average by location in the strike zone, built from this season's pitches.
-                  </p>
-                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
-                    Unlock Pro →
-                  </a>
-                </div>
-              ) : (
+              !isPro ? null : (
                 <StrikeZoneHeatMap
                   playerId={batter.player_id}
                   playerName={batter.player_name}
@@ -585,18 +552,6 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
             {/* ── STATCAST ── */}
             {activeTab === 'statcast' && (
               <>
-                {!isPro && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
-                    <p className="font-serif text-stone-700 text-base">Contact quality metrics — exit velocity, barrel rate, expected stats</p>
-                    <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
-                      Pitch tracking tells you how hard a batter is actually hitting the ball, independent of luck or defensive positioning.
-                    </p>
-                    <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
-                      Unlock Pro →
-                    </a>
-                  </div>
-                )}
 
                 {isPro && !statcast && (
                   <p className="text-sm font-serif text-stone-400 italic py-6 text-center">

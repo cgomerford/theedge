@@ -144,17 +144,6 @@ export default function LineupCompare({ awayBatters, homeBatters, awayAbbr, home
           />
         ))}
       </div>
-      {upgradeReason && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-start justify-center pt-24 px-4" onClick={() => setUpgradeReason(null)}>
-          <div className="bg-[#FAF8F3] border border-[#1A1A1A] rounded-2xl max-w-sm w-full p-7 shadow-2xl text-center" onClick={e => e.stopPropagation()}>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">⊕ Pro feature</div>
-            <h3 className="text-2xl font-serif font-bold mb-3">{upgradeReason} is Pro</h3>
-            <p className="font-serif text-sm text-stone-600 mb-6">Free gets Overview. Pro unlocks Statcast, Plate discipline, and Baserunning comparisons for every batter in the lineup.</p>
-            <a href="/pricing" className="block font-mono text-[10px] uppercase tracking-widest bg-[#1A1A1A] text-[#FAF8F3] px-4 py-3 rounded-lg hover:bg-[#FF5722] transition mb-3">See Pro →</a>
-            <button onClick={() => setUpgradeReason(null)} className="font-mono text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-700">Not now</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

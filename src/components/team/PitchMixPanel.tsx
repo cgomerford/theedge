@@ -7,7 +7,9 @@
 // which are repeated in the footnote here so the numbers are never oversold).
 
 import type { Team } from '@/lib/teams'
-import ProPanel from '@/components/profile/ProPanel'
+import { ProGateView } from '@/components/pro/ProGateView'
+import { ArsenalPreview } from '@/components/pro/previews'
+import type { ViewerTier } from '@/lib/require-pro-types'
 import { getTeamArsenal, type PitcherLine } from '@/lib/team-profile'
 import { PITCH_NAMES } from '@/lib/team-profile/roster'
 import { Card, Empty, Foot, StackedBar, C, MONO, SANS } from './ui'
@@ -17,7 +19,7 @@ const PITCH_COLOR: Record<string, string> = {
 }
 const GROUP_COLOR = { Fastball: '#D4533B', Breaking: '#378ADD', Offspeed: '#8a8275' } as const
 
-export default async function PitchMixPanel({ team, season, pitchers, starters, isPro }: { team: Team; season: number; pitchers: PitcherLine[]; starters: PitcherLine[]; isPro: boolean }) {
+export default async function PitchMixPanel({ team, season, pitchers, starters, viewerTier }: { team: Team; season: number; pitchers: PitcherLine[]; starters: PitcherLine[]; viewerTier: ViewerTier }) {
   const a = await getTeamArsenal(pitchers.map(p => p.id), season)
   if (!a) {
     return <Card title="What they throw"><Empty>Pitch-mix data isn&apos;t available for this staff yet.</Empty></Card>
@@ -120,11 +122,9 @@ export default async function PitchMixPanel({ team, season, pitchers, starters, 
     </div>
 
     <div style={{ marginTop: 16 }}>
-      <ProPanel
-        isPro={isPro} title="Pitch quality by type"
-        blurb="How hard each pitch type gets hit and how often it finishes at-bats — vs MLB."
-        features={['xwOBA against, hard-hit % and put-away % for every pitch type', 'Strikeout rate and batting average against by pitch', 'Average horizontal and vertical break vs the league', 'Each starter\'s best and worst pitch by xwOBA']}
-        labHref={`/mlb/lab/pitching-lab`} labLabel="Go pitch-by-pitch in the Pitching Lab"
+      <ProGateView
+        tier={viewerTier} feature="Zones and arsenal detail" source="team_arsenal"
+        preview={<ArsenalPreview title="Pitch quality by type" />}
       >
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: MONO, fontSize: 11, minWidth: 560 }}>
@@ -158,7 +158,7 @@ export default async function PitchMixPanel({ team, season, pitchers, starters, 
           </table>
         </div>
         <Foot>Bold = this staff, small = MLB. Green = better for the pitchers (lower xwOBA / hard-hit / BA against, higher put-away / K%). Pitch-weighted averages of each pitcher&apos;s per-pitch numbers from the pitch-arsenal table — a comparison aid, not Savant&apos;s official team figure. Break is in inches.</Foot>
-      </ProPanel>
+      </ProGateView>
     </div>
     </>
   )

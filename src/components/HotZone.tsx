@@ -244,27 +244,6 @@ export default function HotZone(props: Props) {
         </div>
       </div>
 
-      {/* ── Free tier Pro lock ──────────────────────────────────────── */}
-      {!isPro && (
-        <div className="mt-5 pt-5 border-t border-stone-200">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">
-                ⊕ Pro — unlock every zone
-              </div>
-              <div className="text-xs text-stone-500 mt-1 font-serif">
-                Numbers · xwOBA · vs LHP/RHP splits · tap-to-explore
-              </div>
-            </div>
-            <Link
-              href="/#signup"
-              className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-yellow-300 px-3 py-2 hover:bg-stone-700 transition whitespace-nowrap"
-            >
-              Get Pro →
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* ── Mobile bottom sheet (Pro only) ──────────────────────────── */}
       {isPro && isMobile && activeZone && (

@@ -60,7 +60,9 @@ import LabCallout from '@/components/player/LabCallout'
 import PlayerRadarChart from '@/components/player/PlayerRadarChart'
 import StatcastHistoryPanel from '@/components/player/StatcastHistoryPanel'
 import { SeasonStatsCard, PercentileRankingsCard } from '@/components/player/StatsPercentilesRail'
-import ProPanel from '@/components/profile/ProPanel'
+import { ProGateView } from '@/components/pro/ProGateView'
+import { ArsenalZonesPreview } from '@/components/pro/previews'
+import type { ViewerTier } from '@/lib/require-pro-types'
 import ProfileTabs, { type ProfileTab } from '@/components/profile/ProfileTabs'
 import { Card, Foot, Tile, C, MONO, SANS, DISPLAY } from '@/components/team/ui'
 import { MLB_TEAMS } from '@/lib/teams'
@@ -629,7 +631,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
 type BatterSection = 'career' | 'form' | 'log' | 'bio'
 type PitcherSection = 'career' | 'form' | 'starts' | 'log' | 'bio'
 
-export default function PlayerPageClient({ data, initialSection, isPro, trendsSlot, followSlot }: { data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
+export default function PlayerPageClient({ data, initialSection, isPro, viewerTier, trendsSlot, followSlot }: { /** resolved server-side: pro | member (signed in) | anon */ viewerTier: ViewerTier; data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
   const { identity } = data
   const subject: 'batter' | 'pitcher' = identity.isPitcher ? 'pitcher' : 'batter'
   const rows = subject === 'batter' ? BATTER_ROWS : PITCHER_ROWS
@@ -842,7 +844,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
 
   // Tab deep links: old links used ?tab=starts / spray / zones / advanced / defense.
   // Map them onto the new tab ids instead of dropping people on the wrong tab.
-  const TAB_ALIAS: Record<string, string> = { starts: 'splits', percentiles: 'overview', spray: 'lab', zones: 'lab', advanced: 'statcast', defense: 'lab', fantasy: 'overview' }
+  const TAB_ALIAS: Record<string, string> = { starts: 'splits', percentiles: 'overview', spray: 'zones', lab: 'zones', statcast: 'zones', advanced: 'zones', defense: 'zones', fantasy: 'overview' }
   const initialTab = initialSection ? (TAB_ALIAS[initialSection] ?? initialSection) : 'overview'
 
   const seasonStatRows = rows.map(row => ({
@@ -956,16 +958,14 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   const logTab = <Card title="Game log" note="this season">{gamesLoading ? loadingNote : <GameLogTab games={games} subject={subject} />}</Card>
   const bioTab = <Card title="Bio"><BioTab data={data} /></Card>
 
-  // Pro tabs: for non-Pro the body is a locked card and NOTHING inside is
-  // constructed (StatcastHistoryPanel would fetch on mount) — children only
-  // exist on the isPro branch.
-  const statcastTab = (
-    <ProPanel
-      isPro={isPro} defaultOpen title="Statcast trends"
-      blurb="How he is trending against himself: rolling contact quality, plate discipline, pitch mix and more."
-      features={subject === 'batter'
-        ? ['Rolling xwOBA, hard-hit % and barrel % across the season', 'Chase, whiff, walk and strikeout trends', 'Pull / center / oppo mix over time, and exit velocity this season vs last', 'A "turning a corner" dial — the same read as the Pro postgame check', 'Toggles for vs LHP / RHP and day / night']
-        : ['Velocity and whiff by pitch, outing by outing', 'Hard-hit, barrel, zone and chase trends', 'Pitch usage over time, plus ERA, FIP and xwOBA against', 'A "concern dial" on recent velocity, put-away pitch and hard-hit spikes']}
+  // One tab, one ProGate: zones and arsenal detail. For anyone without Pro nothing inside is constructed
+  // (StatcastHistoryPanel would fetch on mount), so Pro data is never requested or sent.
+  const zonesTab = (
+    <ProGateView
+      tier={viewerTier}
+      feature="Zones and arsenal detail"
+      source={subject === 'batter' ? 'player_batter_zones' : 'player_pitcher_arsenal'}
+      preview={<ArsenalZonesPreview />}
     >
       {isPro ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -974,24 +974,10 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, marginTop: 8 }}>Season over season</div>
           <StatcastHistoryPanel playerId={identity.id} subject={subject} color={teamColor} />
           <PlayerRadarChart dials={dials} leaderboardPercentiles={leaderboardPct} color={teamColor} />
+          <LabCallout playerId={identity.id} playerName={identity.fullName} subject={subject} variant="full" otherLab={otherLab} />
         </div>
       ) : null}
-    </ProPanel>
-  )
-
-  const labTab = (
-    <ProPanel
-      isPro={isPro} defaultOpen title={subject === 'batter' ? 'Batting Lab' : 'Pitching Lab'}
-      blurb="Pitch-by-pitch detail lives in the lab — this page stays the simple version."
-      features={subject === 'batter'
-        ? ['Results against every pitch type, and where he does damage', 'Zone heat maps by pitch type and spray charts', 'How pitchers sequence him, and career head-to-head vs pitchers']
-        : ['Every pitch in the arsenal: velocity, movement, usage, results', 'Location maps, count tendencies and sequencing', 'Hot-zone overlays and career head-to-head vs hitters']}
-      labHref={`/mlb/${subject === 'batter' ? 'batting' : 'pitching'}-lab/${identity.id}`}
-      labLabel={`Open the ${subject === 'batter' ? 'Batting' : 'Pitching'} Lab`}
-      showLabLinkWhenOpen={false}
-    >
-      {isPro ? <LabCallout playerId={identity.id} playerName={identity.fullName} subject={subject} variant="full" otherLab={otherLab} /> : null}
-    </ProPanel>
+    </ProGateView>
   )
 
   const tabs: ProfileTab[] = [
@@ -1001,8 +987,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
     { id: 'career', label: 'Career', content: careerTab },
     { id: 'log', label: 'Game log', content: logTab },
     { id: 'bio', label: 'Bio', content: bioTab },
-    { id: 'statcast', label: 'Statcast trends', pro: true, content: statcastTab },
-    { id: 'lab', label: subject === 'batter' ? 'Batting Lab' : 'Pitching Lab', pro: true, content: labTab },
+    { id: 'zones', label: 'Zones and arsenal', content: zonesTab },
   ]
 
   return (

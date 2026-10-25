@@ -12,16 +12,13 @@ import { getPitcherCountTendency, getPitcherSequencing } from '@/lib/pitcher-seq
 import { getPitcherHotZones } from '@/lib/hot-zones'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { MLB_TEAMS } from '@/lib/teams'
-import { requirePro } from '@/lib/require-pro'
+import { isProViewer } from '@/lib/require-pro'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 export const revalidate = 1800
 
 export async function GET(req: NextRequest) {
-  // Pro-only data (Batting / Pitching Lab). Enforced server-side — the UI lock is not the gate.
-  const denied = await requirePro()
-  if (denied) return denied
   const { searchParams } = new URL(req.url)
   const pitcherId = Number(searchParams.get('pitcherId'))
   if (!pitcherId) {
@@ -30,14 +27,17 @@ export async function GET(req: NextRequest) {
 
   const seasonYear = new Date().getFullYear()
 
+  // Overview fields (name, team, season line) are free. Movement, tendencies, sequencing, hot zones and the zone arsenal are
+  // Pro-only and are neither fetched nor returned for anyone else: this check is the gate, the UI lock is not.
+  const isPro = await isProViewer()
   const [personRes, fullStats, movementRows, countTendency, sequencing, hotZones, arsenal] = await Promise.all([
     fetch(`${MLB_API}/people/${pitcherId}?hydrate=currentTeam`, { next: { revalidate: 3600 } }),
     getPitcherStatsFull(pitcherId),
-    getPitchMovementFromDB(pitcherId, seasonYear),
-    getPitcherCountTendency(pitcherId),
-    getPitcherSequencing(pitcherId),
-    getPitcherHotZones(pitcherId),
-    getPitcherZoneArsenal(pitcherId),
+    isPro ? getPitchMovementFromDB(pitcherId, seasonYear) : Promise.resolve([]),
+    isPro ? getPitcherCountTendency(pitcherId) : Promise.resolve({}),
+    isPro ? getPitcherSequencing(pitcherId) : Promise.resolve({}),
+    isPro ? getPitcherHotZones(pitcherId) : Promise.resolve({}),
+    isPro ? getPitcherZoneArsenal(pitcherId) : Promise.resolve({}),
   ])
 
   let name = 'Pitcher'
@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
+    isPro,
     id: pitcherId,
     name,
     abbr,

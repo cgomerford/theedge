@@ -153,7 +153,7 @@ function LevelCard({ level, active, onClick }: {
             ? 'bg-[#1A1A1A] text-[#FDE047]'
             : 'bg-stone-100 text-stone-500',
         ].join(' ')}>
-          {isPro ? '⊕ Pro' : 'Free'}
+          {isPro ? '⊕ More depth' : 'Free'}
         </span>
       </div>
 
@@ -378,7 +378,7 @@ export default function WhyEdgeClient({ stats }: Props) {
               {/* Footer */}
               <div className="bg-[#FAF8F3] border-t border-stone-200 px-5 py-3 flex items-center justify-between">
                 <span className="font-mono text-[9px] text-stone-400 uppercase tracking-widest">
-                  {level.tier === 'Pro' ? '⊕ Pro feature' : 'Free · no sign-in needed'}
+                  {level.tier === 'Pro' ? '⊕ More depth' : 'Free · no sign-in needed'}
                 </span>
                 <Link
                   href="/mlb"
@@ -389,25 +389,6 @@ export default function WhyEdgeClient({ stats }: Props) {
               </div>
             </div>
 
-            {/* Upgrade nudge only shown for Pro levels */}
-            {activeLevel >= 2 && (
-              <div className="bg-[#1A1A1A] px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="flex-1">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] mb-1">
-                    ⊕ Pro — £6/mo · £50/yr
-                  </div>
-                  <p className="font-serif italic text-stone-300 text-sm leading-relaxed">
-                    Unlock the full playbook for every game. First 100 founding members lock in £4/mo.
-                  </p>
-                </div>
-                <Link
-                  href="/pricing"
-                  className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#1A1A1A] bg-[#FF5722] px-5 py-2.5 hover:bg-orange-600 transition shrink-0 text-center"
-                >
-                  Go Pro →
-                </Link>
-              </div>
-            )}
           </div>
         )}
 
@@ -604,12 +585,6 @@ export default function WhyEdgeClient({ stats }: Props) {
               className="inline-block bg-[#FF5722] text-white px-8 py-3.5 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-orange-600 transition"
             >
               Read tonight&apos;s brief →
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-block bg-white border border-stone-300 text-stone-700 px-8 py-3.5 font-mono text-[10px] uppercase tracking-widest hover:bg-stone-50 transition"
-            >
-              Go Pro · £6/mo →
             </Link>
           </div>
         </div>

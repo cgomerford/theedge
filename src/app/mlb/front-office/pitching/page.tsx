@@ -77,14 +77,14 @@ const BENCH: [string, string, string][] = [
 ]
 
 function DeskSection({ id, num, title, badges, lede, question, children }: {
-  id: string; num: string; title: string; badges: string[]; lede?: string; question?: string; children: React.ReactNode
+  id: string; num: string; title: string; badges?: string[]; lede?: string; question?: string; children: React.ReactNode
 }) {
   return (
     <section id={id} className="pd-anchor" style={{ marginTop: 44 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.orange, letterSpacing: '.16em' }}><XMark /> {num}</span>
         <h2 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, letterSpacing: '-.01em', margin: 0, lineHeight: 1.1 }}>{title}</h2>
-        {badges.map(b => <span key={b} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '.12em', padding: '2px 7px', borderRadius: 5, background: b === 'FREE' ? '#E1F5EE' : b === 'COMING' ? C.soft : C.yellow, color: b === 'FREE' ? '#085041' : C.ink }}>{b}</span>)}
+        {(badges ?? []).map(b => <span key={b} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '.12em', padding: '2px 7px', borderRadius: 5, background: b === 'FREE' ? '#E1F5EE' : b === 'COMING' ? C.soft : C.yellow, color: b === 'FREE' ? '#085041' : C.ink }}>{b}</span>)}
       </div>
       {(question || lede) && (
         <p style={{ fontFamily: SANS, fontSize: 14, color: '#5b5347', margin: '0 0 16px', maxWidth: 760, lineHeight: 1.5 }}>
@@ -193,7 +193,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
             <PitcherHeader playerId={pid} teamId={FO_TEAM.id} name={pitcherRow.name} row={row} win={win} stab={stab} league={stats[row?.role ?? 'SP'] ?? null} color={color} onText={FO_TEAM.text_on_primary} />
 
             {/* §00 */}
-            <DeskSection id="s0" num="00" title="Staff board" badges={['FREE']} question="Who on this staff is pitching better or worse than his results say?"
+            <DeskSection id="s0" num="00" title="Staff board" question="Who on this staff is pitching better or worse than his results say?"
               lede="The first pass: process stats that settle fast, set against the ERA everyone sees. Click a pitcher to load him into every tool below.">
               <div className="pd-g75">
                 <ChartCard id="staff-board" title={`Pitching staff · ${season}`} subtitle={`${WIN_LABEL[win]}. Sort any column. Shading = vs league average for the role.`} sources={['MLB API', 'SAVANT', 'EDGE CALC']} isPro={isPro}
@@ -211,7 +211,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
             </DeskSection>
 
             {/* §01 */}
-            <DeskSection id="s1" num="01" title="Stuff & shape" badges={['FREE TABLE', 'PRO DRILL-DOWN']} question="Is the raw material good?"
+            <DeskSection id="s1" num="01" title="Stuff & shape" question="Is the raw material good?"
               lede="Every pitch against league average for that pitch type, then the shape behind it.">
               <PitchFocusProvider>
                 <ChartCard id="arsenal" title="Arsenal" isPro={isPro} sources={['SAVANT', 'EDGE CALC']}
@@ -230,7 +230,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
             </DeskSection>
 
             {/* §02 */}
-            <DeskSection id="s2" num="02" title="Execution & results" badges={['PRO']} question="Is he getting what his stuff deserves, and does he control it?"
+            <DeskSection id="s2" num="02" title="Execution & results" question="Is he getting what his stuff deserves, and does he control it?"
               lede="ERA against its estimators, luck indicators, location, discipline and sequencing.">
               <ProGate isPro={isPro}
                 fallback={<UpgradeCard title="Execution and results in Pro" features={['ERA, FIP, xFIP, SIERA and xERA on one ladder', 'Luck check with sample-size meters', 'Location by pitch, command and discipline', 'Pitch mix by count and rolling form']} />}
@@ -238,7 +238,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
             </DeskSection>
 
             {/* §03 */}
-            <DeskSection id="s3" num="03" title="Durability & trajectory" badges={['PRO']} question="Will it hold up inside an outing, across a season and over a contract?"
+            <DeskSection id="s3" num="03" title="Durability & trajectory" question="Will it hold up inside an outing, across a season and over a contract?"
               lede="Velocity, workload and arm slot are the public early-warning signals teams watch. These are trends in public tracking data, not medical assessments.">
               <ProGate isPro={isPro}
                 fallback={<UpgradeCard title="Durability and trajectory in Pro" features={['Velocity by appearance with injured-list shading and a velocity flag', 'Times through the order and velocity within an outing', 'Workload and rest', 'Arm angle and release height trend']} />}
@@ -246,7 +246,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
             </DeskSection>
 
             {/* §04 */}
-            <DeskSection id="s4" num="04" title="Coming next" badges={['COMING']} lede="The next tools on the Pitching Desk, in build order.">
+            <DeskSection id="s4" num="04" title="Coming next" lede="The next tools on the Pitching Desk, in build order.">
               <div className="pd-bench">
                 {BENCH.map(([tag, title, text]) => (
                   <div key={title} style={{ background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14, padding: 16 }}>

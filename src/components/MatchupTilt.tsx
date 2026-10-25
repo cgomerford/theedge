@@ -202,8 +202,8 @@ export default function MatchupTilt({ data, isPro }: MatchupTiltProps) {
                   onClick={() => handleExpand(meta.key)}
                   className="flex-shrink-0 flex items-center justify-center w-6 h-6 transition-colors hover:text-orange-600"
                   style={{ color: isPro ? '#EA580C' : '#A8A29E' }}
-                  aria-label={isPro ? (isOpen ? 'Collapse' : 'Expand') : 'Unlock Pro'}
-                  title={isPro ? (isOpen ? 'Collapse breakdown' : 'Expand breakdown') : 'Unlock Pro to view'}
+                  aria-label={isPro ? (isOpen ? 'Collapse' : 'Expand') : 'Locked'}
+                  title={isPro ? (isOpen ? 'Collapse breakdown' : 'Expand breakdown') : 'Locked'}
                 >
                   {isPro ? (
                     /* Smoothly rotating chevron for Pro users */
@@ -252,29 +252,11 @@ export default function MatchupTilt({ data, isPro }: MatchupTiltProps) {
                 </div>
               )}
 
-              {showUpgrade && !isPro && (
-                <div className="flex items-center justify-between gap-3 px-3.5 py-3 bg-stone-50 border-t border-stone-200">
-                  <div>
-                    <p className="font-mono text-[11px] text-orange-600 font-bold tracking-wider">⊕ PRO — Sub-factor breakdown</p>
-                    <p className="font-mono text-[10px] text-stone-500 mt-0.5">{comp.subfactors.length} data points behind this score</p>
-                  </div>
-                  <a href="/pricing" className="bg-orange-600 text-white font-mono text-[11px] font-bold tracking-wider px-3.5 py-1.5 rounded-md flex-shrink-0 no-underline hover:bg-orange-700 transition">Unlock →</a>
-                </div>
-              )}
             </div>
           );
         })}
       </div>
 
-      {!isPro && (
-        <div className="mt-4 bg-stone-50 border border-stone-200 rounded-xl px-5 py-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="font-mono text-[12px] text-orange-600 font-bold tracking-wider mb-1">⊕ GO DEEPER WITH PRO</p>
-            <p className="font-mono text-[10px] text-stone-500 leading-relaxed">Unlock all sub-factors across 8 components — every game, every night.</p>
-          </div>
-          <a href="/pricing" className="bg-orange-600 text-white font-mono text-[11px] font-bold tracking-wider px-4 py-2 rounded-lg flex-shrink-0 no-underline hover:bg-orange-700 transition">Try Pro →</a>
-        </div>
-      )}
     </div>
   );
 }

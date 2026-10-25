@@ -18,13 +18,16 @@ import type { LineupBatter } from '@/lib/lineups'
 import type { BatterStreak } from '@/lib/streaks'
 import type { BatterHotZones } from '@/lib/hot-zones'
 import HotZone from '@/components/HotZone'
+import { ProGateView } from '@/components/pro/ProGateView'
+import { ZonesPreview } from '@/components/pro/previews'
+import type { ViewerTier } from '@/lib/require-pro-types'
 import DetailModal from './DetailModal'
 import BatterStandardStats from './BatterStandardStats'
 import LabFunnelLink from './LabFunnelLink'
 
 export default function BatterSelector({
   slug, batters, lineupSource, hotZonesByBatter, streaksByBatter,
-  venueName, opposingPitcherId, opposingPitcherName, season, isPro,
+  venueName, opposingPitcherId, opposingPitcherName, season, isPro, viewerTier,
 }: {
   slug: string
   batters: LineupBatter[]
@@ -36,6 +39,7 @@ export default function BatterSelector({
   opposingPitcherName: string | null
   season: number
   isPro: boolean
+  viewerTier: ViewerTier
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(batters[0]?.player_id ?? null)
   const [modal, setModal] = useState<'stats' | 'radar' | null>(null)
@@ -96,12 +100,12 @@ export default function BatterSelector({
         </button>
         <button
           type="button"
-          disabled={!selected || !hasZones}
+          disabled={!selected || (isPro && !hasZones)}
           onClick={() => setModal('radar')}
           className="rounded-lg border border-stone-200 bg-white p-2.5 text-left hover:border-orange-300 hover:bg-orange-50/40 transition disabled:opacity-40"
         >
           <p className="text-[9px] font-mono uppercase tracking-widest font-bold text-orange-600">◎ Batting Radar</p>
-          <p className="text-[10px] text-stone-500 mt-0.5">{hasZones ? 'Hot zones →' : 'Unavailable yet'}</p>
+          <p className="text-[10px] text-stone-500 mt-0.5">{!isPro || hasZones ? 'Hot zones →' : 'Unavailable yet'}</p>
         </button>
       </div>
 
@@ -130,11 +134,13 @@ export default function BatterSelector({
       {modal === 'radar' && selected && (
         <DetailModal eyebrow="Batting Radar" title={selected.player_name} onClose={() => setModal(null)}>
           <div className="space-y-4">
-            {hasZones ? (
-              <HotZone mode="batter" data={selectedZones!} isPro={isPro} playerName={selected.player_name} />
-            ) : (
-              <p className="text-xs font-sans italic text-stone-400 py-4">Hot-zone data unavailable for this batter yet.</p>
-            )}
+            <ProGateView tier={viewerTier} feature="Zone heatmaps" source="preview_zones" preview={<ZonesPreview title="Hot zones" />}>
+              {hasZones ? (
+                <HotZone mode="batter" data={selectedZones!} isPro playerName={selected.player_name} />
+              ) : (
+                <p className="text-xs font-sans italic text-stone-400 py-4">Hot-zone data unavailable for this batter yet.</p>
+              )}
+            </ProGateView>
             <div className="pt-3 border-t border-stone-100">
               <LabFunnelLink href={`/mlb/lab/batting-lab/${selected.player_id}`} label={`See ${selected.player_name} in Batting Lab`} isPro={isPro} />
             </div>

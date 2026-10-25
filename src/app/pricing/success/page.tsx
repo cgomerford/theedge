@@ -22,11 +22,11 @@ export default async function ProSuccessPage() {
         <div style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: '#FF5722' }}>⊕ Pro</div>
         <h1 style={{ ...F, fontWeight: 800, fontSize: 44, letterSpacing: '-.02em', margin: '10px 0 12px', color: '#1A1A1A' }}>{active ? "You're in. Welcome to Pro." : 'Payment received — thank you.'}</h1>
         {active ? (
-          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>Pro is active on your account. The Batting and Pitching Labs, the Statcast trends tab and every Pro panel are unlocked.</p>
+          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>Pro is active on your account. The Batting and Pitching Labs and the zones and arsenal detail are open.</p>
         ) : subscriber ? (
-          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>We&apos;re switching Pro on now — it usually takes a few seconds. Refresh this page, or head to any player page and it will be unlocked.</p>
+          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>We&apos;re switching Pro on now — it usually takes a few seconds. Refresh this page, or head to any player page and it will be there.</p>
         ) : (
-          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>Your Pro membership is being set up on the email you paid with. <b>Sign in with that same email</b> and Pro will be unlocked — we send a one-click login link, no password.</p>
+          <p style={{ ...F, fontSize: 16, color: '#4A4740', lineHeight: 1.55 }}>Your Pro membership is being set up on the email you paid with. <b>Sign in with that same email</b> and Pro will be active — we send a one-click login link, no password.</p>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 28 }}>
           {!subscriber && <Link href="/login" style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', padding: '12px 18px', borderRadius: 8, textDecoration: 'none' }}>Sign in →</Link>}

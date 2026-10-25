@@ -15,6 +15,8 @@ import type { PitcherHotZones } from '@/lib/hot-zones'
 import type { PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 
 export type PitchingLabData = {
+  /** server-resolved: false means movement/zones/arsenal fields are empty by design */
+  isPro?: boolean
   id: number
   name: string
   abbr: string

@@ -83,7 +83,7 @@ export function MetricPicker({
           <option value="">+ More metrics</option>
           <optgroup label="Standard">{std.map(m => <option key={m.key} value={m.key}>{m.label} — {m.full}</option>)}</optgroup>
           {adv.length > 0 && (
-            <optgroup label={isPro ? 'Advanced' : 'Advanced — Pro'}>
+            <optgroup label={isPro ? 'Advanced' : 'Advanced'}>
               {adv.map(m => <option key={m.key} value={m.key} disabled={!isPro}>{m.label} — {m.full}</option>)}
             </optgroup>
           )}

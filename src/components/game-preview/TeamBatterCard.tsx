@@ -18,9 +18,10 @@ import { getProjectedLineup } from '@/lib/lineups'
 import { getBatterHotZones, type BatterHotZones } from '@/lib/hot-zones'
 import { getTopBatterStreaks, type BatterStreak } from '@/lib/streaks'
 import BatterSelector from './BatterSelector'
+import type { ViewerTier } from '@/lib/require-pro-types'
 
 export default async function TeamBatterCard({
-  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro,
+  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro, viewerTier,
 }: {
   slug: string
   teamId: number
@@ -30,12 +31,14 @@ export default async function TeamBatterCard({
   opposingPitcherId: number | null
   opposingPitcherName: string | null
   isPro: boolean
+  viewerTier: ViewerTier
 }) {
   const season = new Date(gameDate).getFullYear()
   const lineup = await getProjectedLineup(teamId, gameDate, gamePk)
 
   const [hotZonesList, streaks] = await Promise.all([
-    Promise.all(lineup.batters.map(b => getBatterHotZones(b.player_id))),
+    // Zone heatmaps are behind the page's one ProGate: not fetched, so not sent, for anyone without Pro.
+    isPro ? Promise.all(lineup.batters.map(b => getBatterHotZones(b.player_id))) : Promise.resolve(lineup.batters.map(() => ({}) as Record<string, BatterHotZones>)),
     getTopBatterStreaks(teamId),
   ])
 
@@ -57,6 +60,7 @@ export default async function TeamBatterCard({
       opposingPitcherName={opposingPitcherName}
       season={season}
       isPro={isPro}
+      viewerTier={viewerTier}
     />
   )
 }

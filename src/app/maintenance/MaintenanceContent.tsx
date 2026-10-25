@@ -133,7 +133,7 @@ export default function MaintenanceContent() {
               cursor: 'pointer',
             }}
           >
-            {loading ? 'Checking…' : 'Unlock'}
+            {loading ? 'Checking…' : 'Enter'}
           </button>
           {error && (
             <div style={{ fontFamily: '"Red Hat Display", sans-serif', fontSize: '12px', color: '#FF5722' }}>

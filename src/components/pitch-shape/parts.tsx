@@ -60,19 +60,9 @@ export function EmptyBox({ title, children }: { title: string; children?: React.
   )
 }
 
-/** Locked state: what is inside, an upgrade link, and NO numbers (CLAUDE.md: empty state over fabricated data). */
-export function LockedCard({ title, features, note }: { title: string; features: string[]; note?: string }) {
-  return (
-    <div style={{ border: `1.5px dashed ${C.ink}`, borderRadius: 14, padding: 20, background: '#fff' }}>
-      <ProBadge />
-      <h4 style={{ margin: '8px 0 4px', fontSize: 17, fontWeight: 800 }}>{title}</h4>
-      {note && <p style={{ color: '#5b5347', fontSize: 13, margin: '4px 0 8px' }}>{note}</p>}
-      <ul style={{ margin: '6px 0 12px', paddingLeft: 18, color: '#5b5347', fontSize: 13 }}>
-        {features.map(f => <li key={f}>{f}</li>)}
-      </ul>
-      <Link href="/pricing" style={{ display: 'inline-block', background: C.orange, color: '#fff', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Unlock with Pro</Link>
-    </div>
-  )
+/** Not Pro: nothing. The page's one ProGate is the only upgrade prompt. */
+export function LockedCard(_props: { title: string; features: string[]; note?: string }) {
+  return null
 }
 
 export function MapLegend({ withPitcher }: { withPitcher: boolean }) {

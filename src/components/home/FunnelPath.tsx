@@ -27,7 +27,7 @@ export default function FunnelPath({ gamesCount, variant = 'light' }: Props) {
     {
       n: '02',
       title: 'Create free account',
-      desc: 'Email signup. No card. Verify once and unlock your Dugout.',
+      desc: 'Email signup. No card.',
       cta: { href: '#signup', label: 'Sign up free' },
     },
     {

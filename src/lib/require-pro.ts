@@ -27,3 +27,17 @@ export async function requirePro(): Promise<Response | null> {
   if (await isProViewer()) return null
   return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
 }
+
+/** Who is looking: drives ProGate and /pricing. 'pro' sees everything; 'member' is signed in without Pro; 'anon' is signed out. */
+export type { ViewerTier } from '@/lib/require-pro-types'
+import type { ViewerTier } from '@/lib/require-pro-types'
+
+export async function getViewerTier(): Promise<ViewerTier> {
+  const subscriber = await getCurrentSubscriber()
+  if (subscriber?.is_pro) return 'pro'
+  if (process.env.NODE_ENV === 'development') {
+    const jar = await cookies()
+    if (jar.get('edge_dev_pro')?.value === '1') return 'pro'
+  }
+  return subscriber ? 'member' : 'anon'
+}

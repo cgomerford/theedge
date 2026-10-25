@@ -103,57 +103,6 @@ export default function StreamerPick({ result, isPro = false }: Props) {
             </p>
           </div>
 
-          {/* Pro lock CTA */}
-          <div className="mt-4 pt-4 border-t border-stone-200">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">
-                  ⊕ Pro — unlock the full breakdown
-                </div>
-                <div className="text-xs text-stone-500 mt-1 font-serif">
-                  Score breakdown · Rationale · Top pitch · K/9 · ERA
-                </div>
-              </div>
-              <Link
-                href="/#signup"
-                className="shrink-0 text-[10px] font-mono uppercase tracking-widest bg-stone-900 text-yellow-300 px-3 py-2 hover:bg-stone-700 transition whitespace-nowrap"
-              >
-                Get Pro →
-              </Link>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* PRO TIER: full analysis */}
-      {isPro && (
-        <>
-          {/* Rationale */}
-          <p className="font-serif text-sm text-stone-700 leading-relaxed italic mb-4">
-            {result.rationale}
-          </p>
-
-          {/* Key stats row */}
-          <div className="flex flex-wrap gap-4 mb-4">
-            {result.era && (
-              <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">ERA</div>
-                <div className="font-mono font-bold text-stone-800 text-sm">{result.era}</div>
-              </div>
-            )}
-            {result.kPer9 && (
-              <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">K/9</div>
-                <div className="font-mono font-bold text-stone-800 text-sm">{parseFloat(result.kPer9).toFixed(1)}</div>
-              </div>
-            )}
-            {result.topPitch && (
-              <div>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">Best Pitch</div>
-                <div className="font-mono font-bold text-stone-800 text-sm">{result.topPitch}</div>
-              </div>
-            )}
-          </div>
 
           {/* Score breakdown bars */}
           <div className="space-y-2.5 pt-3 border-t border-stone-200">

@@ -5,6 +5,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { FOLLOW_LIMITS, getPlayerFollows } from '@/lib/follows'
 import { findTeamBySlug } from '@/lib/teams'
 import { noindex } from '@/lib/seo'
+import ManageSubscriptionButton from '@/components/pro/ManageSubscriptionButton'
 
 export const metadata = { title: 'My x9Lab', ...noindex() }
 
@@ -61,7 +62,11 @@ export default async function MePage() {
           <h2 id="settings-h" style={LABEL}>Settings</h2>
           <div style={{ marginTop: 10 }}>
             {sub.preferences_token && <Link href={`/preferences/${sub.preferences_token}`} style={ROW}><b>Email preferences</b></Link>}
-            <Link href="/pricing" style={ROW}><b>Plan</b></Link>
+            {sub.is_pro ? (
+              <ManageSubscriptionButton style={{ ...ROW, width: '100%', background: 'none', border: 0, borderTop: '1px solid #e7e2d8', textAlign: 'left' }} />
+            ) : (
+              <Link href="/pricing" style={ROW}><b>The deeper labs</b></Link>
+            )}
             <form action="/api/auth/logout" method="POST"><button type="submit" style={{ ...ROW, width: '100%', background: 'none', border: 0, borderTop: '1px solid #e7e2d8', textAlign: 'left', cursor: 'pointer' }}><b>Sign out</b></button></form>
           </div>
         </section>

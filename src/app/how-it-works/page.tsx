@@ -129,20 +129,6 @@ export default function HowItWorksPage() {
               you&apos;ll receive a concise 5-minute email with the real story behind the matchup.
             </p>
 
-            <p className="text-lg leading-relaxed text-stone-700 font-serif mt-5">
-              The free version gives you a strong daily edge.
-              <strong> Pro members</strong> unlock deeper stats, full sub-factor breakdowns,
-              multiple team coverage, fantasy insights, and early access to new features.
-            </p>
-
-            <p className="mt-6">
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 text-[#FF5722] hover:text-orange-700 font-medium group"
-              >
-                See Pro benefits and pricing →
-              </Link>
-            </p>
           </div>
         </div>
 

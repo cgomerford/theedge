@@ -16,6 +16,7 @@
 // (components/team/ProModules.tsx) — `isPro` is a REQUIRED prop, never defaulted,
 // and Pro data is only fetched when it is true.
 
+import type { ViewerTier } from '@/lib/require-pro-types'
 import Link from 'next/link'
 import type { Team } from '@/lib/teams'
 import type { TeamProfile } from '@/lib/team-profile'
@@ -55,7 +56,7 @@ const CSS = `
 `
 
 export default function TeamPage({
-  team, profile, season, todayET, isPro, nextGame, schedule, news, composition, ilList, moves, minors, articlesSlot, followSlot,
+  team, profile, season, todayET, isPro, viewerTier, nextGame, schedule, news, composition, ilList, moves, minors, articlesSlot, followSlot,
 }: {
   team: Team
   profile: TeamProfile
@@ -63,6 +64,7 @@ export default function TeamPage({
   todayET: string
   /** REQUIRED, never defaulted — resolved from the subscriber session by the route */
   isPro: boolean
+  viewerTier: ViewerTier
   nextGame: MLBNextGame | null
   schedule: ScheduleRow[]
   news: MLBNewsItem[]
@@ -90,7 +92,7 @@ export default function TeamPage({
 
         <SeasonSection team={team} profile={profile} isPro={isPro} />
         <IdentitySection team={team} profile={profile} isPro={isPro} />
-        <StaffSection team={team} profile={profile} season={season} isPro={isPro} />
+        <StaffSection team={team} profile={profile} season={season} isPro={isPro} viewerTier={viewerTier} />
         <OffenseSection team={team} profile={profile} isPro={isPro} season={season} />
         <DefenseRunningSection team={team} profile={profile} todayET={todayET} isPro={isPro} />
         <RosterSection team={team} profile={profile} isPro={isPro} composition={composition} ilList={ilList} moves={moves} minors={minors} />
