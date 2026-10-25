@@ -13,6 +13,9 @@ type Props = {
   returnTo?: string
   extra?: Record<string, string | undefined>
   autoFocus?: boolean
+  /** one row: field and button side by side, no note under it */
+  compact?: boolean
+  buttonLabel?: string
 }
 
 const ERRORS: Record<string, string> = {
@@ -21,7 +24,7 @@ const ERRORS: Record<string, string> = {
   'verify-failed': 'Browser check failed. Reload the page and try again.',
 }
 
-export default function EmailSignupForm({ source, returnTo, extra, autoFocus }: Props) {
+export default function EmailSignupForm({ source, returnTo, extra, autoFocus, compact, buttonLabel }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [sentTo, setSentTo] = useState('')
@@ -62,13 +65,13 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus }: 
   }
 
   return (
-    <form ref={formRef} action="/api/auth/login" method="POST" onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
+    <form ref={formRef} action="/api/auth/login" method="POST" onSubmit={onSubmit} style={compact ? { display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' } : { display: 'grid', gap: 12 }}>
       <input type="hidden" name="from" value="signup" />
       <input type="hidden" name="source" value={source} />
       {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       {Object.entries(extra ?? {}).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
 
-      <label htmlFor={`email-${source}`} style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A' }}>Email</label>
+      <label htmlFor={`email-${source}`} style={compact ? { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' } : { fontSize: 14, fontWeight: 800, color: '#1A1A1A' }}>Email</label>
       <input
         id={`email-${source}`}
         name="email"
@@ -76,7 +79,7 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus }: 
         required
         autoComplete="email"
         autoFocus={autoFocus}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '14px 14px', background: '#fff', border: '1px solid #1A1A1A', borderRadius: 2, fontSize: 16, color: '#1A1A1A', outline: 'none' }}
+        style={{ width: compact ? undefined : '100%', flex: compact ? '1 1 220px' : undefined, minWidth: 0, boxSizing: 'border-box', padding: '12px 14px', background: '#fff', border: '1px solid #1A1A1A', borderRadius: 2, fontSize: 16, color: '#1A1A1A', outline: 'none' }}
       />
 
       <TurnstileWidget theme="light" />
@@ -86,11 +89,11 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus }: 
         disabled={state === 'sending'}
         style={{ padding: '14px 18px', background: '#1A1A1A', color: '#FAF8F3', border: 0, borderRadius: 2, fontSize: 16, fontWeight: 800, cursor: 'pointer', opacity: state === 'sending' ? 0.7 : 1 }}
       >
-        {SIGNUP_BUTTON}
+        {buttonLabel ?? SIGNUP_BUTTON}
       </button>
 
       {error && <p role="alert" style={{ margin: 0, fontSize: 14, color: '#b42318' }}>{error}</p>}
-      <p style={{ margin: 0, fontSize: 13, color: '#8a8275' }}>{SIGNUP_NOTE}</p>
+      {!compact && <p style={{ margin: 0, fontSize: 13, color: '#8a8275' }}>{SIGNUP_NOTE}</p>}
     </form>
   )
 }

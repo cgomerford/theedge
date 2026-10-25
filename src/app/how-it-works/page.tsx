@@ -3,6 +3,7 @@ import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
+import { MIN_SAMPLE } from '@/lib/min-sample'
 
 export const metadata = pageMeta({
   title: 'How it works',
@@ -132,6 +133,19 @@ export default function HowItWorksPage() {
           </div>
         </div>
 
+
+        <section id="sample-size" className="mt-16 scroll-mt-24">
+          <h2 className="text-3xl font-serif font-semibold mb-3">Sample-size minimums</h2>
+          <p className="text-lg leading-relaxed text-stone-700 font-serif mb-4">[George: sample-size intro wording]</p>
+          <ul className="list-none p-0 m-0">
+            {Object.entries(MIN_SAMPLE).map(([key, n]) => (
+              <li key={key} className="flex justify-between gap-4 py-2 border-t border-stone-200 text-sm">
+                <span>{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+                <b className="tabular-nums">{n}</b>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
     </main>
   )
