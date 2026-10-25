@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 // Starts the existing Stripe checkout (POST /api/stripe/checkout) and sends the browser to Stripe. Pro itself is granted
 // only by the Stripe webhook after payment, never here. Shown to signed-in people without Pro only.
-export default function ProCheckoutButton({ children, interval = 'year' }: { children: React.ReactNode; interval?: 'year' | 'month' }) {
+export default function ProCheckoutButton({ children, interval = 'year', variant = 'solid' }: { children: React.ReactNode; interval?: 'year' | 'month'; variant?: 'solid' | 'outline' }) {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -31,7 +31,7 @@ export default function ProCheckoutButton({ children, interval = 'year' }: { chi
         type="button"
         onClick={go}
         disabled={busy}
-        style={{ padding: '12px 18px', background: '#FF5722', color: '#fff', border: 0, borderRadius: 2, fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}
+        style={{ padding: '12px 18px', background: variant === 'solid' ? '#FF5722' : 'transparent', color: variant === 'solid' ? '#fff' : '#1A1A1A', border: variant === 'solid' ? 0 : '1px solid #1A1A1A', borderRadius: 2, fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}
       >
         {children}
       </button>
