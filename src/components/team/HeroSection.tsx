@@ -18,7 +18,7 @@ function status(p: TeamProfile): { text: string; hot: boolean } | null {
   return null
 }
 
-export default function HeroSection({ team, profile: p }: { team: Team; profile: TeamProfile }) {
+export default function HeroSection({ team, profile: p, followSlot }: { team: Team; profile: TeamProfile; followSlot?: React.ReactNode }) {
   const s = p.row.st
   const on = team.text_on_primary
   const st = status(p)
@@ -55,6 +55,7 @@ export default function HeroSection({ team, profile: p }: { team: Team; profile:
           </div>
         </div>
       </div>
+      {followSlot && <div style={{ marginTop: 14, color: on }}>{followSlot}</div>}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px 38px', marginTop: 24 }}>
         {stat('Record', `${s.w}–${s.l}`, `.${String(Math.round(s.pct * 1000)).padStart(3, '0')} · ${ordinal(s.sportRank)} in MLB`)}

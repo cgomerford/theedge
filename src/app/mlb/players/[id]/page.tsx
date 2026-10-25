@@ -19,6 +19,7 @@ import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
 
 import { devPro } from '@/lib/dev-pro'
+import FollowControl from '@/components/signup/FollowControl'
 import { pageMeta, noindex } from '@/lib/seo'
 import { fitDescription } from '@/lib/game-slug'
 import { PersonSchema, BreadcrumbSchema } from '@/components/StructuredData'
@@ -72,6 +73,7 @@ export default async function PlayerPage({
         data={data}
         initialSection={tab}
         isPro={isPro}
+        followSlot={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />}
         // Built ONLY for Pro: a non-Pro request never queries or renders trend data.
         trendsSlot={isPro ? (
           <Suspense fallback={<p style={{ fontSize: 13, color: '#a89e8c', fontStyle: 'italic', padding: '30px 0', textAlign: 'center' }}>Loading Statcast trends…</p>}>

@@ -82,8 +82,8 @@ export default async function LoginPage({ searchParams }: Props) {
 
         <div className="mt-12 pt-8 border-t border-stone-200 text-stone-500 font-serif text-sm">
           New to x9Lab?{' '}
-          <a href="/" className="text-orange-600 hover:underline">
-            Sign up here →
+          <a href="/signup?source=login" className="text-orange-600 hover:underline">
+            Sign up
           </a>
         </div>
       </div>

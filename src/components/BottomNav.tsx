@@ -60,16 +60,12 @@ type Tab = {
 
 const TABS_LOGGED_IN: Tab[] = [
   {
-    key: 'dugout', label: 'Dugout', href: '/lab', match: ['/lab'],
+    key: 'me', label: 'My x9Lab', href: '/me', match: ['/me'],
     icon: <Home size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
   {
     key: 'mlb', label: 'MLB', href: '/mlb', match: ['/mlb'],
     icon: <IconDiamond />,
-  },
-  {
-    key: 'reads', label: 'My Reads', href: '/lab', match: ['/reads'],
-    icon: <Target size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
   {
     key: 'more', label: 'More', href: null, match: [],

@@ -5,6 +5,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieConsent from "@/components/CookieConsent";
 import BottomNav from '@/components/BottomNav'
 import SiteFooter from '@/components/SiteFooter'
+import EmailSignupModal from '@/components/signup/EmailSignupModal'
 import { SiteSchema } from '@/components/StructuredData'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {children}
         <SiteFooter />
         <BottomNav />
+        <EmailSignupModal />
         <CookieConsent />
       </body>
     </html>

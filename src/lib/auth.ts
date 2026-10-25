@@ -18,17 +18,36 @@ export type AuthSubscriber = {
 }
 
 // Create a one-time login token for a verified email
-export async function createLoginLink(email: string, attribution: Attribution = {}): Promise<string | null> {
+// `createIfMissing` is true only for /signup: a new address gets a subscriber row (source saved on it) and
+// may use the link even though it is not verified yet. Clicking the link is what verifies it (see consumeLoginLink).
+// /login passes false, so it only ever signs in people who already have a verified account.
+export async function createLoginLink(
+  email: string,
+  attribution: Attribution = {},
+  opts: { createIfMissing?: boolean } = {},
+): Promise<string | null> {
   const supa = createAdminClient()
+  const address = email.toLowerCase().trim()
 
-  // Check the email exists AND is verified
   const { data: sub } = await supa
     .from('subscribers')
-    .select('id, email_verified')
-    .eq('email', email.toLowerCase().trim())
-    .single()
+    .select('id, email_verified, source')
+    .eq('email', address)
+    .maybeSingle()
 
-  if (!sub || !sub.email_verified) {
+  if (!sub && opts.createIfMissing) {
+    const { error: insertError } = await supa.from('subscribers').insert({
+      email: address,
+      source: attribution.source ?? 'signup',
+      fan_type: 'casual',
+      email_verified: false,
+      preferences_token: crypto.randomUUID().replace(/-/g, ''),
+    })
+    if (insertError) {
+      console.error('[createLoginLink] subscriber insert error:', insertError.message)
+      return null
+    }
+  } else if (!sub || (!sub.email_verified && !opts.createIfMissing)) {
     return null
   }
 
@@ -83,6 +102,10 @@ export async function consumeLoginLink(
     .from('login_links')
     .update({ used_at: new Date().toISOString() })
     .eq('id', link.id)
+
+  // Using the link proves the person controls this inbox, so the address is verified from here on.
+  const { error: verifyError } = await supa.from('subscribers').update({ email_verified: true }).eq('email', link.email)
+  if (verifyError) console.error('[consumeLoginLink] verify update error:', verifyError.message)
 
   // Fetch the subscriber
   const { data: sub } = await supa

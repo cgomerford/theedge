@@ -22,6 +22,7 @@ import TeamArticles from '@/components/TeamArticles'
 import TeamPage from '@/components/team/TeamPage'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
+import FollowControl from '@/components/signup/FollowControl'
 import { pageMeta, noindex } from '@/lib/seo'
 import { fitDescription } from '@/lib/game-slug'
 import { SportsTeamSchema, BreadcrumbSchema } from '@/components/StructuredData'
@@ -98,6 +99,7 @@ export default async function TeamRoute({ params, searchParams }: Props) {
         moves={moves}
         minors={minors}
         articlesSlot={<TeamArticles teamCode={team.abbrev} />}
+        followSlot={<FollowControl kind="team" refId={slug} name={team.name} />}
       />
     </main>
   )

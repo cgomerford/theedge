@@ -51,6 +51,7 @@ import type { PercentileRow } from '@/components/charts/types'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
+import SignupAsk from '@/components/signup/SignupAsk'
 import { pageMeta, noindex } from '@/lib/seo'
 import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
 import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
@@ -496,6 +497,8 @@ export default async function GamePreview({ params, searchParams }: Props) {
           }>
             <BannerAsync ctx={ctx} />
           </Suspense>
+
+          <SignupAsk source="preview_inline" />
 
           {/* ── Home / Away team panels + Edge Indicator ── */}
           <div className="grid lg:grid-cols-[1fr_1fr_340px] gap-4 items-start">

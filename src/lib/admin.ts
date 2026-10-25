@@ -16,7 +16,7 @@ export async function requireAdmin() {
 
   if (subscriber.role !== 'admin') {
     // Quiet redirect — don't tell non-admins the page exists
-    redirect('/dugout')
+    redirect('/me')
   }
 
   return subscriber

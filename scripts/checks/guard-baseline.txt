@@ -32,3 +32,5 @@ fetch	src/lib/graphics/images.ts
 fetch	src/components/graphics/actions.ts
 logos	src/components/admin/story-v5/teams.ts
 logos	src/components/admin/story-v5/__fixtures__/preview-849802.json
+fetch	src/components/signup/EmailSignupForm.tsx
+fetch	src/components/signup/FollowButton.tsx

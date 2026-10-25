@@ -55,7 +55,7 @@ const CSS = `
 `
 
 export default function TeamPage({
-  team, profile, season, todayET, isPro, nextGame, schedule, news, composition, ilList, moves, minors, articlesSlot,
+  team, profile, season, todayET, isPro, nextGame, schedule, news, composition, ilList, moves, minors, articlesSlot, followSlot,
 }: {
   team: Team
   profile: TeamProfile
@@ -71,6 +71,8 @@ export default function TeamPage({
   moves: TeamTransaction[]
   minors: AffiliateStandout[]
   articlesSlot: React.ReactNode
+  /** server-rendered Follow button */
+  followSlot?: React.ReactNode
 }) {
   return (
     <div className="tp-root" style={{ background: C.cream, fontFamily: SANS }}>
@@ -80,7 +82,7 @@ export default function TeamPage({
           <Link href="/mlb" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.orange, textDecoration: 'none' }}>← Back</Link>
         </div>
 
-        <HeroSection team={team} profile={profile} />
+        <HeroSection team={team} profile={profile} followSlot={followSlot} />
 
         <nav className="tp-nav x9-desk-sticky" aria-label="Team page sections" style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(250,248,243,.95)', backdropFilter: 'blur(6px)', borderBottom: `1px solid ${C.line}`, margin: '16px -24px 0', padding: '10px 24px', display: 'flex', gap: 4, overflowX: 'auto' }}>
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}

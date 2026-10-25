@@ -1,6 +1,5 @@
 import XMark from '@/components/XMark'
 import SiteHeader from '@/components/SiteHeader'
-import SignupForm from '@/components/SignupForm'
 import Link from 'next/link'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
@@ -147,14 +146,6 @@ export default function HowItWorksPage() {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-24 p-8 bg-[#1A1A1A] text-stone-100">
-          <h3 className="text-2xl font-serif mb-1">Ready to try it?</h3>
-          <p className="text-stone-400 mb-6 text-sm font-mono">Free. No credit card.</p>
-          <div className="bg-[#FAF8F3] p-3 border border-stone-700 max-w-md">
-            <SignupForm source="how_it_works" buttonText="Get the brief →" theme="light" />
-          </div>
-        </div>
       </div>
     </main>
   )

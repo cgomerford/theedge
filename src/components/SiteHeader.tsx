@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import LabsMenu from '@/components/LabsMenu'
+import { openSignup } from '@/components/signup/openSignup'
 import { LABS_MENU, STATUS_LABEL } from '@/lib/nav/labsMenu'
 
 // ─── MLB Data ─────────────────────────────────────────────────────────────────
@@ -317,11 +318,11 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
             {/* ─── COL 4: Auth + utilities (right sidebar) ─── */}
             <div style={{ borderLeft: '1px solid #E2DCCF', paddingLeft: 32 }}>
               {isLoggedIn ? (
-                <Link href="/dugout" onClick={onClose} style={authLink}>My Dugout</Link>
+                <Link href="/me" onClick={onClose} style={authLink}>My x9Lab</Link>
               ) : (
                 <>
                   <Link href="/login"   onClick={onClose} style={authLink}>Log In</Link>
-                  <Link href="/pricing" onClick={onClose} style={authLink}>Subscribe Now</Link>
+                  <button type="button" onClick={() => { onClose(); openSignup('header') }} style={{ ...authLink, background: 'none', border: 0, padding: 0, textAlign: 'left', cursor: 'pointer' }}>Free daily email</button>
                 </>
               )}
 
@@ -337,25 +338,6 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
 <Link href="/mlb/stats"     onClick={onClose} style={utilLink}>Stats & Leaders</Link>
               </div>
 
-              {!isLoggedIn && (
-                <div style={{ marginTop: 32 }}>
-                  <Link
-                    href="/pricing"
-                    onClick={onClose}
-                    style={{
-                      display: 'block', textAlign: 'center',
-                      padding: '12px 20px',
-                      background: '#FF5722', color: '#fff',
-                      fontFamily: 'Red Hat Display, sans-serif',
-                      fontSize: 10, letterSpacing: '0.14em',
-                      textTransform: 'uppercase', fontWeight: 700,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Free daily reports →
-                  </Link>
-                </div>
-              )}
             </div>
 
           </div>
@@ -543,17 +525,17 @@ export default function SiteHeader({ variant = 'page' }: Props) {
             {/* RIGHT: Auth */}
             <div className="flex items-center gap-4 ml-auto pl-4 shrink-0">
               {isLoggedIn ? (
-                <Link href="/dugout" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition whitespace-nowrap">
-                  My Dugout
+                <Link href="/me" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition whitespace-nowrap">
+                  My x9Lab
                 </Link>
               ) : (
                 <>
                   <Link href="/login" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition hidden sm:block whitespace-nowrap">
                     Log in
                   </Link>
-                  <Link href="/pricing" className="font-sans text-[13px] font-bold bg-[#FF5722] text-white px-4 py-2 hover:bg-orange-700 transition rounded-sm whitespace-nowrap">
-                    Free daily reports
-                  </Link>
+                  <button type="button" onClick={() => openSignup('header')} className="font-sans text-[13px] font-bold bg-[#FF5722] text-white px-4 py-2 hover:bg-orange-700 transition rounded-sm whitespace-nowrap">
+                    Free daily email
+                  </button>
                 </>
               )}
             </div>

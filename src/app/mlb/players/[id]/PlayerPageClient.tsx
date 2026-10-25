@@ -629,7 +629,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
 type BatterSection = 'career' | 'form' | 'log' | 'bio'
 type PitcherSection = 'career' | 'form' | 'starts' | 'log' | 'bio'
 
-export default function PlayerPageClient({ data, initialSection, isPro, trendsSlot }: { data: PlayerPageData; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
+export default function PlayerPageClient({ data, initialSection, isPro, trendsSlot, followSlot }: { data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
   const { identity } = data
   const subject: 'batter' | 'pitcher' = identity.isPitcher ? 'pitcher' : 'batter'
   const rows = subject === 'batter' ? BATTER_ROWS : PITCHER_ROWS
@@ -1025,6 +1025,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
               </div>
               <h1 style={{ margin: 0, fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, letterSpacing: '-.02em', color: on }}>{identity.fullName}</h1>
               <div style={{ fontFamily: MONO, fontSize: 11, color: on, opacity: 0.8, marginTop: 8 }}>{bio}</div>
+              {followSlot && <div style={{ marginTop: 12, color: on }}>{followSlot}</div>}
             </div>
           </div>
           {heroTiles.length > 0 && (

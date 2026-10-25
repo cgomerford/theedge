@@ -19,6 +19,7 @@ import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
+import SignupAsk from '@/components/signup/SignupAsk'
 import { pageMeta, noindex } from '@/lib/seo'
 import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
 import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
@@ -120,6 +121,7 @@ export default async function ScoutReportPage({ params, searchParams }: Props) {
 
         <div className="px-4 py-6" style={centered}>
           <ScoutReport game={game} gameDate={dateMatch[1]} isPro={isPro} />
+          <SignupAsk source="scout_report_end" />
         </div>
       </div>
     </>

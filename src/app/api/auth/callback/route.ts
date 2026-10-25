@@ -17,5 +17,7 @@ export async function GET(req: NextRequest) {
 
   await createSession(subscriber.id)
 
-  return NextResponse.redirect(new URL(safeReturnPath(subscriber.return_to) ?? '/dugout', req.url), { status: 303 })
+  // ?next= (same-site paths only), then the page they signed up from, then their dashboard.
+  const next = safeReturnPath(req.nextUrl.searchParams.get('next')) ?? safeReturnPath(subscriber.return_to) ?? '/me'
+  return NextResponse.redirect(new URL(next, req.url), { status: 303 })
 }

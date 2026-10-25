@@ -25,7 +25,7 @@ import { getBullpenPitches3dTotals } from '@/lib/bullpen'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase'
 import { canonical } from '@/lib/seo'
-import { signupHref } from '@/lib/site'
+import SignupAsk from '@/components/signup/SignupAsk'
 
 export const revalidate = 1800
 
@@ -219,11 +219,7 @@ export default async function HomePage() {
 
             <NewsFeedSidebar items={news} />
 
-            <p style={{ marginTop: 28, fontSize: 14 }}>
-              <Link href={signupHref('home')} style={{ fontWeight: 800, color: '#1A1A1A', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                Get the free daily email
-              </Link>
-            </p>
+            <SignupAsk source="home_inline" />
           </aside>
         </div>
       </div>

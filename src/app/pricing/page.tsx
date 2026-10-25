@@ -1,7 +1,7 @@
 import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
-import SignupForm from '@/components/SignupForm'
+import SignupAsk from '@/components/signup/SignupAsk'
 import CheckoutButtons from '@/components/CheckoutButtons'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { pageMeta } from '@/lib/seo'
@@ -195,7 +195,7 @@ export default async function PricingPage() {
                   You&apos;re signed up
                 </div>
               ) : (
-                <SignupForm source="pricing_free" buttonText="Start with free →" theme="light" />
+                <SignupAsk source="pricing" />
               )}
             </div>
           </div>
@@ -331,9 +331,6 @@ export default async function PricingPage() {
             We're not in the business of calls or predictions. We take the same data the pros use and make it easier to actually understand what's happening on the field.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-            {!subscriber && (
-              <SignupForm source="pricing_final_cta" buttonText="Start with free →" theme="light" />
-            )}
             {!isPro && (
               <Link
                 href="#pro"

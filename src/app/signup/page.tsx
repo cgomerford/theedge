@@ -1,7 +1,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
-import TurnstileWidget from '@/components/TurnstileWidget'
+import EmailSignupForm from '@/components/signup/EmailSignupForm'
+import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER } from '@/components/signup/copy'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { ATTRIBUTION_KEYS, readAttribution, safeReturnPath } from '@/lib/attribution'
 import { noindex } from '@/lib/seo'
@@ -27,82 +28,64 @@ async function refererPath(): Promise<string | undefined> {
   }
 }
 
+const ERRORS: Record<string, string> = {
+  'rate-limit': 'Too many attempts. Try again in a minute.',
+  invalid: 'Please enter a valid email.',
+  'verify-failed': 'Browser check failed. Reload the page and try again.',
+}
+
 export default async function SignupPage({ searchParams }: Props) {
   const sp = await searchParams
   const first = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : sp[k])
 
-  // Attribution rides in hidden fields only — no cookies, nothing stored in the browser.
+  // Attribution rides in hidden fields only: no cookies, nothing stored in the browser.
   const attribution = readAttribution(first)
   const returnTo = attribution.return_to ?? (await refererPath())
 
-  if (await getCurrentSubscriber()) redirect(returnTo ?? '/dugout')
+  if (await getCurrentSubscriber()) redirect(returnTo ?? '/me')
 
-  const sent = first('sent') === '1'
+  const source = attribution.source ?? 'signup_page'
+  const extra = Object.fromEntries(ATTRIBUTION_KEYS.filter(k => k !== 'source').map(k => [k, attribution[k]]))
   const error = first('error')
+  const sent = first('sent') === '1'
 
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-900">
+    <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
+      <style>{`
+        .su-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:64px;align-items:start}
+        @media (max-width:860px){.su-grid{grid-template-columns:minmax(0,1fr);gap:32px}}
+      `}</style>
       <SiteHeader variant="page" />
 
-      <div className="max-w-md mx-auto px-6 py-16 md:py-24">
-        <div className="text-xs uppercase tracking-widest text-orange-600 mb-4">— Sign up</div>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '56px 16px 80px' }}>
+        <div className="su-grid">
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.14em', color: '#FF5722' }}>{SIGNUP_KICKER}</div>
+            <h1 style={{ margin: '12px 0 24px', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
+              {SIGNUP_HEADLINE}
+            </h1>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {SIGNUP_BENEFITS.map(b => (
+                <li key={b} style={{ padding: '12px 0', borderTop: '1px solid #e7e2d8', fontSize: 17 }}>{b}</li>
+              ))}
+            </ul>
+          </div>
 
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight mb-3">
-          Get the <em className="italic text-orange-600">full read.</em>
-        </h1>
-
-        <p className="text-stone-600 italic mb-10 text-lg">
-          Enter your email and we&apos;ll send a one-tap link. No password.
-        </p>
-
-        {sent ? (
-          <div className="p-6 bg-stone-900 text-stone-100 border-l-4 border-yellow-300">
-            <div className="text-xs uppercase tracking-widest text-yellow-300 mb-2">Check your inbox</div>
-            <p>
-              If that email is on our list, a sign-in link is on its way. It works once and expires in 30
-              minutes{returnTo ? ', and brings you back to where you were' : ''}.
-            </p>
-            <p className="text-xs text-stone-500 mt-4">
-              Don&apos;t see it? Check spam, then{' '}
-              <a href="/signup" className="text-yellow-300 underline">try again</a>.
+          <div>
+            {sent ? (
+              <div role="status">
+                <div style={{ fontSize: 22, fontWeight: 800 }}>Check your inbox</div>
+              </div>
+            ) : (
+              <>
+                <EmailSignupForm source={source} returnTo={returnTo} extra={extra} />
+                {error && ERRORS[error] && <p role="alert" style={{ margin: '12px 0 0', fontSize: 14, color: '#b42318' }}>{ERRORS[error]}</p>}
+              </>
+            )}
+            <p style={{ margin: '24px 0 0', fontSize: 14, color: '#8a8275' }}>
+              Already have an account? <a href="/login" style={{ color: '#1A1A1A', fontWeight: 800 }}>Sign in</a>
             </p>
           </div>
-        ) : (
-          <form action="/api/auth/login" method="POST" className="space-y-4">
-            <input type="hidden" name="from" value="signup" />
-            {ATTRIBUTION_KEYS.map((k) =>
-              attribution[k] ? <input key={k} type="hidden" name={k} value={attribution[k]} /> : null,
-            )}
-            {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
-
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="you@example.com"
-              className="w-full px-4 py-4 bg-white border border-stone-300 text-stone-900 outline-none focus:border-stone-900 text-lg"
-            />
-
-            <TurnstileWidget theme="light" />
-
-            <button
-              type="submit"
-              className="w-full px-6 py-4 bg-stone-900 text-stone-100 font-semibold hover:bg-stone-800 transition"
-            >
-              Send sign-in link →
-            </button>
-
-            {error === 'rate-limit' && <p className="text-red-700 text-sm">Too many attempts. Try again in a minute.</p>}
-            {error === 'invalid' && <p className="text-red-700 text-sm">Please enter a valid email.</p>}
-            {error === 'verify-failed' && (
-              <p className="text-red-700 text-sm">Browser check failed. Reload the page and try again.</p>
-            )}
-          </form>
-        )}
-
-        <div className="mt-12 pt-8 border-t border-stone-200 text-stone-500 text-sm">
-          Already have an account?{' '}
-          <a href="/login" className="text-orange-600 hover:underline">Sign in →</a>
         </div>
       </div>
     </main>

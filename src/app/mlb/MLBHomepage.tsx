@@ -670,7 +670,7 @@ function Leaders({ statLeaders }: { statLeaders: Record<string, MLBStatLeader[]>
         <Link href="/mlb/stats" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>
           Full leaderboards →
         </Link>
-        <Link href="/lab" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#A3A3A3', textDecoration: 'none' }}>
+        <Link href="/me" className="m" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#A3A3A3', textDecoration: 'none' }}>
           Compare players in dashboard →
         </Link>
       </div>

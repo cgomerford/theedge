@@ -9,7 +9,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
-import SignupForm from '@/components/SignupForm'
 import LabArt from '@/components/lab/LabArt'
 import { LABS_MENU } from '@/lib/nav/labsMenu'
 import { C, SANS, MONO } from '@/components/team/ui'
@@ -38,10 +37,6 @@ export default async function LabStub({ params }: { params: Promise<{ slug: stri
           {item.blurb ?? 'This lab isn’t built yet. Nothing is shown here until there is real data behind it.'}
         </p>
         <div style={{ margin: '0 0 32px' }}><LabArt art={item.art} /></div>
-        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, marginBottom: 12 }}>
-          ⊕ Get notified when this launches
-        </div>
-        <SignupForm source={`lab_${slug.replace(/-/g, '_')}`} buttonText="Get notified when this launches →" />
         <Link href="/mlb/lab/pitching-lab" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: C.orange, fontWeight: 700, textDecoration: 'none' }}>
           Open the Pitching Lab →
         </Link>
