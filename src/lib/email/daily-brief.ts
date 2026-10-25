@@ -196,7 +196,7 @@ export function buildDailyBrief(input: DailyBriefInput): DailyBriefOutput {
   const unsubscribeUrl = `${SITE_URL}/api/unsubscribe?email=${encodeURIComponent(recipientEmail)}`
 
   const gameCount = games.length
-  const gameCountText = gameCount === 1 ? '§ One game tonight' : `§ ${gameCount} games tonight`
+  const gameCountText = gameCount === 1 ? 'One game tonight' : `${gameCount} games tonight`
 
   const bodyParts: string[] = []
 

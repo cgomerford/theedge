@@ -78,14 +78,14 @@ export default function LineChart({ labels, series, dots = false, marks, markLab
       {ticks.map((t) => (
         <g key={t}>
           <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth={1} />
-          <text x={padL - 6} y={y(t) + 3} textAnchor="end" fontSize={10} fill={INK} fontFamily="ui-monospace, monospace">{format(t)}</text>
+          <text x={padL - 6} y={y(t) + 3} textAnchor="end" fontSize={10} fill={INK} fontFamily="monospace">{format(t)}</text>
         </g>
       ))}
 
       {baseline?.value != null && (
         <g>
           <line x1={padL} x2={W - padR} y1={y(baseline.value)} y2={y(baseline.value)} stroke={BASE} strokeWidth={1} strokeDasharray="4 3" />
-          {!compact && <text x={padL + 4} y={y(baseline.value) - 4} textAnchor="start" fontSize={9} fill={INK} fontFamily="ui-monospace, monospace">{baseline.label} {format(baseline.value)}</text>}
+          {!compact && <text x={padL + 4} y={y(baseline.value) - 4} textAnchor="start" fontSize={9} fill={INK} fontFamily="monospace">{baseline.label} {format(baseline.value)}</text>}
         </g>
       )}
 
@@ -114,7 +114,7 @@ export default function LineChart({ labels, series, dots = false, marks, markLab
       )}
 
       {!compact && [0, Math.floor((n - 1) / 2), n - 1].map((i) => (
-        <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} fontSize={10} fill={INK} fontFamily="ui-monospace, monospace">{labels[i]}</text>
+        <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} fontSize={10} fill={INK} fontFamily="monospace">{labels[i]}</text>
       ))}
 
       {labels.map((label, i) => (

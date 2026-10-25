@@ -41,7 +41,7 @@ function TeamStreakColumn({ teamName, rows }: { teamName: string; rows: StreakRo
                 </div>
               </div>
               <span className={`font-mono text-xs font-bold shrink-0 ${hot ? 'text-green-600' : 'text-red-500'}`}>
-                {hot ? '📈' : '📉'} {hot ? '+' : ''}{r.delta.toFixed(3)}
+                {hot ? '' : ''} {hot ? '+' : ''}{r.delta.toFixed(3)}
               </span>
             </Link>
           )

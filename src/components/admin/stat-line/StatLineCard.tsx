@@ -10,6 +10,7 @@
 import { MONO, SANS } from '@/components/team/ui'
 import { fitText } from '../story/fit'
 import { gradientCss, type Field, type Gradient } from './logic'
+import { SITE_HOST } from '@/lib/site'
 
 export type CardFormat = '4:5' | '1:1' | '9:16'
 export const FORMATS: Record<CardFormat, { w: number; h: number; label: string }> = {
@@ -108,7 +109,7 @@ export default function StatLineCard(p: StatLineCardProps) {
 
       {/* footer */}
       <div style={{ position: 'absolute', left: padX, right: padX, bottom, display: 'flex', justifyContent: 'space-between', fontFamily: MONO, fontSize: 30, color: faint }}>
-        <span>edgereportdaily.com</span>
+        <span>{SITE_HOST}</span>
         <span>{p.source}</span>
       </div>
     </div>

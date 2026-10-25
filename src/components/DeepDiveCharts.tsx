@@ -114,12 +114,12 @@ export default function DeepDiveCharts({ mlbData }: { mlbData: MlbDeepDivesData 
         <div>
           <div className="text-[10px] uppercase tracking-[0.1em] font-bold text-[#FF5722]">Deep dives</div>
           <div className="text-[10px] text-[#8A8577] mt-0.5">
-            {mlb ? 'Real Statcast data — refreshed every 6h' : 'Illustrative — real per-game data ships with Pro'}
+            {mlb ? 'Refreshed every 6 hours' : 'Illustrative — real per-game data ships with Pro'}
           </div>
         </div>
-        <div className="inline-flex gap-[2px] rounded-full border border-[#DEDACE] p-0.5">
-          <button onClick={() => setSport('mlb')} className={`rounded-full text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${mlb ? 'bg-[#FF5722] text-black' : 'text-[#8A8577]'}`}>MLB</button>
-          <button onClick={() => setSport('nfl')} className={`rounded-full text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${!mlb ? 'bg-[#FF5722] text-black' : 'text-[#8A8577]'}`}>NFL</button>
+        <div className="inline-flex gap-[2px] rounded-sm border border-[#DEDACE] p-0.5">
+          <button onClick={() => setSport('mlb')} className={`rounded-sm text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${mlb ? 'bg-[#FF5722] text-black' : 'text-[#8A8577]'}`}>MLB</button>
+          <button onClick={() => setSport('nfl')} className={`rounded-sm text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${!mlb ? 'bg-[#FF5722] text-black' : 'text-[#8A8577]'}`}>NFL</button>
         </div>
       </div>
 

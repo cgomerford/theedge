@@ -18,6 +18,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getFactorBracketStats } from '@/lib/track-record'
+import { SITE_HOST } from '@/lib/site'
 
 const supa = createAdminClient()
 
@@ -237,7 +238,7 @@ ${top.factor_count} of 8 factors lean toward ${top.lean_team} tonight against ${
 ${top.story_lead?.trim() || top.summary?.trim() || `The biggest tilt is ${top.dominant_factor}.`}
 
 Not a tip \u2014 just where the eight factors point.`,
-    footnote: 'No score, no link in the post. Drop edgereportdaily.com in your FIRST REPLY \u2014 in-post links cut reach 50\u201390%.',
+    footnote: `No score, no link in the post. Drop ${SITE_HOST} in your FIRST REPLY \u2014 in-post links cut reach 50\u201390%.`,
   } : null
 
   // Stat of the Day — a real underlying data factor (xFIP, CSW%, bullpen IP,

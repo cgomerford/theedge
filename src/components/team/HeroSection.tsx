@@ -46,11 +46,11 @@ export default function HeroSection({ team, profile: p }: { team: Team; profile:
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.yellow, marginBottom: 6 }}>⊕ Team profile · {team.league} {team.division} · {p.season}</div>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, color: on, letterSpacing: '-.02em' }}>{team.name}</div>
+          <h1 style={{ margin: 0, fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, color: on, letterSpacing: '-.02em' }}>{team.name}</h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 10, fontFamily: MONO, fontSize: 12, color: on }}>
             <span style={{ opacity: 0.85 }}>{ordinal(s.divRank)} in {team.league} {team.division} · {s.gb === '-' ? 'leads the division' : `${s.gb} GB`}</span>
             {st && (
-              <span style={{ background: st.hot ? C.yellow : 'rgba(255,255,255,.18)', color: st.hot ? '#1A1A1A' : on, padding: '3px 9px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{st.text}</span>
+              <span style={{ background: st.hot ? C.yellow : 'rgba(255,255,255,.18)', color: st.hot ? '#1A1A1A' : on, padding: '3px 9px', borderRadius: 4, fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{st.text}</span>
             )}
           </div>
         </div>

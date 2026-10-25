@@ -23,6 +23,7 @@ import { C, SANS, MONO } from '@/components/team/ui'
 import { cardCss, ZoneGridView, type Cell, type CardPitcher } from '@/components/admin/scout-graphic/ScoutGraphicCard'
 import { heatColor } from '@/components/admin/scout-graphic/zone-utils'
 import { STAT_ROWS, betterSide, statValue } from './preview-utils'
+import { SITE_HOST } from '@/lib/site'
 
 /** `bottom` is ONE lower module (or none) — zone grids and times-through-order together don't fit a 4:5 card. */
 export type GamePreviewShow = { arsenal: boolean; last3: boolean; bottom: 'zones' | 'tto' | 'none' }
@@ -168,7 +169,7 @@ const GamePreviewCard = forwardRef<HTMLDivElement, GamePreviewCardProps>(functio
   // The last visible module stretches to fill the card so a trimmed-down graphic isn't half empty.
   const growKey = show.bottom !== 'none' ? show.bottom : show.arsenal ? 'arsenal' : 'stats'
   let n = 0
-  const no = () => `§ ${String(++n).padStart(2, '0')}`
+  const no = () => `${String(++n).padStart(2, '0')}`
 
   const zoneSize = 222
   const sources = [
@@ -277,7 +278,7 @@ const GamePreviewCard = forwardRef<HTMLDivElement, GamePreviewCardProps>(functio
         <div className="sg-src">{sources}</div>
         <div className="sg-cta">
           <div className="sg-l">Full report</div>
-          <div className="sg-u">edgereportdaily.com</div>
+          <div className="sg-u">{SITE_HOST}</div>
         </div>
       </div>
     </div>

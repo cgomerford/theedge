@@ -18,9 +18,11 @@
 // rows (weather, park, series context) get no team attribution at all —
 // they're facts about the game, not either side.
 
+import { CANVAS_FONTS } from '@/lib/canvas-font'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import { CANVAS, preloadFonts, recordToWebm, transcodeWebmToMp4 } from '@/lib/video-export'
 import type { ScoutRow, ScoutSection } from '@/lib/scout'
+import { SITE_HOST } from '@/lib/site'
 
 export { CANVAS, preloadFonts, recordToWebm, transcodeWebmToMp4 }
 
@@ -31,12 +33,7 @@ const COLORS = {
   gray: '#A3A3A3',
 } as const
 
-const FONTS = {
-  display: 'Fraunces',
-  big: 'Bebas Neue',
-  mono: 'JetBrains Mono',
-  body: 'Inter',
-} as const
+const FONTS = CANVAS_FONTS
 
 const SECTION_LABEL: Record<ScoutSection, string> = {
   pitching: 'Pitching',
@@ -298,7 +295,7 @@ export function drawScoutRowFrame(
   ctx.fillText('FULL SCOUT REPORT →', cx, CANVAS.h - 130)
   ctx.fillStyle = COLORS.orange
   ctx.font = `700 28px "${FONTS.mono}"`
-  ctx.fillText('edgereportdaily.com', cx, CANVAS.h - 90)
+  ctx.fillText(`${SITE_HOST}`, cx, CANVAS.h - 90)
   ctx.restore()
   ctx.textAlign = 'left'
 }

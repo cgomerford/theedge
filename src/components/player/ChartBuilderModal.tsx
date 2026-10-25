@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import type { BatterGame, PitcherGame } from '@/lib/stats-gamelog'
 import { aggregateBatting, aggregatePitching } from '@/lib/stats-gamelog'
+import { SITE_HOST } from '@/lib/site'
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 
 type ChartType = 'line' | 'bar'
 
@@ -140,7 +143,7 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-900 transition"
           >
-            ✕
+            Close
           </button>
         </div>
 
@@ -153,7 +156,7 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
                 <button
                   key={o.key}
                   onClick={() => setStatKey(o.key)}
-                  className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-full border transition ${
+                  className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-sm border transition ${
                     statKey === o.key
                       ? 'bg-[#1A1A1A] text-yellow-300 border-[#1A1A1A]'
                       : 'bg-white text-stone-500 border-stone-300 hover:border-stone-900'
@@ -169,19 +172,9 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
           <div className="flex flex-wrap gap-6">
             <div>
               <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400 mb-2">Chart type</div>
-              <div className="flex bg-stone-100 p-1 rounded-full w-fit">
-                {(['line', 'bar'] as ChartType[]).map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setChartType(t)}
-                    className={`font-mono text-[10.5px] uppercase px-3.5 py-1.5 rounded-full transition ${
-                      chartType === t ? 'bg-[#1A1A1A] text-yellow-300' : 'text-stone-500 hover:text-stone-900'
-                    }`}
-                  >
-                    {t === 'line' ? 'Line' : 'Bar'}
-                  </button>
-                ))}
-              </div>
+              <Suspense fallback={null}>
+                <Tabs sticky={false} label="Chart type" value={chartType} onChange={id => setChartType(id as ChartType)} tabs={[{ id: 'line', label: 'Line' }, { id: 'bar', label: 'Bar' }]} />
+              </Suspense>
             </div>
 
             <div>
@@ -214,15 +207,15 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
                 <ResponsiveContainer width="100%" height={260}>
                   {chartType === 'line' ? (
                     <LineChart data={series} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                      <XAxis dataKey="g" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-                      <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={44} domain={['auto', 'auto']} />
+                      <XAxis dataKey="g" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+                      <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={44} domain={['auto', 'auto']} />
                       <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(stat?.decimals ?? 2) : '—')} labelFormatter={l => `Game ${l}`} />
                       <Line type="monotone" dataKey="v" stroke="#FF5722" strokeWidth={2.5} dot={false} connectNulls={false} />
                     </LineChart>
                   ) : (
                     <BarChart data={series} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                      <XAxis dataKey="g" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-                      <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={44} domain={['auto', 'auto']} />
+                      <XAxis dataKey="g" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+                      <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={44} domain={['auto', 'auto']} />
                       <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(stat?.decimals ?? 2) : '—')} labelFormatter={l => `Game ${l}`} />
                       <Bar dataKey="v" fill="#FF5722" radius={[3, 3, 0, 0]} />
                     </BarChart>
@@ -230,7 +223,7 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
                 </ResponsiveContainer>
               )}
               <div className="mt-2 pt-2 border-t border-stone-200 flex justify-between items-center">
-                <span className="font-mono text-[8px] text-stone-400 tracking-wide">edgereportdaily.com</span>
+                <span className="font-mono text-[8px] text-stone-400 tracking-wide">{SITE_HOST}</span>
                 <span className="font-mono text-[8px] text-stone-400">⊕</span>
               </div>
             </div>

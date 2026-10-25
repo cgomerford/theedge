@@ -1,13 +1,12 @@
 import SiteHeader from '@/components/SiteHeader'
 import TurnstileWidget from '@/components/TurnstileWidget'
+import { noindex } from '@/lib/seo'
 
 type Props = {
   searchParams: Promise<{ sent?: string; error?: string }>
 }
 
-export const metadata = {
-  title: 'Sign in · x9Lab',
-}
+export const metadata = { title: 'Sign in', ...noindex() }
 
 export default async function LoginPage({ searchParams }: Props) {
   const sp = await searchParams
@@ -34,7 +33,7 @@ export default async function LoginPage({ searchParams }: Props) {
         {sent ? (
           <div className="p-6 bg-stone-900 text-stone-100 border-l-4 border-yellow-300">
             <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-2">
-              ✓ Check your inbox
+              Check your inbox
             </div>
             <p className="font-serif">
               We&apos;ve sent a sign-in link to your email. The link works once and expires in 30 minutes.

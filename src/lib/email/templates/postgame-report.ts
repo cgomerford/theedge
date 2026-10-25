@@ -20,6 +20,7 @@
 
 import { COLORS, FONTS, SITE_URL, hairline, kicker, wrapEmail } from '@/lib/email/layout'
 import type { PostgameReport } from '@/types/postgame'
+import { SITE_HOST } from '@/lib/site'
 function outsToIP(outs: number): string {
   return `${Math.floor(outs / 3)}.${outs % 3}`
 }
@@ -34,7 +35,7 @@ function sectionHeading(label: string): string {
   return `
   <tr><td style="padding:26px 40px 10px;">
     <div style="font-family:${FONTS.mono};font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${COLORS.orange};border-bottom:1px solid ${COLORS.ink}22;padding-bottom:8px;">
-      § ${label}
+      ${label}
     </div>
   </td></tr>`
 }
@@ -102,7 +103,7 @@ function superlativeRow(report: PostgameReport): string {
   const cells = items.map(it => `
     <td style="padding:14px 10px;text-align:center;width:33%;border-left:1px solid ${COLORS.ink}15;">
       <div style="font-family:${FONTS.mono};font-size:9px;letter-spacing:0.12em;color:${COLORS.muted};text-transform:uppercase;margin-bottom:4px;">${it.label}</div>
-      <div style="font-family:Georgia,serif;font-weight:700;font-size:22px;color:${COLORS.ink};">${it.value}</div>
+      <div style="font-family:Red Hat Display,sans-serif;font-weight:700;font-size:22px;color:${COLORS.ink};">${it.value}</div>
       ${it.sub ? `<div style="font-family:${FONTS.mono};font-size:10px;color:${COLORS.muted};margin-top:2px;">${it.sub}</div>` : ''}
     </td>`).join('')
 
@@ -120,7 +121,7 @@ function keyPlaysList(report: PostgameReport): string {
       <span style="font-family:${FONTS.mono};font-size:10px;color:${COLORS.muted};">
         ${kp.halfInning === 'top' ? '▲' : '▼'} ${kp.inning}
       </span>
-      <span style="font-family:Georgia,serif;font-size:13px;color:${COLORS.body};margin-left:8px;">
+      <span style="font-family:Red Hat Display,sans-serif;font-size:13px;color:${COLORS.body};margin-left:8px;">
         ${kp.description}
       </span>
     </td></tr>`).join('')
@@ -140,7 +141,7 @@ export function buildPostgameReportEmail(report: PostgameReport): { subject: str
   const body = `
   ${kicker('POSTGAME REPORT', { color: COLORS.orange })}
   <tr><td style="padding:6px 40px 20px;">
-    <div style="font-family:Georgia,serif;font-weight:700;font-size:26px;color:${COLORS.ink};">
+    <div style="font-family:Red Hat Display,sans-serif;font-weight:700;font-size:26px;color:${COLORS.ink};">
       ${report.away.abbreviation} ${report.finalAwayScore} — ${report.home.abbreviation} ${report.finalHomeScore}
     </div>
     <div style="font-family:${FONTS.mono};font-size:11px;color:${COLORS.muted};margin-top:4px;">
@@ -169,7 +170,7 @@ export function buildPostgameReportEmail(report: PostgameReport): { subject: str
   ${hairline()}
   <tr><td style="padding:16px 40px 30px;">
     <a href="${SITE_URL}/mlb/${report.slug}" style="font-family:${FONTS.mono};font-size:11px;letter-spacing:0.08em;color:${COLORS.orange};text-decoration:none;">
-      → Full report with pitch charts on edgereportdaily.com
+      → Full report with pitch charts on ${SITE_HOST}
     </a>
   </td></tr>
   `

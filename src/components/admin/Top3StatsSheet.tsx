@@ -4,7 +4,7 @@
 // (794×1123px, 96dpi) and exports it as a single-page PDF.
 //
 // EXPORT MECHANISM: same pattern as StatCardPanel.tsx — html-to-image's
-// toPng() rather than html2canvas, for reliable next/font (Outfit/JetBrains
+// toPng() rather than html2canvas, for reliable next/font (Red Hat/JetBrains
 // Mono) rendering. The preview is visually scaled down with
 // a CSS transform on an OUTER wrapper; the ref is on the unscaled inner
 // stage, so the exported image is always captured at true 794×1123 size —
@@ -30,10 +30,12 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import { forwardRef, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { Top3StatsPayload, Top3Category, Top3Entry } from '@/types/live-tracker'
+import { SITE_HOST } from '@/lib/site'
 
 const COLORS = {
   cream: '#FAF8F3',
@@ -64,7 +66,7 @@ function Headshot({ playerId, name, size }: { playerId: number | null; name: str
           width: size, height: size, borderRadius: '50%', flexShrink: 0,
           background: COLORS.stone, color: COLORS.cream,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-jetbrains), monospace', fontSize: size * 0.32, fontWeight: 700,
+          fontFamily: 'var(--font-redhat), sans-serif', fontSize: size * 0.32, fontWeight: 700,
         }}
       >
         {initialsOf(name)}
@@ -112,7 +114,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
     >
       <div
         style={{
-          fontFamily: 'var(--font-jetbrains), monospace', fontSize: 7.5, fontWeight: 700,
+          fontFamily: 'var(--font-redhat), sans-serif', fontSize: 7.5, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.05em', color: COLORS.orange,
           borderBottom: `1px solid ${COLORS.line}`, paddingBottom: 4, marginBottom: 4, flexShrink: 0,
         }}
@@ -123,7 +125,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
       {cat.entries.length === 0 ? (
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace', fontSize: 7.5, color: COLORS.gray,
+            fontFamily: 'var(--font-redhat), sans-serif', fontSize: 7.5, color: COLORS.gray,
             fontStyle: 'italic', flex: 1, display: 'flex', alignItems: 'center',
           }}
         >
@@ -133,7 +135,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, justifyContent: 'center' }}>
           {cat.entries.map((e: Top3Entry) => (
             <div key={e.rank} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ fontFamily: 'var(--font-jetbrains), monospace', fontSize: 7.5, color: COLORS.gray, width: 8, flexShrink: 0 }}>
+              <div style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 7.5, color: COLORS.gray, width: 8, flexShrink: 0 }}>
                 {e.rank}
               </div>
               {e.playerId != null
@@ -142,7 +144,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontFamily: 'var(--font-inter), Inter, sans-serif', fontSize: 8, fontWeight: 600, color: COLORS.stone,
+                    fontFamily: 'var(--font-redhat), Red Hat Display, sans-serif', fontSize: 8, fontWeight: 600, color: COLORS.stone,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}
                 >
@@ -150,7 +152,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
                 </div>
                 <div
                   style={{
-                    fontFamily: 'var(--font-jetbrains), monospace', fontSize: 6.5, color: COLORS.gray,
+                    fontFamily: 'var(--font-redhat), sans-serif', fontSize: 6.5, color: COLORS.gray,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}
                 >
@@ -159,7 +161,7 @@ function CategoryCard({ cat }: { cat: Top3Category }) {
               </div>
               <div
                 style={{
-                  fontFamily: 'var(--font-jetbrains), monospace', fontSize: 8.5, fontWeight: 700, color: COLORS.stone,
+                  fontFamily: 'var(--font-redhat), sans-serif', fontSize: 8.5, fontWeight: 700, color: COLORS.stone,
                   whiteSpace: 'nowrap', flexShrink: 0, textAlign: 'right',
                 }}
               >
@@ -188,7 +190,7 @@ export const Top3StatsStage = forwardRef<HTMLDivElement, Top3StatsStageProps>(
         style={{
           width: A4.w, height: A4.h, background: COLORS.cream, boxSizing: 'border-box',
           display: 'flex', flexDirection: 'column', padding: 20,
-          border: `3px solid ${COLORS.stone}`, fontFamily: 'var(--font-inter), Inter, sans-serif',
+          border: `3px solid ${COLORS.stone}`, fontFamily: 'var(--font-redhat), Red Hat Display, sans-serif',
         }}
       >
         <div
@@ -197,13 +199,13 @@ export const Top3StatsStage = forwardRef<HTMLDivElement, Top3StatsStageProps>(
             borderBottom: `3px solid ${COLORS.stone}`, paddingBottom: 10, marginBottom: 12, flexShrink: 0,
           }}
         >
-          <div style={{ fontFamily: 'var(--font-fraunces), serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>
+          <div style={{ fontFamily: 'var(--font-redhat), serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>
             <span style={{ color: COLORS.orange }}>⊕</span> X9LAB{' '}
             <span style={{ fontWeight: 400, fontSize: 13, color: COLORS.gray }}>/ {levelLabel ?? DEFAULT_LEVEL_LABEL}</span>
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-jetbrains), monospace', fontSize: 9.5, color: COLORS.gray,
+              fontFamily: 'var(--font-redhat), sans-serif', fontSize: 9.5, color: COLORS.gray,
               textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right',
             }}
           >
@@ -225,11 +227,11 @@ export const Top3StatsStage = forwardRef<HTMLDivElement, Top3StatsStageProps>(
         <div
           style={{
             flexShrink: 0, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${COLORS.line}`,
-            fontFamily: 'var(--font-jetbrains), monospace', fontSize: 7, color: COLORS.gray,
+            fontFamily: 'var(--font-redhat), sans-serif', fontSize: 7, color: COLORS.gray,
             textTransform: 'uppercase', letterSpacing: '0.04em',
           }}
         >
-          § Source: MLB Stats API — literal box-score / pitch-log stats, no model score · edgereportdaily.com
+          <XMark /> Source: MLB Stats API — literal box-score / pitch-log stats, no model score · {SITE_HOST}
         </div>
       </div>
     )
@@ -272,7 +274,7 @@ export default function Top3StatsSheet({ payload, levelLabel }: Top3StatsSheetPr
         <button onClick={handleExportPdf} disabled={exporting} className="t3-export-btn">
           {exporting ? 'Exporting…' : 'Export A4 PDF'}
         </button>
-        {error && <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: COLORS.orange }}>{error}</span>}
+        {error && <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 11, color: COLORS.orange }}>{error}</span>}
       </div>
 
       <div style={{ background: '#e5e1d6', padding: 24, display: 'flex', justifyContent: 'center', overflow: 'auto' }}>
@@ -282,7 +284,7 @@ export default function Top3StatsSheet({ payload, levelLabel }: Top3StatsSheetPr
       </div>
 
       <style>{`
-        .t3-export-btn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:9px 18px;cursor:pointer}
+        .t3-export-btn{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:9px 18px;cursor:pointer}
         .t3-export-btn:hover{background:#e64a19}
         .t3-export-btn:disabled{opacity:.5;cursor:default}
       `}</style>

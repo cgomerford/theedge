@@ -1,22 +1,28 @@
+import XMark from '@/components/XMark'
 import SiteHeader from '@/components/SiteHeader'
 import SignupForm from '@/components/SignupForm'
 import Link from 'next/link'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: "How it works · x9Lab",
-  description: "Three steps. Five minutes. Three hours before first pitch.",
-}
+export const metadata = pageMeta({
+  title: 'How it works',
+  description:
+    'How an x9Lab game preview is built: starting pitchers, lineups, bullpen workload and pitch data laid out in plain numbers before first pitch.',
+  path: '/how-it-works',
+})
 
 export default function HowItWorksPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'How it works', path: '/how-it-works' }]} />
       <SiteHeader variant="page" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <Link href="/" className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] hover:underline">
           ← Back to home
         </Link>
 
-        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2">§ How it works</div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2"><XMark /> How it works</div>
         <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mb-16">
           How it works<span className="text-[#FF5722]">.</span>
         </h1>
@@ -36,7 +42,7 @@ export default function HowItWorksPage() {
             <div className="text-7xl font-serif font-light text-[#FF5722] leading-none mb-4">02</div>
             <h2 className="text-3xl font-serif font-semibold mb-3">We do the work.</h2>
             <p className="text-lg leading-relaxed text-stone-700 font-serif mb-8">
-              Three hours before first pitch, our system pulls Statcast data, advanced metrics, lineups, weather, and line movement.
+              Three hours before first pitch, our system pulls pitch data, advanced metrics, and lineups.
               Then it surfaces the factors that will actually matter tonight.
             </p>
 
@@ -87,13 +93,6 @@ export default function HowItWorksPage() {
                     <div>
                       <div className="font-medium">Park Factors</div>
                       <div className="text-stone-500">HR/run multipliers, dome status</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="w-2 h-2 mt-2 bg-[#FF5722] flex-shrink-0" />
-                    <div>
-                      <div className="font-medium">Weather</div>
-                      <div className="text-stone-500">Temperature, wind direction + speed</div>
                     </div>
                   </div>
                   <div className="flex gap-3">

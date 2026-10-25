@@ -1,11 +1,17 @@
-export const metadata = {
-  title: "Privacy Policy · x9Lab",
-  description: "How we handle your data.",
-}
+export const metadata = pageMeta({
+  title: 'Privacy policy',
+  description:
+    'How x9Lab collects, uses and protects your email address and site data, and how to ask for your data to be deleted or your subscription ended.',
+  path: '/privacy',
+})
 import SiteHeader from '@/components/SiteHeader'
+import { CONTACT_EMAIL } from '@/lib/site'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Privacy', path: '/privacy' }]} />
       <SiteHeader variant="page" />
       <div className="max-w-3xl mx-auto px-6 py-12">
         <a href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
@@ -50,7 +56,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Your rights</h2>
             <p>
-              You can unsubscribe at any time using the link at the bottom of every email. To request deletion of your data entirely, email <a href="mailto:hello@edgereportdaily.com" className="text-orange-600 hover:underline">hello@edgereportdaily.com</a> and we&apos;ll process it within 7 days.
+              You can unsubscribe at any time using the link at the bottom of every email. To request deletion of your data entirely, email <a href={`mailto:${CONTACT_EMAIL}`} className="text-orange-600 hover:underline">{CONTACT_EMAIL}</a> and we&apos;ll process it within 7 days.
             </p>
           </section>
 
@@ -71,7 +77,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Contact</h2>
             <p>
-              Questions about this policy: <a href="mailto:hello@edgereportdaily.com" className="text-orange-600 hover:underline">hello@edgereportdaily.com</a>
+              Questions about this policy: <a href={`mailto:${CONTACT_EMAIL}`} className="text-orange-600 hover:underline">{CONTACT_EMAIL}</a>
             </p>
           </section>
 

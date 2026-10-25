@@ -38,7 +38,7 @@ export default function MostImpactfulAB({ ab, awayAbbr, homeAbbr, awayColor, hom
         <div className="flex items-baseline gap-2">
           <span
             className="leading-none text-stone-900"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', letterSpacing: '0.02em' }}
+            style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.3rem', letterSpacing: '0.02em' }}
           >
             {ab.batterName}
           </span>

@@ -126,7 +126,7 @@ export default function EdgePlusPanel({
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`font-mono rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-wide transition ${view === v ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] uppercase tracking-wide transition ${view === v ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
             >
               {v === 'season' ? 'Season' : 'Particular game'}
             </button>

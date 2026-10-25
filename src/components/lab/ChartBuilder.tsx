@@ -22,7 +22,7 @@ import type { Role, TeamRunsByRole } from '@/lib/lab/team-pitch-makeup.server-fe
 
 const ROLES: Role[] = ['all', 'sp', 'rp']
 const chip = (on: boolean): React.CSSProperties => ({
-  fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+  fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 4, cursor: 'pointer',
   border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : '#5b5347',
 })
 
@@ -99,7 +99,7 @@ export default function ChartBuilder({ season, runs }: { season: number; runs: R
     <>
       <LoadBar done={done} total={total} failed={failed.length} season={season} />
 
-      <div style={{ position: 'sticky', top: 0, zIndex: 5, background: C.cream, padding: '12px 0', marginTop: 8, borderBottom: `1px solid ${C.line}` }}>
+      <div className="x9-desk-sticky" style={{ position: 'sticky', top: 0, zIndex: 5, background: C.cream, padding: '12px 0', marginTop: 8, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
           <Slicer label="League">
             {(['all', 'AL', 'NL'] as const).map(l => <button key={l} style={chip(league === l)} onClick={() => setLeague(l)}>{l === 'all' ? 'Both' : l}</button>)}
@@ -138,7 +138,7 @@ export default function ChartBuilder({ season, runs }: { season: number; runs: R
                 </>
               )}
             </div>
-            {sel.length > 0 && sel.length <= 4 && sel.map(id => <button key={id} style={{ ...chip(true), background: C.orange, borderColor: C.orange }} onClick={() => ctx.toggle(id)}>{nameOf(id)} ✕</button>)}
+            {sel.length > 0 && sel.length <= 4 && sel.map(id => <button key={id} style={{ ...chip(true), background: C.orange, borderColor: C.orange }} onClick={() => ctx.toggle(id)}>{nameOf(id)}</button>)}
             {sel.length > 4 && <button style={{ ...chip(true), background: C.orange, borderColor: C.orange }} onClick={() => setSel([])}>Clear {sel.length}</button>}
             {sel.length > 0 && (
               <label style={{ display: 'inline-flex', gap: 5, alignItems: 'center', fontFamily: SANS, fontSize: 12, fontWeight: 600, color: '#5b5347', cursor: 'pointer' }}>
@@ -171,7 +171,7 @@ export default function ChartBuilder({ season, runs }: { season: number; runs: R
       </div>
       <PlayersPanel teamIds={sel} season={season} />
       <p style={{ fontFamily: SANS, fontSize: 9.5, color: C.faint, lineHeight: 1.6, marginTop: 16 }}>
-        x9Lab · Baseball Savant pitch data + MLB Stats API runs allowed, {season} regular season. Starters = the pitcher who threw a club&apos;s first pitch of the game; bullpen = everyone after.
+        Starters = the pitcher who threw a club&apos;s first pitch of the game; bullpen = everyone after.
         Correlations (r) describe how two numbers lined up across the clubs shown, not whether one drives the other. xwOBA against stands in for xERA, which Savant doesn&apos;t publish per team.
         Drag a visual by its ⠿ handle to move it, or drag its right edge to resize. Your layout is saved in this browser only.
       </p>

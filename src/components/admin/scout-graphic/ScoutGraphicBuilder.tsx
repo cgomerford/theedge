@@ -68,7 +68,7 @@ function Toggle({ on, disabled, note, onClick, children }: { on: boolean; disabl
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`font-mono text-[10px] uppercase tracking-wider rounded-full border px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed ${
+      className={`font-mono text-[10px] uppercase tracking-wider rounded-sm border px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed ${
         on && !disabled ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-300 text-stone-500'
       }`}
     >
@@ -266,13 +266,13 @@ export default function ScoutGraphicBuilder({ games, slateDate }: { games: Build
       </div>
 
       {!pitcherKnown && (
-        <p className="text-[11px] font-mono text-orange-600 mb-2">⚠ No probable pitcher announced for {side === 'away' ? game.awayAbbr : game.homeAbbr} — choose the other side or check back later.</p>
+        <p className="text-[11px] font-mono text-orange-600 mb-2">No probable pitcher announced for {side === 'away' ? game.awayAbbr : game.homeAbbr} — choose the other side or check back later.</p>
       )}
       {pitcherKnown && pitcherSide.stats == null && pitcherSide.arsenal.length === 0 && (
-        <p className="text-[11px] font-mono text-orange-600 mb-2">⚠ No season stats or arsenal on file for {pitcherSide.name} yet — the graphic will be mostly empty states.</p>
+        <p className="text-[11px] font-mono text-orange-600 mb-2">No season stats or arsenal on file for {pitcherSide.name} yet — the graphic will be mostly empty states.</p>
       )}
       {(game.awayTeamId == null || game.homeTeamId == null) && (
-        <p className="text-[11px] font-mono text-orange-600 mb-2">⚠ Team ID lookup failed for this game — logos will be missing.</p>
+        <p className="text-[11px] font-mono text-orange-600 mb-2">Team ID lookup failed for this game — logos will be missing.</p>
       )}
       {fetchError && <p className="text-[11px] font-mono text-red-600 mb-2">{fetchError}</p>}
       {exportError && <p className="text-[11px] font-mono text-red-600 mb-2">{exportError}</p>}

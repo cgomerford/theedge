@@ -226,7 +226,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => setSituation('season')}
-          className={`font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition ${situation === 'season' ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+          className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${situation === 'season' ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
         >
           Season (all counts)
         </button>
@@ -235,7 +235,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
             key={s}
             onClick={() => setSituation(s)}
             disabled={situational === 'error'}
-            className={`font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition ${situation === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'} disabled:opacity-40 disabled:cursor-not-allowed`}
+            className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${situation === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'} disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {SITUATION_LABELS[s]}
           </button>
@@ -245,7 +245,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
       <div className="bg-white border border-stone-200 rounded-xl p-5">
         <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-3">Overlay a pitcher</p>
         {usingDefault && activePitcher && (
-          <div className="flex items-center gap-2 mb-3 bg-orange-50 border border-orange-200 rounded-full px-3 py-1.5 w-fit">
+          <div className="flex items-center gap-2 mb-3 bg-orange-50 border border-orange-200 rounded-sm px-3 py-1.5 w-fit">
             <span className="text-[9px] font-mono uppercase tracking-wide text-orange-700 font-bold">Next scheduled opponent</span>
             <img src={mlbHeadshot(activePitcher.id)} alt="" width={20} height={20} style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
             <span className="text-[12px] font-bold text-stone-900">{activePitcher.fullName}</span>
@@ -259,7 +259,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
             value={query}
             onChange={e => { setQuery(e.target.value); if (manualPitcher) setManualPitcher(null) }}
             placeholder="Search any real MLB pitcher…"
-            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-full px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
+            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-sm px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
           />
           {visibleResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -276,7 +276,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
           <div className="mt-3 flex items-center gap-2">
             <img src={mlbHeadshot(manualPitcher.id)} alt="" width={26} height={26} style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
             <span className="text-[13px] font-bold text-stone-900">{manualPitcher.fullName}</span>
-            <button onClick={() => { setManualPitcher(null); setQuery('') }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">✕ clear (back to next opponent)</button>
+            <button onClick={() => { setManualPitcher(null); setQuery('') }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">clear (back to next opponent)</button>
           </div>
         )}
       </div>

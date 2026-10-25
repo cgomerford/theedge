@@ -23,7 +23,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'h2h', label: 'Head-to-head' }, { key: 'build', label: 'Roster builder' },
 ]
 const chip = (on: boolean): React.CSSProperties => ({
-  fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+  fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 4, cursor: 'pointer',
   border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : '#5b5347',
 })
 const th: React.CSSProperties = { fontFamily: SANS, fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute, textAlign: 'right', padding: '6px 8px', fontWeight: 400, whiteSpace: 'nowrap' }
@@ -115,7 +115,7 @@ export default function PlayersPanel({ teamIds, season }: { teamIds: number[]; s
         : tab === 'h2h' ? <HeadToHead data={data} store={store} />
         : <RosterBuilder data={data} store={store} />}
       <p style={{ fontFamily: SANS, fontSize: 9.5, color: C.faint, lineHeight: 1.6, marginTop: 14 }}>
-        MLB Stats API, {season} regular season, active roster. Streaks can include postseason games; the roster builder uses the regular season only. Games with no chance to qualify (no at-bat) are skipped, not counted as a break. On-base % leaves out sacrifice flies.
+        {season} regular season, active roster. Streaks can include postseason games; the roster builder uses the regular season only. Games with no chance to qualify (no at-bat) are skipped, not counted as a break. On-base % leaves out sacrifice flies.
       </p>
     </section>
   )
@@ -401,7 +401,7 @@ function RosterBuilder({ data, store }: { data: TeamPlayers; store: Store }) {
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: `1px solid ${C.soft}` }}>
                   <div style={{ flex: 1, minWidth: 0 }}><NameCell p={p} sub={`${f3(r.ops)} OPS`} /></div>
                   {!base.some(q => q.id === p.id) && <span style={{ fontFamily: SANS, fontSize: 9, color: C.orange }}>NEW</span>}
-                  <button aria-label={`Remove ${p.name}`} style={{ ...chip(false), padding: '2px 9px' }} onClick={() => setBuilt(x => x.filter(q => q.id !== p.id))}>✕</button>
+                  <button aria-label={`Remove ${p.name}`} style={{ ...chip(false), padding: '2px 9px' }} onClick={() => setBuilt(x => x.filter(q => q.id !== p.id))}>Remove</button>
                 </div>
               )
             })}

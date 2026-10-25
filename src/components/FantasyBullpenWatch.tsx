@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 'use client'
 
 /**
@@ -72,7 +73,7 @@ function BullpenPanel({
       {/* Header */}
       <div className="px-4 py-2.5 bg-[#1A1A1A] flex items-center justify-between">
         <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#FF5722]">
-          § {abbr} Bullpen
+          <XMark /> {abbr} Bullpen
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`w-2 h-2 rounded-full ${config.dot}`} />
@@ -129,7 +130,7 @@ export default function FantasyBullpenWatch({
   return (
     <section>
       <h3 className="text-xs font-mono uppercase tracking-widest text-[#FF5722] font-bold mb-4">
-        § Bullpen Watch
+        <XMark /> Bullpen Watch
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <BullpenPanel abbr={awayAbbr} data={awayBullpen} />

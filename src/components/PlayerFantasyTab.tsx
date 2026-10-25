@@ -120,20 +120,20 @@ function ProGate() {
       border: '1px solid #E7E5E4', background: '#fff',
     }}>
       <div style={{
-        fontFamily: 'ui-monospace, monospace', fontSize: 10,
+        fontFamily: 'var(--font-redhat), sans-serif', fontSize: 10,
         letterSpacing: '0.15em', textTransform: 'uppercase',
         color: '#FF5722', fontWeight: 700, marginBottom: 8,
       }}>
         ⊕ Pro feature
       </div>
       <div style={{
-        fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize: 20, fontWeight: 700, color: '#1A1A1A', marginBottom: 8,
       }}>
         Fantasy profile
       </div>
       <p style={{
-        fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize: 14, fontStyle: 'italic', color: '#78716c',
         lineHeight: 1.5, maxWidth: 360, margin: '0 auto 20px',
       }}>
@@ -143,7 +143,7 @@ function ProGate() {
         href="/pricing"
         style={{
           display: 'inline-block',
-          fontFamily: 'ui-monospace, monospace', fontSize: 11,
+          fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           background: '#1A1A1A', color: '#FDE047',
           padding: '10px 24px', textDecoration: 'none',
@@ -161,7 +161,7 @@ function LoadingSkeleton() {
   return (
     <div style={{ padding: '40px 0' }}>
       <div style={{
-        fontFamily: 'ui-monospace, monospace', fontSize: 10,
+        fontFamily: 'var(--font-redhat), sans-serif', fontSize: 10,
         letterSpacing: '0.15em', textTransform: 'uppercase',
         color: '#A8A29E', textAlign: 'center',
       }}>
@@ -262,8 +262,8 @@ export default function PlayerFantasyTab({ playerId, playerName, playerType, isP
   // ── Gate ──
   if (!isPro) return <ProGate />
   if (loading) return <LoadingSkeleton />
-  if (error) return <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', color: '#A8A29E', textAlign: 'center', padding: 40 }}>{error}</p>
-  if (!profile) return <p style={{ fontFamily: 'Fraunces, serif', fontStyle: 'italic', color: '#A8A29E', textAlign: 'center', padding: 40 }}>No data available for this player yet.</p>
+  if (error) return <p style={{ fontFamily: 'Red Hat Display, sans-serif', fontStyle: 'italic', color: '#A8A29E', textAlign: 'center', padding: 40 }}>{error}</p>
+  if (!profile) return <p style={{ fontFamily: 'Red Hat Display, sans-serif', fontStyle: 'italic', color: '#A8A29E', textAlign: 'center', padding: 40 }}>No data available for this player yet.</p>
 
   // ── Build regression rows ──
   const regressionRows: RegressionRow[] = playerType === 'hitter'
@@ -363,11 +363,11 @@ export default function PlayerFantasyTab({ playerId, playerName, playerType, isP
       <div style={{
         paddingTop: 16, marginTop: 20,
         borderTop: '1px solid #E7E5E4',
-        fontFamily: 'ui-monospace, monospace', fontSize: 9,
+        fontFamily: 'var(--font-redhat), sans-serif', fontSize: 9,
         letterSpacing: '0.12em', textTransform: 'uppercase',
         color: '#A8A29E',
       }}>
-        Data via MLB Stats API + Baseball Savant · Updated daily
+
       </div>
     </div>
   )

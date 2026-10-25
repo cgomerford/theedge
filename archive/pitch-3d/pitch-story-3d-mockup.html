@@ -11,12 +11,12 @@
      The 360° path is rebuilt from Statcast tracking (release point + velocity + acceleration), anchored at the
      plate; walking it back to the release height lands within ~0.3 in (x) and ~1 in (height) of the listed release
      point (checked on 800 pitches). The pitcher figure is an illustrative silhouette; release point is measured.
-     In the app: Outfit from var(--font-outfit), charts become Recharts, the scene is a client canvas component. -->
+     In the app: Red Hat from var(--font-redhat), charts become Recharts, the scene is a client canvas component. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--cream:#FAF8F3;--card:#fff;--line:#e7e2d8;--soft:#f1eee6;--ink:#1A1A1A;--mute:#8a8275;--faint:#a89e8c;--body:#5b5347;--orange:#FF5722;--yellow:#FDE047;--good:#1D9E75;--bad:#D4533B;--team:#E81828;--team-ink:#fff;--f:'Outfit',system-ui,sans-serif}
+:root{--cream:#FAF8F3;--card:#fff;--line:#e7e2d8;--soft:#f1eee6;--ink:#1A1A1A;--mute:#8a8275;--faint:#a89e8c;--body:#5b5347;--orange:#FF5722;--yellow:#FDE047;--good:#1D9E75;--bad:#D4533B;--team:#E81828;--team-ink:#fff;--f:'Red Hat Display',system-ui,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--f);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
 *{font-family:var(--f)}
@@ -653,7 +653,7 @@ function updateHud(force){   // DOM only when something changes — never per fr
   $('dlvBadge').textContent=(dlv.speed===1?'1x · real time':dlv.speed+'x slow motion')+(dlv.stretch?' · stretch':'');
   $('dlvInfo').innerHTML=dlv.labelIdx===0?`<b>${MO[m.month]}</b> is the first month; every later month is compared with it below.`:`<b>${MO[m.month]}</b> vs March — speed <b>${d('release_speed',1,' mph')}</b> · release side <b>${d('release_pos_x',2,' ft')}</b> · release height <b>${d('release_pos_z',2,' ft')}</b> · extension <b>${d('release_extension',2,' ft')}</b> · arm angle <b>${d('slot',1,'°')}</b> · horizontal break <b>${d('hb',1,'″')}</b>${dlv.exag>1?' · <span class="note">figure drawn ×'+dlv.exag+' from March; numbers and path are real</span>':''}`;
 }
-const tip=m=>{const r=MONTHS[m];return`<b>${MO[r.month]}</b><br><span class="tn">${r.release_speed.toFixed(1)} mph · arm angle ${r.slot.toFixed(1)}°<br>release ${(r.release_pos_z*12).toFixed(1)} in high · ${(r.release_pos_x*12).toFixed(1)} in side</span>`};   // Outfit with tabular numerals (project rule: one font)
+const tip=m=>{const r=MONTHS[m];return`<b>${MO[r.month]}</b><br><span class="tn">${r.release_speed.toFixed(1)} mph · arm angle ${r.slot.toFixed(1)}°<br>release ${(r.release_pos_z*12).toFixed(1)} in high · ${(r.release_pos_x*12).toFixed(1)} in side</span>`};   // Red Hat with tabular numerals (project rule: one font)
 function updateInsets(){
   const vis=MONTHS.map((_,m)=>ghostVisible(m)),key=vis.join('')+'|'+dlv.hot+'|'+dlv.idx+'|'+dlv.showAll;if(key===dlv.insKey)return;dlv.insKey=key;
   const xs=MONTHS.map(m=>m.release_pos_x),zs=MONTHS.map(m=>m.release_pos_z),pad=.35,x0=Math.min(...xs)-pad,x1=Math.max(...xs)+pad,z0=Math.min(...zs)-pad,z1=Math.max(...zs)+pad;
@@ -801,7 +801,7 @@ function scene(){
   // plate crossing marker of the end path
   const pe=PATH.end.pts[PATH.end.pts.length-1];dot(pe,.12,'#FF5722','#fff');
   // labels
-  cx.fillStyle='#8a8275';cx.font='600 11px Outfit';
+  cx.fillStyle='#8a8275';cx.font='600 11px Red Hat';
   const q=proj({x:0,y:60.5,z:0},W,Hh);cx.fillText('Rubber · '+(P.hand==='L'?'LHP':'RHP'),q.x+14,q.y+4);
   const q2=proj({x:0,y:0,z:0},W,Hh);cx.fillText('Plate',q2.x+12,q2.y+4);
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MLB_TEAMS } from '@/lib/teams'
 import { EDGE_NEUTRALS, checkPost, draftPost, defaultGradient, gradientCss, headlineFor, hittingFields, luminance, pitchingFields, shade, teamPalette, textOn, toGameLine } from '../logic'
+import { SITE_HOST } from '@/lib/site'
 
 describe('stat-line logic', () => {
   it('palette: official colours first, shades derived, brand colours last, all valid hex', () => {
@@ -50,7 +51,7 @@ describe('stat-line logic', () => {
     const sample = 'The Guardians lost Games 1 and 2 at home.\n\n35 teams have done that in a best-of-five. Only 3 came back to win the series:\n\n2001 Yankees\n2012 Giants\n2015 Blue Jays\n\n#Guardians #WhiteSox #ALDS'
     const ok = checkPost(sample)
     expect(ok.over).toBe(false); expect(ok.hasLink).toBe(false); expect(ok.banned).toEqual([])
-    expect(checkPost('Read more at edgereportdaily.com/mlb').hasLink).toBe(true)
+    expect(checkPost(`Read more at ${SITE_HOST}/mlb`).hasLink).toBe(true)
     expect(checkPost('Our lock of the night, great odds').banned.sort()).toEqual(['lock', 'odds'])
     expect(checkPost('x'.repeat(281)).over).toBe(true)
   })

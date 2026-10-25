@@ -308,7 +308,7 @@ export default function BatterSequenceExplorer({ batterId, batterName, batterTea
         </div>
         <button
           onClick={() => setShowShare(v => !v)}
-          className="font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722] shrink-0"
+          className="font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722] shrink-0"
         >
           {showShare ? 'Hide share graphic' : 'Share put-away counts ↗'}
         </button>
@@ -331,7 +331,7 @@ export default function BatterSequenceExplorer({ batterId, batterName, batterTea
           <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold">Count</p>
           <div className="flex gap-1">
             {(['all', 'R', 'L'] as const).map(t => (
-              <button key={t} onClick={() => setThrowsFilter(t)} className={`font-mono rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-wide transition ${throwsFilter === t ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}>
+              <button key={t} onClick={() => setThrowsFilter(t)} className={`font-mono rounded-sm border px-2.5 py-1 text-[9px] uppercase tracking-wide transition ${throwsFilter === t ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}>
                 {t === 'all' ? 'All pitchers' : t === 'R' ? 'vs RHP' : 'vs LHP'}
               </button>
             ))}
@@ -339,7 +339,7 @@ export default function BatterSequenceExplorer({ batterId, batterName, batterTea
         </div>
         <div className="flex flex-wrap gap-1.5 mb-4">
           {COUNTS.map(([b, s]) => (
-            <button key={`${b}-${s}`} onClick={() => selectCount(b, s)} className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${balls === b && strikes === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>
+            <button key={`${b}-${s}`} onClick={() => selectCount(b, s)} className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${balls === b && strikes === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>
               {b}-{s}
             </button>
           ))}
@@ -361,9 +361,9 @@ export default function BatterSequenceExplorer({ batterId, batterName, batterTea
                 <p className="text-[12px] font-serif italic text-stone-400">No real previous pitches on record for this selection.</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => selectType(null)} className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${prevType === null ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>Any pitch</button>
+                  <button onClick={() => selectType(null)} className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${prevType === null ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>Any pitch</button>
                   {pitchTypeOptions.map(([pt, count]) => (
-                    <button key={pt} onClick={() => selectType(pt)} className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition flex items-center gap-1.5 ${prevType === pt ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>
+                    <button key={pt} onClick={() => selectType(pt)} className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition flex items-center gap-1.5 ${prevType === pt ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}>
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: pitchColor(pt) }} />
                       {log.pitchNames[pt] ?? pt} <span className="text-stone-400">(n={count})</span>
                     </button>

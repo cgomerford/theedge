@@ -95,7 +95,7 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
           <Tile label="His own whiff%" value={pct(P.own.whiff)} sub={`n = ${fmtN(P.own.swings)} swings, ${data.season}`} />
           <Tile label="His results vs the shape" value={diffPts == null ? '—' : `${sgn(diffPts)} pts`} sub="his whiff% minus the neighborhood's" />
         </div>
-        <Foot>Shape = velocity, induced vertical break (IVB), horizontal break (HB, arm-side positive; left-handers flipped) and arm slot. Neighborhood = the same pitch type and hand within ±1 bin of his average shape, {data.leagueSpan}. Source: Baseball Savant pitch-level data.</Foot>
+        <Foot>Shape = velocity, induced vertical break (IVB), horizontal break (HB, arm-side positive; left-handers flipped) and arm slot. Neighborhood = the same pitch type and hand within ±1 bin of his average shape, {data.leagueSpan}.</Foot>
       </Section>
 
       <Section id="pitch-map" num="03" title="The Pitch Map" sub="Where his pitch is grouped among every pitch of its type with a similar shape, and what batters have done against pitches shaped like it.">
@@ -189,7 +189,7 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
                   <tr><td>{data.prevSeason} shape</td><td className="r"><b>{pct(Lprev?.whiff.value ?? null)}</b></td><td className="r">n = {fmtN(Lprev?.swings ?? 0)}</td></tr>
                   <tr><td>{data.season} shape</td><td className="r"><b>{pct(L.whiff.value)}</b></td><td className="r">n = {fmtN(L.swings)}</td></tr>
                 </tbody></table>
-                <Foot>The dashed line on the movement map in § 02 traces the same shift.</Foot>
+                <Foot>The dashed line on the movement map in 02 traces the same shift.</Foot>
               </Card>
               <ProPanel title="Expand: month by month" blurb="Average velocity by month." features={['Monthly average velocity and shape', 'Months under 50 pitches left off']} isPro={isPro}>
                 {monthly && monthly.length > 1 ? (

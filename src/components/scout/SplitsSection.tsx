@@ -59,7 +59,7 @@ function HitterTable({ hitters, view, tonight }: { hitters: HitterSplits[]; view
       <thead>
         <tr className="text-[9px] font-mono uppercase tracking-wider text-stone-400 text-right border-b border-stone-200">
           <th className="text-left font-semibold py-1">Hitter</th>
-          {[view.a, view.b].map((k) => <th key={k} className={`font-semibold ${tonight === k ? 'text-orange-600' : ''}`}>{k === view.a ? view.aLabel : view.bLabel}{tonight === k ? ' ★' : ''}</th>)}
+          {[view.a, view.b].map((k) => <th key={k} className={`font-semibold ${tonight === k ? 'text-orange-600' : ''}`}>{k === view.a ? view.aLabel : view.bLabel}{tonight === k ? '' : ''}</th>)}
           <th className="font-semibold">Gap</th>
         </tr>
       </thead>
@@ -100,7 +100,7 @@ function PitcherLine({ splits, view, tonight }: { splits: ClubSplits; view: View
             const s = p.splits[k]; const thin = !s || s.bf < MIN_SPLIT_BF
             return (
               <tr key={k} className={`border-b border-stone-100 last:border-0 text-right ${thin ? 'text-stone-300' : 'text-stone-700'}`}>
-                <td className="text-left py-1 font-sans font-semibold">{labels[k]}{tonight === k ? <span className="ml-1.5 text-[8px] font-mono uppercase text-orange-600">★ tonight</span> : ''}</td>
+                <td className="text-left py-1 font-sans font-semibold">{labels[k]}{tonight === k ? <span className="ml-1.5 text-[8px] font-mono uppercase text-orange-600">tonight</span> : ''}</td>
                 <td className="font-mono">{ops(s?.ops)}</td><td className="font-mono">{s?.ip ?? '—'}</td><td className="font-mono">{s?.bf ?? 0}{thin ? '*' : ''}</td>
               </tr>
             )
@@ -160,7 +160,7 @@ export default async function SplitsSection({ ctx }: { ctx: ScoutContext }) {
     <div className="space-y-4">
       <Tabs tabs={tabs} />
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Season splits from the MLB Stats API for tonight&apos;s {away?.lineupSource === 'confirmed' && home?.lineupSource === 'confirmed' ? 'confirmed' : 'confirmed or projected'} lineups. ★ marks the split that applies tonight. Small numbers beside each OPS are plate appearances (batters faced for pitchers); cells under {MIN_SPLIT_PA} PA / {MIN_SPLIT_BF} BF are faded and not read into. A pitcher&apos;s &ldquo;vs LHB / RHB&rdquo; rows use the same split codes as the hitters&apos; &ldquo;vs LHP / RHP&rdquo;.
+        Season splits for tonight&apos;s {away?.lineupSource === 'confirmed' && home?.lineupSource === 'confirmed' ? 'confirmed' : 'confirmed or projected'} lineups. marks the split that applies tonight. Small numbers beside each OPS are plate appearances (batters faced for pitchers); cells under {MIN_SPLIT_PA} PA / {MIN_SPLIT_BF} BF are faded and not read into. A pitcher&apos;s &ldquo;vs LHB / RHB&rdquo; rows use the same split codes as the hitters&apos; &ldquo;vs LHP / RHP&rdquo;.
       </p>
     </div>
   )

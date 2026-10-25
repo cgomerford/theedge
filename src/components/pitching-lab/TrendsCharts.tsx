@@ -31,7 +31,7 @@ import { rollingAverage } from '@/lib/pitcher-start-trends'
 // of sweeping in, so there's no window where it can look empty.
 const NO_ANIM = { isAnimationActive: false } as const
 
-const AXIS_TICK = { fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }
+const AXIS_TICK = { fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }
 
 function ChartCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
@@ -165,7 +165,7 @@ export default function TrendsCharts({ trends }: { trends: PitcherStartTrends })
               <XAxis dataKey="date" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} domain={[0, 'auto']} width={36} unit="%" />
               <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
-              <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+              <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
               {topPitches.map(pt => (
                 <Line {...NO_ANIM} key={pt} type="monotone" dataKey={pt} name={trends.pitchNames[pt] ?? pt} stroke={pitchColor(pt)} strokeWidth={2} dot={false} connectNulls />
               ))}
@@ -187,7 +187,7 @@ export default function TrendsCharts({ trends }: { trends: PitcherStartTrends })
               <XAxis dataKey="date" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} domain={['auto', 'auto']} width={32} />
               <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(2) : '—')} />
-              <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+              <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
               <Line {...NO_ANIM} type="monotone" dataKey="era" name="ERA" stroke="#FF5722" strokeWidth={2} dot={false} connectNulls />
               <Line {...NO_ANIM} type="monotone" dataKey="fip" name="FIP" stroke="#2563EB" strokeWidth={2} dot={false} connectNulls />
             </LineChart>
@@ -214,7 +214,7 @@ export default function TrendsCharts({ trends }: { trends: PitcherStartTrends })
             <XAxis dataKey="date" tick={AXIS_TICK} />
             <YAxis tick={AXIS_TICK} domain={[0, 100]} width={36} unit="%" />
             <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
-            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
             {trends.pitchTypesSeen.map(pt => (
               <Area {...NO_ANIM} key={pt} type="monotone" dataKey={pt} name={trends.pitchNames[pt] ?? pt} stackId="1" stroke={pitchColor(pt)} fill={pitchColor(pt)} fillOpacity={0.75} />
             ))}
@@ -229,7 +229,7 @@ export default function TrendsCharts({ trends }: { trends: PitcherStartTrends })
             <XAxis dataKey="date" tick={AXIS_TICK} />
             <YAxis tick={AXIS_TICK} domain={[0, 'auto']} width={36} unit="%" />
             <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
-            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
             <Line {...NO_ANIM} type="monotone" dataKey="heartPct" name="Heart%" stroke="#DC2626" strokeWidth={2} dot={false} connectNulls />
             <Line {...NO_ANIM} type="monotone" dataKey="edgePct" name="Edge%" stroke="#2563EB" strokeWidth={2} dot={false} connectNulls />
           </LineChart>

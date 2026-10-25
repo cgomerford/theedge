@@ -11,7 +11,6 @@ import {
   Home,
   Target,
   MoreHorizontal,
-  TrendingUp,
   Info,
   DollarSign,
   Users,
@@ -20,7 +19,7 @@ import {
 
 const DEV_LOGGED_IN = true
 
-const HIDDEN_ON = ['/admin', '/preferences', '/login']
+const HIDDEN_ON = ['/admin', '/preferences', '/login', '/maintenance']
 
 const ICON_SIZE   = 20
 const ICON_STROKE = 1.75
@@ -33,21 +32,6 @@ function IconDiamond() {
       stroke="currentColor" strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round">
       <path d="m12 3-9 9 9 9 9-9z" />
       <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-function IconFootball() {
-  return (
-    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth={ICON_STROKE} strokeLinecap="round" strokeLinejoin="round">
-      {/* Ball body */}
-      <ellipse cx="12" cy="12" rx="8" ry="5.5" transform="rotate(-35 12 12)" />
-      {/* Lace — centre stitch */}
-      <line x1="10" y1="10.5" x2="14" y2="13.5" />
-      {/* Cross stitches */}
-      <line x1="10.5" y1="8.8"  x2="12.5" y2="10.3" />
-      <line x1="11.5" y1="13.7" x2="13.5" y2="15.2" />
     </svg>
   )
 }
@@ -76,7 +60,7 @@ type Tab = {
 
 const TABS_LOGGED_IN: Tab[] = [
   {
-    key: 'dugout', label: 'Dugout', href: '/dugout', match: ['/dugout'],
+    key: 'dugout', label: 'Dugout', href: '/lab', match: ['/lab'],
     icon: <Home size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
   {
@@ -84,11 +68,7 @@ const TABS_LOGGED_IN: Tab[] = [
     icon: <IconDiamond />,
   },
   {
-    key: 'nfl', label: 'NFL', href: '/nfl', match: ['/nfl'],
-    icon: <IconFootball />,
-  },
-  {
-    key: 'reads', label: 'My Reads', href: '/dugout', match: ['/reads'],
+    key: 'reads', label: 'My Reads', href: '/lab', match: ['/reads'],
     icon: <Target size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
   {
@@ -107,10 +87,6 @@ const TABS_LOGGED_OUT: Tab[] = [
     icon: <IconDiamond />,
   },
   {
-    key: 'nfl', label: 'NFL', href: '/nfl', match: ['/nfl'],
-    icon: <IconFootball />,
-  },
-  {
     key: 'pricing', label: 'Pro', href: '/pricing', match: ['/pricing'],
     icon: <Target size={ICON_SIZE} strokeWidth={ICON_STROKE} />,
   },
@@ -123,7 +99,6 @@ const TABS_LOGGED_OUT: Tab[] = [
 // ─── More panel links (Lucide icons — no emoji) ───────────────────────────────
 
 const MORE_LINKS = [
-  { href: '/track-record', label: 'Track Record', icon: <TrendingUp size={15} strokeWidth={1.75} /> },
   { href: '/how-it-works', label: 'How It Works', icon: <Info       size={15} strokeWidth={1.75} /> },
   { href: '/pricing',      label: 'Pricing',       icon: <DollarSign size={15} strokeWidth={1.75} /> },
   { href: '/about',        label: 'About',          icon: <Users      size={15} strokeWidth={1.75} /> },
@@ -218,7 +193,7 @@ export default function BottomNav() {
                 </span>
                 <span
                   className="font-mono uppercase"
-                  style={{ fontSize: 11, letterSpacing: '0.1em', color: '#D6D3D1' }}
+                  style={{ fontSize: 12, letterSpacing: '0.06em', color: '#D6D3D1' }}
                 >
                   {link.label}
                 </span>
@@ -232,8 +207,7 @@ export default function BottomNav() {
       <nav
         className="md:hidden"
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          zIndex: 50,
+          position: 'relative',
           background: '#1A1A1A',
           borderTop: '1px solid rgba(255,255,255,0.08)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -243,7 +217,7 @@ export default function BottomNav() {
           display: 'flex',
           alignItems: 'stretch',
           justifyContent: 'space-around',
-          height: 56,
+          height: 60,
           maxWidth: 480,
           margin: '0 auto',
         }}>
@@ -274,7 +248,7 @@ export default function BottomNav() {
                 >
                   {active && <ActiveDot />}
                   {tab.icon}
-                  <span className="font-mono" style={{ fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  <span className="font-mono" style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     {tab.label}
                   </span>
                 </button>
@@ -285,7 +259,7 @@ export default function BottomNav() {
               <Link key={tab.key} href={tab.href!} style={sharedStyle}>
                 {active && <ActiveDot />}
                 {tab.icon}
-                <span className="font-mono" style={{ fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                <span className="font-mono" style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {tab.label}
                 </span>
               </Link>
@@ -294,12 +268,6 @@ export default function BottomNav() {
         </div>
       </nav>
 
-      {/* Bottom spacer so page content clears the nav */}
-      <div
-        className="md:hidden"
-        aria-hidden="true"
-        style={{ height: 56, paddingBottom: 'env(safe-area-inset-bottom, 0px)', flexShrink: 0 }}
-      />
     </>
   )
 }

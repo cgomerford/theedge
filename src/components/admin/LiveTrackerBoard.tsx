@@ -11,6 +11,7 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import { useEffect, useRef, useState } from 'react'
 import type { GameKeyStats, LiveGamePanel, LiveTrackerPayload, NotableEvent } from '@/types/live-tracker'
 import { headshotUrl, teamLogoUrl } from '@/lib/mlb-assets'
@@ -127,7 +128,7 @@ export function LiveTrackerBoard() {
         <div className="lt-title"><span className="lt-glyph">⊕</span> LIVE TRACKER</div>
         <div className="lt-actions">
           {!notifsEnabled && <button className="lt-btn" onClick={enableNotifications}>Enable notifications</button>}
-          {notifsEnabled && <span className="lt-badge-on">🔔 on</span>}
+          {notifsEnabled && <span className="lt-badge-on">on</span>}
           <span className="lt-asof">{payload ? new Date(payload.asOf).toLocaleTimeString() : error ? 'error' : '…'}</span>
         </div>
       </div>
@@ -140,7 +141,7 @@ export function LiveTrackerBoard() {
         </div>
       )}
 
-      <div className="lt-sechead">§ Live ({payload?.panels.length ?? 0})</div>
+      <div className="lt-sechead"><XMark /> Live ({payload?.panels.length ?? 0})</div>
       {payload && payload.panels.length === 0 && <div className="lt-empty">No games live right now.</div>}
       {payload?.panels.map(panel => (
         <GameRow
@@ -154,7 +155,7 @@ export function LiveTrackerBoard() {
 
       {payload && payload.finishedPanels.length > 0 && (
         <>
-          <div className="lt-sechead">§ Finished ({payload.finishedPanels.length})</div>
+          <div className="lt-sechead"><XMark /> Finished ({payload.finishedPanels.length})</div>
           {payload.finishedPanels.map(panel => (
             <GameRow
               key={panel.game.gamePk}
@@ -169,7 +170,7 @@ export function LiveTrackerBoard() {
 
       {payload && payload.otherGames.length > 0 && (
         <>
-          <div className="lt-sechead lt-sechead-secondary">§ Not Started Yet</div>
+          <div className="lt-sechead lt-sechead-secondary"><XMark /> Not Started Yet</div>
           {payload.otherGames.map(g => (
             <div key={g.gamePk} className="lt-other-row">
               <span className="lt-other-teams">
@@ -182,30 +183,30 @@ export function LiveTrackerBoard() {
       )}
 
       <style>{`
-        .lt-wrap { font-family: 'Inter', sans-serif; color: #1A1A1A; background: #FAF8F3; max-width: 860px; margin: 0 auto; padding: 20px; }
+        .lt-wrap { font-family: 'Red Hat Display', sans-serif; color: #1A1A1A; background: #FAF8F3; max-width: 860px; margin: 0 auto; padding: 20px; }
         .lt-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #1A1A1A; padding-bottom: 10px; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
-        .lt-title { font-family: 'Fraunces', serif; font-weight: 800; font-size: 17px; letter-spacing: -0.3px; }
+        .lt-title { font-family: 'Red Hat Display', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -0.3px; }
         .lt-glyph { color: #FF5722; margin-right: 4px; }
         .lt-actions { display: flex; align-items: center; gap: 10px; }
-        .lt-btn { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: 1px; padding: 5px 10px; border: 1px solid #1A1A1A; background: #1A1A1A; color: #fff; cursor: pointer; border-radius: 0; }
-        .lt-badge-on { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #15803d; }
-        .lt-asof { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #6b6b66; }
+        .lt-btn { font-family: 'Red Hat Display', sans-serif; font-size: 9.5px; text-transform: uppercase; letter-spacing: 1px; padding: 5px 10px; border: 1px solid #1A1A1A; background: #1A1A1A; color: #fff; cursor: pointer; border-radius: 0; }
+        .lt-badge-on { font-family: 'Red Hat Display', sans-serif; font-size: 10px; color: #15803d; }
+        .lt-asof { font-family: 'Red Hat Display', sans-serif; font-size: 9.5px; color: #6b6b66; }
         .lt-headline-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-        .lt-headline-chip { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; background: #1A1A1A; color: #FDE047; padding: 4px 9px; }
-        .lt-sechead { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.4px; color: #FF5722; border-bottom: 1px solid #1A1A1A22; padding-bottom: 6px; margin: 14px 0 8px; }
+        .lt-headline-chip { font-family: 'Red Hat Display', sans-serif; font-size: 9.5px; background: #1A1A1A; color: #FDE047; padding: 4px 9px; }
+        .lt-sechead { font-family: 'Red Hat Display', sans-serif; font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.4px; color: #FF5722; border-bottom: 1px solid #1A1A1A22; padding-bottom: 6px; margin: 14px 0 8px; }
         .lt-sechead-secondary { color: #6b6b66; }
-        .lt-empty { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6b6b66; padding: 10px 0; }
-        .lt-other-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6b6b66; border-bottom: 1px solid #E8E4DA; }
+        .lt-empty { font-family: 'Red Hat Display', sans-serif; font-size: 11px; color: #6b6b66; padding: 10px 0; }
+        .lt-other-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; font-family: 'Red Hat Display', sans-serif; font-size: 11px; color: #6b6b66; border-bottom: 1px solid #E8E4DA; }
         .lt-other-teams { display: flex; align-items: center; gap: 5px; }
         .lt-other-status { text-transform: uppercase; font-size: 9px; }
 
         .tl-logo { object-fit: contain; vertical-align: middle; }
-        .tl-fallback { display: inline-flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 700; background: #E8E4DA; color: #6b6b66; vertical-align: middle; }
+        .tl-fallback { display: inline-flex; align-items: center; justify-content: center; font-family: 'Red Hat Display', sans-serif; font-weight: 700; background: #E8E4DA; color: #6b6b66; vertical-align: middle; }
         .hs-img { object-fit: cover; border-radius: 50%; border: 1px solid #FF5722; background: #E8E4DA; flex-shrink: 0; }
-        .hs-fallback { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-family: 'JetBrains Mono', monospace; font-weight: 700; background: #1A1A1A; color: #FDE047; flex-shrink: 0; border: 1px solid #FF5722; }
+        .hs-fallback { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-family: 'Red Hat Display', sans-serif; font-weight: 700; background: #1A1A1A; color: #FDE047; flex-shrink: 0; border: 1px solid #FF5722; }
 
         .gr-wrap { border: 1px solid #E8E4DA; background: #fff; margin-bottom: 6px; }
-        .gr-header { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: none; border: none; cursor: pointer; text-align: left; font-family: 'JetBrains Mono', monospace; }
+        .gr-header { width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: none; border: none; cursor: pointer; text-align: left; font-family: 'Red Hat Display', sans-serif; }
         .gr-arrow { color: #6b6b66; transition: transform 0.15s; display: inline-block; }
         .gr-arrow-open { transform: rotate(90deg); color: #FF5722; }
         .gr-matchup { font-size: 12.5px; font-weight: 600; flex: 1; display: flex; align-items: center; gap: 6px; }
@@ -219,20 +220,20 @@ export function LiveTrackerBoard() {
 
         .sb-banner { background: #1A1A1A; color: #fff; padding: 16px 18px; display: flex; align-items: center; justify-content: center; gap: 20px; }
         .sb-team { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 130px; }
-        .sb-team-name { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; color: #cfcac0; text-align: center; }
-        .sb-score { font-family: 'Bebas Neue', sans-serif; font-size: 48px; line-height: 1; }
+        .sb-team-name { font-family: 'Red Hat Display', sans-serif; font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; color: #cfcac0; text-align: center; }
+        .sb-score { font-family: 'Red Hat Display', sans-serif; font-size: 48px; line-height: 1; }
         .sb-mid { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .sb-vs { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: #6b6b66; }
-        .sb-inning { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #FDE047; text-transform: uppercase; letter-spacing: 1px; }
+        .sb-vs { font-family: 'Red Hat Display', sans-serif; font-size: 40px; color: #6b6b66; }
+        .sb-inning { font-family: 'Red Hat Display', sans-serif; font-size: 10px; color: #FDE047; text-transform: uppercase; letter-spacing: 1px; }
 
-        .ls-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; background: #fff; }
+        .ls-table { width: 100%; border-collapse: collapse; font-family: 'Red Hat Display', sans-serif; font-size: 9.5px; background: #fff; }
         .ls-table th { padding: 5px 6px; text-align: center; color: #6b6b66; font-weight: 500; border-bottom: 1px solid #E8E4DA; }
         .ls-table td { padding: 5px 6px; text-align: center; }
         .ls-table td.ls-team { text-align: left; font-weight: 700; }
         .ls-table td.ls-total { font-weight: 700; color: #FF5722; }
 
         .dash-section { padding: 10px 10px 2px; }
-        .dash-sechead { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; display: inline-block; padding: 3px 9px; margin-bottom: 8px; }
+        .dash-sechead { font-family: 'Red Hat Display', sans-serif; font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; display: inline-block; padding: 3px 9px; margin-bottom: 8px; }
         .sec-pitching .dash-sechead { background: #FF5722; color: #fff; }
         .sec-pitching .stat-card { border-left: 3px solid #FF5722; background: #FFF8F6; }
         .sec-batting .dash-sechead { background: #FDE047; color: #1A1A1A; }
@@ -244,19 +245,19 @@ export function LiveTrackerBoard() {
         .stat-card { background: #fff; border: 1px solid #E8E4DA; padding: 7px 9px; display: flex; flex-direction: column; min-height: 68px; }
         .stat-card-empty { opacity: 0.4; }
         .stat-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-        .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 7px; text-transform: uppercase; letter-spacing: 0.7px; color: #FF5722; }
-        .stat-big { font-family: 'Bebas Neue', sans-serif; font-size: 18px; line-height: 1; color: #1A1A1A; }
-        .stat-sub { font-family: Georgia, serif; font-size: 10.5px; color: #1A1A1A; margin-top: 1px; line-height: 1.25; }
-        .stat-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #6b6b66; margin-top: 2px; }
+        .stat-label { font-family: 'Red Hat Display', sans-serif; font-size: 7px; text-transform: uppercase; letter-spacing: 0.7px; color: #FF5722; }
+        .stat-big { font-family: 'Red Hat Display', sans-serif; font-size: 18px; line-height: 1; color: #1A1A1A; }
+        .stat-sub { font-family: Red Hat Display, sans-serif; font-size: 10.5px; color: #1A1A1A; margin-top: 1px; line-height: 1.25; }
+        .stat-meta { font-family: 'Red Hat Display', sans-serif; font-size: 8px; color: #6b6b66; margin-top: 2px; }
         .stat-footer { display: flex; justify-content: flex-end; margin-top: auto; padding-top: 5px; }
-        .stat-copy { font-family: 'JetBrains Mono', monospace; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; border-radius: 0; }
+        .stat-copy { font-family: 'Red Hat Display', sans-serif; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; border-radius: 0; }
 
         .dash-events { padding: 0 14px 14px; }
         .gr-events { display: flex; flex-direction: column; gap: 4px; }
-        .gr-event { display: flex; gap: 8px; align-items: baseline; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 4px 0; border-top: 1px dashed #E8E4DA; }
+        .gr-event { display: flex; gap: 8px; align-items: baseline; font-family: 'Red Hat Display', sans-serif; font-size: 10.5px; padding: 4px 0; border-top: 1px dashed #E8E4DA; }
         .gr-event-inning { color: #6b6b66; white-space: nowrap; }
         .gr-event-cat { color: #FF5722; text-transform: uppercase; letter-spacing: 0.5px; font-size: 8.5px; white-space: nowrap; }
-        .gr-event-text { color: #1A1A1A; font-family: Georgia, serif; font-size: 12px; }
+        .gr-event-text { color: #1A1A1A; font-family: Red Hat Display, sans-serif; font-size: 12px; }
       `}</style>
     </div>
   )
@@ -304,7 +305,7 @@ function GameRow({ panel, isExpanded, hasUnseen, onToggle }: {
           {linescore.length === 2 && <MiniLinescore linescore={linescore} />}
 
           <div className="dash-section sec-pitching">
-            <div className="dash-sechead">⚡ Pitching</div>
+            <div className="dash-sechead">Pitching</div>
             <div className="stat-grid">
               <StatCard label="Fastest Pitch" empty={!keyStats.fastestPitch}
                 headshot={keyStats.fastestPitch && { id: keyStats.fastestPitch.pitcherId, name: keyStats.fastestPitch.pitcherName }}
@@ -340,7 +341,7 @@ function GameRow({ panel, isExpanded, hasUnseen, onToggle }: {
           </div>
 
           <div className="dash-section sec-batting">
-            <div className="dash-sechead">🔥 Batting</div>
+            <div className="dash-sechead">Batting</div>
             <div className="stat-grid">
               <StatCard label="Hardest Hit" empty={!keyStats.hardestHit}
                 headshot={keyStats.hardestHit && { id: keyStats.hardestHit.batterId, name: keyStats.hardestHit.batterName }}
@@ -393,7 +394,7 @@ function GameRow({ panel, isExpanded, hasUnseen, onToggle }: {
           </div>
 
           <div className="dash-section sec-flow">
-            <div className="dash-sechead">📊 Game Flow</div>
+            <div className="dash-sechead">Game Flow</div>
             <div className="stat-grid">
               <StatCard label="Biggest Inning" empty={!keyStats.biggestInning}
                 logoTeamId={keyStats.biggestInning ? (keyStats.biggestInning.teamAbbreviation === game.awayAbbr ? game.awayTeamId : game.homeTeamId) : undefined}
@@ -406,7 +407,7 @@ function GameRow({ panel, isExpanded, hasUnseen, onToggle }: {
 
           {events.length > 0 && (
             <div className="dash-events">
-              <div className="dash-sechead">🚩 Notable</div>
+              <div className="dash-sechead">Notable</div>
               <div className="gr-events">
                 {events.map(e => (
                   <div key={e.id} className="gr-event">

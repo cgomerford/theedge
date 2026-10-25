@@ -34,13 +34,11 @@ type NavItem = {
 const MLB_NAV: NavItem[] = [
   { href: '/mlb',              label: 'Home'          },
   { href: '/mlb/scores',       label: 'Scores'        },
-  { href: '/mlb/abs',          label: 'ABS Challenges' },
   { href: '/mlb/stats',        label: 'Stats'         },
   { href: '/mlb/glossary',     label: 'Glossary'      },
   { href: '/mlb/lab/batting-lab',  label: 'Batting Lab',  pro: true },
   { href: '/mlb/lab/contact',      label: 'Contact Lab' },
   { href: '/mlb/lab/platoon',      label: 'Platoon Lab' },
-  { href: '/track-record',     label: 'Track Record'  },
 ]
 
 export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
@@ -71,8 +69,8 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
           align-items: center;
           gap: 6px;
           padding: 10px 16px;
-          font-family: 'Outfit', sans-serif;
-          font-size: 11px;
+          font-family: 'Red Hat Display', sans-serif;
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;
@@ -91,8 +89,8 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
           border-bottom-color: #FF5722;
         }
         .mlb-subnav-pro {
-          font-family: 'Outfit', sans-serif;
-          font-size: 8px;
+          font-family: 'Red Hat Display', sans-serif;
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.08em;
           color: #FF5722;

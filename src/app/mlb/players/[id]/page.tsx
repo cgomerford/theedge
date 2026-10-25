@@ -18,6 +18,11 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
 
+import { devPro } from '@/lib/dev-pro'
+import { pageMeta, noindex } from '@/lib/seo'
+import { fitDescription } from '@/lib/game-slug'
+import { PersonSchema, BreadcrumbSchema } from '@/components/StructuredData'
+
 interface Props {
   params: Promise<{ id: string }>
 }
@@ -26,13 +31,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   
   const data = await getPlayerPageData(Number(id))
-  if (!data) return { title: 'Player · x9Lab' }
+  if (!data) return { title: 'Player not found', ...noindex() }
   const { identity } = data
-  const teamAbbr = identity.currentTeam?.abbr ?? ''
-  return {
-    title: `${identity.fullName} — ${teamAbbr} ${identity.primaryPosition.abbreviation} · x9Lab`,
-    description: `${identity.fullName} stats: season line, form, career history and game log. Advanced pitch-level views are in the ${identity.isPitcher ? 'Pitching' : 'Batting'} Lab.`,
-  }
+  const team = identity.currentTeam?.name ? ` (${identity.currentTeam.name})` : ''
+  const description = fitDescription(
+    `${identity.fullName}${team}: season stats, recent form, career history and game log, with pitch-level views in the ${identity.isPitcher ? 'Pitching' : 'Batting'} Lab. Sample size beside every number.`,
+    ['Free daily email.'],
+  )
+  return pageMeta({ title: `${identity.fullName} stats and pitch data`, description, path: `/mlb/players/${id}`, type: 'website' })
 }
 
 export default async function PlayerPage({
@@ -55,10 +61,12 @@ export default async function PlayerPage({
   // the LOCKED state. Every deployed build has NODE_ENV 'production', so real
   // visitors are gated by is_pro alone. Required prop below, never defaulted.
   const subscriber = await getCurrentSubscriber()
-  const isPro = (subscriber?.is_pro ?? false) || (process.env.NODE_ENV === 'development' && pro !== '0')
+  const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
 
   return (
     <main className="min-h-screen bg-stone-50">
+      <PersonSchema name={data.identity.fullName} path={`/mlb/players/${playerId}`} teamName={data.identity.currentTeam?.name ?? null} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: data.identity.fullName, path: `/mlb/players/${playerId}` }]} />
       <SiteHeader variant="page" />
       <PlayerPageClient
         data={data}

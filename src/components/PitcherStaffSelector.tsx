@@ -43,7 +43,7 @@ export default function PitcherStaffSelector({ pitchers, pitchLog, teamColor }: 
             <button
               key={p.pitcherId}
               onClick={() => setSelectedId(p.pitcherId)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shrink-0 transition ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border shrink-0 transition ${
                 selected.pitcherId === p.pitcherId
                   ? 'text-white border-transparent'
                   : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'

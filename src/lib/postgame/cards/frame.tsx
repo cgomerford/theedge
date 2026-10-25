@@ -1,7 +1,7 @@
 // src/lib/postgame/cards/frame.tsx
 //
-// The shared frame for the X graphics (1600×900, X's 16:9 in-feed size): brand colours, Outfit (heavy) for headers and
-// bold text + JetBrains Mono for light data labels (the site's type system — see DESIGN_SYSTEM.md; Bebas Neue is retired), zero border-radius, a "§ POSTGAME REPORT" eyebrow, the matchup + final score at the right and a
+// The shared frame for the X graphics (1600×900, X's 16:9 in-feed size): brand colours, Red Hat (heavy) for headers and
+// bold text + Red Hat Display for light data labels (the site's type system — see DESIGN_SYSTEM.md; Red Hat Display is retired), zero border-radius, a "§ POSTGAME REPORT" eyebrow, the matchup + final score at the right and a
 // black footer bar. Rendered by next/og (Satori), which only does flexbox and has no text inside inline SVG, so charts
 // are SVG shapes with their labels laid over them as absolutely-positioned divs.
 // House rules for anything that goes on a card: factor/fact language only, no raw Edge Score, no picks or odds; the
@@ -9,24 +9,25 @@
 
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { SITE_HOST } from '@/lib/site'
 
 export const W = 1600, H = 900
 export const C = { cream: '#FAF8F3', ink: '#1A1A1A', orange: '#FF5722', yellow: '#FDE047', stone: '#78716c', line: '#d6d3d1', soft: '#efece4', blue: '#2a78d6' }
 export const SIDE = { away: C.orange, home: C.blue } as const
-// Satori needs real font FILES (it cannot read next/font CSS variables): static Outfit 700/800 live in ./fonts.
-export const DISPLAY = 'Outfit', MONO = 'JetBrains Mono'
+// Satori needs real font FILES (it cannot read next/font CSS variables): static Red Hat Display 400/700/800 live in ./fonts.
+// One family site-wide, so MONO is just an alias of DISPLAY.
+export const DISPLAY = 'Red Hat Display', MONO = DISPLAY
 
 const dir = join(process.cwd(), 'src/lib/postgame/cards/fonts')
 export async function loadFonts() {
-  const [outfitBold, outfitHeavy, mono, monoBold] = await Promise.all([
-    readFile(join(dir, 'Outfit-700.woff')), readFile(join(dir, 'Outfit-800.woff')), readFile(join(dir, 'JetBrainsMono-Regular.ttf')), readFile(join(dir, 'JetBrainsMono-Bold.ttf')),
+  const [regular, bold, heavy] = await Promise.all([
+    readFile(join(dir, 'RedHatDisplay-400.ttf')), readFile(join(dir, 'RedHatDisplay-700.ttf')), readFile(join(dir, 'RedHatDisplay-800.ttf')),
   ])
   const ab = (b: Buffer) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
   return [
-    { name: DISPLAY, data: ab(outfitBold), weight: 700 as const, style: 'normal' as const },
-    { name: DISPLAY, data: ab(outfitHeavy), weight: 800 as const, style: 'normal' as const },
-    { name: MONO, data: ab(mono), weight: 400 as const, style: 'normal' as const },
-    { name: MONO, data: ab(monoBold), weight: 700 as const, style: 'normal' as const },
+    { name: DISPLAY, data: ab(regular), weight: 400 as const, style: 'normal' as const },
+    { name: DISPLAY, data: ab(bold), weight: 700 as const, style: 'normal' as const },
+    { name: DISPLAY, data: ab(heavy), weight: 800 as const, style: 'normal' as const },
   ]
 }
 
@@ -43,7 +44,7 @@ export function Frame({ title, sub, away, home, final, children }: FrameProps) {
     <div style={{ width: W, height: H, display: 'flex', flexDirection: 'column', background: C.cream, color: C.ink, fontFamily: MONO }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '40px 56px 18px', borderBottom: `4px solid ${C.ink}` }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', fontSize: 20, fontWeight: 700, letterSpacing: 3, color: C.orange }}>{'§ POSTGAME REPORT'}</div>
+          <div style={{ display: 'flex', fontSize: 20, fontWeight: 700, letterSpacing: 3, color: C.orange }}>{'POSTGAME REPORT'}</div>
           <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 76, letterSpacing: -2, lineHeight: 1, marginTop: 4 }}>{title}</div>
           {sub ? <div style={{ display: 'flex', fontSize: 22, color: C.stone, marginTop: 6 }}>{sub}</div> : null}
         </div>
@@ -57,7 +58,7 @@ export function Frame({ title, sub, away, home, final, children }: FrameProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.ink, color: C.cream, padding: '0 56px', height: 64 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <div style={{ display: 'flex', fontFamily: DISPLAY, fontWeight: 800, fontSize: 34, letterSpacing: -1 }}>x9Lab</div>
-          <div style={{ display: 'flex', fontSize: 18, color: C.yellow }}>edgereportdaily.com</div>
+          <div style={{ display: 'flex', fontSize: 18, color: C.yellow }}>{SITE_HOST}</div>
         </div>
         <div style={{ display: 'flex', fontSize: 16, color: '#a8a29e' }}>Information, not advice.</div>
       </div>

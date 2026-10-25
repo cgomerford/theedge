@@ -11,6 +11,7 @@ import type { TeamProfile } from '@/lib/team-profile'
 import { getTeamAbs, ordinal } from '@/lib/team-profile'
 import { DefensePro } from './ProModules'
 import { Card, Empty, Foot, RankBars, Section, Tile, VersusBars, C, MONO, SANS } from './ui'
+import PendingBlock from '@/components/data/PendingBlock'
 
 const pct0 = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`)
 
@@ -51,7 +52,7 @@ async function AbsCard({ team, todayET }: { team: Team; todayET: string }) {
         Ranks {ordinal(abs.rank.rate)} of {abs.rank.of} in challenge rate
         {late != null && lateLg != null ? `; ${late.toFixed(0)}% of them come in the 7th or later (MLB ${lateLg.toFixed(0)}%).` : '.'}
       </p>
-      <Foot>Source: MLB&apos;s game-feed challenge log (the data behind Baseball Savant&apos;s ABS boards). A description of how the club has used its challenges — not a recommendation.</Foot>
+      <Foot>A description of how the club has used its challenges — not a recommendation.</Foot>
     </Card>
   )
 }
@@ -63,22 +64,18 @@ export default function DefenseRunningSection({ team, profile: p, todayET, isPro
       sub="Run prevention with the glove, pressure on the bases, and how the club uses its ABS challenges."
     >
       <div className="tp-grid-2">
-        <Card title="Defense" note="rank among 30">
-          <RankBars metrics={p.ranks.defense} />
-          <Foot>OAA (outs above average) is Baseball Savant&apos;s range-based fielding measure, summed for the club. Catcher CS % and steals allowed are the battery&apos;s running-game defense.</Foot>
+        <Card title="Defense">
+          <PendingBlock label="Team defence (outs above average)" />
         </Card>
-        <Card title="Outs above average by area" note="team vs MLB average">
-          {p.oaa.length === 0 ? <Empty>Positional OAA unavailable.</Empty> : (
-            <VersusBars color={team.primary_color} unit="" decimals={1} signed rows={p.oaa} />
-          )}
-          <Foot>Right of the line = more outs than an average defense records at that area.</Foot>
+        <Card title="Outs above average by area">
+          <PendingBlock label="Outs above average by area" />
         </Card>
       </div>
 
       <div className="tp-grid-2" style={{ marginTop: 16 }}>
         <Card title="Running game" note="rank among 30">
           <RankBars metrics={p.ranks.running} />
-          <Foot>Steals are a real-results ranking, not a claim about any single runner. Sprint speed is Baseball Savant&apos;s season figure in feet per second.</Foot>
+          <Foot>Steals are a real-results ranking, not a claim about any single runner. Sprint speed is the public season figure in feet per second.</Foot>
         </Card>
         <Suspense fallback={<Card title="ABS challenges"><Empty>Loading the ABS challenge record…</Empty></Card>}>
           <AbsCard team={team} todayET={todayET} />

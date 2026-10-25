@@ -69,7 +69,7 @@ export default function ContactLab({ leaders, selectedId, contact, swing, ttoPro
                   <div className="cl-row"><b style={{ fontSize: 18 }}>{name} vs MLB</b><Badge n={cur.n_bbe} /></div>
                   <QualityBars cur={cur} lge={lge} />
                   {dSolid != null && <p style={{ margin: '10px 0 0', fontSize: 14 }}><b>{pct(solid / cur.n_bbe)}</b> of his batted balls were solid or barrelled, {dSolid >= 0 ? '+' : '−'}{Math.abs(dSolid).toFixed(1)} points against MLB (n = {cur.n_bbe}).</p>}
-                  <Foot>Source: Baseball Savant via pybaseball (launch_speed_angle): the six buckets Statcast assigns from exit velocity and launch angle. Share of his batted balls, n shown.</Foot>
+                  <Foot>Share of his batted balls, n shown.</Foot>
                 </>
               ) : <Empty>No contact data for this hitter yet.</Empty>}
             </Card>
@@ -78,7 +78,7 @@ export default function ContactLab({ leaders, selectedId, contact, swing, ttoPro
                 <>
                   <p className="cl-cap">Where it goes, on the ground and in the air: share of all his batted balls in each spot, with the gap to MLB. Orange tint = above MLB. Pull is always his pull side.</p>
                   <SprayGrid cur={cur} lge={lge} />
-                  <Foot>Source: Baseball Savant via pybaseball (hc_x, hc_y, bb_type). Share of all {cur.n_bbe} batted balls; spray direction mirrored for left-handed hitters; air = fly balls, line drives and popups.</Foot>
+                  <Foot>Share of all {cur.n_bbe} batted balls; spray direction mirrored for left-handed hitters; air = fly balls, line drives and popups.</Foot>
                 </>
               ) : <Empty>No spray data for this hitter yet.</Empty>}
             </Card>
@@ -91,7 +91,7 @@ export default function ContactLab({ leaders, selectedId, contact, swing, ttoPro
       </Section>
 
       <Section id="changes" num="02" title="Swing Changes" sub="Did his setup or swing change, and did the results move over the same months? The top row is his inputs; the bottom row is what happened. The line underneath describes both, without claiming one caused the other.">
-        {swing ? <SwingChanges swing={swing} contact={outcomes} season={ttoSeason} name={name} /> : <Empty>Monthly swing data isn’t built yet. It refreshes weekly from Baseball Savant.</Empty>}
+        {swing ? <SwingChanges swing={swing} contact={outcomes} season={ttoSeason} name={name} /> : <Empty>Monthly swing data isn’t built yet.</Empty>}
       </Section>
 
       <Section id="tto" num="03" title="Three True Outcomes" sub="How much of his game ends without the defence touching it, and in what mix: strikeouts, walks and home runs, how steady they are, and where the rest of his plate appearances go.">
@@ -109,6 +109,7 @@ const CSS = `
 .cl-chain a{background:#fff;border:1px solid ${C.line};border-radius:14px;padding:12px 14px;font-size:14px;color:${C.ink};text-decoration:none;display:flex;flex-direction:column}
 .cl-chain a b{font-size:15px}.cl-chain a span{color:${C.mute};font-size:13px}
 .cl-picker{position:sticky;top:0;z-index:20;background:${C.cream};border-bottom:1px solid ${C.line};margin:18px -24px 0;padding:10px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+@media(max-width:767px){.cl-picker{position:static}}
 .cl-jump{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
 .cl-jump a{font-size:13px;font-weight:600;text-decoration:none;color:${C.ink};border:1px solid ${C.line};background:#fff;padding:5px 11px;border-radius:999px}
 .cl-g2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}

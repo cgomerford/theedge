@@ -19,6 +19,7 @@
 // combinedScore ring IS a real 0–100 value (already computed by the
 // pipeline), just newly visualized as a ring instead of a text badge.
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
@@ -170,7 +171,7 @@ export default async function PitchersPage() {
       <div className="bg-gradient-to-br from-[#1A1A1A] to-[#2b2b2b] text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-500 mb-2">
-            § Pitchers
+            <XMark /> Pitchers
           </div>
           <h1 className="font-serif font-light text-5xl sm:text-7xl tracking-tight leading-none">
             Who to start<span className="text-orange-500">.</span>

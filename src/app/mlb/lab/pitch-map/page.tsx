@@ -10,11 +10,15 @@ import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import { C, Card, Section } from '@/components/team/ui'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata: Metadata = {
-  title: 'The Pitch Map: where this comes from · The Edge',
-  description: 'How the Pitch Map compares a pitch with every similar pitch in the league, and the public work behind the idea.',
-}
+export const metadata = pageMeta({
+  title: 'The Pitch Map: how it works',
+  description:
+    'How the Pitch Map compares a pitch with every similar pitch in the league, the public research behind the idea, and what the map can and cannot tell you.',
+  path: '/mlb/lab/pitch-map',
+})
 
 const SOURCES: { id: string; kicker: string; title: string; by: string; what: string; href: string }[] = [
   {
@@ -54,6 +58,7 @@ const SOURCES: { id: string; kicker: string; title: string; by: string; what: st
 export default function PitchMapAbout() {
   return (
     <main style={{ minHeight: '100vh', background: C.cream }}>
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Pitch Map', path: '/mlb/lab/pitch-map' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '22px 24px 100px' }}>

@@ -6,15 +6,16 @@ import { fitText } from '../fit'
 import { SAFE, SAFE_W, SPACE, TYPE, centreInSafe } from '../layout'
 import { easeOutCubic, prog } from '../motion'
 import type { StoryGame } from '../types'
+import { SITE_HOST } from '@/lib/site'
 
 type P = { game: StoryGame; localT: number; dur: number }
 
-/** edgereportdaily.com/mlb/{slug} → lines broken at "/mlb/" and "-vs-" */
+/** the site domain/mlb/{slug} → lines broken at "/mlb/" and "-vs-" */
 export function urlLines(slug: string | null): string[] {
   if (!slug) return [CLOSE_URL_BASE]
   const [away, ...rest] = slug.split('-vs-')
   const home = rest.join('-vs-')
-  return ['edgereportdaily.com', `/mlb/${away}`, ...(home ? [`-vs-${home}`] : [])]
+  return [`${SITE_HOST}`, `/mlb/${away}`, ...(home ? [`-vs-${home}`] : [])]
 }
 
 export default function Close({ game, localT }: P) {

@@ -5,8 +5,8 @@
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { PlayerRouteProfile } from '@/lib/nfl/queries'
 
-const MONO = "'JetBrains Mono', ui-monospace, monospace"
-const SERIF = "'Fraunces', serif"
+const MONO = "'Red Hat Display', sans-serif"
+const SERIF = "'Red Hat Display', sans-serif"
 
 function epaColor(epa: number): string {
   // Green (strong value) -> amber (neutral) -> red (negative value),

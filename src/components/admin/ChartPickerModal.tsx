@@ -66,8 +66,8 @@ export default function ChartPickerModal({ onInsert, onClose }: ChartPickerModal
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: 20 }}>⊕ Insert chart</h2>
-          <button onClick={onClose} style={closeBtnStyle}>✕</button>
+          <h2 style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 20 }}>⊕ Insert chart</h2>
+          <button onClick={onClose} style={closeBtnStyle}>Close</button>
         </div>
 
         <div style={{ marginBottom: 14 }}>

@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 // src/components/fantasy/FantasySectionLabel.tsx
 //
 // Shared § section header used across all fantasy pages. Extracted from
@@ -16,7 +17,7 @@ export default function FantasySectionLabel({
         className="font-mono text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
         style={{ color: accent }}
       >
-        § {children}
+        <XMark /> {children}
       </span>
       <div className="flex-1 h-px bg-stone-200" />
     </div>

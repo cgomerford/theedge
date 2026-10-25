@@ -23,6 +23,7 @@ import { getVenueInfo, describeWindImpact } from '@/lib/venues'
 import { findTeamByName } from '@/lib/teams'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { buildDailyBrief, type BriefGameContext } from '@/lib/email/daily-brief'
+import { PREVIEW_EMAIL } from '@/lib/site'
 
 // ─── Build game context (same logic as the send route) ────────────────────────
 
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
 
   if (allGames.length === 0) {
     return new NextResponse(
-      `<html><body style="font-family:monospace;padding:40px;">
+      `<html><body style="font-family:var(--font-redhat),sans-serif;padding:40px;">
         <h2>No games found for ${date}</h2>
         <p>Try a different date: <code>?date=YYYY-MM-DD</code></p>
       </body></html>`,
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest) {
     }).join(', ')
 
     return new NextResponse(
-      `<html><body style="font-family:monospace;padding:40px;">
+      `<html><body style="font-family:var(--font-redhat),sans-serif;padding:40px;">
         <h2>No games match "${teamFilters.join(', ')}" on ${date}</h2>
         <p>Available: ${available}</p>
       </body></html>`,
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
 
   // ── Render ──
   const email = buildDailyBrief({
-    recipientEmail: 'preview@edgereportdaily.com',
+    recipientEmail: `${PREVIEW_EMAIL}`,
     preferencesToken: 'preview-token',
     games: filtered,
     teamShortNames,
@@ -179,8 +180,8 @@ export async function GET(request: NextRequest) {
 
   // ── Wrap in a preview chrome with metadata bar ──
   const metaBar = `
-  <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;color:#FDE047;font-family:monospace;font-size:12px;padding:8px 16px;display:flex;gap:16px;align-items:center;">
-    <span>§ EMAIL PREVIEW</span>
+  <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;color:#FDE047;font-family:var(--font-redhat),sans-serif;font-size:12px;padding:8px 16px;display:flex;gap:16px;align-items:center;">
+    <span>EMAIL PREVIEW</span>
     <span style="color:#999;">Date: ${date}</span>
     <span style="color:#999;">Games: ${filtered.length}/${allGames.length}</span>
     <span style="color:#999;">Predictions: ${predictions.size}</span>

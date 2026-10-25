@@ -5,7 +5,6 @@ import StatusBanners from './StatusBanners'
 import SignupForm from './SignupForm'
 import EdgeCard from './EdgeCard'
 import FunnelPath from './FunnelPath'
-import HomeFooter from './HomeFooter'
 
 /**
  * Variant B — Editorial funnel
@@ -244,7 +243,6 @@ export default function HomeFunnelEditorial({
         </div>
       </section>
 
-      <HomeFooter />
     </>
   )
 }

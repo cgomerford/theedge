@@ -15,6 +15,7 @@ import { C, SANS, MONO, rankTone } from '@/components/team/ui'
 import { ordinal } from '@/lib/ordinal'
 import { teamLogoUrl } from '@/lib/mlb'
 import type { TeamSnapshotData } from '@/lib/admin-team-card'
+import { SITE_HOST } from '@/lib/site'
 
 const W = 1080, H = 1350
 
@@ -78,7 +79,7 @@ const TeamSnapshotCard = forwardRef<HTMLDivElement, { team: TeamSnapshotData }>(
             <img src="/brand/x9labs-mark.png" alt="" style={{ height: 44, width: 'auto' }} />
             <span style={{ fontWeight: 800, fontSize: 28 }}>x9Lab</span>
           </div>
-          <span style={{ fontFamily: MONO, fontSize: 20, color: C.mute }}>edgereportdaily.com</span>
+          <span style={{ fontFamily: MONO, fontSize: 20, color: C.mute }}>{SITE_HOST}</span>
         </div>
       </div>
     </div>

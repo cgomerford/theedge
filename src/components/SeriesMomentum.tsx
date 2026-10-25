@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine, ResponsiveContainer, Legend } from 'recharts'
 import type { GameMomentum } from '@/lib/series-momentum'
 import DetailModal from './game-preview/DetailModal'
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 
 const GAME_COLORS = ['#78716C', '#A8A29E', '#44403C', '#D6D3D1', '#292524']
 
@@ -109,17 +111,9 @@ function MomentumChartBody({
       <div className="flex items-center justify-between mb-1 gap-2">
         <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Series momentum</p>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-stone-100 p-0.5 rounded-full">
-            {(['series', 'byGame'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest rounded-full transition ${mode === m ? 'bg-[#1A1A1A] text-white' : 'text-stone-400'}`}
-              >
-                {m === 'series' ? 'Series' : 'By game'}
-              </button>
-            ))}
-          </div>
+          <Suspense fallback={null}>
+            <Tabs sticky={false} label="Momentum view" value={mode} onChange={id => setMode(id as 'series' | 'byGame')} tabs={[{ id: 'series', label: 'Series' }, { id: 'byGame', label: 'By game' }]} />
+          </Suspense>
           {onExpand && (
             <button
               onClick={onExpand}
@@ -147,7 +141,7 @@ function MomentumChartBody({
           <AreaChart data={flowData} margin={{ top: 24, right: 10, bottom: 20, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e7e2d6" />
             <XAxis dataKey="x" tick={false} axisLine={{ stroke: '#e7e2d6' }} />
-            <YAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} width={30} allowDecimals={false} />
+            <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} width={30} allowDecimals={false} />
             <ReferenceLine y={0} stroke="#1A1A1A" strokeWidth={1} />
             {gameStarts.map(g => (
               <ReferenceLine
@@ -155,7 +149,7 @@ function MomentumChartBody({
                 x={g.x}
                 stroke="#a8a29e"
                 strokeDasharray="2 2"
-                label={{ value: `Game ${g.gameNumber}`, position: 'top', fontSize: 9, fontFamily: 'monospace', fill: '#78716C' }}
+                label={{ value: `Game ${g.gameNumber}`, position: 'top', fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716C' }}
               />
             ))}
             <Tooltip content={<SeriesTooltip awayAbbr={awayAbbr} homeAbbr={homeAbbr} awayColor={awayColor} homeColor={homeColor} />} />
@@ -167,11 +161,11 @@ function MomentumChartBody({
         <ResponsiveContainer width="100%" height={height}>
           <LineChart data={byGameData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e7e2d6" />
-            <XAxis dataKey="inning" tick={{ fontSize: 9, fontFamily: 'monospace' }} label={{ value: 'Inning', position: 'insideBottom', offset: -2, fontSize: 9 }} />
-            <YAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} width={30} allowDecimals={false} />
+            <XAxis dataKey="inning" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} label={{ value: 'Inning', position: 'insideBottom', offset: -2, fontSize: 9 }} />
+            <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} width={30} allowDecimals={false} />
             <ReferenceLine y={0} stroke="#1A1A1A" strokeDasharray="2 2" />
             <Tooltip labelFormatter={l => `Inning ${l}`} />
-            <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+            <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
             {withPoints.map((m, i) => (
               <Line
                 key={m.gamePk}

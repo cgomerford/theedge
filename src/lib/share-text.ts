@@ -7,6 +7,7 @@
 
 import { shareDisplayName } from '@/lib/teams'
 import type { TodaysRead, Snip } from '@/lib/admin-dashboard'
+import { SITE_HOST } from '@/lib/site'
 const SNIP_CHAR_TARGET = 400
 
 export function buildGameSnip(read: TodaysRead): Snip {
@@ -36,6 +37,6 @@ export function buildGameSnip(read: TodaysRead): Snip {
     title: `\u2295 Edge \u2014 ${read.matchup}`,
     why: `${body.length} chars \u00b7 link in first reply`,
     body,
-    footnote: 'No score, no link in the post. Drop edgereportdaily.com in your FIRST REPLY \u2014 in-post links cut reach 50\u201390%.',
+    footnote: `No score, no link in the post. Drop ${SITE_HOST} in your FIRST REPLY \u2014 in-post links cut reach 50\u201390%.`,
   }
 }

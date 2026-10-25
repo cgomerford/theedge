@@ -15,8 +15,8 @@
 
 import Link from 'next/link'
 
-const MONO = 'var(--font-jetbrains), ui-monospace, monospace'
-const SANS = 'var(--font-outfit), system-ui, sans-serif'
+const MONO = 'var(--font-redhat), sans-serif'
+const SANS = 'var(--font-redhat), system-ui, sans-serif'
 const DISPLAY = SANS
 
 const CSS = `

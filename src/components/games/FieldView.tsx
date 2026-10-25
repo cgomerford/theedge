@@ -114,7 +114,7 @@ export default function FieldView({ field, venue, pitch, armed }: { field: ExFie
           {venue}{hasWall ? ` · wall ${fence.map(f => f.d).join(' – ')} ft` : ' · wall distances not published'}
         </span>
         <button type="button" className="gm-btn" onClick={() => { setT(0); setRun(r => r + 1) }} aria-label="Replay the hit"
-          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 999, padding: '4px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flex: 'none' }}>↻ Replay</button>
+          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 4, padding: '4px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flex: 'none' }}>↻ Replay</button>
       </div>
       <div style={{ fontSize: 9.5, color: C.faint, marginTop: 6 }}>Top-down view, home plate at the bottom. Landing spot: MLB tracking. Rise estimated from the launch angle. Wall heights not shown (not in MLB&apos;s data).</div>
     </div>

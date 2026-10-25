@@ -5,7 +5,7 @@
 // Shareable "X-friendly" graphic for BatterH2H.tsx's real H2H vs the
 // confirmed starters in this batter's next series — the batter-side
 // mirror of LineupH2HShareCard.tsx (same 1080×1350 visual system: cream/
-// orange/black, Outfit/JetBrains Mono, zero border-radius), built from
+// orange/black, Red Hat/Red Hat Display, zero border-radius), built from
 // the exact real data BatterH2H.tsx already computed (real next series,
 // real confirmed starters, real career H2H per starter via MLB's own
 // vsPlayerTotal stat) — no new fetch, just a different render of it.
@@ -13,6 +13,7 @@
 import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
+import { SITE_HOST } from '@/lib/site'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -70,7 +71,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
   return (
     <div style={{
       width: CARD_WIDTH, height: CARD_HEIGHT, background: '#FAF8F3', color: '#1A1A1A',
-      fontFamily: "var(--font-outfit), 'Outfit', sans-serif", display: 'flex', flexDirection: 'column',
+      fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", display: 'flex', flexDirection: 'column',
       padding: '44px 52px 40px', boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: 10, height: '100%', background: '#FF5722' }} />
@@ -80,10 +81,10 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={playerHeadshotUrl(batterId, 200)} alt={batterName} width={84} height={84} style={{ objectFit: 'cover', background: '#F0EBE0', borderRadius: '50%', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#FF5722', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700, color: '#FF5722', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
             ⊕ Next Series — H2H
           </div>
-          <div style={{ fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontWeight: 800, fontSize: 34, lineHeight: 1.05, color: '#1A1A1A', letterSpacing: 0.2 }}>
+          <div style={{ fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 34, lineHeight: 1.05, color: '#1A1A1A', letterSpacing: 0.2 }}>
             {batterName.toUpperCase()}
           </div>
         </div>
@@ -97,19 +98,19 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={teamLogoUrl(opponentTeamId)} alt="" width={30} height={30} style={{ objectFit: 'contain' }} />
-        <span style={{ fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontSize: 22, fontWeight: 700, color: '#1A1A1A' }}>
+        <span style={{ fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontSize: 22, fontWeight: 700, color: '#1A1A1A' }}>
           vs {opponentName}
         </span>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, color: '#78716c', marginLeft: 'auto' }}>{seriesLabel}</span>
+        <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, color: '#78716c', marginLeft: 'auto' }}>{seriesLabel}</span>
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 24 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 24 }}>
         vs Confirmed Starters
       </div>
 
       {/* Starter rows */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         {rows.length === 0 && (
-          <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 16, color: '#A8A29E', padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontStyle: 'italic', fontSize: 16, color: '#A8A29E', padding: '40px 0', textAlign: 'center' }}>
             No real starters confirmed yet for this series.
           </div>
         )}
@@ -122,29 +123,29 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
             <img src={playerHeadshotUrl(s.id, 140)} alt={s.name} width={60} height={60} style={{ objectFit: 'cover', background: '#F0EBE0', borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontSize: 22, fontWeight: 700, color: '#1A1A1A', lineHeight: 1.2 }}>
+                <div style={{ fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontSize: 22, fontWeight: 700, color: '#1A1A1A', lineHeight: 1.2 }}>
                   {s.name}
                 </div>
                 {s.facedMost && (
                   <div style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#fff',
+                    fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#fff',
                     background: '#FF5722', padding: '3px 8px', textTransform: 'uppercase', letterSpacing: 0.6,
                   }}>
                     Faced most
                   </div>
                 )}
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#78716c', marginTop: 4 }}>
+              <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, color: '#78716c', marginTop: 4 }}>
                 {s.gameDate ? `Confirmed for ${s.gameDate} · ` : ''}
                 {s.ab > 0 ? `${s.hits}-for-${s.ab}, ${s.homeRuns} HR, ${s.walks} BB, ${s.strikeouts} K` : 'No real career at-bats on record'}
               </div>
             </div>
             {s.ab > 0 && (
               <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: avgColor(s.ab, s.avg) }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 22, fontWeight: 700, color: avgColor(s.ab, s.avg) }}>
                   {s.avg}
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#A8A29E' }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#A8A29E' }}>
                   OPS {s.ops}
                 </div>
               </div>
@@ -158,8 +159,8 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 18,
         borderTop: '1.5px solid rgba(26,26,26,0.12)', marginTop: 12,
       }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>X9LAB</div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>X9LAB</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>{SITE_HOST}</div>
       </div>
 
       {/* Watermark */}
@@ -170,7 +171,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, opponentName, oppo
         }}>
           {Array.from({ length: 24 }).map((_, i) => (
             <span key={i} style={{
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2.5,
+              fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
               X9LAB · EDGEREPORTDAILY.COM

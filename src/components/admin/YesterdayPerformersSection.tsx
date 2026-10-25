@@ -309,7 +309,7 @@ function BatterCard({ b }: { b: EnrichedBatterPerformance }) {
         <div className="flex-1 min-w-0">
           <div
             className="font-bold text-[15px] text-stone-900 truncate leading-tight"
-            style={{ fontFamily: "'Fraunces',serif" }}
+            style={{ fontFamily: "'Red Hat Display',sans-serif" }}
           >
             {b.name}
           </div>
@@ -453,7 +453,7 @@ function PitcherCard({ p }: { p: EnrichedPitcherPerformance }) {
         <div className="flex-1 min-w-0">
           <div
             className="font-bold text-[15px] text-stone-900 truncate leading-tight"
-            style={{ fontFamily: "'Fraunces',serif" }}
+            style={{ fontFamily: "'Red Hat Display',sans-serif" }}
           >
             {p.name}
           </div>

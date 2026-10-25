@@ -35,7 +35,7 @@ export default async function ArticlesListPage() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 36 }}>⊕ Articles</h1>
+        <h1 style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 36 }}>⊕ Articles</h1>
         <Link href="/admin/articles/new" style={newBtnStyle}>
           + New article
         </Link>
@@ -57,10 +57,10 @@ export default async function ArticlesListPage() {
               }}
             >
               <div>
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, marginBottom: 4 }}>
+                <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 16, marginBottom: 4 }}>
                   {a.title}
                 </div>
-                <div style={{ fontSize: 11, opacity: 0.55, fontFamily: 'JetBrains Mono, monospace' }}>
+                <div style={{ fontSize: 11, opacity: 0.55, fontFamily: 'Red Hat Display, sans-serif' }}>
                   {a.team_tags.join(', ') || 'No teams tagged'} · updated{' '}
                   {new Date(a.updated_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                 </div>

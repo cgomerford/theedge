@@ -125,7 +125,7 @@ export default function NflRadarCycler({
       <ResponsiveContainer width="100%" height={500}>
         <RadarChart data={chartData} outerRadius="70%">
           <PolarGrid stroke="rgba(26,26,26,0.1)" />
-          <PolarAngleAxis dataKey="label" tick={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} />
+          <PolarAngleAxis dataKey="label" tick={{ fontSize: 9, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
           <Radar dataKey="percentile" stroke={accentColor} fill={accentColor} fillOpacity={0.18} strokeWidth={2} />
            <Tooltip

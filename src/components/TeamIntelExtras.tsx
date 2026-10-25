@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
@@ -104,7 +105,7 @@ export default function TeamIntelExtras({
 }) {
   return (
     <section>
-      <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-5 text-orange-600">§ Team Intel</h3>
+      <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-5 text-orange-600"><XMark /> Team Intel</h3>
       <div className="grid md:grid-cols-2 gap-4">
         <TeamBlock teamName={awayTeamName} abbr={awayAbbr} injuries={awayInjuries} callups={awayCallups} standouts={awayStandouts} />
         <TeamBlock teamName={homeTeamName} abbr={homeAbbr} injuries={homeInjuries} callups={homeCallups} standouts={homeStandouts} />

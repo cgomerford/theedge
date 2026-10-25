@@ -65,7 +65,7 @@ export default async function PostgamePreviewPage({
   return (
     <div className="min-h-screen bg-[#FAF8F3] py-10 px-4">
       <div className="max-w-[1320px] mx-auto mb-4 font-mono text-[10px] uppercase tracking-widest text-orange-600">
-        ⚠ /dev/postgame-preview — delete this route once you&apos;ve picked which postgame implementation to keep
+        /dev/postgame-preview — delete this route once you&apos;ve picked which postgame implementation to keep
       </div>
       <PostGameReportTab
         report={report}

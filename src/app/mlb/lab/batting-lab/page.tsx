@@ -15,11 +15,15 @@ import BattingLabExplorer from '@/components/BattingLabExplorer'
 import FeaturedPlayers from '@/components/FeaturedPlayers'
 import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
 import { getLeaders } from '@/lib/lab'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: 'Batting Lab · x9Lab',
-  description: 'Real season stats, zone-by-pitch-type breakdown, bat speed, and contact quality for any MLB batter.',
-}
+export const metadata = pageMeta({
+  title: 'Batting Lab',
+  description:
+    'Search any MLB hitter for zone-by-pitch-type breakdowns, bat speed and contact quality, with the number of pitches or batted balls behind every stat.',
+  path: '/mlb/lab/batting-lab',
+})
 
 export const revalidate = 1800
 
@@ -33,13 +37,14 @@ export default async function BattingLabPage() {
 
   return (
     <main className="min-h-screen bg-stone-50">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Batting Lab', path: '/mlb/lab/batting-lab' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
 
       <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">Batting Lab</div>
-          <div className="text-[26px] font-black text-[#1A1A1A] tracking-tight">Search any batter</div>
+          <h1 className="m-0 text-[26px] font-black text-[#1A1A1A] tracking-tight">Search any batter</h1>
           <div className="text-[13px] text-[#57534E] mt-1 max-w-[640px]">
             Real season stats and percentiles, zone-by-pitch-type breakdown, bat speed and contact quality, and a
             real reaction-window physics graphic — not tied to tonight&apos;s slate.

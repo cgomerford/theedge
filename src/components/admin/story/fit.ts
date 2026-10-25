@@ -7,7 +7,7 @@
 
 export type Fit = { size: number; lines: number }
 
-/** widthEm: avg glyph width in em (Outfit 800 caps ≈ .62, mixed case ≈ .56, JetBrains Mono = .6). */
+/** widthEm: avg glyph width in em (Red Hat 800 caps ≈ .62, mixed case ≈ .56). */
 export function fitText(text: string, o: { maxWidth: number; maxSize: number; minSize: number; widthEm?: number }): Fit {
   const em = o.widthEm ?? 0.58
   const natural = text.length * em

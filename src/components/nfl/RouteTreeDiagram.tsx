@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 // src/components/nfl/RouteTreeDiagram.tsx
 //
 // Pure glossary/explainer content -- NOT derived from any real game
@@ -14,8 +15,8 @@
 
 'use client'
 
-const MONO = "'JetBrains Mono', ui-monospace, monospace"
-const SERIF = "'Fraunces', serif"
+const MONO = "'Red Hat Display', sans-serif"
+const SERIF = "'Red Hat Display', sans-serif"
 
 interface RouteDef {
   num: number
@@ -51,7 +52,7 @@ export function RouteTreeDiagram() {
   return (
         <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.06)', borderRadius: 20, padding: 20 }}>
       <p style={{ fontFamily: MONO, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#FF5722', margin: 0 }}>
-        § Glossary
+        <XMark /> Glossary
       </p>
       <h3 style={{ fontFamily: SERIF, fontSize: 24, margin: '4px 0 12px' }}>The Route Tree</h3>
 

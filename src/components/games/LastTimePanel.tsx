@@ -36,7 +36,7 @@ const niceDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('e
 const abbrOf = (teamId: number) => MLB_TEAMS.find(t => t.id === teamId)?.abbrev
 
 const chip = (on: boolean, disabled = false): React.CSSProperties => ({
-  fontFamily: SANS, fontWeight: 600, fontSize: 12, padding: '4px 11px', borderRadius: 999, border: `1px solid ${on ? C.ink : C.line}`,
+  fontFamily: SANS, fontWeight: 600, fontSize: 12, padding: '4px 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`,
   background: on ? C.ink : '#fff', color: on ? '#fff' : C.ink, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1,
 })
 const lbl: React.CSSProperties = { fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: C.mute, textTransform: 'uppercase', margin: '12px 0 5px' }
@@ -266,7 +266,7 @@ export default function LastTimePanel({ game, play, pitch, isPro }: { game: ExGa
 
       {progress && (
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 13 }}>Pulling Baseball Savant — {progress.done} of {progress.total} game days</div>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>Loading {progress.done} of {progress.total} game days</div>
           <div style={{ height: 8, background: C.soft, borderRadius: 4, margin: '6px 0', overflow: 'hidden' }}><div style={{ width: `${Math.round((progress.done / Math.max(1, progress.total)) * 100)}%`, height: '100%', background: C.orange, transition: 'width .3s' }} /></div>
           <div style={{ fontSize: 11, color: C.mute }}>First search of a season only — finished days are kept, so the next one is instant.</div>
         </div>

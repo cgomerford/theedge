@@ -25,7 +25,7 @@ export default async function BattingSwingPage({ params }: { params: Promise<{ p
       </p>
       {swing
         ? <SwingChanges swing={swing.mine} contact={(contact?.months ?? []).map(m => ({ month: m.month, n_bbe: m.n_bbe, pull_air: m.pull_air, barrel: m.barrel }))} season={season} name={contact?.name ?? null} />
-        : <Empty>Monthly swing data isn’t built for this hitter yet. It refreshes weekly from Baseball Savant.</Empty>}
+        : <Empty>Monthly swing data isn’t built for this hitter yet.</Empty>}
     </div>
   )
 }

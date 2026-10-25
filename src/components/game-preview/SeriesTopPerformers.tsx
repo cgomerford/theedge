@@ -11,8 +11,8 @@
 // per player and belong in that admin tool, not a preview-page widget).
 // The grade badge is rounded here — the admin version's is a hard square
 // with sharp corners; per George, wanted a nicer/rounder treatment. Font
-// is font-sans (Outfit, the sitewide default — genuinely rounded
-// letterforms) rather than font-display (Bebas Neue): tried Bebas first
+// is font-sans (Red Hat, the sitewide default — genuinely rounded
+// letterforms) rather than font-display (Red Hat Display): tried Bebas first
 // since the admin card uses it, but it's a tall condensed display face,
 // not rounded, and it was the one component on this page not matching
 // the font-sans/font-mono system everything else here already uses.

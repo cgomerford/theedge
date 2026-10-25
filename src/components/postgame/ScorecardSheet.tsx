@@ -7,11 +7,12 @@
 // pos / 10 innings / AB R H RBI), SUMS, pitchers, catchers, umpires.
 // Notation conventions are explained on the sheet itself (see lib/postgame/scorecard.ts).
 
-import { Outfit } from 'next/font/google'
+import { Red_Hat_Display } from 'next/font/google'
 import type { Base, PlateAppearance, Scorecard, TeamSheet } from '@/lib/postgame/scorecard'
+import { SITE_HOST } from '@/lib/site'
 
-// One font sitewide (CLAUDE.md §6): the old handwriting face is retired — scores use Outfit too.
-const display = Outfit({ subsets: ['latin'], weight: ['800'], display: 'swap' })   // rounded brand face — the only font
+// One font sitewide (CLAUDE.md §6): the old handwriting face is retired — scores use Red Hat too.
+const display = Red_Hat_Display({ subsets: ['latin'], weight: ['800'], display: 'swap' })   // rounded brand face — the only font
 
 // Edge palette: cream paper, black printed form + pen, orange for hits / base paths / RBI, yellow for runs scored
 const INK = '#1A1A1A'            // pen
@@ -115,7 +116,7 @@ export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team
       <div style={{ background: PRINT, color: PAPER, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', margin: '-22px -22px 14px', borderBottom: `4px solid ${ORANGE}` }}>
         <span className={display.className} style={{ fontSize: 28, fontWeight: 800, letterSpacing: '.02em', lineHeight: 1 }}>THE <span style={{ color: ORANGE }}>EDGE</span> · SCORECARD</span>
         <span style={{ fontSize: 12, letterSpacing: '.12em', textTransform: 'uppercase', color: YELLOW }}>⊕ {team.name} batting</span>
-        <span style={{ fontSize: 11, letterSpacing: '.08em', opacity: .75 }}>edgereportdaily.com</span>
+        <span style={{ fontSize: 11, letterSpacing: '.08em', opacity: .75 }}>{SITE_HOST}</span>
       </div>
 
       {/* header block */}
@@ -124,10 +125,10 @@ export function ScorecardSheet({ sc, team, opp, visitor }: { sc: Scorecard; team
           <Field name="Notes:" flex={3}>{sc.notes}</Field><Field name="Start Time:">{sc.startTime}</Field><Field name="Attendance:">{sc.attendance?.toLocaleString()}</Field>
         </div>
         <div style={{ display: 'flex' }}>
-          <Field name={`${visitor ? '☒' : '☐'} Visitor:`} flex={1.5}>{visitor ? team.name : opp.name}</Field><Field name="Date:">{sc.date}</Field><Field name="End Time:">{sc.endTime}</Field><Field name="Wind:">{sc.wind}</Field>
+          <Field name={`Visitor:`} flex={1.5}>{visitor ? team.name : opp.name}</Field><Field name="Date:">{sc.date}</Field><Field name="End Time:">{sc.endTime}</Field>
         </div>
         <div style={{ display: 'flex' }}>
-          <Field name={`${visitor ? '☐' : '☒'} Home:`} flex={1.5}>{visitor ? opp.name : team.name}</Field><Field name="Scorer:">x9Lab</Field><Field name="Time of Game:">{sc.timeOfGame}</Field><Field name="Weather:">{sc.weather}</Field>
+          <Field name={`Home:`} flex={1.5}>{visitor ? opp.name : team.name}</Field><Field name="Scorer:">x9Lab</Field><Field name="Time of Game:">{sc.timeOfGame}</Field>
         </div>
       </div>
 

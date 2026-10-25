@@ -22,6 +22,7 @@
  * - Empty state over thin data.
  */
 
+import XMark from '@/components/XMark'
 import { useState, useEffect } from 'react'
 import { playerHeadshotUrl, teamLogoUrl, shortName } from '@/lib/mlb'
 import type {
@@ -107,7 +108,7 @@ function edgeGamesCount(batter: Top3Batter): number {
 function SectionLabel({ title }: { title: string }) {
   return (
     <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold">
-      § {title}
+      <XMark /> {title}
     </p>
   )
 }

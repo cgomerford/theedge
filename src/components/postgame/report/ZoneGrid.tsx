@@ -26,7 +26,7 @@ export default function ZoneGrid({ counts = {}, usual = [], highlight, heat, col
             <rect x={x} y={y} width={w} height={h} fill={hi ? '#FDE047' : inZone ? '#fff' : '#f5f5f4'} stroke="#d6d3d1" strokeWidth={0.6} />
             {heat && heat[z] != null && <rect x={x} y={y} width={w} height={h} fill="#FDE047" fillOpacity={0.15 + 0.85 * heat[z]} />}
             {n > 0 && <rect x={x} y={y} width={w} height={h} fill={color} fillOpacity={0.15 + 0.7 * (n / max)} />}
-            {n > 0 && <text x={x + w / 2} y={y + h / 2 + 3.4} textAnchor="middle" style={{ font: '700 9px ui-monospace, monospace', fill: '#1A1A1A' }}>{n}</text>}
+            {n > 0 && <text x={x + w / 2} y={y + h / 2 + 3.4} textAnchor="middle" style={{ font: '700 9px monospace', fill: '#1A1A1A' }}>{n}</text>}
           </g>
         )
       })}

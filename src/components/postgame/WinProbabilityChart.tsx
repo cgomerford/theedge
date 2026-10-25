@@ -76,11 +76,11 @@ export function WinProbabilityChart({
         <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} stroke="#E4DFD4" />
         <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} stroke={INK} strokeWidth={1.5} />
         <line x1={PAD_L} y1={yScale(50)} x2={W - PAD_R} y2={yScale(50)} stroke="#E4DFD4" strokeDasharray="3,3" />
-        <text x={PAD_L - 6} y={PAD_T + 4} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="JetBrains Mono, monospace">100</text>
-        <text x={PAD_L - 6} y={yScale(50) + 3} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="JetBrains Mono, monospace">50</text>
-        <text x={PAD_L - 6} y={H - PAD_B + 3} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="JetBrains Mono, monospace">0</text>
+        <text x={PAD_L - 6} y={PAD_T + 4} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="Red Hat Display, sans-serif">100</text>
+        <text x={PAD_L - 6} y={yScale(50) + 3} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="Red Hat Display, sans-serif">50</text>
+        <text x={PAD_L - 6} y={H - PAD_B + 3} textAnchor="end" fontSize={9} fill="#8A8578" fontFamily="Red Hat Display, sans-serif">0</text>
         {inningTicks.map(t => (
-          <text key={t.i} x={xScale(t.i)} y={H - 6} textAnchor="middle" fontSize={9} fill="#8A8578" fontFamily="JetBrains Mono, monospace">
+          <text key={t.i} x={xScale(t.i)} y={H - 6} textAnchor="middle" fontSize={9} fill="#8A8578" fontFamily="Red Hat Display, sans-serif">
             {t.label}
           </text>
         ))}

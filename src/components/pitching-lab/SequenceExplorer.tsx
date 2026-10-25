@@ -450,7 +450,7 @@ export default function SequenceExplorer({ pitcherId }: { pitcherId: number }) {
             value={query}
             onChange={e => { setQuery(e.target.value); if (batter) setBatter(null) }}
             placeholder="Search any MLB batter…"
-            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-full px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
+            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-sm px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
           />
           {visibleResults.length > 0 && !batter && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -468,7 +468,7 @@ export default function SequenceExplorer({ pitcherId }: { pitcherId: number }) {
           <div className="mt-3 flex items-center gap-2">
             <img src={mlbHeadshot(batter.id)} alt="" width={26} height={26} style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
             <span className="text-[13px] font-bold text-stone-900">{batter.fullName}</span>
-            <button onClick={() => { setBatter(null); setQuery('') }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">✕ clear</button>
+            <button onClick={() => { setBatter(null); setQuery('') }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">clear</button>
           </div>
         )}
       </div>
@@ -480,7 +480,7 @@ export default function SequenceExplorer({ pitcherId }: { pitcherId: number }) {
             <button
               key={`${b}-${s}`}
               onClick={() => selectCount(b, s)}
-              className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${balls === b && strikes === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${balls === b && strikes === s ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
             >
               {b}-{s}
             </button>
@@ -509,7 +509,7 @@ export default function SequenceExplorer({ pitcherId }: { pitcherId: number }) {
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     onClick={() => selectType(null)}
-                    className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${prevType === null ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+                    className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${prevType === null ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
                   >
                     Any pitch
                   </button>
@@ -517,7 +517,7 @@ export default function SequenceExplorer({ pitcherId }: { pitcherId: number }) {
                     <button
                       key={pt}
                       onClick={() => selectType(pt)}
-                      className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition flex items-center gap-1.5 ${prevType === pt ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+                      className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition flex items-center gap-1.5 ${prevType === pt ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
                     >
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: pitchColor(pt) }} />
                       {log.pitchNames[pt] ?? pt} <span className="text-stone-400">(n={count})</span>

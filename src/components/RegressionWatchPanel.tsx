@@ -175,12 +175,6 @@ export default function RegressionWatchPanel({ data, layout = 'stacked' }: Regre
         </div>
       )}
 
-      {/* View full link */}
-      <div className="px-4 py-2.5 border-t border-stone-100 bg-stone-50 text-center">
-        <Link href="/fantasy/regression-watch" className="font-mono text-[9px] uppercase tracking-widest text-orange-500 hover:text-orange-600 inline-flex items-center gap-1">
-          View full regression watch ({totalFlagged} flagged) →
-        </Link>
-      </div>
     </div>
   )
 }

@@ -50,10 +50,10 @@ export default async function NflPostgamePage({ params, searchParams }: Props) {
     return (
       <main style={{ background: '#FAF8F3', minHeight: '100vh' }}>
         {header}
-        <div style={{ maxWidth: 720, margin: '60px auto', padding: '0 24px', textAlign: 'center', fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
+        <div style={{ maxWidth: 720, margin: '60px auto', padding: '0 24px', textAlign: 'center', fontFamily: 'var(--font-redhat), system-ui, sans-serif' }}>
           <h1 style={{ fontWeight: 800, fontSize: 34, margin: 0 }}>{away.nick} at {home.nick}</h1>
           <p style={{ color: '#5b5347', fontSize: 15, lineHeight: 1.5 }}>This game has not finished (or its final score has not been posted yet), so there is no postgame report. Check back after the final whistle.</p>
-          <Link href={`/nfl/${game.slug}`} style={{ fontFamily: 'var(--font-jetbrains), monospace', fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none', fontWeight: 700 }}>Open the Game Preview →</Link>
+          <Link href={`/nfl/${game.slug}`} style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none', fontWeight: 700 }}>Open the Game Preview →</Link>
         </div>
       </main>
     )

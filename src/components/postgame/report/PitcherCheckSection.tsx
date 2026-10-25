@@ -14,7 +14,7 @@ import type { PostgameContext } from './types'
 
 const DIAL = { 'Quiet night': 'bg-stone-100 text-stone-700 border-stone-300', Mixed: 'bg-yellow-200 text-stone-900 border-yellow-400', Concerning: 'bg-orange-500 text-white border-orange-600' } as const
 const STATE: Record<State, { t: string; c: string }> = { flag: { t: 'FLAG', c: 'bg-orange-500 text-white border-orange-600' }, ok: { t: 'OK', c: 'bg-stone-100 text-stone-500 border-stone-200' }, na: { t: 'NOT ENOUGH TO JUDGE', c: 'bg-white text-stone-400 border-stone-300 border-dashed' } }
-const MONO = { font: '400 9px ui-monospace, monospace' } as const
+const MONO = { font: '400 9px monospace' } as const
 const pct = (v: number | null, d = 0) => (v == null ? '—' : `${v.toFixed(d)}%`)
 
 function Card({ title, state, note, children }: { title: string; state: State; note: string; children?: React.ReactNode }) {
@@ -132,13 +132,13 @@ function Panel({ c, ctx }: { c: PitcherCheck; ctx: PostgameContext }) {
           <div className="space-y-1.5">
             {c.whiff.rows.filter((r) => r.tonight != null).map((r) => (
               <div key={r.code} className="grid grid-cols-[86px_minmax(0,1fr)_84px] items-center gap-2">
-                <span className="text-[10.5px] font-sans font-semibold text-stone-800 truncate">{r.name}{r.putAway ? ' ★' : ''}</span>
+                <span className="text-[10.5px] font-sans font-semibold text-stone-800 truncate">{r.name}{r.putAway ? ' (put-away)' : ''}</span>
                 <div className="space-y-0.5"><div className="h-2 bg-stone-100"><div className="h-full" style={{ width: `${Math.min(100, r.tonight ?? 0)}%`, background: color }} /></div><div className="h-1.5 bg-stone-50">{r.season != null && <div className="h-full bg-stone-400" style={{ width: `${Math.min(100, r.season)}%` }} />}</div></div>
                 <span className="text-[10px] font-mono text-right"><b>{pct(r.tonight)}</b><span className="text-stone-400"> / {pct(r.season)}</span><span className="block text-[9px] text-stone-400">{r.swings} swings</span></span>
               </div>
             ))}
           </div>
-          <p className="text-[9.5px] font-mono text-stone-400 mt-1">Colour = tonight · grey = season · ★ = put-away pitch</p>
+          <p className="text-[9.5px] font-mono text-stone-400 mt-1">Colour = tonight · grey = season · (put-away) = put-away pitch</p>
         </Card>
         <Card title="Usage shock" state={c.usage.state} note={c.usage.note}>
           <div className="space-y-1.5">

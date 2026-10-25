@@ -21,7 +21,7 @@ function LeaderRow({ entry, rank, teamColors }: { entry: TopPerformerEntry; rank
     <div className="flex items-center gap-2.5 px-3 py-2 border-b border-stone-50 last:border-0">
       <span
         className="w-5 text-right text-stone-300 font-bold leading-none flex-shrink-0"
-        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem' }}
+        style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1rem' }}
       >
         {rank}
       </span>

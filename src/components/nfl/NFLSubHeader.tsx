@@ -34,7 +34,7 @@ export function NflSubHeader() {
             onMouseEnter={() => setHoverIdx(i)}
             onMouseLeave={() => setHoverIdx(null)}
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: '0.06em',

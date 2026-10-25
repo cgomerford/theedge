@@ -50,7 +50,7 @@ echo "== 5. fetch( in render paths"
 hits=$(search "fetch\(" "$@" 2>/dev/null | grep -vE "^(scripts/|src/app/api/cron/|src/lib/email/)" | grep -E "^(src/app/.*page\.tsx|src/components/|src/lib/)" | grep -v "\.server-fetch-allowed\.ts")
 echo "$hits" | split_hits fetch || { echo "FAIL: fetch in a render path"; fail=1; }
 
-echo "== 6. banned fonts — Outfit is the ONLY font (.ts/.tsx only)"
+echo "== 6. banned fonts — Red Hat Display is the ONLY font (.ts/.tsx only)"
 hits=$(search "Fraunces|Bebas|JetBrains|Space Mono|Courier|monospace|Caveat|font-mono|font-serif|Georgia" "$@" | grep -E "\.tsx?:")
 echo "$hits" | split_hits fonts || { echo "FAIL: banned font"; fail=1; }
 

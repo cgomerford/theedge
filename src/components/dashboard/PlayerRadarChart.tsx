@@ -34,12 +34,12 @@ export default function PlayerRadarChart({ players, title }: { players: RadarPla
       <ResponsiveContainer width="100%" height={300}>
         <RadarChart data={data} outerRadius="72%">
           <PolarGrid stroke="#e7e2d6" />
-          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'monospace', fill: '#57534e' }} />
-          <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#a8a29e' }} tickCount={3} />
+          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif', fill: '#57534e' }} />
+          <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} tickCount={3} />
           {players.map(p => (
             <Radar key={p.name} name={p.name} dataKey={p.name} stroke={p.color} fill={p.color} fillOpacity={0.18} strokeWidth={2} />
           ))}
-          <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }} />
+          <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'var(--font-redhat), sans-serif' }} />
           <Tooltip formatter={(value, name, props: any) => [`${value} (${props.payload[`raw_${name}`]})`, name]} />
         </RadarChart>
       </ResponsiveContainer>

@@ -2,7 +2,7 @@
 
 // src/components/GameInfoStrip.tsx
 //
-// Small strip of contextual game facts: venue, weather, start/end time,
+// Small strip of contextual game facts: venue, start/end time,
 // attendance. Sits below the score header in PostGameReportTab. Any
 // field that came back null (see the data-source note in lib/postgame.ts
 // -> parseGameInfo) is just omitted rather than shown as a broken "—" —
@@ -43,13 +43,6 @@ export default function GameInfoStrip({ info }: { info: GameInfo }) {
 
   // Everything else
   if (info.venue) facts.push({ label: 'Venue', value: info.venue })
-  if (info.weatherCondition || info.tempF != null) {
-    const weatherStr = [info.tempF != null ? `${info.tempF}°F` : null, info.weatherCondition]
-      .filter(Boolean)
-      .join(', ')
-    facts.push({ label: 'Weather', value: weatherStr })
-  }
-  if (info.wind) facts.push({ label: 'Wind', value: info.wind })
   if (info.attendance != null) {
     facts.push({ label: 'Attendance', value: info.attendance.toLocaleString() })
   }

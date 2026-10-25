@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import Link from 'next/link'
 import type { MLBStatLeader, MLBNewsItem } from '@/lib/mlb-homepage'
@@ -199,7 +200,7 @@ export default function HomeLeagueSection({ news, statLeaders, teams }: Props) {
           <div className="flex items-end justify-between mb-6 flex-wrap gap-4">
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-orange-500 mb-2">
-                § League leaders
+                <XMark /> League leaders
               </div>
               <h2 className="text-3xl md:text-4xl font-serif font-light text-stone-100 leading-none">
                 Who&apos;s running the show<span className="text-orange-500">.</span>
@@ -303,7 +304,7 @@ export default function HomeLeagueSection({ news, statLeaders, teams }: Props) {
           <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-orange-500 mb-2">
-                § Around the league
+                <XMark /> Around the league
               </div>
               <h2 className="text-3xl md:text-4xl font-serif font-light text-stone-100 leading-none">
                 Latest news<span className="text-orange-500">.</span>
@@ -314,7 +315,7 @@ export default function HomeLeagueSection({ news, statLeaders, teams }: Props) {
                 onClick={() => setActiveTeam(null)}
                 className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-stone-300 transition border border-stone-700 px-3 py-1.5 rounded"
               >
-                ✕ Clear filter
+                Clear filter
               </button>
             )}
           </div>

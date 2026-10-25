@@ -5,6 +5,7 @@
 // context and compare. isPro comes from the real session; locked pitch types are refused by the API
 // as well as dimmed in the UI.
 
+import XMark from '@/components/XMark'
 import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
@@ -14,11 +15,15 @@ import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import Link from 'next/link'
 import { getAvailablePitchTypes } from '@/lib/pitch-shape/data'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata: Metadata = {
-  title: 'Pitch Shape Lab · The Edge',
-  description: 'Find where pitches work on the shape map, who throws them, and dial in any shape to see what pitches like it have produced.',
-}
+export const metadata = pageMeta({
+  title: 'Pitch Shape Lab',
+  description:
+    'Find where pitches work on the shape map, who throws them, and dial in any velocity, break and arm angle to see what pitches shaped like it have produced.',
+  path: '/mlb/lab/pitch-shape',
+})
 export const dynamic = 'force-dynamic'
 
 export default async function ShapeSandboxPage() {
@@ -26,6 +31,7 @@ export default async function ShapeSandboxPage() {
   const pitchTypes = await getAvailablePitchTypes()
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Pitch Shape Lab', path: '/mlb/lab/pitch-shape' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
@@ -43,7 +49,7 @@ export default async function ShapeSandboxPage() {
             <>
               <PitchFinder isPro={isPro} pitchTypes={pitchTypes} />
               <div style={{ margin: '40px 0 10px', borderTop: '1px solid #1A1A1A', paddingTop: 14 }}>
-                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722' }}>§ 02</div>
+                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722' }}><XMark /> 02</div>
                 <h2 style={{ margin: '2px 0 4px', fontWeight: 800, fontSize: 28, letterSpacing: '-.01em' }}>Dial in a shape</h2>
                 <p style={{ color: '#5b5347', fontSize: 14, maxWidth: 720, margin: '0 0 14px' }}>
                   Set a velocity, ride, run and arm angle and see what pitches shaped like it have produced.

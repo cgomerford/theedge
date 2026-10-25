@@ -11,6 +11,7 @@
 // diagram (not the Tailwind-styled PostGameSprayChart) so it sits visually
 // inside the same cream/orange system as the rest of the card.
 
+import XMark from '@/components/XMark'
 import { forwardRef } from 'react'
 import type { BatterGameLine, BattedBallRecord, PitchRecord } from '@/types/postgame'
 import type { GameInfo } from '@/lib/postgame'
@@ -21,6 +22,7 @@ import type { BatterSeasonStats, BatterStatcast } from '@/lib/batter-stats'
 import { C, MONO } from '@/components/team/ui'
 import { cardCss, ZoneGridView, type Cell } from '@/components/admin/scout-graphic/ScoutGraphicCard'
 import { heatColor } from '@/components/admin/scout-graphic/zone-utils'
+import { SITE_HOST } from '@/lib/site'
 
 export type InGameBatterCardProps = {
   dateLabel: string
@@ -129,7 +131,7 @@ const InGameBatterCard = forwardRef<HTMLDivElement, InGameBatterCardProps>(funct
 
       <div className="sg-sec">
         <div className="sg-sechead">
-          <span className="sg-no">§ 01</span><h2>At the plate</h2>
+          <span className="sg-no"><XMark /> 01</span><h2>At the plate</h2>
           <span className="sg-tag">{gameInfo.venue ?? teamAbbr} · vs {opponentAbbr}</span>
         </div>
         <div className="sg-mound">
@@ -157,7 +159,7 @@ const InGameBatterCard = forwardRef<HTMLDivElement, InGameBatterCardProps>(funct
       </div>
 
       <div className="sg-sec sg-mod">
-        <div className="sg-sechead"><span className="sg-no">§ 02</span><h2>Exit velo & barrels</h2><span className="sg-tag">{measured.length} batted ball{measured.length === 1 ? '' : 's'} measured</span></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 02</span><h2>Exit velo & barrels</h2><span className="sg-tag">{measured.length} batted ball{measured.length === 1 ? '' : 's'} measured</span></div>
         <div className="sg-body">
           <div className="sg-grid">
             {[['Min EV', evSummary.min], ['Max EV', evSummary.max], ['Avg EV', evSummary.avg]].map(([l, v]) => (
@@ -170,7 +172,7 @@ const InGameBatterCard = forwardRef<HTMLDivElement, InGameBatterCardProps>(funct
       </div>
 
       <div className="sg-sec">
-        <div className="sg-sechead"><span className="sg-no">§ 03</span><h2>Contact & command</h2><span className="sg-tag">spray + pitch heat map · this game</span></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 03</span><h2>Contact & command</h2><span className="sg-tag">spray + pitch heat map · this game</span></div>
         <div className="sg-cols">
           <div className="sg-zwrap">
             <div className="sg-zlab"><b>Spray chart</b><br />{sprayable.length} ball{sprayable.length === 1 ? '' : 's'} in play</div>
@@ -215,7 +217,7 @@ const InGameBatterCard = forwardRef<HTMLDivElement, InGameBatterCardProps>(funct
 
       <div className="sg-sec sg-mod sg-grow">
         <div className="sg-sechead">
-          <span className="sg-no">§ 04</span><h2>Tonight vs season</h2>
+          <span className="sg-no"><XMark /> 04</span><h2>Tonight vs season</h2>
           <span className="sg-tag">{seasonLoading ? 'loading…' : seasonStats ? `${new Date().getFullYear()} season to date` : 'season data unavailable'}</span>
         </div>
         <div className="sg-body">
@@ -242,7 +244,7 @@ const InGameBatterCard = forwardRef<HTMLDivElement, InGameBatterCardProps>(funct
         <div className="sg-src">{sources}</div>
         <div className="sg-cta">
           <div className="sg-l">Full report</div>
-          <div className="sg-u">edgereportdaily.com</div>
+          <div className="sg-u">{SITE_HOST}</div>
         </div>
       </div>
     </div>

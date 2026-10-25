@@ -142,7 +142,7 @@ export default function PlayersDashboard({ isPro }: { isPro: boolean }) {
               className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#1A1A1A] text-[#FAF8F3] text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 md:opacity-100 transition"
               aria-label={`Remove ${p.fullName}`}
             >
-              ✕
+              Remove
             </button>
             <div className="text-[9px] font-mono text-stone-500 text-center mt-1 truncate w-16 md:w-20">
               {p.fullName.split(' ').slice(-1)[0]}
@@ -237,7 +237,7 @@ function PlayerColumn({
         className="absolute top-3 right-3 text-stone-300 hover:text-stone-600 text-sm"
         aria-label={`Remove ${player.fullName}`}
       >
-        ✕
+        Remove
       </button>
 
       <div className="font-serif font-bold text-stone-900 text-base leading-tight pr-6 truncate">{player.fullName}</div>
@@ -264,7 +264,7 @@ function PlayerColumn({
                     {tip ? <MetricTip tip={tip}>{row.label}</MetricTip> : row.label}
                   </span>
                   {locked ? (
-                    <span className="text-[10px] font-mono text-stone-300">🔒 Pro</span>
+                    <span className="text-[10px] font-mono text-stone-300">Pro</span>
                   ) : (
                     <span className="font-mono text-sm font-bold text-stone-900">
                       {row.seasonValue !== null ? row.seasonValue : '—'}

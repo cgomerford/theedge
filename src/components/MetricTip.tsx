@@ -53,7 +53,7 @@ export default function MetricTip({ tip, children }: { tip: StatTooltip; childre
           {rich && (tip as any).related?.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {(tip as any).related.map((r: string) => (
-                <span key={r} className="text-[9px] font-mono uppercase tracking-wider bg-white/10 px-2 py-1 rounded-full text-stone-300">{r}</span>
+                <span key={r} className="text-[9px] font-mono uppercase tracking-wider bg-white/10 px-2 py-1 rounded-sm text-stone-300">{r}</span>
               ))}
             </div>
           )}

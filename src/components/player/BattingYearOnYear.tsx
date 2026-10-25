@@ -70,7 +70,7 @@ export default function BattingYearOnYear({
           <button
             key={m.key}
             onClick={() => toggle(m.key)}
-            className="text-[9px] font-mono uppercase tracking-widest px-2.5 py-1 border rounded-full transition"
+            className="text-[9px] font-mono uppercase tracking-widest px-2.5 py-1 border rounded-sm transition"
             style={{
               borderColor: active.includes(m.key) ? m.color : '#e7e5e4',
               background: active.includes(m.key) ? `${m.color}12` : 'transparent',
@@ -84,10 +84,10 @@ export default function BattingYearOnYear({
 
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-          <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-          <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} domain={['auto', 'auto']} width={44} />
+          <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+          <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} domain={['auto', 'auto']} width={44} />
           <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(3) : '—')} />
-          <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+          <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
           {metrics.filter(m => active.includes(m.key)).map(m => (
             <Line key={m.key} type="monotone" dataKey={m.key} name={m.label} stroke={m.color} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ))}

@@ -74,13 +74,6 @@ export default function InlineCalibration({ calibration }: Props) {
         )}
       </div>
 
-      {/* Link to full record */}
-      <Link
-        href="/track-record"
-        className="shrink-0 text-[10px] font-mono uppercase tracking-widest text-stone-400 hover:text-orange-600 transition whitespace-nowrap"
-      >
-        Full record →
-      </Link>
     </div>
   )
 }

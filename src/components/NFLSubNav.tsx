@@ -56,7 +56,7 @@ export default function NFLSubNav({ isPro = false }: { isPro?: boolean }) {
           align-items: center;
           gap: 6px;
           padding: 10px 16px;
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
@@ -76,7 +76,7 @@ export default function NFLSubNav({ isPro = false }: { isPro?: boolean }) {
           border-bottom-color: #FF5722;
         }
         .nfl-subnav-pro {
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-size: 8px;
           font-weight: 700;
           letter-spacing: 0.08em;

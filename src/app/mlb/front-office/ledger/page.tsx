@@ -4,8 +4,9 @@
 import FoShell from '@/components/front-office/FoShell'
 import UpgradeCard from '@/components/front-office/UpgradeCard'
 import { Card, Empty } from '@/components/team/ui'
+import { noindex } from '@/lib/seo'
 
-export const metadata = { title: 'The Ledger · Front Office · x9Lab' }
+export const metadata = { title: 'The ledger', ...noindex() }
 
 export default function Page() {
   return (

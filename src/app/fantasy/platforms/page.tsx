@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { getFantasyPicks } from '@/lib/fantasy'
@@ -57,7 +58,7 @@ export default async function PlatformsPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-white rounded-lg border border-stone-200 p-5 sm:p-6 shadow-sm">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">
-            § How the translator works
+            <XMark /> How the translator works
           </div>
           <p className="text-sm text-stone-600 leading-relaxed mb-4">
             We project each streamer&apos;s line for tonight — IP, K, ER, BB, H — based on their season averages adjusted for opponent quality. Then we run that line through each platform&apos;s scoring formula.
@@ -84,7 +85,7 @@ export default async function PlatformsPage() {
         <div>
           <div className="flex items-center gap-3 mb-3">
             <span className="font-mono text-[9px] tracking-widest uppercase text-orange-600 font-bold whitespace-nowrap">
-              § Tonight&apos;s streamers
+              <XMark /> Tonight&apos;s streamers
             </span>
             <div className="flex-1 h-px bg-stone-200" />
             <span className="flex items-center gap-1.5 shrink-0">
@@ -115,7 +116,7 @@ export default async function PlatformsPage() {
         {picks.streamer.length > 0 && (
           <div className="bg-stone-900 rounded-lg p-6 sm:p-8">
             <div className="text-[10px] font-mono uppercase tracking-widest text-yellow-300 font-bold mb-3">
-              § The takeaway
+              <XMark /> The takeaway
             </div>
             <p className="text-base text-white font-serif font-light leading-relaxed">
               If you play on DraftKings or any DFS platform, <span className="text-yellow-300 font-semibold">K-heavy streamers gain extra value</span> — the 2-pts-per-K formula doubles their upside vs. season-long platforms.

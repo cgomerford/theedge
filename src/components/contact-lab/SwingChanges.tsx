@@ -36,7 +36,7 @@ export default function SwingChanges({ swing, contact, season, name }: { swing: 
       <div className="sc-g3">{cOut.map(d => <Mini key={d.k} def={d} series={outs[d.k]} />)}</div>
       <p className="sc-callout"><b>{s.lead}</b> {s.text}</p>
       <Foot>
-        By month, {season}. Source: Baseball Savant via pybaseball: bat speed, attack angle, squared-up and stance from Savant’s bat-tracking and batting-stance leaderboards (competitive swings); Pull AIR% and barrel rate from the batted-ball record.
+        By month, {season}.
         Setup and swing inputs need {INPUT_GATE}+ swings in a month, outcomes {OUTPUT_GATE}+ batted balls (squared-up rate: bat contacts); a thinner month is hatched. Dashed line = his season mean. April–May is compared with July–September (June left out);
         a change smaller than {INPUTS.map(d => `${d.threshold}${d.unit.trim() || ''} ${d.label.toLowerCase()}`).join(', ')}, or {OUTPUTS.map(d => `${d.threshold} points of ${d.label.replace('%', '')}`).join(', ')} is called steady.
         Stance angle is Savant’s measure of how open or closed his feet are to the pitcher (positive = more open, negative = more closed).

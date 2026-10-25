@@ -27,7 +27,7 @@ import type { ScoutClub, ScoutContext } from './types'
 const STATUS_STYLE: Record<AvailStatus, { symbol: string; word: string; tile: string; chip: string }> = {
   available: { symbol: '●', word: 'Available', tile: 'bg-emerald-50 border-emerald-200 text-emerald-900', chip: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   questionable: { symbol: '▲', word: 'Questionable', tile: 'bg-amber-50 border-amber-300 text-amber-900', chip: 'bg-amber-50 text-amber-800 border-amber-300' },
-  out: { symbol: '✕', word: 'Out', tile: 'bg-stone-100 border-stone-300 text-stone-500', chip: 'bg-stone-100 text-stone-600 border-stone-300' },
+  out: { symbol: '', word: 'Out', tile: 'bg-stone-100 border-stone-300 text-stone-500', chip: 'bg-stone-100 text-stone-600 border-stone-300' },
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -64,7 +64,7 @@ function Tile({ p, logo, who }: { p: ClubPlayer & Partial<MinorPlayer>; logo: st
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-sans font-semibold truncate">
           <span aria-hidden className="mr-1 text-[9px]">{st.symbol}</span><span className="sr-only">{st.word}: </span>{surname(p.name)}
-          {prof?.draftedByClub && <span className="ml-1 text-[10px] text-amber-500" title={`Drafted by ${who!.clubAbbr}`}>★<span className="sr-only"> drafted by {who!.clubAbbr}</span></span>}
+          {prof?.draftedByClub && <span className="ml-1 text-[10px] text-amber-500" title={`Drafted by ${who!.clubAbbr}`}><span className="sr-only"> drafted by {who!.clubAbbr}</span></span>}
           {flag && <span className="ml-1 text-[10px]" title={prof?.country ?? ''} role="img" aria-label={prof?.country ?? ''}>{flag}</span>}
           {expiring && <span className="ml-1 text-[8px] font-mono font-semibold text-orange-700 bg-orange-50 border border-orange-300 rounded px-0.5" title={`Contract ends after ${who!.season}`}>EXP</span>}
           {p.on40Man && <span className="ml-1 text-[8px] font-mono font-normal border border-current rounded px-0.5 opacity-70" title="On the MLB 40-man roster">40</span>}
@@ -169,7 +169,7 @@ function RosterMakeup({ club, status, profiles, season }: { club: ScoutClub; sta
         </div>
         <div className="space-y-2">
           <Sub>Where they come from</Sub>
-          <p className="text-[11px] font-sans text-stone-700 leading-snug"><span className="text-amber-500">★</span> <span className="font-mono font-bold">{m.drafted}</span> drafted by {club.abbr} · <span className="font-mono font-bold">{m.foreign}</span> born outside the U.S.</p>
+          <p className="text-[11px] font-sans text-stone-700 leading-snug"><span className="text-amber-500"></span> <span className="font-mono font-bold">{m.drafted}</span> drafted by {club.abbr} · <span className="font-mono font-bold">{m.foreign}</span> born outside the U.S.</p>
           <Sub>Contracts ending this season</Sub>
           {!profiles.contractsLoaded
             ? <p className="text-[10.5px] font-sans italic text-stone-400 leading-snug">Contract data isn&apos;t loaded — MLB doesn&apos;t publish it, so no expiring deals are flagged yet.</p>
@@ -179,7 +179,7 @@ function RosterMakeup({ club, status, profiles, season }: { club: ScoutClub; sta
       </div>
 
       <p className="text-[9.5px] font-mono text-stone-400 leading-relaxed">
-        Hitter type is from his season line, needs {MIN_TYPE_PA}+ PA: power = isolated power (SLG − AVG) of {POWER_ISO.toFixed(3).slice(1)} or better; small ball = under {SMALL_ISO.toFixed(3).slice(1)} with {SMALL_SB}+ steals or a strikeout rate of {SMALL_K}% or lower; balanced = the rest. ★ = the club that signed him in the draft he came out of (international signings and undrafted players have none).
+        Hitter type is from his season line, needs {MIN_TYPE_PA}+ PA: power = isolated power (SLG − AVG) of {POWER_ISO.toFixed(3).slice(1)} or better; small ball = under {SMALL_ISO.toFixed(3).slice(1)} with {SMALL_SB}+ steals or a strikeout rate of {SMALL_K}% or lower; balanced = the rest. = the club that signed him in the draft he came out of (international signings and undrafted players have none).
       </p>
     </div>
   )
@@ -291,7 +291,7 @@ export default async function ClubStatusSection({ ctx }: { ctx: ScoutContext }) 
         {(['available', 'questionable', 'out'] as AvailStatus[]).map((s) => (
           <span key={s} className="inline-flex items-center gap-1.5"><span aria-hidden>{STATUS_STYLE[s].symbol}</span>{STATUS_STYLE[s].word}</span>
         ))}
-        <span className="text-stone-400">· each tile shows when the player last played and his line · 40 = on the MLB 40-man roster · <span className="text-amber-500">★</span> drafted by the club · flag = birth country · EXP = contract ends this season</span>
+        <span className="text-stone-400">· each tile shows when the player last played and his line · 40 = on the MLB 40-man roster · <span className="text-amber-500"></span> drafted by the club · flag = birth country · EXP = contract ends this season</span>
       </div>
       <Tabs tabs={tabs} />
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">

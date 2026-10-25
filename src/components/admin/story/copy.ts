@@ -1,3 +1,4 @@
+import { SITE_HOST } from '@/lib/site'
 // src/components/admin/story/copy.ts
 //
 // Every fixed user-visible string for the story, plus tiny formatters.
@@ -28,7 +29,7 @@ export const FORM_TREND_LABEL = 'last 8 rolling windows'
 
 export const CLOSE_HEADLINE = 'Read the game like an analyst. Or a GM.'
 export const CLOSE_SUB = 'Full scout report on the site'
-export const CLOSE_URL_BASE = 'edgereportdaily.com/mlb'
+export const CLOSE_URL_BASE = `${SITE_HOST}/mlb`
 
 export const scoutPill = (dateLabel: string) => `SCOUT REPORT · ${dateLabel}`
 export const seriesPill = (label: string, game: number, of: number, dateLabel: string) =>

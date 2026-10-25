@@ -87,7 +87,7 @@ export function RadarChart({
               key={label}
               x={lx} y={ly}
               textAnchor="middle" dominantBaseline="middle"
-              fontFamily="'JetBrains Mono', monospace"
+              fontFamily="'Red Hat Display', sans-serif"
               fontSize={9.5}
               fill="#6b6b66"
             >

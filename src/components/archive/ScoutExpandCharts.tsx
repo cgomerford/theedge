@@ -117,7 +117,7 @@ export function FirstPitchMiniChart({ mix, strikeRate }: {
   return (
     <div className="flex gap-5 items-stretch flex-wrap">
       <div className={`rounded-xl px-5 py-4 text-center shrink-0 ${bg} border ${isElite ? 'border-emerald-100' : isWeak ? 'border-orange-100' : 'border-stone-100'}`}>
-        <div className={`font-bold leading-none ${tone}`} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '3.25rem' }}>
+        <div className={`font-bold leading-none ${tone}`} style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '3.25rem' }}>
           {sr}<span className="text-2xl">%</span>
         </div>
         <p className="font-mono text-[9px] uppercase tracking-widest text-stone-500 mt-1.5">1st-pitch strike</p>
@@ -194,7 +194,7 @@ export function ArsenalMiniChart({ arsenal, focus }: {
             <div className="px-3 py-3.5 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${isEliteWhiff ? 'text-orange-600' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.1rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '2.1rem' }}
               >
                 {whiff != null ? Math.round(whiff) : '—'}
                 {whiff != null && <span className="text-lg">%</span>}
@@ -205,7 +205,7 @@ export function ArsenalMiniChart({ arsenal, focus }: {
             <div className="px-3 py-3.5 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${isElitePut ? 'text-orange-600' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.1rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '2.1rem' }}
               >
                 {put != null ? Math.round(put) : '—'}
                 {put != null && <span className="text-lg">%</span>}
@@ -216,7 +216,7 @@ export function ArsenalMiniChart({ arsenal, focus }: {
             <div className="px-3 py-3.5 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${isEliteXw ? 'text-emerald-600' : xw != null && xw >= 0.350 ? 'text-orange-500' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.1rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '2.1rem' }}
               >
                 {fmtAvg(xw ?? null)}
               </div>
@@ -313,7 +313,7 @@ export function TtoBarsChart({ tto1_era, tto2_era, tto3_era, tto1_pa, tto2_pa, t
             <div className="flex-1 h-2.5 bg-stone-100 rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${((b.era ?? 0) / max) * 100}%`, background: b.color }} />
             </div>
-            <span className="font-mono text-[15px] font-bold text-stone-900 w-12 text-right tabular-nums" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+            <span className="font-mono text-[15px] font-bold text-stone-900 w-12 text-right tabular-nums" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
               {(b.era ?? 0).toFixed(2)}
             </span>
             <span className="font-mono text-[9px] text-stone-400 w-12 text-right">n={b.pa ?? '—'}</span>
@@ -352,7 +352,7 @@ export function WorkloadBarsChart({ innings_yesterday, ip_last_3 }: {
               <div className="flex-1 h-2.5 bg-stone-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${Math.min((val / r.max) * 100, 100)}%`, background: heavy ? '#ea580c' : '#78716c' }} />
               </div>
-              <span className="font-mono text-[15px] font-bold text-stone-900 w-10 text-right tabular-nums" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+              <span className="font-mono text-[15px] font-bold text-stone-900 w-10 text-right tabular-nums" style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
                 {val.toFixed(1)}
               </span>
               <span className={`font-mono text-[9px] font-bold w-12 text-right uppercase tracking-wider ${heavy ? 'text-orange-500' : 'text-stone-400'}`}>
@@ -417,7 +417,7 @@ export function WeatherVectorChart({ data }: { data: {
         </g>
         {['N','S','W','E'].map((d, i) => (
           <text key={d} x={i===2?6:i===3?74:40} y={i===0?8:i===1?76:43}
-            textAnchor="middle" style={{ fontFamily: 'ui-monospace', fontSize: 8, fill: '#a8a29e' }}>{d}</text>
+            textAnchor="middle" style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 8, fill: '#a8a29e' }}>{d}</text>
         ))}
       </svg>
       <div className="flex-1 min-w-0">
@@ -481,7 +481,7 @@ export function ParkFactorChart({ data }: { data: {
             <div key={r.label} className={`rounded-xl px-3 py-3 text-center ${boost ? 'bg-orange-50' : suppress ? 'bg-blue-50' : 'bg-stone-50'}`}>
               <div
                 className={`font-bold leading-none tabular-nums ${boost ? 'text-orange-600' : suppress ? 'text-blue-600' : 'text-stone-800'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.75rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.75rem' }}
               >
                 {v.toFixed(2)}
               </div>
@@ -567,7 +567,7 @@ export function ArsenalRadarChart({ pitcherName, pitches }: ArsenalRadarPayload)
             <div className="px-2 py-3 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${top.whiff_pct != null && top.whiff_pct >= 34 ? 'text-orange-600' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.85rem' }}
               >
                 {top.whiff_pct != null ? Math.round(top.whiff_pct) : '—'}
                 {top.whiff_pct != null && <span className="text-base">%</span>}
@@ -577,7 +577,7 @@ export function ArsenalRadarChart({ pitcherName, pitches }: ArsenalRadarPayload)
             <div className="px-2 py-3 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${top.put_away_pct != null && top.put_away_pct >= 30 ? 'text-orange-600' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.85rem' }}
               >
                 {top.put_away_pct != null ? Math.round(top.put_away_pct) : '—'}
                 {top.put_away_pct != null && <span className="text-base">%</span>}
@@ -587,7 +587,7 @@ export function ArsenalRadarChart({ pitcherName, pitches }: ArsenalRadarPayload)
             <div className="px-2 py-3 text-center">
               <div
                 className={`font-bold leading-none tabular-nums ${top.est_woba != null && top.est_woba <= 0.270 ? 'text-emerald-600' : 'text-stone-900'}`}
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.85rem' }}
               >
                 {top.est_woba != null ? top.est_woba.toFixed(3).replace(/^0/, '') : '—'}
               </div>
@@ -596,7 +596,7 @@ export function ArsenalRadarChart({ pitcherName, pitches }: ArsenalRadarPayload)
             <div className="px-2 py-3 text-center">
               <div
                 className="font-bold leading-none text-stone-900 tabular-nums"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.85rem' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.85rem' }}
               >
                 {top.avg_velocity != null ? top.avg_velocity.toFixed(0) : '—'}
               </div>
@@ -648,7 +648,7 @@ export function ArsenalRadarChart({ pitcherName, pitches }: ArsenalRadarPayload)
                 key={i}
                 x={lbl.x} y={lbl.y}
                 textAnchor={lbl.anchor}
-                style={{ fontFamily: 'ui-monospace, monospace', fontSize: 8, fill: '#78716c', fontWeight: 600 }}
+                style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 8, fill: '#78716c', fontWeight: 600 }}
               >
                 {lbl.label}
               </text>
@@ -801,7 +801,7 @@ function PitchSpider({ pitch, size = 200, color }: {
             y={(ly + 3).toFixed(1)}
             textAnchor={anchor}
             style={{
-              fontFamily: 'ui-monospace, monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: 10,
               fontWeight: 700,
               fill: '#57534e',
@@ -860,7 +860,7 @@ export function PitchSpiderExpand({
           >
             <span
               className="font-bold text-stone-900 group-hover:text-white leading-none"
-              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '0.95rem', letterSpacing: '0.04em' }}
+              style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '0.95rem', letterSpacing: '0.04em' }}
             >
               Full detail
             </span>
@@ -921,7 +921,7 @@ export function PitchDetailModal({
               </p>
               <h3
                 className="text-stone-900 leading-none mt-1 truncate"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', letterSpacing: '0.02em' }}
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.6rem', letterSpacing: '0.02em' }}
               >
                 {pitch.name}
               </h3>
@@ -966,7 +966,7 @@ export function PitchDetailModal({
                       </span>
                       <span
                         className="font-bold text-stone-900 tabular-nums"
-                        style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem' }}
+                        style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.4rem' }}
                       >
                         {raw != null ? ax.fmt(raw as number) : '—'}
                       </span>
@@ -1006,7 +1006,7 @@ export function PitchDetailModal({
                   <div className="text-center bg-stone-50 py-3">
                     <div
                       className="font-bold leading-none text-stone-900 tabular-nums"
-                      style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem' }}
+                      style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.5rem' }}
                     >
                       {Math.round(pitch.hard_hit_pct)}<span className="text-sm">%</span>
                     </div>
@@ -1017,7 +1017,7 @@ export function PitchDetailModal({
                   <div className="text-center bg-stone-50 py-3">
                     <div
                       className="font-bold leading-none text-stone-900 tabular-nums"
-                      style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem' }}
+                      style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.5rem' }}
                     >
                       {fmtAvg(pitch.est_woba)}
                     </div>
@@ -1028,7 +1028,7 @@ export function PitchDetailModal({
                   <div className="text-center bg-stone-50 py-3">
                     <div
                       className="font-bold leading-none text-stone-900 tabular-nums"
-                      style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem' }}
+                      style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.5rem' }}
                     >
                       {fmtAvg(pitch.ba_against)}
                     </div>

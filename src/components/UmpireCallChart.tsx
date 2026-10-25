@@ -96,7 +96,7 @@ export default function UmpireCallChart({
           x={zoneX2 + 6}
           y={zoneY1 + 3}
           className="fill-stone-400"
-          style={{ fontSize: 8, fontFamily: 'ui-monospace, monospace' }}
+          style={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }}
         >
           {avgZoneTop.toFixed(1)}′
         </text>
@@ -104,7 +104,7 @@ export default function UmpireCallChart({
           x={zoneX2 + 6}
           y={zoneY2 + 3}
           className="fill-stone-400"
-          style={{ fontSize: 8, fontFamily: 'ui-monospace, monospace' }}
+          style={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }}
         >
           {avgZoneBottom.toFixed(1)}′
         </text>

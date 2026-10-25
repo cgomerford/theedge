@@ -90,7 +90,7 @@ export default function LabCallout({
       <p className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] font-bold mb-1">⊕ Go deeper · {lab.name}</p>
       <h2 className="font-sans text-lg font-bold text-stone-900 leading-tight">Want the advanced look?</h2>
       <p className="font-sans text-[13px] text-stone-600 mt-1 mb-4 max-w-[640px] leading-snug">
-        Everything above is the basic view. The {lab.name} shows {lab.pitch} — pitch-level Statcast data that
+        Everything above is the basic view. The {lab.name} shows {lab.pitch} — pitch-level data that
         doesn&apos;t fit on a stats page. Jump straight into a section:
       </p>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

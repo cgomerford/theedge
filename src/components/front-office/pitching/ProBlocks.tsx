@@ -40,7 +40,7 @@ export async function StuffProBlock({ pid, name, season, win, cmp, isPro }: {
         method={<><b>HB</b> is horizontal break, arm side positive (mirrored for left-handers so both hands compare). <b>IVB</b> is induced vertical break: rise relative to a spinless pitch. Up to 150 pitches per type, a seeded sample. This plot does not split by batter side. Click a pitch in the arsenal table to focus it.</>}
         empty={sets.length === 0 || means.length === 0 ? `No movement points for ${name} in this window yet. They come from the arsenal job (scripts/fo/sync_pitch_arsenal.py).` : undefined}>
         <MovementPlot sets={sets.filter(s => types.has(s.pitchType)).map(s => ({ pitchType: s.pitchType, points: s.points }))} means={means} league={leagueMeans} armAngle={armAngle} compare={compare} />
-        <Foot>x9Lab · Baseball Savant pitch-level tracking, {season}. Pitch types with fewer than 10 pitches in the window are left out. {leagueMeans.length ? 'League rings are the pitch-weighted average for pitchers with 100+ pitches of that type.' : ''}</Foot>
+        <Foot>Pitch types with fewer than 10 pitches in the window are left out. {leagueMeans.length ? 'League rings are the pitch-weighted average for pitchers with 100+ pitches of that type.' : ''}</Foot>
       </ChartCard>
       <div className="pd-g2">
         <ChartCard id="release" title="Release point" pro isPro={isPro} subtitle="Tight, overlapping release points hide which pitch is coming."
@@ -85,7 +85,7 @@ export async function DurabilityProBlock({ pid, name, season, isPro }: { pid: nu
         method={<>Mean release speed per pitch type in each appearance, from public Statcast tracking. Shaded bands are injured-list stints parsed from MLB transaction text. The flag appears when his primary fastball ({primary ? pitchName(primary).toLowerCase() : 'n/a'}) averages at least 1.0 mph below its season mean over his last three appearances. Public tracking trends only, not a medical assessment.</>}
         empty={log.length === 0 || types.length === 0 ? `No appearance log for ${name} yet. It comes from scripts/fo/sync_pitch_game_log.py.` : undefined}>
         <VeloByAppearance games={log.map(g => ({ date: g.date, velo: g.veloByType, pitches: g.pitches, daysRest: g.daysRest, bf: g.bf, k: g.k, bb: g.bb, csw: g.csw }))} stints={stints.map(s => ({ start: s.start, end: s.end, ilType: s.ilType, description: s.description }))} types={types} primary={primary} />
-        <Foot>x9Lab · Baseball Savant, MLB Stats API transactions. Pitch types with fewer than 5 appearances are left out. A stint with no activation on file is shaded to the last appearance. Public tracking trends only, not a medical assessment.</Foot>
+        <Foot>Pitch types with fewer than 5 appearances are left out. A stint with no activation on file is shaded to the last appearance. Public tracking trends only, not a medical assessment.</Foot>
       </ChartCard>
       <div className="pd-g2">
         <ChartCard id="tto" title="Times through order" pro isPro={isPro} subtitle="xwOBA allowed, 1st/2nd/3rd look."

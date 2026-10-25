@@ -135,7 +135,7 @@ export default function PlayerDeepDive({
     plugins: {
       legend: {
         position: 'bottom' as const,
-        labels: { font: { family: 'ui-monospace, monospace', size: 10 }, boxWidth: 12, padding: 12 },
+        labels: { font: { family: "Red Hat Display", size: 10 }, boxWidth: 12, padding: 12 },
       },
       tooltip: {
         callbacks: {
@@ -164,7 +164,7 @@ export default function PlayerDeepDive({
         min: 0, max: 1,
         angleLines: { color: 'rgba(120, 113, 108, 0.2)' },
         grid: { color: 'rgba(120, 113, 108, 0.15)' },
-        pointLabels: { font: { family: 'ui-monospace, monospace', size: 10 }, color: '#57534e' },
+        pointLabels: { font: { family: "Red Hat Display", size: 10 }, color: '#57534e' },
         ticks: { display: false },
       },
     },
@@ -193,11 +193,11 @@ export default function PlayerDeepDive({
     plugins: { legend: { display: false } },
     scales: {
       y: {
-        ticks: { font: { family: 'ui-monospace, monospace', size: 10 }, color: '#78716c' },
+        ticks: { font: { family: "Red Hat Display", size: 10 }, color: '#78716c' },
         grid: { color: 'rgba(120, 113, 108, 0.15)' },
       },
       x: {
-        ticks: { font: { family: 'ui-monospace, monospace', size: 10 }, color: '#78716c' },
+        ticks: { font: { family: "Red Hat Display", size: 10 }, color: '#78716c' },
         grid: { display: false },
       },
     },

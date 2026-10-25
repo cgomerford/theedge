@@ -2,16 +2,14 @@ import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS, findTeamBySlug } from '@/lib/teams'
 import { notFound } from 'next/navigation'
 import AnalyticsTrigger from '@/components/AnalyticsTrigger'
+import { noindex } from '@/lib/seo'
 
 type Props = {
   params: Promise<{ token: string }>
   searchParams: Promise<{ saved?: string; welcome?: string; primary?: string }>
 }
 
-export const metadata = {
-  title: "Pick your teams · x9Lab",
-  description: "Tell us which teams to follow. We'll only send briefs for games you care about.",
-}
+export const metadata = { title: 'Email preferences', ...noindex() }
 
 export default async function PreferencesPage({ params, searchParams }: Props) {
   const { token } = await params
@@ -52,7 +50,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
         {isWelcome && (
           <div className="mt-8 p-6 bg-stone-900 text-stone-100 border-l-4 border-yellow-300">
             <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-2">
-              ✓ You&apos;re in
+              You&apos;re in
             </div>
             <p className="font-serif text-lg">
               Welcome to x9Lab. Pick your teams below — we&apos;ll start sending briefs tomorrow morning.
@@ -89,7 +87,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
         {isSaved && (
           <div className="mt-8 p-4 bg-green-50 border-l-4 border-green-700 text-green-900">
             <div className="text-xs font-mono uppercase tracking-widest text-green-700 mb-1">
-              ✓ Teams saved
+              Teams saved
             </div>
             <p className="font-serif">
               {showPrimaryPicker
@@ -102,7 +100,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
         {isPrimarySaved && (
           <div className="mt-8 p-4 bg-green-50 border-l-4 border-green-700 text-green-900">
             <div className="text-xs font-mono uppercase tracking-widest text-green-700 mb-1">
-              ✓ Primary team saved
+              Primary team saved
             </div>
             <p className="font-serif">
               Your dugout will now feature{' '}
@@ -179,7 +177,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
             </div>
           ))}
 
-          <div className="sticky bottom-4 bg-stone-900 text-stone-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-12 z-10">
+          <div className="x9-desk-sticky sticky bottom-4 bg-stone-900 text-stone-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-12 z-10">
             <div>
               <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-1">
                 Step 1 · Save your teams
@@ -191,7 +189,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
               {!subscriber.is_pro && (
   <span className="block mt-1 text-orange-400 font-mono text-xs uppercase tracking-wider">
     {followedTeams.length >= 3
-      ? '⚠ 3-team limit reached · upgrade for unlimited'
+      ? '3-team limit reached · upgrade for unlimited'
       : `Free tier: ${followedTeams.length}/3 teams selected`}
   </span>
 )}

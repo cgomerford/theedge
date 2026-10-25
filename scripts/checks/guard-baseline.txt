@@ -27,3 +27,8 @@ logos	src/lib/nfl/games-adapter.ts
 logos	src/lib/nfl/roster-transactions.ts
 lg	src/app/nfl/players/[id]/NflPlayerPageClient.tsx
 lg	src/app/nfl/teams/[teamId]/NflTeamPageClient.tsx
+logos	src/lib/graphics/images.ts
+fetch	src/lib/graphics/images.ts
+fetch	src/components/graphics/actions.ts
+logos	src/components/admin/story-v5/teams.ts
+logos	src/components/admin/story-v5/__fixtures__/preview-849802.json

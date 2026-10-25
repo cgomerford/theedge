@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
@@ -76,7 +77,7 @@ export default function NHLPreviewPage() {
 
         {/* § THE STORY */}
         <section className="space-y-3">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold">§ THE STORY</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold"><XMark /> THE STORY</div>
           <p className="font-serif text-xl text-stone-800 leading-relaxed italic">
             &ldquo;Shesterkin&apos;s elite high-danger save percentage tilts this decisively — but Tampa&apos;s
             5v5 shot generation at home has been relentless, and Vasilevskiy&apos;s back-to-back rest
@@ -273,7 +274,7 @@ export default function NHLPreviewPage() {
 
         {/* Projected lineups */}
         <section className="space-y-4">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold">§ PROJECTED LINEUPS</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold"><XMark /> PROJECTED LINEUPS</div>
           <div className="bg-white border border-stone-200 overflow-hidden shadow-sm">
             <div className="bg-stone-50 border-b border-stone-200 px-5 py-3 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -316,7 +317,7 @@ export default function NHLPreviewPage() {
 
         {/* Form guide */}
         <section className="space-y-4">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold">§ FORM GUIDE</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold"><XMark /> FORM GUIDE</div>
           <h3 className="text-2xl font-serif font-light text-stone-800">
             How they&apos;re trending.{' '}
             <span className="text-xs font-mono text-stone-400 uppercase tracking-widest ml-1">LAST 10 GAMES</span>

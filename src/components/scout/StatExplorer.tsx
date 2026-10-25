@@ -238,7 +238,7 @@ function ClubPanel({ index, clubs, meta, stats, stat, w, tiles, sampleUnit, laye
           <div key={key} className="rounded-xl border border-stone-200 bg-white p-3">
             <div className="flex items-baseline justify-between gap-2 mb-1.5">
               <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold">{t.label} · {w === 1 ? 'game by game' : `rolling ${w}-game`}</p>
-              <button type="button" onClick={() => setOpen((o) => ({ ...o, [key]: false }))} className="text-[9px] font-mono uppercase tracking-widest text-stone-400 hover:text-stone-700">Close ✕</button>
+              <button type="button" onClick={() => setOpen((o) => ({ ...o, [key]: false }))} className="text-[9px] font-mono uppercase tracking-widest text-stone-400 hover:text-stone-700">Close Close</button>
             </div>
             <LineChart labels={c.labels} series={[{ key, label: t.label, color: CHART_BLUE, values: c.values }]} dots={layers.dots}
               baseline={{ value: b?.value ?? null, label: b?.label ?? '' }} format={(v) => formatStat(t.format, v)} ariaLabel={`${m.abbr} ${t.label} rolling ${w}-game`} />

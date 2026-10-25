@@ -37,11 +37,11 @@ export function QbRadarCarousel({ entries, intervalMs = 6000 }: { entries: QbRad
         <ResponsiveContainer>
           <RadarChart data={data} outerRadius="70%">
             <PolarGrid stroke="#E7E5E4" />
-            <PolarAngleAxis dataKey="axis" tick={{ fontSize: 9, fill: '#78716C', fontFamily: 'JetBrains Mono, monospace' }} />
+            <PolarAngleAxis dataKey="axis" tick={{ fontSize: 9, fill: '#78716C', fontFamily: 'Red Hat Display, sans-serif' }} />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
             <Radar dataKey="percentile" stroke="#FF5722" fill="#FF5722" fillOpacity={0.35} strokeWidth={2} isAnimationActive={false} />
             <Tooltip
-              contentStyle={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', borderRadius: 12 }}
+              contentStyle={{ fontSize: 12, fontFamily: 'Red Hat Display, sans-serif', borderRadius: 12 }}
               formatter={(value: unknown, _name: unknown, item: any) => {
                 const raw = item?.payload?.raw as number | undefined
                 return [`${value}th pct.${raw != null ? ` · ${raw.toFixed(2)} raw` : ''}`, 'Rank']

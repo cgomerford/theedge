@@ -77,7 +77,7 @@ export default function ChartBuilderRail({ playerId, isPitcher }: { playerId: nu
             <button
               key={s.key}
               onClick={() => setStatKey(s.key)}
-              className={`text-[9px] font-mono uppercase tracking-widest px-2.5 py-1.5 rounded-full border ${
+              className={`text-[9px] font-mono uppercase tracking-widest px-2.5 py-1.5 rounded-sm border ${
                 statKey === s.key
                   ? 'bg-[#1A1A1A] text-[#FAF8F3] border-[#1A1A1A]'
                   : 'border-stone-300 text-stone-500 hover:border-stone-900'
@@ -107,8 +107,8 @@ export default function ChartBuilderRail({ playerId, isPitcher }: { playerId: nu
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={rolling} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <XAxis dataKey="g" tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#a8a29e' }} />
-            <YAxis tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#a8a29e' }} width={36} domain={['auto', 'auto']} />
+            <XAxis dataKey="g" tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+            <YAxis tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={36} domain={['auto', 'auto']} />
             <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(stat.decimals) : '—')} labelFormatter={l => `Game ${l}`} />
             {seasonBaseline != null && (
               <ReferenceLine y={seasonBaseline} stroke="#a8a29e" strokeDasharray="4 3" />

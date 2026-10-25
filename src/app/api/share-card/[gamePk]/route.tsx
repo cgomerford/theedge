@@ -13,6 +13,7 @@ type RouteParams = { params: Promise<{ gamePk: string }> }
 
 // Import at top of file (along with existing imports)
 import { shareDisplayName } from '@/lib/teams'
+import { SITE_HOST } from '@/lib/site'
 
 // (remove the local shortName function — we'll use shareDisplayName everywhere)
 
@@ -107,7 +108,7 @@ const homeShort = shareDisplayName(pred.home_team)
           display: 'flex',
           flexDirection: 'column',
           padding: '50px 60px',
-          fontFamily: 'Georgia, serif',
+          fontFamily: 'Red Hat Display, sans-serif',
         }}
       >
         {/* ═══ HEADER ROW ═══ */}
@@ -129,7 +130,7 @@ const homeShort = shareDisplayName(pred.home_team)
           </div>
           <span
             style={{
-              fontFamily: 'monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: '18px',
               letterSpacing: '3px',
               textTransform: 'uppercase',
@@ -155,7 +156,7 @@ const homeShort = shareDisplayName(pred.home_team)
           </span>
           <span
             style={{
-              fontFamily: 'monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: '32px',
               color: '#a8a29e',
               letterSpacing: '4px',
@@ -184,7 +185,7 @@ const homeShort = shareDisplayName(pred.home_team)
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span
               style={{
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-redhat), sans-serif',
                 fontSize: '14px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
@@ -196,7 +197,7 @@ const homeShort = shareDisplayName(pred.home_team)
             </span>
             <span
               style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontSize: '76px',
                 fontWeight: 900,
                 color: '#dcfa3c',
@@ -211,7 +212,7 @@ const homeShort = shareDisplayName(pred.home_team)
           <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
             <span
               style={{
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-redhat), sans-serif',
                 fontSize: '14px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
@@ -223,7 +224,7 @@ const homeShort = shareDisplayName(pred.home_team)
             </span>
             <span
               style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontSize: '56px',
                 fontWeight: 700,
                 color: accentColor,
@@ -252,7 +253,7 @@ const homeShort = shareDisplayName(pred.home_team)
             <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
               <span
                 style={{
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--font-redhat), sans-serif',
                   fontSize: '13px',
                   letterSpacing: '3px',
                   textTransform: 'uppercase',
@@ -275,7 +276,7 @@ const homeShort = shareDisplayName(pred.home_team)
                 flexShrink: 0,
               }}
             >
-              {wasRight ? '✓' : '✗'}
+              {wasRight ? 'Right' : 'Wrong'}
             </span>
           </div>
         ) : (
@@ -289,7 +290,7 @@ const homeShort = shareDisplayName(pred.home_team)
           >
             <span
               style={{
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-redhat), sans-serif',
                 fontSize: '18px',
                 letterSpacing: '3px',
                 textTransform: 'uppercase',
@@ -307,7 +308,7 @@ const homeShort = shareDisplayName(pred.home_team)
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: '13px',
             letterSpacing: '2px',
             textTransform: 'uppercase',
@@ -316,7 +317,7 @@ const homeShort = shareDisplayName(pred.home_team)
             paddingTop: '24px',
           }}
         >
-          <span>edgereportdaily.com</span>
+          <span>{SITE_HOST}</span>
           <span>Pre-game model · transparent track record</span>
         </div>
       </div>

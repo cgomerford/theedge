@@ -66,7 +66,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     }
     if (top.length > 0 || fade) {
       out.push({
-        id: 'zone-fit', tag: 'The starter', when: `Facing ${oppSpName ?? 'the starter'}${lvs.sp.hand ? ` (${lvs.sp.hand}HP)` : ''}`, title: `Zone fits vs ${oppSpName ?? 'the starter'}`, section: 'lineup-vs-sp', sectionLabel: '§10',
+        id: 'zone-fit', tag: 'The starter', when: `Facing ${oppSpName ?? 'the starter'}${lvs.sp.hand ? ` (${lvs.sp.hand}HP)` : ''}`, title: `Zone fits vs ${oppSpName ?? 'the starter'}`, section: 'lineup-vs-sp', sectionLabel: '10',
         body: `${top.length ? `${list(top.map((h) => `${surname(h.name)} (${h.clash!.total >= 0 ? '+' : ''}${h.clash!.total.toFixed(1)})`))} have the largest zone edges against ${oppSpName ?? 'him'} (${lvs.sp.hand ?? '?'}HP), each on 1,000+ pitches of that split.` : ''}${fade}`.trim(),
       })
     }
@@ -84,7 +84,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     if (p && p.sb + p.cs >= MIN_ATTEMPTS) parts.push(`${surname(p.name)} has allowed ${p.sb} steals against ${p.cs} caught stealing.`)
     const runners = run.offense.runners.filter((r) => r.sb + r.cs >= MIN_ATTEMPTS).slice(0, 2)
     if (runners.length) parts.push(`${me.abbr}'s most active runners: ${runners.map((r) => `${surname(r.name)} ${r.sb}/${r.sb + r.cs}${r.sprint ? ` (${r.sprint.toFixed(1)} ft/s)` : ''}`).join(', ')}.`)
-    if (parts.length) out.push({ id: 'run-game', tag: 'Run game', when: `A ${me.abbr} runner reaches first`, title: `Running on ${c ? surname(c.name) : opp.abbr}`, body: parts.join(' '), section: 'run-game', sectionLabel: '§5' })
+    if (parts.length) out.push({ id: 'run-game', tag: 'Run game', when: `A ${me.abbr} runner reaches first`, title: `Running on ${c ? surname(c.name) : opp.abbr}`, body: parts.join(' '), section: 'run-game', sectionLabel: '5' })
   }
 
   // 3 — the club's own ABS profile
@@ -92,7 +92,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     const s = abs.season, rate = s.games > 0 ? s.all.n / s.games : 0
     const top = abs.challengers.find((x) => x.side === 'fielding' && x.n >= MIN_ABS_N)
     out.push({
-      id: 'abs', tag: 'ABS challenges', when: 'A ball–strike call is close', title: `${me.abbr}'s challenge profile`, section: 'abs', sectionLabel: '§4',
+      id: 'abs', tag: 'ABS challenges', when: 'A ball–strike call is close', title: `${me.abbr}'s challenge profile`, section: 'abs', sectionLabel: '4',
       body: `${abs.profile.label.split(' — ')[0]}: ${rate.toFixed(2)} a game (${abs.rank.rate}${ord(abs.rank.rate)} of ${abs.rank.of}), ${s.all.n > 0 ? Math.round((s.all.ov / s.all.n) * 100) : 0}% overturned (n=${s.all.n}). Batters start ${Math.round((s.batter.n / Math.max(1, s.all.n)) * 100)}% of them${top ? `; ${surname(top.name)} has won ${top.ov} of ${top.n} behind the plate` : ''}.`,
     })
   }
@@ -104,7 +104,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     if (taxed.length) bits.push(`${list(taxed.map((a) => `${surname(a.name)} (${plain(a.flagReason).toLowerCase()})`))} ${taxed.length > 1 ? 'are' : 'is'} carrying recent work`)
     if (shaky.length) bits.push(`${list(shaky.map((a) => `${surname(a.name)} (${plain(a.flagReason)})`))} ${shaky.length > 1 ? 'have' : 'has'} struggled over the last week`)
     if (sharp.length) bits.push(`${list(sharp.map((a) => surname(a.name)))} ${sharp.length > 1 ? 'are' : 'is'} throwing well`)
-    out.push({ id: 'pen', tag: '7th–8th', when: `The ${opp.abbr} bullpen takes over`, title: `${opp.abbr} bullpen in the late innings`, section: 'bullpen', sectionLabel: '§3', body: bits.length ? `${bits.join('; ')}.` : `No ${opp.abbr} reliever is flagged for heavy recent work or a rough week.` })
+    out.push({ id: 'pen', tag: '7th–8th', when: `The ${opp.abbr} bullpen takes over`, title: `${opp.abbr} bullpen in the late innings`, section: 'bullpen', sectionLabel: '3', body: bits.length ? `${bits.join('; ')}.` : `No ${opp.abbr} reliever is flagged for heavy recent work or a rough week.` })
   }
 
   // 4b — the late innings: this season against this opponent, and who the opponent uses in the 8th / 9th
@@ -122,7 +122,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
       const e = top(1), n = top(2)
       if (e && e.inn[1] >= 5 && n && n.inn[2] >= 5) parts.push(`${opp.abbr} has used ${surname(e.name)} in the 8th in ${e.inn[1]} of ${g} games and ${surname(n.name)} in the 9th in ${n.inn[2]}.`)
     }
-    if (parts.length) out.push({ id: 'late', tag: 'Late innings', when: `Late and close against ${opp.abbr}`, title: `The 7th inning on vs ${opp.abbr}`, section: 'leverage', sectionLabel: '§11', body: parts.join(' ') })
+    if (parts.length) out.push({ id: 'late', tag: 'Late innings', when: `Late and close against ${opp.abbr}`, title: `The 7th inning on vs ${opp.abbr}`, section: 'leverage', sectionLabel: '11', body: parts.join(' ') })
   }
 
   // 5 — the opposing infield shade vs the club's pull hitters
@@ -131,7 +131,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     if (rows.length) {
       const side = rows[0].stand === 'L' ? 'left-handed' : 'right-handed'
       out.push({
-        id: 'shade', tag: 'Alignment', when: `${me.abbr} pull hitters bat against the ${opp.abbr} infield`, title: `${opp.abbr} infield shade`, section: 'defense', sectionLabel: '§6',
+        id: 'shade', tag: 'Alignment', when: `${me.abbr} pull hitters bat against the ${opp.abbr} infield`, title: `${opp.abbr} infield shade`, section: 'defense', sectionLabel: '6',
         body: `${opp.abbr} shades the infield on ${Math.round((rows[0].vsSide.ifShade / rows[0].vsSide.n) * 100)}% of pitches to ${side} hitters. ${list(rows.slice(0, 3).map((h) => `${surname(h.name)} (${h.pullPct}% pull)`))} are the hitters most likely to see it.`,
       })
     }
@@ -144,7 +144,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
     const swings = mySplits.lineup.map((h) => ({ h, a: h.splits[k], b: h.splits[other] })).filter((x) => x.a && x.b && x.a.ops != null && x.b.ops != null && x.a.pa >= MIN_SPLIT_PA && x.b.pa >= MIN_SPLIT_PA)
       .map((x) => ({ name: x.h.name, d: (x.a!.ops as number) - (x.b!.ops as number), pa: x.a!.pa })).sort((p, q) => Math.abs(q.d) - Math.abs(p.d)).slice(0, 2)
     if (a && b) out.push({
-      id: 'platoon', tag: 'Platoon', when: `A ${lvs.sp.hand === 'L' ? 'left' : 'right'}-hander is on the mound`, title: `Lineup vs ${lvs.sp.hand === 'L' ? 'left' : 'right'}-handers`, section: 'splits', sectionLabel: '§7',
+      id: 'platoon', tag: 'Platoon', when: `A ${lvs.sp.hand === 'L' ? 'left' : 'right'}-hander is on the mound`, title: `Lineup vs ${lvs.sp.hand === 'L' ? 'left' : 'right'}-handers`, section: 'splits', sectionLabel: '7',
       body: `The lineup carries a ${f3(a.ops)} OPS against ${lvs.sp.hand === 'L' ? 'lefties' : 'righties'} (${a.pa} PA) and ${f3(b.ops)} against the other side.${swings.length ? ` Biggest gaps: ${swings.map((s) => `${surname(s.name)} ${s.d >= 0 ? '+' : '−'}${Math.abs(s.d).toFixed(3).replace(/^0/, '')} vs ${lvs.sp.hand === 'L' ? 'LHP' : 'RHP'} (${s.pa} PA)`).join(', ')}.` : ''}`,
     })
   }
@@ -152,14 +152,14 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
   // 7 — the weakest glove in the opposing lineup
   if (oppDef) {
     const weak = oppDef.fielders.filter((f) => f.oaa != null && f.oaa <= -4).sort((a, b) => (a.oaa as number) - (b.oaa as number))[0]
-    if (weak) out.push({ id: 'glove', tag: `${opp.abbr} defense`, when: `A ball goes toward ${opp.abbr}'s ${weak.pos}`, title: 'Weakest glove in the lineup', section: 'defense', sectionLabel: '§6', body: `${opp.abbr}'s ${weak.pos} ${weak.name} rates ${weak.oaa} Outs Above Average this season; the club as a whole is ${oppDef.team.oaa != null ? `${oppDef.team.oaa > 0 ? '+' : ''}${oppDef.team.oaa} (${oppDef.team.rank}${ord(oppDef.team.rank ?? 0)} of ${oppDef.team.of})` : 'unranked'}.` })
+    if (weak) out.push({ id: 'glove', tag: `${opp.abbr} defense`, when: `A ball goes toward ${opp.abbr}'s ${weak.pos}`, title: 'Weakest glove in the lineup', section: 'defense', sectionLabel: '6', body: `${opp.abbr}'s ${weak.pos} ${weak.name} rates ${weak.oaa} Outs Above Average this season; the club as a whole is ${oppDef.team.oaa != null ? `${oppDef.team.oaa > 0 ? '+' : ''}${oppDef.team.oaa} (${oppDef.team.rank}${ord(oppDef.team.rank ?? 0)} of ${oppDef.team.of})` : 'unranked'}.` })
   }
 
   // 8 — availability on the club's own side
   if (myStatus) {
     const out_ = myStatus.players.filter((p) => p.status === 'out' && p.group === 'hitter'), q = myStatus.players.filter((p) => p.status === 'questionable')
     if (out_.length || q.length) out.push({
-      id: 'availability', tag: 'Availability', when: 'Building the lineup and bench', title: `Who's not fully available`, section: 'club-status', sectionLabel: '§1',
+      id: 'availability', tag: 'Availability', when: 'Building the lineup and bench', title: `Who's not fully available`, section: 'club-status', sectionLabel: '1',
       body: `${out_.length ? `${out_.length} position player${out_.length > 1 ? 's are' : ' is'} out (${list(out_.slice(0, 3).map((p) => surname(p.name)))}${out_.length > 3 ? ' and others' : ''}).` : ''} ${q.length ? `Questionable: ${list(q.slice(0, 4).map((p) => `${surname(p.name)} (${(p.reason ?? '').split(' — ')[0].toLowerCase()})`))}.` : ''}`.trim(),
     })
   }
@@ -168,7 +168,7 @@ async function cardFor(ctx: ScoutContext, me: ScoutClub, opp: ScoutClub): Promis
   if (park) {
     const all = park.bySession.All, sess = ctx.dayNight === 'day' ? park.bySession.Day : ctx.dayNight === 'night' ? park.bySession.Night : null
     if (all) out.push({
-      id: 'park', tag: 'Park', when: `Playing at ${park.venueName}`, title: `${park.venueName}${sess ? `, ${ctx.dayNight} game` : ''}`, section: 'park', sectionLabel: '§8',
+      id: 'park', tag: 'Park', when: `Playing at ${park.venueName}`, title: `${park.venueName}${sess ? `, ${ctx.dayNight} game` : ''}`, section: 'park', sectionLabel: '8',
       body: `Statcast park factors (100 = average): runs ${all.runs}, home runs ${all.hr}, wOBA ${all.woba}${sess ? `; the ${ctx.dayNight} session runs ${sess.runs} for runs and ${sess.hr} for home runs` : ''}.`,
     })
   }

@@ -7,6 +7,7 @@
 // Tailwind utility classes, avoids the known Turbopack responsive-class
 // issue). All numbers arrive pre-computed; this file does no fetching.
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import type { GamePregameInfo, TeamPregameStats, PlayerWatchItem, RollingSeries } from '@/lib/pregame-stats'
 import type { Take } from '@/lib/pregame-takes'
@@ -46,7 +47,7 @@ export default function DataRoomClient({ info, home, away }: Props) {
 
       <div className="droom-sub">
         <div className="droom-subhead">
-          <span className="glyph">§</span> The interesting takes
+          <span className="glyph"><XMark /></span> The interesting takes
           <em>— what to flag before the game</em>
         </div>
         {active.takes.length === 0 ? (
@@ -66,7 +67,7 @@ export default function DataRoomClient({ info, home, away }: Props) {
 
       <div className="droom-sub">
         <div className="droom-subhead">
-          <span className="glyph">§</span> Rolling form
+          <span className="glyph"><XMark /></span> Rolling form
           <em>— last 15 games, computed live from MLB game logs</em>
         </div>
         <div className="chartgrid">
@@ -150,7 +151,7 @@ function LineSvg({ points, baseline, color, fmt }: { points: number[]; baseline:
       </defs>
       <polygon points={areaPts} fill={`url(#${gid})`} />
       <line x1={pad.l} y1={baseY} x2={w - pad.r} y2={baseY} stroke="#6b6b66" strokeWidth={1} strokeDasharray="3 3" opacity={0.7} />
-      <text x={w - pad.r} y={baseY - 3} textAnchor="end" fontSize={8} fill="#6b6b66" fontFamily="JetBrains Mono, monospace">season {fmt(baseline)}</text>
+      <text x={w - pad.r} y={baseY - 3} textAnchor="end" fontSize={8} fill="#6b6b66" fontFamily="Red Hat Display, sans-serif">season {fmt(baseline)}</text>
       <polyline points={linePts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={lastX} cy={lastY} r={3.5} fill={color} />
     </svg>
@@ -192,8 +193,8 @@ function Errors({ errorsPerGame }: { errorsPerGame: number[] | null }) {
           const fill = v >= 2 ? '#C0392B' : v === 1 ? '#FF5722' : '#F0EBE0'
           return <rect key={i} x={bx} y={by} width={bw * 0.64} height={v === 0 ? 2 : bh} fill={fill} />
         })}
-        <text x={pad.l} y={h - 3} fontSize={8} fill="#6b6b66" fontFamily="JetBrains Mono, monospace">{errorsPerGame.length} ago</text>
-        <text x={w - pad.r} y={h - 3} textAnchor="end" fontSize={8} fill="#6b6b66" fontFamily="JetBrains Mono, monospace">tonight</text>
+        <text x={pad.l} y={h - 3} fontSize={8} fill="#6b6b66" fontFamily="Red Hat Display, sans-serif">{errorsPerGame.length} ago</text>
+        <text x={w - pad.r} y={h - 3} textAnchor="end" fontSize={8} fill="#6b6b66" fontFamily="Red Hat Display, sans-serif">tonight</text>
       </svg>
     </div>
   )
@@ -247,7 +248,7 @@ const css = `
 .droom-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #1A1A1A1a;flex-wrap:wrap;background:#FAF8F3}
 .droom-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6b66}
 .droom-sel{display:flex;border:1px solid #1A1A1A1a}
-.droom-pick{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.5px;background:none;border:none;border-right:1px solid #1A1A1A1a;color:#6b6b66;padding:5px 13px;cursor:pointer}
+.droom-pick{font-family:'Red Hat Display',sans-serif;font-size:15px;letter-spacing:.5px;background:none;border:none;border-right:1px solid #1A1A1A1a;color:#6b6b66;padding:5px 13px;cursor:pointer}
 .droom-pick:last-child{border-right:none}
 .droom-pick.on{background:#1A1A1A;color:#FAF8F3}
 .droom-meta{margin-left:auto;font-size:11px;color:#1A1A1A}
@@ -256,7 +257,7 @@ const css = `
 .droom-sub:last-of-type{border-bottom:none}
 .droom-subhead{display:flex;align-items:baseline;gap:8px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6b66;margin-bottom:12px}
 .droom-subhead .glyph{color:#FF5722;text-transform:none}
-.droom-subhead em{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:12.5px;color:#1A1A1A;text-transform:none;letter-spacing:0}
+.droom-subhead em{font-family:Red Hat Display,Red Hat Display,sans-serif;font-style:italic;font-size:12.5px;color:#1A1A1A;text-transform:none;letter-spacing:0}
 .droom-takes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
 .take{border:1px solid #1A1A1A1a;background:#fff;border-left:3px solid #1A1A1A1a;padding:11px 13px}
 .take.hot{border-left-color:#FF5722}
@@ -270,21 +271,21 @@ const css = `
 .take.warn .take-tag{color:#C0392B}
 .take.good .take-tag{color:#15803D}
 .take.match .take-tag{color:#B7950B}
-.take-head{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:14.5px;line-height:1.25;margin-bottom:4px}
+.take-head{font-family:Red Hat Display,Red Hat Display,sans-serif;font-weight:600;font-size:14.5px;line-height:1.25;margin-bottom:4px}
 .take-detail{font-size:10.5px;color:#6b6b66;line-height:1.55}
 .take-detail b{color:#1A1A1A}
 .chartgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
 .chart{border:1px solid #1A1A1A1a;background:#fff;padding:13px}
 .chart-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
-.chart-title{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:14.5px}
+.chart-title{font-family:Red Hat Display,Red Hat Display,sans-serif;font-weight:600;font-size:14.5px}
 .chart-sub{font-size:9px;color:#6b6b66;letter-spacing:.5px}
 .chart-now{text-align:right}
-.chart-now .v{font-family:'Bebas Neue',sans-serif;font-size:25px;line-height:.9}
+.chart-now .v{font-family:'Red Hat Display',sans-serif;font-size:25px;line-height:.9}
 .chart-now .d{font-size:9px;letter-spacing:.5px}
 .up{color:#FF5722} .down{color:#2C6E8F} .flat{color:#6b6b66}
 .pl{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed #1A1A1A1a}
 .pl:last-child{border-bottom:none}
-.pl-name{font-family:Fraunces,Georgia,serif;font-weight:500;font-size:13px;flex:0 0 110px}
+.pl-name{font-family:Red Hat Display,Red Hat Display,sans-serif;font-weight:500;font-size:13px;flex:0 0 110px}
 .pl-name small{display:block;font-size:8px;color:#6b6b66;letter-spacing:.5px}
 .pl-spark{flex:1}
 .pl-val{text-align:right;flex:0 0 70px}
@@ -292,7 +293,7 @@ const css = `
 .pl-val .d{font-size:8px;letter-spacing:.5px}
 .droom-source{font-size:9px;color:#6b6b66;letter-spacing:.3px;margin-top:10px}
 .droom-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;background:#F0EBE0}
-.droom-foottxt{flex:1;min-width:220px;font-family:Fraunces,Georgia,serif;font-style:italic;font-size:13.5px;line-height:1.5}
+.droom-foottxt{flex:1;min-width:220px;font-family:Red Hat Display,Red Hat Display,sans-serif;font-style:italic;font-size:13.5px;line-height:1.5}
 .droom-foottxt b{font-style:normal;color:#FF5722}
 .btn{font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:9px 16px;border:none;cursor:pointer}
 .btn-primary{background:#FF5722;color:#fff}

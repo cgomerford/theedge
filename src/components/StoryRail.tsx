@@ -23,7 +23,7 @@ export default function StoryRail({
     <div className="max-w-6xl mx-auto px-4 py-3" style={{ borderTop: '1px solid rgba(250,248,243,0.06)' }}>
       <button
         onClick={() => onOpen(0)}
-        className="flex items-center gap-2 rounded-full px-4 py-2"
+        className="flex items-center gap-2 rounded-sm px-4 py-2"
         style={{ background: 'rgba(255,87,34,0.12)', border: '1px solid rgba(255,87,34,0.4)', cursor: 'pointer' }}
       >
         <span style={{ width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid #FF5722' }} />

@@ -16,7 +16,7 @@ export default function NflQbDumbbellChart({ rows }: { rows: DumbbellRow[] }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
       </div>
     )
   }
@@ -37,7 +37,7 @@ export default function NflQbDumbbellChart({ rows }: { rows: DumbbellRow[] }) {
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 20, overflowX: 'auto', position: 'relative' }}>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700 }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1A1A1A', display: 'inline-block' }} /> Intended AY
         </span>
@@ -54,7 +54,7 @@ export default function NflQbDumbbellChart({ rows }: { rows: DumbbellRow[] }) {
           return (
             <g key={r.playerId} onMouseEnter={(e) => setHover({ row: r, x: e.clientX, y: e.clientY })} onMouseMove={(e) => setHover({ row: r, x: e.clientX, y: e.clientY })} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }}>
               <rect x={0} y={y - rowHeight / 2} width={width} height={rowHeight} fill="transparent" />
-              <text x={leftPad - 10} y={y + 3} textAnchor="end" fontFamily="'JetBrains Mono', monospace" fontSize={10} fill="#1A1A1A">
+              <text x={leftPad - 10} y={y + 3} textAnchor="end" fontFamily="'Red Hat Display', sans-serif" fontSize={10} fill="#1A1A1A">
                 {r.playerName} ({r.teamId})
               </text>
             <line x1={x1} y1={y} x2={x2} y2={y} stroke={teamColor} strokeWidth={2} strokeOpacity={0.55} />

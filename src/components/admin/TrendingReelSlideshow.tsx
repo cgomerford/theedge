@@ -68,7 +68,7 @@ function ReelTeamBadge({
         style={{
           width: size, height: size, borderRadius: '50%', flexShrink: 0,
           background: '#FF5722', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: size * 0.32,
+          fontFamily: "'Red Hat Display',sans-serif", fontWeight: 700, fontSize: size * 0.32,
           border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.1)',
         }}
       >
@@ -100,7 +100,7 @@ function ReelTeamBadge({
 function ReelStat({ v, l, pct, delayMs }: { v: string; l: string; pct: number; delayMs: number }) {
   return (
     <div className="text-center">
-      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 46, lineHeight: 1, color: '#1A1A1A' }}>{v}</div>
+      <div style={{ fontFamily: "'Red Hat Display',sans-serif", fontSize: 46, lineHeight: 1, color: '#1A1A1A' }}>{v}</div>
       <div style={{ fontSize: 11, letterSpacing: '.15em', textTransform: 'uppercase', color: '#FF5722', fontWeight: 700, marginTop: 6 }}>{l}</div>
       <div style={{ height: 5, background: 'rgba(0,0,0,.08)', borderRadius: 3, marginTop: 10, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', overflow: 'hidden' }}>
@@ -188,7 +188,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
           <button
             key={lv}
             onClick={() => setLevel(lv)}
-            className={`px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-sm text-xs font-mono whitespace-nowrap transition-colors ${
               lv === level ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
             }`}
           >
@@ -257,7 +257,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
                   </div>
                 </div>
 
-                <h1 className="text-2xl font-bold leading-tight" style={{ fontFamily: 'Fraunces, Georgia, serif', color: '#1A1A1A' }}>
+                <h1 className="text-2xl font-bold leading-tight" style={{ fontFamily: 'Red Hat Display, sans-serif', color: '#1A1A1A' }}>
                   {current.name}
                 </h1>
                 <p className="font-mono text-[11px] mt-1 mb-8" style={{ color: '#8a8a85' }}>
@@ -284,7 +284,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
             <button
               onClick={() => setPlaying((p) => !p)}
               disabled={exporting}
-              className="px-4 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 font-mono text-xs text-stone-800 transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 rounded-sm bg-stone-200 hover:bg-stone-300 font-mono text-xs text-stone-800 transition-colors disabled:opacity-50"
             >
               {playing ? 'Pause' : 'Play'}
             </button>
@@ -294,7 +294,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="px-4 py-1.5 rounded-full bg-[#FF5722] hover:bg-[#e64a19] font-mono text-xs text-white font-bold transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 rounded-sm bg-[#FF5722] hover:bg-[#e64a19] font-mono text-xs text-white font-bold transition-colors disabled:opacity-50"
             >
               {exporting ? `Exporting… ${Math.round(exportProgress)}%` : `Export ${LEVEL_LABEL[level]} MP4`}
             </button>

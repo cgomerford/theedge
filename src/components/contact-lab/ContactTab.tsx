@@ -23,7 +23,7 @@ export default function ContactTab({ data, leaders }: { data: ContactProfile | n
   const [metric, setMetric] = useState<MetricKey>('pullAir')
   const [mode, setMode] = useState<'season' | 'month'>('season')
 
-  if (!data) return <Empty>Contact data isn’t built for this hitter yet. It refreshes weekly from Baseball Savant.</Empty>
+  if (!data) return <Empty>Contact data isn’t built for this hitter yet.</Empty>
   const cur = data.seasons[data.seasons.length - 1]
   const lge = data.league.seasons.find(r => r.season === cur.season) ?? null
   if (cur.n_bbe < MIN_SHOWN) {
@@ -57,7 +57,7 @@ export default function ContactTab({ data, leaders }: { data: ContactProfile | n
           <div className="ct-row"><Badge n={cur.n_bbe} /></div>
           <p className="ct-cap">Share of his {fmt(cur.n_bbe)} batted balls in each bucket, against the league’s. Barrels: {fmt(cur.barrel)} of {fmt(cur.n_bbe)} ({pct(rate(cur, 'barrel'))}), league {pct(rate(lge, 'barrel'))}.</p>
           <QualityBars cur={cur} lge={lge} />
-          <Foot>Source: Baseball Savant via pybaseball (launch_speed_angle). Buckets are Statcast’s own, from exit velocity and launch angle: weak, topped, under, flare/burner, solid contact, barrel. Share = batted balls in the bucket ÷ all his batted balls (n = {fmt(cur.n_bbe)}); the league bar is every {cur.season} batted ball{lge ? ` (n = ${fmt(lge.n_bbe)})` : ''}. Only balls with launch_speed_angle, batted-ball type and spray coordinates are counted.</Foot>
+          <Foot>Buckets are Statcast’s own, from exit velocity and launch angle: weak, topped, under, flare/burner, solid contact, barrel. Share = batted balls in the bucket ÷ all his batted balls (n = {fmt(cur.n_bbe)}); the league bar is every {cur.season} batted ball{lge ? ` (n = ${fmt(lge.n_bbe)})` : ''}. Only balls with launch_speed_angle, batted-ball type and spray coordinates are counted.</Foot>
         </Card>
       </Section>
 
@@ -66,7 +66,7 @@ export default function ContactTab({ data, leaders }: { data: ContactProfile | n
           <Card title="Spray fan">
             <div className="ct-row"><Badge n={cur.n_bbe} /></div>
             <SprayFan cur={cur} />
-            <Foot>Source: Baseball Savant via pybaseball (hc_x, hc_y, bb_type). Inner ring: ground balls (n = {fmt(cur.gb)}). Outer ring: air balls, meaning fly balls, line drives and popups (n = {fmt(cur.air)}). Each wedge shows the share of that ring’s balls and the count. Darker = a larger share. Direction comes from the spray angle: pull is more than 15° toward his pull side, oppo more than 15° the other way, straight in between.</Foot>
+            <Foot>Inner ring: ground balls (n = {fmt(cur.gb)}). Outer ring: air balls, meaning fly balls, line drives and popups (n = {fmt(cur.air)}). Each wedge shows the share of that ring’s balls and the count. Darker = a larger share. Direction comes from the spray angle: pull is more than 15° toward his pull side, oppo more than 15° the other way, straight in between.</Foot>
           </Card>
           <Card title="Spray by type">
             <div className="ct-row"><Badge n={cur.n_bbe} /></div>
@@ -229,7 +229,7 @@ function Trend({ data, metric, mode }: { data: ContactProfile; metric: MetricKey
           </g>
         ))}
       </svg>
-      <Foot>Source: Baseball Savant via pybaseball. {def.label} = {def.define}, in the period shown; n under each point is that period’s batted balls. {mode === 'month' ? `Months under ${MIN_MONTH_POINT} batted balls are left out. ` : 'Regular seasons only. '}Spray direction is mirrored for left-handed hitters.</Foot>
+      <Foot>{def.label} = {def.define}, in the period shown; n under each point is that period’s batted balls. {mode === 'month' ? `Months under ${MIN_MONTH_POINT} batted balls are left out. ` : 'Regular seasons only. '}Spray direction is mirrored for left-handed hitters.</Foot>
     </div>
   )
 }
@@ -280,7 +280,7 @@ export function SeasonBars({ pts, label, define }: { pts: Pt[]; label: string; d
           )
         })}
       </svg>
-      <Foot>Source: Baseball Savant via pybaseball. {label} = {define}, in each regular season; n is that season’s batted balls. Seasons under {MIN_LEADERBOARD} batted balls are hatched and not shown as a rate. The dashed tick is the league’s rate that season. The note compares the first and last season with {MIN_LEADERBOARD}+ batted balls; a change under 3 points is called stable. Spray direction is mirrored for left-handed hitters.</Foot>
+      <Foot>{label} = {define}, in each regular season; n is that season’s batted balls. Seasons under {MIN_LEADERBOARD} batted balls are hatched and not shown as a rate. The dashed tick is the league’s rate that season. The note compares the first and last season with {MIN_LEADERBOARD}+ batted balls; a change under 3 points is called stable. Spray direction is mirrored for left-handed hitters.</Foot>
     </div>
   )
 }

@@ -144,10 +144,10 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5">
             <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">X9LAB</p>
-            <h1 className="text-3xl font-bold leading-tight uppercase" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
+            <h1 className="text-3xl font-bold leading-tight uppercase" style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800 }}>
               {current.matchup}
             </h1>
-            <div className="px-4 py-1.5 rounded-full bg-[#FF5722] text-white font-mono text-xs font-bold tracking-wider">
+            <div className="px-4 py-1.5 rounded-sm bg-[#FF5722] text-white font-mono text-xs font-bold tracking-wider">
               {current.factor_count}/8 LEAN · {current.lean_team}
             </div>
             {current.dominant_factor && (
@@ -260,7 +260,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
             <p className="font-mono text-[11px] tracking-widest text-stone-400">SLATE RANK</p>
-            <div className="text-6xl font-bold" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
+            <div className="text-6xl font-bold" style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800 }}>
               #{active + 1}
             </div>
             <p className="text-stone-400 text-sm">of {games.length} games on slate</p>
@@ -333,7 +333,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
           <button
             key={g.game_pk}
             onClick={() => { setActive(i); setSlide(0) }}
-            className={`px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-sm text-xs font-mono whitespace-nowrap transition-colors ${
               i === active ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
             }`}
           >
@@ -408,7 +408,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         <button
           onClick={() => setPlaying(p => !p)}
           disabled={exporting}
-          className="px-4 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 font-mono text-xs text-stone-800 transition-colors disabled:opacity-50"
+          className="px-4 py-1.5 rounded-sm bg-stone-200 hover:bg-stone-300 font-mono text-xs text-stone-800 transition-colors disabled:opacity-50"
         >
           {playing ? 'Pause' : 'Play'}
         </button>
@@ -418,7 +418,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
         <button
           onClick={handleExport}
           disabled={exporting || !current}
-          className="px-4 py-1.5 rounded-full bg-[#FF5722] hover:bg-[#e64a19] font-mono text-xs text-white font-bold transition-colors disabled:opacity-50"
+          className="px-4 py-1.5 rounded-sm bg-[#FF5722] hover:bg-[#e64a19] font-mono text-xs text-white font-bold transition-colors disabled:opacity-50"
         >
           {exporting ? `Exporting… ${Math.round(exportProgress)}%` : 'Export MP4'}
         </button>

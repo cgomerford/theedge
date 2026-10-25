@@ -29,7 +29,7 @@ OUT = EXT / 'stuff_grade_report.html'
 
 CSS = """
 :root{--cream:#FAF8F3;--ink:#1A1A1A;--orange:#FF5722;--yellow:#FDE047;--line:#e7e2d8;--mute:#8a8275;--soft:#f1eee6}
-*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.55 "Outfit",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font:15px/1.55 "Red Hat Display",system-ui,-apple-system,"Segoe UI",sans-serif}
 .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
 .banner{background:var(--ink);color:var(--cream);border-radius:12px;padding:12px 16px;font:12px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.04em;margin-bottom:24px}
 .banner b{color:var(--yellow)}

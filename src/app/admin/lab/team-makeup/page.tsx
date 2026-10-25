@@ -23,7 +23,7 @@ export default async function TeamMakeupPage() {
       <style>{`
         .lab-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         @media (max-width: 900px) { .lab-grid-2 { grid-template-columns: 1fr; } }
-        .tp-root b, .tp-root strong, .tp-root h1, .tp-root h2, .tp-root h3 { font-family: var(--font-outfit), system-ui, sans-serif; }
+        .tp-root b, .tp-root strong, .tp-root h1, .tp-root h2, .tp-root h3 { font-family: var(--font-redhat), system-ui, sans-serif; }
       `}</style>
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
         <Link href="/admin/lab" style={{ fontFamily: SANS, fontSize: 11, color: C.orange, letterSpacing: '.16em', textDecoration: 'none' }}>⊕ LAB</Link>

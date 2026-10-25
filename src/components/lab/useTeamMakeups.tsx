@@ -46,7 +46,7 @@ export function useTeamMakeups(season: number) {
 export function LoadBar({ done, total, failed, season }: { done: number; total: number; failed: number; season: number }) {
   return (
     <div style={{ margin: '14px 0 0', maxWidth: 520 }}>
-      <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontSize: 10, color: '#a89e8c', marginBottom: 4 }}>
+      <div style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontSize: 10, color: '#a89e8c', marginBottom: 4 }}>
         {season} regular season · {done} of {total} clubs loaded{failed ? ` · ${failed} failed (see console)` : ''}
         {done + failed < total ? ' · first load pulls from Savant, repeat loads are cached' : ''}
       </div>

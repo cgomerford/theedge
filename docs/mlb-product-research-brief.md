@@ -156,7 +156,7 @@ All 12 sections are `live`:
 
 ## 8. Cross-cutting design and delivery
 
-- **Design system:** `DESIGN_SYSTEM.md`. Outfit for headers/body/bold, JetBrains Mono for light labels; 14px rounded cards; cream `#FAF8F3`, orange `#FF5722`, yellow `#FDE047`, ink `#1A1A1A`; shared building blocks in `src/components/team/ui.tsx` (`Section`, `Card`, `Tile`, `RankBars`, `rankTone`) and Recharts-only charts. Always use the `next/font` CSS variables, never a literal family name.
+- **Design system:** `DESIGN_SYSTEM.md`. Red Hat for headers/body/bold, JetBrains Mono for light labels; 14px rounded cards; cream `#FAF8F3`, orange `#FF5722`, yellow `#FDE047`, ink `#1A1A1A`; shared building blocks in `src/components/team/ui.tsx` (`Section`, `Card`, `Tile`, `RankBars`, `rankTone`) and Recharts-only charts. Always use the `next/font` CSS variables, never a literal family name.
 - **Exports:** DOM-captured cards via `html-to-image`; server-rendered X graphics via `next/og`; admin video/story pipeline (`ffmpeg.wasm`, Remotion, `captureStoryToMp4`). Admin dashboard cards: scout graphic, game preview teaser, in-game pitcher/batter cards, postseason bracket, trending, stat line, and the new team snapshot.
 - **Email:** Resend daily pre-game digest and post-game recap, bearer-token cron auth, dedup tables.
 - **Other MLB areas (not covered above):** player pages (`/mlb/players/[id]`), team pages (redesigned: hero, ranks among 30, Pro Statcast trends), Front Office / GM Lab, fantasy hub (start/sit, streamers, two-start, trade desk, minors), glossary, leaders, scores, regression watch.

@@ -113,7 +113,7 @@ export default function LocationLab({ pitcherId, pitcherName, abbr, hotZones, ar
     <div className="space-y-6">
       <div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-1">Real Pitch Location / Hot Zones</div>
-        <div className="text-[13px] text-[#57534E]">{abbr} · {pitcherName} — every cell below is real per-zone Statcast data, not modeled.</div>
+        <div className="text-[13px] text-[#57534E]">{abbr} · {pitcherName} — every cell below is real per-zone data, not modeled.</div>
       </div>
 
       {/* Controls */}

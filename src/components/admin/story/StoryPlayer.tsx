@@ -146,19 +146,19 @@ export default function StoryPlayer({ game, render: renderProp, playerIds, fileS
         </div>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', fontFamily: MONO, fontSize: 12 }}>
-        <button onClick={clock.toggle} className="px-4 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800">{clock.playing ? 'Pause' : 'Play'}</button>
+        <button onClick={clock.toggle} className="px-4 py-1.5 rounded-sm bg-stone-200 hover:bg-stone-300 text-stone-800">{clock.playing ? 'Pause' : 'Play'}</button>
         <span className="text-stone-500">{clock.t.toFixed(1)}s / {tl.total.toFixed(1)}s</span>
         <select value={quality} onChange={e => setQuality(e.target.value as '30' | '15')} disabled={exporting} className="rounded border border-stone-300 bg-white px-2 py-1">
           <option value="30">Smooth · 30fps</option><option value="15">Fast · 15fps motion</option>
         </select>
-        <button onClick={() => exportMp4([segments])} disabled={exporting || over} title={disabledReason} className="px-4 py-1.5 rounded-full bg-[#FF5722] font-bold text-white disabled:opacity-40">
+        <button onClick={() => exportMp4([segments])} disabled={exporting || over} title={disabledReason} className="px-4 py-1.5 rounded-sm bg-[#FF5722] font-bold text-white disabled:opacity-40">
           {progress ? `${progress.label}… ${Math.round(progress.pct)}%` : 'Export MP4'}
         </button>
-        {over && split && <button onClick={() => exportMp4(split)} disabled={exporting} className="px-4 py-1.5 rounded-full bg-stone-800 font-bold text-white disabled:opacity-40">Export as 2 parts</button>}
+        {over && split && <button onClick={() => exportMp4(split)} disabled={exporting} className="px-4 py-1.5 rounded-sm bg-stone-800 font-bold text-white disabled:opacity-40">Export as 2 parts</button>}
         {IS_DEV && (
           <>
             <label className="text-stone-500"><input type="checkbox" checked={showSafe} onChange={e => setShowSafe(e.target.checked)} /> Show safe zones</label>
-            <button onClick={() => void runCheck()} className="px-3 py-1 rounded-full border border-stone-300 text-stone-700">Check layout</button>
+            <button onClick={() => void runCheck()} className="px-3 py-1 rounded-sm border border-stone-300 text-stone-700">Check layout</button>
           </>
         )}
       </div>

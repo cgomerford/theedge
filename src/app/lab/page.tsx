@@ -4,8 +4,9 @@ import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import PlayersDashboard from '@/components/PlayersDashboard'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { noindex } from '@/lib/seo'
 
-export const metadata = { title: 'Dashboard - x9Lab' }
+export const metadata = { title: 'Dashboard', ...noindex() }
 
 export default async function LabPage() {
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {

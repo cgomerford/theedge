@@ -5,7 +5,7 @@
 // Shareable "X-friendly" graphic for BatterSequenceExplorer.tsx's real
 // pitch-sequencing data — the batter-side mirror of the other share
 // cards in this app (same 1080×1350 visual system: cream/orange/black,
-// Outfit/JetBrains Mono, zero border-radius), scoped to the real
+// Red Hat/Red Hat Display, zero border-radius), scoped to the real
 // 2-strike "put-away" counts (0-2/1-2/2-2/3-2) since those are the
 // highest-leverage counts in a real at-bat. For each count: the real
 // most-seen (pitch, zone) combo he's faced this season, a little
@@ -18,6 +18,7 @@ import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import { ZONE_LABELS } from '@/lib/hot-zones'
 import { CORE_KEYS, CHASE_KEYS, CHASE_SET } from '@/components/pitching-lab/ZoneGrid'
+import { SITE_HOST } from '@/lib/site'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -103,7 +104,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
   return (
     <div style={{
       width: CARD_WIDTH, height: CARD_HEIGHT, background: '#FAF8F3', color: '#1A1A1A',
-      fontFamily: "var(--font-outfit), 'Outfit', sans-serif", display: 'flex', flexDirection: 'column',
+      fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", display: 'flex', flexDirection: 'column',
       padding: '44px 52px 40px', boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: 10, height: '100%', background: '#FF5722' }} />
@@ -113,10 +114,10 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={playerHeadshotUrl(batterId, 200)} alt={batterName} width={84} height={84} style={{ objectFit: 'cover', background: '#F0EBE0', borderRadius: '50%', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#FF5722', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700, color: '#FF5722', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
             ⊕ How Pitchers Attack Him
           </div>
-          <div style={{ fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontWeight: 800, fontSize: 34, lineHeight: 1.05, color: '#1A1A1A', letterSpacing: 0.2 }}>
+          <div style={{ fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 34, lineHeight: 1.05, color: '#1A1A1A', letterSpacing: 0.2 }}>
             {batterName.toUpperCase()}
           </div>
         </div>
@@ -126,7 +127,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
 
       <div style={{ height: 2.5, background: '#1A1A1A', margin: '22px 0 18px' }} />
 
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 22 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 22 }}>
         Real Put-Away Counts — Every Pitcher, This Season
       </div>
 
@@ -138,7 +139,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
             borderBottom: i < rows.length - 1 ? '1.5px solid rgba(26,26,26,0.08)' : 'none',
           }}>
             <div style={{
-              fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontWeight: 800, fontSize: 30, color: '#1A1A1A',
+              fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontWeight: 800, fontSize: 30, color: '#1A1A1A',
               width: 62, textAlign: 'center', flexShrink: 0,
             }}>
               {r.balls}-{r.strikes}
@@ -146,18 +147,18 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
             <MiniZoneBox zone={r.zone} />
             <div style={{ flex: 1, minWidth: 0 }}>
               {r.pitchType == null ? (
-                <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 14, color: '#A8A29E' }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontStyle: 'italic', fontSize: 14, color: '#A8A29E' }}>
                   No real pitches on record at this count yet.
                 </div>
               ) : (
                 <>
-                  <div style={{ fontFamily: "var(--font-outfit), 'Outfit', sans-serif", fontSize: 18, fontWeight: 700, color: '#1A1A1A', lineHeight: 1.2 }}>
-                    {r.pitchName} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 400, color: '#A8A29E' }}>· {ZONE_LABELS[r.zone ?? ''] ?? r.zone} (n={r.topCount})</span>
+                  <div style={{ fontFamily: "var(--font-redhat), 'Red Hat Display', sans-serif", fontSize: 18, fontWeight: 700, color: '#1A1A1A', lineHeight: 1.2 }}>
+                    {r.pitchName} <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 400, color: '#A8A29E' }}>· {ZONE_LABELS[r.zone ?? ''] ?? r.zone} (n={r.topCount})</span>
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#78716c', marginTop: 4 }}>
+                  <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#78716c', marginTop: 4 }}>
                     Ball {r.ball} · Strike {r.strike} · Whiff {r.whiff} · Foul {r.foul} · In play {r.inPlay}
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#1A1A1A', marginTop: 3 }}>
+                  <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#1A1A1A', marginTop: 3 }}>
                     {outcomeLine(r)}
                   </div>
                 </>
@@ -172,8 +173,8 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 18,
         borderTop: '1.5px solid rgba(26,26,26,0.12)', marginTop: 12,
       }}>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>X9LAB</div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 26, letterSpacing: 1.4, color: '#1A1A1A' }}>X9LAB</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>{SITE_HOST}</div>
       </div>
 
       {/* Watermark */}
@@ -184,7 +185,7 @@ function ShareCardInner({ batterId, batterName, batterTeamId, rows }: Props) {
         }}>
           {Array.from({ length: 24 }).map((_, i) => (
             <span key={i} style={{
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2.5,
+              fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
               X9LAB · EDGEREPORTDAILY.COM

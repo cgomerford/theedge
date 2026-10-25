@@ -49,7 +49,7 @@ export default function PlayerBioExportButton(props: Props) {
     <>
       <button
         type="button" onClick={handleExport} disabled={exporting}
-        className="font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722] disabled:opacity-50 shrink-0"
+        className="font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722] disabled:opacity-50 shrink-0"
       >
         {exporting ? 'Exporting…' : 'Export bio ↓'}
       </button>

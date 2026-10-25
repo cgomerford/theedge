@@ -12,7 +12,7 @@ import type { PatientBatterEntry, LongestAtBat } from '@/lib/postgame'
 function PatientRow({ entry, rank }: { entry: PatientBatterEntry; rank: number }) {
   return (
     <div className="flex items-center gap-2.5 px-3 py-2 border-b border-stone-50 last:border-0">
-      <span className="w-4 text-right text-stone-300 font-bold leading-none flex-shrink-0" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem' }}>
+      <span className="w-4 text-right text-stone-300 font-bold leading-none flex-shrink-0" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1rem' }}>
         {rank}
       </span>
       <img
@@ -60,7 +60,7 @@ export function LongestAtBatCard({ ab }: { ab: LongestAtBat | null }) {
       </div>
       <div className="p-4">
         <div className="flex items-baseline gap-2">
-          <span className="leading-none text-stone-900" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '0.02em' }}>
+          <span className="leading-none text-stone-900" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.2rem', letterSpacing: '0.02em' }}>
             {ab.batterName}
           </span>
           <span className="font-mono text-[10px] text-stone-400">vs {ab.pitcherName}</span>

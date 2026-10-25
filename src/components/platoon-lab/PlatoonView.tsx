@@ -7,7 +7,7 @@
 // panels put both side by side: every readout shows its value and its n; a side below a metric's minimum sample shows "Not enough data yet (n = X of Y needed)". No quality tiers.
 //
 // Light only: the site's cream page, white cards and #e7e2d8 hairlines (orange = vs LHP, yellow = vs RHP). There is no dark theme.
-// One font only (Outfit): the console feel comes from uppercase labels, letter-spacing and tabular numbers. Animations: all about 500 ms, none looping, none after first load except the
+// One font only (Red Hat): the console feel comes from uppercase labels, letter-spacing and tabular numbers. Animations: all about 500 ms, none looping, none after first load except the
 // morph when the hitter or side changes; prefers-reduced-motion turns them all off. Descriptions only. Inline styles plus one scoped <style> block with plain @media.
 // Props are plain data (the PlatoonHitter rows); nothing here fetches.
 
@@ -101,7 +101,7 @@ export function PlatoonPanels({ hitter, side, reduce, asOf, hot, setHot }: {
               return <span key={m.key} className={`pl-chip ${st}`} onMouseEnter={() => setHot(m.key)} onMouseLeave={() => setHot(null)}>{m.label.replace(/ \(.*\)/, '')}: {st === 'moved' ? 'differs' : st === 'matched' ? 'matches' : 'not enough data'}</span>
             })}
           </div>
-          <Foot>How the call is made: his weaker side is the pitcher hand he has the lower wOBA against. Platoon: Yes needs (1) a wOBA gap of .040 or more against that hand, (2) at least two of the four swing-quality measures (bat speed, squared-up rate, zone-contact rate, chase rate) differing by more than their practical gap and worse against that hand, outnumbering any that are better there, and (3) a wOBA against that hand below the league’s for batters on his side. Anything else is Platoon: No, including a real split that still leaves him at or above league average against his weaker side. A call needs 100 PA against each hand and the minimum sample on at least three swing measures, or it reads Not enough data yet. Practical gaps: bat speed 1 mph, swing tilt 3°, contact depth 2 in, attack direction 3°, chase 5 pts, zone contact 4 pts, squared-up 4 pts, Pull AIR% 5 pts. These thresholds are working values. Outcome splits usually take {fmt(WOBA_STEADY_FROM)} to {fmt(WOBA_STEADY_TO)} PA to settle (The Book). Source: Baseball Savant via pybaseball. Updated {lastGameDay}.</Foot>
+          <Foot>How the call is made: his weaker side is the pitcher hand he has the lower wOBA against. Platoon: Yes needs (1) a wOBA gap of .040 or more against that hand, (2) at least two of the four swing-quality measures (bat speed, squared-up rate, zone-contact rate, chase rate) differing by more than their practical gap and worse against that hand, outnumbering any that are better there, and (3) a wOBA against that hand below the league’s for batters on his side. Anything else is Platoon: No, including a real split that still leaves him at or above league average against his weaker side. A call needs 100 PA against each hand and the minimum sample on at least three swing measures, or it reads Not enough data yet. Practical gaps: bat speed 1 mph, swing tilt 3°, contact depth 2 in, attack direction 3°, chase 5 pts, zone contact 4 pts, squared-up 4 pts, Pull AIR% 5 pts. These thresholds are working values. Outcome splits usually take {fmt(WOBA_STEADY_FROM)} to {fmt(WOBA_STEADY_TO)} PA to settle (The Book). Updated {lastGameDay}.</Foot>
         </Panel>
 
         <Panel code="PNL-02" title="PROCESS SPLITS · RESULT SPLITS" wide hero>
@@ -116,7 +116,7 @@ export function PlatoonPanels({ hitter, side, reduce, asOf, hot, setHot }: {
             ))}
           </div>
           <div className="pl-legend"><span><i className="solid" />Bar length = the size of the readout against that row’s own scale</span><span><i className="gate" />Dashed box = below that metric’s minimum sample</span></div>
-          <Foot>Each side shows its readout and its sample (n); bars grow from the centre line and the sign is in the readout. A side below its minimum shows no bar. Bat speed is location-matched: each side’s swings are reweighted to the league’s pitch-location mix over a 5 × 5 grid of the zone (direct standardization), full swings (60+ mph) only. Chase and zone contact use the {hitter.coordEra === '2026' ? '2026 ABS-era' : hitter.coordEra} zone and are never pooled across eras. Source: Baseball Savant via pybaseball (bat tracking, events, woba fields; squared-up from Savant’s leaderboard). {hitter.season} regular season. Updated {lastGameDay}.</Foot>
+          <Foot>Each side shows its readout and its sample (n); bars grow from the centre line and the sign is in the readout. A side below its minimum shows no bar. Bat speed is location-matched: each side’s swings are reweighted to the league’s pitch-location mix over a 5 × 5 grid of the zone (direct standardization), full swings (60+ mph) only. Chase and zone contact use the {hitter.coordEra === '2026' ? '2026 ABS-era' : hitter.coordEra} zone and are never pooled across eras. {hitter.season} regular season. Updated {lastGameDay}.</Foot>
         </Panel>
 
         <Panel code="PNL-03" title="SAMPLE LADDER">
@@ -132,14 +132,14 @@ export function PlatoonPanels({ hitter, side, reduce, asOf, hot, setHot }: {
             {(['both', 'L', 'R'] as const).map(v => <button key={v} type="button" aria-pressed={cview === v} className={cview === v ? 'on' : ''} onClick={() => setCview(v)}>{v === 'both' ? 'Both' : v === 'L' ? 'Vs LHP' : 'Vs RHP'}</button>)}
           </div></div>
           <ContactMap rows={rows} view={cview} hot={hot} />
-          <Foot>Where the bat met the ball (Savant’s intercept point: x = across, y = depth, in inches) against each side. The soft shading is the share of his full swings (60+ mph) that met the ball in each 4-inch cell, blurred for readability; each side is scaled to its own busiest cell, so the n matters. The cross is the side’s mean. Orange = vs LHP, yellow = vs RHP. Source: Baseball Savant via pybaseball. Updated {lastGameDay}.</Foot>
+          <Foot>Where the bat met the ball (Savant’s intercept point: x = across, y = depth, in inches) against each side. The soft shading is the share of his full swings (60+ mph) that met the ball in each 4-inch cell, blurred for readability; each side is scaled to its own busiest cell, so the n matters. The cross is the side’s mean. Orange = vs LHP, yellow = vs RHP. Updated {lastGameDay}.</Foot>
         </Panel>
 
         <Panel code="PNL-05" title="SPRAY SPLIT" wide hl={hot === 'pull_air'}>
           <div className="pl-spray">
             {(['L', 'R'] as const).map(hand => <SprayPanel key={hand} rows={rows} league={hitter.league[side]} hand={hand} />)}
           </div>
-          <Foot>Share of all batted balls in each spot, with the gap to MLB (the same side batting, same pitcher hand); orange tint = above MLB. Pull is always his pull side (mirrored for left-handed batting). Air = fly balls, line drives and popups. Needs {DEF.pull_air.gate} batted balls on a side. Source: Baseball Savant via pybaseball (hc_x, hc_y, bb_type). n shown per side. Updated {lastGameDay}.</Foot>
+          <Foot>Share of all batted balls in each spot, with the gap to MLB (the same side batting, same pitcher hand); orange tint = above MLB. Pull is always his pull side (mirrored for left-handed batting). Air = fly balls, line drives and popups. Needs {DEF.pull_air.gate} batted balls on a side. n shown per side. Updated {lastGameDay}.</Foot>
         </Panel>
       </main>
     </>
@@ -330,7 +330,7 @@ export function LeagueView({ sets, mine, linkBase }: {
           ))}
         </div>
       )}
-      <Foot>Each dot is a hitter ({fmt(dots.length)} shown; switch hitters are left out because their split is between two batting sides). x = the swing gap (the bat speed filter and the chase filter are separate, never combined into one score); y = the wOBA gap. A dot is hollow while the hitter has under {fmt(WOBA_STEADY_FROM)} PA against left-handers; in a single season almost all are. The three groups combine how often he faces each pitcher hand against the league norm for his batting side (sheltered = under 60% of the usual share, faces it fully = 75% or more; hitters under 150 PA this season are not sorted) with the call on his page (this season) or, for the platooned group, his 2024–2026 wOBA against the hand he is sheltered from. Source: Baseball Savant via pybaseball. {pooled ? 'Window: 2024–2026 pooled (bat speed only).' : 'Window: one season.'}</Foot>
+      <Foot>Each dot is a hitter ({fmt(dots.length)} shown; switch hitters are left out because their split is between two batting sides). x = the swing gap (the bat speed filter and the chase filter are separate, never combined into one score); y = the wOBA gap. A dot is hollow while the hitter has under {fmt(WOBA_STEADY_FROM)} PA against left-handers; in a single season almost all are. The three groups combine how often he faces each pitcher hand against the league norm for his batting side (sheltered = under 60% of the usual share, faces it fully = 75% or more; hitters under 150 PA this season are not sorted) with the call on his page (this season) or, for the platooned group, his 2024–2026 wOBA against the hand he is sheltered from. {pooled ? 'Window: 2024–2026 pooled (bat speed only).' : 'Window: one season.'}</Foot>
     </div>
   )
 }

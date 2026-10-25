@@ -105,7 +105,7 @@ function PlayerSlot({
     <div className="border border-stone-200 bg-white p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[10px] font-mono uppercase tracking-widest" style={{ color }}>{label}</div>
-        <button onClick={onClear} className="text-[10px] font-mono text-stone-400 hover:text-stone-900">✕ change</button>
+        <button onClick={onClear} className="text-[10px] font-mono text-stone-400 hover:text-stone-900">change</button>
       </div>
       <div className="mb-3">
         <div className="font-serif text-lg font-bold text-stone-900 leading-tight">{person.fullName}</div>
@@ -139,8 +139,8 @@ function CompareChartCard({ label, points, format, color }: {
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={points}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e7e2d6" />
-          <XAxis dataKey="date" tick={{ fontSize: 9, fontFamily: 'monospace' }} />
-          <YAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} domain={['auto', 'auto']} />
+          <XAxis dataKey="date" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+          <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} domain={['auto', 'auto']} />
           <Tooltip
             formatter={(v) => (typeof v === 'number' ? format(v) : String(v ?? ''))}
             labelFormatter={(lbl, payload) => `${lbl} vs ${payload?.[0]?.payload?.opponent ?? ''}`}

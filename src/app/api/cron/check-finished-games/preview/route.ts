@@ -16,6 +16,7 @@ import { getScheduleForDate, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { getPostGameReport } from '@/lib/postgame'
 import { buildPostgameEmail } from '@/lib/email/postgame-report'    
 import { findTeamByName } from '@/lib/teams'
+import { PREVIEW_EMAIL } from '@/lib/site'
 
 function isRealFinal(game: MLBGame): boolean {
   const state = game.status?.abstractGameState
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (finishedGames.length === 0) {
     const statuses = allGames.map(g => `${g.teams.away.team.name} @ ${g.teams.home.team.name}: ${g.status?.detailedState}`).join('<br>')
     return new NextResponse(
-      `<html><body style="font-family:monospace;padding:40px;">
+      `<html><body style="font-family:var(--font-redhat),sans-serif;padding:40px;">
         <h2>No finished games on ${date}</h2>
         <p>${allGames.length} game(s) found, none Final yet:</p>
         <p>${statuses}</p>
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
   if (!game) {
     const available = finishedGames.map(g => `${g.teams.away.team.name} @ ${g.teams.home.team.name}`).join(', ')
     return new NextResponse(
-      `<html><body style="font-family:monospace;padding:40px;">
+      `<html><body style="font-family:var(--font-redhat),sans-serif;padding:40px;">
         <h2>No finished game matches "${teamFilter}" on ${date}</h2>
         <p>Finished games available: ${available}</p>
       </body></html>`,
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
   const slug = slugifyGame(game)
 
   const email = buildPostgameEmail({
-    recipientEmail: 'preview@edgereportdaily.com',
+    recipientEmail: `${PREVIEW_EMAIL}`,
     preferencesToken: 'preview-token',
     report,
     awayTeamName: game.teams.away.team.name,
@@ -108,8 +109,8 @@ export async function GET(request: NextRequest) {
 
   // ── Wrap in a preview chrome with metadata bar ──
   const metaBar = `
-  <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;color:#FDE047;font-family:monospace;font-size:12px;padding:8px 16px;display:flex;gap:16px;align-items:center;">
-    <span>§ POST-GAME EMAIL PREVIEW</span>
+  <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a1a1a;color:#FDE047;font-family:var(--font-redhat),sans-serif;font-size:12px;padding:8px 16px;display:flex;gap:16px;align-items:center;">
+    <span>POST-GAME EMAIL PREVIEW</span>
     <span style="color:#999;">Date: ${date}</span>
     <span style="color:#999;">Game: ${game.teams.away.team.name} @ ${game.teams.home.team.name}</span>
     <span style="color:#999;">gamePk: ${game.gamePk}</span>

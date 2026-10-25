@@ -46,7 +46,7 @@ export default function NflQbAvatar({
           onError={() => setErrored(true)}
         />
       ) : (
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: size * 0.36, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+        <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: size * 0.36, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
           {initials(playerName)}
         </span>
       )}

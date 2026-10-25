@@ -26,7 +26,7 @@ export default function PitcherPercentileStrip({
       <div className="flex items-center justify-between mb-4">
         <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Statcast</p>
         {!qualified && (
-          <span className="text-[10px] font-mono text-amber-600">⚠ not qualified vs MLB</span>
+          <span className="text-[10px] font-mono text-amber-600">not qualified vs MLB</span>
         )}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

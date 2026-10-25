@@ -9,34 +9,46 @@
 // the components and lib/postgame.ts are left in place for salvage while the remaining sections
 // (spray, ABS, bullpen, umpires, key players, the Pro audits) are rebuilt.
 
+import { devPro } from '@/lib/dev-pro'
+import XMark from '@/components/XMark'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getScheduleForDate, slugifyGame, teamLogoUrl, type MLBGame } from '@/lib/mlb'
 import { createAdminClient } from '@/lib/supabase'
 import { getCurrentSubscriber } from '@/lib/auth'
+import type { Metadata } from 'next'
+import { pageMeta, noindex } from '@/lib/seo'
+import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
+import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import PostgameShell from '@/components/postgame/report/PostgameShell'
 import type { PostgameContext } from '@/components/postgame/report/types'
+import { SITE_URL } from '@/lib/site'
 
 export const revalidate = 300
 export const maxDuration = 30
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
 
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const matchup = slug.replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '').replace(/-vs-/, ' vs ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  const title = `${matchup} — Postgame Report · x9Lab`
-  const description = `Postgame breakdown for ${matchup}: how the game swung, top performers, the full box score and a hand-scored scorecard.`
-  return { title, description, openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}/postgame` }, twitter: { card: 'summary_large_image', title, description } }
+  const p = parseGameSlug(slug)
+  if (!p) return { title: 'Postgame report', ...noindex() }
+  const title = gameTitle(p, ' postgame')
+  const description = fitDescription(
+    `${p.awayName} at ${p.homeName} on ${p.dateLabel}: how the game went, top performers, pitch-by-pitch charts and the full box score, with the sample size beside each stat.`,
+    ['Free daily email.'],
+  )
+  return pageMeta({ title, description, path: `/mlb/${slug}/postgame`, type: 'article' })
 }
 
-export default async function PostGamePage({ params }: Props) {
+export default async function PostGamePage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { pro } = await searchParams
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
 
@@ -50,8 +62,8 @@ export default async function PostGamePage({ params }: Props) {
   if (!game) notFound()
 
   const subscriber = await getCurrentSubscriber()
-  const isPro = (subscriber?.is_pro ?? false) || process.env.NODE_ENV === 'development'   // dev is always Pro so the Pro sections can be tested
-  const isAdmin = subscriber?.role === 'admin' || process.env.NODE_ENV === 'development'
+  const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
+  const isAdmin = subscriber?.role === 'admin' || devPro(pro)
   const isFinal = game.status?.abstractGameState === 'Final'
   const away = game.teams.away, home = game.teams.home
   const awayAbbr = away.team.abbreviation ?? 'AWAY', homeAbbr = home.team.abbreviation ?? 'HOME'
@@ -64,10 +76,12 @@ export default async function PostGamePage({ params }: Props) {
 
   return (
     <>
+      <SportsEventSchema awayTeam={away.team.name} homeTeam={home.team.name} gameDate={game.gameDate} venue={game.venue?.name ?? null} path={`/mlb/${slug}/postgame`} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${away.team.name} vs ${home.team.name}`, path: `/mlb/${slug}` }, { name: 'Postgame report', path: `/mlb/${slug}/postgame` }]} />
       <SiteHeader variant="page" />
       <LiveTicker />
       <div className="min-h-screen bg-stone-50">
-        <div className="sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
+        <div className="x9-desk-sticky sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
           <div className="flex items-center px-4 py-2 gap-2" style={centered}>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,7 +105,7 @@ export default async function PostGamePage({ params }: Props) {
             </div>
           </div>
           <div className="px-4 py-2 border-t border-stone-100" style={centered}>
-            <span className="text-[10px] font-mono uppercase tracking-widest font-bold text-orange-600">§ Postgame Report</span>
+            <h1 className="m-0 text-[12px] font-mono uppercase tracking-widest font-bold text-orange-600"><XMark /> {away.team.name} vs {home.team.name}: postgame report</h1>
           </div>
         </div>
 
@@ -99,7 +113,7 @@ export default async function PostGamePage({ params }: Props) {
           {isFinal ? <PostgameShell ctx={ctx} /> : (
             <div className="max-w-2xl mx-auto py-16 text-center">
               <p className="font-mono text-xs uppercase tracking-widest text-orange-600 mb-3">Not final yet</p>
-              <h1 className="font-serif text-2xl text-stone-900 mb-3">{away.team.name} @ {home.team.name}</h1>
+              <h2 className="font-serif text-2xl text-stone-900 mb-3">{away.team.name} @ {home.team.name}</h2>
               <p className="text-stone-500 mb-6">The postgame report appears once the game ends. Status: {game.status?.detailedState ?? 'Scheduled'}.</p>
               <Link href={`/mlb/${slug}`} className="font-mono text-sm underline text-stone-900">← Back to the game preview</Link>
             </div>

@@ -1,13 +1,19 @@
-export const metadata = {
-  title: "Terms of Use · x9Lab",
-  description: "The rules of using x9Lab.",
-}
+export const metadata = pageMeta({
+  title: 'Terms of use',
+  description:
+    'The terms for using x9Lab: what the site provides, how its data may be used, and the limits on our responsibility for the information shown.',
+  path: '/terms',
+})
 
 import SiteHeader from '@/components/SiteHeader'
+import { CONTACT_EMAIL } from '@/lib/site'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Terms', path: '/terms' }]} />
       <SiteHeader variant="page" />
       <div className="max-w-3xl mx-auto px-6 py-12">
         <a href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
@@ -38,7 +44,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Data accuracy</h2>
             <p>
-              We pull data from official and reputable sources (MLB Stats API, public Statcast feeds, etc.) and do our best to ensure accuracy, but data may be delayed, incomplete, or contain errors. Always verify important information against primary sources.
+              We pull data from official and reputable sources and do our best to ensure accuracy, but data may be delayed, incomplete, or contain errors. Always verify important information against primary sources.
             </p>
           </section>
 
@@ -73,7 +79,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">Contact</h2>
             <p>
-              <a href="mailto:hello@edgereportdaily.com" className="text-orange-600 hover:underline">hello@edgereportdaily.com</a>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-orange-600 hover:underline">{CONTACT_EMAIL}</a>
             </p>
           </section>
 

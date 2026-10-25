@@ -37,6 +37,8 @@ function StandingsTable({
 }
 
 import { useState } from 'react'
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 export default function StandingsCard({
   awayTeamId, homeTeamId, awayStandings, homeStandings,
 }: {
@@ -55,17 +57,9 @@ export default function StandingsCard({
     <div className="bg-white border border-stone-200 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Standings</p>
-        <div className="flex gap-1 bg-stone-100 p-0.5 rounded-full">
-          {(['table', 'chart'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest rounded-full transition ${view === v ? 'bg-[#1A1A1A] text-white' : 'text-stone-400'}`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <Suspense fallback={null}>
+          <Tabs sticky={false} label="Standings view" value={view} onChange={id => setView(id as 'table' | 'chart')} tabs={[{ id: 'table', label: 'Table' }, { id: 'chart', label: 'Chart' }]} />
+        </Suspense>
       </div>
   {view === 'chart' ? (
         (() => {

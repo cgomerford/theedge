@@ -10,7 +10,7 @@
 //      posted, the admin page falls back to the team's most recent
 //      completed game's batting order instead of showing nothing. Only
 //      when EVEN THAT is unavailable does this show a genuine CTA
-//      pointing to edgereportdaily.com instead of a dead "not confirmed"
+//      pointing to the site domain instead of a dead "not confirmed"
 //      message.
 
 import { useState, useRef } from 'react'
@@ -22,6 +22,7 @@ import type { PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import type { BatterZoneArsenal } from '@/lib/batter-zone-arsenal'
 import type { PitcherGameLog } from '@/lib/mlb'
 import { playerHeadshotUrl } from '@/lib/mlb'
+import { SITE_HOST } from '@/lib/site'
 
 type TeamRollingSnapshot = {
   sp_era: number | null
@@ -176,7 +177,7 @@ function LineupColumn({ abbr, color, lineup, isFallback, fullReportUrl }: {
           <div className="text-center py-4">
             <p className="text-[10px] font-serif italic text-stone-400">Lineup not confirmed yet</p>
             <p className="text-[9px] font-mono text-orange-600 mt-1.5">
-              See live lineups at<br />edgereportdaily.com
+              See live lineups at<br />{SITE_HOST}
             </p>
           </div>
         )}

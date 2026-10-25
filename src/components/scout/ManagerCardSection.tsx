@@ -47,7 +47,7 @@ function Locked({ n, tag }: { n: number; tag: string }) {
       <div className="flex items-baseline gap-2 mb-1.5">
         <span className="w-5 h-5 rounded-full bg-stone-300 text-white text-[10px] font-mono font-bold flex items-center justify-center shrink-0">{n}</span>
         <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-500 border border-stone-200">{tag}</span>
-        <span aria-hidden className="text-[11px]">🔒</span>
+        <span aria-hidden className="text-[11px]"></span>
       </div>
       <div className="pl-7 space-y-1.5 blur-[3px] select-none" aria-hidden>
         <div className="h-2.5 rounded bg-stone-200 w-11/12" /><div className="h-2.5 rounded bg-stone-200 w-full" /><div className="h-2.5 rounded bg-stone-200 w-3/5" />

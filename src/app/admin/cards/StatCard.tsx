@@ -22,6 +22,7 @@
 // ────────────────────────────────────────────────────────────────────────
 
 import { forwardRef } from 'react'
+import { SITE_HOST } from '@/lib/site'
 
 const COLORS = {
   cream:  '#FAF8F3',
@@ -66,7 +67,7 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
         flexDirection: 'column',
         border: `3px solid ${COLORS.stone}`,
         overflow: 'hidden',
-        fontFamily: 'var(--font-inter), Inter, sans-serif',
+        fontFamily: 'var(--font-redhat), Red Hat Display, sans-serif',
       }}
     >
       <div style={{ height: 8, width: '100%', background: COLORS.orange, flexShrink: 0 }} />
@@ -82,7 +83,7 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
       >
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 16,
             letterSpacing: '0.18em',
             color: COLORS.orange,
@@ -94,7 +95,7 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 15,
             letterSpacing: '0.1em',
             color: COLORS.stone,
@@ -129,19 +130,19 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
       >
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 13,
             letterSpacing: '0.12em',
             color: COLORS.gray,
             textTransform: 'uppercase',
           }}
         >
-          edgereportdaily.com
+          {SITE_HOST}
         </div>
         {footerNote && (
           <div
             style={{
-              fontFamily: 'var(--font-jetbrains), monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: 13,
               letterSpacing: '0.08em',
               color: COLORS.gray,
@@ -171,7 +172,7 @@ export const CardStage = forwardRef<HTMLDivElement, StageProps>(function CardSta
             <span
               key={i}
               style={{
-                fontFamily: 'var(--font-jetbrains), monospace',
+                fontFamily: 'var(--font-redhat), sans-serif',
                 fontSize: aspect === 'square' ? 26 : 22,
                 letterSpacing: '0.15em',
                 color: COLORS.stone,
@@ -195,7 +196,7 @@ function BigStat({ value, label }: { value: string; label: string }) {
     <div style={{ textAlign: 'center' }}>
       <div
         style={{
-          fontFamily: 'var(--font-bebas), sans-serif',
+          fontFamily: 'var(--font-redhat), sans-serif',
           fontSize: 168,
           lineHeight: 1,
           color: COLORS.stone,
@@ -206,7 +207,7 @@ function BigStat({ value, label }: { value: string; label: string }) {
       </div>
       <div
         style={{
-          fontFamily: 'var(--font-jetbrains), monospace',
+          fontFamily: 'var(--font-redhat), sans-serif',
           fontSize: 18,
           letterSpacing: '0.15em',
           color: COLORS.orange,
@@ -226,7 +227,7 @@ function PlayerName({ name, team, position }: { name: string; team: string; posi
     <div style={{ textAlign: 'center', marginBottom: 28 }}>
       <div
         style={{
-          fontFamily: 'var(--font-fraunces), serif',
+          fontFamily: 'var(--font-redhat), serif',
           fontWeight: 600,
           fontSize: 56,
           color: COLORS.stone,
@@ -238,7 +239,7 @@ function PlayerName({ name, team, position }: { name: string; team: string; posi
       </div>
       <div
         style={{
-          fontFamily: 'var(--font-jetbrains), monospace',
+          fontFamily: 'var(--font-redhat), sans-serif',
           fontSize: 16,
           letterSpacing: '0.1em',
           color: COLORS.gray,
@@ -268,7 +269,7 @@ function SupportRow({ items }: { items: { label: string; value: string }[] }) {
         <div key={item.label} style={{ textAlign: 'center' }}>
           <div
             style={{
-              fontFamily: 'var(--font-jetbrains), monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: 28,
               fontWeight: 700,
               color: COLORS.stone,
@@ -278,7 +279,7 @@ function SupportRow({ items }: { items: { label: string; value: string }[] }) {
           </div>
           <div
             style={{
-              fontFamily: 'var(--font-jetbrains), monospace',
+              fontFamily: 'var(--font-redhat), sans-serif',
               fontSize: 12,
               letterSpacing: '0.1em',
               color: COLORS.gray,
@@ -319,7 +320,7 @@ export const HotStreakCard = forwardRef<HTMLDivElement, HotStreakCardProps>(func
   ].filter(Boolean) as { label: string; value: string }[]
 
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ Hot Streak" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
+    <CardStage ref={ref} aspect={aspect} kicker="Hot Streak" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position={position} />
       <BigStat value={headline_value} label={headline_label} />
       {support.length > 0 && <SupportRow items={support} />}
@@ -351,7 +352,7 @@ export const PitcherTrendCard = forwardRef<HTMLDivElement, PitcherTrendCardProps
   ].filter(Boolean) as { label: string; value: string }[]
 
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ On The Mound" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
+    <CardStage ref={ref} aspect={aspect} kicker="On The Mound" footerNote={`${team_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position="P" />
       <BigStat value={headline_value} label={headline_label} />
       {support.length > 0 && <SupportRow items={support} />}
@@ -375,7 +376,7 @@ export const HeadToHeadCard = forwardRef<HTMLDivElement, HeadToHeadCardProps>(fu
   ref
 ) {
   return (
-    <CardStage ref={ref} aspect={aspect} kicker="§ History Says" footerNote={`${team_abbr} vs ${opponent_abbr} · ${date_label}`} watermark={watermark}>
+    <CardStage ref={ref} aspect={aspect} kicker="History Says" footerNote={`${team_abbr} vs ${opponent_abbr} · ${date_label}`} watermark={watermark}>
       <PlayerName name={player_name} team={team_abbr} position="P" />
       <BigStat value={record} label={`CAREER VS ${opponent_abbr}`} />
       <SupportRow items={[{ label: 'ERA · CAREER VS OPP', value: era }]} />
@@ -413,7 +414,7 @@ export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeC
     <CardStage
       ref={ref}
       aspect={aspect}
-      kicker="§ Graded Performance"
+      kicker="Graded Performance"
       footerNote={`${team_abbr} · ${date_label}`}
       watermark={watermark}
     >
@@ -423,7 +424,7 @@ export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeC
         <div
           style={{
             display: 'inline-block',
-            fontFamily: 'var(--font-bebas), sans-serif',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 148,
             lineHeight: 1,
             color: badgeColor,
@@ -436,7 +437,7 @@ export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeC
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 16,
             letterSpacing: '0.12em',
             color: COLORS.orange,
@@ -459,7 +460,7 @@ export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeC
       >
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 22,
             fontWeight: 700,
             color: COLORS.stone,
@@ -469,7 +470,7 @@ export const PerformanceGradeCard = forwardRef<HTMLDivElement, PerformanceGradeC
         </div>
         <div
           style={{
-            fontFamily: 'var(--font-jetbrains), monospace',
+            fontFamily: 'var(--font-redhat), sans-serif',
             fontSize: 12,
             letterSpacing: '0.1em',
             color: COLORS.gray,

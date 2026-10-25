@@ -26,7 +26,7 @@ export default function NflInfoButton({ text, label }: { text: string; label?: s
         aria-label={label ? `About ${label}` : 'More info'}
         style={{
           width: 14, height: 14, borderRadius: '50%', border: '1px solid #A3A3A3', background: 'transparent',
-          color: '#A3A3A3', fontSize: 9, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
+          color: '#A3A3A3', fontSize: 9, fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700,
           cursor: 'pointer', padding: 0, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           verticalAlign: 'middle', marginLeft: 4,
         }}
@@ -39,11 +39,11 @@ export default function NflInfoButton({ text, label }: { text: string; label?: s
           style={{
             position: 'absolute', zIndex: 40, top: '140%', left: 0, width: 220,
             background: '#1A1A1A', color: '#fff', borderRadius: 6, padding: '10px 12px',
-            fontFamily: "'Fraunces', serif", fontSize: 12, lineHeight: 1.5,
+            fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, lineHeight: 1.5,
             boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
           }}
         >
-          {label && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#FF5722', marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>}
+          {label && <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#FF5722', marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>}
           {text}
         </div>
       )}

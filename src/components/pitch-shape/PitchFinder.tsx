@@ -229,7 +229,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
             {spots.length === 0 ? <p className="pv-note">No spot has enough swings to rank yet.</p> : spots.map((s, i) => (
               <button key={i} type="button" onClick={() => setTarget({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10 })}
                 style={{ display: 'block', width: '100%', textAlign: 'left', background: GOLD.soft, border: `1px solid ${GOLD.line}`, borderRadius: 12, padding: '8px 12px', marginTop: 8, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <div style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: GOLD.ink, textTransform: 'uppercase' }}>★ Spot {i + 1}</div>
+                <div style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: GOLD.ink, textTransform: 'uppercase' }}>Spot {i + 1}</div>
                 <div style={{ fontWeight: 800, fontSize: 18, color: C.ink }}>{(s.rate * 100).toFixed(1)}% whiffs per swing</div>
                 <div style={{ fontSize: 12, color: '#5b5347' }}>HB {s.hb.toFixed(1)} in, IVB {s.ivb.toFixed(1)} in · {s.swings.toLocaleString()} swings within ±{Math.max(radius, 1)} in · league {(lw * 100).toFixed(1)}%</div>
                 <div style={{ fontSize: 11, color: GOLD.ink, marginTop: 2 }}>Click to see who throws it →</div>
@@ -283,7 +283,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
           </Foot>
         </div>
       )}
-      {!target && !locked && payload && <Foot>Each 0.1 in box shows the whiffs per swing of every league {lc} thrown by {hand === 'L' ? 'left' : 'right'}-handers within ±{radius} in of it, pooled over every velocity and arm angle. Boxes with under {MIN_WINDOW_SWINGS} swings in the window are blank, not estimated. Gold spots are the three windows with the highest rate among those with {SPOT_MIN_SWINGS}+ swings, at least 4 in apart. Source: Baseball Savant pitch data (pitch_shape_cells, pitch_shape_pitcher).</Foot>}
+      {!target && !locked && payload && <Foot>Each 0.1 in box shows the whiffs per swing of every league {lc} thrown by {hand === 'L' ? 'left' : 'right'}-handers within ±{radius} in of it, pooled over every velocity and arm angle. Boxes with under {MIN_WINDOW_SWINGS} swings in the window are blank, not estimated. Gold spots are the three windows with the highest rate among those with {SPOT_MIN_SWINGS}+ swings, at least 4 in apart.</Foot>}
     </div>
   )
 }

@@ -16,23 +16,22 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-const SITE_URL = 'https://edgereportdaily.com';
-const X_HANDLE = '@edgereportdaily';
-const X_URL = 'https://x.com/edgereportdaily';
+import { SITE_HOST, SITE_URL, X_HANDLE, X_URL } from '@/lib/site';
+import { fitDescription } from '@/lib/game-slug';
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
 
   if (!article) {
-    return { title: 'Article not found — x9Lab' };
+    return { title: 'Article not found', robots: { index: false, follow: true } };
   }
 
   const canonicalUrl = `${SITE_URL}/articles/${article.slug}`;
 
   return {
-    title: `${article.title} — x9Lab`,
-    description: article.excerpt ?? undefined,
+    title: article.title,
+    description: fitDescription(article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free daily email.', 'Read the full piece on x9Lab.']),
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: article.title,
@@ -139,7 +138,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
             <h1
               style={{
-                fontFamily: 'Fraunces, serif',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontWeight: 700,
                 fontSize: 'clamp(28px, 5vw, 44px)',
                 lineHeight: 1.1,
@@ -149,7 +148,7 @@ export default async function ArticlePage({ params }: PageProps) {
               {article.title}
             </h1>
 
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, opacity: 0.6, marginBottom: 28 }}>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, opacity: 0.6, marginBottom: 28 }}>
               {article.author}
               {dateLabel ? ` · ${dateLabel}` : ''}
             </div>
@@ -172,11 +171,11 @@ export default async function ArticlePage({ params }: PageProps) {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontSize: 11,
               }}
             >
-              <span style={{ opacity: 0.6 }}>x9Lab · edgereportdaily.com</span>
+              <span style={{ opacity: 0.6 }}>x9Lab · {SITE_HOST}</span>
 
               
                 <a href={X_URL}
@@ -206,7 +205,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     <div key={`${l.category}-${l.label}`} style={leaderRowStyle}>
                       <span style={{ fontSize: 10, opacity: 0.5, width: 32 }}>{l.label}</span>
                       <span style={{ flex: 1, fontSize: 13 }}>{l.name}</span>
-                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700 }}>
+                      <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, fontWeight: 700 }}>
                         {l.value}
                       </span>
                     </div>
@@ -218,7 +217,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {/* Follow this team CTA */}
             {primaryTeam && (
               <div style={{ ...railCardStyle, background: '#1A1A1A', color: '#FAF8F3', textAlign: 'center', padding: '24px 18px' }}>
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
+                <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
                   Follow the {teamCodeToName(primaryTeam)}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16, lineHeight: 1.4 }}>
@@ -231,7 +230,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     padding: '10px 20px',
                     background: '#FF5722',
                     color: '#fff',
-                    fontFamily: 'JetBrains Mono, monospace',
+                    fontFamily: 'Red Hat Display, sans-serif',
                     fontSize: 11,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
@@ -248,10 +247,10 @@ export default async function ArticlePage({ params }: PageProps) {
                 <div style={railHeadStyle}>More from x9Lab</div>
                 {otherArticles.map((a) => (
                   <Link key={a.id} href={`/articles/${a.slug}`} style={otherArticleLinkStyle}>
-                    <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, lineHeight: 1.3, marginBottom: 4 }}>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 14, lineHeight: 1.3, marginBottom: 4 }}>
                       {a.title}
                     </div>
-                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, opacity: 0.5 }}>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, opacity: 0.5 }}>
                       {a.team_tags.join(', ') || 'x9Lab'}
                     </div>
                   </Link>
@@ -274,20 +273,20 @@ export default async function ArticlePage({ params }: PageProps) {
           }
         }
         .article-body {
-          font-family: Georgia, serif;
+          font-family: Red Hat Display, sans-serif;
           font-size: 17px;
           line-height: 1.7;
           color: #1A1A1A;
         }
         .article-body p { margin-bottom: 1.3em; }
         .article-body h2 {
-          font-family: 'Fraunces', serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-weight: 600;
           font-size: 26px;
           margin: 1.6em 0 0.6em;
         }
         .article-body h3 {
-          font-family: 'Fraunces', serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-weight: 600;
           font-size: 20px;
           margin: 1.4em 0 0.5em;
@@ -316,7 +315,7 @@ export default async function ArticlePage({ params }: PageProps) {
 }
 
 const teamChipStyle: React.CSSProperties = {
-  fontFamily: 'JetBrains Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 11,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
@@ -332,7 +331,7 @@ const railCardStyle: React.CSSProperties = {
 };
 
 const railHeadStyle: React.CSSProperties = {
-  fontFamily: 'JetBrains Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 10,
   letterSpacing: '0.1em',
   textTransform: 'uppercase',

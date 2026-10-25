@@ -68,7 +68,7 @@ export function HitMatchPanel({ hitRef, who, onRun, onClose, busy }: {
           <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 19, letterSpacing: '-0.01em' }}>How alike should it be?</div>
           <div style={{ fontFamily: SANS, fontSize: 13, color: C.mute, marginTop: 2 }}>{who ? `${who}: ` : ''}{refText(hitRef)}</div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ all: 'unset', cursor: 'pointer', color: C.mute, fontSize: 16 }}>✕</button>
+        <button type="button" onClick={onClose} aria-label="Close" style={{ all: 'unset', cursor: 'pointer', color: C.mute, fontSize: 16 }}>Close</button>
       </div>
 
       <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>

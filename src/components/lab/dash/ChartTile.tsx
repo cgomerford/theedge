@@ -281,7 +281,7 @@ export default function ChartTile({ tile, ctx, active, onActivate, onDuplicate, 
         <div data-no-export="1" style={{ display: 'flex', flexShrink: 0 }}>
           {!kpi && <button title="Download PNG" style={btn} onClick={e => { e.stopPropagation(); void download() }}>PNG</button>}
           <button title="Duplicate" style={btn} onClick={e => { e.stopPropagation(); onDuplicate() }}>⧉</button>
-          <button title="Remove" style={btn} onClick={e => { e.stopPropagation(); onRemove() }}>✕</button>
+          <button title="Remove" style={btn} onClick={e => { e.stopPropagation(); onRemove() }}>Remove</button>
         </div>
       </div>
       {tile.kind === 'kpi' ? <Kpi tile={tile} ctx={ctx} />

@@ -84,7 +84,7 @@
           width: size, height: size, borderRadius: '50%', background: team.secondary_color,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: size * 0.32, color: team.primary_color }}>
+          <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: size * 0.32, color: team.primary_color }}>
             {team.abbrev}
           </span>
         </div>
@@ -129,7 +129,7 @@
     return (
       <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>
         <div style={{ fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8a8275', marginBottom: 4 }}>{title}</div>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 15, color: '#1A1A1A', marginBottom: 12 }}>{subtitle}</div>
+        <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 15, color: '#1A1A1A', marginBottom: 12 }}>{subtitle}</div>
         <div style={{ height: 170 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -175,7 +175,7 @@
           position: 'relative', cursor: 'pointer', font: 'inherit',
         }}
       >
-        <div style={{ position: 'absolute', top: 6, right: 6, fontSize: 13, fontWeight: 800, color: colors.text, background: colors.bg, borderRadius: 6, padding: '2px 7px', fontFamily: 'Fraunces, serif' }}>
+        <div style={{ position: 'absolute', top: 6, right: 6, fontSize: 13, fontWeight: 800, color: colors.text, background: colors.bg, borderRadius: 6, padding: '2px 7px', fontFamily: 'Red Hat Display, sans-serif' }}>
           {grade?.grade ?? '—'}
         </div>
         <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', background: teamColor, padding: 2, marginBottom: 8 }}>
@@ -349,7 +349,7 @@
 
     return (
       <div style={{
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'Red Hat Display', sans-serif",
         background: '#FAF8F3',
         maxWidth: 1520,           // ← widened
         margin: '0 auto',
@@ -370,7 +370,7 @@
             <div>
               <div style={{ fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: '#FDE047', marginBottom: 8 }}>Edge · {team.league} {team.division}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 34, color: team.text_on_primary }}>{team.name}</span>
+                <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: 34, color: team.text_on_primary }}>{team.name}</span>
                 {record && (
                   <span style={{ fontSize: 13, color: team.text_on_primary, opacity: 0.75 }}>
                     {record.wins}–{record.losses} · #{record.divisionRank} {record.division} · GB {record.gb}
@@ -381,9 +381,9 @@
           </div>
           {record && (
             <div style={{ display: 'flex', gap: 28, marginTop: 16 }}>
-              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Streak</div><div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.streak}</div></div>
-              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Home</div><div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.homeRecord}</div></div>
-              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Away</div><div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.awayRecord}</div></div>
+              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Streak</div><div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.streak}</div></div>
+              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Home</div><div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.homeRecord}</div></div>
+              <div><div style={{ fontSize: 9, color: team.text_on_primary, opacity: 0.55, textTransform: 'uppercase', letterSpacing: '.12em' }}>Away</div><div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 20, color: team.text_on_primary, fontWeight: 600 }}>{record.awayRecord}</div></div>
             </div>
           )}
         </div>
@@ -521,7 +521,7 @@
                       <Link href={`/mlb/players/${l.personId}`} style={{ fontSize: 12, fontWeight: 600, color: '#1A1A1A', textDecoration: 'none' }}>{shortName(l.name)}</Link>
                       <div style={{ fontSize: 9, color: '#a89e8c', textTransform: 'uppercase' }}>{l.label}</div>
                     </div>
-                    <div style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 700, color: team.primary_color }}>{l.value}</div>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 17, fontWeight: 700, color: team.primary_color }}>{l.value}</div>
                   </div>
                 ))}
                 <a href="#roster-grades" style={{ display: 'block', marginTop: 12, fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>Full roster · tap a player →</a>
@@ -533,7 +533,7 @@
                 </div>
                 {nextGame ? (
                   <div>
-                    <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, color: '#1A1A1A', marginBottom: 4 }}>{nextGame.isHome ? 'vs' : '@'} {shortName(nextGame.opponent)}</div>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 22, color: '#1A1A1A', marginBottom: 4 }}>{nextGame.isHome ? 'vs' : '@'} {shortName(nextGame.opponent)}</div>
                     <div style={{ fontSize: 11, color: '#a89e8c', marginBottom: 12 }}>{nextGame.venue}</div>
                     <Link href={`/mlb/${nextGame.slug}`} style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: '#FF5722', textDecoration: 'none' }}>View full preview →</Link>
                   </div>
@@ -548,7 +548,7 @@
                 {news.slice(0, 5).map((item, i) => (
                   <a key={item.id} href={item.link} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', gap: 12, padding: '12px 20px', borderBottom: i === 4 ? 'none' : '1px solid #f7f5ef', textDecoration: 'none' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'Fraunces, serif', fontSize: 13, color: '#1A1A1A', marginBottom: 4 }}>{item.headline}</div>
+                      <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 13, color: '#1A1A1A', marginBottom: 4 }}>{item.headline}</div>
                       <div style={{ fontSize: 9, color: '#a89e8c', textTransform: 'uppercase' }}>{timeAgo(item.published)}</div>
                     </div>
                   </a>

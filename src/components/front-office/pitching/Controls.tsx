@@ -39,8 +39,7 @@ export default function Controls({ pitchers, windows, sides, p, w, side, cmp }: 
   )
 
   return (
-    <div role="toolbar" aria-label="Analyst controls" aria-busy={pending} className="pd-controls"
-      style={{ position: 'sticky', top: 56, zIndex: 15, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(250,248,243,.96)', backdropFilter: 'blur(4px)', border: `1px solid ${C.line}`, borderRadius: 12, padding: '10px 14px', opacity: pending ? .75 : 1 }}>
+    <div role="toolbar" aria-label="Analyst controls" aria-busy={pending} className="pd-controls x9-desk-sticky" style={{ position: 'sticky', top: 56, zIndex: 15, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', background: 'rgba(250,248,243,.96)', backdropFilter: 'blur(4px)', border: `1px solid ${C.line}`, borderRadius: 12, padding: '10px 14px', opacity: pending ? .75 : 1 }}>
       <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
         <label htmlFor="fo-p" style={label}>Pitcher</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>

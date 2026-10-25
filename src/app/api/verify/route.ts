@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { welcomeEmail } from '@/lib/email/auth'
 import { Resend } from 'resend'
 import crypto from 'crypto'
+import { CONTACT_EMAIL } from '@/lib/site'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = welcomeEmail(sub.email, sub.preferences_token)
       await resend.emails.send({
-        from: 'x9Lab <hello@edgereportdaily.com>',
+        from: `x9Lab <${CONTACT_EMAIL}>`,
         to: sub.email,
         subject: content.subject,
         html: content.html,

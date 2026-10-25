@@ -14,34 +14,84 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Outfit (Effra stand-in) is the sitewide brand default — see the note
+  /* Red Hat (Effra stand-in) is the sitewide brand default — see the note
      in layout.tsx. font-serif/font-mono/font-display stay available as
      deliberate secondary choices (e.g. tabular numbers in mono), not the
      base body font anymore. */
-  --font-sans: var(--font-outfit);
-  --font-serif: var(--font-outfit);
-  --font-mono: var(--font-outfit);
-  --font-display: var(--font-outfit);
+  --font-sans: var(--font-redhat);
+  --font-serif: var(--font-redhat);
+  --font-mono: var(--font-redhat);
+  --font-display: var(--font-redhat);
 }
 
-/* ONE FONT EVER: Outfit. Legacy variable names resolve to it, so no component
+/* ONE FONT EVER: Red Hat. Legacy variable names resolve to it, so no component
    can reintroduce Fraunces / JetBrains Mono / Bebas Neue / Inter. */
 :root {
-  --font-fraunces: var(--font-outfit);
-  --font-jetbrains: var(--font-outfit);
-  --font-bebas: var(--font-outfit);
-  --font-inter: var(--font-outfit);
+  --font-fraunces: var(--font-redhat);
+  --font-jetbrains: var(--font-redhat);
+  --font-bebas: var(--font-redhat);
+  --font-inter: var(--font-redhat);
 }
 
-/* Hard-coded font names ('Space Mono', Georgia, monospace, ...) and SVG text
+/* Hard-coded font names ('Space Mono', Georgia, sans-serif, ...) and SVG text
    cannot be fixed by variables, so one sitewide rule wins over them all. */
 html body, html body *, html body *::before, html body *::after {
-  font-family: var(--font-outfit), system-ui, sans-serif !important;
+  font-family: var(--font-redhat), system-ui, sans-serif !important;
 }
 th, td { font-variant-numeric: tabular-nums; }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
+  font-family: var(--font-redhat), Arial, Helvetica, sans-serif;
+}
+/* Only the page's tab bar is sticky on phones; everything else flows with the page. */
+@media (max-width: 767px) {
+  .x9-desk-sticky { position: static !important; }
+}
+
+/* Phones: nothing under 12px. Catches Tailwind text-[Npx] classes and inline font sizes. */
+@media (max-width: 767px) {
+  [class*="text-[5px]"],
+  [style*="font-size: 5px"],
+  [style*="font-size:5px"],
+  [class*="text-[5.5px]"],
+  [style*="font-size: 5.5px"],
+  [style*="font-size:5.5px"],
+  [class*="text-[6px]"],
+  [style*="font-size: 6px"],
+  [style*="font-size:6px"],
+  [class*="text-[6.5px]"],
+  [style*="font-size: 6.5px"],
+  [style*="font-size:6.5px"],
+  [class*="text-[7px]"],
+  [style*="font-size: 7px"],
+  [style*="font-size:7px"],
+  [class*="text-[7.5px]"],
+  [style*="font-size: 7.5px"],
+  [style*="font-size:7.5px"],
+  [class*="text-[8px]"],
+  [style*="font-size: 8px"],
+  [style*="font-size:8px"],
+  [class*="text-[8.5px]"],
+  [style*="font-size: 8.5px"],
+  [style*="font-size:8.5px"],
+  [class*="text-[9px]"],
+  [style*="font-size: 9px"],
+  [style*="font-size:9px"],
+  [class*="text-[9.5px]"],
+  [style*="font-size: 9.5px"],
+  [style*="font-size:9.5px"],
+  [class*="text-[10px]"],
+  [style*="font-size: 10px"],
+  [style*="font-size:10px"],
+  [class*="text-[10.5px]"],
+  [style*="font-size: 10.5px"],
+  [style*="font-size:10.5px"],
+  [class*="text-[11px]"],
+  [style*="font-size: 11px"],
+  [style*="font-size:11px"],
+  [class*="text-[11.5px]"],
+  [style*="font-size: 11.5px"],
+  [style*="font-size:11.5px"] { font-size: 12px !important; }
 }

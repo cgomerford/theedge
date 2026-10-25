@@ -3,6 +3,7 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState, useEffect, useCallback } from 'react'
 import NflQbWhosWho from '@/components/nfl/NflQbWhosWho'
 import NflQbDumbbellChart from '@/components/nfl/NflQbDumbbellChart'
@@ -26,8 +27,8 @@ type SearchResult = { type: 'player' | 'team'; id: string; label: string; sublab
 function Cube({ title, explainer, children }: { title: string; explainer: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, margin: '0 0 4px' }}>{title}</h2>
-      <p style={{ fontFamily: "'Fraunces', serif", fontSize: 12, fontStyle: 'italic', color: '#78716C', margin: '0 0 10px', lineHeight: 1.4 }}>{explainer}</p>
+      <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, margin: '0 0 4px' }}>{title}</h2>
+      <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontStyle: 'italic', color: '#78716C', margin: '0 0 10px', lineHeight: 1.4 }}>{explainer}</p>
       {children}
     </div>
   )
@@ -96,12 +97,12 @@ export default function NflQbRoomClient({
   }))
 
   return (
-    <main style={{ maxWidth: 1600, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px 24px 60px' }}>
-      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-        § x9Lab · NFL {statsSeason}
+    <main style={{ maxWidth: 1600, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Red Hat Display, system-ui, sans-serif', padding: '24px 24px 60px' }}>
+      <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
+        <XMark /> x9Lab · NFL {statsSeason}
       </p>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: '4px 0 8px', color: '#1A1A1A' }}>QB Room</h1>
-      <p style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#78716C', maxWidth: 620, marginBottom: 28 }}>
+      <h1 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 40, margin: '4px 0 8px', color: '#1A1A1A' }}>QB Room</h1>
+      <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, color: '#78716C', maxWidth: 620, marginBottom: 28 }}>
         Every qualified passer this season, ranked by how far they actually throw versus how far
         those throws land — pulled from real Next Gen Stats and play-level charting data.
       </p>
@@ -134,17 +135,17 @@ export default function NflQbRoomClient({
           </div>
 
           <div style={{ borderTop: '2px solid rgba(26,26,26,0.08)', paddingTop: 24 }}>
-            <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, margin: '0 0 8px' }}>Player Deep Dive</h2>
+            <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 24, margin: '0 0 8px' }}>Player Deep Dive</h2>
             <div style={{ position: 'relative', maxWidth: 320, marginBottom: 20 }}>
               <input
                 value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a QB…"
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid rgba(26,26,26,0.15)', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid rgba(26,26,26,0.15)', fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, boxSizing: 'border-box' }}
               />
               {results.length > 0 && (
                 <div style={{ position: 'absolute', zIndex: 10, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid rgba(26,26,26,0.15)', maxHeight: 220, overflowY: 'auto' }}>
                   {results.map((r) => (
-                    <button key={r.id} onClick={() => selectQb(r.id, r.label)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', fontFamily: "'Fraunces', serif", fontSize: 13 }}>
-                      {r.label} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#A3A3A3' }}>· {r.sublabel}</span>
+                    <button key={r.id} onClick={() => selectQb(r.id, r.label)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', cursor: 'pointer', fontFamily: "'Red Hat Display', sans-serif", fontSize: 13 }}>
+                      {r.label} <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#A3A3A3' }}>· {r.sublabel}</span>
                     </button>
                   ))}
                 </div>
@@ -152,7 +153,7 @@ export default function NflQbRoomClient({
             </div>
 
             {loadingDeepDive ? (
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A3A3A3', padding: 28, textAlign: 'center' }}>Loading…</div>
+              <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#A3A3A3', padding: 28, textAlign: 'center' }}>Loading…</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                 <NflQbWeeklyRibbon weekly={weekly} playerName={featuredQb?.name ?? '—'} season={statsSeason} />

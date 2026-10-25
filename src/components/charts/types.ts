@@ -30,8 +30,8 @@ export const CHART_COLORS = {
 } as const
 
 export const CHART_FONTS = {
-  mono:  'ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace',
-  serif: 'Fraunces, ui-serif, Georgia, serif',
+  mono:  '"Red Hat Display", sans-serif',
+  serif: 'Red Hat Display, sans-serif',
 } as const
 
 // ─── Regression signal — the shared vocabulary ────────────────────────────────

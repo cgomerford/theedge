@@ -52,7 +52,7 @@ export function BuildScatter({ points, xMid, yMid }: { points: BuildPoint[]; xMi
 }
 
 export type ClubPoint = { abbr: string; name: string; x: number; y: number; color: string; text: string }
-const SANS_FONT = 'var(--font-outfit), system-ui, sans-serif'
+const SANS_FONT = 'var(--font-redhat), system-ui, sans-serif'
 const AXIS_SANS = { fontSize: 11, fontFamily: SANS_FONT, fill: '#8a8275' }
 
 /** Every club on two per-game axes. Sans-serif only; no value is coloured red. */

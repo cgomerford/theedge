@@ -16,6 +16,8 @@
 // the animated hit chart. Both intentionally scoped as separate next
 // steps once this shell is confirmed working.
 
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 import { useState } from 'react'
 import BatterZoneArsenalGrid from '@/components/BatterZoneArsenalGrid'
 import BatterCountPreview from '@/components/BatterCountPreview'
@@ -64,19 +66,15 @@ export default function BattingTab({
   return (
     <div className="space-y-6">
       {teams.length > 1 && (
-        <div className="flex gap-1 bg-stone-100 p-1 rounded-full w-fit">
-          {teams.map((t, i) => (
-            <button
-              key={t.abbr}
-              onClick={() => { setSelectedTeam(i); setSelectedBatterId(null) }}
-              className={`px-4 py-2 font-mono text-xs uppercase tracking-widest rounded-full transition ${
-                selectedTeam === i ? 'bg-[#1A1A1A] text-[#FAF8F3]' : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              {t.name}
-            </button>
-          ))}
-        </div>
+        <Suspense fallback={null}>
+          <Tabs
+            sticky={false}
+            label="Team"
+            value={String(selectedTeam)}
+            onChange={id => { setSelectedTeam(Number(id)); setSelectedBatterId(null) }}
+            tabs={teams.map((t, i) => ({ id: String(i), label: t.name }))}
+          />
+        </Suspense>
       )}
 
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">

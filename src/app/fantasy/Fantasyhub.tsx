@@ -164,7 +164,7 @@ function SpiderChart({
         const p = pointOnAxis(i, radius * 1.28)
         return (
           <text key={i} x={p.x} y={p.y} fontSize={8} fill="#8A8275" textAnchor="middle" dominantBaseline="middle"
-            fontFamily="JetBrains Mono, ui-monospace, monospace" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            fontFamily="Red Hat Display, sans-serif" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {s.label}
           </text>
         )
@@ -486,7 +486,7 @@ export default function FantasyHub({
               Fantasy
               {isPro && <span className="ml-2 text-emerald-700">· Pro</span>}
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none" style={{ fontFamily: 'Fraunces, serif' }}>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none" style={{ fontFamily: 'Red Hat Display, sans-serif' }}>
               Who you playing<span className="text-[#FF5722]">?</span>
             </h1>
             <p className="font-serif italic text-stone-500 text-[13px] mt-2 max-w-xl">

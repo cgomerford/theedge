@@ -36,7 +36,7 @@ export default function PlayerSelectorPanel({
           <button
             key={o.batterId}
             onClick={() => setSelectedId(o.batterId)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shrink-0 transition ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border shrink-0 transition ${
               selected?.batterId === o.batterId
                 ? 'bg-orange-500 border-orange-500 text-white'
                 : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'

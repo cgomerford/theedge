@@ -388,7 +388,7 @@ function TrendChart({ gameLog, position }: { gameLog: NflPlayerProfile["gameLog"
           <LineChart data={data}>
             <XAxis dataKey="week" tick={{ fontSize: 10 }} stroke="#A8A29E" />
             <YAxis tick={{ fontSize: 10 }} stroke="#A8A29E" width={30} />
-            <Tooltip contentStyle={{ fontSize: 12, fontFamily: "monospace" }} />
+            <Tooltip contentStyle={{ fontSize: 12, fontFamily: 'var(--font-redhat), sans-serif' }} />
             <Line type="monotone" dataKey="value" stroke="#FF5722" strokeWidth={2} dot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>

@@ -1,5 +1,6 @@
 'use client';
 
+import XMark from '@/components/XMark'
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
@@ -47,7 +48,7 @@ export default function MaintenanceContent() {
     >
       <div
         style={{
-          fontFamily: '"Bebas Neue", sans-serif',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 'clamp(40px, 8vw, 72px)',
           letterSpacing: '0.02em',
           color: '#FF5722',
@@ -60,7 +61,7 @@ export default function MaintenanceContent() {
 
       <div
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: '13px',
           letterSpacing: '0.15em',
           textTransform: 'uppercase',
@@ -72,7 +73,7 @@ export default function MaintenanceContent() {
 
       <h1
         style={{
-          fontFamily: '"Fraunces", serif',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 'clamp(24px, 4vw, 34px)',
           fontWeight: 500,
           maxWidth: '560px',
@@ -85,7 +86,7 @@ export default function MaintenanceContent() {
 
       <p
         style={{
-          fontFamily: '"Fraunces", serif',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: '17px',
           maxWidth: '460px',
           lineHeight: 1.6,
@@ -93,26 +94,9 @@ export default function MaintenanceContent() {
           marginBottom: '32px',
         }}
       >
-        New features roll out <strong>September 18</strong>. In the meantime, the
-        homepage is still live.
+        [George: wording] This page is being updated.
       </p>
 
-      
-        <a href="/"
-        style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '13px',
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          backgroundColor: '#1A1A1A',
-          color: '#FAF8F3',
-          padding: '14px 28px',
-          textDecoration: 'none',
-          marginBottom: '40px',
-        }}
-      >
-        § Back to Home
-      </a>
 
       {(process.env.NODE_ENV as string) !== 'production' && (
         <form
@@ -125,7 +109,7 @@ export default function MaintenanceContent() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Preview access"
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
+              fontFamily: '"Red Hat Display", sans-serif',
               fontSize: '13px',
               padding: '12px 14px',
               border: '1px solid #1A1A1A',
@@ -137,7 +121,7 @@ export default function MaintenanceContent() {
             type="submit"
             disabled={loading}
             style={{
-              fontFamily: '"JetBrains Mono", monospace',
+              fontFamily: '"Red Hat Display", sans-serif',
               fontSize: '13px',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
@@ -152,7 +136,7 @@ export default function MaintenanceContent() {
             {loading ? 'Checking…' : 'Unlock'}
           </button>
           {error && (
-            <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '12px', color: '#FF5722' }}>
+            <div style={{ fontFamily: '"Red Hat Display", sans-serif', fontSize: '12px', color: '#FF5722' }}>
               {error}
             </div>
           )}

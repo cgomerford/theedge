@@ -91,8 +91,8 @@ export default function ScatterCompareChart({ players }: { players: SelectedPlay
         <div ref={chartRef} className="border border-stone-200 bg-white p-4">
           <ResponsiveContainer width="100%" height={320}>
             <ScatterChart margin={{ top: 16, right: 24, bottom: 16, left: 0 }}>
-              <XAxis type="number" dataKey="x" name={xLabel} tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} label={{ value: xLabel, position: 'insideBottom', offset: -8, fontSize: 9, fontFamily: 'monospace' }} />
-              <YAxis type="number" dataKey="y" name={yLabel} tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} label={{ value: yLabel, angle: -90, position: 'insideLeft', fontSize: 9, fontFamily: 'monospace' }} />
+              <XAxis type="number" dataKey="x" name={xLabel} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} label={{ value: xLabel, position: 'insideBottom', offset: -8, fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+              <YAxis type="number" dataKey="y" name={yLabel} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} label={{ value: yLabel, angle: -90, position: 'insideLeft', fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
               <ZAxis range={[100, 100]} />
               <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => {
                 if (!payload || payload.length === 0) return null

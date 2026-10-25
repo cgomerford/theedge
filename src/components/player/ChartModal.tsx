@@ -49,7 +49,7 @@ export default function ChartModal({
                     {downloading ? 'Generating…' : 'Download PNG'}
                   </button>
                 )}
-                <button onClick={onClose} className="text-stone-400 hover:text-stone-800 text-lg leading-none">✕</button>
+                <button onClick={onClose} className="text-stone-400 hover:text-stone-800 text-lg leading-none">Close</button>
               </div>
             </div>
             <div className="p-5">{children}</div>

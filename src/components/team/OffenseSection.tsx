@@ -88,7 +88,7 @@ export default function OffenseSection({ team, profile: p, isPro, season }: { te
           {p.battedBall.length === 0 ? <Empty>Batted-ball profile unavailable.</Empty> : (
             <>
               <VersusBars color={team.primary_color} rows={p.battedBall} />
-              <Foot>Ground-ball heavy lineups turn contact into outs on the infield; fly-ball heavy ones lean on power. Source: Baseball Savant batted-ball types, team level.</Foot>
+              <Foot>Ground-ball heavy lineups turn contact into outs on the infield; fly-ball heavy ones lean on power.</Foot>
             </>
           )}
         </Card>

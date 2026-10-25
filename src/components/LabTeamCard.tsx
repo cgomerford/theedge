@@ -42,7 +42,7 @@ export default function TeamCard({ teamId, teamName, onRemove }: { teamId: numbe
           <div className="font-serif font-bold text-stone-900 text-base leading-tight">{teamName}</div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400">Team context</div>
         </div>
-        <button type="button" onClick={onRemove} className="text-stone-300 hover:text-stone-600 text-sm" aria-label={`Remove ${teamName}`}>✕</button>
+        <button type="button" onClick={onRemove} className="text-stone-300 hover:text-stone-600 text-sm" aria-label={`Remove ${teamName}`}>Remove</button>
       </div>
       <div className="px-4 pb-3 flex items-center justify-between gap-2 flex-wrap">
         <ViewModeToggle mode={viewMode} onChange={setViewMode} offenseLabel="Core" />

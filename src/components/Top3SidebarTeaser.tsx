@@ -11,6 +11,7 @@
  * into the full Series tab breakdown.
  */
 
+import XMark from '@/components/XMark'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import type { SeriesTop3Result, Top3Batter } from '@/lib/series-matchup'
 
@@ -74,7 +75,7 @@ export default function Top3SidebarTeaser({
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4">
-      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">§ Top 3 For The Series</p>
+      <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3"><XMark /> Top 3 For The Series</p>
       <div>
         <TeamRow result={awayResult} teamId={awayTeamId} abbr={awayAbbr} />
         <TeamRow result={homeResult} teamId={homeTeamId} abbr={homeAbbr} />

@@ -265,7 +265,7 @@ function FullLeaderboard({ players }: { players: PlayerChallengeRow[] }) {
             <button
               key={s}
               onClick={() => setSide(s)}
-              className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition ${side === s ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
+              className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm border transition ${side === s ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
             >
               {s === 'all' ? 'All' : s === 'batting' ? 'Batters' : 'Pitchers/catchers'}
             </button>

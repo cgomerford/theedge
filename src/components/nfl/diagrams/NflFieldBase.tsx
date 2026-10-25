@@ -58,11 +58,11 @@ export function NflPlayerDot({ x, y, label, jersey, side }: PlayerMarker) {
     <g>
       <circle cx={x} cy={y} r={11} fill={color} stroke="#fff" strokeWidth={1.5} />
       {jersey != null && (
-        <text x={x} y={y + 3.5} textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize={9} fontWeight={700} fill="#fff">
+        <text x={x} y={y + 3.5} textAnchor="middle" fontFamily="'Red Hat Display', sans-serif" fontSize={9} fontWeight={700} fill="#fff">
           {jersey}
         </text>
       )}
-      <text x={x} y={y + 22} textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize={9} fontWeight={700} fill="#fff" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+      <text x={x} y={y + 22} textAnchor="middle" fontFamily="'Red Hat Display', sans-serif" fontSize={9} fontWeight={700} fill="#fff" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
         {label}
       </text>
     </g>

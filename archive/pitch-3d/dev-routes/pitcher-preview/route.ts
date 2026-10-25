@@ -8,10 +8,10 @@ export const dynamic = 'force-dynamic'
 const PAGE = String.raw`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pitcher Preview</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--cream:#FAF8F3;--ink:#1A1A1A;--orange:#FF5722;--line:#e7e2d8;--mute:#8a8275}
-*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Outfit',system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Red Hat Display',system-ui,sans-serif}
 .wrap{max-width:1240px;margin:0 auto;padding:20px 24px}
 h1{font-weight:800;font-size:30px;letter-spacing:-.01em;margin:0 0 4px}h1 b{color:var(--orange);font-weight:800}
 .sub{color:var(--mute);font-size:13px;margin-bottom:14px}
@@ -19,7 +19,7 @@ h1{font-weight:800;font-size:30px;letter-spacing:-.01em;margin:0 0 4px}h1 b{colo
 canvas{width:100%;height:100%;display:block}
 #status{position:absolute;left:14px;top:12px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
-button{font:600 13px 'Outfit',sans-serif;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;color:var(--ink)}
+button{font:600 13px 'Red Hat Display',sans-serif;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;color:var(--ink)}
 button.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 input[type=range]{flex:1;min-width:200px;accent-color:var(--orange)}
 .k{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase;margin-right:4px}

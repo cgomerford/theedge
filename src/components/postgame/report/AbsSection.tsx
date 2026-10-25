@@ -26,14 +26,14 @@ function Timeline({ ch, ctx, points, inningStarts }: { ch: Challenge[]; ctx: Pos
       {inningStarts.map((s) => (
         <g key={s.inning}>
           <line x1={x(s.i)} x2={x(s.i)} y1={T} y2={H - B} stroke="#eeeeec" />
-          <text x={x(s.i) + 3} y={H - B + 12} className="fill-stone-400" style={{ font: '400 9px ui-monospace, monospace' }}>{s.inning}</text>
+          <text x={x(s.i) + 3} y={H - B + 12} className="fill-stone-400" style={{ font: '400 9px monospace' }}>{s.inning}</text>
         </g>
       ))}
       <line x1={L} x2={W - R} y1={y(50)} y2={y(50)} stroke="#a8a29e" strokeDasharray="4 3" />
       <path d={path} fill="none" stroke="#a8a29e" strokeWidth={1.5} strokeLinejoin="round" />
-      {[100, 50, 0].map((v) => <text key={v} x={L - 5} y={y(v) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 9px ui-monospace, monospace' }}>{v}%</text>)}
-      <text x={L + 5} y={T + 11} style={{ font: '700 9px ui-monospace, monospace', fill: SIDE_COLOR.home }}>{ctx.home.abbr} ▲</text>
-      <text x={L + 5} y={H - B - 5} style={{ font: '700 9px ui-monospace, monospace', fill: SIDE_COLOR.away }}>{ctx.away.abbr} ▼</text>
+      {[100, 50, 0].map((v) => <text key={v} x={L - 5} y={y(v) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 9px monospace' }}>{v}%</text>)}
+      <text x={L + 5} y={T + 11} style={{ font: '700 9px monospace', fill: SIDE_COLOR.home }}>{ctx.home.abbr} ▲</text>
+      <text x={L + 5} y={H - B - 5} style={{ font: '700 9px monospace', fill: SIDE_COLOR.away }}>{ctx.away.abbr} ▼</text>
       {ch.filter((c) => c.wpIndex != null && points[c.wpIndex as number]).map((c) => {
         const k = seen.get(c.wpIndex as number) ?? 0
         seen.set(c.wpIndex as number, k + 1)
@@ -42,7 +42,7 @@ function Timeline({ ch, ctx, points, inningStarts }: { ch: Challenge[]; ctx: Pos
         return (
           <g key={c.n}>
             <circle cx={cx} cy={cy} r={8} fill={c.overturned ? col : '#fff'} stroke={col} strokeWidth={2}><title>{`#${c.n} · ${c.who.name} (${ctx[c.side].abbr} ${c.who.role.toLowerCase()}) · ${c.overturned ? 'overturned' : 'call stood'}`}</title></circle>
-            <text x={cx} y={cy + 3.2} textAnchor="middle" style={{ font: '700 9px ui-monospace, monospace', fill: c.overturned ? '#fff' : col }}>{c.n}</text>
+            <text x={cx} y={cy + 3.2} textAnchor="middle" style={{ font: '700 9px monospace', fill: c.overturned ? '#fff' : col }}>{c.n}</text>
           </g>
         )
       })}

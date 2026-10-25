@@ -217,8 +217,8 @@ const actualTeamName = p.actual_winner === 'home' ? p.home_team : p.actual_winne
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          {p.outcome_matched === true && <span className="text-green-600 font-bold">✓</span>}
-{p.outcome_matched === false && <span className="text-red-600 font-bold">✗</span>}
+                          {p.outcome_matched === true && <span className="text-green-600 font-bold">Match</span>}
+{p.outcome_matched === false && <span className="text-red-600 font-bold">Miss</span>}
 {p.outcome_matched === null && <span className="text-stone-400 text-xs">—</span>}
                         </td>
                        <td className="p-3 text-right">

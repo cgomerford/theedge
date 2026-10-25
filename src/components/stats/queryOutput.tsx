@@ -70,10 +70,10 @@ export function MetricPicker({
                 background: i === 0 ? C.orange : C.ink, color: '#fff',
               }}>
               <button type="button" onClick={() => i > 0 && onChange([k, ...chosen.filter(x => x !== k)])}
-                style={{ all: 'unset', cursor: i > 0 ? 'pointer' : 'default' }}>{m.label}{i === 0 ? ' ★' : ''}</button>
+                style={{ all: 'unset', cursor: i > 0 ? 'pointer' : 'default' }}>{m.label}{i === 0 ? '' : ''}</button>
               {chosen.length > 1 && (
                 <button type="button" aria-label={`Remove ${m.label}`} onClick={() => onChange(chosen.filter(x => x !== k))}
-                  style={{ all: 'unset', cursor: 'pointer', width: 18, height: 18, borderRadius: 3, background: 'rgba(255,255,255,.25)', textAlign: 'center', lineHeight: '18px', fontSize: 11 }}>✕</button>
+                  style={{ all: 'unset', cursor: 'pointer', width: 18, height: 18, borderRadius: 3, background: 'rgba(255,255,255,.25)', textAlign: 'center', lineHeight: '18px', fontSize: 11 }}>Remove</button>
               )}
             </span>
           )
@@ -212,7 +212,7 @@ export function OutputBar({
         {OUTPUTS.map(o => <Chip key={o.key} on={output === o.key} solid onClick={() => onOutput(o.key)} title={o.blurb}>{o.label}</Chip>)}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <span style={{ ...labelStyle, marginBottom: 0, paddingTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>Stats <Hint text="The numbers to show. The ★ one drives charts and sorting — click another to make it the star. Use “+ More metrics” to include as many as you like." /></span>
+        <span style={{ ...labelStyle, marginBottom: 0, paddingTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>Stats <Hint text="The numbers to show. The one drives charts and sorting — click another to make it the star. Use “+ More metrics” to include as many as you like." /></span>
         <div style={{ flex: 1, minWidth: 240 }}>
           <MetricPicker group={group} chosen={chosen} onChange={onChosen} isPro={isPro} available={available} />
         </div>

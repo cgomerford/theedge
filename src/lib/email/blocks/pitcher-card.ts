@@ -110,7 +110,7 @@ export function pitcherCardBlock(away: PitcherInfo, home: PitcherInfo): string {
   return `
   <tr><td class="brief-pad" style="padding:32px 40px 0;">
     <div style="font-family:${FONTS.mono};font-size:11px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;margin-bottom:18px;">
-      § Starting Pitchers
+      Starting Pitchers
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr>

@@ -115,7 +115,7 @@ function Tip({ active, payload, label, lines, fmt }: { active?: boolean; payload
 
 export function Verdict({ text, tone }: { text: string; tone: 'up' | 'down' | 'flat' }) {
   const c = tone === 'up' ? { bg: '#E1F5EE', fg: '#085041' } : tone === 'down' ? { bg: '#FAD9D2', fg: '#7A1F14' } : { bg: '#f1eee6', fg: '#5b5347' }
-  return <span style={{ fontFamily: SANS, fontWeight: 800, fontSize: 15, background: c.bg, color: c.fg, padding: '5px 12px', borderRadius: 999 }}>{text}</span>
+  return <span style={{ fontFamily: SANS, fontWeight: 800, fontSize: 15, background: c.bg, color: c.fg, padding: '5px 12px', borderRadius: 4 }}>{text}</span>
 }
 
 export const fmt3 = (v: number) => v.toFixed(3).replace(/^0/, '')

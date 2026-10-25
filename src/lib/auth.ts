@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
+import type { Attribution } from '@/lib/attribution'
 
 const SESSION_COOKIE_NAME = 'edge_session'
 const SESSION_DURATION_DAYS = 30
@@ -17,7 +18,7 @@ export type AuthSubscriber = {
 }
 
 // Create a one-time login token for a verified email
-export async function createLoginLink(email: string): Promise<string | null> {
+export async function createLoginLink(email: string, attribution: Attribution = {}): Promise<string | null> {
   const supa = createAdminClient()
 
   // Check the email exists AND is verified
@@ -35,14 +36,22 @@ export async function createLoginLink(email: string): Promise<string | null> {
   const token = crypto.randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + LOGIN_LINK_DURATION_MIN * 60 * 1000)
 
-  const { error } = await supa.from('login_links').insert({
+  const base = {
     email: email.toLowerCase().trim(),
     token,
     expires_at: expiresAt.toISOString(),
-  })
+  }
+
+  let { error } = await supa.from('login_links').insert({ ...base, ...attribution })
+
+  // If the attribution migration isn't applied yet, don't lock everyone out of signing in: log it and retry plain.
+  if (error && Object.keys(attribution).length > 0) {
+    console.error('[createLoginLink] attribution insert failed, retrying without it:', error.message)
+    ;({ error } = await supa.from('login_links').insert(base))
+  }
 
   if (error) {
-    console.error('Login link insert error:', error)
+    console.error('[createLoginLink] Supabase error:', error.message)
     return null
   }
 
@@ -50,7 +59,9 @@ export async function createLoginLink(email: string): Promise<string | null> {
 }
 
 // Consume a login link token, return subscriber if valid
-export async function consumeLoginLink(token: string): Promise<AuthSubscriber | null> {
+export async function consumeLoginLink(
+  token: string,
+): Promise<(AuthSubscriber & { return_to: string | null }) | null> {
   const supa = createAdminClient()
 
   const { data: link } = await supa
@@ -90,6 +101,7 @@ export async function consumeLoginLink(token: string): Promise<AuthSubscriber | 
     preferences_token: sub.preferences_token ?? '',
     is_pro: sub.is_pro ?? false,
     role: (sub.role ?? 'user') as 'user' | 'admin',
+    return_to: (link.return_to as string | null) ?? null,
   }
 }
 

@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
@@ -75,7 +76,7 @@ export default function NFLPreviewPage() {
 
         {/* § THE STORY */}
         <section className="space-y-3">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold">§ THE STORY</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold"><XMark /> THE STORY</div>
           <p className="font-serif text-xl text-stone-800 leading-relaxed italic">
             &ldquo;Mahomes enters the opener with an upgraded vertical arsenal, matching perfectly against
             a San Francisco secondary breaking in two new starters. Expect early structural aggression

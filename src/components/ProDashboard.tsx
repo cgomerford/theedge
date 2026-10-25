@@ -363,7 +363,7 @@ export default function ProDashboard(props: ProDashboardProps) {
               <div
                 className="text-4xl font-bold leading-none"
                 style={{
-                  fontFamily: 'Bebas Neue, sans-serif',
+                  fontFamily: 'Red Hat Display, sans-serif',
                   color: '#FDE047',
                 }}
               >
@@ -579,7 +579,7 @@ export default function ProDashboard(props: ProDashboardProps) {
             <Panel title="The Read" className="md:col-span-2">
               <p
                 className="text-sm text-[#1A1A1A] leading-relaxed"
-                style={{ fontFamily: 'Fraunces, serif' }}
+                style={{ fontFamily: 'Red Hat Display, sans-serif' }}
               >
                 {narrative}
               </p>
@@ -590,7 +590,7 @@ export default function ProDashboard(props: ProDashboardProps) {
                   </span>
                   <span
                     className="text-xs text-[#1A1A1A]/70 italic"
-                    style={{ fontFamily: 'Fraunces, serif' }}
+                    style={{ fontFamily: 'Red Hat Display, sans-serif' }}
                   >
                     {contrarian}
                   </span>
@@ -655,29 +655,8 @@ export default function ProDashboard(props: ProDashboardProps) {
           )}
 
           {/* PANEL 8: Conditions */}
-          {(weather || park) && (
+          {park && (
             <Panel title="Conditions" badge={park?.venue_name ?? ''}>
-              {weather && (
-                <>
-                  <StatRow
-                    label="Temp"
-                    away={weather.temp_f != null ? `${weather.temp_f}°F` : '–'}
-                    home={weather.temp_f != null ? `${Math.round((weather.temp_f - 32) * 5 / 9)}°C` : '–'}
-                  />
-                  <StatRow
-                    label="Wind"
-                    away={weather.wind_speed != null ? `${weather.wind_speed} mph` : '–'}
-                    home={weather.wind_direction ?? '–'}
-                  />
-                  {weather.precip_chance != null && (
-                    <StatRow
-                      label="Rain"
-                      away={`${weather.precip_chance}%`}
-                      home={weather.precip_chance > 20 ? '⚠ Check delay risk' : 'Low risk'}
-                    />
-                  )}
-                </>
-              )}
               {park && (
                 <>
                   <StatRow

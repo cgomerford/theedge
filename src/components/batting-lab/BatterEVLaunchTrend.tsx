@@ -18,7 +18,7 @@ import { pitchColor } from '@/lib/mlb'
 import type { BatterPitchLog } from '@/lib/batter-pitch-log'
 
 const SEASON = new Date().getFullYear()
-const AXIS_TICK = { fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }
+const AXIS_TICK = { fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }
 const NO_ANIM = { isAnimationActive: false } as const
 const OPS_WINDOW = 15 // games
 const EV_WINDOW = 10 // games
@@ -274,7 +274,7 @@ export default function BatterEVLaunchTrend({ batterId }: { batterId: number }) 
               <XAxis dataKey="month" tick={AXIS_TICK} />
               <YAxis tick={AXIS_TICK} domain={[0, 'auto']} width={36} unit="%" />
               <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '—')} />
-              <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+              <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
               {topPitchTypes.map(pt => (
                 <Line key={pt} {...NO_ANIM} type="monotone" dataKey={pt} name={log.pitchNames[pt] ?? pt} stroke={pitchColor(pt)} strokeWidth={2} dot={{ r: 3 }} connectNulls />
               ))}

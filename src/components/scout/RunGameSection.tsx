@@ -238,7 +238,7 @@ export default async function RunGameSection({ ctx }: { ctx: ScoutContext }) {
           <SituationsColumn runners={ctx.home} defender={ctx.away} side="home" mine={homeSb} theirs={awaySb} />) },
       ]} />
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Sources: Baseball Savant catcher pop-time and sprint-speed leaderboards; MLB Stats API stolen-base and caught-stealing counts charged to the catcher and starter; the game-by-game feed for the count and situation of each attempt. These are descriptions of what has happened, with the attempts behind each — not steal odds.
+ These are descriptions of what has happened, with the attempts behind each — not steal odds.
       </p>
     </div>
   )

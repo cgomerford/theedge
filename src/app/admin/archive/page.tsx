@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import {
   getDailyPerformance,
   getTodaysReads,
@@ -222,7 +223,7 @@ export default async function AdminArchive({
         <div className="row row-2">
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Yesterday&rsquo;s performance</h2>
               <span className="tag">{fmtDate(perf.date)} · internal</span>
             </div>
@@ -287,7 +288,7 @@ export default async function AdminArchive({
 
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Today&rsquo;s reads</h2>
               <span className="tag">ranked by lean strength</span>
             </div>
@@ -306,12 +307,12 @@ export default async function AdminArchive({
                       <div className="matchup">{r.matchup}</div>
                       <div className="submeta">
                         {i === 0 && !r.near_split && (
-                          <span className="star">★ Edge of the Day · </span>
+                          <span className="star">Edge of the Day · </span>
                         )}
                         led by {r.dominant_factor}
                         {' · '}
                         {r.lineups_confirmed ? (
-                          <span className="lin-ok">✓ lineups confirmed</span>
+                          <span className="lin-ok">lineups confirmed</span>
                         ) : (
                           <span className="lin-wait">⧗ lineups pending</span>
                         )}
@@ -332,7 +333,7 @@ export default async function AdminArchive({
         <div className={`row ${hasTodayFinals ? 'row-2' : 'row-1'}`}>
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Yesterday’s top performers</h2>
               <span className="tag">graded · pitch data · {fmtDate(yesterday)}</span>
             </div>
@@ -346,7 +347,7 @@ export default async function AdminArchive({
           {hasTodayFinals && (
             <section className="sec card">
               <div className="sechead">
-                <span className="glyph">§</span>
+                <span className="glyph"><XMark /></span>
                 <h2>Today’s top performers</h2>
                 <span className="tag">graded · pitch data · {fmtDate(today)} · live</span>
               </div>
@@ -363,7 +364,7 @@ export default async function AdminArchive({
         <div className="row row-2">
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Trending players</h2>
               <span className="tag">true last 14 games · MLB · AAA · AA</span>
             </div>
@@ -372,7 +373,7 @@ export default async function AdminArchive({
 
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Trending Reel</h2>
               <span className="tag">animated · 9:16 · export per league</span>
             </div>
@@ -383,7 +384,7 @@ export default async function AdminArchive({
         {/* ── FULL WIDTH: Scout Stories ──────────────────── */}
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Scout Stories</h2>
             <span className="tag">real report sections · animated · 9:16</span>
           </div>
@@ -394,7 +395,7 @@ export default async function AdminArchive({
         <div className="row row-2">
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Post-Game X Cards</h2>
               <span className="tag">pitcher / batter · 4:5 export</span>
             </div>
@@ -403,7 +404,7 @@ export default async function AdminArchive({
 
           <section className="sec card">
             <div className="sechead">
-              <span className="glyph">§</span>
+              <span className="glyph"><XMark /></span>
               <h2>Pre-game data room</h2>
               <span className="tag">rolling stats · MLB Stats API · raw model OK</span>
             </div>
@@ -416,7 +417,7 @@ export default async function AdminArchive({
         {/* ── FULL WIDTH: In-Game X Cards ─────────────────── */}
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>In-Game X Cards</h2>
             <span className="tag">pitcher arm angle/arsenal · batter spray/EV/barrels · live games only</span>
           </div>
@@ -429,7 +430,7 @@ export default async function AdminArchive({
         {/* ── FULL WIDTH: Player Stat Cards ──────────────── */}
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Player stat cards</h2>
             <span className="tag">image export · player-level, not model output</span>
           </div>

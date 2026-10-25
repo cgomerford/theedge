@@ -24,6 +24,7 @@
 // stats-columns.ts (Statcast, discipline, batted-ball) has no rolling-window
 // endpoint yet.
 
+import XMark from '@/components/XMark'
 import { useEffect, useMemo, useState, useCallback, useRef, type MouseEvent } from 'react'
 import Link from 'next/link'
 import {
@@ -34,6 +35,9 @@ import { MLB_TEAMS, teamIdBySlug } from '@/lib/teams'
 import type { StatsRow } from '@/lib/stats-data'
 import { C, SANS, MONO, Card } from '@/components/team/ui'
 import { Chip, CsvButton, Field, PngButton, ProLockBar, QUERY_CSS, Seg, labelStyle, selectStyle } from '@/components/stats/queryUi'
+import { SITE_HOST } from '@/lib/site'
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 
 const ROLLING_COMPATIBLE: Record<string, string> = {
   era: 'era', whip: 'whip', fip: 'fip', k_per_9: 'k9',
@@ -281,7 +285,7 @@ function StatsGrid({
                       : 'bg-white border-stone-300 text-stone-500 hover:border-[#FF5722]'
                   }`}
                 >
-                  {selected ? '✓' : '+'}
+                  {selected ? 'Added' : '+'}
                 </button>
               </div>
 
@@ -589,7 +593,7 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
         </div>
       </Card>
 
-      <div style={{ ...labelStyle, margin: '18px 0 6px' }}>§ Stat group</div>
+      <div style={{ ...labelStyle, margin: '18px 0 6px' }}><XMark /> Stat group</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
         {cats.map(c => (
           <button key={c.key} type="button" onClick={() => setCategory(c.key)}
@@ -632,7 +636,7 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
             compareLimit={COMPARE_LIMIT}
             subject={subject}
           />
-          <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, marginTop: 10 }}>The Edge · edgereportdaily.com — {season} {subject === 'batter' ? 'batters' : 'pitchers'}, {cat.label}. Percentiles are against the full league pool.</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, marginTop: 10 }}>{SITE_HOST} · {season} {subject === 'batter' ? 'batters' : 'pitchers'}, {cat.label}. Percentiles are against the full league pool.</div>
           </div>
           {visibleRows.length > ROW_LIMIT && (
             <p className="text-[10px] text-stone-400 mt-2">
@@ -649,7 +653,7 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
             className="flex items-center justify-between px-6 h-11 cursor-pointer max-w-6xl mx-auto"
           >
             <span className="text-[11px] uppercase tracking-widest">
-              Compare <span className="bg-[#FF5722] text-white px-1.5 py-0.5 ml-1.5 rounded-full">{compare.size}</span>
+              Compare <span className="bg-[#FF5722] text-white px-1.5 py-0.5 ml-1.5 rounded-sm">{compare.size}</span>
               <span className="text-stone-500 normal-case ml-1">/ {COMPARE_LIMIT}</span>
             </span>
             <div className="flex items-center gap-4">
@@ -665,9 +669,9 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
           {trayOpen && (
             <div className="flex flex-wrap gap-2 px-6 pb-4 max-w-6xl mx-auto">
               {comparePlayers.map(p => (
-                <span key={p.id} className="flex items-center gap-1.5 bg-[#2a2a2a] pl-2.5 pr-1.5 py-1.5 rounded-full text-[11px] hover:bg-[#3a3a3a] transition-colors">
+                <span key={p.id} className="flex items-center gap-1.5 bg-[#2a2a2a] pl-2.5 pr-1.5 py-1.5 rounded-sm text-[11px] hover:bg-[#3a3a3a] transition-colors">
                   {p.name}
-                  <button onClick={() => toggleCompare(p.id)} className="text-stone-400 hover:text-[#FF5722] transition-colors">✕</button>
+                  <button onClick={() => toggleCompare(p.id)} className="text-stone-400 hover:text-[#FF5722] transition-colors">Remove</button>
                 </span>
               ))}
             </div>
@@ -683,19 +687,9 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
           </p>
 
           <div className="border border-stone-200 bg-white p-4 rounded-xl shadow-sm flex flex-wrap items-end gap-4 mb-4">
-        <div className="flex bg-stone-100 p-1 rounded-full">
-              {(['scatter', 'trend', 'career'] as ChartMode[]).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setChartMode(m)}
-                  className={`text-[10.5px] uppercase px-3.5 py-2 rounded-full transition ${
-                    chartMode === m ? 'bg-[#1A1A1A] text-yellow-300' : 'text-stone-500 hover:text-stone-900'
-                  }`}
-                >
-                  {m === 'scatter' ? 'Scatter' : m === 'trend' ? 'Trend (10gm)' : 'Career'}
-                </button>
-              ))}
-            </div>
+        <Suspense fallback={null}>
+              <Tabs sticky={false} label="Chart mode" value={chartMode} onChange={id => setChartMode(id as ChartMode)} tabs={[{ id: 'scatter', label: 'Scatter' }, { id: 'trend', label: 'Trend (10gm)' }, { id: 'career', label: 'Career' }]} />
+            </Suspense>
 
             {chartMode === 'scatter' && (
               <>

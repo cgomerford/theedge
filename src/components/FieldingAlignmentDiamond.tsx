@@ -106,7 +106,7 @@ export default function FieldingAlignmentDiamond({ teamAbbr, teamName, teamColor
         <div className="flex items-baseline gap-2">
           <span
             className="text-stone-900 leading-none font-black tracking-tight"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.15rem', letterSpacing: '0.04em' }}
+            style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.15rem', letterSpacing: '0.04em' }}
           >
             {teamAbbr}
           </span>
@@ -272,7 +272,7 @@ export default function FieldingAlignmentDiamond({ teamAbbr, teamName, teamColor
                     <div className="mt-1.5 text-center leading-none">
                       <div
                         className="text-[11px] font-bold text-stone-800 tracking-tight"
-                        style={{ fontFamily: "'Fraunces', serif" }}
+                        style={{ fontFamily: "'Red Hat Display', sans-serif" }}
                       >
                         {lastName(f.playerName)}
                       </div>

@@ -94,7 +94,7 @@ export default function LineupCard({ teamColor, confirmed, optimizedVsRHP, optim
           confirmed && confirmed.length > 0 ? (
             confirmed.map(row => (
               <div key={row.playerId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 20px' }}>
-                <span style={{ width: 18, fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
+                <span style={{ width: 18, fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
                 <img src={headshotUrl(row.playerId)} alt="" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#f1eee6' }} />
                 <span style={{ fontSize: 13, color: '#1A1A1A', flex: 1 }}>{row.playerName}</span>
                 <span style={{ fontSize: 10, color: '#a89e8c', textTransform: 'uppercase' }}>{row.position}</span>
@@ -109,7 +109,7 @@ export default function LineupCard({ teamColor, confirmed, optimizedVsRHP, optim
           optimizedRows.length > 0 ? (
             optimizedRows.map(row => (
               <div key={row.playerId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 20px' }}>
-                <span style={{ width: 18, fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
+                <span style={{ width: 18, fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: 15, color: '#a89e8c' }}>{row.battingOrder}</span>
                 <img src={headshotUrl(row.playerId)} alt="" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', background: '#f1eee6' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: '#1A1A1A' }}>{row.playerName}</div>

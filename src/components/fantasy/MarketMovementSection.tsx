@@ -22,6 +22,7 @@
  * is pure presentation over props, no hooks, safe as a server component).
  */
 
+import XMark from '@/components/XMark'
 import type { FantasyPick } from '@/lib/fantasy'
 
 type Props = {
@@ -132,7 +133,7 @@ function PlayerTypeSection({
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4 sm:p-5">
       <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">
-        § {title}
+        <XMark /> {title}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <FormColumn title="Heating up" picks={risers} direction="heating" />

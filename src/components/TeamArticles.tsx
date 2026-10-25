@@ -14,7 +14,7 @@ export default async function TeamArticles({ teamCode }: TeamArticlesProps) {
     <div style={{ border: '1px solid #1A1A1A', padding: 18, background: '#FAF8F3' }}>
       <div
         style={{
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: 'Red Hat Display, sans-serif',
           fontSize: 10,
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
@@ -33,7 +33,7 @@ export default async function TeamArticles({ teamCode }: TeamArticlesProps) {
           href={`/articles/${a.slug}`}
           style={{ display: 'block', padding: '10px 0', borderBottom: '1px solid #F0ECE1', textDecoration: 'none', color: '#1A1A1A' }}
         >
-          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 14, lineHeight: 1.3 }}>{a.title}</div>
+          <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 14, lineHeight: 1.3 }}>{a.title}</div>
         </Link>
       ))}
     </div>

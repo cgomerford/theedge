@@ -101,10 +101,10 @@ export default function StatcastHistoryPanel({
             </p>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={seasons.map(s => ({ season: s.season, ...s.pitchTypeBreakdown }))} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-                <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={36} />
+                <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+                <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={36} />
                 <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
                 {pitchTypesSeen.map(pt => (
                   <Bar key={pt} dataKey={pt} stackId="pitches" fill={PITCH_COLORS[pt] ?? '#a8a29e'} />
                 ))}
@@ -133,8 +133,8 @@ export default function StatcastHistoryPanel({
             <p className="text-xs font-serif text-stone-400 italic mb-4">Barrel% of batted-ball events, by season</p>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={seasons.map(s => ({ season: s.season, barrelPct: s.barrelPct, barrels: s.barrels }))} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-                <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={36} tickFormatter={v => `${v}%`} />
+                <XAxis dataKey="season" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+                <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={36} tickFormatter={v => `${v}%`} />
                <Tooltip formatter={(v: any, name: any): [string, string] => name === 'barrelPct' ? [`${v}%`, 'Barrel%'] : [`${v}`, 'Barrels']}/>
                 <Line type="monotone" dataKey="barrelPct" stroke={color} strokeWidth={2} dot={{ r: 3 }} connectNulls />
               </LineChart>

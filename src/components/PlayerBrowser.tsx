@@ -90,7 +90,7 @@ export default function PlayerBrowser({
           </div>
           <button type="button" onClick={onClearAll} title="Clear all players"
             className="border border-stone-300 px-3 text-stone-500 hover:border-red-400 hover:text-red-500 transition">
-            🗑
+           
           </button>
         </div>
       </div>

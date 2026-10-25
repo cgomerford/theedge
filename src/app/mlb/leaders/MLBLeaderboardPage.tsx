@@ -7,6 +7,7 @@
 // Each threshold pill is clickable; clicking fetches and renders a ranked
 // mini-list under that bucket's card.
 
+import XMark from '@/components/XMark'
 import { useState, useCallback, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
@@ -45,7 +46,7 @@ function makeYAxisTick(rowMap: Record<string, ChartDatum>) {
     const row = rowMap[payload.value]
     if (!row) {
       return (
-        <text x={x} y={y} dy={4} textAnchor="end" fontSize={10} fontFamily="monospace" fill="#78716c">
+        <text x={x} y={y} dy={4} textAnchor="end" fontSize={10} fontFamily="var(--font-redhat), sans-serif" fill="#78716c">
           {payload.value}
         </text>
       )
@@ -60,7 +61,7 @@ function makeYAxisTick(rowMap: Record<string, ChartDatum>) {
           x={-109} y={-11} width={22} height={22}
           clipPath={`url(#clip-${row.name.replace(/[^a-zA-Z0-9]/g, '')})`}
         />
-        <text x={-82} y={0} dy={4} textAnchor="start" fontSize={10} fontFamily="monospace" fill="#1c1917">
+        <text x={-82} y={0} dy={4} textAnchor="start" fontSize={10} fontFamily="var(--font-redhat), sans-serif" fill="#1c1917">
           {row.name}
         </text>
       </g>
@@ -134,10 +135,10 @@ function LeaderChart({ rows, format }: { rows: LeaderRow[]; format?: LeaderCateg
             type="number"
             domain={[0, domainMax]}
             tickFormatter={v => formatAxisTick(v, format)}
-            tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#78716c' }}
+            tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716c' }}
           />
           <YAxis type="category" dataKey="name" width={130} axisLine={false} tickLine={false} tick={makeYAxisTick(rowMap)} />
-<Tooltip formatter={(v: ValueType | undefined) => formatAxisTick(Number(v ?? 0), format)} labelStyle={{ fontFamily: 'monospace', fontSize: 11 }} />        <Bar dataKey="value" barSize={16}>
+<Tooltip formatter={(v: ValueType | undefined) => formatAxisTick(Number(v ?? 0), format)} labelStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} />        <Bar dataKey="value" barSize={16}>
             {data.map((d, i) => <Cell key={i} fill={d.color} />)}
           </Bar>
         </BarChart>
@@ -359,7 +360,7 @@ export default function MLBLeaderboardPage({ initialBoards, categories, windows,
 
       {/* ── Range leaderboards (buckets) — NOW LIVE ─────────── */}
       <div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">§ Range leaderboards</div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2"><XMark /> Range leaderboards</div>
         <h2 className="text-2xl font-serif font-light text-stone-900 mb-1">Best at the extremes<span className="text-orange-600">.</span></h2>
         <p className="text-sm font-serif text-stone-500 mb-6">AVG allowed on high-velocity pitches, hardest-hit balls, home runs by distance.</p>
 

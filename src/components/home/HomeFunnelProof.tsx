@@ -5,7 +5,6 @@ import StatusBanners from './StatusBanners'
 import SignupForm from './SignupForm'
 import EdgeCard from './EdgeCard'
 import FunnelPath from './FunnelPath'
-import HomeFooter from './HomeFooter'
 
 /**
  * Variant A — Proof-first funnel
@@ -207,7 +206,6 @@ export default function HomeFunnelProof({
         </div>
       </section>
 
-      <HomeFooter />
     </>
   )
 }

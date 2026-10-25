@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import { ReactNode } from 'react'
 
 type Props = {
@@ -28,7 +29,7 @@ export default function PreviewSection({
       <header className="px-6 md:px-8 pt-6 pb-4 border-b border-stone-200/60 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-orange-600 mb-2">
-            § {eyebrow}
+            <XMark /> {eyebrow}
           </div>
           <h2 className="text-2xl md:text-3xl font-serif font-light tracking-tight leading-tight text-stone-900">
             {title}

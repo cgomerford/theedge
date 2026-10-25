@@ -7,6 +7,7 @@
 // Layout: summary strip → Start (pitchers / hitters, tiered) → Waiver Wire
 // Each card: headshot · name/team · matchup · signal meter · ownership · one-liner
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import type { FantasyPick } from '@/lib/fantasy'
 
@@ -125,7 +126,7 @@ function OwnershipBadge({ pct }: { pct: number | null }) {
       <span
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4,
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
           color: COLORS.purple, background: COLORS.purpleBg,
           padding: '2px 8px',
@@ -139,7 +140,7 @@ function OwnershipBadge({ pct }: { pct: number | null }) {
   return (
     <span
       style={{
-        fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+        fontFamily: '"Red Hat Display", sans-serif',
         fontSize: 10, color: COLORS.axis, letterSpacing: '0.04em',
       }}
     >
@@ -161,7 +162,7 @@ function TierBadge({ tier }: { tier: 'strong' | 'viable' | 'fringe' }) {
   return (
     <span
       style={{
-        fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+        fontFamily: '"Red Hat Display", sans-serif',
         fontSize: 9, fontWeight: 700, letterSpacing: '0.15em',
         color: c.color, background: c.bg,
         padding: '2px 6px',
@@ -203,7 +204,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
     <div style={{
       width: 44, height: 44, background: COLORS.grid, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 700, color: COLORS.axis,
+      fontFamily: 'var(--font-redhat), sans-serif', fontSize: 14, fontWeight: 700, color: COLORS.axis,
       border: `1px solid ${COLORS.grid}`,
     }}>
       ?
@@ -212,7 +213,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
 
   const NameEl = (
     <span style={{
-      fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+      fontFamily: 'Red Hat Display, sans-serif',
       fontSize: 16, fontWeight: 700, color: COLORS.ink,
     }}>
       {pick.player_name}
@@ -237,7 +238,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
           <TierBadge tier={tier} />
         </div>
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 10.5, color: COLORS.muted, marginTop: 2,
           display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
         }}>
@@ -259,7 +260,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
           <TierBadge tier={tier} />
         </div>
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 10.5, color: COLORS.muted, marginTop: 2,
           display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
         }}>
@@ -286,7 +287,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
           {/* Score */}
           {score != null && (
             <div style={{
-              fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+              fontFamily: '"Red Hat Display", sans-serif',
               fontSize: 22, fontWeight: 800, color: tier === 'strong' ? COLORS.green : tier === 'viable' ? COLORS.amber : COLORS.muted,
               flexShrink: 0, lineHeight: 1,
             }}>
@@ -303,7 +304,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
         {/* ── One-liner + metadata row ── */}
         <div style={{ padding: '10px 16px 14px 16px' }}>
           <p style={{
-            fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+            fontFamily: 'Red Hat Display, sans-serif',
             fontSize: 13, fontStyle: 'italic', color: COLORS.muted,
             lineHeight: 1.45, margin: 0,
           }}>
@@ -320,7 +321,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
                 <Link
                   href={`/mlb/${pick.game_slug}`}
                   style={{
-                    fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+                    fontFamily: '"Red Hat Display", sans-serif',
                     fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase',
                     color: COLORS.axis, textDecoration: 'none',
                   }}
@@ -332,7 +333,7 @@ function PlayerCard({ pick, ownership }: { pick: FantasyPick; ownership: number 
                 <Link
                   href={pHref}
                   style={{
-                    fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+                    fontFamily: '"Red Hat Display", sans-serif',
                     fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
                     color: COLORS.orange, textDecoration: 'none',
                   }}
@@ -358,14 +359,14 @@ function EmptySlot({ label, accent }: { label: string; accent: string }) {
       textAlign: 'center',
     }}>
       <div style={{
-        fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+        fontFamily: '"Red Hat Display", sans-serif',
         fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase',
         color: accent, marginBottom: 6, fontWeight: 700,
       }}>
         ⊕ Pending
       </div>
       <p style={{
-        fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize: 13.5, fontStyle: 'italic', color: COLORS.axis,
         margin: 0, lineHeight: 1.45,
       }}>
@@ -383,14 +384,14 @@ function SectionHead({ icon, title, subtitle, accent }: {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{
-        fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+        fontFamily: '"Red Hat Display", sans-serif',
         fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase',
         color: accent, marginBottom: 4,
       }}>
         {icon} {title}
       </div>
       <p style={{
-        fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize: 14, fontStyle: 'italic', color: COLORS.muted,
         margin: 0, lineHeight: 1.5, maxWidth: 560,
       }}>
@@ -414,7 +415,7 @@ function SummaryStrip({ streamers, sleepers, ownershipByPickId }: {
   }).length
 
   const chipStyle = {
-    fontFamily: 'ui-monospace, "JetBrains Mono", monospace' as const,
+    fontFamily: '"Red Hat Display", sans-serif' as const,
     fontSize: 11, fontWeight: 700 as const, letterSpacing: '0.05em',
     padding: '5px 12px',
     border: `1px solid ${COLORS.grid}`,
@@ -467,7 +468,7 @@ function TieredPickList({ picks, ownershipByPickId, emptyLabel, emptyAccent }: {
       {strong.map(p => <PlayerCard key={p.id} pick={p} ownership={ownershipByPickId[p.id] ?? null} />)}
       {strong.length > 0 && viable.length > 0 && (
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: COLORS.axis, padding: '6px 0',
           borderTop: `1px solid ${COLORS.grid}`,
@@ -478,7 +479,7 @@ function TieredPickList({ picks, ownershipByPickId, emptyLabel, emptyAccent }: {
       {viable.map(p => <PlayerCard key={p.id} pick={p} ownership={ownershipByPickId[p.id] ?? null} />)}
       {fringe.length > 0 && (strong.length > 0 || viable.length > 0) && (
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: COLORS.axis, padding: '6px 0',
           borderTop: `1px solid ${COLORS.grid}`,
@@ -519,11 +520,11 @@ function StartSection({ picks, ownershipByPickId }: {
     return (
       <div>
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase',
           color: COLORS.axis, marginBottom: 12, fontWeight: 600,
         }}>
-          § Pitchers · ranked by signal strength
+          <XMark /> Pitchers · ranked by signal strength
         </div>
         <TieredPickList
           picks={pitchers}
@@ -541,11 +542,11 @@ function StartSection({ picks, ownershipByPickId }: {
       <div className="start-grid">
         <div>
           <div style={{
-            fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+            fontFamily: '"Red Hat Display", sans-serif',
             fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase',
             color: COLORS.axis, marginBottom: 12, fontWeight: 600,
           }}>
-            § Arms
+            <XMark /> Arms
           </div>
           <TieredPickList
             picks={pitchers}
@@ -556,11 +557,11 @@ function StartSection({ picks, ownershipByPickId }: {
         </div>
         <div>
           <div style={{
-            fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+            fontFamily: '"Red Hat Display", sans-serif',
             fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase',
             color: COLORS.axis, marginBottom: 12, fontWeight: 600,
           }}>
-            § Bats
+            <XMark /> Bats
           </div>
           <TieredPickList
             picks={hitters}
@@ -585,14 +586,14 @@ export default function StartSitBoard({
       {/* ── Masthead ── */}
       <div style={{ paddingTop: 28, paddingBottom: 20, borderBottom: `2px solid ${COLORS.ink}`, marginBottom: 0 }}>
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: COLORS.orange, fontWeight: 700, marginBottom: 6,
         }}>
           ⊕ x9Lab · Fantasy Desk · {isPro ? 'Pro' : 'Free'}
         </div>
         <h1 style={{
-          fontFamily: 'Fraunces, ui-serif, Georgia, serif',
+          fontFamily: 'Red Hat Display, sans-serif',
           fontSize: 'clamp(28px, 5vw, 40px)',
           fontWeight: 700, letterSpacing: '-0.02em',
           lineHeight: 1.05, margin: 0,
@@ -601,7 +602,7 @@ export default function StartSitBoard({
           Start / Sit &amp; Waiver Wire<span style={{ color: COLORS.orange }}>.</span>
         </h1>
         <div style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 10.5, color: COLORS.axis, marginTop: 10,
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
         }}>
@@ -623,7 +624,7 @@ export default function StartSitBoard({
       {/* ── START ── */}
       <section style={{ marginBottom: 48 }}>
         <SectionHead
-          icon="§"
+          icon=""
           title="Start today"
           subtitle="Favorable matchups worth starting tonight — park factors, opposing pitcher weaknesses, and recent form drive these."
           accent={COLORS.green}
@@ -650,7 +651,7 @@ export default function StartSitBoard({
       {/* ── Footer ── */}
       <div style={{ paddingTop: 20, borderTop: `1px solid ${COLORS.grid}` }}>
         <p style={{
-          fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          fontFamily: '"Red Hat Display", sans-serif',
           fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase',
           color: COLORS.axis,
         }}>

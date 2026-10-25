@@ -99,7 +99,7 @@ export default async function FormTrendsSection({ ctx }: { ctx: ScoutContext }) 
       />
 
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Built from Baseball Savant pitch data and the MLB Stats API, regular season. xwOBA is expected wOBA on contact (actual outcomes on walks and strikeouts). The dashed line is the season figure where one is published; otherwise it&apos;s the average of the games shown, and the chart says so. Every window shows the sample behind it.
+        Regular season. xwOBA is expected wOBA on contact (actual outcomes on walks and strikeouts). The dashed line is the season figure where one is published; otherwise it&apos;s the average of the games shown, and the chart says so. Every window shows the sample behind it.
       </p>
     </div>
   )

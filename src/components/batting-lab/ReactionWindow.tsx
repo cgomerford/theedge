@@ -148,7 +148,7 @@ export default function ReactionWindow() {
           value={query}
           onChange={e => { setQuery(e.target.value); if (pitcher) { setPitcher(null); setPitchType(null) } }}
           placeholder="Search any real MLB pitcher (optional)…"
-          className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-full px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
+          className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-sm px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
         />
         {visibleResults.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -161,7 +161,7 @@ export default function ReactionWindow() {
           </div>
         )}
         {pitcher && (
-          <button onClick={() => { setPitcher(null); setQuery(''); setPitchType(null) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-mono text-stone-400 hover:text-stone-700">✕</button>
+          <button onClick={() => { setPitcher(null); setQuery(''); setPitchType(null) }} className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-mono text-stone-400 hover:text-stone-700">Remove</button>
         )}
       </div>
 
@@ -174,7 +174,7 @@ export default function ReactionWindow() {
             <button
               key={p.pitchType}
               onClick={() => setPitchType(p.pitchType)}
-              className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${effectivePitchType === p.pitchType ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${effectivePitchType === p.pitchType ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
             >
               {p.name} <span className="text-stone-400">({p.avgVelo.toFixed(1)} mph)</span>
             </button>
@@ -187,7 +187,7 @@ export default function ReactionWindow() {
               <button
                 key={v}
                 onClick={() => setManualVelo(v)}
-                className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${manualVelo === v ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+                className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${manualVelo === v ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
               >
                 {v} mph
               </button>
@@ -262,7 +262,7 @@ export default function ReactionWindow() {
 
       <button
         onClick={play}
-        className="font-mono text-[11px] uppercase tracking-widest border border-[#FF5722] text-[#FF5722] rounded-full px-4 py-2 hover:bg-orange-50 transition mb-4"
+        className="font-mono text-[11px] uppercase tracking-widest border border-[#FF5722] text-[#FF5722] rounded-sm px-4 py-2 hover:bg-orange-50 transition mb-4"
       >
         {phase === 'idle' || phase === 'done' ? '▶ Play' : '↻ Replaying…'}
       </button>

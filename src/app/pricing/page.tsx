@@ -1,8 +1,11 @@
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import SignupForm from '@/components/SignupForm'
 import CheckoutButtons from '@/components/CheckoutButtons'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
 // 2026-08-23: full sync pass with the redesigned homepage. Feature
 // copy now matches the real module list from ScoutReportTab (Pitching
@@ -18,10 +21,12 @@ import { getCurrentSubscriber } from '@/lib/auth'
 // bullet and section now pairs the what with the so-what, rather than
 // listing feature names and assuming the value is self-evident.
 
-export const metadata = {
-  title: 'Pricing · x9Lab',
-  description: 'Free for fans. Pro for analysts. Founding 100 members lock in £4/mo for life.',
-}
+export const metadata = pageMeta({
+  title: 'Pricing',
+  description:
+    'x9Lab is free for fans. Pro adds the deeper labs and full postgame reports. See what each plan includes and how to get the free daily email.',
+  path: '/pricing',
+})
 
 export default async function PricingPage() {
   const subscriber = await getCurrentSubscriber()
@@ -31,9 +36,10 @@ export default async function PricingPage() {
     <main className="min-h-screen bg-[#FAF8F3] text-[#1A1A1A] overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-        .edge-display { font-family: 'Bebas Neue', sans-serif; }
+        .edge-display { font-family: 'Red Hat Display', sans-serif; }
       `}</style>
 
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
       <SiteHeader variant="page" />
 
       {/* ════ MASTHEAD ════════════════════════════════════════════════════ */}
@@ -48,10 +54,10 @@ export default async function PricingPage() {
       <div className="border-b border-[#DEDACE]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12">
           <div className="font-mono text-[11px] uppercase tracking-widest text-[#FF5722] flex items-center gap-2 mb-4">
-            <span>§</span><span>Pricing</span>
+            <span><XMark /></span><span>Pricing</span>
           </div>
           <h1 className="edge-display text-[clamp(40px,6vw,68px)] leading-[0.98] tracking-wide mb-6 max-w-3xl">
-            Baseball Savant tells you what happened.{' '}
+            Other stat sites tells you what happened.{' '}
             <span className="text-[#FF5722]">We tell you what it means.</span>
           </h1>
           <p className="font-serif text-lg text-[#4A4740] max-w-xl leading-relaxed">
@@ -64,7 +70,7 @@ export default async function PricingPage() {
       <div className="border-b border-[#DEDACE]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
           <div className="font-mono text-[11px] uppercase tracking-widest text-[#FF5722] flex items-center gap-2 mb-6">
-            <span>§</span><span>The difference</span>
+            <span><XMark /></span><span>The difference</span>
           </div>
           <div className="grid sm:grid-cols-2 border border-[#1A1A1A]">
             <div className="p-7 border-b sm:border-b-0 sm:border-r border-[#1A1A1A]">
@@ -93,7 +99,7 @@ export default async function PricingPage() {
       <div className="border-b border-[#DEDACE] bg-[#F4F1EA]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14">
           <div className="font-mono text-[11px] uppercase tracking-widest text-[#FF5722] flex items-center gap-2 mb-4">
-            <span>§</span><span>What's actually in a report</span>
+            <span><XMark /></span><span>What's actually in a report</span>
           </div>
           <h2 className="edge-display text-[34px] mb-4 max-w-xl">
             Not just the data — what it means
@@ -121,7 +127,7 @@ export default async function PricingPage() {
       <div className="border-b border-[#DEDACE]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14">
           <div className="font-mono text-[11px] uppercase tracking-widest text-[#FF5722] flex items-center gap-2 mb-4">
-            <span>§</span><span>Why it's worth £6 a month</span>
+            <span><XMark /></span><span>Why it's worth £6 a month</span>
           </div>
           <h2 className="edge-display text-[32px] mb-10 max-w-lg">
             What you'd have to do yourself otherwise
@@ -186,7 +192,7 @@ export default async function PricingPage() {
             <div className="pt-5 border-t border-[#DEDACE]">
               {subscriber ? (
                 <div className="text-sm font-mono text-[#8A8577] text-center py-3">
-                  ✓ You&apos;re signed up
+                  You&apos;re signed up
                 </div>
               ) : (
                 <SignupForm source="pricing_free" buttonText="Start with free →" theme="light" />
@@ -244,7 +250,7 @@ export default async function PricingPage() {
             <div className="pt-5 border-t border-[#3A3A38]">
               {isPro ? (
                 <div className="text-sm font-mono text-[#FDE047] text-center py-3">
-                  ✓ You&apos;re a Pro member
+                  You&apos;re a Pro member
                 </div>
               ) : (
                 <CheckoutButtons signedIn={!!subscriber} />
@@ -271,7 +277,7 @@ export default async function PricingPage() {
         {/* ════ FAQ ══════════════════════════════════════════════════════ */}
         <div className="max-w-3xl mx-auto mt-16 pt-12 border-t border-[#DEDACE]">
           <div className="font-mono text-[11px] uppercase tracking-widest text-[#FF5722] flex items-center justify-center gap-2 mb-4">
-            <span>§</span><span>Quick questions</span>
+            <span><XMark /></span><span>Quick questions</span>
           </div>
           <h2 className="edge-display text-[32px] text-center mb-10">
             Before you decide
@@ -345,8 +351,7 @@ export default async function PricingPage() {
       <footer className="border-t border-[#DEDACE] mt-8 px-4 sm:px-6 py-8 text-[11px] font-mono text-[#8A8577] bg-[#F4F1EA]">
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
-            <Link href="/tonight"      className="hover:text-[#1A1A1A] transition">Tonight</Link>
-            <Link href="/track-record" className="hover:text-[#1A1A1A] transition">Track Record</Link>
+            <Link href="/mlb"          className="hover:text-[#1A1A1A] transition">MLB</Link>
             <Link href="/about"        className="hover:text-[#1A1A1A] transition">About</Link>
             <Link href="/faq"          className="hover:text-[#1A1A1A] transition">FAQ</Link>
             <Link href="/privacy"      className="hover:text-[#1A1A1A] transition">Privacy</Link>

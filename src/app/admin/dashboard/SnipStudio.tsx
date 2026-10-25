@@ -9,8 +9,10 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import type { SnipBundle } from '@/lib/admin-dashboard'
+import { X_HANDLE } from '@/lib/site'
 
 function CopyButton({ text, label = 'Copy post' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false)
@@ -52,8 +54,8 @@ export default function SnipStudio({ snips }: { snips: SnipBundle }) {
     <section className="sec">
       <style>{scoped}</style>
       <div className="sechead">
-        <span className="glyph">§</span><h2>Snip studio</h2>
-        <span className="tag">copy-ready for @edgereportdaily</span>
+        <span className="glyph"><XMark /></span><h2>Snip studio</h2>
+        <span className="tag">copy-ready for {X_HANDLE}</span>
       </div>
 
       {snips.eotd && <SnipCard snip={snips.eotd} />}
@@ -92,12 +94,12 @@ export default function SnipStudio({ snips }: { snips: SnipBundle }) {
 const scoped = `
 .admin .snip{border:1px solid #1A1A1A1a;background:#fff;margin-bottom:14px}
 .admin .snip-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1A1A1A1a;background:#1A1A1A;color:#FAF8F3}
-.admin .snip-head .t{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:15px}
+.admin .snip-head .t{font-family:Red Hat Display,Red Hat Display,sans-serif;font-weight:600;font-size:15px}
 .admin .snip-head .why{margin-left:auto;font-size:10px;color:#d8d3c8;text-transform:uppercase;letter-spacing:.5px}
 .admin .snip-body{padding:16px}
 .admin .draft{white-space:pre-wrap;font-size:13px;line-height:1.65;border:1px dashed #1A1A1A1a;padding:14px;background:#FAF8F3}
 .admin .snip-foot{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
-.admin .snipbtn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:9px 16px;cursor:pointer}
+.admin .snipbtn{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:9px 16px;cursor:pointer}
 .admin .snipbtn:hover{background:#e64a19}
 .admin .snipbtn.copied{background:#15803d}
 .admin .note{font-size:10px;color:#6b6b66;line-height:1.5}

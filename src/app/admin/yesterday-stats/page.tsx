@@ -27,6 +27,7 @@
 // prerender this at build time — easily >60s, which fails all 3 build
 // retries and kills the whole build (broke the 2026-09-24 deploy).
 
+import XMark from '@/components/XMark'
 import { createAdminClient } from '@/lib/supabase'
 import {
   getGamesForDateAndLevel,
@@ -62,14 +63,14 @@ function SectionHeader({ title, tag }: { title: string; tag: string }) {
         borderBottom: '1px solid #1A1A1A1a', paddingBottom: 8, marginBottom: 16,
       }}
     >
-      <span style={{ color: '#FF5722', fontSize: 18 }}>§</span>
-      <h2 style={{ fontFamily: 'Fraunces, Georgia, serif', fontWeight: 600, fontSize: 20, letterSpacing: '-0.3px' }}>
+      <span style={{ color: '#FF5722', fontSize: 18 }}><XMark /></span>
+      <h2 style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 600, fontSize: 20, letterSpacing: '-0.3px' }}>
         {title}
       </h2>
       <span
         style={{
           marginLeft: 'auto', fontSize: 10, textTransform: 'uppercase',
-          letterSpacing: '1.5px', color: '#6b6b66', fontFamily: 'JetBrains Mono, monospace',
+          letterSpacing: '1.5px', color: '#6b6b66', fontFamily: 'Red Hat Display, sans-serif',
         }}
       >
         {tag}

@@ -222,7 +222,7 @@ export default function ActualVsExpectedChart({
             fontSize: 13,
           }}
         >
-          Not enough Statcast data for this player yet.
+          Not enough pitch data for this player yet.
         </p>
       </div>
     )

@@ -12,6 +12,7 @@
  * Each tab: sortable table with 4 default columns + column picker for extras.
  */
 
+import XMark from '@/components/XMark'
 import { useState, useMemo } from 'react'
 import type { MLBStatLeader } from '@/lib/mlb-homepage'
 
@@ -159,7 +160,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
           display: inline-flex; align-items: center; gap: 6px;
           padding: 5px 10px; border-radius: 3px; cursor: pointer;
           border: 1px solid rgba(26,26,26,0.12);
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Red Hat Display', sans-serif;
           font-size: 11px; font-weight: 700;
           transition: all 0.12s;
           white-space: nowrap;
@@ -180,22 +181,22 @@ export default function MLBStatsHub({ statLeaders }: Props) {
         maxWidth: 1160, margin: '0 auto',
       }}>
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'Red Hat Display', sans-serif",
           fontSize: 10, fontWeight: 700, color: '#FF5722',
           letterSpacing: '0.1em', marginBottom: 4,
         }}>
-          § MLB · LEAGUE LEADERS
+          <XMark /> MLB · LEAGUE LEADERS
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <h1 style={{
-            fontFamily: "'Fraunces', serif",
+            fontFamily: "'Red Hat Display', sans-serif",
             fontSize: 26, fontWeight: 800, color: '#1A1A1A',
             margin: 0, letterSpacing: '-0.5px',
           }}>
             Stats Hub
           </h1>
           <a href="/mlb" style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'Red Hat Display', sans-serif",
             fontSize: 10, fontWeight: 700, color: '#A3A3A3',
             textDecoration: 'none', letterSpacing: '0.06em',
           }}>
@@ -217,7 +218,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
           <div style={{ display: 'flex', background: 'rgba(26,26,26,0.06)', borderRadius: 3, padding: 3 }}>
             {(['pitching', 'batting'] as const).map(tab => (
               <button key={tab} onClick={() => { setActiveTab(tab); setSortCol(null) }} style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: 11, fontWeight: 700, padding: '6px 20px',
                 border: 'none', cursor: 'pointer', borderRadius: 2,
                 letterSpacing: '0.06em', textTransform: 'capitalize',
@@ -234,7 +235,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
           <button
             onClick={() => setPickerOpen(o => !o)}
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 11, fontWeight: 700, padding: '6px 14px',
               border: '1px solid rgba(26,26,26,0.15)',
               background: pickerOpen ? '#1A1A1A' : '#FFFFFF',
@@ -256,7 +257,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
             marginBottom: 16,
           }}>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 9, fontWeight: 700, color: '#A3A3A3',
               letterSpacing: '0.1em', textTransform: 'uppercase',
               marginBottom: 10,
@@ -275,14 +276,14 @@ export default function MLBStatsHub({ statLeaders }: Props) {
                   >
                     {col.label}
                     {isActive && (
-                      <span style={{ opacity: 0.6, fontSize: 9 }}>✕</span>
+                      <span style={{ opacity: 0.6, fontSize: 9 }}>Remove</span>
                     )}
                   </button>
                 )
               })}
             </div>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 9, color: '#A3A3A3', marginTop: 8,
             }}>
               Hover any column header to see a description. Click to sort.
@@ -300,7 +301,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
             <thead>
               <tr>
                 <th style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: 9, fontWeight: 700, color: '#A3A3A3',
                   letterSpacing: '0.08em', textTransform: 'uppercase',
                   padding: '10px 12px',
@@ -314,7 +315,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
                     onClick={() => handleSort(col.key)}
                     title={col.desc}
                     style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Red Hat Display', sans-serif",
                       fontSize: 9, fontWeight: 700,
                       color: sortCol === col.key ? '#FF5722' : '#A3A3A3',
                       letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -336,7 +337,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
                   <td style={{ padding: '9px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Red Hat Display', sans-serif",
                         fontSize: 11, color: idx === 0 ? '#FF5722' : '#A3A3A3',
                         fontWeight: idx === 0 ? 700 : 400,
                         width: 18, flexShrink: 0, textAlign: 'right',
@@ -357,14 +358,14 @@ export default function MLBStatsHub({ statLeaders }: Props) {
                       </div>
                       <div>
                         <div style={{
-                          fontFamily: "'Fraunces', serif",
+                          fontFamily: "'Red Hat Display', sans-serif",
                           fontSize: 13, fontWeight: idx < 3 ? 700 : 500,
                           color: '#1A1A1A', whiteSpace: 'nowrap',
                         }}>
                           {player.name}
                         </div>
                         <div style={{
-                          fontFamily: "'JetBrains Mono', monospace",
+                          fontFamily: "'Red Hat Display', sans-serif",
                           fontSize: 9, color: '#A3A3A3', letterSpacing: '0.04em',
                         }}>
                           {player.teamAbbr}
@@ -382,7 +383,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
                     const isTopThree = idx < 3 && (sortCol === col.key || (sortCol === null && cIdx === 0))
                     return (
                       <td key={col.key} style={{
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Red Hat Display', sans-serif",
                         fontSize: 13, fontWeight: isTopThree ? 700 : 400,
                         color: isTopThree ? '#1A1A1A' : '#3D3D3D',
                         padding: '9px 12px',
@@ -399,11 +400,11 @@ export default function MLBStatsHub({ statLeaders }: Props) {
 
         {/* Footer note */}
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'Red Hat Display', sans-serif",
           fontSize: 9, color: '#A3A3A3', marginTop: 10,
           letterSpacing: '0.04em',
         }}>
-          Data via MLB Stats API. Hover column headers for descriptions. Click to sort.
+ Hover column headers for descriptions. Click to sort.
         </div>
       </div>
     </div>

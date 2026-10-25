@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState, useEffect, useRef } from 'react'
 import { playerHeadshotUrl, teamLogoUrl, shortName } from '@/lib/mlb'
 import type { LineupBatter } from '@/lib/lineups'
@@ -91,10 +92,10 @@ function SectionLabel({ title, pro }: { title: string; pro?: boolean }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">
-        § {title}
+        <XMark /> {title}
       </p>
       {pro && (
-        <span className="text-[8px] font-mono font-bold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full">
+        <span className="text-[8px] font-mono font-bold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-sm">
           ⊕ PRO
         </span>
       )}
@@ -466,7 +467,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
                   <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
                     See whether this batter is heating up or cooling off, and how they hit against lefties vs righties.
                   </p>
-                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
                     Unlock Pro →
                   </a>
                 </div>
@@ -544,7 +545,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
                   <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
                     Every ball in play this season, mapped on the field. See pull tendency and home run locations.
                   </p>
-                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
                     Unlock Pro →
                   </a>
                 </div>
@@ -567,7 +568,7 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
                   <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
                     A 9-zone breakdown of batting average by location in the strike zone, built from this season's pitches.
                   </p>
-                  <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                  <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
                     Unlock Pro →
                   </a>
                 </div>
@@ -589,9 +590,9 @@ const TABS: { key: BatterTab; label: string; proOnly?: boolean }[] = [
                     <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold">⊕ Pro feature</div>
                     <p className="font-serif text-stone-700 text-base">Contact quality metrics — exit velocity, barrel rate, expected stats</p>
                     <p className="text-sm font-serif text-stone-400 italic max-w-xs leading-relaxed">
-                      Statcast data tells you how hard a batter is actually hitting the ball, independent of luck or defensive positioning.
+                      Pitch tracking tells you how hard a batter is actually hitting the ball, independent of luck or defensive positioning.
                     </p>
-                    <a href="/pro" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
+                    <a href="/pricing" className="mt-2 bg-orange-500 text-white font-mono text-[11px] uppercase tracking-widest px-5 py-2.5 rounded-lg hover:bg-orange-600 transition">
                       Unlock Pro →
                     </a>
                   </div>
@@ -834,7 +835,7 @@ function LineupPanel({
           {shortName(teamName)} lineup
         </span>
         <span className={`ml-auto text-[8px] font-mono uppercase tracking-widest font-bold ${lineupsConfirmed ? 'text-green-500' : 'text-stone-400'}`}>
-          {lineupsConfirmed ? '✓ Confirmed' : 'Projected'}
+          {lineupsConfirmed ? 'Confirmed' : 'Projected'}
         </span>
       </div>
 
@@ -915,7 +916,7 @@ export default function BattingTabContent({
         ) : (
             
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-3xl mb-3">⚾</div>
+            <div className="text-3xl mb-3"></div>
             <p className="text-sm font-serif text-stone-500 italic">
               Select a batter to see their full stats
             </p>

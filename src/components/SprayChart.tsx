@@ -108,9 +108,9 @@ function Field() {
 {/* Labels — moved to the outer arc edge (was y=45, sitting directly in
           the shallow-to-mid outfield zone where most batted-ball dots land,
           overlapping the data — 2026-07-14 fix) */}
-      <text x="110" y="14" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Centre field</text>
-      <text x="22" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Left</text>
-      <text x="198" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Space Mono, monospace">Right</text>
+      <text x="110" y="14" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Red Hat Display, sans-serif">Centre field</text>
+      <text x="22" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Red Hat Display, sans-serif">Left</text>
+      <text x="198" y="96" textAnchor="middle" fontSize="9" fill="#B0A89F" fontFamily="Red Hat Display, sans-serif">Right</text>
     </g>
   )
 }
@@ -120,7 +120,7 @@ function Field() {
 function FilterBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
-      fontFamily: 'Space Mono, monospace', fontSize: 9, padding: '4px 10px',
+      fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, padding: '4px 10px',
       borderRadius: 4, border: `1px solid ${active ? '#FF5722' : 'rgba(26,26,26,0.15)'}`,
       background: active ? '#FF5722' : 'transparent',
       color: active ? '#FFFFFF' : '#A3A3A3',
@@ -176,12 +176,12 @@ export default function SprayChart({
           padding: '8px 12px', background: '#1A1A1A', borderRadius: 6,
           marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <span style={{ fontFamily: 'Fraunces, serif', fontSize: 13, color: '#FFFFFF' }}>
+          <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 13, color: '#FFFFFF' }}>
             {pullText}
           </span>
           {hrs > 0 && (
             <span style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 9, fontWeight: 700,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, fontWeight: 700,
               color: '#FF5722', background: 'rgba(255,87,34,0.15)',
               padding: '2px 7px', borderRadius: 4, marginLeft: 'auto',
             }}>
@@ -194,12 +194,12 @@ export default function SprayChart({
       {/* Summary row */}
       {!loading && totalBIP > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3' }}>
+          <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3' }}>
             {totalBIP} balls in play · {hits} hits · {hrs} home runs
           </span>
           {pullText && (
             <span style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 9, fontWeight: 700,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, fontWeight: 700,
               color: '#FF5722', background: '#FFF3E0',
               padding: '2px 7px', borderRadius: 4,
             }}>
@@ -223,7 +223,7 @@ export default function SprayChart({
           <div style={{
             position: 'absolute', inset: 0, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#A3A3A3',
+            fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, color: '#A3A3A3',
             background: '#FAF8F3', borderRadius: 8, zIndex: 2,
           }}>
             Loading...
@@ -254,11 +254,11 @@ export default function SprayChart({
             flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 6,
           }}>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 15, color: '#6B6B6B' }}>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 15, color: '#6B6B6B' }}>
               No data yet for this season
             </div>
             <div style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 9,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9,
               color: '#A3A3A3', textAlign: 'center', maxWidth: 200, lineHeight: 1.6,
             }}>
               Once this batter has enough plate appearances, their spray chart will appear here
@@ -282,7 +282,7 @@ export default function SprayChart({
                 background: DOT_COLOR[group],
                 border: group === 'out' ? '1px solid #C4BDB7' : 'none',
               }} />
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3' }}>
+              <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3' }}>
                 {label}
               </span>
             </div>
@@ -294,7 +294,7 @@ export default function SprayChart({
       <div style={{
         marginTop: 10, padding: '8px 12px',
         background: '#F5F1E8', borderRadius: 6,
-        fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#6B6B6B',
+        fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B',
         lineHeight: 1.6,
       }}>
         Each dot is one ball hit into play this season. Orange dots cleared the fence.

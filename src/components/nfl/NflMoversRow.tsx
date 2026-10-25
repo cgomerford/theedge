@@ -23,7 +23,7 @@ function CompactCard({ mover }: { mover: NormalizedMover }) {
   if (!mover) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 16, minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#A3A3A3', fontStyle: 'italic', textAlign: 'center' }}>Not enough data yet</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#A3A3A3', fontStyle: 'italic', textAlign: 'center' }}>Not enough data yet</div>
       </div>
     )
   }
@@ -32,32 +32,32 @@ function CompactCard({ mover }: { mover: NormalizedMover }) {
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', borderTop: '3px solid #FF5722', padding: 16 }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>
         {mover.label}
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>
         {mover.seasons}
       </div>
 
-      <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 34, lineHeight: 0.95, color: '#1A1A1A', letterSpacing: '-0.01em' }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 900, fontSize: 34, lineHeight: 0.95, color: '#1A1A1A', letterSpacing: '-0.01em' }}>
         {sign}{mover.delta.toFixed(mover.deltaDecimals)}
       </div>
 
-      <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 14, color: '#1A1A1A', marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 700, fontSize: 14, color: '#1A1A1A', marginTop: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {mover.name}
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#78716C', marginBottom: 10 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#78716C', marginBottom: 10 }}>
         {mover.sub}
       </div>
 
       <div style={{ display: 'flex', gap: 12, paddingTop: 10, borderTop: '1px solid rgba(26,26,26,0.06)' }}>
         <div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase' }}>{mover.stat1Label}</div>
-          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 700, color: '#1A1A1A' }}>{mover.stat1Value}</div>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase' }}>{mover.stat1Label}</div>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontWeight: 700, color: '#1A1A1A' }}>{mover.stat1Value}</div>
         </div>
         <div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase' }}>{mover.stat2Label}</div>
-          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 700, color: '#1A1A1A' }}>{mover.stat2Value}</div>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase' }}>{mover.stat2Label}</div>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontWeight: 700, color: '#1A1A1A' }}>{mover.stat2Value}</div>
         </div>
       </div>
     </div>

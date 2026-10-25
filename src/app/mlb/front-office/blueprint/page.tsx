@@ -12,12 +12,15 @@ import { Card, Empty, Foot, MONO, SANS, C, Tile, PlayerLink } from '@/components
 import { ACQ_LABEL, getBlueprint, getBlueprintPlayers, type BlueprintTeam } from '@/lib/front-office/blueprint'
 import { resolveIsPro } from '@/lib/front-office/access'
 import { MLB_TEAMS } from '@/lib/teams'
+import { pageMeta } from '@/lib/seo'
 
 export const revalidate = 300
-export const metadata = {
-  title: 'Roster Blueprint · Front Office · x9Lab',
-  description: 'How every MLB club built its roster — draft, international, trade, free agency, waivers and Rule 5 — weighted by WAR.',
-}
+export const metadata = pageMeta({
+  title: 'Roster blueprint',
+  description:
+    'How every MLB club built its roster, by draft, international signing, trade, free agency, waivers and Rule 5, with each route weighted by WAR.',
+  path: '/mlb/front-office/blueprint',
+})
 
 type Props = { searchParams: Promise<{ team?: string; sort?: string; pro?: string }> }
 const SORTS = { homegrown: 'Most homegrown', trade: 'Most trade-built', claimed: 'Waiver and Rule 5 haul', war: 'Total WAR' } as const
@@ -64,7 +67,7 @@ export default async function BlueprintPage({ searchParams }: Props) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
             <span style={{ fontFamily: MONO, fontSize: 10, color: C.mute, letterSpacing: '.1em', textTransform: 'uppercase' }}>Sort</span>
             {(Object.keys(SORTS) as SortKey[]).map(k => (
-              <Link key={k} href={`/mlb/front-office/blueprint?sort=${k}${sp.pro ? `&pro=${sp.pro}` : ''}`} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, padding: '5px 10px', borderRadius: 999, textDecoration: 'none', background: sort === k ? C.ink : '#fff', color: sort === k ? C.cream : C.ink, border: `1px solid ${C.line}` }}>{SORTS[k]}</Link>
+              <Link key={k} href={`/mlb/front-office/blueprint?sort=${k}${sp.pro ? `&pro=${sp.pro}` : ''}`} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 700, padding: '5px 10px', borderRadius: 4, textDecoration: 'none', background: sort === k ? C.ink : '#fff', color: sort === k ? C.cream : C.ink, border: `1px solid ${C.line}` }}>{SORTS[k]}</Link>
             ))}
             <span style={{ flex: 1 }} />
             {isPro && <ExportPng targetId="blueprint-export" filename={`roster-blueprint-${season}.png`} />}
@@ -74,7 +77,6 @@ export default async function BlueprintPage({ searchParams }: Props) {
             <Card title={`How each club was built · ${season} WAR`} note="Segment = share of positive WAR">
               <Legend />
               <BlueprintChart rows={rows} selectedTeamId={selected} hrefFor={id => q({ team: String(id) })} />
-              <Foot>x9Lab · MLB Stats API (WAR, transactions) · each player&apos;s WAR is credited to his current club, and a player below zero counts as zero.</Foot>
             </Card>
           </div>
         </>

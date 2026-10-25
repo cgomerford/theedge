@@ -1,160 +1,126 @@
 /**
- * src/components/StructuredData.tsx
+ * JSON-LD structured data helpers. Server components: the markup is in the HTML.
  *
- * JSON-LD structured data helper. Drop into pages to give Google rich
- * snippets and better understanding of the page content.
+ *   <SiteSchema />                  Organization + WebSite   (root layout)
+ *   <BreadcrumbSchema items />      BreadcrumbList           (every public page)
+ *   <PersonSchema />                player pages (no image)
+ *   <SportsTeamSchema />            team pages
+ *   <SportsEventSchema />           game, scout-report and postgame pages
+ *   <FAQSchema />                   /faq
  *
- * Three schema types provided:
- *   - WebSite (for homepage)
- *   - SportsEvent (for game preview pages)
- *   - Article (for fantasy desk + news content)
- *
- * Usage:
- *   import { WebSiteSchema, SportsEventSchema, ArticleSchema } from '@/components/StructuredData'
- *
- *   // In a page:
- *   <WebSiteSchema />
- *   <SportsEventSchema
- *     homeTeam="Philadelphia Phillies"
- *     awayTeam="San Diego Padres"
- *     gameDate="2026-06-03T22:40:00Z"
- *     venue="Citizens Bank Park"
- *   />
+ * No Product or Offer schema, and no logo image.
  */
 
-const SITE_URL = 'https://edgereportdaily.com'
+import { SITE_NAME, SITE_URL } from '@/lib/site'
 
-// ─── WebSite schema (homepage) ────────────────────────────────────────────────
-export function WebSiteSchema() {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'x9Lab',
-    alternateName: 'x9Lab Analytics',
-    url: SITE_URL,
-    description: 'Pre-game intelligence briefs for MLB fans and fantasy players. Daily Edge Scores, streamer picks, and matchup analysis.',
-    publisher: {
-      '@type': 'Organization',
-      name: 'x9Lab',
-      url: SITE_URL,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${SITE_URL}/logo.png`,
-      },
-    },
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-      },
-      'query-input': 'required name=search_term_string',
-    },
-  }
-
+function JsonLd({ data }: { data: Record<string, unknown> }) {
+  // "<" is escaped so a stray "</script>" in a name can never close the tag.
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }}
     />
   )
 }
 
-// ─── SportsEvent schema (game preview pages) ──────────────────────────────────
+export function SiteSchema() {
+  return (
+    <>
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: SITE_NAME, url: SITE_URL }} />
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebSite', name: SITE_NAME, url: SITE_URL }} />
+    </>
+  )
+}
+
+export function BreadcrumbSchema({ items }: { items: { name: string; path: string }[] }) {
+  return (
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: items.map((it, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: it.name,
+          item: SITE_URL + it.path,
+        })),
+      }}
+    />
+  )
+}
+
+export function PersonSchema({ name, path, teamName }: { name: string; path: string; teamName?: string | null }) {
+  return (
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        name,
+        url: SITE_URL + path,
+        jobTitle: 'Baseball player',
+        ...(teamName ? { affiliation: { '@type': 'SportsTeam', name: teamName } } : {}),
+      }}
+    />
+  )
+}
+
+export function SportsTeamSchema({ name, path }: { name: string; path: string }) {
+  return (
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'SportsTeam',
+        name,
+        sport: 'Baseball',
+        url: SITE_URL + path,
+        memberOf: { '@type': 'SportsOrganization', name: 'Major League Baseball' },
+      }}
+    />
+  )
+}
+
 export function SportsEventSchema({
   homeTeam,
   awayTeam,
   gameDate,
   venue,
-  url,
+  path,
 }: {
   homeTeam: string
   awayTeam: string
-  gameDate: string  // ISO format
-  venue: string
-  url: string
+  gameDate?: string | null // ISO
+  venue?: string | null
+  path: string
 }) {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'SportsEvent',
-    name: `${awayTeam} at ${homeTeam}`,
-    description: `MLB matchup preview: ${awayTeam} at ${homeTeam}. Edge Score, starting pitcher analysis, and matchup tilt breakdown.`,
-    startDate: gameDate,
-    sport: 'Baseball',
-    url: url,
-    location: {
-      '@type': 'StadiumOrArena',
-      name: venue,
-    },
-    competitor: [
-      {
-        '@type': 'SportsTeam',
-        name: homeTeam,
-      },
-      {
-        '@type': 'SportsTeam',
-        name: awayTeam,
-      },
-    ],
-    organizer: {
-      '@type': 'SportsOrganization',
-      name: 'Major League Baseball',
-    },
-  }
-
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'SportsEvent',
+        name: `${awayTeam} at ${homeTeam}`,
+        sport: 'Baseball',
+        url: SITE_URL + path,
+        ...(gameDate ? { startDate: gameDate } : {}),
+        ...(venue ? { location: { '@type': 'StadiumOrArena', name: venue } } : {}),
+        homeTeam: { '@type': 'SportsTeam', name: homeTeam },
+        awayTeam: { '@type': 'SportsTeam', name: awayTeam },
+      }}
     />
   )
 }
 
-// ─── Article schema (fantasy + news content) ─────────────────────────────────
-export function ArticleSchema({
-  headline,
-  description,
-  datePublished,
-  dateModified,
-  url,
-  imageUrl,
-}: {
-  headline: string
-  description: string
-  datePublished: string
-  dateModified?: string
-  url: string
-  imageUrl?: string
-}) {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline,
-    description,
-    datePublished,
-    dateModified: dateModified ?? datePublished,
-    url,
-    image: imageUrl ?? `${SITE_URL}/og-image.png`,
-    author: {
-      '@type': 'Organization',
-      name: 'x9Lab',
-      url: SITE_URL,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'x9Lab',
-      url: SITE_URL,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${SITE_URL}/logo.png`,
-      },
-    },
-  }
-
+export function FAQSchema({ items }: { items: { question: string; answer: string }[] }) {
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: items.map(it => ({
+          '@type': 'Question',
+          name: it.question,
+          acceptedAnswer: { '@type': 'Answer', text: it.answer },
+        })),
+      }}
     />
   )
 }

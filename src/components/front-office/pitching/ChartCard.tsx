@@ -2,7 +2,7 @@
 
 // The card every Pitching Desk tool sits in: title + subtitle, source chips, a Method drawer, Pin and PNG.
 // `id` is the card's stable key (DOM id, pin id, filename part). `isPro` is required and never defaulted:
-// it decides the export footer (free: edgereportdaily.com footer; Pro: none) and whether Pin stores anything.
+// it decides the export footer (free: the site domain footer; Pro: none) and whether Pin stores anything.
 // Pro-locked cards are not rendered through here at all: the page swaps in <UpgradeCard> on the server.
 // `empty` renders a shell card whose body names the data that has not been computed yet.
 
@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { C, MONO, SANS } from '@/components/team/ui'
 import { cardFilename, exportCard } from './exportCard'
 import { useNotebook } from './notebook'
+import {  } from '@/lib/site'
 
 const tool: React.CSSProperties = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', border: `1px solid ${C.line}`, background: '#fff', color: C.ink, borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }
 

@@ -6,7 +6,7 @@ export const css = `
 .admin {
   background: #FAF8F3;
   color: #1A1A1A;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Red Hat Display', sans-serif;
   min-height: 100vh;
   padding: 0 24px 80px;
 }
@@ -28,7 +28,7 @@ export const css = `
   gap: 8px;
 }
 .admin .brand {
-  font-family: Fraunces, Georgia, serif;
+  font-family: Red Hat Display, sans-serif;
   font-weight: 900;
   font-size: 28px;
   letter-spacing: -0.5px;
@@ -79,7 +79,7 @@ export const css = `
   font-size: 18px;
 }
 .admin .sechead h2 {
-  font-family: Fraunces, Georgia, serif;
+  font-family: Red Hat Display, sans-serif;
   font-weight: 600;
   font-size: 19px;
   letter-spacing: -0.3px;
@@ -112,14 +112,14 @@ export const css = `
   align-items: center;
 }
 .admin .record {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 92px;
   line-height: 0.82;
   letter-spacing: 1px;
 }
 .admin .record small {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 10px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -132,7 +132,7 @@ export const css = `
   gap: 16px 20px;
 }
 .admin .stat .n {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 32px;
   line-height: 1;
   color: #FF5722;
@@ -182,7 +182,7 @@ export const css = `
   background: #fff7f4;
 }
 .admin .rank {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 24px;
   color: #6b6b66;
   text-align: center;
@@ -202,14 +202,14 @@ export const css = `
   font-weight: 700;
 }
 .admin .edge {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 32px;
   text-align: right;
   line-height: 1;
 }
 .admin .edge small {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Red Hat Display', sans-serif;
   font-size: 9px;
   letter-spacing: 1px;
   color: #6b6b66;

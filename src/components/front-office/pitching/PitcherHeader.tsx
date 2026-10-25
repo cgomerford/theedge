@@ -69,7 +69,7 @@ export default function PitcherHeader({ playerId, teamId, name, row, win, stab, 
             tip={<TipBody title="CSW%" lines={[['Whiff%', row.whiffPct == null ? dash : `${fx(row.whiffPct)}%`], ...vsLeague(row.cswPct, league?.csw, true, role, 1, '%')]} note="Called strikes plus whiffs, per pitch." />} />
           <Kpi label="xERA" value={row.xera == null ? dash : fx(row.xera, 2)} foot={row.xera == null ? 'Savant season figure; choose Season' : `ERA ${fx(row.era, 2)}`}
             tip={<TipBody title="xERA" lines={[['ERA', fx(row.era, 2)], ['FIP', fx(row.fip, 2)], ['xFIP', fx(row.xfip, 2)], ['SIERA', fx(row.siera, 2)], ...vsLeague(row.xera, league?.xera, false, role, 2, '')]}
-              note="The ERA his contact quality, strikeouts and walks deserved (Baseball Savant). A season-long figure." />} />
+              note="The ERA his contact quality, strikeouts and walks deserved. A season-long figure." />} />
           <Kpi label="Stuff Grade" value={row.stuffGrade == null ? dash : String(Math.round(row.stuffGrade))} foot="x9Lab's own model: coming"
             tip={<TipBody title="Stuff Grade" note="x9Lab's own pitch model, on the 20-80 scouting scale (50 = league average). It shows a dash until the model ships." />} />
         </div>

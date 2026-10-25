@@ -14,7 +14,7 @@ import type { PostgameContext } from './types'
 const W = 340, H = 440, X0 = -2.1, X1 = 2.1, Z0 = 0.2, Z1 = 4.8
 const sx = (x: number) => ((x - X0) / (X1 - X0)) * W
 const sz = (z: number) => H - ((z - Z0) / (Z1 - Z0)) * H
-const MONO = { font: '400 9px ui-monospace, monospace' } as const
+const MONO = { font: '400 9px monospace' } as const
 
 function ZonePlot({ p }: { p: PlateNight }) {
   const zl = sx(-0.83), zr = sx(0.83), zt = sz(p.zoneTop), zb = sz(p.zoneBottom)

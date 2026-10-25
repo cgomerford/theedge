@@ -194,10 +194,10 @@ export default function QBRoomHeatmap({ qbName, teamAbbr, summary, redZonePlays,
             {/* Yard labels (left + right) */}
             {yardLabels.map(({ y, label }) => (
               <g key={label}>
-                <text x={14} y={y + 3} fontFamily="JetBrains Mono, ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.55)" fontWeight={500}>
+                <text x={14} y={y + 3} fontFamily="Red Hat Display, sans-serif" fontSize={9} fill="rgba(255,255,255,0.55)" fontWeight={500}>
                   {label}
                 </text>
-                <text x={206} y={y + 3} textAnchor="end" fontFamily="JetBrains Mono, ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.55)" fontWeight={500}>
+                <text x={206} y={y + 3} textAnchor="end" fontFamily="Red Hat Display, sans-serif" fontSize={9} fill="rgba(255,255,255,0.55)" fontWeight={500}>
                   {label}
                 </text>
               </g>
@@ -214,7 +214,7 @@ export default function QBRoomHeatmap({ qbName, teamAbbr, summary, redZonePlays,
                     x={pos.cx}
                     y={pos.cy - 1}
                     textAnchor="middle"
-                    fontFamily="JetBrains Mono, ui-monospace, monospace"
+                    fontFamily="Red Hat Display, sans-serif"
                     fontSize={12}
                     fontWeight={700}
                     fill="#fff"
@@ -228,7 +228,7 @@ export default function QBRoomHeatmap({ qbName, teamAbbr, summary, redZonePlays,
                     x={pos.cx}
                     y={pos.cy + 11}
                     textAnchor="middle"
-                    fontFamily="JetBrains Mono, ui-monospace, monospace"
+                    fontFamily="Red Hat Display, sans-serif"
                     fontSize={7}
                     fill="rgba(255,255,255,0.75)"
                     stroke="rgba(0,0,0,0.55)"
@@ -244,10 +244,10 @@ export default function QBRoomHeatmap({ qbName, teamAbbr, summary, redZonePlays,
             {/* LOS */}
             <line x1="8" y1="308" x2="212" y2="308" stroke="#3b82f6" strokeWidth={2.2} />
             <circle cx="110" cy="308" r="3.5" fill="#fff" stroke="#1e3a5f" strokeWidth={1} />
-            <text x={14} y={304} fontFamily="JetBrains Mono, ui-monospace, monospace" fontSize={8} fill="#93c5fd" fontWeight={600}>
+            <text x={14} y={304} fontFamily="Red Hat Display, sans-serif" fontSize={8} fill="#93c5fd" fontWeight={600}>
               LOS
             </text>
-            <text x={206} y={304} textAnchor="end" fontFamily="JetBrains Mono, ui-monospace, monospace" fontSize={8} fill="#93c5fd" fontWeight={600}>
+            <text x={206} y={304} textAnchor="end" fontFamily="Red Hat Display, sans-serif" fontSize={8} fill="#93c5fd" fontWeight={600}>
               LOS
             </text>
           </svg>

@@ -111,11 +111,11 @@ export default function LineupCompare({ awayBatters, homeBatters, awayAbbr, home
             <button
               key={c.key}
               onClick={() => locked ? setUpgradeReason(`${c.label} stats`) : setCategory(c.key)}
-              className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-full border transition ${
+              className={`font-mono text-[10.5px] uppercase tracking-widest px-3.5 py-2 rounded-sm border transition ${
                 category === c.key ? 'bg-[#1A1A1A] text-yellow-300 border-[#1A1A1A]' : 'bg-white text-stone-500 border-stone-300 hover:border-stone-900'
               }`}
             >
-              {c.label}{locked && ' 🔒'}
+              {c.label}{locked && ''}
             </button>
           )
         })}

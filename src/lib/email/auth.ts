@@ -8,6 +8,7 @@ import {
   COLORS,
   FONTS,
 } from './layout'
+import { SITE_HOST } from '@/lib/site'
 
 function ctaButton(href: string, label: string): string {
   return `
@@ -121,7 +122,7 @@ export function welcomeEmail(email: string, preferencesToken: string) {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
-            x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
+            x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;${SITE_HOST}
           </td>
           <td align="right">
             <a href="${unsubscribeUrl}" style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.08em;color:${COLORS.muted};text-decoration:none;">

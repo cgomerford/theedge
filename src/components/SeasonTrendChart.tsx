@@ -127,8 +127,8 @@ export default function SeasonTrendChart({ players }: { players: SelectedPlayer[
         <div ref={chartRef} className="border border-stone-200 bg-white p-4">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData} margin={{ top: 16, right: 32, bottom: 0, left: 0 }}>
-              <XAxis dataKey="gameNumber" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} label={{ value: 'Game #', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'monospace' }} />
-              <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} tickFormatter={v => metricMeta.format(v)} width={50} domain={['auto', 'auto']} />
+              <XAxis dataKey="gameNumber" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} label={{ value: 'Game #', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+              <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} tickFormatter={v => metricMeta.format(v)} width={50} domain={['auto', 'auto']} />
               <Tooltip
   formatter={(value) => {
     const v = Array.isArray(value) ? value[0] : value
@@ -141,7 +141,7 @@ export default function SeasonTrendChart({ players }: { players: SelectedPlayer[
                   const p = batters.find(b => String(b.id) === value)
                   return p ? p.fullName : value
                 }}
-                wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }}
+                wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }}
               />
               {batters.map((p, i) => {
                 const color = colorFor(p, i)

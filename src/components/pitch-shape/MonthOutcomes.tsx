@@ -54,7 +54,7 @@ export default function MonthOutcomes({ periods, pitchName, unit }: { periods: P
           return (
             <div key={m.key} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', color: COLOR[m.key], fontVariantNumeric: 'tabular-nums' }}>
               <span>{m.title}</span>
-              <b>{raw == null ? '—' : `${m.fmt(raw)}${m.unit}`}{idx >= 0 && stand[m.key].best === idx ? ' ★' : ''}{m.key === 'weak' && idx >= 0 && raw != null && isThinWeak(periods[idx]) ? ' †' : ''} <span style={{ fontWeight: 500, color: C.faint }}>n={row[`${m.key}_n`] ?? 0}</span></b>
+              <b>{raw == null ? '—' : `${m.fmt(raw)}${m.unit}`}{idx >= 0 && stand[m.key].best === idx ? '' : ''}{m.key === 'weak' && idx >= 0 && raw != null && isThinWeak(periods[idx]) ? ' †' : ''} <span style={{ fontWeight: 500, color: C.faint }}>n={row[`${m.key}_n`] ?? 0}</span></b>
             </div>
           )
         })}
@@ -106,7 +106,7 @@ export default function MonthOutcomes({ periods, pitchName, unit }: { periods: P
           </div>
           {on.size === 0 && <p className="pv-note">Turn a line on to see it.</p>}
           <p className="pv-note" style={{ fontSize: 11.5, marginBottom: 0 }}>
-            Each line runs from its lowest {unit} (bottom) to its highest (top), so measures on different scales can share one chart. Hover for the real numbers and the sample behind each point. Gold dot ★ = standout {unit} for that measure.
+            Each line runs from its lowest {unit} (bottom) to its highest (top), so measures on different scales can share one chart. Hover for the real numbers and the sample behind each point. Gold dot = standout {unit} for that measure.
           </p>
         </div>
       )}

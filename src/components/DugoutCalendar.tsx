@@ -218,7 +218,7 @@ export default function DugoutCalendar({
   }
 
   const summary = summarizeMonth(games)
-  const streakSymbol = summary.current_streak.type === 'W' ? '🔥' : summary.current_streak.type === 'L' ? '🧊' : ''
+  const streakSymbol = summary.current_streak.type === 'W' ? '' : summary.current_streak.type === 'L' ? '' : ''
 
   const cells: Array<{ day: number | null; iso: string | null }> = []
   for (let i = 0; i < startWeekday; i++) cells.push({ day: null, iso: null })

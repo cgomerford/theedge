@@ -73,7 +73,7 @@ function PitcherRow({ p, badge }: { p: PitcherVs; badge?: string }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[12px] font-bold text-stone-900">{p.name}</span>
-          {badge && <span className="text-[8px] font-mono uppercase tracking-wide bg-[#FF5722] text-white rounded-full px-1.5 py-0.5">{badge}</span>}
+          {badge && <span className="text-[8px] font-mono uppercase tracking-wide bg-[#FF5722] text-white rounded-sm px-1.5 py-0.5">{badge}</span>}
         </div>
         <VsLine vs={p.vs} />
       </div>
@@ -219,7 +219,7 @@ export default function BatterH2H({ batterId, batterName, batterTeamId, batterLo
                 {payload.starters.length > 0 && (
                   <button
                     onClick={() => setShowSeriesShare(v => !v)}
-                    className="w-full font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722]"
+                    className="w-full font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722]"
                   >
                     {showSeriesShare ? 'Hide share graphic' : 'Share this matchup ↗'}
                   </button>
@@ -393,7 +393,7 @@ export default function BatterH2H({ batterId, batterName, batterTeamId, batterLo
             value={query}
             onChange={e => { setQuery(e.target.value); if (pitcher) { setPitcher(null); setVs(null) } }}
             placeholder="Search any real MLB pitcher…"
-            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-full px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
+            className="w-full text-[13px] bg-white border border-[#DEDACE] rounded-sm px-4 py-2.5 outline-none focus:border-[#FF5722] transition"
           />
           {visibleResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -411,7 +411,7 @@ export default function BatterH2H({ batterId, batterName, batterTeamId, batterLo
           <div className="mt-4 flex items-center gap-2">
             <img src={mlbHeadshot(pitcher.id)} alt="" width={26} height={26} style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
             <span className="text-[13px] font-bold text-stone-900">{pitcher.fullName}</span>
-            <button onClick={() => { setPitcher(null); setQuery(''); setVs(null) }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">✕ clear</button>
+            <button onClick={() => { setPitcher(null); setQuery(''); setVs(null) }} className="text-[10px] font-mono text-stone-400 hover:text-stone-700 ml-2">clear</button>
           </div>
         )}
       </div>

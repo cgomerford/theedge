@@ -90,7 +90,7 @@ export default function CompareTeams({
         </div>
         <div className="flex items-center gap-3">
           <CardExportToolbar targetRef={cardRef} fileName={`${teamAName}-vs-${teamBName}-the-edge`.replace(/\s+/g, '-').toLowerCase()} />
-          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900 text-sm">✕ Close compare</button>
+          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900 text-sm">Close compare</button>
         </div>
       </div>
       {loading ? (

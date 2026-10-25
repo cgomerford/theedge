@@ -62,7 +62,7 @@ export const SCOUT_SECTIONS: ScoutSectionMeta[] = [
       'Catcher vs batter initiation split, if available',
       'Leverage / late-game tendency when public',
       'Plain watch-for: conserve vs aggressive profile (information, not advice)',
-      'Source: Savant ABS boards',
+      'ABS challenge log',
     ],
   },
   {

@@ -36,10 +36,10 @@ export default function EdgePlusRadarChart({ pitches }: { pitches: RadarPitch[] 
       <ResponsiveContainer width="100%" height={360}>
         <RadarChart data={data} outerRadius="68%">
           <PolarGrid stroke="#e7e5e4" />
-          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'monospace', fill: '#78716c' }} />
+          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716c' }} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
           <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v}th pctile` : '—')} />
-          <Legend wrapperStyle={{ fontFamily: 'monospace', fontSize: 10 }} />
+          <Legend wrapperStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 10 }} />
           {withData.map(p => (
             <Radar key={p.pitchType} name={p.name} dataKey={p.pitchType} stroke={pitchColor(p.pitchType)} fill={pitchColor(p.pitchType)} fillOpacity={0.14} strokeWidth={2} isAnimationActive={false} />
           ))}

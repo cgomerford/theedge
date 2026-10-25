@@ -137,7 +137,7 @@ function LocationModal({
             onClick={onClose}
             className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 text-sm"
           >
-            ✕
+            Close
           </button>
         </div>
         <FullLocationChart points={points} color={color} typeName={typeName} />

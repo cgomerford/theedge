@@ -13,6 +13,7 @@
 // so explicitly ("season avg — tonight not yet tracked") rather than ever
 // presenting a season number as if it were tonight's.
 
+import XMark from '@/components/XMark'
 import { forwardRef } from 'react'
 import type { PitcherGameLine, PitchRecord } from '@/types/postgame'
 import type { GameInfo } from '@/lib/postgame'
@@ -21,6 +22,7 @@ import type { PitcherGameArmAngle } from '@/lib/pitcher-game-arm-angle'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import { C, MONO } from '@/components/team/ui'
 import { cardCss } from '@/components/admin/scout-graphic/ScoutGraphicCard'
+import { SITE_HOST } from '@/lib/site'
 
 export type InGamePitcherCardProps = {
   dateLabel: string
@@ -129,7 +131,7 @@ const InGamePitcherCard = forwardRef<HTMLDivElement, InGamePitcherCardProps>(fun
 
       <div className="sg-sec">
         <div className="sg-sechead">
-          <span className="sg-no">§ 01</span><h2>On the mound</h2>
+          <span className="sg-no"><XMark /> 01</span><h2>On the mound</h2>
           <span className="sg-tag">{gameInfo.venue ?? teamAbbr} · vs {opponentAbbr}</span>
         </div>
         <div className="sg-mound">
@@ -173,7 +175,7 @@ const InGamePitcherCard = forwardRef<HTMLDivElement, InGamePitcherCardProps>(fun
       </div>
 
       <div className="sg-sec">
-        <div className="sg-sechead"><span className="sg-no">§ 02</span><h2>Movement</h2><span className="sg-tag">induced break, this game</span></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 02</span><h2>Movement</h2><span className="sg-tag">induced break, this game</span></div>
         <div className="sg-move">
           {movement.length > 0 ? (
             <>
@@ -198,7 +200,7 @@ const InGamePitcherCard = forwardRef<HTMLDivElement, InGamePitcherCardProps>(fun
       </div>
 
       <div className="sg-sec">
-        <div className="sg-sechead"><span className="sg-no">§ 03</span><h2>Arm angle</h2><span className="sg-tag">{armTag}</span></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 03</span><h2>Arm angle</h2><span className="sg-tag">{armTag}</span></div>
         <div style={{ padding: '16px 20px 18px' }}>
           {armAngle && armAngle.overallAvgArmAngle != null ? (
             <div className="sg-arm">
@@ -214,7 +216,7 @@ const InGamePitcherCard = forwardRef<HTMLDivElement, InGamePitcherCardProps>(fun
       </div>
 
       <div className="sg-sec sg-mod sg-grow">
-        <div className="sg-sechead"><span className="sg-no">§ 04</span><h2>Sequencing & command</h2></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 04</span><h2>Sequencing & command</h2></div>
         <div className="sg-body">
           <p style={{ margin: '0 0 14px', fontSize: 14.5, lineHeight: 1.45, color: '#3d372e' }}>
             {sequenceHeadline ? `Went to the ${sequenceHeadline}` : 'No dominant count/pitch pattern yet.'}
@@ -232,7 +234,7 @@ const InGamePitcherCard = forwardRef<HTMLDivElement, InGamePitcherCardProps>(fun
         <div className="sg-src">{sources}</div>
         <div className="sg-cta">
           <div className="sg-l">Full report</div>
-          <div className="sg-u">edgereportdaily.com</div>
+          <div className="sg-u">{SITE_HOST}</div>
         </div>
       </div>
     </div>

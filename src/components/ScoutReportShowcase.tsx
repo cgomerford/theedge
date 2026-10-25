@@ -17,6 +17,7 @@
 // runs 0 -> -50% linearly and repeats — seamless loop, same pattern as
 // the homepage's stat marquee.
 
+import XMark from '@/components/XMark'
 import { useEffect, useRef, useState } from 'react'
 
 function MiniCard({ title, children }: { title: string; children: React.ReactNode }) {
@@ -65,7 +66,7 @@ function ReportContent() {
         <div className="w-8 h-8 rounded-full bg-[#FF5722]" />
       </div>
       <div className="font-mono text-[7px] uppercase tracking-widest text-[#FF5722] text-center mb-4">
-        § Scouting report
+        <XMark /> Scouting report
       </div>
 
       <MiniCard title="Season numbers · TEAM A">
@@ -120,9 +121,8 @@ function ReportContent() {
         </div>
       </MiniCard>
 
-      <MiniCard title="Ballpark & weather">
+      <MiniCard title="Ballpark">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[7px] text-[#4A4740]">12mph out to left</span>
           <span className="font-mono text-[7px] text-[#FF5722]">HR factor +8%</span>
         </div>
       </MiniCard>

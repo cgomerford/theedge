@@ -141,7 +141,7 @@ export default function PitcherTrends({ data, color }: { data: PitcherTrendsData
       <Foot>ERA and FIP pool the last {win} outings&apos; box-score innings, earned runs, strikeouts, walks, hit batters and homers (FIP constant {data.cFIP.toFixed(2)}, from this season&apos;s league totals). xwOBA against stands in for xERA: it is the input to it, not Savant&apos;s own xERA number, which we don&apos;t recompute.</Foot>
 
       <Foot>
-        Source: Statcast pitch and batted-ball events (loaded nightly, from March 27) and MLB box scores. Velocity is release speed; whiff counts swinging strikes and foul tips. Extension and spin are not shown — they are not in the stored pitch table. These describe how he has changed against his own baseline — they are not a forecast.
+ Velocity is release speed; whiff counts swinging strikes and foul tips. Extension and spin are not shown — they are not in the stored pitch table. These describe how he has changed against his own baseline — they are not a forecast.
       </Foot>
     </div>
   )

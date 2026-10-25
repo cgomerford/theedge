@@ -117,7 +117,7 @@ export default function NflCoverageDiagram({ coverage, height = 260 }: { coverag
 
         {shell.safety.map((s, i) => <NflPlayerDot key={i} x={s.x} y={s.y} label="S" jersey={i === 0 ? 27 : 33} side="defense" />)}
       </NflFieldBase>
-      <div style={{ textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', marginTop: 6, letterSpacing: '0.06em' }}>
+      <div style={{ textAlign: 'center', fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', marginTop: 6, letterSpacing: '0.06em' }}>
         {coverage} · NICKEL PERSONNEL
       </div>
     </div>

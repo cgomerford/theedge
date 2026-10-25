@@ -113,7 +113,7 @@ export default function BoxScoreModal({
         {/* Header */}
         <div style={S.header}>
           <span style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'Red Hat Display', sans-serif",
             fontSize: '15px', fontWeight: 700, color: '#FAF8F3',
           }}>
             {gameLabel} Box Score
@@ -125,7 +125,7 @@ export default function BoxScoreModal({
             width: '32px', height: '32px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: '16px',
-          }}>✕</button>
+          }}>Remove</button>
         </div>
 
         {/* Score strip */}
@@ -133,12 +133,12 @@ export default function BoxScoreModal({
           {/* Away */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '13px', fontWeight: 700, letterSpacing: '1px',
               color: 'rgba(255,255,255,0.5)',
             }}>{awayAbbr}</span>
             <span style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '32px', fontWeight: 700,
               color: awayWon ? '#FAF8F3' : 'rgba(255,255,255,0.3)',
               lineHeight: 1,
@@ -146,7 +146,7 @@ export default function BoxScoreModal({
           </div>
 
           <span style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'Red Hat Display', sans-serif",
             fontSize: '11px', color: 'rgba(255,255,255,0.3)',
             textTransform: 'uppercase', letterSpacing: '1.5px',
           }}>Final</span>
@@ -154,13 +154,13 @@ export default function BoxScoreModal({
           {/* Home */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'flex-end' }}>
             <span style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '32px', fontWeight: 700,
               color: !awayWon ? '#FAF8F3' : 'rgba(255,255,255,0.3)',
               lineHeight: 1,
             }}>{homeScore}</span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '13px', fontWeight: 700, letterSpacing: '1px',
               color: 'rgba(255,255,255,0.5)',
             }}>{homeAbbr}</span>
@@ -170,13 +170,13 @@ export default function BoxScoreModal({
         {loading ? (
           <div style={{
             padding: '48px', textAlign: 'center',
-            fontFamily: "'JetBrains Mono', monospace", fontSize: '11px',
+            fontFamily: "'Red Hat Display', sans-serif", fontSize: '11px',
             color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1.5px',
           }}>Loading…</div>
         ) : !data ? (
           <div style={{
             padding: '48px', textAlign: 'center',
-            fontFamily: "'JetBrains Mono', monospace", fontSize: '11px',
+            fontFamily: "'Red Hat Display', sans-serif", fontSize: '11px',
             color: 'rgba(255,255,255,0.3)',
           }}>Box score unavailable</div>
         ) : (
@@ -186,7 +186,7 @@ export default function BoxScoreModal({
               {(['away', 'home'] as const).map(side => (
                 <button key={side} onClick={() => setActiveTeam(side)} style={{
                   flex: 1, padding: '12px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 700,
                   background: 'none', border: 'none', cursor: 'pointer',
                   borderBottom: activeTeam === side ? '2px solid #FF5722' : '2px solid transparent',
@@ -203,7 +203,7 @@ export default function BoxScoreModal({
               {(['batting', 'pitching'] as const).map(s => (
                 <button key={s} onClick={() => setActiveSection(s)} style={{
                   padding: '10px 16px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 700,
                   background: 'none', border: 'none', cursor: 'pointer',
                   borderBottom: activeSection === s ? '2px solid #FF5722' : '2px solid transparent',
@@ -239,7 +239,7 @@ function BattingTable({ batters, score, hits }: { batters: Batter[]; score: numb
               <th key={col} style={{
                 padding: '8px 10px',
                 textAlign: i === 0 ? 'left' : 'right',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px',
                 color: 'rgba(255,255,255,0.3)', fontWeight: 500, whiteSpace: 'nowrap',
                 background: '#242426',
@@ -255,7 +255,7 @@ function BattingTable({ batters, score, hits }: { batters: Batter[]; score: numb
             }}>
               <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>
                 <span style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: '10px', color: 'rgba(255,255,255,0.3)',
                   marginRight: '8px',
                 }}>{b.position}</span>
@@ -264,7 +264,7 @@ function BattingTable({ batters, score, hits }: { batters: Batter[]; score: numb
               {[b.ab, b.r, b.h, b.rbi, b.hr, b.bb, b.k].map((val, vi) => (
                 <td key={vi} style={{
                   padding: '9px 10px', textAlign: 'right',
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: '13px',
+                  fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px',
                   color: vi === 2 && val > 0 ? '#FAF8F3'
                        : vi === 4 && val > 0 ? '#FF5722'
                        : val === 0 ? 'rgba(255,255,255,0.2)'
@@ -274,12 +274,12 @@ function BattingTable({ batters, score, hits }: { batters: Batter[]; score: numb
               ))}
               <td style={{
                 padding: '9px 10px', textAlign: 'right',
-                fontFamily: "'JetBrains Mono', monospace", fontSize: '12px',
+                fontFamily: "'Red Hat Display', sans-serif", fontSize: '12px',
                 color: 'rgba(255,255,255,0.4)',
               }}>{b.avg ?? '—'}</td>
               <td style={{
                 padding: '9px 10px', textAlign: 'right',
-                fontFamily: "'JetBrains Mono', monospace", fontSize: '12px',
+                fontFamily: "'Red Hat Display', sans-serif", fontSize: '12px',
                 color: 'rgba(255,255,255,0.4)',
               }}>{b.ops ?? '—'}</td>
             </tr>
@@ -287,14 +287,14 @@ function BattingTable({ batters, score, hits }: { batters: Batter[]; score: numb
         </tbody>
         <tfoot>
           <tr style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: '#242426' }}>
-            <td style={{ padding: '8px 10px', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Totals</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.ab, 0)}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{score}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{hits}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.rbi, 0)}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.hr, 0)}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.bb, 0)}</td>
-            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.k, 0)}</td>
+            <td style={{ padding: '8px 10px', fontFamily: "'Red Hat Display', sans-serif", fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Totals</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.ab, 0)}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{score}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{hits}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.rbi, 0)}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.hr, 0)}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.bb, 0)}</td>
+            <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '13px', fontWeight: 700, color: '#FAF8F3' }}>{batters.reduce((s, b) => s + b.k, 0)}</td>
             <td colSpan={2} />
           </tr>
         </tfoot>
@@ -313,7 +313,7 @@ function PitchingTable({ pitchers }: { pitchers: Pitcher[] }) {
               <th key={col} style={{
                 padding: '8px 10px',
                 textAlign: i === 0 ? 'left' : 'right',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px',
                 color: 'rgba(255,255,255,0.3)', fontWeight: 500, whiteSpace: 'nowrap',
                 background: '#242426',
@@ -328,13 +328,13 @@ function PitchingTable({ pitchers }: { pitchers: Pitcher[] }) {
               background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
             }}>
               <td style={{ padding: '9px 10px', color: '#FAF8F3', whiteSpace: 'nowrap', fontWeight: 500 }}>{p.name}</td>
-            <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'rgba(255,255,255,0.6)' }}>{p.h}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: p.r > 3 ? '#EF5350' : 'rgba(255,255,255,0.6)' }}>{p.r}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: p.er > 3 ? '#EF5350' : 'rgba(255,255,255,0.6)', fontWeight: p.er > 3 ? 700 : 400 }}>{p.er}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'rgba(255,255,255,0.6)' }}>{p.bb}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: p.k >= 6 ? '#4CAF50' : 'rgba(255,255,255,0.6)', fontWeight: p.k >= 6 ? 700 : 400 }}>{p.k}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: p.hr > 0 ? '#FF5722' : 'rgba(255,255,255,0.6)' }}>{p.hr}</td>
-              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{p.era ?? '—'}</td>
+            <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: 'rgba(255,255,255,0.6)' }}>{p.h}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: p.r > 3 ? '#EF5350' : 'rgba(255,255,255,0.6)' }}>{p.r}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: p.er > 3 ? '#EF5350' : 'rgba(255,255,255,0.6)', fontWeight: p.er > 3 ? 700 : 400 }}>{p.er}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: 'rgba(255,255,255,0.6)' }}>{p.bb}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: p.k >= 6 ? '#4CAF50' : 'rgba(255,255,255,0.6)', fontWeight: p.k >= 6 ? 700 : 400 }}>{p.k}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", color: p.hr > 0 ? '#FF5722' : 'rgba(255,255,255,0.6)' }}>{p.hr}</td>
+              <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: "'Red Hat Display', sans-serif", fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{p.era ?? '—'}</td>
             </tr>
           ))}
         </tbody>

@@ -183,7 +183,7 @@ export default function PitchView({ seasons, pitchName, hand, isPro }: { seasons
             {months.map((m, i) => (
               <button key={m.month} type="button" className={`pv-pill${i === sel ? ' on' : ''}${i === goldIdx ? ' gold' : ''}`} onClick={() => { setPlaying(false); setSel(i) }}>
                 <i style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 6, background: hex(i, nM), boxShadow: i === sel ? `0 0 0 2px ${C.cream}` : undefined }} />
-                {i === goldIdx ? '★ ' : ''}{lab(m)}
+                {i === goldIdx ? '' : ''}{lab(m)}
               </button>
             ))}
           </div>
@@ -229,7 +229,7 @@ export default function PitchView({ seasons, pitchName, hand, isPro }: { seasons
       </div>
 
       <div style={{ overflowX: 'auto', marginTop: 16 }}>
-        <div className="pv-k" style={{ marginBottom: 6 }}>{unit === 'season' ? 'Season' : 'Month'} log · shape and results · <span style={{ color: GOLD.ink }}>★ gold = standout</span></div>
+        <div className="pv-k" style={{ marginBottom: 6 }}>{unit === 'season' ? 'Season' : 'Month'} log · shape and results · <span style={{ color: GOLD.ink }}>gold = standout</span></div>
         <table className="pv-tbl">
           <thead>
             <tr><th>{unit === 'season' ? 'Season' : 'Month'}</th><th>P</th><th>Velo</th><th>Spin</th><th>IVB</th><th>HB</th><th>Break</th><th>Rel X</th><th>Rel Z</th><th>Ext</th><th>Whiff% / swing</th><th>Swings</th><th>xwOBA con</th><th>Weak %</th><th>BBE</th><th>ABS upheld</th></tr>
@@ -241,12 +241,12 @@ export default function PitchView({ seasons, pitchName, hand, isPro }: { seasons
               const lows: string[] = []
               if (stand.whiff.worst === i) lows.push('Lowest whiff')
               if (stand.xw.worst === i) lows.push('Worst contact')
-              const star = (k: Metric) => (stand[k].best === i ? '★ ' : '')
+              const star = (k: Metric) => (stand[k].best === i ? '' : '')
               return (
                 <tr key={`${m.season}-${m.month}`} className={`${i === sel ? 'sel' : ''}${m.n < MIN_N ? ' small' : ''}`}>
                   <td>
                     <i style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: hex(i, nM), marginRight: 7 }} />{lab(m)}{m.n < MIN_N ? ' *' : ''}
-                    {i === goldIdx && <span className="pv-flag gd">★ Overall</span>}
+                    {i === goldIdx && <span className="pv-flag gd">Overall</span>}
                     {lows.map(t => <span key={t} className="pv-flag r">{t}</span>)}
                   </td>
                   <td>{m.n}</td>
@@ -272,7 +272,7 @@ export default function PitchView({ seasons, pitchName, hand, isPro }: { seasons
       </div>
       <Foot>
         * Under {MIN_N} pitches: drawn faint and left out of the change figures and of the gold marks. Release X is measured from the middle of the rubber (positive toward first base, catcher’s view). IVB = rise compared with a pitch with no spin; HB = arm-side run (left-handers flipped); Break = total movement, √(IVB² + HB²). Whiff% = whiffs ÷ swings ({GATES.swings}+ swings); xwOBA con = expected wOBA on balls in play ({GATES.bbe}+ balls in play, lower is better for the pitcher); Weak % = balls in play Savant classes Weak or Topped, shown from {GATES.weak}+ balls in play (a lower bar than the others, so † marks a thinner sample: harder to judge); ABS upheld = challenged calls on this pitch that stood, with the number of challenges ({GATES.abs}+ to rank). Otherwise —.
-        Gold = the standout {unit} for that measure (needs two or more {unit}s with enough sample). Season rows are pitch-weighted averages of the months. Source: Baseball Savant pitch data (pitch_shape_monthly) and the ABS challenge log. {pitchName}.
+        Gold = the standout {unit} for that measure (needs two or more {unit}s with enough sample). Season rows are pitch-weighted averages of the months. {pitchName}.
       </Foot>
       <MonthOutcomes periods={months} pitchName={pitchName} unit={unit} />
     </div>

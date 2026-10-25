@@ -512,7 +512,7 @@ function GameSequencingPanel({
               key={p.typeCode}
               type="button"
               onClick={() => setSelectedCode(p.typeCode)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-mono text-[10px] border transition ${
+              className={`inline-flex items-center gap-1.5 rounded-sm px-2 py-1 font-mono text-[10px] border transition ${
                 on ? 'text-white border-transparent' : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
               }`}
               style={on ? { background: c } : undefined}

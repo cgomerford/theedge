@@ -48,7 +48,7 @@ function CustomTooltip({
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.12)', borderRadius: 4, padding: '10px 12px', boxShadow: '0 2px 8px rgba(26,26,26,0.08)' }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: 6 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#A3A3A3', marginBottom: 6 }}>
         Season {label}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -58,8 +58,8 @@ function CustomTooltip({
           return (
             <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 2, background: s.color, flexShrink: 0 }} />
-              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 12, color: '#1A1A1A', flex: 1 }}>{s.label}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#1A1A1A' }}>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#1A1A1A', flex: 1 }}>{s.label}</span>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#1A1A1A' }}>
                 {formatValue(entry.value, s.unit)}
               </span>
             </div>
@@ -86,7 +86,7 @@ export default function NflTrendLineChart({
   if (data.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No trend data yet.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No trend data yet.</div>
       </div>
     )
   }
@@ -94,12 +94,12 @@ export default function NflTrendLineChart({
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: '20px 24px' }}>
       {title && (
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, textAlign: 'center', color: '#1A1A1A', letterSpacing: '0.01em', marginBottom: 2 }}>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, textAlign: 'center', color: '#1A1A1A', letterSpacing: '0.01em', marginBottom: 2 }}>
           {title}
         </div>
       )}
       {subtitle && (
-        <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 12, textAlign: 'center', color: '#78716C', marginBottom: 12 }}>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontStyle: 'italic', fontSize: 12, textAlign: 'center', color: '#78716C', marginBottom: 12 }}>
           {subtitle}
         </div>
       )}
@@ -109,7 +109,7 @@ export default function NflTrendLineChart({
         {series.map((s) => (
           <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 18, height: 3, background: s.color, flexShrink: 0, borderRadius: 2 }} />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#1A1A1A', fontWeight: 700 }}>{s.label}</span>
+            <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#1A1A1A', fontWeight: 700 }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -119,12 +119,12 @@ export default function NflTrendLineChart({
           <CartesianGrid strokeDasharray="2 2" stroke="rgba(26,26,26,0.08)" vertical={false} />
           <XAxis
             dataKey="season"
-            tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }}
+            tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }}
             axisLine={{ stroke: 'rgba(26,26,26,0.2)' }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }}
+            tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }}
             axisLine={false}
             tickLine={false}
             width={40}

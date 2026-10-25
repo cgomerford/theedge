@@ -10,6 +10,7 @@
 // Pro:  Movement, Release, Shape comps, all of §02 and §03. The Pro blocks sit inside <ProGate render={...}>, so for a
 //       free viewer they are never constructed and their data is never fetched.
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import FoShell from '@/components/front-office/FoShell'
 import ProGate from '@/components/front-office/ProGate'
@@ -32,11 +33,14 @@ import {
 } from '@/lib/front-office/pitching'
 import { getStabilisation } from '@/lib/front-office/signal'
 import { FO_TEAM } from '@/lib/front-office/team'
+import { pageMeta } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Pitching Desk · Front Office · x9Lab',
-  description: 'The Phillies pitching staff in one cockpit: stuff and shape, execution and results, durability and trajectory.',
-}
+export const metadata = pageMeta({
+  title: 'Phillies pitching desk',
+  description:
+    'The Phillies pitching staff in one place: stuff and shape, execution and results, durability and trajectory, with the pitch counts behind each number.',
+  path: '/mlb/front-office/pitching',
+})
 
 type Props = { searchParams: Promise<{ p?: string; w?: string; side?: string; cmp?: string; pro?: string }> }
 
@@ -78,7 +82,7 @@ function DeskSection({ id, num, title, badges, lede, question, children }: {
   return (
     <section id={id} className="pd-anchor" style={{ marginTop: 44 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <span style={{ fontFamily: MONO, fontSize: 11, color: C.orange, letterSpacing: '.16em' }}>§ {num}</span>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: C.orange, letterSpacing: '.16em' }}><XMark /> {num}</span>
         <h2 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, letterSpacing: '-.01em', margin: 0, lineHeight: 1.1 }}>{title}</h2>
         {badges.map(b => <span key={b} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '.12em', padding: '2px 7px', borderRadius: 5, background: b === 'FREE' ? '#E1F5EE' : b === 'COMING' ? C.soft : C.yellow, color: b === 'FREE' ? '#085041' : C.ink }}>{b}</span>)}
       </div>
@@ -196,13 +200,12 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
                   method={<><b>K−BB%</b> strikeouts minus walks per batter faced; settles first. <b>CSW%</b> called strikes plus whiffs per pitch. <b>xERA</b> from Savant expected stats, a season-long figure. <b>FB Δ</b> primary fastball velocity vs last season. Shading is how many standard deviations a cell sits from the league mean for starters or relievers. <b>Stuff Grade</b> is x9Lab&apos;s own model and arrives in a later release.</>}
                   empty={lines.length === 0 ? `No pitchers have appearances in the ${WIN_LABEL[win].toLowerCase()} window.` : undefined}>
                   <StaffBoard rows={lines} stats={stats} selected={pid} />
-                  <Foot>x9Lab · MLB Stats API, Baseball Savant. Windows end at the last game in the data ({WIN_LABEL[win]}). xERA and FB Δ are season-level, so xERA shows a dash outside the Season window.</Foot>
+                  <Foot>Windows end at the last game in the data ({WIN_LABEL[win]}). xERA and FB Δ are season-level, so xERA shows a dash outside the Season window.</Foot>
                 </ChartCard>
                 <ChartCard id="process-vs-results" title="Process vs results" subtitle="Above the line: ERA worse than expected. Below: outperforming." sources={['SAVANT']} isPro={isPro}
                   method="x = xERA (what the quality of contact, strikeouts and walks deserved), y = actual ERA. Distance from the diagonal is the part of a pitcher's line driven by defence, sequencing and luck, which tends not to repeat. Pitchers with at least 20 IP in the window."
                   empty={scatter.length < 2 ? 'xERA is a season-long Savant figure. Choose the Season window to see this chart.' : undefined}>
                   <ProcessVsResults points={scatter} selected={pid} color={color} />
-                  <Foot>x9Lab · Baseball Savant expected statistics, MLB Stats API.</Foot>
                 </ChartCard>
               </div>
             </DeskSection>
@@ -216,7 +219,7 @@ export default async function PitchingDeskPage({ searchParams }: Props) {
                   method={<><b>IVB</b> induced vertical break: rise relative to a spinless pitch. <b>HB</b> horizontal break, arm side positive (mirrored for left-handers so both hands compare). <b>Active spin</b> share of spin that creates movement (Savant, season-level). <b>VAA</b> vertical approach angle at the front of the plate. <b>RV/100</b> runs saved per 100 pitches, positive = good for the pitcher. <b>Stuff Grade</b> arrives with x9Lab&apos;s own model.</>}
                   empty={arsenal.length === 0 ? `No pitches for ${pitcherRow.name} in this window and batter-side selection.` : undefined}>
                   <ArsenalTable rows={arsenal} league={league} />
-                  <Foot>x9Lab · Baseball Savant pitch-level tracking, {season}. Shading appears where one direction is clearly better (velocity, whiff%, xwOBA) and compares with pitchers who threw 100+ of that pitch.</Foot>
+                  <Foot>Shading appears where one direction is clearly better (velocity, whiff%, xwOBA) and compares with pitchers who threw 100+ of that pitch.</Foot>
                 </ChartCard>
                 <div style={{ marginTop: 12 }}>
                   <ProGate isPro={isPro}

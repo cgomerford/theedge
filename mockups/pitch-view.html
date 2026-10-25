@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pitch View Mockup</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--cream:#FAF8F3;--card:#fff;--ink:#1A1A1A;--orange:#FF5722;--line:#e7e2d8;--soft:#f1eee6;--mute:#8a8275;--faint:#a89e8c}
-*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Red Hat Display',system-ui,sans-serif;font-variant-numeric:tabular-nums}
 .wrap{max-width:1240px;margin:0 auto;padding:22px 24px 40px}
 .kick{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase}
 h1{font-weight:800;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;line-height:1;margin:6px 0 4px}
 .sub{color:var(--mute);font-size:14px;margin-bottom:16px}
 .tabs{display:flex;gap:6px;margin-bottom:12px}
-.tab,.chip,.pill{font:600 13px 'Outfit',sans-serif;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--ink)}
+.tab,.chip,.pill{font:600 13px 'Red Hat Display',sans-serif;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--ink)}
 .tab.on,.chip.on,.pill.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .chip.on i{box-shadow:0 0 0 2px var(--cream)}
@@ -20,7 +20,7 @@ h1{font-weight:800;font-size:clamp(30px,5vw,46px);letter-spacing:-.02em;line-hei
 #stage{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:var(--cream);border:1px solid var(--line)}
 @media(max-width:640px){#stage{aspect-ratio:1/1}}
 canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
-.lbl{position:absolute;transform:translate(-50%,-50%);font:600 11px 'Outfit';color:var(--ink);pointer-events:none;white-space:nowrap;display:none}
+.lbl{position:absolute;transform:translate(-50%,-50%);font:600 11px 'Red Hat Display';color:var(--ink);pointer-events:none;white-space:nowrap;display:none}
 .lbl.pillw{background:var(--ink);color:var(--cream);border-radius:999px;padding:1px 7px;font-size:10px}
 .lbl.or{background:var(--orange);color:#fff;border-radius:999px;padding:2px 9px}
 .lbl.t{color:var(--mute);font-weight:600;font-size:10px}

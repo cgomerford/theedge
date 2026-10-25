@@ -28,7 +28,7 @@ export default function Approach({ data }: { data: SwingLabData | null }) {
   const [hand, setHand] = useState<HandFilter>('all')
   const idx = useMemo(() => (data ? leagueIndex(data.league) : null), [data])
 
-  if (!data || !idx) return <Empty>Approach data isn’t built for this hitter yet. It refreshes weekly from Baseball Savant.</Empty>
+  if (!data || !idx) return <Empty>Approach data isn’t built for this hitter yet.</Empty>
   if (data.nSeason < GATE.season) {
     return <Card><div style={{ textAlign: 'center', padding: '26px 10px' }}>
       <div style={{ fontWeight: 800, fontSize: 20 }}>Not enough pitches yet (n = {fmt(data.nSeason)} of {GATE.season} needed)</div>
@@ -84,7 +84,7 @@ export default function Approach({ data }: { data: SwingLabData | null }) {
               </div>
             )
           })}
-          <Foot>Source: Baseball Savant via pybaseball. Swing rate = swings ÷ pitches seen in that count. A single count needs {GATE.count} pitches to be shown.</Foot>
+          <Foot>Swing rate = swings ÷ pitches seen in that count. A single count needs {GATE.count} pitches to be shown.</Foot>
         </Card>
       </Section>
 
@@ -109,7 +109,7 @@ export default function Approach({ data }: { data: SwingLabData | null }) {
               </div>
             )
           })}
-          <Foot>Source: Baseball Savant via pybaseball. The zone is the rulebook zone: his own height with ball-width padding, drawn in the batter’s frame. Swing rate = swings ÷ pitches seen there. The league rate is the league’s swing rate on the same pitches (same count, pitch family, pitcher hand and spot as each of his), so the gap is not a difference in the pitches he saw. Counts, pitch family and hand are not split unless you choose a split above. A spot needs {GATE.cell} pitches to be shown.</Foot>
+          <Foot>The zone is the rulebook zone: his own height with ball-width padding, drawn in the batter’s frame. Swing rate = swings ÷ pitches seen there. The league rate is the league’s swing rate on the same pitches (same count, pitch family, pitcher hand and spot as each of his), so the gap is not a difference in the pitches he saw. Counts, pitch family and hand are not split unless you choose a split above. A spot needs {GATE.cell} pitches to be shown.</Foot>
         </Card>
       </Section>
 
@@ -180,7 +180,7 @@ function Changed({ data, idx }: { data: SwingLabData; idx: LeagueIndex }) {
             <div className="ap-dd"><b>{val(m.b!)}</b> <small>from {val(m.a!)} · {delta}</small></div></div>
         )
       })}
-      <Foot>Source: Baseball Savant via pybaseball. Same method and minimums as the season view. “Last 30 days” ends on the last game day in the data.</Foot>
+      <Foot>Same method and minimums as the season view. “Last 30 days” ends on the last game day in the data.</Foot>
     </Card>
   )
 }

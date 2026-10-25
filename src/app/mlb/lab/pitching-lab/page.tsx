@@ -14,11 +14,15 @@ import PitchingLabExplorer from '@/components/PitchingLabExplorer'
 import FeaturedPlayers from '@/components/FeaturedPlayers'
 import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
 import { getLeaders } from '@/lib/lab'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: 'Pitching Lab · x9Lab',
-  description: 'Full arsenal breakdown, count tendency, pitch sequencing, and hot zones for any MLB pitcher.',
-}
+export const metadata = pageMeta({
+  title: 'Pitching Lab',
+  description:
+    'Search any MLB pitcher for a full arsenal breakdown: count tendencies, sequencing, locations and hot zones, with the number of pitches behind every stat.',
+  path: '/mlb/lab/pitching-lab',
+})
 
 export const revalidate = 1800
 
@@ -32,13 +36,14 @@ export default async function PitchingLabPage() {
 
   return (
     <main className="min-h-screen bg-stone-50">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Pitching Lab', path: '/mlb/lab/pitching-lab' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
 
       <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">Pitching Lab</div>
-          <div className="text-[26px] font-black text-[#1A1A1A] tracking-tight">Search any pitcher</div>
+          <h1 className="m-0 text-[26px] font-black text-[#1A1A1A] tracking-tight">Search any pitcher</h1>
           <div className="text-[13px] text-[#57534E] mt-1 max-w-[640px]">
             Real arsenal breakdown, pitch movement, count tendency, sequencing, and hot zones — not tied to
             tonight&apos;s slate. Same real data the per-game Pitching Lab tab uses.

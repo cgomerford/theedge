@@ -16,6 +16,7 @@
 // yards) — no sacks or explosive-play columns, since no real data source
 // for those was confirmed during this build.
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import type { LeaderRow } from '@/lib/mlb-leaders'
 import type { NFLLeaderEntry } from '@/lib/nfl/leaders'
@@ -103,10 +104,10 @@ export default function HomeLeaderboards({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-[#FF5722]">§ Leaders</div>
-        <div className="inline-flex gap-[2px] rounded-full border border-[#DEDACE] p-0.5">
-          <button onClick={() => setSport('mlb')} className={`rounded-full text-[9px] font-bold uppercase px-2 py-0.5 transition-colors duration-200 ${sport === 'mlb' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>MLB</button>
-          <button onClick={() => setSport('nfl')} className={`rounded-full text-[9px] font-bold uppercase px-2 py-0.5 transition-colors duration-200 ${sport === 'nfl' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>NFL</button>
+        <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-[#FF5722]"><XMark /> Leaders</div>
+        <div className="inline-flex gap-[2px] rounded-sm border border-[#DEDACE] p-0.5">
+          <button onClick={() => setSport('mlb')} className={`rounded-sm text-[9px] font-bold uppercase px-2 py-0.5 transition-colors duration-200 ${sport === 'mlb' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>MLB</button>
+          <button onClick={() => setSport('nfl')} className={`rounded-sm text-[9px] font-bold uppercase px-2 py-0.5 transition-colors duration-200 ${sport === 'nfl' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>NFL</button>
         </div>
       </div>
 

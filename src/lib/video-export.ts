@@ -7,11 +7,8 @@
 // (2) the record → transcode pipeline.
 //
 // FONT NAMES: canvas ctx.font needs the LITERAL font-family name, not a CSS
-// custom property — `var(--font-fraunces)` does nothing in canvas. FONTS
-// below assumes next/font resolves to family names 'Fraunces', 'Bebas Neue',
-// 'JetBrains Mono', 'Inter' (matching what's used elsewhere in admin
-// components). If your next/font config aliases them to something else,
-// fix the FONTS constants below — nothing else needs to change.
+// custom property. next/font hashes the name, so FONTS reads the real one from
+// --font-redhat at draw time (see src/lib/canvas-font.ts). One family only.
 //
 // Install:
 //   npm install @ffmpeg/ffmpeg @ffmpeg/util
@@ -22,8 +19,10 @@
 // on your whole app — deliberately avoided here since this is one admin
 // tool, not worth the risk of breaking other cross-origin content site-wide.
 
+import { CANVAS_FONTS } from '@/lib/canvas-font'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { Top3Entry } from '@/types/live-tracker'
+import { SITE_HOST } from '@/lib/site'
 
 export interface VideoStatItem extends Top3Entry {
   categoryLabel: string
@@ -36,12 +35,7 @@ const COLORS = {
   gray: '#A3A3A3',
 } as const
 
-const FONTS = {
-  display: 'Fraunces',
-  big: 'Bebas Neue',
-  mono: 'JetBrains Mono',
-  body: 'Inter',
-} as const
+const FONTS = CANVAS_FONTS
 
 const CANVAS = { w: 1080, h: 1920 }
 
@@ -250,7 +244,7 @@ function drawSingleStatContent(
   ctx.textAlign = 'center'
   ctx.fillStyle = COLORS.gray
   ctx.font = `600 24px "${FONTS.mono}"`
-  ctx.fillText('edgereportdaily.com', cx, CANVAS.h - 60)
+  ctx.fillText(`${SITE_HOST}`, cx, CANVAS.h - 60)
   ctx.restore()
   ctx.textAlign = 'left'
 }

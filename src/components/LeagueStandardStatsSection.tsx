@@ -217,7 +217,7 @@ export default function LeagueStandardStatsSection({ rows }: { rows: LeagueTeamS
         <select
           value={selectedTeamId ?? ''}
           onChange={e => setSelectedTeamId(Number(e.target.value))}
-          className="text-[12px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-1.5 cursor-pointer"
+          className="text-[12px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-1.5 cursor-pointer"
         >
           {teamOptions.map(t => (
             <option key={t.id} value={t.id}>{t.short}</option>

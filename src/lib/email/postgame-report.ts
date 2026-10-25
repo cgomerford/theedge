@@ -27,7 +27,7 @@
 //   })
 //
 //   await resend.emails.send({
-//     from: 'x9Lab <hello@edgereportdaily.com>',
+//     from: 'x9Lab <the site domain>',
 //     to: recipientEmail,
 //     subject: email.subject,
 //     html: email.html,
@@ -254,7 +254,7 @@ export function buildPostgameEmail({
   bodyParts.push(spacer(16))
   bodyParts.push(hairline())
 
-  bodyParts.push(kicker('§ Top performers', { color: COLORS.orange, padTop: 24, padBottom: 4 }))
+  bodyParts.push(kicker('Top performers', { color: COLORS.orange, padTop: 24, padBottom: 4 }))
   bodyParts.push(performerRow('Hardest hit ball', report.topPerformers.hardestHitBall[0]))
   bodyParts.push(performerRow('Fastest pitch', report.topPerformers.fastestPitch[0]))
   bodyParts.push(performerRow('Highest spin rate', report.topPerformers.highestSpinRate[0]))
@@ -262,7 +262,7 @@ export function buildPostgameEmail({
   if (report.mostImpactfulAB) {
     bodyParts.push(spacer(8))
     bodyParts.push(hairline())
-    bodyParts.push(kicker('§ The biggest moment', { color: COLORS.orange, padTop: 24, padBottom: 4 }))
+    bodyParts.push(kicker('The biggest moment', { color: COLORS.orange, padTop: 24, padBottom: 4 }))
     bodyParts.push(bodyPara(
       `<strong>${escapeHtml(report.mostImpactfulAB.batterName)}</strong> vs ${escapeHtml(report.mostImpactfulAB.pitcherName)}, ${report.mostImpactfulAB.inning}${report.mostImpactfulAB.half === 'top' ? '▲' : '▼'} — ${escapeHtml(report.mostImpactfulAB.description)}`,
       { padTop: 8, padBottom: 4 },

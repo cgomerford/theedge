@@ -16,12 +16,12 @@ export default function PercentileRadarBase({ axes, series }: { axes: RadarAxis[
     <ResponsiveContainer width="100%" height={320}>
       <RadarChart data={data} outerRadius="70%">
         <PolarGrid stroke="#E7E5E4" />
-        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#78716C' }} />
-        <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#D6D3D1' }} tickCount={5} />
+        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716C' }} />
+        <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#D6D3D1' }} tickCount={5} />
         {series.map(s => (
           <Radar key={s.id} name={s.name} dataKey={s.id} stroke={s.color} fill={s.color} fillOpacity={0.15} strokeWidth={2} />
         ))}
-        <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+        <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
         <Tooltip formatter={(v: any) => `${v}th percentile`} />
       </RadarChart>
     </ResponsiveContainer>

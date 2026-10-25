@@ -38,10 +38,10 @@ export default function PitchGradeRadar({
       <ResponsiveContainer width="100%" height={260}>
         <RadarChart data={axes} outerRadius="70%">
           <PolarGrid stroke="#e7e5e4" />
-          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'monospace', fill: '#78716c' }} />
+          <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716c' }} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
           <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v}th pctile` : '—')} />
-          <Legend wrapperStyle={{ fontFamily: 'monospace', fontSize: 10 }} />
+          <Legend wrapperStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 10 }} />
           <Radar name="League avg" dataKey="league" stroke="#a8a29e" fill="#a8a29e" fillOpacity={0.08} strokeWidth={1} strokeDasharray="3 3" />
           <Radar name="This pitch" dataKey="thisPitch" stroke={color} fill={color} fillOpacity={0.3} strokeWidth={2} />
         </RadarChart>

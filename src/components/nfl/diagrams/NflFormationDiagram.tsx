@@ -47,7 +47,7 @@ export default function NflFormationDiagram({ formation, height = 260 }: { forma
         <NflPlayerDot x={qb.x} y={qb.y} label="QB" jersey={9} side="offense" />
         <NflPlayerDot x={rb.x} y={rb.y} label="RB" jersey={22} side="offense" />
       </NflFieldBase>
-      <div style={{ textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', marginTop: 6, letterSpacing: '0.06em' }}>
+      <div style={{ textAlign: 'center', fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', marginTop: 6, letterSpacing: '0.06em' }}>
         {formation} · 11 PERSONNEL
       </div>
     </div>

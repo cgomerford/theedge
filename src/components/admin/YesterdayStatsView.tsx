@@ -56,19 +56,19 @@ export function YesterdayStatsView({ payload }: { payload: YesterdayStatsPayload
       </div>
 
       <style>{`
-        .ys-wrap { font-family: 'Inter', sans-serif; color: #1A1A1A; background: #FAF8F3; padding: 24px; max-width: 1100px; margin: 0 auto; }
+        .ys-wrap { font-family: 'Red Hat Display', sans-serif; color: #1A1A1A; background: #FAF8F3; padding: 24px; max-width: 1100px; margin: 0 auto; }
         .ys-header { border-bottom: 3px solid #1A1A1A; padding-bottom: 12px; margin-bottom: 20px; }
-        .ys-title { font-family: 'Fraunces', serif; font-weight: 800; font-size: 20px; letter-spacing: -0.3px; }
+        .ys-title { font-family: 'Red Hat Display', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.3px; }
         .ys-glyph { color: #FF5722; margin-right: 4px; }
-        .ys-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #6b6b66; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
-        .ys-empty { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b6b66; padding: 30px 0; }
+        .ys-meta { font-family: 'Red Hat Display', sans-serif; font-size: 10.5px; color: #6b6b66; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+        .ys-empty { font-family: 'Red Hat Display', sans-serif; font-size: 12px; color: #6b6b66; padding: 30px 0; }
         .ys-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
         .ys-card { background: #fff; border: 1px solid #E8E4DA; border-left: 3px solid #FF5722; padding: 12px 14px; }
         .ys-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .ys-cat { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.2px; color: #FF5722; }
-        .ys-copy { font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 8px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; border-radius: 0; }
-        .ys-headline { font-family: Georgia, serif; font-size: 13.5px; line-height: 1.4; margin-bottom: 6px; }
-        .ys-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #1A1A1A; }
+        .ys-cat { font-family: 'Red Hat Display', sans-serif; font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.2px; color: #FF5722; }
+        .ys-copy { font-family: 'Red Hat Display', sans-serif; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 8px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; border-radius: 0; }
+        .ys-headline { font-family: Red Hat Display, sans-serif; font-size: 13.5px; line-height: 1.4; margin-bottom: 6px; }
+        .ys-value { font-family: 'Red Hat Display', sans-serif; font-size: 20px; color: #1A1A1A; }
       `}</style>
     </div>
   )

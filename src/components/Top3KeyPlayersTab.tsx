@@ -23,6 +23,7 @@
  * the rest locked; the popup is Pro-only (LockedTeaser for free).
  */
 
+import XMark from '@/components/XMark'
 import { useMemo, useState } from 'react'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import type { KeyPlayerCandidate, KeyPlayersSnapshot } from '@/lib/key-players'
@@ -46,7 +47,7 @@ type Lean = 'edge' | 'neutral' | 'tough'
 // ─── Shared atoms ─────────────────────────────────────────────────────────
 
 function SectionLabel({ title }: { title: string }) {
-  return <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold">§ {title}</p>
+  return <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold"><XMark /> {title}</p>
 }
 
 function SubHead({ children, hint }: { children: React.ReactNode; hint?: string }) {

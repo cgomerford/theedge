@@ -22,7 +22,7 @@ import { C, Chip, DISCLAIMER, InjuryDot, RestBadge, TeamLogo, WeatherIcon, roofT
 import { CoverageSection, TeamQualitySection } from './LeagueDesk'
 import { LeaderPanel, NflTicker, Sec, Standings, TeamTable, type LeaderTab, type StandingsData, type TeamTableCol, type TeamTableRow, type TickerCard, type TickerWeekData } from './HomeClient'
 
-const FONT = 'var(--font-outfit), system-ui, sans-serif'
+const FONT = 'var(--font-redhat), system-ui, sans-serif'
 
 const CSS = `
 .nfl-page { background: #FAF8F3; min-height: 100vh; font-family: ${FONT}; }
@@ -186,7 +186,7 @@ export default function NflHome({
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       <div style={{ maxWidth: 1600, margin: '0 auto', padding: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
-        <div style={{ width: '100%', maxWidth: 320 }}><PlayerSearch maintenance={false} sport="NFL" rounded /></div>
+        <div style={{ width: '100%', maxWidth: 320 }}><PlayerSearch sport="NFL" rounded /></div>
       </div>
 
       <NflTicker weeks={tickerWeeks} />

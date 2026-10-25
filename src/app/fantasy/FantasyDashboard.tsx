@@ -8,6 +8,7 @@
  *   - Market Movement stretches full-width
  *   - Below it: Regression Watch split (Pitchers left | Batters right)
  */
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import Link from 'next/link'
 import type { FantasyPicksByType, FantasyPick } from '@/lib/fantasy'
@@ -78,7 +79,7 @@ function SectionLabel({ children, live }: { children: React.ReactNode; live?: bo
   return (
     <div className="flex items-center gap-2 mb-3">
       <h2 className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold whitespace-nowrap">
-        § {children}
+        <XMark /> {children}
       </h2>
       <div className="flex-1 h-px bg-stone-200" />
       {live && (

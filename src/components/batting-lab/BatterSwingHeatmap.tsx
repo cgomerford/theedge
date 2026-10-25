@@ -261,7 +261,7 @@ export default function BatterSwingHeatmap({ batterId }: { batterId: number }) {
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`font-mono rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-wide transition ${mode === m ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+                className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] uppercase tracking-wide transition ${mode === m ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
               >
                 {m === 'heatmap' ? 'Heatmap' : 'Individual pitches'}
               </button>
@@ -273,7 +273,7 @@ export default function BatterSwingHeatmap({ batterId }: { batterId: number }) {
             <button
               key={s.key}
               onClick={() => setSubset(s.key)}
-              className={`font-mono rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${subset === s.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${subset === s.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
             >
               {s.label}
             </button>
@@ -283,7 +283,7 @@ export default function BatterSwingHeatmap({ batterId }: { batterId: number }) {
           <div className="flex flex-wrap gap-1.5 mb-4 pt-2.5 border-t border-stone-100">
             <button
               onClick={() => setPitchTypeFilter(null)}
-              className={`font-mono rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${pitchTypeFilter === null ? 'border-stone-800 text-stone-800 bg-stone-100 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${pitchTypeFilter === null ? 'border-stone-800 text-stone-800 bg-stone-100 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
             >
               All pitch types
             </button>
@@ -291,7 +291,7 @@ export default function BatterSwingHeatmap({ batterId }: { batterId: number }) {
               <button
                 key={o.pt}
                 onClick={() => setPitchTypeFilter(pitchTypeFilter === o.pt ? null : o.pt)}
-                className={`font-mono rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${pitchTypeFilter === o.pt ? 'border-stone-800 text-stone-800 bg-stone-100 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+                className={`font-mono rounded-sm border px-2.5 py-1 text-[10px] uppercase tracking-wide transition ${pitchTypeFilter === o.pt ? 'border-stone-800 text-stone-800 bg-stone-100 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
               >
                 {o.name} <span className="text-stone-300">(n={o.n})</span>
               </button>

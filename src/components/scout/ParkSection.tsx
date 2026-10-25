@@ -26,7 +26,7 @@ function ParkInfo() {
         <li><b>Strikeouts / Walks</b> — how often each happens there.</li>
       </ul>
       <p className="mb-1.5"><b>Sessions.</b> Day, night and roof-closed games can play differently (air, shadows, roof), so each is shown, with tonight&apos;s marked.</p>
-      <p><b>Why FanGraphs can differ.</b> These are Baseball Savant&apos;s Statcast park factors over a rolling three seasons. FanGraphs builds its own factors with a different method and window, so the numbers won&apos;t match one for one — neither is wrong.</p>
+      <p><b>Why FanGraphs can differ.</b> These are the public Statcast park factors over a rolling three seasons. FanGraphs builds its own factors with a different method and window, so the numbers won&apos;t match one for one — neither is wrong.</p>
     </InfoButton>
   )
 }
@@ -95,7 +95,7 @@ export default async function ParkSection({ ctx }: { ctx: ScoutContext }) {
       </div>
 
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Source: Baseball Savant Statcast Park Factors, {park.years} rolling (three seasons, so one hot month doesn&apos;t move it). 100 = league average; above 100 favours hitters (for strikeouts, above 100 means more strikeouts). {sessions.includes('Roof Closed') ? 'Roof-closed figures cover only games played with the roof shut.' : 'This park has no roof-closed sample.'} Bars are capped at ±30.
+        Statcast park factors, {park.years} rolling (three seasons, so one hot month doesn&apos;t move it). 100 = league average; above 100 favours hitters (for strikeouts, above 100 means more strikeouts). {sessions.includes('Roof Closed') ? 'Roof-closed figures cover only games played with the roof shut.' : 'This park has no roof-closed sample.'} Bars are capped at ±30.
       </p>
     </div>
   )

@@ -93,7 +93,7 @@ export default function ContactEngine({ leaders, initialSelected = null }: { lea
             </table></div>
           )}
           {rows.length > shown && <button type="button" className="ce-more" onClick={() => setShown(s => s + PAGE)}>Show {Math.min(PAGE, rows.length - shown)} more</button>}
-          <Foot>Source: Baseball Savant via pybaseball. Rates are shares of each hitter’s batted balls; the batted-ball count beside them is the sample. Reliability: Stable {STABLE_BBE}+ batted balls, Moderate 75–{STABLE_BBE - 1}, Thin 30–74 (the list starts at {MIN_LEADERBOARD}). Click a row to highlight the hitter in the scatter; click a name for his full Contact tab.</Foot>
+          <Foot>Rates are shares of each hitter’s batted balls; the batted-ball count beside them is the sample. Reliability: Stable {STABLE_BBE}+ batted balls, Moderate 75–{STABLE_BBE - 1}, Thin 30–74 (the list starts at {MIN_LEADERBOARD}). Click a row to highlight the hitter in the scatter; click a name for his full Contact tab.</Foot>
         </Card>
       </Section>
     </div>

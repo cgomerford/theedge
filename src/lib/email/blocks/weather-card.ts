@@ -58,7 +58,7 @@ export function weatherCardBlock({
   return `
   <tr><td class="brief-pad" style="padding:32px 40px 0;">
     <div style="font-family:${FONTS.mono};font-size:11px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;margin-bottom:10px;">
-      § Conditions
+      Conditions
     </div>
     <p style="font-family:${FONTS.serif};font-size:16px;line-height:1.5;color:${COLORS.ink};margin:0;">
       ${escapeHtml(conditionLine)}${impactNote ? ` ${impactNote}` : ''}

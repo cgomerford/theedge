@@ -9,7 +9,7 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import type { LeagueCoverageTrendPoint, LeagueRouteTrendPoint } from '@/lib/nfl/queries'
 
-const MONO = "'JetBrains Mono', ui-monospace, monospace"
+const MONO = "'Red Hat Display', sans-serif"
 
 // Fixed palette so a given coverage type / route always gets the same
 // color across renders and re-sorts, rather than recharts assigning

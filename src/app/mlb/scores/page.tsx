@@ -3,14 +3,18 @@ import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import LiveGameCard, { type ExtendedMLBGame } from '@/components/LiveGameCard'
 import { getScheduleForDate } from '@/lib/mlb'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
 // Revalidate every 60 seconds so scores stay fresh without hammering the API
 export const revalidate = 60
 
-export const metadata: Metadata = {
-  title: 'Live Scores & Matchups · x9Lab',
-  description: 'Live out-of-town scoreboard and structural matchup breakdowns for every MLB game today.',
-}
+export const metadata = pageMeta({
+  title: 'MLB scores today',
+  description:
+    "Live scores for every MLB game today, with starting pitchers and lineups, and links to each game's preview, scout report and postgame report.",
+  path: '/mlb/scores',
+})
 
 export default async function ScoresPage() {
   // Fetch today's schedule 
@@ -31,6 +35,7 @@ export default async function ScoresPage() {
 
   return (
     <main className="min-h-screen bg-[#fafaf9] text-stone-900 font-sans">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Scores', path: '/mlb/scores' }]} />
       <SiteHeader />
       <MLBSubNav />
 

@@ -24,6 +24,7 @@ import { findTeamByName } from '@/lib/teams'
 import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { buildDailyBrief, type BriefGameContext } from '@/lib/email/daily-brief'
 import { Resend } from 'resend'
+import { CONTACT_EMAIL } from '@/lib/site'
 
 export const maxDuration = 300
 
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
       })
 
       await resend.emails.send({
-        from: 'x9Lab <hello@edgereportdaily.com>',
+        from: `x9Lab <${CONTACT_EMAIL}>`,
         to: sub.email,
         subject: email.subject,
         html: email.html,

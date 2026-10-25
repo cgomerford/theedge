@@ -44,11 +44,11 @@ export function Scatter({ points, xLabel, yLabel, xDecimals = 2, yDecimals = 1, 
           <text x={sx(hi.x) + (sx(hi.x) > W - 80 ? -9 : 9)} y={sy(hi.y) - 8} textAnchor={sx(hi.x) > W - 80 ? 'end' : 'start'} className="fill-stone-800" style={{ font: '700 9.5px ui-sans-serif, system-ui' }}>{hi.label.split(' ').slice(-1)[0]}</text>
         </g>
       )}
-      {corner && best && <text x={corner.x} y={corner.y} textAnchor={corner.a as 'start' | 'end'} className="fill-stone-400" style={{ font: '400 8.5px ui-monospace, monospace' }}>{best.text}</text>}
-      {ticks(x0, x1, xDecimals).map((t, i) => <text key={`x${i}`} x={L + (i / 2) * (W - L - R)} y={H - B + 11} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} className="fill-stone-400" style={{ font: '400 8.5px ui-monospace, monospace' }}>{t}</text>)}
-      {ticks(y0, y1, yDecimals).map((t, i) => <text key={`y${i}`} x={L - 4} y={H - B - (i / 2) * (H - T - B) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 8.5px ui-monospace, monospace' }}>{t}</text>)}
-      <text x={(L + W - R) / 2} y={H - 3} textAnchor="middle" className="fill-stone-500" style={{ font: '600 9px ui-monospace, monospace' }}>{xLabel}</text>
-      <text transform={`translate(9 ${(T + H - B) / 2}) rotate(-90)`} textAnchor="middle" className="fill-stone-500" style={{ font: '600 9px ui-monospace, monospace' }}>{yLabel}</text>
+      {corner && best && <text x={corner.x} y={corner.y} textAnchor={corner.a as 'start' | 'end'} className="fill-stone-400" style={{ font: '400 8.5px monospace' }}>{best.text}</text>}
+      {ticks(x0, x1, xDecimals).map((t, i) => <text key={`x${i}`} x={L + (i / 2) * (W - L - R)} y={H - B + 11} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} className="fill-stone-400" style={{ font: '400 8.5px monospace' }}>{t}</text>)}
+      {ticks(y0, y1, yDecimals).map((t, i) => <text key={`y${i}`} x={L - 4} y={H - B - (i / 2) * (H - T - B) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 8.5px monospace' }}>{t}</text>)}
+      <text x={(L + W - R) / 2} y={H - 3} textAnchor="middle" className="fill-stone-500" style={{ font: '600 9px monospace' }}>{xLabel}</text>
+      <text transform={`translate(9 ${(T + H - B) / 2}) rotate(-90)`} textAnchor="middle" className="fill-stone-500" style={{ font: '600 9px monospace' }}>{yLabel}</text>
     </svg>
   )
 }

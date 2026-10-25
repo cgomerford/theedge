@@ -45,7 +45,7 @@ function CopyTweetButton({ text }: { text: string }) {
 
   return (
     <button type="button" onClick={handleCopy} className="trend-copy-btn">
-      {copied ? '✓ Copied' : 'Copy tweet'}
+      {copied ? 'Copied' : 'Copy tweet'}
     </button>
   )
 }
@@ -234,36 +234,36 @@ export default function TrendingPlayersSection({ trending }: Props) {
 }
 
 const css = `
-.trend-wrap { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.trend-wrap { font-family: 'Red Hat Display', sans-serif; }
 .trend-role-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.trend-role-tab { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 8px 14px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; color: #1A1A1A; }
+.trend-role-tab { font-family: 'Red Hat Display', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 8px 14px; border: 1px solid #1A1A1A; background: #FAF8F3; cursor: pointer; color: #1A1A1A; }
 .trend-role-tab:hover { background: #1A1A1A; color: #FAF8F3; }
 .trend-role-tab.active { background: #1A1A1A; color: #FAF8F3; }
 .trend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .trend-col { display: flex; flex-direction: column; gap: 10px; }
 .trend-col-head { display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid #1A1A1A; padding-bottom: 6px; margin-bottom: 4px; }
 .trend-col-mark { color: #FF5722; font-size: 16px; }
-.trend-col-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: .5px; }
+.trend-col-title { font-family: 'Red Hat Display', sans-serif; font-size: 20px; letter-spacing: .5px; }
 .trend-col-sub { margin-left: auto; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #6b6b66; }
 .trend-empty { border: 1px dashed #1A1A1A1a; padding: 14px; font-size: 12px; color: #6b6b66; background: #fff; }
 .trend-list { display: flex; flex-direction: column; gap: 8px; }
 .trend-card { border: 1px solid #1A1A1A1a; background: #fff; padding: 10px 12px; }
 .trend-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.trend-rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: #FF5722; width: 22px; text-align: center; flex-shrink: 0; }
+.trend-rank { font-family: 'Red Hat Display', sans-serif; font-size: 22px; color: #FF5722; width: 22px; text-align: center; flex-shrink: 0; }
 .trend-headshot { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #F0EBE0; flex-shrink: 0; }
 .trend-id { min-width: 0; }
-.trend-name { font-family: Fraunces, Georgia, serif; font-weight: 700; font-size: 13.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trend-name { font-family: Red Hat Display, sans-serif; font-weight: 700; font-size: 13.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trend-meta { font-size: 9.5px; color: #6b6b66; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
 .trend-stats { display: grid; gap: 4px; border-top: 1px dashed #1A1A1A1a; border-bottom: 1px dashed #1A1A1A1a; padding: 8px 0; margin-bottom: 8px; }
 .trend-stat { text-align: center; }
-.trend-stat-v { font-family: 'Bebas Neue', sans-serif; font-size: 15px; line-height: 1; }
+.trend-stat-v { font-family: 'Red Hat Display', sans-serif; font-size: 15px; line-height: 1; }
 .trend-stat-l { font-size: 8px; color: #6b6b66; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
 .trend-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .trend-score { line-height: 1; }
-.trend-score-v { font-family: 'Bebas Neue', sans-serif; font-size: 14px; }
+.trend-score-v { font-family: 'Red Hat Display', sans-serif; font-size: 14px; }
 .trend-score-l { font-size: 8px; color: #6b6b66; text-transform: uppercase; letter-spacing: .5px; margin-left: 5px; }
 .trend-actions { display: flex; gap: 6px; }
-.trend-copy-btn, .trend-graphic-btn { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border: 1px solid #1A1A1A; background: #FAF8F3; padding: 5px 9px; cursor: pointer; color: #1A1A1A; }
+.trend-copy-btn, .trend-graphic-btn { font-family: 'Red Hat Display', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; border: 1px solid #1A1A1A; background: #FAF8F3; padding: 5px 9px; cursor: pointer; color: #1A1A1A; }
 .trend-copy-btn:hover, .trend-graphic-btn:hover { background: #1A1A1A; color: #FAF8F3; }
 .trend-graphic-reveal { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #1A1A1A1a; }
 @media (max-width: 900px) {

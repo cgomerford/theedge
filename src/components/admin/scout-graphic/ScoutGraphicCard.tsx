@@ -13,11 +13,12 @@
 //                        13-zone overlay + "the read".
 //   §03 Career H2H / §04 At the park — optional, only with real samples.
 //
-// Fonts: CSS variables from next/font (never a literal family name) — Outfit
-// for headers/bold/numbers, JetBrains Mono for light labels (DESIGN_SYSTEM §1).
+// Fonts: CSS variables from next/font (never a literal family name) — Red Hat
+// for headers/bold/numbers, Red Hat Display for light labels (DESIGN_SYSTEM §1).
 // Layout is plain CSS in a <style> block (Tailwind responsive is unreliable
 // under Turbopack, and a fixed-pixel export card has no breakpoints anyway).
 
+import XMark from '@/components/XMark'
 import { forwardRef } from 'react'
 import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import type { PitcherHotZones } from '@/lib/hot-zones'
@@ -28,6 +29,7 @@ import type { PitcherGameLog } from '@/lib/mlb'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import { C, SANS, MONO } from '@/components/team/ui'
 import { METRIC_LABELS, MIN_ZONE_SAMPLE, cellSample, fmtMetric, heatColor, zoneColor, type ZoneMetric } from './zone-utils'
+import { SITE_HOST } from '@/lib/site'
 
 /** Season line for a starter. fip / tto are optional: minor-league fallback profiles don't have them. */
 export type PitcherCardStats = {
@@ -290,7 +292,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
 
       {/* § 01 on the mound */}
       <div className={`sg-sec${hasBatter ? '' : ' sg-grow'}`}>
-        <div className="sg-sechead"><span className="sg-no">§ 01</span><h2>On the mound</h2><span className="sg-tag">{pitcher.levelLabel ? `${new Date().getFullYear()} ${pitcher.levelLabel} · no MLB starts yet` : 'season to date'}</span></div>
+        <div className="sg-sechead"><span className="sg-no"><XMark /> 01</span><h2>On the mound</h2><span className="sg-tag">{pitcher.levelLabel ? `${new Date().getFullYear()} ${pitcher.levelLabel} · no MLB starts yet` : 'season to date'}</span></div>
         <div className="sg-mound">
           <div className="sg-mtop">
             <img className="sg-shot" width={116} height={116} style={{ width: 116, height: 116, border: `4px solid ${pitcher.color}` }}
@@ -363,7 +365,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
       {hasBatter && b && overlay && (
         <div className="sg-sec sg-grow">
           <div className="sg-sechead">
-            <span className="sg-no">§ 02</span><h2>Key matchup</h2>
+            <span className="sg-no"><XMark /> 02</span><h2>Key matchup</h2>
             <span className="sg-tag">{pitcher.name.split(' ').slice(-1)[0]} vs {b.name.split(' ').slice(-1)[0]} · {overlay.pitchName} · {overlay.splitLabel}</span>
           </div>
           <div className="sg-mu" style={{ ['--z' as string]: `${zoneSize}px` }}>
@@ -426,7 +428,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
         <div className={`sg-mods${modules === 2 ? ' sg-two' : ''}`}>
           {props.h2h && (
             <div className="sg-sec sg-mod">
-              <div className="sg-sechead"><span className="sg-no">§ 03</span><h2>Career H2H</h2></div>
+              <div className="sg-sechead"><span className="sg-no"><XMark /> 03</span><h2>Career H2H</h2></div>
               <div className="sg-body">
                 <div className="sg-headline">
                   <span className="sg-big">{props.h2h.hits}-for-{props.h2h.ab}</span>
@@ -447,7 +449,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
           )}
           {props.venue && (
             <div className="sg-sec sg-mod">
-              <div className="sg-sechead"><span className="sg-no">{props.h2h ? '§ 04' : '§ 03'}</span><h2>At {props.venueName}</h2></div>
+              <div className="sg-sechead"><span className="sg-no">{props.h2h ? '04' : '03'}</span><h2>At {props.venueName}</h2></div>
               <div className="sg-body">
                 <div className="sg-headline">
                   <span className="sg-big">{props.venue.avg}</span>
@@ -471,7 +473,7 @@ const ScoutGraphicCard = forwardRef<HTMLDivElement, ScoutGraphicCardProps>(funct
         <div className="sg-src">{sources}</div>
         <div className="sg-cta">
           <div className="sg-l">Full report</div>
-          <div className="sg-u">edgereportdaily.com</div>
+          <div className="sg-u">{SITE_HOST}</div>
         </div>
       </div>
     </div>

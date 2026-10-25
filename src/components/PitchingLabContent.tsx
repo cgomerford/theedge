@@ -15,6 +15,7 @@
 // headline read text alone (see `buildHeadlineRead` export) behind a
 // ProLockOverlay-style teaser, then lock everything below it.
 
+import XMark from '@/components/XMark'
 import { pitchColor } from '@/lib/mlb'
 import React from 'react'
 
@@ -465,7 +466,7 @@ function TimesThrough({ stats }: { stats: PitcherStats | null }) {
             <div key={b.ordinal} className="bg-white px-4 py-5 text-center"
               style={{ background: q.bg }}>
               <div className="font-bold leading-none mb-1"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '36px', color: q.color }}>
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '36px', color: q.color }}>
                 {b.val != null ? b.val.toFixed(3) : '–'}
               </div>
               <div className="font-mono text-[9px] uppercase tracking-wider text-stone-400 mt-1">xwOBA</div>
@@ -528,7 +529,7 @@ function FirstPitch({ stats }: { stats: PitcherStats | null }) {
         {strikeRate != null && (
           <div className="text-center shrink-0">
             <div className="font-bold leading-none"
-              style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '52px',
+              style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '52px',
                 color: isAggressive ? '#15803D' : isPitcher ? '#2563EB' : '#D97706' }}>
               {strikeRate.toFixed(0)}<span style={{ fontSize: '24px' }}>%</span>
             </div>
@@ -710,7 +711,7 @@ export default function PitchingLabContent({
         {hasAway && (
           <section className="md:pr-8 md:border-r md:border-stone-200">
             <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-6">
-              § {awayPitcherName} — {awayAbbr} Starter
+              <XMark /> {awayPitcherName} — {awayAbbr} Starter
             </h3>
             <PitcherBlock
               pitcherName={awayPitcherName!}
@@ -727,7 +728,7 @@ export default function PitchingLabContent({
         {hasHome && (
           <section>
             <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-6">
-              § {homePitcherName} — {homeAbbr} Starter
+              <XMark /> {homePitcherName} — {homeAbbr} Starter
             </h3>
             <PitcherBlock
               pitcherName={homePitcherName!}
@@ -746,7 +747,7 @@ export default function PitchingLabContent({
       {hotZoneSlot && (
         <section className="mt-12">
           <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
-            § Hot Zones
+            <XMark /> Hot Zones
           </h3>
           {hotZoneSlot}
         </section>

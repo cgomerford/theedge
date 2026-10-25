@@ -66,7 +66,7 @@ export default function ScoutStorySlideshow({
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-6">
             <p className="font-mono text-[11px] tracking-[0.3em] text-stone-400">X9LAB</p>
-            <h1 className="text-3xl font-bold leading-none" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
+            <h1 className="text-3xl font-bold leading-none" style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800 }}>
               {awayName}
               <span className="block text-stone-500 text-xl my-2">@</span>
               {homeName}
@@ -120,7 +120,7 @@ export default function ScoutStorySlideshow({
         content: (
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
             <p className="font-mono text-[11px] tracking-widest text-stone-500">FULL REPORT</p>
-            <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800 }}>
+            <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800 }}>
               {awayAbbr} @ {homeAbbr}
             </h2>
             <p className="text-stone-400 text-sm mt-4">Swipe for next game →</p>
@@ -201,7 +201,7 @@ export default function ScoutStorySlideshow({
       <div className="flex items-center gap-4 text-sm">
         <button
           onClick={() => setPlaying(p => !p)}
-          className="px-4 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700"
+          className="px-4 py-1.5 rounded-sm bg-stone-100 hover:bg-stone-200 text-stone-700"
         >
           {playing ? 'Pause' : 'Play'}
         </button>

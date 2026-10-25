@@ -163,14 +163,14 @@ export default function SeasonShapeRiver({ standings }: { standings: MLBDivision
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select value={teamId} onChange={e => { setTeamId(Number(e.target.value)); setRivalId(null) }} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-1.5 cursor-pointer">
+          <select value={teamId} onChange={e => { setTeamId(Number(e.target.value)); setRivalId(null) }} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-1.5 cursor-pointer">
             {teamOptions.map(t => <option key={t.id} value={t.id}>{t.short}</option>)}
           </select>
-          <select value={rivalId ?? ''} onChange={e => setRivalId(e.target.value ? Number(e.target.value) : null)} className="text-[11px] text-[#8A8577] bg-white border border-[#DEDACE] rounded-full px-3 py-1.5 cursor-pointer">
+          <select value={rivalId ?? ''} onChange={e => setRivalId(e.target.value ? Number(e.target.value) : null)} className="text-[11px] text-[#8A8577] bg-white border border-[#DEDACE] rounded-sm px-3 py-1.5 cursor-pointer">
             <option value="">Compare with…</option>
             {rivalTeams.map(t => <option key={t.id} value={t.id}>{t.short}</option>)}
           </select>
-          <div className="flex items-center border border-[#DEDACE] rounded-full overflow-hidden">
+          <div className="flex items-center border border-[#DEDACE] rounded-sm overflow-hidden">
             {([10, 15] as const).map(w => (
               <button
                 key={w}
@@ -199,8 +199,8 @@ export default function SeasonShapeRiver({ standings }: { standings: MLBDivision
                   <stop offset={offsetZero} stopColor={BAD} stopOpacity={0.32} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#B5B0A3' }} tickLine={false} axisLine={{ stroke: '#E8E4DC' }} />
-              <YAxis yAxisId="diff" domain={[yMin, yMax]} tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#B5B0A3' }} tickLine={false} axisLine={false} width={28} />
+              <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#B5B0A3' }} tickLine={false} axisLine={{ stroke: '#E8E4DC' }} />
+              <YAxis yAxisId="diff" domain={[yMin, yMax]} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#B5B0A3' }} tickLine={false} axisLine={false} width={28} />
               <YAxis yAxisId="opp" domain={[0, 1]} hide />
               <Tooltip content={<CustomTooltip team={team.short} rival={rivalTeams.find(t => t.id === rivalId)?.short} ticksByGame={ticksByGame} />} />
 

@@ -13,7 +13,7 @@ interface PlayerPick {
   dials: { key: string; value: number; percentile: number; sampleSize: number }[]
 }
 
-const MONO = "'JetBrains Mono', monospace"
+const MONO = "'Red Hat Display', sans-serif"
 
 function MiniPicker({ season, onPick }: { season: number; onPick: (p: PlayerPick) => void }) {
   const [query, setQuery] = useState('')
@@ -57,7 +57,7 @@ function MiniPicker({ season, onPick }: { season: number; onPick: (p: PlayerPick
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Pick a player..."
-        style={{ width: '100%', padding: '8px 10px', border: '1px solid rgba(26,26,26,0.15)', fontFamily: 'Inter, sans-serif', fontSize: 12, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '8px 10px', border: '1px solid rgba(26,26,26,0.15)', fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, boxSizing: 'border-box' }}
       />
       {open && results.length > 0 ? (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid rgba(26,26,26,0.1)', zIndex: 10, maxHeight: 200, overflowY: 'auto' }}>
@@ -65,7 +65,7 @@ function MiniPicker({ season, onPick }: { season: number; onPick: (p: PlayerPick
             <button
               key={r.id}
               onClick={() => pick(r.id, r.label)}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, fontFamily: 'Inter, sans-serif' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, fontFamily: 'Red Hat Display, sans-serif' }}
             >
               {r.label} <span style={{ color: '#A3A3A3', fontSize: 10 }}>{r.sublabel}</span>
             </button>

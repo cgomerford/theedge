@@ -22,7 +22,7 @@ const W = 520, H = 330, PL = 38, PR = 8, PT = 8, PB = 26
 const LA0 = -40, LA1 = 70, EV0 = 40, EV1 = 115
 const x = (la: number) => PL + ((la - LA0) / (LA1 - LA0)) * (W - PL - PR)
 const y = (ev: number) => PT + (1 - (ev - EV0) / (EV1 - EV0)) * (H - PT - PB)
-const MONO = { font: '400 9px ui-monospace, monospace' } as const
+const MONO = { font: '400 9px monospace' } as const
 
 function Scatter({ balls, color }: { balls: Ball[]; color: string }) {
   const band = [[98, 26], [98, 30], [115, 47], [115, 9]].map(([ev, la]) => `${x(la)},${y(ev)}`).join(' ')
@@ -33,7 +33,7 @@ function Scatter({ balls, color }: { balls: Ball[]; color: string }) {
       <polygon points={band} fill="#FDE047" fillOpacity={0.45} stroke="#d4b400" strokeWidth={0.8} />
       <line x1={PL} x2={W - PR} y1={y(HARD)} y2={y(HARD)} stroke="#a8a29e" strokeDasharray="4 3" />
       <text x={W - PR - 4} y={y(HARD) - 3} textAnchor="end" className="fill-stone-500" style={MONO}>95 mph</text>
-      <text x={x(38)} y={y(112)} textAnchor="middle" style={{ font: '700 9px ui-monospace, monospace', fill: '#a16207' }}>BARREL</text>
+      <text x={x(38)} y={y(112)} textAnchor="middle" style={{ font: '700 9px monospace', fill: '#a16207' }}>BARREL</text>
       {balls.map((b, i) => b.ev != null && b.la != null ? (
         <g key={i} data-tip={i} style={{ cursor: 'pointer' }}>
           <circle cx={x(b.la)} cy={y(b.ev)} r={9} fill="transparent" />

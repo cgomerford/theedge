@@ -61,7 +61,7 @@ export default function ContactScatter({ rows, season, selectedId, onSelect }: {
           </div>
         )}
       </div>
-      <Foot>Source: Baseball Savant via pybaseball. Barrel% = barrels ÷ batted balls; Pull AIR% = pulled fly balls, line drives and popups ÷ batted balls, with spray mirrored for left-handed hitters. Minimum {MIN_LEADERBOARD} batted balls in the {season} regular season; dashed lines are medians of the hitters shown. Hover a dot for the hitter and his sample.</Foot>
+      <Foot>Barrel% = barrels ÷ batted balls; Pull AIR% = pulled fly balls, line drives and popups ÷ batted balls, with spray mirrored for left-handed hitters. Minimum {MIN_LEADERBOARD} batted balls in the {season} regular season; dashed lines are medians of the hitters shown. Hover a dot for the hitter and his sample.</Foot>
     </div>
   )
 }

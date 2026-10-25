@@ -151,7 +151,7 @@ export default function NextStartScouting({ pitcherId, pitcherName, pitcherTeamI
               </span>
               <button
                 onClick={() => setShowShare(v => !v)}
-                className="font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722]"
+                className="font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition border-stone-200 text-stone-500 hover:border-[#FF5722] hover:text-[#FF5722]"
               >
                 {showShare ? 'Hide share graphic' : 'Share this matchup ↗'}
               </button>
@@ -209,7 +209,7 @@ export default function NextStartScouting({ pitcherId, pitcherName, pitcherTeamI
                 {types.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3 pl-8">
                     {types.map(([pt, t]) => (
-                      <span key={pt} className="inline-flex items-center gap-1.5 text-[10px] font-mono bg-stone-50 border border-stone-100 rounded-full px-2.5 py-1">
+                      <span key={pt} className="inline-flex items-center gap-1.5 text-[10px] font-mono bg-stone-50 border border-stone-100 rounded-sm px-2.5 py-1">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: pitchColor(pt) }} />
                         <span className="font-bold text-stone-800">{careerLog && careerLog !== 'error' ? careerLog.pitchNames[pt] ?? pt : pt}</span>
                         <span className="text-stone-400">n={t.count}</span>

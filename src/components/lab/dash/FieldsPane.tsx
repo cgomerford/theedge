@@ -39,7 +39,7 @@ function Picker({ label, optional, value, onChange, onRemove }: { label: string;
 const KINDS: { kind: Kind; label: string; icon: string }[] = [
   { kind: 'kpi', label: 'KPI card', icon: '#' }, { kind: 'scatter', label: 'Scatter', icon: '⁘' },
   { kind: 'bars', label: 'Bars', icon: '▤' }, { kind: 'table', label: 'Table', icon: '▦' },
-  { kind: 'hist', label: 'Histogram', icon: '▂▅▇' }, { kind: 'radar', label: 'Radar', icon: '✶' },
+  { kind: 'hist', label: 'Histogram', icon: '▂▅▇' }, { kind: 'radar', label: 'Radar', icon: 'R' },
   { kind: 'mix', label: 'Pitch-mix donut', icon: '◔' }, { kind: 'dumbbell', label: 'Starters vs bullpen', icon: '●-●' },
   { kind: 'movement', label: 'Movement map', icon: '⊹' }, { kind: 'flight', label: 'Pitch flight (animated)', icon: '▶' }, { kind: 'armclock', label: 'Arm-angle clock', icon: '◜' }, { kind: 'heat', label: 'Pitch-type heatmap', icon: '▩' },
 ]

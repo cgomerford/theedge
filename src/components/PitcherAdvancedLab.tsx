@@ -12,6 +12,7 @@
 // "not enough data yet", never a fake 0 or dash-filled row pretending
 // to be real.
 
+import XMark from '@/components/XMark'
 import { useEffect, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -125,9 +126,9 @@ function VeloSection({ log }: { log: VeloGamePoint[] }) {
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={usable} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
-          <XAxis dataKey="game_date" tick={{ fontSize: 9, fontFamily: 'monospace' }} />
-          <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fontSize: 9, fontFamily: 'monospace' }} unit=" mph" width={55} />
-          <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} />
+          <XAxis dataKey="game_date" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+          <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} unit=" mph" width={55} />
+          <Tooltip contentStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} />
           <Line type="monotone" dataKey="avg_velocity" name="Avg velo" stroke={ORANGE} strokeWidth={2} dot={{ r: 3 }} />
           <Line type="monotone" dataKey="max_velocity" name="Max velo" stroke={BLACK} strokeWidth={1} strokeDasharray="4 3" dot={false} />
         </LineChart>
@@ -163,9 +164,9 @@ function BreakSection({ log }: { log: BreakGamePoint[] }) {
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={points} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
-                <XAxis dataKey="game_date" tick={{ fontSize: 8, fontFamily: 'monospace' }} />
-                <YAxis tick={{ fontSize: 8, fontFamily: 'monospace' }} unit="&quot;" width={40} />
-                <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} />
+                <XAxis dataKey="game_date" tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }} />
+                <YAxis tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }} unit="&quot;" width={40} />
+                <Tooltip contentStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} />
                 <Line type="monotone" dataKey="avg_horizontal_break" name="Horiz." stroke={ORANGE} strokeWidth={2} dot={{ r: 2 }} />
                 <Line type="monotone" dataKey="avg_vertical_break" name="Vert." stroke={BLACK} strokeWidth={2} dot={{ r: 2 }} />
               </LineChart>
@@ -193,10 +194,10 @@ function HRAllowedSection({ log }: { log: HRAllowedPoint[] }) {
         <ResponsiveContainer width="100%" height={180}>
           <ScatterChart margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
-            <XAxis dataKey="game_date" type="category" tick={{ fontSize: 8, fontFamily: 'monospace' }} name="Date" />
-            <YAxis dataKey="hit_distance_ft" tick={{ fontSize: 9, fontFamily: 'monospace' }} unit=" ft" width={50} name="Distance" />
+            <XAxis dataKey="game_date" type="category" tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }} name="Date" />
+            <YAxis dataKey="hit_distance_ft" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} unit=" ft" width={50} name="Distance" />
             <ZAxis dataKey="exit_velocity" range={[40, 160]} name="Exit velo" unit=" mph" />
-            <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} cursor={{ strokeDasharray: '3 3' }} />
+            <Tooltip contentStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} cursor={{ strokeDasharray: '3 3' }} />
             <Scatter data={log} fill={ORANGE} />
           </ScatterChart>
         </ResponsiveContainer>
@@ -221,7 +222,7 @@ function HRAllowedSection({ log }: { log: HRAllowedPoint[] }) {
 function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ {title}</h3>
+      <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4"><XMark /> {title}</h3>
       {children}
     </section>
   )

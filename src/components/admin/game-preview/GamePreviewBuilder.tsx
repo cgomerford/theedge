@@ -23,7 +23,7 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
     <button
       type="button"
       onClick={onClick}
-      className={`font-mono text-[10px] uppercase tracking-wider rounded-full border px-3 py-1.5 transition ${
+      className={`font-mono text-[10px] uppercase tracking-wider rounded-sm border px-3 py-1.5 transition ${
         on ? 'bg-stone-900 border-stone-900 text-white' : 'bg-white border-stone-300 text-stone-500'
       }`}
     >
@@ -127,7 +127,7 @@ export default function GamePreviewBuilder({ games, slateDate }: { games: Builde
       </div>
 
       {!bothKnown && (
-        <p className="text-[11px] font-mono text-orange-600 mb-2">⚠ A probable pitcher hasn&apos;t been announced for this game yet — the card would show an empty side.</p>
+        <p className="text-[11px] font-mono text-orange-600 mb-2">A probable pitcher hasn&apos;t been announced for this game yet — the card would show an empty side.</p>
       )}
       {(game.away.levelLabel || game.home.levelLabel) && (
         <p className="text-[11px] font-mono text-stone-500 mb-2">
@@ -135,7 +135,7 @@ export default function GamePreviewBuilder({ games, slateDate }: { games: Builde
         </p>
       )}
       {overflowPx > 0 && (
-        <p className="text-[11px] font-mono text-red-600 mb-2">⚠ This combination is {overflowPx}px taller than the 4:5 card and will be clipped — turn a module off or shorten the read.</p>
+        <p className="text-[11px] font-mono text-red-600 mb-2">This combination is {overflowPx}px taller than the 4:5 card and will be clipped — turn a module off or shorten the read.</p>
       )}
       {exportError && <p className="text-[11px] font-mono text-red-600 mb-2">{exportError}</p>}
 

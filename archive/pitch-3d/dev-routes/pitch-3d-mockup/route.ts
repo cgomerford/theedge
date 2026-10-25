@@ -9,17 +9,17 @@ export const dynamic = 'force-dynamic'
 const PAGE = String.raw`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pitch 3D Mockup</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--cream:#FAF8F3;--ink:#1A1A1A;--orange:#FF5722;--line:#e7e2d8;--mute:#8a8275}
-*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+*{box-sizing:border-box}html,body{margin:0;background:var(--cream);color:var(--ink);font-family:'Red Hat Display',system-ui,sans-serif;font-variant-numeric:tabular-nums}
 .wrap{max-width:1240px;margin:0 auto;padding:20px 16px}
 h1{font-weight:800;font-size:28px;letter-spacing:-.01em;margin:0 0 4px}h1 b{color:var(--orange)}
 .sub{color:var(--mute);font-size:13px;margin-bottom:14px}
 #stage{position:relative;width:100%;aspect-ratio:16/9;max-height:76vh;background:#0c0f16;border-radius:14px;overflow:hidden}
 @media(max-width:640px){#stage{aspect-ratio:4/5;max-height:none}}
 canvas{width:100%;height:100%;display:block}
-.tag{position:absolute;transform:translate(-50%,-100%);background:var(--cream);color:var(--ink);border-radius:999px;padding:3px 10px 3px 8px;font:600 12px 'Outfit',sans-serif;display:none;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px #0006}
+.tag{position:absolute;transform:translate(-50%,-100%);background:var(--cream);color:var(--ink);border-radius:999px;padding:3px 10px 3px 8px;font:600 12px 'Red Hat Display',sans-serif;display:none;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px #0006}
 .tag i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--orange);margin-right:6px}
 #hud{position:absolute;left:14px;top:12px;color:var(--cream);opacity:0;transition:opacity .25s;pointer-events:none;text-shadow:0 1px 6px #000a}
 #hud .t{font-weight:800;font-size:11px;letter-spacing:.14em;color:var(--orange);text-transform:uppercase}
@@ -27,12 +27,12 @@ canvas{width:100%;height:100%;display:block}
 #hud .m{font-size:13px;font-weight:600;opacity:.9;margin-top:2px}
 #hud .c{display:inline-block;margin-top:6px;font-size:11px;font-weight:600;border:1px solid #FAF8F366;border-radius:999px;padding:2px 9px}
 #legend{position:absolute;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:50%}
-#legend span{font:600 11px 'Outfit';color:var(--cream);background:#0008;border-radius:999px;padding:2px 9px 2px 6px;display:none}
+#legend span{font:600 11px 'Red Hat Display';color:var(--cream);background:#0008;border-radius:999px;padding:2px 9px 2px 6px;display:none}
 #legend span i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 #load{position:absolute;inset:0;display:grid;place-items:center;color:var(--cream);font-weight:600;font-size:14px}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .k{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--orange);text-transform:uppercase;margin:0 2px 0 8px}
-button{font:600 13px 'Outfit',sans-serif;border:0;background:var(--ink);border-radius:999px;padding:8px 15px;cursor:pointer;color:var(--cream)}
+button{font:600 13px 'Red Hat Display',sans-serif;border:0;background:var(--ink);border-radius:999px;padding:8px 15px;cursor:pointer;color:var(--cream)}
 button.on{background:var(--orange);color:#fff}
 .foot{font-size:11px;color:#a89e8c;margin-top:12px;line-height:1.5}
 </style></head><body><div class="wrap">

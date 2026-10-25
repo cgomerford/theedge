@@ -144,7 +144,7 @@ export default function GamePreviewTeaser({ games, slateDate, storyExtras, story
           <button
             key={g.game_pk}
             onClick={() => setActive(i)}
-            className={`px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-sm text-xs font-mono whitespace-nowrap transition-colors ${
               i === active ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
             }`}
           >
@@ -162,11 +162,11 @@ export default function GamePreviewTeaser({ games, slateDate, storyExtras, story
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           {PRESETS.map((p, i) => (
-            <button key={p.label} onClick={() => applyPreset(p.ids)} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">
+            <button key={p.label} onClick={() => applyPreset(p.ids)} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">
               {p.label} · {presetTotals[i].toFixed(1)}s
             </button>
           ))}
-          <button onClick={resetOrder} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Reset order</button>
+          <button onClick={resetOrder} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Reset order</button>
         </div>
         <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {sel.order.map(id => {

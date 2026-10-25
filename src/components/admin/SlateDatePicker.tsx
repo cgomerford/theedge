@@ -19,7 +19,7 @@ function shiftDay(iso: string, days: number): string {
 }
 
 const btn: React.CSSProperties = {
-  fontFamily: 'var(--font-jetbrains), ui-monospace, monospace',
+  fontFamily: 'var(--font-redhat), sans-serif',
   fontSize: 11,
   fontWeight: 700,
   textTransform: 'uppercase',

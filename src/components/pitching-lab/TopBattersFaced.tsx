@@ -111,7 +111,7 @@ export default function TopBattersFaced({ pitcherId }: { pitcherId: number }) {
             <button
               key={s.key}
               onClick={() => setScope(s.key)}
-              className={`font-mono rounded-full border px-2.5 py-1 text-[9px] uppercase tracking-wide transition ${scope === s.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
+              className={`font-mono rounded-sm border px-2.5 py-1 text-[9px] uppercase tracking-wide transition ${scope === s.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-400 hover:border-stone-300'}`}
             >
               {s.label}
             </button>

@@ -10,6 +10,7 @@ import { useState, useRef } from 'react'
 import type { BatterGameLine, BattedBallRecord, PitchRecord } from '@/types/postgame'
 import type { GameInfo } from '@/lib/postgame'
 import { batterExitVeloSummary, buildZonesForBatter } from '@/lib/postgame-batter-adapt'
+import { SITE_HOST } from '@/lib/site'
 
 type Props = {
   batter: BatterGameLine
@@ -144,7 +145,7 @@ export default function PostGameXCardBatter({ batter, battedBalls, pitchLog, tea
 
         {/* Footer */}
         <div className="text-center pt-2 border-t border-stone-100">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · edgereportdaily.com</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · {SITE_HOST}</span>
         </div>
       </div>
     </div>

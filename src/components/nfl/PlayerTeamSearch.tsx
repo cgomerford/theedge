@@ -65,7 +65,7 @@ export function PlayerTeamSearch() {
           background: '#fff',
           border: '1px solid rgba(26,26,26,0.15)',
           padding: '10px 14px',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'Red Hat Display, sans-serif',
           fontSize: 13,
           color: '#1A1A1A',
           boxSizing: 'border-box',
@@ -87,9 +87,9 @@ export function PlayerTeamSearch() {
           }}
         >
           {loading ? (
-            <p style={{ padding: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#A3A3A3', margin: 0 }}>Searching…</p>
+            <p style={{ padding: 12, fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#A3A3A3', margin: 0 }}>Searching…</p>
           ) : results.length === 0 ? (
-            <p style={{ padding: 12, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#A3A3A3', margin: 0 }}>No matches.</p>
+            <p style={{ padding: 12, fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#A3A3A3', margin: 0 }}>No matches.</p>
           ) : (
             results.map((r) => (
               <Link
@@ -118,8 +118,8 @@ export function PlayerTeamSearch() {
                   <div style={{ width: 28, height: 28, background: '#EEE', borderRadius: r.type === 'player' ? '50%' : 0 }} />
                 )}
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, margin: 0 }}>{r.label}</p>
-                  <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3', margin: '1px 0 0', textTransform: 'uppercase' }}>
+                  <p style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 600, fontSize: 13, margin: 0 }}>{r.label}</p>
+                  <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3', margin: '1px 0 0', textTransform: 'uppercase' }}>
                     {r.type} · {r.sublabel}
                   </p>
                 </div>

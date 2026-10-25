@@ -18,7 +18,7 @@ export { C, MONO, SANS, DISPLAY }
 export { Section, Card, Tile, Foot, Empty } from '@/components/team/ui'
 
 export const NFL_CSS = `
-.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-outfit),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
+.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-redhat),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
 .tp-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .tp-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .tp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}

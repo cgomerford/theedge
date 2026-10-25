@@ -1,12 +1,18 @@
+import XMark from '@/components/XMark'
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import { createAdminClient } from '@/lib/supabase';
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata: Metadata = {
-  title: 'Articles — x9Lab',
-  description: 'Analysis, breakdowns, and reads from x9Lab.',
-};
+export const metadata = pageMeta({
+  title: 'Articles',
+  description:
+    'Analysis and breakdowns from x9Lab: pitch-level reads, team trends and player notes, each written around the numbers and the sample behind them.',
+  path: '/articles',
+})
+
 
 export const revalidate = 1800;
 
@@ -58,6 +64,7 @@ export default async function ArticlesIndexPage() {
 
   return (
     <>
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Articles', path: '/articles' }]} />
       <SiteHeader variant="page" />
 
       <div style={{ background: '#FAF8F3', minHeight: '100vh' }}>
@@ -66,7 +73,7 @@ export default async function ArticlesIndexPage() {
           <div style={{ marginBottom: 32, borderBottom: '2px solid #1A1A1A', paddingBottom: 20 }}>
             <div
               style={{
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontSize: 10,
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
@@ -74,11 +81,11 @@ export default async function ArticlesIndexPage() {
                 marginBottom: 6,
               }}
             >
-              § x9Lab
+              <XMark /> x9Lab
             </div>
             <h1
               style={{
-                fontFamily: 'Fraunces, serif',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontWeight: 700,
                 fontSize: 'clamp(32px, 5vw, 48px)',
                 lineHeight: 1.05,
@@ -101,7 +108,7 @@ export default async function ArticlesIndexPage() {
                   <Link
                     href="/articles"
                     style={{
-                      fontFamily: 'JetBrains Mono, monospace',
+                      fontFamily: 'Red Hat Display, sans-serif',
                       fontSize: 11,
                       fontWeight: 700,
                       letterSpacing: '0.04em',
@@ -119,7 +126,7 @@ export default async function ArticlesIndexPage() {
                       key={code}
                       href={`/articles?team=${code}`}
                       style={{
-                        fontFamily: 'JetBrains Mono, monospace',
+                        fontFamily: 'Red Hat Display, sans-serif',
                         fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: '0.04em',
@@ -172,7 +179,7 @@ export default async function ArticlesIndexPage() {
                     )}
                     <div
                       style={{
-                        fontFamily: 'Fraunces, serif',
+                        fontFamily: 'Red Hat Display, sans-serif',
                         fontWeight: 700,
                         fontSize: 'clamp(24px, 3.4vw, 34px)',
                         lineHeight: 1.12,
@@ -186,7 +193,7 @@ export default async function ArticlesIndexPage() {
                         {featured.excerpt}
                       </p>
                     )}
-                    <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, opacity: 0.5 }}>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 11, opacity: 0.5 }}>
                       {featured.author} · {formatDate(featured.published_at)}
                     </div>
                   </div>
@@ -226,7 +233,7 @@ export default async function ArticlesIndexPage() {
                       )}
                       <div
                         style={{
-                          fontFamily: 'Fraunces, serif',
+                          fontFamily: 'Red Hat Display, sans-serif',
                           fontWeight: 600,
                           fontSize: 19,
                           lineHeight: 1.25,
@@ -240,7 +247,7 @@ export default async function ArticlesIndexPage() {
                           {a.excerpt}
                         </p>
                       )}
-                      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, opacity: 0.5 }}>
+                      <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, opacity: 0.5 }}>
                         {a.author} · {formatDate(a.published_at)}
                       </div>
                     </Link>
@@ -267,7 +274,7 @@ export default async function ArticlesIndexPage() {
 }
 
 const teamChipStyle: React.CSSProperties = {
-  fontFamily: 'JetBrains Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 10,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',

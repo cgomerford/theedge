@@ -104,7 +104,7 @@ export default function GamesBoard({ date, today, initialGames }: { date: string
   const count = (s: Filter) => (s === 'all' ? games.length : games.filter(g => g.state === s).length)
   const order = { Live: 0, Preview: 1, Final: 2 } as const
   const shown = games.filter(g => filter === 'all' || g.state === filter).sort((a, b) => order[a.state] - order[b.state] || a.startTime.localeCompare(b.startTime))
-  const chip = (on: boolean): React.CSSProperties => ({ fontFamily: SANS, fontWeight: 600, fontSize: 13, padding: '6px 13px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : C.ink })
+  const chip = (on: boolean): React.CSSProperties => ({ fontFamily: SANS, fontWeight: 600, fontSize: 13, padding: '6px 13px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : C.ink })
 
   return (
     <div style={{ fontFamily: SANS, color: C.ink }}>
@@ -131,7 +131,7 @@ export default function GamesBoard({ date, today, initialGames }: { date: string
       ) : (
         <div className="gm-board">{shown.map(g => <Card key={g.gamePk} g={g} />)}</div>
       )}
-      <div style={{ fontSize: 9.5, color: C.faint, marginTop: 12 }}>Source: MLB Stats API. Today&apos;s games refresh every 15 seconds. Click a game to open every pitch and plate appearance.</div>
+      <div style={{ fontSize: 9.5, color: C.faint, marginTop: 12 }}>Today&apos;s games refresh every 15 seconds. Click a game to open every pitch and plate appearance.</div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import PlayerHeadshot from '@/components/fantasy/PlayerHeadshot'
@@ -274,7 +275,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
         <div className="flex items-baseline justify-between gap-4 flex-wrap">
           <h1
             className="text-4xl sm:text-5xl font-black tracking-tight leading-none"
-            style={{ fontFamily: 'Fraunces, serif' }}
+            style={{ fontFamily: 'Red Hat Display, sans-serif' }}
           >
             Grade your team<span className="text-[#FF5722]">.</span>
           </h1>
@@ -446,7 +447,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
           <div className="grid md:grid-cols-[160px_1fr] border border-stone-900 mb-6 bg-[#1A1A1A] text-white">
             <div className="p-5 border-b md:border-b-0 md:border-r border-white/10 flex flex-col justify-center">
               <div className="font-mono text-[9px] uppercase tracking-widest text-white/50">Team grade</div>
-              <div className="font-black text-[64px] leading-none text-[#FDE047]" style={{ fontFamily: 'Fraunces, serif' }}>
+              <div className="font-black text-[64px] leading-none text-[#FDE047]" style={{ fontFamily: 'Red Hat Display, sans-serif' }}>
                 {g.letter}
               </div>
               <div className="font-mono text-[11px] text-white/60 mt-1">{g.score}/100</div>
@@ -484,7 +485,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
 
           {/* Actions */}
           <div className="mb-8">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] font-bold mb-3">§ This week&apos;s calls</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] font-bold mb-3"><XMark /> This week&apos;s calls</div>
             <div className="flex flex-wrap gap-0 border-b border-stone-200 mb-3">
               {(Object.keys(ACTION_META) as ActionKind[]).map(k => (
                 <button
@@ -535,7 +536,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
 
           {/* Roster table */}
           <div className="mb-8">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] font-bold mb-3">§ Roster · expected score</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] font-bold mb-3"><XMark /> Roster · expected score</div>
             <div className="overflow-x-auto border border-stone-200 bg-white">
               <table className="w-full text-left">
                 <thead>

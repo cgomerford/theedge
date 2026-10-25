@@ -12,16 +12,21 @@ import MLBSubNav from '@/components/MLBSubNav'
 import StatsHub from '@/components/stats/StatsHub'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: 'The Stats · x9Lab',
-  description: 'Search any MLB stat by season, game type, inning, count and more — then chart it, compare years and export it.',
-}
+export const metadata = pageMeta({
+  title: 'MLB stats search',
+  description:
+    'Search any MLB stat by season, game type, inning, count and more, then chart it and compare years. The sample size is shown beside every number.',
+  path: '/mlb/stats',
+})
 
 export default async function MLBStatsPage() {
   const [subscriber, isPro] = await Promise.all([getCurrentSubscriber(), isProViewer()])
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Stats', path: '/mlb/stats' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav isPro={isPro} />
       <StatsHub isPro={isPro} isSignedIn={!!subscriber} />

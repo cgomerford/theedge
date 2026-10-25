@@ -17,6 +17,7 @@ import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { teamLogoUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { TrendingBatter, TrendingPitcher, Level } from '@/lib/trending-players'
+import { SITE_HOST } from '@/lib/site'
 
 const LEVEL_LABEL: Record<Level, string> = { mlb: 'MLB', aaa: 'AAA', aa: 'AA' }
 
@@ -170,7 +171,7 @@ export default function TrendingGraphicCard({
             )}
           </div>
 
-          <div className="tg-foot">edgereportdaily.com</div>
+          <div className="tg-foot">{SITE_HOST}</div>
         </div>
       </div>
 
@@ -188,7 +189,7 @@ const css = `
   position: relative; overflow: hidden;
   width: ${EXPORT_W}px; height: ${EXPORT_H}px;
   background: #1A1A1A; color: #FAF8F3;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Red Hat Display', sans-serif;
   padding: 60px 56px; box-sizing: border-box;
   display: flex; flex-direction: column; justify-content: space-between;
 }
@@ -199,7 +200,7 @@ const css = `
 }
 .tg-watermark span { font-size: 64px; color: #FAF8F3; }
 .tg-topbar { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: baseline; flex-shrink: 0; }
-.tg-brand { font-family: Fraunces, Georgia, serif; font-weight: 900; font-size: 30px; letter-spacing: -.5px; }
+.tg-brand { font-family: Red Hat Display, sans-serif; font-weight: 900; font-size: 30px; letter-spacing: -.5px; }
 .tg-level { font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: #FF5722; font-weight: 700; text-align: right; }
 .tg-hero { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; flex-shrink: 0; }
 .tg-headshot-ring { position: relative; width: 260px; height: 260px; border-radius: 50%; border: 5px solid #FF5722; padding: 6px; margin-bottom: 26px; box-sizing: border-box; }
@@ -207,10 +208,10 @@ const css = `
 .tg-team-logo { position: absolute; bottom: -6px; right: -6px; width: 84px; height: 84px; object-fit: contain; background: #1A1A1A; border-radius: 50%; padding: 6px; box-sizing: border-box; }
 .tg-team-logo-fallback {
   display: flex; align-items: center; justify-content: center;
-  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 20px; letter-spacing: .5px;
+  font-family: 'Red Hat Display', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: .5px;
   color: #FAF8F3; background: #FF5722; border: 3px solid #1A1A1A;
 }
-.tg-name { font-family: Fraunces, Georgia, serif; font-weight: 700; font-size: 56px; line-height: 1.05; }
+.tg-name { font-family: Red Hat Display, sans-serif; font-weight: 700; font-size: 56px; line-height: 1.05; }
 .tg-team { font-size: 19px; letter-spacing: 1.5px; text-transform: uppercase; color: #D8D8D8; margin-top: 10px; }
 .tg-line { font-size: 16px; letter-spacing: .5px; color: #FF5722; margin-top: 12px; font-weight: 700; }
 .tg-stats {
@@ -219,11 +220,11 @@ const css = `
   padding: 34px 0; flex-shrink: 0;
 }
 .tg-stat { text-align: center; }
-.tg-v { font-family: 'Bebas Neue', sans-serif; font-size: 44px; line-height: 1; color: #FAF8F3; }
+.tg-v { font-family: 'Red Hat Display', sans-serif; font-size: 44px; line-height: 1; color: #FAF8F3; }
 .tg-l { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #FF5722; margin-top: 8px; font-weight: 700; }
 .tg-foot { position: relative; z-index: 1; text-align: center; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #8a8a85; flex-shrink: 0; }
 .tg-download-btn {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  font-family: 'Red Hat Display', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
   border: 1px solid #1A1A1A; background: #FF5722; color: #fff; padding: 7px 14px; cursor: pointer;
 }
 .tg-download-btn:hover { background: #e14a19; }

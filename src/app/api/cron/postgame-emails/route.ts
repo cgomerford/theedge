@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { getLiveFeed, getDoubleheaderGames } from '@/lib/mlb-live-feed'
 import { aggregateGameFeed } from '@/lib/postgame-aggregate'
 import { buildPostgameReportEmail } from '@/lib/email/templates/postgame-report'
+import { POSTGAME_EMAIL } from '@/lib/site'
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
@@ -105,7 +106,7 @@ async function sendPostgameEmail(subject: string, html: string): Promise<boolean
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'x9Lab <postgame@edgereportdaily.com>',
+        from: `x9Lab <${POSTGAME_EMAIL}>`,
         // TODO: swap for your actual audience/segment mechanism — this
         // assumes a single "postgame" list id, not per-team subscriptions.
         to: process.env.POSTGAME_AUDIENCE_ID,

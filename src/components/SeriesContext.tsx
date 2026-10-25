@@ -109,7 +109,7 @@ export default function SeriesContext({
         <div>
           <div className="flex items-baseline gap-2">
             <span className="font-display text-3xl leading-none text-stone-900"
-              style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+              style={{ fontFamily: "'Red Hat Display', sans-serif" }}>
               Game {seriesGameNumber}
             </span>
             <span className="font-mono text-xs text-stone-400 uppercase tracking-widest">
@@ -123,7 +123,7 @@ export default function SeriesContext({
 
         {/* Elimination / Decider badge */}
         {isElimination && (
-          <div className="shrink-0 px-3 py-1.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider"
+          <div className="shrink-0 px-3 py-1.5 rounded-sm font-mono text-[10px] font-bold uppercase tracking-wider"
             style={{ background: 'rgba(220,38,38,0.10)', color: '#DC2626' }}>
             {isSeriesDecider ? 'Series Decider' : 'Elimination Game'}
           </div>

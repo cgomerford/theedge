@@ -114,5 +114,5 @@ the starter dashboard. It is not shared across devices or people.
 - **Architecture exception:** these pages pull Savant live (then cache the aggregate). That breaks the project's "precompute, never fetch Savant in a render path" rule, which is acceptable only because they are admin-only trials. Before any of this goes public, move it to a cron → Python → Supabase table → page reads rows.
 - Files are named `*.server-fetch-allowed.ts` so the `guard.sh` fetch check lets them through; keep that suffix on anything in this area that fetches.
 - Admin pages are `force-dynamic`.
-- Fonts/colours follow `DESIGN_SYSTEM.md` (Outfit headers, JetBrains Mono labels, 14px rounded cards).
+- Fonts/colours follow `DESIGN_SYSTEM.md` (Red Hat headers, JetBrains Mono labels, 14px rounded cards).
 - Not yet done: no shared/saved dashboards, no export from the builder, no mobile pass beyond the CSS breakpoints.

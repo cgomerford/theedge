@@ -87,7 +87,7 @@ function GroupBadge({ group }: { group: StatEntry['group'] }) {
   }
   return (
     <span
-      className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+      className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm shrink-0"
       style={{ color: '#fff', background: colors[group] }}
     >
       {group}
@@ -105,7 +105,7 @@ function StatCard({ entry, onClick, active }: { entry: StatEntry; onClick: () =>
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="text-[12.5px] font-bold text-[#1A1A1A]">{entry.fullLabel}</span>
         {entry.tag === 'Statcast' && (
-          <span className="text-[7.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 bg-[#1A1A1A] text-white">Statcast</span>
+          <span className="text-[7.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm shrink-0 bg-[#1A1A1A] text-white">Statcast</span>
         )}
       </div>
       <div className="flex items-center gap-1.5">
@@ -138,7 +138,7 @@ function PitchTypeRefine({ value, onChange }: { value: PitchTypeCode | 'all'; on
     <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-[#F0EFEC]">
       <button
         onClick={() => onChange('all')}
-        className="text-[9.5px] font-bold px-2 py-1 rounded-full border transition"
+        className="text-[9.5px] font-bold px-2 py-1 rounded-sm border transition"
         style={{ borderColor: value === 'all' ? '#1A1A1A' : '#DEDACE', background: value === 'all' ? '#1A1A1A' : '#fff', color: value === 'all' ? '#fff' : '#1A1A1A' }}
       >
         All pitches
@@ -147,7 +147,7 @@ function PitchTypeRefine({ value, onChange }: { value: PitchTypeCode | 'all'; on
         <button
           key={pt.code}
           onClick={() => onChange(pt.code)}
-          className="text-[9.5px] font-bold px-2 py-1 rounded-full border transition"
+          className="text-[9.5px] font-bold px-2 py-1 rounded-sm border transition"
           style={{ borderColor: value === pt.code ? '#1A1A1A' : '#DEDACE', background: value === pt.code ? '#1A1A1A' : '#fff', color: value === pt.code ? '#fff' : '#1A1A1A' }}
         >
           {pt.label}
@@ -241,23 +241,23 @@ function describeFilters(f: Filters): string {
 function FilterSelectors({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-      <select value={filters.stat} onChange={e => onChange({ ...filters, stat: e.target.value as SplitStatKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.stat} onChange={e => onChange({ ...filters, stat: e.target.value as SplitStatKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         {BATTER_SPLIT_STATS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
       </select>
-      <select value={filters.pitchType} onChange={e => onChange({ ...filters, pitchType: e.target.value as PitchTypeCode | 'all' })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.pitchType} onChange={e => onChange({ ...filters, pitchType: e.target.value as PitchTypeCode | 'all' })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         <option value="all">Any pitch type</option>
         {PITCH_TYPES.map(pt => <option key={pt.code} value={pt.code}>{pt.label}</option>)}
       </select>
-      <select value={filters.count} onChange={e => onChange({ ...filters, count: e.target.value as CountSituationKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.count} onChange={e => onChange({ ...filters, count: e.target.value as CountSituationKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         {COUNT_SITUATIONS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
       </select>
-      <select value={filters.situation} onChange={e => onChange({ ...filters, situation: e.target.value as SituationKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.situation} onChange={e => onChange({ ...filters, situation: e.target.value as SituationKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         {SITUATIONS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
       </select>
-      <select value={filters.inning} onChange={e => onChange({ ...filters, inning: e.target.value as InningKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.inning} onChange={e => onChange({ ...filters, inning: e.target.value as InningKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         {INNING_RANGES.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
       </select>
-      <select value={filters.rbi} onChange={e => onChange({ ...filters, rbi: e.target.value as RbiKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-2 cursor-pointer">
+      <select value={filters.rbi} onChange={e => onChange({ ...filters, rbi: e.target.value as RbiKey })} className="text-[11.5px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 cursor-pointer">
         {RBI_OPTIONS.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
       </select>
     </div>
@@ -402,7 +402,7 @@ function ComparePlayerPicker({ onPick }: { onPick: (p: PlayerResult | null) => v
         value={q}
         onChange={e => setQ(e.target.value)}
         placeholder="Search a player to compare…"
-        className="w-full text-[11.5px] bg-white border border-[#DEDACE] rounded-full px-3 py-2 outline-none focus:border-[#FF5722]"
+        className="w-full text-[11.5px] bg-white border border-[#DEDACE] rounded-sm px-3 py-2 outline-none focus:border-[#FF5722]"
       />
       {visibleResults.length > 0 && (
         <div className="mt-1.5 flex flex-col gap-1">
@@ -436,7 +436,7 @@ function PlayerSplitExplorer({ player, initialStat, initialCount }: { player: Pl
         </div>
       </div>
 
-      <div className="flex items-center border border-[#DEDACE] rounded-full overflow-hidden mb-3 w-fit">
+      <div className="flex items-center border border-[#DEDACE] rounded-sm overflow-hidden mb-3 w-fit">
         {(['player', 'team'] as const).map(v => (
           <button
             key={v}
@@ -459,7 +459,7 @@ function PlayerSplitExplorer({ player, initialStat, initialCount }: { player: Pl
               <button
                 key={m}
                 onClick={() => { setCompareMode(m); if (m !== 'player') setComparePlayer(null) }}
-                className="text-[9.5px] font-bold px-2 py-1 rounded-full border transition"
+                className="text-[9.5px] font-bold px-2 py-1 rounded-sm border transition"
                 style={{ borderColor: compareMode === m ? '#1A1A1A' : '#DEDACE', background: compareMode === m ? '#1A1A1A' : '#fff', color: compareMode === m ? '#fff' : '#1A1A1A' }}
               >
                 {m === 'none' ? 'None' : m === 'team' ? 'Team average' : 'Another player'}
@@ -564,7 +564,7 @@ export default function StatsSearchPage() {
 
   return (
     <div className="mlb-stats-search-page" style={{ background: '#FAF8F3', minHeight: '60vh' }}>
-      <style>{`.mlb-stats-search-page, .mlb-stats-search-page * { font-family: 'Outfit', sans-serif; }`}</style>
+      <style>{`.mlb-stats-search-page, .mlb-stats-search-page * { font-family: 'Red Hat Display', sans-serif; }`}</style>
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-10">
         <div className="mb-6">
@@ -581,7 +581,7 @@ export default function StatsSearchPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search a stat or a player… try “barrel rate” or “Bryce Harper 2 strike hits”"
-            className="w-full text-[14px] bg-white border border-[#DEDACE] rounded-full px-5 py-3.5 outline-none focus:border-[#FF5722] transition"
+            className="w-full text-[14px] bg-white border border-[#DEDACE] rounded-sm px-5 py-3.5 outline-none focus:border-[#FF5722] transition"
           />
           {query && (
             <button
@@ -589,7 +589,7 @@ export default function StatsSearchPage() {
               className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8A8577] text-[13px] hover:text-[#1A1A1A]"
               aria-label="Clear search"
             >
-              ✕
+              Remove
             </button>
           )}
         </div>
@@ -643,7 +643,7 @@ export default function StatsSearchPage() {
                         <button
                           key={e.key}
                           onClick={() => pickStat(e)}
-                          className="text-[10.5px] font-semibold px-2.5 py-1.5 rounded-full border transition hover:border-[#FF5722]"
+                          className="text-[10.5px] font-semibold px-2.5 py-1.5 rounded-sm border transition hover:border-[#FF5722]"
                           style={{
                             borderColor: selected?.key === e.key ? '#FF5722' : '#DEDACE',
                             background: selected?.key === e.key ? 'rgba(255,87,34,0.06)' : '#fff',

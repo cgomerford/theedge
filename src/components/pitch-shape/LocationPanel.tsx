@@ -118,7 +118,7 @@ export default function LocationPanel({ pitchType, hand, probe, radius, span, sc
         ) : null}
       </div>
       <p style={{ fontSize: 9.5, color: C.faint, lineHeight: 1.5, margin: '6px 0 0' }}>
-        Batter’s view, inside on the left whichever side he bats. The box is the rulebook zone (the batter’s own height, ball-width padding); darker = more pitches. Source: Baseball Savant pitch data (pitch_shape_locations).
+        Batter’s view, inside on the left whichever side he bats. The box is the rulebook zone (the batter’s own height, ball-width padding); darker = more pitches.
       </p>
     </div>
   )

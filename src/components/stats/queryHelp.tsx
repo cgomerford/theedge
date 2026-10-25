@@ -46,7 +46,7 @@ export default function HelpBar({ onTry }: { onTry: (text: string) => void }) {
     <aside className="ql-help-side" aria-label="Help" style={{ position: 'sticky', top: 16, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', display: 'grid', gap: 12, fontFamily: SANS }}>
       <button type="button" className="ql-help-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}
         style={{ fontFamily: SANS, fontWeight: 800, fontSize: 13, padding: '9px 12px', borderRadius: 5, border: `1px solid ${C.line}`, background: '#fff', color: C.ink, cursor: 'pointer', textAlign: 'left' }}>
-        {open ? '✕ Hide help' : '? How to use this page'}
+        {open ? 'Hide help' : '? How to use this page'}
       </button>
       <div className={`ql-help-body${open ? ' open' : ''}`} style={{ display: 'grid', gap: 12 }}>
         <section style={box}>
@@ -101,7 +101,7 @@ export default function HelpBar({ onTry }: { onTry: (text: string) => void }) {
             <li><b>Small samples</b> are flagged, never hidden. Check the sample column before reading much into a number.</li>
             <li><b>Not here:</b> pitch-mix stats like fastball %. If a stat isn’t listed in the metric menu, it isn’t available yet.</li>
           </ul>
-          <div style={{ padding: '0 12px 12px', fontFamily: MONO, fontSize: 10, color: C.faint }}>Source: MLB Stats API and Baseball Savant.</div>
+          <div style={{ padding: '0 12px 12px', fontFamily: MONO, fontSize: 10, color: C.faint }}></div>
         </section>
       </div>
     </aside>

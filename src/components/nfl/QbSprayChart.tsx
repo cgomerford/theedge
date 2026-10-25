@@ -60,7 +60,7 @@ export function QbSprayChart({ profile, qbName }: { profile: QbZoneProfile; qbNa
 
   return (
     <div style={{ background: '#0A0A0A', borderRadius: 4, padding: 12 }}>
-      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '0 0 8px' }}>
+      <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '0 0 8px' }}>
         {qbName} — every charted attempt this season, jittered within its real zone (not a real throw location)
       </p>
       <div style={{ position: 'relative', width: '100%', paddingBottom: '62%', borderRadius: 4, overflow: 'hidden' }}>
@@ -73,10 +73,10 @@ export function QbSprayChart({ profile, qbName }: { profile: QbZoneProfile; qbNa
         </svg>
       </div>
       <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} /> Complete
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', display: 'inline-block' }} /> Incomplete
         </span>
       </div>

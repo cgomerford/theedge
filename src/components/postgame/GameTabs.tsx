@@ -10,6 +10,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Suspense } from 'react'
+import Tabs from '@/components/ui/Tabs'
 import type { GameTabEntry } from '@/types/postgame'
 
 const ORANGE = '#FF5722'
@@ -19,26 +21,15 @@ export function GameTabs({ games }: { games: GameTabEntry[] }) {
   if (games.length < 2) return null
 
   return (
-    <div className="flex gap-1 mb-4 border-b border-stone-200">
-      {games.map(g => {
-        const isActive = pathname?.endsWith(g.slug)
-        return (
-          <Link
-            key={g.gamePk}
-            href={`/mlb/${g.slug}`}
-            className="px-4 py-2 font-mono text-[11px] uppercase tracking-widest -mb-px border-b-2 transition-colors"
-            style={{
-              borderColor: isActive ? ORANGE : 'transparent',
-              color: isActive ? '#1A1A1A' : '#6b6b66',
-              fontWeight: isActive ? 700 : 400,
-            }}
-          >
-            {g.label}
-            {g.status === 'Live' && <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-red-600 align-middle" />}
-            {g.status === 'Final' && <span className="ml-1.5 text-stone-400">· F</span>}
-          </Link>
-        )
-      })}
+    <div className="mb-4">
+      <Suspense fallback={null}>
+        <Tabs
+          sticky={false}
+          label="Games"
+          activeId={games.find(g => pathname?.endsWith(g.slug))?.slug}
+          tabs={games.map(g => ({ id: g.slug, label: `${g.label}${g.status === 'Final' ? ' (final)' : g.status === 'Live' ? ' (live)' : ''}`, href: `/mlb/${g.slug}` }))}
+        />
+      </Suspense>
     </div>
   )
 }

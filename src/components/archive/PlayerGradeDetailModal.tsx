@@ -44,13 +44,13 @@ export default function PlayerGradeDetailModal({
       onClick={onClose}
     >
       <div
-        style={{ background: '#FAF8F3', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto', fontFamily: "'JetBrains Mono', monospace" }}
+        style={{ background: '#FAF8F3', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto', fontFamily: "'Red Hat Display', sans-serif" }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ background: teamColor, padding: '20px 24px', borderRadius: '16px 16px 0 0', display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
           <img src={headshotUrl(player.id)} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', background: '#fff', border: '2px solid #fff' }} />
           <div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: '#fff' }}>{player.fullName}</div>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 22, fontWeight: 700, color: '#fff' }}>{player.fullName}</div>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
               {player.primaryPosition} · {grade?.grade ? `Grade ${grade.grade}` : 'Sample too small to grade'}
             </div>
@@ -73,7 +73,7 @@ export default function PlayerGradeDetailModal({
         <>
           <div key={`${s.key}-info`}>
             <div style={{ fontSize: 9, color: '#a89e8c', textTransform: 'uppercase', letterSpacing: '.08em' }}>{s.label}</div>
-            <div style={{ fontFamily: 'Fraunces, serif', fontSize: 22, color: '#1A1A1A' }}>{s.value}</div>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 22, color: '#1A1A1A' }}>{s.value}</div>
           </div>
           <div key={`${s.key}-ring`} style={{ display: 'flex', justifyContent: 'center' }}>
             {s.percentile !== null && <PercentileRing percentile={s.percentile} size={48} />}
@@ -93,7 +93,7 @@ export default function PlayerGradeDetailModal({
                 {plain.map(s => (
                   <div key={s.key}>
                     <div style={{ fontSize: 9, color: '#a89e8c', textTransform: 'uppercase' }}>{s.label}</div>
-                    <div style={{ fontFamily: 'Fraunces, serif', fontSize: 16, color: '#1A1A1A' }}>{s.value}</div>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 16, color: '#1A1A1A' }}>{s.value}</div>
                   </div>
                 ))}
               </div>

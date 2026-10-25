@@ -166,7 +166,7 @@ export default function SignupForm({
       <div className="max-w-md">
         <div className="bg-white border border-stone-200 px-5 py-4 rounded-sm">
           <p className="font-mono text-[11px] uppercase tracking-widest text-stone-900 mb-1 font-bold">
-            ✓ Check your inbox
+            Check your inbox
           </p>
           <p className="font-mono text-[10px] text-stone-500">
             We&apos;ve sent a verification link to <span className="text-stone-900">{email}</span>.

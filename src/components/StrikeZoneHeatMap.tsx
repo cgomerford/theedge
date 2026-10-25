@@ -110,7 +110,7 @@ export default function StrikeZoneHeatMap({
     <div>
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3' }}>
+        <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3' }}>
           Catcher's view · {stand === 'L' ? 'LHB' : stand === 'R' ? 'RHB' : 'Batter'} · 2026
         </span>
         {isPro && (
@@ -120,7 +120,7 @@ export default function StrikeZoneHeatMap({
                 key={m}
                 onClick={() => setMetric(m)}
                 style={{
-                  fontFamily: 'Space Mono, monospace', fontSize: 9,
+                  fontFamily: 'Red Hat Display, sans-serif', fontSize: 9,
                   padding: '3px 8px', borderRadius: 4, border: '1px solid',
                   borderColor: metric === m ? '#FF5722' : 'rgba(26,26,26,0.15)',
                   background: metric === m ? '#FF5722' : 'transparent',
@@ -138,7 +138,7 @@ export default function StrikeZoneHeatMap({
       {loading && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          height: 160, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#A3A3A3',
+          height: 160, fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, color: '#A3A3A3',
         }}>
           Loading...
         </div>
@@ -146,10 +146,10 @@ export default function StrikeZoneHeatMap({
 
       {isEmpty && (
         <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-          <div style={{ fontFamily: 'Fraunces, serif', fontSize: 15, color: '#6B6B6B', marginBottom: 6 }}>
+          <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 15, color: '#6B6B6B', marginBottom: 6 }}>
             No hot zone data yet
           </div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3', lineHeight: 1.6 }}>
+          <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3', lineHeight: 1.6 }}>
             Needs enough plate appearances this season to build meaningful zone data
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function StrikeZoneHeatMap({
                   {/* Zone number */}
                   <div style={{
                     position: 'absolute', top: 3, left: 5,
-                    fontFamily: 'Space Mono, monospace', fontSize: 7,
+                    fontFamily: 'Red Hat Display, sans-serif', fontSize: 7,
                     color: 'rgba(26,26,26,0.2)',
                   }}>
                     {zoneNum}
@@ -197,14 +197,14 @@ export default function StrikeZoneHeatMap({
                   {value !== null ? (
                     <>
                       <div style={{
-                        fontFamily: 'Space Mono, monospace', fontSize: 13,
+                        fontFamily: 'Red Hat Display, sans-serif', fontSize: 13,
                         fontWeight: 700, color: tc, lineHeight: 1,
                       }}>
                         {value.toFixed(3).replace('0.', '.')}
                       </div>
                    {zd && zd.pa > 0 && (
                         <div style={{
-                          fontFamily: 'Space Mono, monospace', fontSize: 7,
+                          fontFamily: 'Red Hat Display, sans-serif', fontSize: 7,
                           color: tc, opacity: 0.65, marginTop: 2,
                         }}>
                           {zd.pa} pitches
@@ -212,14 +212,14 @@ export default function StrikeZoneHeatMap({
                       )}
                     </>
                   ) : (
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#C4BDB7' }}>—</div>
+                    <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 11, color: '#C4BDB7' }}>—</div>
                   )}
 
                   {/* Hot / cold badge */}
                   {isHot && (
                     <div style={{
                       position: 'absolute', top: -9, right: -1,
-                      fontFamily: 'Space Mono, monospace', fontSize: 7,
+                      fontFamily: 'Red Hat Display, sans-serif', fontSize: 7,
                       background: '#FF5722', color: '#FFF',
                       padding: '1px 4px', borderRadius: 3,
                     }}>
@@ -229,7 +229,7 @@ export default function StrikeZoneHeatMap({
                   {isCold && (
                     <div style={{
                       position: 'absolute', top: -9, right: -1,
-                      fontFamily: 'Space Mono, monospace', fontSize: 7,
+                      fontFamily: 'Red Hat Display, sans-serif', fontSize: 7,
                       background: '#3B82F6', color: '#FFF',
                       padding: '1px 4px', borderRadius: 3,
                     }}>
@@ -250,7 +250,7 @@ export default function StrikeZoneHeatMap({
             ].map(({ bg, label, border }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 10, height: 10, background: bg, borderRadius: 2, border: border ?? 'none' }} />
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3' }}>{label}</span>
+                <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -258,7 +258,7 @@ export default function StrikeZoneHeatMap({
           {/* Plain English explainer */}
           <div style={{
             padding: '8px 12px', background: '#F5F1E8', borderRadius: 6,
-            fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#6B6B6B', lineHeight: 1.6,
+            fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B', lineHeight: 1.6,
           }}>
            {displayMetric === 'ba'
               ? 'Each box shows batting average on balls put in play in that zone. Numbers show how many pitches the batter has seen there this season. Orange = pitchers avoid this zone. Blue = safe to attack.'
@@ -270,7 +270,7 @@ export default function StrikeZoneHeatMap({
             <div style={{
               marginTop: 8, padding: '6px 10px',
               background: '#FFF3E0', borderRadius: 6,
-              fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#E65100',
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#E65100',
             }}>
               ⊕ Pro — unlock xwOBA view to see which zones produce the most dangerous contact
             </div>

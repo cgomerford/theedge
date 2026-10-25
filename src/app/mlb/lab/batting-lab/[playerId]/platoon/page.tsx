@@ -22,7 +22,7 @@ export default async function BattingPlatoonPage({ params }: { params: Promise<{
         How he does against left-handed and right-handed pitching, with the swing numbers that settle fast beside the results that take years. A description of what happened, with the sample behind every number.
       </p>
       {!found || sides.length === 0
-        ? <Empty>Platoon data isn’t built for this hitter yet. It refreshes weekly from Baseball Savant.</Empty>
+        ? <Empty>Platoon data isn’t built for this hitter yet.</Empty>
         : <PlatoonLive hitter={found.hitter} updated={found.updated} league={league} mine={gapsOf(found.hitter.bySide[sides[0]])} />}
     </div>
   )

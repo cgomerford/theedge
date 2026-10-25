@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { TeamStatsTableRow } from '@/lib/nfl/queries'
 
-const MONO = "'JetBrains Mono', monospace"
+const MONO = "'Red Hat Display', sans-serif"
 
 type SortKey = keyof Omit<TeamStatsTableRow, 'teamId' | 'logoUrl' | 'record'>
 
@@ -73,7 +73,7 @@ export function TeamStatsTable({ rows }: { rows: TeamStatsTableRow[] }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.logoUrl} alt="" loading="lazy" style={{ width: 16, height: 16, objectFit: 'contain' }} />
                   ) : null}
-                  <b style={{ fontFamily: 'Inter, sans-serif' }}>{r.teamId}</b>
+                  <b style={{ fontFamily: 'Red Hat Display, sans-serif' }}>{r.teamId}</b>
                 </Link>
               </td>
               <td style={{ textAlign: 'right', padding: '5px 8px', color: '#4B4B4B' }}>{r.record ?? '—'}</td>

@@ -35,20 +35,20 @@ export default async function SwingSection({ ctx }: { ctx: PostgameContext }) {
         {sw.inningStarts.map((s) => (
           <g key={s.inning}>
             <line x1={x(s.i)} x2={x(s.i)} y1={T} y2={H - B} stroke="#eeeeec" />
-            <text x={x(s.i) + 3} y={H - B + 12} className="fill-stone-400" style={{ font: '400 9px ui-monospace, monospace' }}>{s.inning}</text>
+            <text x={x(s.i) + 3} y={H - B + 12} className="fill-stone-400" style={{ font: '400 9px monospace' }}>{s.inning}</text>
           </g>
         ))}
         <line x1={L} x2={W - R} y1={y(50)} y2={y(50)} stroke="#a8a29e" strokeDasharray="4 3" />
         <path d={area} fill={CHART_BLUE} fillOpacity={0.22} clipPath="url(#wp-top)" />
         <path d={area} fill={CHART_ORANGE} fillOpacity={0.22} clipPath="url(#wp-bot)" />
         <path d={path} fill="none" stroke="#292524" strokeWidth={1.75} strokeLinejoin="round" />
-        {[100, 75, 50, 25, 0].map((v) => <text key={v} x={L - 6} y={y(v) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 9px ui-monospace, monospace' }}>{v}%</text>)}
-        <text x={L + 6} y={T + 12} className="fill-stone-600" style={{ font: '700 10px ui-monospace, monospace', fill: CHART_BLUE }}>{ctx.home.abbr} ahead ▲</text>
-        <text x={L + 6} y={H - B - 6} style={{ font: '700 10px ui-monospace, monospace', fill: CHART_ORANGE }}>{ctx.away.abbr} ahead ▼</text>
+        {[100, 75, 50, 25, 0].map((v) => <text key={v} x={L - 6} y={y(v) + 3} textAnchor="end" className="fill-stone-400" style={{ font: '400 9px monospace' }}>{v}%</text>)}
+        <text x={L + 6} y={T + 12} className="fill-stone-600" style={{ font: '700 10px monospace', fill: CHART_BLUE }}>{ctx.home.abbr} ahead ▲</text>
+        <text x={L + 6} y={H - B - 6} style={{ font: '700 10px monospace', fill: CHART_ORANGE }}>{ctx.away.abbr} ahead ▼</text>
         {sw.inflections.map((f) => (
           <g key={f.n}>
             <circle cx={x(f.i)} cy={y(f.homeWp)} r={9} fill="#1A1A1A" stroke="#FDE047" strokeWidth={2}><title>{`${f.kind} · ${f.text}`}</title></circle>
-            <text x={x(f.i)} y={y(f.homeWp) + 3.5} textAnchor="middle" fill="#FDE047" style={{ font: '700 10px ui-monospace, monospace' }}>{f.n}</text>
+            <text x={x(f.i)} y={y(f.homeWp) + 3.5} textAnchor="middle" fill="#FDE047" style={{ font: '700 10px monospace' }}>{f.n}</text>
           </g>
         ))}
       </svg>

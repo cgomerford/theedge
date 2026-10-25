@@ -19,8 +19,8 @@
 
 import type { QbZoneProfile, ZoneLeagueAverage, QbSeasonBoxScore } from '@/lib/nfl/queries'
 
-const MONO = "'JetBrains Mono', monospace"
-const SERIF = "'Fraunces', serif"
+const MONO = "'Red Hat Display', sans-serif"
+const SERIF = "'Red Hat Display', sans-serif"
 
 const ROWS: { length: string; label: string }[] = [
   { length: 'deep', label: 'DEEP · ~15+ AIR YDS' },

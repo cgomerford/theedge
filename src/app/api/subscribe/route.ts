@@ -5,6 +5,7 @@ import { Resend } from 'resend'
 import { z } from 'zod'
 import { signupLimit, getClientIp } from '@/lib/ratelimit'
 import crypto from 'crypto'
+import { CONTACT_EMAIL } from '@/lib/site'
 
 const SignupSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -189,7 +190,7 @@ let fanType: string = 'casual'
       const content = verificationEmail(parsed.data.email, verificationToken)
 
       await resend.emails.send({
-        from: 'x9Lab <hello@edgereportdaily.com>',
+        from: `x9Lab <${CONTACT_EMAIL}>`,
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,

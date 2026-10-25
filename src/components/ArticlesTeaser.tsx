@@ -9,12 +9,12 @@ export default async function ArticlesTeaser() {
   return (
     <section style={{ padding: '40px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
-        <h2 style={{ fontFamily: 'Fraunces, serif', fontWeight: 700, fontSize: 24 }}>
+        <h2 style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: 24 }}>
           Latest from x9Lab
         </h2>
         <Link
           href="/articles"
-          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#FF5722' }}
+          style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#FF5722' }}
         >
           View all →
         </Link>
@@ -29,7 +29,7 @@ export default async function ArticlesTeaser() {
             {a.team_tags.length > 0 && (
               <span
                 style={{
-                  fontFamily: 'JetBrains Mono, monospace',
+                  fontFamily: 'Red Hat Display, sans-serif',
                   fontSize: 10,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
@@ -42,7 +42,7 @@ export default async function ArticlesTeaser() {
                 {a.team_tags[0]}
               </span>
             )}
-            <div style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 16, lineHeight: 1.3 }}>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 600, fontSize: 16, lineHeight: 1.3 }}>
               {a.title}
             </div>
           </Link>

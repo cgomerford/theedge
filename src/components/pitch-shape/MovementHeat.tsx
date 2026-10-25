@@ -207,7 +207,7 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
       </p>
       <Foot>
         Each 0.1 in box shows the whiffs per swing of every league {lc} thrown by {hand === 'L' ? 'left' : 'right'}-handers within ±{radius} in of it (a square window), pooled over every velocity and arm angle, for {spanLabel}. {multi ? `${latestLabel} only is the same season as his dots; ${allLabel} adds earlier seasons for a bigger sample, at the cost of mixing seasons. ` : ''}A box with under {MIN_WINDOW_SWINGS} swings in its window is left blank, not estimated. Dots are a sample of his pitches, not all of them. HB is arm-side positive (left-handers flipped).
-        Percentiles are shares of all league {lc}s in the span shown. Source: Baseball Savant pitch data (pitch_shape_cells).
+        Percentiles are shares of all league {lc}s in the span shown.
       </Foot>
     </div>
   )

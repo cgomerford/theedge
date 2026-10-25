@@ -12,8 +12,27 @@
 import { isSignedIn } from '@/lib/require-signup'
 import SignUpGate from '@/components/SignUpGate'
 import LabShell from './LabShell'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
+import { pageMeta } from '@/lib/seo'
+import { fitDescription } from '@/lib/game-slug'
 
-export default async function BattingLabGate({ children }: { children: React.ReactNode }) {
+export async function generateMetadata({ params }: { params: Promise<{ playerId: string }> }): Promise<Metadata> {
+  const { playerId } = await params
+  const person = await getMlbPerson(Number(playerId))
+  if (!person) notFound()
+  return pageMeta({
+    title: `${person.fullName} batting lab`,
+    description: fitDescription(`${person.fullName} batting lab: contact quality, spray direction, swing decisions and zone breakdowns by pitch type, with the number of pitches or batted balls behind every stat.`, ['Free daily email.']),
+    path: `/mlb/lab/batting-lab/${playerId}`,
+  })
+}
+
+export default async function BattingLabGate({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
+  const { playerId } = await params
+  const person = await getMlbPerson(Number(playerId))
+  if (!person) notFound()
   if (!(await isSignedIn())) {
     return <SignUpGate
       title="Sign up to open the Batting Lab"
@@ -21,5 +40,5 @@ export default async function BattingLabGate({ children }: { children: React.Rea
       features={['Contact quality and spray direction for every hitter', 'Approach: the count ladder and zone-versus-chase swing rates', 'The league Contact Engine and leaderboards']}
     />
   }
-  return <LabShell>{children}</LabShell>
+  return <LabShell playerName={person.fullName}>{children}</LabShell>
 }

@@ -45,6 +45,7 @@ import HelpBar from '@/components/stats/queryHelp'
 import { HitMatchPanel, type HitSearch } from '@/components/stats/queryHit'
 import { Avatar, ExpandBtn, GameDetailRow, NoteRow, RecentList, drillUrl, subCell, subHead, useDrill, type DrillQs } from '@/components/stats/queryDrill'
 import { ProLockBar } from '@/components/stats/queryUi'
+import { SITE_HOST } from '@/lib/site'
 
 // "Group by" entries that map 1:1 onto a view. Filter families are appended at runtime
 // and all map onto the 'breakdown' view.
@@ -469,7 +470,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
   const deepNow = q.deep ?? { stack: [] }
   const coverageNote = data?.engine === 'deep' && data.coverage
     ? (data.coverage.length
-        ? 'From Baseball Savant: ' + data.coverage.map(c => `${c.season} ${c.type} (${c.pas.toLocaleString()} plate appearances, ${c.first} → ${c.last})`).join(' · ')
+        ? 'Coverage: ' + data.coverage.map(c => `${c.season} ${c.type} (${c.pas.toLocaleString()} plate appearances, ${c.first} → ${c.last})`).join(' · ')
         : 'No plate appearances found for this range yet.')
     : undefined
 
@@ -492,10 +493,10 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
       <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '20px 20px 16px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 22, letterSpacing: '-0.01em', marginBottom: 2 }}>What do you want to know?</div>
-          <div role="group" aria-label="Search mode" style={{ display: 'inline-flex', border: `1px solid ${C.line}`, borderRadius: 999, padding: 3 }}>
+          <div role="group" aria-label="Search mode" style={{ display: 'inline-flex', border: `1px solid ${C.line}`, borderRadius: 4, padding: 3 }}>
             {(['simple', 'pro'] as const).map(m => (
               <button key={m} type="button" aria-pressed={mode === m} onClick={() => switchMode(m)}
-                style={{ fontFamily: SANS, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', padding: '7px 16px', borderRadius: 999, background: mode === m ? C.ink : 'transparent', color: mode === m ? '#fff' : C.mute }}>
+                style={{ fontFamily: SANS, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', padding: '7px 16px', borderRadius: 4, background: mode === m ? C.ink : 'transparent', color: mode === m ? '#fff' : C.mute }}>
                 {m === 'simple' ? 'Simple' : 'Pro filters'}
               </button>
             ))}
@@ -597,10 +598,10 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
 
         {q.view === 'compare' && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.soft}` }}>
-            <div style={{ ...labelStyle, display: 'flex', gap: 6, alignItems: 'center' }}>Years to compare <Hint text="Choose any seasons. The ★ year is the base — every other year is measured against it. Years are never added together." /></div>
+            <div style={{ ...labelStyle, display: 'flex', gap: 6, alignItems: 'center' }}>Years to compare <Hint text="Choose any seasons. The year is the base — every other year is measured against it. Years are never added together." /></div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, margin: '6px 0' }}>
               {[...new Set([...q.years, ...QUICK_YEARS])].sort((a, b) => b - a).map(y => (
-                <Chip key={y} on={q.years.includes(y)} onClick={() => toggleYear(y)}>{y}{y === q.years[0] ? ' ★' : ''}</Chip>
+                <Chip key={y} on={q.years.includes(y)} onClick={() => toggleYear(y)}>{y}{y === q.years[0] ? '' : ''}</Chip>
               ))}
               <select aria-label="Include an older season" style={{ ...selectStyle, width: 'auto', padding: '4px 8px', fontSize: 12.5 }} value=""
                 onChange={e => { if (e.target.value) toggleYear(Number(e.target.value)) }}>
@@ -668,7 +669,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
           right={!engineDeep && q.split ? <button type="button" onClick={() => patch({ split: '' })} style={{ all: 'unset', cursor: 'pointer', color: C.orange, fontFamily: SANS, fontSize: 11, fontWeight: 700 }}>Clear</button> : undefined}>
           <div style={{ display: 'grid', gap: 12 }}>
             {q.group !== 'fielding' && (
-              <Field label="How many at once" hint="Quick: one situation at a time, any year — fast. Stack filters: combine as many as you like (7th inning or later AND runners in scoring position AND a 6+ pitch at-bat). Stacking pulls every pitch from Baseball Savant, so the first search is slower.">
+              <Field label="How many at once" hint="Quick: one situation at a time, any year — fast. Stack filters: combine as many as you like (7th inning or later AND runners in scoring position AND a 6+ pitch at-bat). Stacking loads every pitch, so the first search is slower.">
                 <SegBar<'quick' | 'deep'> value={engineDeep ? 'deep' : 'quick'} onChange={v => setEngine(v === 'deep')}
                   options={[{ key: 'quick', label: 'One situation · quick' }, { key: 'deep', label: 'Stack filters · Pro' }]} />
               </Field>
@@ -761,7 +762,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
         {err && <Empty>{err}</Empty>}
         {deepProgress && (
           <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 8, padding: 16 }}>
-            <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 15 }}>Pulling Baseball Savant — {deepProgress.done} of {deepProgress.total} game days</div>
+            <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 15 }}>Loading {deepProgress.done} of {deepProgress.total} game days</div>
             <div style={{ height: 8, background: C.soft, borderRadius: 4, margin: '10px 0', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((deepProgress.done / Math.max(1, deepProgress.total)) * 100)}%`, height: '100%', background: C.orange, transition: 'width .3s' }} />
             </div>
@@ -782,7 +783,7 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
         )}
 
         <div style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, marginTop: 14, lineHeight: 1.6 }}>
-          The Edge · edgereportdaily.com — Source: MLB Stats API team and player splits. League totals are the sum of all clubs’ counting stats; every rate is recomputed from those totals.
+          {SITE_HOST} · League totals are the sum of all clubs’ counting stats; every rate is recomputed from those totals.
           {' '}FIP uses a constant set so the selection’s league FIP equals its league ERA. Park and era are not adjusted.
         </div>
       </div>
@@ -1135,7 +1136,7 @@ function BreakdownView({ ctx, onPick }: { ctx: Ctx; onPick: (code: string) => vo
                 return (
                   <Fragment key={r.code}>
                   <tr onClick={() => onPick(r.code)} style={{ cursor: 'pointer', borderBottom: `1px solid ${C.soft}`, background: isBase ? '#fff1ec' : undefined }}>
-                    <td style={tdName}>{r.teams?.length ? <ExpandBtn open={isOpen} onClick={() => setOpen(o => (o.includes(r.code) ? o.filter(c => c !== r.code) : [...o, r.code]))} /> : null}{r.label}{isBase ? ' ★' : ''}<SmallSample group={q.group} t={r.totals} /></td>
+                    <td style={tdName}>{r.teams?.length ? <ExpandBtn open={isOpen} onClick={() => setOpen(o => (o.includes(r.code) ? o.filter(c => c !== r.code) : [...o, r.code]))} /> : null}{r.label}{isBase ? '' : ''}<SmallSample group={q.group} t={r.totals} /></td>
                     {cols.map((m, i) => {
                       const v = val(r.totals, m.key, data.baseline)
                       const b = base ? val(base.totals, m.key, data.baseline) : null
@@ -1312,7 +1313,7 @@ function CompareView({ ctx }: { ctx: Ctx }) {
             <thead>
               <tr>
                 <th style={{ ...th, textAlign: 'left' }}>Metric</th>
-                <th style={{ ...th, color: C.orange }}>{base.season} ★</th>
+                <th style={{ ...th, color: C.orange }}>{base.season}</th>
                 {others.flatMap(o => [
                   <th key={`y${o.season}`} style={th}>{o.season}</th>,
                   <th key={`d${o.season}`} style={th}>Δ</th>,

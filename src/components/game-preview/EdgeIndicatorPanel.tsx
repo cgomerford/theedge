@@ -121,72 +121,62 @@ const HOVER_CSS = `
 
 // ─── Factor metadata ──────────────────────────────────────────────────────────
 
-const FACTOR_META: Record<keyof EdgeComponents, { label: string; description: string; dataSource: string; proTeaser: string }> = {
+const FACTOR_META: Record<keyof EdgeComponents, { label: string; description: string; proTeaser: string }> = {
   starting_pitcher: {
     label: 'Starting pitcher',
     description: 'Compares tonight\'s starters — command, contact quality allowed, and recent form. Historically one of the largest single-game edges in the model.',
-    dataSource: 'Season ERA/FIP/xERA and per-pitch contact-quality data from MLB Stats API and Baseball Savant Statcast, refreshed after each start.',
     proTeaser: 'xERA · chase rate · TTO splits · K/BB · quality starts',
   },
   bullpen: {
     label: 'Bullpen',
     description: 'Relief corps quality and fatigue — who\'s fresh, who\'s gassed, and how each pen\'s stuff plays in relief innings tonight.',
-    dataSource: 'Bullpen ERA, innings pitched, and availability computed from box scores and pitch logs over the last several days (MLB Stats API).',
     proTeaser: 'Availability matrix · ERA · fatigue tracker · strand %',
   },
   offense: {
     label: 'Offense',
     description: 'Team hitting output and contact quality over the last 30 games, adjusted for the strength of opponents faced.',
-    dataSource: 'Rolling 30-game hitting production and contact-quality metrics (xwOBA, hard-hit%) from Baseball Savant Statcast.',
     proTeaser: 'xwOBA · hard hit% · ISO · K% · BB% · sprint speed',
   },
   defense: {
     label: 'Batted-ball & defense',
     description: 'Fielding quality and outs above average, weighted toward how well each defense matches tonight\'s likely contact profile.',
-    dataSource: 'Fielding percentage, Outs Above Average, and catcher framing from Baseball Savant Statcast fielding data.',
     proTeaser: 'Fielding% · OAA by zone · GB-collision · pull-side exploit · catcher framing',
   },
   matchup: {
     label: 'Platoon & pitch-type',
     description: 'Hitter-vs-arsenal history — platoon splits and how tonight\'s lineup has handled this pitcher\'s primary pitches specifically.',
-    dataSource: 'Platoon splits and pitch-arsenal whiff rates from Statcast pitch-level data, matched against tonight\'s projected lineup.',
     proTeaser: 'Arsenal whiff% vs lineup · platoon OPS splits · H2H history',
   },
   park: {
     label: 'Park factor',
     description: 'How tonight\'s ballpark plays for home runs and run scoring, split by batter handedness where it matters.',
-    dataSource: '3-year home-run and run-scoring park factors, plus tonight\'s wind/temperature forecast for the venue.',
-    proTeaser: 'HR factor by handedness · altitude · tonight\'s wind',
+    proTeaser: 'HR factor by handedness · altitude',
   },
   weather: {
     label: 'Weather',
     description: 'Temperature and wind effects on ball flight tonight. Usually a small factor unless conditions are extreme.',
-    dataSource: 'Live first-pitch temperature and wind conditions for tonight\'s ballpark.',
     proTeaser: 'Wind carry · temperature effect · dome/open analysis',
   },
   rest: {
     label: 'Rest & travel',
     description: 'Days of rest and travel load for both teams — fatigue compounds over a long homestand or road trip.',
-    dataSource: 'Days of rest and recent schedule density computed from each team\'s real game log (MLB Stats API).',
     proTeaser: 'Days rest · road trip length · schedule density',
   },
   pitcher_situational: {
     label: 'Pitcher situational',
     description: 'How each starter handles specific game states — fading (or not) as the lineup turns over, first-pitch strike command, and what they actually throw once they\'re ahead in the count.',
-    dataSource: 'Times-through-the-order and count-based pitch-selection tendencies from Statcast pitch-level data this season.',
     proTeaser: 'Times-through-order wOBA trend · first-pitch strike% · 2-strike pitch selection',
   },
   offense_situational: {
     label: 'Offense situational',
     description: 'How each lineup performs in the moments that decide games — hitting with runners in scoring position, converting opportunities instead of stranding them, and staying disciplined once behind in the count.',
-    dataSource: 'Situational hitting splits (RISP, left-on-base%, plate discipline) from MLB Stats API season splits.',
     proTeaser: 'RISP OPS/AVG · left-on-base% · chase rate & K% behind in count',
   },
 }
 
 const FACTOR_ORDER: (keyof EdgeComponents)[] = [
   'starting_pitcher', 'bullpen', 'offense', 'defense',
-  'matchup', 'park', 'weather', 'rest',
+  'matchup', 'park', 'rest',
   'pitcher_situational', 'offense_situational',
 ]
 
@@ -262,11 +252,11 @@ function tempNote(f: number | null | undefined): string {
 function parkLabel(hr: number | null | undefined, run: number | null | undefined): string {
   if (hr == null && run == null) return 'Park data unavailable'
   const hrN = hr ?? 1.0; const runN = run ?? 1.0
-  if (hrN >= 1.10 && runN >= 1.05) return '🔴 Hitter-friendly — balls fly here'
-  if (hrN >= 1.05) return '🟠 Slight HR boost vs neutral'
-  if (hrN <= 0.90 && runN <= 0.95) return '🟢 Pitcher-friendly — runs suppressed'
-  if (hrN <= 0.95) return '🟡 Slight HR suppression'
-  return '⚪ Neutral park — no significant factor bias'
+  if (hrN >= 1.10 && runN >= 1.05) return 'Hitter-friendly — balls fly here'
+  if (hrN >= 1.05) return 'Slight HR boost vs neutral'
+  if (hrN <= 0.90 && runN <= 0.95) return 'Pitcher-friendly — runs suppressed'
+  if (hrN <= 0.95) return 'Slight HR suppression'
+  return 'Neutral park — no significant factor bias'
 }
 function fallbackTeamSlug(name: string): string {
   return name.trim().split(' ').pop()?.toLowerCase() ?? name.toLowerCase()
@@ -435,7 +425,6 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
   const hp = raw?.home_pitcher
   const at = raw?.away_team
   const ht = raw?.home_team
-  const w = raw?.weather
   const pk = raw?.park
   const ap6 = raw?.away_platoon
   const hp6 = raw?.home_platoon
@@ -483,8 +472,8 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
     const fatigueLabel = (ip: RawStats) => {
       const n = parseFloat(ip)
       if (isNaN(n)) return '–'
-      if (n >= 5) return 'Gassed 🔴'; if (n >= 3) return 'Taxed 🟠'
-      if (n >= 1) return 'Used 🟡'; return 'Fresh 🟢'
+      if (n >= 5) return 'Gassed'; if (n >= 3) return 'Taxed'
+      if (n >= 1) return 'Used'; return 'Fresh'
     }
     const dot = (v: boolean | null | undefined) => v == null ? '–' : v ? '● Available' : '○ Unavailable'
     return (
@@ -587,8 +576,6 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
     <div>
       <div style={{ background: '#F0EDE8', borderRadius: 6, padding: '8px 10px', fontSize: 11, color: '#3D3830', margin: '4px 0 8px', lineHeight: 1.55 }}>
         {parkLabel(pk?.hr_factor, pk?.run_factor)}
-        {pk?.is_dome ? ' · Dome — weather irrelevant tonight.' : ''}
-        {!pk?.is_dome && w?.wind_dir ? ` · Wind ${windLabel(w.wind_dir)}${w.wind_mph ? ` at ${w.wind_mph} mph` : ''}.` : ''}
       </div>
       <DrillSection title="Park factors (3-year avg)" />
       <StatRow awayColor={awayColor} homeColor={homeColor} label="HR factor" note=">1.0 = more HRs" away={pk?.hr_factor ? f2(pk.hr_factor) : '–'} home="park avg" />
@@ -596,45 +583,6 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
       <StatRow awayColor={awayColor} homeColor={homeColor} label="Altitude" away={pk?.altitude_feet != null ? `${Number(pk.altitude_feet).toLocaleString()} ft` : '–'} home="—" />
       {pk?.hr_factor_rhb != null && <StatRow awayColor={awayColor} homeColor={homeColor} label="HR factor (RHB)" note="righties" away={f2(pk.hr_factor_rhb)} home="park avg" />}
       {pk?.hr_factor_lhb != null && <StatRow awayColor={awayColor} homeColor={homeColor} label="HR factor (LHB)" note="lefties" away={f2(pk.hr_factor_lhb)} home="park avg" />}
-      <DrillSection title="Tonight at this park" />
-      <StatRow awayColor={awayColor} homeColor={homeColor} label="Wind direction" away={w?.wind_dir ? windLabel(w.wind_dir) : pk?.is_dome ? 'Dome — N/A' : '–'} home={w?.wind_mph != null ? `${w.wind_mph} mph` : '–'} />
-      <StatRow awayColor={awayColor} homeColor={homeColor} label="Temperature" away={w?.temp_f != null ? `${Math.round(w.temp_f)}°F / ${Math.round((w.temp_f - 32) * 5/9)}°C` : pk?.is_dome ? 'Controlled' : '–'} home={w?.temp_f != null ? tempNote(w.temp_f) : '–'} />
-    </div>
-  )
-
-  if (factorKey === 'weather') return (
-    <div>
-      {pk?.is_dome ? (
-        <div style={{ fontSize: 11, color: '#5F5E5A', background: '#F5F0E8', borderRadius: 6, padding: '9px 11px', lineHeight: 1.5 }}>
-          🏟 Dome venue — temperature, wind and precipitation have <strong>no effect</strong> on this game.
-        </div>
-      ) : w == null ? (
-        <div style={{ fontSize: 11, color: '#5F5E5A', background: '#F5F0E8', borderRadius: 6, padding: '9px 11px' }}>
-          Weather data not yet available. Check back closer to first pitch.
-        </div>
-      ) : (
-        <>
-          <DrillSection title="Conditions at first pitch" />
-          <StatRow awayColor={awayColor} homeColor={homeColor} label="Temperature" away={`${Math.round(w.temp_f)}°F / ${Math.round((w.temp_f - 32) * 5/9)}°C`} home={tempNote(w.temp_f)} />
-          <StatRow awayColor={awayColor} homeColor={homeColor} label="Wind speed" away={w.wind_mph != null ? `${w.wind_mph} mph` : '–'} home="—" />
-          <StatRow awayColor={awayColor} homeColor={homeColor} label="Wind direction" note="relative to CF" away={windLabel(w.wind_dir)} home="—" />
-          <DrillSection title="What this means tonight" />
-          <div style={{ fontSize: 11, color: '#3D3830', background: '#F0EDE8', borderRadius: 6, padding: '9px 11px', lineHeight: 1.6 }}>
-            {w.wind_dir === 'out' && (w.wind_mph ?? 0) >= 10
-              ? `💨 Wind out at ${w.wind_mph} mph — fly balls carry significantly further. HR factors amplified.`
-              : w.wind_dir === 'in' && (w.wind_mph ?? 0) >= 10
-              ? `💨 Wind in at ${w.wind_mph} mph — outfield fly balls die. Pitchers benefit, hitters struggle for extra bases.`
-              : w.wind_dir === 'cross'
-              ? `↔ Crosswind at ${w.wind_mph ?? '?'} mph — no clear HR effect but affects swing mechanics slightly.`
-              : (w.temp_f ?? 70) >= 85
-              ? `🌡 Hot at ${Math.round(w.temp_f)}°F — ball carries well in warm air. Slight offensive boost.`
-              : (w.temp_f ?? 70) <= 50
-              ? `🥶 Cold at ${Math.round(w.temp_f)}°F — ball doesn't carry. Suppresses HR and extra-base hits.`
-              : `Conditions are broadly neutral — no significant weather edge tonight.`
-            }
-          </div>
-        </>
-      )}
     </div>
   )
 
@@ -650,7 +598,7 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
         note="more rest = fresher"
       />
       <StatRow awayColor={awayColor} homeColor={homeColor} label="Games (last 10 days)" note="schedule density" away={at?.games_last_10_days != null ? String(at.games_last_10_days) : '–'} home={ht?.games_last_10_days != null ? String(ht.games_last_10_days) : '–'} awayBetter={lo(at?.games_last_10_days, ht?.games_last_10_days)} homeBetter={lo(ht?.games_last_10_days, at?.games_last_10_days)} />
-      <StatRow awayColor={awayColor} homeColor={homeColor} label="Day after night?" away={at?.day_after_night ? 'Yes ⚠' : 'No'} home={ht?.day_after_night ? 'Yes ⚠' : 'No'} awayBetter={!at?.day_after_night && ht?.day_after_night} homeBetter={!ht?.day_after_night && at?.day_after_night} />
+      <StatRow awayColor={awayColor} homeColor={homeColor} label="Day after night?" away={at?.day_after_night ? 'Yes' : 'No'} home={ht?.day_after_night ? 'Yes' : 'No'} awayBetter={!at?.day_after_night && ht?.day_after_night} homeBetter={!ht?.day_after_night && at?.day_after_night} />
       <DrillSection title="Travel (away team)" />
       <StatRow awayColor={awayColor} homeColor={homeColor} label="Road trip games" note="consecutive away" away={at?.consecutive_road_games != null ? `${at.consecutive_road_games}g` : '–'} home="Home" awayBetter={false} homeBetter={(at?.consecutive_road_games ?? 0) >= 4} />
       <StatRow awayColor={awayColor} homeColor={homeColor} label="Miles (last trip)" note="away team" away={at?.travel_miles_last != null && at.travel_miles_last > 0 ? `${Math.round(at.travel_miles_last).toLocaleString()} mi` : '–'} home="Home" />
@@ -672,7 +620,7 @@ function ProDrillDown({ factorKey, raw, awayColor, homeColor }: {
         <StatRow awayColor={awayColor} homeColor={homeColor} label="1st time" away={f2(ap?.tto1_woba)} home={f2(hp?.tto1_woba)} awayBetter={lo(ap?.tto1_woba, hp?.tto1_woba)} homeBetter={lo(hp?.tto1_woba, ap?.tto1_woba)} />
         <StatRow awayColor={awayColor} homeColor={homeColor} label="2nd time" away={f2(ap?.tto2_woba)} home={f2(hp?.tto2_woba)} awayBetter={lo(ap?.tto2_woba, hp?.tto2_woba)} homeBetter={lo(hp?.tto2_woba, ap?.tto2_woba)} />
         <StatRow awayColor={awayColor} homeColor={homeColor} label="3rd time" note="fade risk" away={f2(ap?.tto3_woba)} home={f2(hp?.tto3_woba)} awayBetter={lo(ap?.tto3_woba, hp?.tto3_woba)} homeBetter={lo(hp?.tto3_woba, ap?.tto3_woba)} />
-        <StatRow awayColor={awayColor} homeColor={homeColor} label="Verified?" note="self-reconciled vs real batters faced" away={ap?.tto_verified_at ? '✓ verified' : '– not yet'} home={hp?.tto_verified_at ? '✓ verified' : '– not yet'} />
+        <StatRow awayColor={awayColor} homeColor={homeColor} label="Verified?" note="self-reconciled vs real batters faced" away={ap?.tto_verified_at ? 'verified' : '– not yet'} home={hp?.tto_verified_at ? 'verified' : '– not yet'} />
         <DrillSection title="0-0 count" />
         <StatRow awayColor={awayColor} homeColor={homeColor} label="First-pitch strike%" away={pct(ap?.first_pitch_strike_pct)} home={pct(hp?.first_pitch_strike_pct)} awayBetter={hi(ap?.first_pitch_strike_pct, hp?.first_pitch_strike_pct)} homeBetter={hi(hp?.first_pitch_strike_pct, ap?.first_pitch_strike_pct)} />
         <DrillSection title="Ahead in the count" />
@@ -843,10 +791,6 @@ function FactorDetailModal({
         <div className="px-5 py-4 space-y-4">
           <p className="text-sm text-stone-600 leading-relaxed">{meta.description}</p>
 
-          <div className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-2.5">
-            <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-1">Where this data comes from</p>
-            <p className="text-xs text-stone-500 leading-snug">{meta.dataSource}</p>
-          </div>
 
           {isPro ? (
             <div>
@@ -931,7 +875,7 @@ export default function EdgeIndicatorPanel(props: EdgeIndicatorPanelProps) {
               </a>
             )}
           </div>
-          <span className="text-[9px] font-medium px-2 py-1 rounded-full shrink-0" style={{ background: tierBg(props.confidence_tier), color: tierColor(props.confidence_tier) }}>
+          <span className="text-[9px] font-medium px-2 py-1 rounded-sm shrink-0" style={{ background: tierBg(props.confidence_tier), color: tierColor(props.confidence_tier) }}>
             {tierLabel(props.confidence_tier)}
           </span>
         </div>
@@ -1040,7 +984,7 @@ export default function EdgeIndicatorPanel(props: EdgeIndicatorPanelProps) {
       </div>
       {props.lineups_confirmed && (
         <div className="px-4 pb-3 -mt-1" style={{ background: SAND }}>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-green-50 text-green-800 font-medium">✓ Lineups confirmed</span>
+          <span className="text-[9px] px-2 py-0.5 rounded-sm bg-green-50 text-green-800 font-medium">Lineups confirmed</span>
         </div>
       )}
     </div>

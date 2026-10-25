@@ -23,7 +23,7 @@ export default function ExportPng({ targetId, filename }: { targetId: string; fi
     } finally { setBusy(false) }
   }
   return (
-    <button onClick={run} disabled={busy} style={{ fontFamily: 'var(--font-jetbrains), monospace', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', border: 0, padding: '9px 14px', borderRadius: 8, cursor: 'pointer' }}>
+    <button onClick={run} disabled={busy} style={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', border: 0, padding: '9px 14px', borderRadius: 8, cursor: 'pointer' }}>
       {busy ? 'Rendering…' : err ? 'Export failed — retry' : 'Export PNG'}
     </button>
   )

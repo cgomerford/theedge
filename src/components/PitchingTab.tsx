@@ -22,6 +22,8 @@
 // Keeping both means you can cross-check the tool's answer against the
 // full reference data next to it.
 
+import Tabs from '@/components/ui/Tabs'
+import { Suspense } from 'react'
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import PitcherArsenalCard from '@/components/PitcherArsenalCard'
@@ -69,19 +71,15 @@ export default function PitchingTab({
   return (
     <div className="space-y-6">
       {pitchers.length > 1 && (
-        <div className="flex gap-1 bg-stone-100 p-1 rounded-full w-fit">
-          {pitchers.map((p, i) => (
-            <button
-              key={p.id}
-              onClick={() => setSelected(i)}
-              className={`px-4 py-2 font-mono text-xs uppercase tracking-widest rounded-full transition ${
-                selected === i ? 'bg-[#1A1A1A] text-[#FAF8F3]' : 'text-stone-500 hover:text-stone-900'
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+        <Suspense fallback={null}>
+          <Tabs
+            sticky={false}
+            label="Pitcher"
+            value={String(selected)}
+            onChange={id => setSelected(Number(id))}
+            tabs={pitchers.map((p, i) => ({ id: String(i), label: p.name }))}
+          />
+        </Suspense>
       )}
 
       <PitcherArsenalCard

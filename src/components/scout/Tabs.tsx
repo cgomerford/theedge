@@ -2,32 +2,30 @@
 
 // src/components/scout/Tabs.tsx
 //
-// Small tab strip for Scout cards — keeps a dense section from becoming a long
-// scroll. `content` is server-rendered by the parent and handed in as a node, so
-// tab bodies can be async server components wrapped in <Suspense>. Every panel
-// stays mounted (hidden) so a tab's data isn't refetched when you switch back.
+// Tab strip for Scout cards: keeps a dense section from becoming a long scroll. `content` is server-rendered by
+// the parent and handed in as a node, so tab bodies can be async server components wrapped in <Suspense>.
+// Every panel stays mounted (hidden) so a tab's data isn't refetched when you switch back.
+//
+// Uses the shared underline Tabs. These are secondary tab sets (a page can hold many), so they keep state locally
+// and are not sticky; only the page-level tab bar writes ?tab= and sticks.
 
-import { useState } from 'react'
+import { Suspense } from 'react'
+import UiTabs from '@/components/ui/Tabs'
 
 export type ScoutTab = { id: string; label: string; badge?: string; content: React.ReactNode }
 
 export default function Tabs({ tabs, defaultId }: { tabs: ScoutTab[]; defaultId?: string }) {
-  const [active, setActive] = useState(defaultId ?? tabs[0]?.id)
   return (
-    <div>
-      <div role="tablist" className="flex flex-wrap gap-1.5 mb-4">
-        {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={active === t.id} onClick={() => setActive(t.id)}
-            className={`text-[10px] font-mono uppercase tracking-wide px-2.5 py-1.5 rounded-lg border transition ${
-              active === t.id ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'
-            }`}>
-            {t.label}{t.badge && <span className={`ml-1.5 ${active === t.id ? 'text-stone-300' : 'text-stone-400'}`}>{t.badge}</span>}
-          </button>
-        ))}
+    <Suspense fallback={null}>
+      <div style={{ marginBottom: 16 }}>
+        <UiTabs
+          tabs={tabs.map(t => ({ id: t.id, label: t.label, badge: t.badge }))}
+          defaultTab={defaultId ?? tabs[0]?.id}
+          urlSync={false}
+          sticky={false}
+          panels={Object.fromEntries(tabs.map(t => [t.id, t.content]))}
+        />
       </div>
-      {tabs.map((t) => (
-        <div key={t.id} role="tabpanel" hidden={active !== t.id}>{t.content}</div>
-      ))}
-    </div>
+    </Suspense>
   )
 }

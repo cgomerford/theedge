@@ -654,7 +654,7 @@ const selectStyle = `
   .tt-select {
     width:100%; margin:8px 0 12px; padding:6px 8px;
     background:rgba(0,0,0,0.55); color:#FAF8F3; border:1px solid #555;
-    font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px;
+    font-family:'Red Hat Display',sans-serif; font-size:10px;
   }
   .tt-select:disabled { opacity:.5; cursor:not-allowed; }
   .tt-selectlock { font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:#FF5722; margin:-6px 0 10px; }
@@ -664,7 +664,7 @@ const selectStyle = `
 const toggleStyle = `
   .tt-sidetoggle { display:flex; gap:6px; justify-content:center; margin-bottom:6px; }
   .tt-sidebtn {
-    font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10px;
+    font-family:'Red Hat Display',sans-serif; font-size:10px;
     letter-spacing:.06em; text-transform:uppercase;
     padding:7px 16px; border:1px solid #555; background:rgba(0,0,0,0.4);
     color:#A3A3A3; cursor:pointer; transition:border-color .15s,background .15s,color .15s;
@@ -674,11 +674,11 @@ const toggleStyle = `
 `
 
 const stageStyle = `
-  .tt-stage { position:relative; overflow:hidden; color:#FAF8F3; padding:22px 18px 26px; font-family:'JetBrains Mono',ui-monospace,monospace; }
+  .tt-stage { position:relative; overflow:hidden; color:#FAF8F3; padding:22px 18px 26px; font-family:'Red Hat Display',sans-serif; }
   .tt-stage::before { content:""; position:absolute; top:0; left:0; right:0; height:3px; background:#FF5722; z-index:2; }
   .tt-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; }
   .tt-mark { font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#FF5722; }
-  .tt-vs { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:.2em; color:#D8D8D8; }
+  .tt-vs { font-family:'Red Hat Display',sans-serif; font-size:14px; letter-spacing:.2em; color:#D8D8D8; }
   .tt-body { display:grid; grid-template-columns:1fr; gap:18px; margin-top:14px; }
   .tt-fighter { text-align:center; }
   .tt-fname { font-family:var(--font-fraunces,serif); font-weight:600; font-size:20px; line-height:1.05; margin:0 0 2px; }
@@ -699,7 +699,7 @@ const stageStyle = `
   .tt-zone { position:relative; width:100%; max-width:280px; margin:0 auto; aspect-ratio:1; }
   .tt-grid { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
   .tt-cell { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:background .35s ease; overflow:hidden; }
-  .tt-cnet { font-family:'Bebas Neue',sans-serif; font-size:24px; line-height:.9; transition:color .35s; }
+  .tt-cnet { font-family:'Red Hat Display',sans-serif; font-size:24px; line-height:.9; transition:color .35s; }
   .tt-clab { font-size:8px; letter-spacing:.08em; text-transform:uppercase; margin-top:2px; opacity:.85; color:#E2E2E2; }
   .tt-plate { position:absolute; left:50%; bottom:-20px; transform:translateX(-50%); width:60px; height:15px; }
   .tt-readbar { margin-top:22px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.25); }

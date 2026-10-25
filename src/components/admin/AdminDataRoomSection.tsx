@@ -52,7 +52,7 @@ export default function AdminDataRoomSection({ reads }: { reads: ReadRow[] }) {
     <div>
       <style>{`
         .droom-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-        .droom-tab{font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;background:#fff;border:1px solid #1A1A1A1a;color:#6b6b66;padding:6px 11px;cursor:pointer}
+        .droom-tab{font-size:11px;font-family:'Red Hat Display',sans-serif;letter-spacing:.3px;background:#fff;border:1px solid #1A1A1A1a;color:#6b6b66;padding:6px 11px;cursor:pointer}
         .droom-tab.on{background:#1A1A1A;color:#FAF8F3;border-color:#1A1A1A}
       `}</style>
 

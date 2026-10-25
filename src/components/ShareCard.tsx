@@ -1,5 +1,6 @@
 'use client'
 
+import { SITE_HOST } from '@/lib/site'
 /**
  * src/components/ShareCard.tsx
  *
@@ -51,7 +52,7 @@ const FACTOR_LABELS: Record<FactorKey, string> = {
 
 const FACTOR_ORDER: FactorKey[] = [
   'starting_pitcher', 'bullpen', 'offense', 'defense',
-  'matchup', 'park', 'weather', 'rest',
+  'matchup', 'park', 'rest',
 ]
 
 function tierLabel(t: string): string {
@@ -92,7 +93,7 @@ export default function ShareCard({
       width: 1200,
       height: 628,
       background: '#1A1A1A',
-      fontFamily: "'JetBrains Mono', monospace",
+      fontFamily: "'Red Hat Display', sans-serif",
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
@@ -123,7 +124,7 @@ export default function ShareCard({
           fontSize: 13, fontWeight: 700, color: '#FF5722',
           letterSpacing: '0.12em', textTransform: 'uppercase',
         }}>
-          X9LAB · edgereportdaily.com
+          X9LAB · {SITE_HOST}
         </div>
         <div style={{
           fontSize: 12, color: 'rgba(255,255,255,0.35)',
@@ -184,14 +185,14 @@ export default function ShareCard({
           {/* Factor count headline */}
           <div>
             <div style={{
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+              fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800,
               fontSize: 53, lineHeight: 1, color: '#FAF8F3',
               letterSpacing: '0.02em',
             }}>
               {winnerCount} of {total}
             </div>
             <div style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 22, color: 'rgba(255,255,255,0.7)',
               lineHeight: 1.2, marginTop: 4,
             }}>
@@ -219,7 +220,7 @@ export default function ShareCard({
           {/* Summary */}
           {summary && (
             <p style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 14, color: 'rgba(255,255,255,0.5)',
               lineHeight: 1.5, margin: 0,
               fontStyle: 'italic',
@@ -336,7 +337,7 @@ export default function ShareCard({
             borderTop: '1px solid rgba(255,255,255,0.06)',
             paddingTop: 10,
           }}>
-            edgereportdaily.com/mlb/{slug}
+            {SITE_HOST}/mlb/{slug}
           </div>
         </div>
       </div>

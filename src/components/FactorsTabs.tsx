@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 
 type SportKey = 'mlb' | 'nfl' | 'nhl' | 'epl'
@@ -21,7 +22,6 @@ const FACTORS: Record<SportKey, { name: string; body: string }[]> = {
     { name: 'Defence', body: 'Defensive runs saved and outs above average.' },
     { name: 'Matchup', body: "Pitcher's arsenal against the lineup's known weaknesses." },
     { name: 'Park factor', body: 'How much this ballpark helps hitters or pitchers.' },
-    { name: 'Weather', body: 'Temperature, wind and precipitation at first pitch.' },
     { name: 'Rest & travel', body: 'Days off, travel distance and time zones crossed.' },
   ],
   nfl: [
@@ -64,7 +64,7 @@ export default function FactorsTabs() {
   return (
     <div className="mt-12">
       <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mb-3">
-        § The 8 factors, by sport
+        <XMark /> The 8 factors, by sport
       </div>
 
       <div className="flex flex-wrap gap-2 mb-5">

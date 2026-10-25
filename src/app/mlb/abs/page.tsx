@@ -7,6 +7,7 @@
 // adds a page-only "all-round" radar/leaderboard section that needs more
 // room than a homepage card can give it.
 
+import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import { getABSChallengeLeaderboard } from '@/lib/abs-challenges'
@@ -22,6 +23,8 @@ export const metadata = {
 export const revalidate = 1800
 
 export default async function AbsChallengesPage() {
+  // Switched off: real 404. Delete this line to bring the page back.
+  notFound()
   const [ledger, inningBreakdown, dailyTrendByTeam, playerEfficiency] = await Promise.all([
     getABSChallengeLeaderboard(),
     getAbsInningBreakdown(),

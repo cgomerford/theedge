@@ -37,7 +37,7 @@ const COLS: Col[] = [
   { head: 'IVB', def: 'Induced vertical break, inches: rise relative to a spinless pitch. Higher means more rise, lower means more sink.', show: r => fx(r.ivb), get: r => r.ivb, stat: 'ivb', dec: 1 },
   { head: 'HB', def: 'Horizontal break, inches, arm side positive (mirrored for left-handers so both hands compare).', show: r => fx(r.hb), get: r => r.hb, stat: 'hb', dec: 1 },
   { head: 'Spin', def: 'Average spin rate, rpm.', show: r => fint(r.spin), get: r => r.spin, stat: 'spin', dec: 0 },
-  { head: 'Active spin', def: 'Share of the spin that creates movement (Baseball Savant, a season-level figure).', show: r => (r.activeSpin == null ? dash : `${r.activeSpin.toFixed(0)}%`), get: r => r.activeSpin, stat: 'activeSpinPct', dec: 0, unit: '%' },
+  { head: 'Active spin', def: 'Share of the spin that creates movement (a season-level figure).', show: r => (r.activeSpin == null ? dash : `${r.activeSpin.toFixed(0)}%`), get: r => r.activeSpin, stat: 'activeSpinPct', dec: 0, unit: '%' },
   { head: 'VAA', def: 'Vertical approach angle at the front of the plate, degrees. Closer to zero is flatter, which plays up in the zone.', show: r => fx(r.vaa), get: r => r.vaa, stat: 'vaa', dec: 1 },
   { head: 'Ext', def: 'Release extension: how far down the mound he lets go of the ball, feet.', show: r => fx(r.ext), get: r => r.ext, stat: 'extension', dec: 1 },
   { head: 'Whiff%', def: 'Swings that miss, per swing.', show: r => fx(r.whiff), get: r => r.whiff, stat: 'whiffPct', hi: true, shaded: true, dec: 1, unit: '%' },

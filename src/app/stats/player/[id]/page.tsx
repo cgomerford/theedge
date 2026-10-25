@@ -20,6 +20,7 @@ import SiteHeader from '@/components/SiteHeader'
 import PlayerShareBuilder from '@/components/stats/PlayerShareBuilder'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getPlayerSeasonStats } from '@/lib/lab'
+import { SITE_URL } from '@/lib/site'
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -49,7 +50,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   }
 
   const title = `${name}${pos ? ` (${pos})` : ''} Stats & Season Trend · x9Lab`
-  const canonical = `https://edgereportdaily.com/stats/player/${id}`
+  const canonical = `${SITE_URL}/stats/player/${id}`
 
   return {
     title,

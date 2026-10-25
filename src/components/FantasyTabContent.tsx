@@ -11,6 +11,7 @@
  *   5. Bullpen Watch
  */
 
+import XMark from '@/components/XMark'
 import React, { useState, useEffect } from 'react'
 import type { FantasyCards, FantasyVerdict } from '@/lib/fantasy-cards'
 import BatterCardStrip from '@/components/BatterCardStrip'
@@ -208,7 +209,7 @@ function MethodologyPanel() {
           onClick={dismiss}
           className="font-mono text-[9px] text-stone-400 hover:text-stone-600 transition-colors uppercase tracking-wider"
         >
-          Got it ✕
+          Got it
         </button>
       </div>
 
@@ -242,7 +243,7 @@ function MethodologyPanel() {
             },
             {
               label: 'Platoon flags',
-              body: 'LHB ✓ or RHB ✓ means the opposing pitcher has a meaningful split (>25 points of BAA) against that handedness. Target batters with the platoon advantage.',
+              body: 'LHB or RHB means the opposing pitcher has a meaningful split (>25 points of BAA) against that handedness. Target batters with the platoon advantage.',
             },
             {
               label: 'DFS Value (Elite / Good / Avg / Fade)',
@@ -275,7 +276,7 @@ function MethodologyPanel() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
-      § {children}
+      <XMark /> {children}
     </h3>
   )
 }
@@ -452,7 +453,7 @@ function SPCard({
             <div
               className="font-bold leading-none mb-1"
               style={{
-                fontFamily: "'Bebas Neue', sans-serif",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: '28px',
                 color: s.danger ? '#DC2626' : '#1A1A1A',
               }}
@@ -525,9 +526,9 @@ function BatterTable({
 
   const platoonAdv = vsLhb != null && vsRhb != null
     ? vsLhb > vsRhb + 0.025
-      ? { label: 'RHB ✓', color: '#16A34A', bg: 'rgba(21,128,61,0.10)' }
+      ? { label: 'RHB split', color: '#16A34A', bg: 'rgba(21,128,61,0.10)' }
       : vsRhb > vsLhb + 0.025
-        ? { label: 'LHB ✓', color: '#16A34A', bg: 'rgba(21,128,61,0.10)' }
+        ? { label: 'LHB split', color: '#16A34A', bg: 'rgba(21,128,61,0.10)' }
         : { label: 'Even', color: '#78716C', bg: 'rgba(120,113,108,0.08)' }
     : null
 
@@ -547,7 +548,7 @@ function BatterTable({
             </MetricTip>
           </div>
           <div className="font-mono text-[9px] uppercase tracking-wider text-stone-400 text-center">
-            <MetricTip tip="Does this batter have a handedness advantage vs tonight's starter? LHB ✓ means the pitcher gives up significantly more to left-handers">
+            <MetricTip tip="Does this batter have a handedness advantage vs tonight's starter? LHB means the pitcher gives up significantly more to left-handers">
               Platoon
             </MetricTip>
           </div>
@@ -605,7 +606,7 @@ function BatterTable({
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0"
                 style={{
-                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: '15px',
                   background: b.verdict === 'START' ? '#1A1A1A' : '#F4F0E8',
                   color: b.verdict === 'START' ? '#FAF8F3' : '#1A1A1A',
@@ -800,7 +801,7 @@ function BullpenPanel({ abbr, data }: { abbr: string; data: BullpenData }) {
         <div className="text-right">
           <div
             className="font-bold text-white"
-            style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '30px', lineHeight: 1 }}
+            style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '30px', lineHeight: 1 }}
           >
             {data.era?.toFixed(2) ?? '–'}
           </div>
@@ -812,7 +813,7 @@ function BullpenPanel({ abbr, data }: { abbr: string; data: BullpenData }) {
           { label: 'IP last night', value: formatIP(ipY), warn: ipY >= 4 },
           {
             label: 'Closer available',
-            value: data.closer_available === true ? 'Yes ✓' : data.closer_available === false ? 'No ✕' : '?',
+            value: data.closer_available === true ? 'Yes' : data.closer_available === false ? 'No' : '?',
             warn: data.closer_available === false,
           },
           { label: 'K/9', value: data.k_per_9?.toFixed(1) ?? '–', warn: false },

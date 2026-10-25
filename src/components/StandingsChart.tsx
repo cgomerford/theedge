@@ -89,10 +89,10 @@ function StandingsLineChart({
     <div ref={chartRef} className="border border-stone-200 bg-white p-4">
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart data={chartData} margin={{ top: logoSize, right: rightMargin, bottom: 0, left: 0 }}>
-          <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} label={{ value: 'Games played', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'monospace' }} />
-          <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={30} allowDecimals={false} />
+          <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} label={{ value: 'Games played', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+          <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={30} allowDecimals={false} />
           <Tooltip labelFormatter={l => `Game ${l}`} formatter={(v: any, name: any) => [v, series.find((s: any) => String(s.teamId) === name)?.abbreviation ?? name]} />
-          <Legend formatter={(value: string) => series.find((s: any) => String(s.teamId) === value)?.abbreviation ?? value} wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+          <Legend formatter={(value: string) => series.find((s: any) => String(s.teamId) === value)?.abbreviation ?? value} wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
           {series.map((s: any) => {
             const color = teamColorById(s.teamId)
             return (
@@ -188,7 +188,7 @@ useEffect(() => {
                 className="text-stone-500 hover:text-stone-900 text-xl leading-none"
                 aria-label="Close"
               >
-                ✕
+                Close
               </button>
             </div>
             <StandingsLineChart series={series} chartHeight={480} logoSize={32} chartRef={expandedChartRef} />

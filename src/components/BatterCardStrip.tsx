@@ -218,8 +218,8 @@ export default function BatterCardStrip({
   // (we don't have per-batter handedness from LLM cards, so show at section level)
   const sectionPlatoonAdv = hasPlatoonEdge
     ? vsLhb! > vsRhb!
-      ? { label: 'RHB ✓', bg: '#EAF3DE', color: '#3B6D11' }
-      : { label: 'LHB ✓', bg: '#EAF3DE', color: '#3B6D11' }
+      ? { label: 'RHB split', bg: '#EAF3DE', color: '#3B6D11' }
+      : { label: 'LHB split', bg: '#EAF3DE', color: '#3B6D11' }
     : null
 
   // Sort: STARTs first, then by rating desc

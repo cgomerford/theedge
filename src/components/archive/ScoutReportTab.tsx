@@ -14,6 +14,7 @@
 // the call site. No component change needed, only the two call sites
 // below.
 
+import XMark from '@/components/XMark'
 import { useState, useMemo, useRef } from 'react'
 import type { ScoutReport, ScoutRow, PitchDetailPayload } from '@/lib/scout'
 import { PitchDetailModal } from './ScoutExpandCharts'
@@ -39,7 +40,6 @@ import type { ABSChallengeRecord } from '@/lib/abs-challenges'
 import SBTendencyCard from '@/components/SBTendencyCard'
 import type { SBTendencyReport } from '@/lib/sb-tendency'
 import type { VenueFieldDimensions } from '@/lib/venue-dimensions'
-import BallparkWeatherCard from '@/components/BallparkWeatherCard'
 import type { GameWeather, RainOutlook } from '@/lib/mlb'
 import PitchSequencingSnippet from '@/components/PitchSequencingSnippet'
 import type { PitcherCountTendency, PitcherPitchSequencing } from '@/lib/pitcher-sequencing'
@@ -376,7 +376,7 @@ function ReportSection({ title, locked, teaser, children }: {
   return (
     <div>
       <div className="flex items-center justify-between px-1 mb-3">
-        <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400">§ {title}</p>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-stone-400"><XMark /> {title}</p>
         {locked && <span className="font-mono text-[8px] uppercase tracking-widest text-stone-300">⊕ Pro</span>}
       </div>
       {locked ? <ProLockedCard label={title} teaser={teaser ?? 'More detail with Pro.'} /> : children}
@@ -550,7 +550,7 @@ venueDimensions = null,
             <div className="flex flex-col items-center gap-2 min-w-0">
               <TeamLogo teamId={awayTeamId} abbr={awayAbbr} color={awayColor} size={52} />
               <div className="text-center min-w-0">
-                <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.35rem' }}>
+                <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.35rem' }}>
                   {awayName}
                 </div>
                 <div className="flex items-center justify-center gap-2 mt-2">
@@ -564,13 +564,13 @@ venueDimensions = null,
             </div>
 
             <div className="flex flex-col items-center shrink-0 px-2">
-              <span className="text-stone-300 leading-none" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem' }}>VS</span>
+              <span className="text-stone-300 leading-none" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.5rem' }}>VS</span>
             </div>
 
             <div className="flex flex-col items-center gap-2 min-w-0">
               <TeamLogo teamId={homeTeamId} abbr={homeAbbr} color={homeColor} size={52} />
               <div className="text-center min-w-0">
-                <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.35rem' }}>
+                <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.35rem' }}>
                   {homeName}
                 </div>
                 <div className="flex items-center justify-center gap-2 mt-2">
@@ -715,12 +715,6 @@ venueDimensions = null,
           </div>
         </ReportSection>
 
-        {/* § Ballpark & Weather — free */}
-        <ReportSection title="Ballpark & Weather">
-          <div className="max-w-md">
-            <BallparkWeatherCard venueName={venueName} isIndoor={isIndoorVenue} weather={ballparkWeather} windImpact={windImpact} rainOutlook={rainOutlook} />
-          </div>
-        </ReportSection>
 
         {/* § Key Notes — free */}
         <ReportSection title="Key Notes">

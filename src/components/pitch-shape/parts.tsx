@@ -2,7 +2,7 @@
 //
 // Small presentational pieces shared by the Shape tab and the Shape Sandbox: outcome bars, the
 // arm-slot strip, locked card, status badge and the map legend. No hooks, no data fetching — every
-// number comes in through props from src/lib/pitch-shape/model.ts. One font (Outfit via SANS).
+// number comes in through props from src/lib/pitch-shape/model.ts. One font (Red Hat via SANS).
 
 import Link from 'next/link'
 import { C, SANS, Foot } from '@/components/team/ui'

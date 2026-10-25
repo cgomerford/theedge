@@ -28,7 +28,7 @@ import { findTeamByName } from '@/lib/teams'
 import type { PitcherPitchLog } from '@/lib/pitcher-pitch-log'
 
 const SEASON = new Date().getFullYear()
-const AXIS_TICK = { fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }
+const AXIS_TICK = { fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }
 
 // Real least-squares linear fit (velo ~ pitch sequence number) — just the
 // two endpoint points, rendered as a faint straight line so a velo
@@ -212,7 +212,7 @@ export default function EdgePlusGameCard({
           <button
             key={d}
             onClick={() => setSelectedDate(d)}
-            className={`font-mono rounded-full border px-3 py-1.5 text-[11px] transition ${activeDate === d ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
+            className={`font-mono rounded-sm border px-3 py-1.5 text-[11px] transition ${activeDate === d ? 'border-[#FF5722] text-[#FF5722] bg-orange-50 font-bold' : 'border-stone-200 text-stone-500 hover:border-stone-300'}`}
           >
             {fmtDate(d)}
           </button>
@@ -301,7 +301,7 @@ export default function EdgePlusGameCard({
                   <YAxis type="number" dataKey="velo" name="Velo" tick={AXIS_TICK} domain={['auto', 'auto']} width={36} unit=" mph" />
                   <ZAxis range={[24, 24]} />
                   <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)} mph` : '—')} />
-                  <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+                  <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
                   {veloByType.map(({ pitchType, points }) => (
                     <Scatter key={pitchType} name={log.pitchNames[pitchType] ?? pitchType} data={points} fill={pitchColor(pitchType)} isAnimationActive={false} />
                   ))}

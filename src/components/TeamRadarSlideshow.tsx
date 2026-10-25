@@ -336,7 +336,7 @@ export default function TeamRadarSlideshow({ rows, cFIP }: { rows: TeamRadarRow[
               key={t.row.teamId}
               onClick={() => setIndex(i)}
               aria-label={t.meta.short}
-              style={{ width: 5, height: 5, borderRadius: 999, background: i === index % teamOrder.length ? ORANGE : '#DEDACE', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ width: 5, height: 5, borderRadius: 4, background: i === index % teamOrder.length ? ORANGE : '#DEDACE', border: 'none', cursor: 'pointer', padding: 0 }}
             />
           ))}
         </div>

@@ -102,7 +102,7 @@ function PitchStage({ play, sel, onSel, onDone, onReplay }: { play: ExPlay; sel:
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6 }}>
         <span style={{ fontSize: 12, fontWeight: 700 }}>Count <b style={{ fontSize: 16 }}>{count}</b> <span style={{ color: C.mute, fontWeight: 500 }}>· pitch {Math.min(shown, n)} of {n}</span></span>
         <button type="button" onClick={replay} className="gm-btn" aria-label="Replay the pitches"
-          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 999, padding: '4px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 4, padding: '4px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
           {done ? '↻ Replay' : '… playing'}
         </button>
       </div>
@@ -243,7 +243,7 @@ export default function GameExplorer({ initial, isPro }: { initial: ExGame; isPr
           </div>
           {filter != null && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.ink, color: '#fff', borderRadius: 10, padding: '7px 10px', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-              <span>Showing: {filterName}</span><button type="button" aria-label="Clear player filter" onClick={() => setFilter(null)} style={{ background: 'none', border: 0, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>✕</button>
+              <span>Showing: {filterName}</span><button type="button" aria-label="Clear player filter" onClick={() => setFilter(null)} style={{ background: 'none', border: 0, color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Remove</button>
             </div>
           )}
           {tab === 'feed' ? (
@@ -306,11 +306,11 @@ export default function GameExplorer({ initial, isPro }: { initial: ExGame; isPr
                   <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.15 }}>{play.batter}<div style={{ color: C.mute, fontWeight: 600, fontSize: 14 }}>({play.stand}HB) vs {play.pitcher} ({play.throws}HP)</div></div>
                   <Face id={play.pitcherId} name={play.pitcher} ring={play.half === 'Top' ? H.primary : A.primary} />
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{play.half} {play.inning} · {play.outs} out · {game.away.abbr} {play.awayAfter}–{play.homeAfter} {game.home.abbr}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 4, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{play.half} {play.inning} · {play.outs} out · {game.away.abbr} {play.awayAfter}–{play.homeAfter} {game.home.abbr}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 12px' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{baseText(play.baseState)}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 999, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{playResult(play)}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 4, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{baseText(play.baseState)}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 4, background: C.soft, padding: '3px 10px', color: '#5b5347' }}>{playResult(play)}</span>
               </div>
               {play.description && play.complete && <p style={{ fontSize: 13, color: '#5b5347', margin: '0 0 12px' }}>{play.description}</p>}
               {play.pitches.length === 0 ? (

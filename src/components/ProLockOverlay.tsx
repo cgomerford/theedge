@@ -17,13 +17,13 @@ export default function ProLockOverlay({ tabName, description }: Props) {
     <div className="py-16 px-6 text-center">
       {/* Lock icon */}
       <div className="w-16 h-16 rounded-full bg-stone-900 flex items-center justify-center mx-auto mb-5">
-        <span className="text-3xl">🔒</span>
+        <span className="text-3xl"></span>
       </div>
 
       {/* Title */}
       <h3
         className="text-xl font-semibold text-stone-900 mb-2"
-        style={{ fontFamily: 'Fraunces, Georgia, serif' }}
+        style={{ fontFamily: 'Red Hat Display, sans-serif' }}
       >
         {tabName} is a Pro feature
       </h3>
@@ -31,7 +31,7 @@ export default function ProLockOverlay({ tabName, description }: Props) {
       {/* Description */}
       <p
         className="text-sm text-stone-500 mb-6 max-w-sm mx-auto leading-relaxed"
-        style={{ fontFamily: 'Fraunces, Georgia, serif' }}
+        style={{ fontFamily: 'Red Hat Display, sans-serif' }}
       >
         {description || defaultDesc}
       </p>

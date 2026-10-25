@@ -160,12 +160,12 @@ function Field({ v, compact }: { v: Extract<FactorVisual, { kind: 'field' }>; co
             {f.flag && <circle cx={pos[0]} cy={pos[1]} r="8.5" className="fill-none stroke-orange-400" strokeWidth="1.5" />}
             <circle cx={pos[0]} cy={pos[1]} r="5" className={dot(f)} />
             {showLabel && (
-              <text x={pos[0]} y={pos[1] + 13} textAnchor="middle" className="fill-stone-600" style={{ fontSize: compact ? 8 : 7, fontFamily: 'monospace' }}>
+              <text x={pos[0]} y={pos[1] + 13} textAnchor="middle" className="fill-stone-600" style={{ fontSize: compact ? 8 : 7, fontFamily: 'var(--font-redhat), sans-serif' }}>
                 {f.oaa != null ? `${f.oaa > 0 ? '+' : ''}${f.oaa}` : f.pos}
               </text>
             )}
             {!compact && (
-              <text x={pos[0]} y={pos[1] - 8} textAnchor="middle" className="fill-stone-400" style={{ fontSize: 6, fontFamily: 'monospace' }}>{f.pos}</text>
+              <text x={pos[0]} y={pos[1] - 8} textAnchor="middle" className="fill-stone-400" style={{ fontSize: 6, fontFamily: 'var(--font-redhat), sans-serif' }}>{f.pos}</text>
             )}
           </g>
         )

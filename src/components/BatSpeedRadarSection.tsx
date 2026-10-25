@@ -311,7 +311,7 @@ function BatSpeedVsPowerPanel({ players }: { players: BatSpeedPlayerOption[] }) 
         </table>
       </div>
       <div className="text-[9px] text-[#8A8577] mt-2">
-        HR/2B/3B/SLG are real season totals (MLB Stats API); EV (exit velocity) and xSLG are averaged per batted ball
+        HR/2B/3B/SLG are real season totals; EV (exit velocity) and xSLG are averaged per batted ball
         from Statcast (exit velocity and launch angle alone for xSLG — physics only, no luck or defense).
         &quot;Pool&quot; shows which selection each player came from — only &quot;Random&quot; rows feed the r-values above.
       </div>
@@ -734,7 +734,7 @@ export default function BatSpeedRadarSection({ players }: { players: BatSpeedPla
               <button
                 key={key}
                 onClick={() => setNeuralY(key)}
-                className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition ${neuralY === key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
+                className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm border transition ${neuralY === key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
               >
                 {label}
               </button>

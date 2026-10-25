@@ -1,5 +1,6 @@
 // src/app/fantasy/trends/page.tsx
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
@@ -35,7 +36,7 @@ export default async function TrendsPage() {
       <div className="border-b-2 border-stone-900 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-700 mb-2">
-            § Trends
+            <XMark /> Trends
           </div>
           <h1 className="font-serif font-light text-5xl sm:text-7xl tracking-tight leading-none">
             Peaked or bottomed<span className="text-orange-600">.</span>

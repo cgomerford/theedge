@@ -146,7 +146,7 @@ export default function StatLineBuilder() {
   return (
     <div className="flex flex-col gap-5 lg:flex-row">
       <div className="flex min-w-0 flex-1 flex-col gap-4 text-sm">
-        <div className="flex w-fit overflow-hidden rounded-full border border-stone-300 font-mono text-xs">
+        <div className="flex w-fit overflow-hidden rounded-sm border border-stone-300 font-mono text-xs">
           {(['game', 'custom'] as Mode[]).map(m => (
             <button key={m} onClick={() => setMode(m)} className={`px-4 py-1.5 ${mode === m ? 'bg-[#FF5722] font-bold text-white' : 'bg-white text-stone-700 hover:bg-stone-100'}`}>
               {m === 'game' ? 'Game line' : 'Custom line'}
@@ -216,7 +216,7 @@ export default function StatLineBuilder() {
             <p className="font-mono text-[11px] uppercase tracking-widest text-stone-500">X post text</p>
             <div className="flex items-center gap-3 font-mono text-[11px]">
               <button className="text-stone-600 underline" onClick={() => setPost(draftPost({ name: player?.name ?? '', teamAbbr: team.abbrev, context, headline, fields }))} disabled={!player}>draft from line</button>
-              <button className="text-stone-600 underline" onClick={async () => { try { await navigator.clipboard.writeText(post); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { setStatus('Copy failed — select the text manually.') } }} disabled={!post}>{copied ? 'copied ✓' : 'copy'}</button>
+              <button className="text-stone-600 underline" onClick={async () => { try { await navigator.clipboard.writeText(post); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { setStatus('Copy failed — select the text manually.') } }} disabled={!post}>{copied ? 'copied' : 'copy'}</button>
               <span className={check.over ? 'font-bold text-red-600' : 'text-stone-500'}>{check.length}/{X_LIMIT}</span>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function StatLineBuilder() {
           <select className={input} value={format} onChange={e => setFormat(e.target.value as CardFormat)}>
             {Object.entries(FORMATS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
-          <button onClick={exportPng} disabled={!player || exporting} className="rounded-full bg-[#FF5722] px-5 py-2 font-mono text-xs font-bold text-white disabled:opacity-40">
+          <button onClick={exportPng} disabled={!player || exporting} className="rounded-sm bg-[#FF5722] px-5 py-2 font-mono text-xs font-bold text-white disabled:opacity-40">
             {exporting ? 'Exporting…' : 'Export PNG'}
           </button>
           {!photo && player && <span className="font-mono text-[11px] text-stone-500">headshot loading (or unavailable — initials are used)</span>}

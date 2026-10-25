@@ -9,7 +9,9 @@
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 
-export const SITE_URL = 'https://edgereportdaily.com'
+import { SITE_HOST, SITE_URL } from '@/lib/site'
+
+export { SITE_URL }
 
 export const COLORS = {
   /** Outer page background — subtle frame around the email card on desktop */
@@ -31,8 +33,9 @@ export const COLORS = {
 } as const
 
 export const FONTS = {
-  serif: `'Fraunces', Georgia, 'Times New Roman', serif`,
-  mono: `'Space Mono', 'Courier New', monospace`,
+  // One family (Red Hat Display); clients that block web fonts fall back to the system sans.
+  serif: `'Red Hat Display', Arial, Helvetica, sans-serif`,
+  mono: `'Red Hat Display', Arial, Helvetica, sans-serif`,
 } as const
 
 // ─── Preheader (hidden inbox preview text) ────────────────────────────────────
@@ -140,7 +143,7 @@ export function transactionalFooter(): string {
   return `
   <tr><td class="brief-pad" style="padding:24px 40px 32px;">
     <div style="font-family:${FONTS.mono};font-size:10px;letter-spacing:0.18em;color:${COLORS.muted};text-transform:uppercase;">
-      x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;edgereportdaily.com
+      x9Lab<span style="color:${COLORS.orange};">.</span>&nbsp;&nbsp;·&nbsp;&nbsp;${SITE_HOST}
     </div>
   </td></tr>`
 }
@@ -170,7 +173,7 @@ export function wrapEmail({
   <title>${escapeHtml(title)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
   <style>
     /* Mobile tuning — Apple Mail, Gmail, modern clients support these */
     @media only screen and (max-width: 480px) {

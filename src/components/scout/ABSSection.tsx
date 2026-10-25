@@ -298,7 +298,7 @@ export default async function ABSSection({ ctx }: { ctx: ScoutContext }) {
         { id: 'watch', label: 'Watch-fors', content: two(WatchPanel) },
       ]} />
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Source: MLB&apos;s game-feed challenge log — the same ABS challenge data Baseball Savant&apos;s boards are built on — for the 2026 regular season. Rates are per game played, so games with no challenges count. This is a description of how each club has used its challenges, not a recommendation.
+ Rates are per game played, so games with no challenges count. This is a description of how each club has used its challenges, not a recommendation.
       </p>
     </div>
   )

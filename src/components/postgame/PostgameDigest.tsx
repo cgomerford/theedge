@@ -12,9 +12,11 @@
 // the surrounding site chrome (nav, footer) should already be outside
 // this component's boundary, not hidden by it.
 
+import XMark from '@/components/XMark'
 import type { PostgameReport as PostgameReportData } from '@/types/postgame'
 import { RadarChart } from './RadarChart'
 import { PieChart } from './PieChart'
+import { SITE_HOST } from '@/lib/site'
 
 const ORANGE = '#FF5722'
 const INK = '#1A1A1A'
@@ -36,7 +38,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
   return (
     <div
       className="bg-white text-[#1A1A1A] mx-auto shadow-sm print:shadow-none"
-      style={{ width: '794px', minHeight: '1123px', padding: '32px 36px', fontFamily: "'Inter', sans-serif" }}
+      style={{ width: '794px', minHeight: '1123px', padding: '32px 36px', fontFamily: "'Red Hat Display', sans-serif" }}
     >
       {/* header */}
       <div className="flex items-baseline justify-between border-b-[3px] pb-3 mb-4" style={{ borderColor: INK }}>
@@ -51,7 +53,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
       {/* score */}
       <div className="flex items-center justify-center gap-6 mb-5">
         <span className={`font-serif font-extrabold text-2xl ${!homeWon ? 'text-[#FF5722]' : ''}`}>{away.abbreviation}</span>
-        <span style={{ fontFamily: "'Bebas Neue', sans-serif" }} className="text-5xl leading-none">
+        <span style={{ fontFamily: "'Red Hat Display', sans-serif" }} className="text-5xl leading-none">
           {finalAwayScore} <span className="text-stone-300 text-2xl">–</span> {finalHomeScore}
         </span>
         <span className={`font-serif font-extrabold text-2xl ${homeWon ? 'text-[#FF5722]' : ''}`}>{home.abbreviation}</span>
@@ -60,7 +62,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
     {/* win probability sparkline */}
       {report.winProbability.length > 1 && (
         <div className="mb-5">
-          <div className="font-mono text-[7.5px] uppercase tracking-widest text-stone-500 mb-1">§ Win Probability</div>
+          <div className="font-mono text-[7.5px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> Win Probability</div>
           <svg viewBox="0 0 760 40" style={{ width: '100%', display: 'block' }}>
             {(() => {
               const pts = report.winProbability
@@ -96,7 +98,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
         ].map(item => (
           <div key={item.l} className="border border-stone-200 text-center py-1.5 px-1">
             <div className="font-mono text-[7.5px] uppercase tracking-wide text-stone-500">{item.l}</div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif" }} className="text-lg leading-none mt-0.5">{item.v}</div>
+            <div style={{ fontFamily: "'Red Hat Display', sans-serif" }} className="text-lg leading-none mt-0.5">{item.v}</div>
             <div className="font-mono text-[7px] text-stone-400 mt-0.5 truncate">{item.n ?? '—'}</div>
           </div>
         ))}
@@ -106,7 +108,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
       <div className="grid grid-cols-3 gap-2 mb-5">
         {report.superlatives.biggestInning && (
           <div className="border border-stone-200 px-3 py-2">
-            <div className="font-mono text-[7.5px] uppercase tracking-widest text-stone-500 mb-1">§ Biggest Inning</div>
+            <div className="font-mono text-[7.5px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> Biggest Inning</div>
             <div className="font-serif text-[12px]">
               {report.superlatives.biggestInning.teamAbbreviation} scored {report.superlatives.biggestInning.runs} in the {report.superlatives.biggestInning.inning === 1 ? '1st' : `${report.superlatives.biggestInning.inning}th`}
             </div>
@@ -114,7 +116,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
         )}
         {report.mostImpactfulAtBat && (
           <div className="col-span-2 border border-stone-200 bg-[#1A1A1A] text-white px-3 py-2">
-            <div className="font-mono text-[7.5px] uppercase tracking-widest mb-1" style={{ color: '#FDE047' }}>§ Most Impactful At-Bat</div>
+            <div className="font-mono text-[7.5px] uppercase tracking-widest mb-1" style={{ color: '#FDE047' }}><XMark /> Most Impactful At-Bat</div>
             <div className="font-serif text-[11.5px] italic">{report.mostImpactfulAtBat.description}</div>
           </div>
         )}
@@ -123,7 +125,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
       {/* radar + pies row */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="border border-stone-200 p-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1">§ Game Profile</div>
+          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> Game Profile</div>
           <RadarChart
             size={190}
             axisLabels={['Power', 'Discipline', 'Contact', 'Hard Contact', 'Speed']}
@@ -134,7 +136,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
           />
         </div>
         <div className="border border-stone-200 p-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1">§ {away.abbreviation} Contact</div>
+          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> {away.abbreviation} Contact</div>
           <PieChart size={110} slices={[
             { label: 'Ground ball', value: battedBallMix.away.groundBallPct, color: '#1A1A1A' },
             { label: 'Fly ball', value: battedBallMix.away.flyBallPct, color: ORANGE },
@@ -143,7 +145,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
           ]} />
         </div>
         <div className="border border-stone-200 p-2.5">
-          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1">§ {home.abbreviation} Contact</div>
+          <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> {home.abbreviation} Contact</div>
           <PieChart size={110} slices={[
             { label: 'Ground ball', value: battedBallMix.home.groundBallPct, color: '#1A1A1A' },
             { label: 'Fly ball', value: battedBallMix.home.flyBallPct, color: ORANGE },
@@ -160,7 +162,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
           if (!p) return null
           return (
             <div key={team.teamId} className="border border-stone-200 p-2.5">
-              <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1">§ {team.name} Starter</div>
+              <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 mb-1"><XMark /> {team.name} Starter</div>
               <div className="font-serif font-bold text-[13px]">{p.pitcherName}</div>
               <div className="font-mono text-[10px] text-stone-600 mt-0.5">
                 {outsToIP(p.outsRecorded)} IP · {p.strikeouts} K · {p.walks} BB · {p.earnedRunsAllowed} ER
@@ -179,7 +181,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
 
       {/* key pitches */}
       <div className="mb-5">
-        <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 border-b border-stone-200 pb-1 mb-2">§ Key Pitches</div>
+        <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 border-b border-stone-200 pb-1 mb-2"><XMark /> Key Pitches</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           {keyPitches.slice(0, 8).map((kp, i) => (
             <div key={i} className="flex items-baseline gap-1.5 font-mono text-[9px] text-stone-600">
@@ -194,7 +196,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
 
       {/* key plays */}
       <div>
-        <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 border-b border-stone-200 pb-1 mb-2">§ Key Plays</div>
+        <div className="font-mono text-[8px] uppercase tracking-widest text-stone-500 border-b border-stone-200 pb-1 mb-2"><XMark /> Key Plays</div>
         {keyPlays.slice(0, 6).map((kp, i) => (
           <div key={i} className="flex gap-2 font-mono text-[9.5px] py-0.5">
             <span className="text-stone-400 whitespace-nowrap">{kp.halfInning === 'top' ? '▲' : '▼'}{kp.inning}</span>
@@ -205,7 +207,7 @@ export function PostgameDigest({ report }: { report: PostgameReportData }) {
       </div>
 
       <div className="mt-6 pt-2 border-t border-stone-200 font-mono text-[7.5px] text-stone-400">
-        ⊕ MLB Stats API live feed · edgereportdaily.com/mlb/{report.slug}
+        ⊕ {SITE_HOST}/mlb/{report.slug}
       </div>
 
       <style>{`

@@ -6,7 +6,7 @@
 
 import { useState } from 'react'
 
-const MONO = 'var(--font-jetbrains), ui-monospace, monospace'
+const MONO = 'var(--font-redhat), sans-serif'
 
 export default function CheckoutButtons({ signedIn }: { signedIn: boolean }) {
   const [interval, setInterval_] = useState<'month' | 'year'>('year')

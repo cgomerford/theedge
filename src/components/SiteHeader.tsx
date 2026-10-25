@@ -1,5 +1,6 @@
 "use client"
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -34,13 +35,11 @@ const MLB_DIVISIONS = [
 const MLB_SUB_LINKS = [
   { href: '/mlb',              label: 'Home',           pro: false },
   { href: '/mlb/scores',       label: 'Scores',         pro: false },
-  { href: '/mlb/abs',          label: 'ABS Challenges',  pro: false },
   { href: '/mlb/stats',        label: 'Stats',          pro: false },
   { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
   { href: '/mlb/lab/batting-lab',  label: 'Batting Lab',    pro: true },
   { href: '/mlb/lab/contact',      label: 'Contact Lab',     pro: false },
   { href: '/mlb/lab/platoon',      label: 'Platoon Lab',     pro: false },
-  { href: '/track-record',     label: 'Track Record',   pro: false },
 ]
 
 // ─── About / More Data ────────────────────────────────────────────────────────
@@ -56,7 +55,6 @@ const ABOUT_SUB_LINKS = [
   { href: '/why-edge',     label: 'Why x9Lab' },
   { href: '/how-it-works', label: 'How It Works' },
   { href: '/pricing',      label: 'Pricing' },
-  { href: '/track-record', label: 'Past Games' },
 ]
 // ─── MLB Mega Panel ───────────────────────────────────────────────────────────
 
@@ -241,7 +239,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
             {/* ─── COL 1: MLB ─── */}
             <div>
               <div style={sectionHead}>
-                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> MLB
+                <span style={{ color: '#FF5722', marginRight: 6 }}><XMark /></span> MLB
               </div>
               {MLB_SUB_LINKS.map(link => (
                 <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
@@ -251,12 +249,12 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
               ))}
 
               <div style={{ ...sectionHead, marginTop: 32 }}>
-                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> Labs
+                <span style={{ color: '#FF5722', marginRight: 6 }}><XMark /></span> Labs
               </div>
               {LABS_MENU.map(item => (
                 <Link key={item.href} href={item.href} onClick={onClose} style={menuLink}>
                   {item.label}
-                  <span style={{ marginLeft: 8, fontFamily: 'var(--font-jetbrains), monospace', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8a8275' }}>
+                  <span style={{ marginLeft: 8, fontFamily: 'var(--font-redhat), sans-serif', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8a8275' }}>
                     {item.badge ?? STATUS_LABEL[item.status]}
                   </span>
                 </Link>
@@ -307,7 +305,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
             {/* ─── COL 3: More ─── */}
             <div>
               <div style={sectionHead}>
-                <span style={{ color: '#FF5722', marginRight: 6 }}>§</span> More
+                <span style={{ color: '#FF5722', marginRight: 6 }}><XMark /></span> More
               </div>
               {ABOUT_SUB_LINKS.map(link => (
                 <Link key={link.href} href={link.href} onClick={onClose} style={menuLink}>
@@ -331,13 +329,12 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
                 borderTop: '1px solid #E2DCCF', marginTop: 24, paddingTop: 24,
               }}>
                 <div style={{
-                  fontFamily: 'Space Mono, monospace', fontSize: 9,
+                  fontFamily: 'Red Hat Display, sans-serif', fontSize: 9,
                   letterSpacing: '0.16em', textTransform: 'uppercase',
                   color: '#8A8275', marginBottom: 12,
                 }}>QUICK LINKS</div>
-                <Link href="/tonight"       onClick={onClose} style={utilLink}>Tonight's Slate</Link>
+                <Link href="/mlb"           onClick={onClose} style={utilLink}>Tonight's Slate</Link>
 <Link href="/mlb/stats"     onClick={onClose} style={utilLink}>Stats & Leaders</Link>
-<Link href="/track-record"  onClick={onClose} style={utilLink}>Track Record</Link>
               </div>
 
               {!isLoggedIn && (
@@ -349,7 +346,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
                       display: 'block', textAlign: 'center',
                       padding: '12px 20px',
                       background: '#FF5722', color: '#fff',
-                      fontFamily: 'Space Mono, monospace',
+                      fontFamily: 'Red Hat Display, sans-serif',
                       fontSize: 10, letterSpacing: '0.14em',
                       textTransform: 'uppercase', fontWeight: 700,
                       textDecoration: 'none',
@@ -372,7 +369,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
 // ─── Style tokens for menu panel ──────────────────────────────────────────────
 
 const sectionHead: React.CSSProperties = {
-  fontFamily: 'Space Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 11, fontWeight: 700,
   letterSpacing: '0.14em', textTransform: 'uppercase',
   color: '#1A1A1A',
@@ -383,20 +380,20 @@ const sectionHead: React.CSSProperties = {
 
 const menuLink: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
-  fontFamily: 'Outfit, sans-serif',
+  fontFamily: 'var(--font-redhat), sans-serif',
   fontSize: 15, color: '#1A1A1A',
   textDecoration: 'none',
   padding: '6px 0',
 }
 
 const proBadge: React.CSSProperties = {
-  fontFamily: 'Space Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 9, letterSpacing: '0.1em',
   color: '#FF5722', textTransform: 'uppercase',
 }
 
 const divLabel: React.CSSProperties = {
-  fontFamily: 'Space Mono, monospace',
+  fontFamily: 'Red Hat Display, sans-serif',
   fontSize: 9, letterSpacing: '0.16em',
   textTransform: 'uppercase',
   color: '#8A8275', marginBottom: 6,
@@ -414,7 +411,7 @@ const teamName: React.CSSProperties = {
 
 const authLink: React.CSSProperties = {
   display: 'block',
-  fontFamily: 'Outfit, sans-serif',
+  fontFamily: 'var(--font-redhat), sans-serif',
   fontSize: 17, fontWeight: 600,
   color: '#1A1A1A', textDecoration: 'none',
   padding: '8px 0',

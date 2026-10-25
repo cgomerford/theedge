@@ -20,10 +20,10 @@ export default function PitchMovementChart({ rows }: { rows: PitchMovementRow[] 
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
         <line x1={0} y1={160} x2={W} y2={160} stroke="#e7e2d6" strokeWidth={1} />
         <line x1={160} y1={0} x2={160} y2={H} stroke="#e7e2d6" strokeWidth={1} />
-        <text x={W - 4} y={172} textAnchor="end" fontFamily="JetBrains Mono" fontSize="9" fill="#a8a29e">Glove side</text>
-        <text x={4} y={172} textAnchor="start" fontFamily="JetBrains Mono" fontSize="9" fill="#a8a29e">Arm side</text>
-        <text x={164} y={12} fontFamily="JetBrains Mono" fontSize="9" fill="#a8a29e">Rise</text>
-        <text x={164} y={H - 4} fontFamily="JetBrains Mono" fontSize="9" fill="#a8a29e">Drop</text>
+        <text x={W - 4} y={172} textAnchor="end" fontFamily="Red Hat Display" fontSize="9" fill="#a8a29e">Glove side</text>
+        <text x={4} y={172} textAnchor="start" fontFamily="Red Hat Display" fontSize="9" fill="#a8a29e">Arm side</text>
+        <text x={164} y={12} fontFamily="Red Hat Display" fontSize="9" fill="#a8a29e">Rise</text>
+        <text x={164} y={H - 4} fontFamily="Red Hat Display" fontSize="9" fill="#a8a29e">Drop</text>
         {withMovement.map((r, i) => (
           <g key={i}>
             <circle
@@ -35,7 +35,7 @@ export default function PitchMovementChart({ rows }: { rows: PitchMovementRow[] 
               stroke="#fff"
               strokeWidth={1.5}
             />
-            <text x={scale(r.avgHBreak ?? 0) + 10} y={scale(-(r.avgVBreak ?? 0)) + 4} fontFamily="JetBrains Mono" fontSize="10" fill="#1A1A1A">
+            <text x={scale(r.avgHBreak ?? 0) + 10} y={scale(-(r.avgVBreak ?? 0)) + 4} fontFamily="Red Hat Display" fontSize="10" fill="#1A1A1A">
               {r.pitchName}
             </text>
           </g>

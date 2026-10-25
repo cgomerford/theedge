@@ -2,6 +2,7 @@
 
 // src/app/why-edge/WhyEdgeClient.tsx
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import Link from 'next/link'
 
@@ -59,7 +60,7 @@ const LEVELS = [
     tier: 'Free',
     note: 'Story lead, top factors, projected lineups.',
     demo: {
-      label: '§ The Story',
+      label: 'The Story',
       text: 'Wheeler\'s been ridiculous lately — three straight under 2 ERA. The Mets bullpen is gassed after last night\'s marathon. Phillies have more data factors here.',
     },
   },
@@ -262,7 +263,7 @@ export default function WhyEdgeClient({ stats }: Props) {
                 <div className="text-right shrink-0">
                   <div
                     className="font-black leading-none text-[#FF5722]"
-                    style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24 }}
+                    style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 24 }}
                   >
                     3 out 8 Factors
                   </div>
@@ -316,14 +317,13 @@ export default function WhyEdgeClient({ stats }: Props) {
                         { name: 'Offense',   pos: true  },
                         { name: 'Defense',   pos: false },
                         { name: 'Park',      pos: true  },
-                        { name: 'Weather',  pos: true  },
                         { name: 'Rest',      pos: false },
                       ].map(f => (
                         <div key={f.name} className="bg-white px-2 py-2.5 text-center">
                           <div
                             className="font-black text-[18px] leading-none mb-1"
                             style={{
-                              fontFamily: "'Bebas Neue', sans-serif",
+                              fontFamily: "'Red Hat Display', sans-serif",
                               color: f.pos ? '#FF5722' : '#A3A3A3',
                             }}
                           >
@@ -453,13 +453,13 @@ export default function WhyEdgeClient({ stats }: Props) {
                 <div className="text-right shrink-0 ml-4">
                   <p
                     className="font-black leading-none text-[#FF5722]"
-                    style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44 }}
+                    style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 44 }}
                   >CHC</p>
                   <p className="font-mono text-[8px] uppercase tracking-widest text-[#FF5722] mt-1">Factor lean</p>
                 </div>
               </div>
               <div className="bg-[#1A1A1A] px-5 pb-5">
-                <p className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] font-bold mb-2">§ The Read</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] font-bold mb-2"><XMark /> The Read</p>
                 <p className="text-[13px] text-stone-300 leading-relaxed italic border-l-2 border-[#FF5722] pl-3">
                   &ldquo;Taillon&apos;s 1.98 ERA over his last four starts is the story —
                   Cardinals bullpen used 8.2 IP yesterday and the wind is blowing out at Wrigley.&rdquo;
@@ -518,7 +518,7 @@ export default function WhyEdgeClient({ stats }: Props) {
               <div className="bg-white px-4 py-5 text-center">
                 <div
                   className="font-black text-[38px] leading-none text-[#1A1A1A] mb-1"
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+                  style={{ fontFamily: "'Red Hat Display', sans-serif" }}
                 >
                   {stats.total_reviewed > 0 ? stats.total_reviewed : '—'}
                 </div>
@@ -533,7 +533,7 @@ export default function WhyEdgeClient({ stats }: Props) {
               <div className="bg-white px-4 py-5 text-center">
                 <div
                   className="font-black text-[38px] leading-none text-[#1A1A1A] mb-1"
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+                  style={{ fontFamily: "'Red Hat Display', sans-serif" }}
                 >
                   8
                 </div>
@@ -550,7 +550,7 @@ export default function WhyEdgeClient({ stats }: Props) {
             <div className="bg-white border border-stone-200">
               <div className="px-5 py-3 border-b border-stone-100 bg-[#FAF8F3]">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-[#FF5722] font-bold">
-                  § What we track
+                  <XMark /> What we track
                 </span>
               </div>
               {[
@@ -559,7 +559,6 @@ export default function WhyEdgeClient({ stats }: Props) {
                 { factor: 'Offense',          note: 'wRC+ · xwOBA · Hard Hit% · ISO'         },
                 { factor: 'Matchup',          note: 'Pitcher arsenal vs lineup vulnerability' },
                 { factor: 'Park Factor',      note: 'HR factor · Run factor per venue'       },
-                { factor: 'Weather',          note: 'Wind direction/speed · temp impact'     },
                 { factor: 'Rest & Travel',    note: 'Days rest · back-to-back travel'        },
                 { factor: 'Defense',          note: 'OAA · DRS composite'                   },
               ].map((row, i) => (
@@ -586,12 +585,6 @@ export default function WhyEdgeClient({ stats }: Props) {
               </p>
             </div>
 
-            <Link
-              href="/track-record"
-              className="block text-center font-mono text-[10px] font-bold uppercase tracking-widest text-[#FF5722] border border-[#FF5722] px-6 py-3 hover:bg-[#FF5722] hover:text-white transition"
-            >
-              View past previews→
-            </Link>
           </div>
         )}
 

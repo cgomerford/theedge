@@ -13,8 +13,8 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { LABS_MENU, STATUS_LABEL, type LabStatus } from '@/lib/nav/labsMenu'
 
-const SANS = 'var(--font-outfit), system-ui, sans-serif'
-const MONO = 'var(--font-jetbrains), ui-monospace, monospace'
+const SANS = 'var(--font-redhat), system-ui, sans-serif'
+const MONO = 'var(--font-redhat), sans-serif'
 
 const PILL: Record<LabStatus, { bg: string; fg: string }> = {
   live: { bg: '#E3F4EC', fg: '#1D9E75' },

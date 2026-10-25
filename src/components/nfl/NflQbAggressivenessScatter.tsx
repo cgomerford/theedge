@@ -11,7 +11,7 @@ export default function NflQbAggressivenessScatter({ profiles }: { profiles: QbN
   if (profiles.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
       </div>
     )
   }
@@ -20,13 +20,13 @@ export default function NflQbAggressivenessScatter({ profiles }: { profiles: QbN
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: 20 }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#78716C', marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#78716C', marginBottom: 8 }}>
         X: how deep they aim · Y: how often into tight coverage. Deep + tight (top right) is the hardest throw profile.
       </div>
       <ResponsiveContainer width="100%" height={320}>
         <ScatterChart margin={{ top: 8, right: 24, bottom: 24, left: 8 }}>
-          <XAxis type="number" dataKey="x" name="Intended AY" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} label={{ value: 'Avg Intended Air Yards', position: 'insideBottom', offset: -14, fontSize: 10, fill: '#78716C' }} />
-          <YAxis type="number" dataKey="y" name="Aggressiveness %" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} axisLine={false} tickLine={false} width={40} />
+          <XAxis type="number" dataKey="x" name="Intended AY" tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} label={{ value: 'Avg Intended Air Yards', position: 'insideBottom', offset: -14, fontSize: 10, fill: '#78716C' }} />
+          <YAxis type="number" dataKey="y" name="Aggressiveness %" tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} axisLine={false} tickLine={false} width={40} />
           <Tooltip
             cursor={false}
             content={({ active, payload }) => {

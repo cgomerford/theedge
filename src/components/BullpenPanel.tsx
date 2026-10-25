@@ -7,6 +7,7 @@
 // Each bar: L3D total (orange) with yesterday subset (white) stacked inside.
 // Headshot above, name + ERA below, status dot at top.
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -156,7 +157,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
                 left:       0,
                 right:      0,
                 textAlign:  'center',
-                fontFamily: 'Space Mono, monospace',
+                fontFamily: 'Red Hat Display, sans-serif',
                 fontSize:   11,
                 fontWeight: 700,
                 color:      l3dPx > 24 ? '#FFFFFF' : '#FF5722',
@@ -176,7 +177,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
             left:       0,
             right:      0,
             textAlign:  'center',
-            fontFamily: 'Space Mono, monospace',
+            fontFamily: 'Red Hat Display, sans-serif',
             fontSize:   10,
             color:      '#C4BDB7',
           }}>
@@ -187,7 +188,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
 
       {/* Yesterday count below bar */}
       <div style={{
-        fontFamily: 'Space Mono, monospace',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize:   9,
         color:      '#A3A3A3',
         textAlign:  'center',
@@ -200,7 +201,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
       <div style={{ textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginBottom: 2 }}>
           <span style={{
-            fontFamily:  'Space Mono, monospace',
+            fontFamily:  'Red Hat Display, sans-serif',
             fontSize:    8,
             fontWeight:  700,
             color:       '#FFFFFF',
@@ -213,7 +214,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
           </span>
         </div>
         <div style={{
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'Red Hat Display, sans-serif',
           fontSize:   12,
           fontWeight: 600,
           color:      '#1A1A1A',
@@ -223,7 +224,7 @@ function ArmColumn({ arm }: { arm: BullpenArm }) {
         </div>
         {arm.era !== null && (
           <div style={{
-            fontFamily: 'Space Mono, monospace',
+            fontFamily: 'Red Hat Display, sans-serif',
             fontSize:   9,
             color:      '#A3A3A3',
             marginTop:  2,
@@ -259,13 +260,13 @@ function TeamRow({ data }: { data: BullpenData }) {
         marginBottom: 16,
       }}>
         <span style={{
-          fontFamily:    'Space Mono, monospace',
+          fontFamily:    'Red Hat Display, sans-serif',
           fontSize:      9,
           color:         '#FF5722',
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
         }}>
-          § {data.team_name} Bullpen
+          <XMark /> {data.team_name} Bullpen
         </span>
         <div style={{ flex: 1, height: 1, background: 'rgba(26,26,26,0.08)' }} />
       </div>
@@ -308,7 +309,7 @@ function Legend() {
       borderRadius:  6,
     }}>
       <span style={{
-        fontFamily:    'Space Mono, monospace',
+        fontFamily:    'Red Hat Display, sans-serif',
         fontSize:      9,
         color:         '#A3A3A3',
         textTransform: 'uppercase',
@@ -319,7 +320,7 @@ function Legend() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ width: 14, height: 14, background: '#FF5722', borderRadius: 2 }} />
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#6B6B6B' }}>Last 3 days</span>
+        <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B' }}>Last 3 days</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -328,14 +329,14 @@ function Legend() {
           background: 'linear-gradient(to right, #FF5722 50%, rgba(255,255,255,0.55) 50%)',
           border: '1px solid #E8E3DC',
         }} />
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#6B6B6B' }}>Yesterday (subset)</span>
+        <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B' }}>Yesterday (subset)</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
         {(['full_go', 'limited', 'rest_day'] as Availability[]).map(a => (
           <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS[a].dot }} />
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#6B6B6B' }}>{STATUS[a].label}</span>
+            <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B' }}>{STATUS[a].label}</span>
           </div>
         ))}
       </div>
@@ -355,7 +356,7 @@ function BullpenPaywall() {
       border:       '1px dashed rgba(26,26,26,0.15)',
     }}>
       <div style={{
-        fontFamily:    'Space Mono, monospace',
+        fontFamily:    'Red Hat Display, sans-serif',
         fontSize:      10,
         color:         '#FF5722',
         letterSpacing: '0.1em',
@@ -365,7 +366,7 @@ function BullpenPaywall() {
         ⊕ Pro Feature
       </div>
       <p style={{
-        fontFamily:   'Fraunces, serif',
+        fontFamily:   'Red Hat Display, sans-serif',
         fontSize:     16,
         color:        '#1A1A1A',
         marginBottom: 6,
@@ -384,12 +385,12 @@ function BullpenPaywall() {
         Pitch load for every reliever over the last 3 days. Know before first pitch which arms are rested and which manager is going to the next man down.
       </p>
       <Link
-        href="/pro"
+        href="/pricing"
         style={{
           display:        'inline-block',
           background:     '#FF5722',
           color:          '#FFFFFF',
-          fontFamily:     'Space Mono, monospace',
+          fontFamily:     'Red Hat Display, sans-serif',
           fontSize:       11,
           fontWeight:     700,
           padding:        '10px 22px',
@@ -426,7 +427,7 @@ export default function BullpenPanel({
         textAlign:  'center',
         padding:    '48px 24px',
         color:      '#A3A3A3',
-        fontFamily: 'Space Mono, monospace',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize:   11,
       }}>
         Bullpen data not yet available — check back closer to first pitch.
@@ -440,14 +441,14 @@ export default function BullpenPanel({
       {away && away.arms.length > 0 && <TeamRow data={away} />}
       {home && home.arms.length > 0 && <TeamRow data={home} />}
       <p style={{
-        fontFamily: 'Space Mono, monospace',
+        fontFamily: 'Red Hat Display, sans-serif',
         fontSize:   9,
         color:      '#C4BDB7',
         textAlign:  'center',
         marginTop:  8,
         lineHeight: 1.6,
       }}>
-        Pitch counts from MLB Stats API. Availability is model-based — actual manager decisions may vary.
+        Availability is model-based — actual manager decisions may vary.
       </p>
     </div>
   )

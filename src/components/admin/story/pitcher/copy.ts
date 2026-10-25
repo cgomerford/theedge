@@ -1,3 +1,4 @@
+import { SITE_HOST } from '@/lib/site'
 // src/components/admin/story/pitcher/copy.ts
 //
 // Fixed strings + tiny formatters for the Pitcher Reel. Scouting language only
@@ -19,7 +20,7 @@ export const NEXT_KICKER = "WHAT'S NEXT"
 export const NEXT_HEADLINE = 'NEXT START'
 export const PR_CLOSE_HEADLINE = 'Every pitch, in context.'
 export const PR_CLOSE_SUB = 'Full game reports on the site'
-export const PR_CLOSE_URL = 'edgereportdaily.com'
+export const PR_CLOSE_URL = `${SITE_HOST}`
 
 /** Savant arm angle is measured up from horizontal: 0° sidearm, 90° straight over the top. */
 export function armSlot(deg: number): string {

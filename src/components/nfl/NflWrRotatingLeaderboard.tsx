@@ -39,14 +39,14 @@ export default function NflWrRotatingLeaderboard({ profiles, intervalMs = 6000, 
       <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 8 }}>
         {CATEGORIES.map((c, i) => <button key={c.key} onClick={() => setCatIndex(i)} style={{ width: 6, height: 6, borderRadius: '50%', border: 'none', padding: 0, cursor: 'pointer', background: i === catIndex ? '#FF5722' : 'rgba(26,26,26,0.15)' }} />)}
       </div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#FF5722', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>{cat.label}</div>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#FF5722', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>{cat.label}</div>
       <div style={{ maxHeight: 900, overflowY: 'auto' }}>
         {ranked.map((p, i) => (
           <div key={p.playerId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(26,26,26,0.05)' }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: i === 0 ? '#FF5722' : '#D4D0C8', width: 16, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
+            <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: i === 0 ? '#FF5722' : '#D4D0C8', width: 16, textAlign: 'right', flexShrink: 0 }}>{i + 1}</span>
             <NflQbAvatar headshotUrl={p.headshotUrl} playerName={p.playerName} teamColor={p.teamColor} size={22} ringColor={p.teamColor} />
-            <span style={{ fontFamily: "'Fraunces', serif", fontSize: 11, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.playerName}</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: i === 0 ? '#FF5722' : '#1A1A1A' }}>{cat.fmt(cat.get(p))}</span>
+            <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.playerName}</span>
+            <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, fontWeight: 700, color: i === 0 ? '#FF5722' : '#1A1A1A' }}>{cat.fmt(cat.get(p))}</span>
           </div>
         ))}
       </div>

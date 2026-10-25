@@ -21,6 +21,11 @@ import { getTeamProfile } from '@/lib/team-profile'
 import TeamArticles from '@/components/TeamArticles'
 import TeamPage from '@/components/team/TeamPage'
 import { getCurrentSubscriber } from '@/lib/auth'
+import type { Metadata } from 'next'
+import { pageMeta, noindex } from '@/lib/seo'
+import { fitDescription } from '@/lib/game-slug'
+import { SportsTeamSchema, BreadcrumbSchema } from '@/components/StructuredData'
+import { devPro } from '@/lib/dev-pro'
 
 // Reading the subscriber session makes this route dynamic (per-request), like the
 // Scout Report page. That is what lets the Pro "expand" panels be gated for real.
@@ -28,14 +33,15 @@ export const revalidate = 300
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const team = findTeamBySlug(slug)
-  if (!team) return { title: 'Team not found · x9Lab' }
-  return {
-    title: `${team.name} — season, staff, offense & roster · x9Lab`,
-    description: `${team.name} profile: how the season has gone, rotation and bullpen ranks, pitch mix, offense, defense, ABS challenges, roster and schedule.`,
-  }
+  if (!team) return { title: 'Team not found', ...noindex() }
+  const description = fitDescription(
+    `${team.name} 2026: how the season has gone, rotation and bullpen ranks among the 30 clubs, pitch mix, offense, defense, roster and schedule, with the sample size beside each number.`,
+    ['Free daily email.'],
+  )
+  return pageMeta({ title: `${team.name} 2026`, description, path: `/mlb/teams/${slug}` })
 }
 
 export default async function TeamRoute({ params, searchParams }: Props) {
@@ -51,7 +57,7 @@ export default async function TeamRoute({ params, searchParams }: Props) {
   // to the URL to preview the LOCKED state. NODE_ENV is 'production' on every
   // deployed build, so real visitors are gated by is_pro alone.
   const subscriber = await getCurrentSubscriber()
-  const isPro = (subscriber?.is_pro ?? false) || (process.env.NODE_ENV === 'development' && sp.pro !== '0')
+  const isPro = (subscriber?.is_pro ?? false) || devPro(sp.pro)
 
   const season = new Date().getFullYear()
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -75,6 +81,8 @@ export default async function TeamRoute({ params, searchParams }: Props) {
 
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
+      <SportsTeamSchema name={team.name} path={`/mlb/teams/${slug}`} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: team.name, path: `/mlb/teams/${slug}` }]} />
       <SiteHeader variant="page" />
       <TeamPage
         team={team}

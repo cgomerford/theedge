@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import FantasySubNav from '@/components/fantasy/FantasySubNav'
@@ -41,7 +42,7 @@ export default async function TwoStartPage() {
       <div className="border-b-2 border-stone-900 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
           <div className="text-[10px] font-mono uppercase tracking-widest text-amber-700 mb-2">
-            § Two-Start Pitchers
+            <XMark /> Two-Start Pitchers
           </div>
           <h1 className="font-serif font-light text-5xl sm:text-7xl tracking-tight leading-none">
             Twice the volume<span className="text-orange-600">.</span>
@@ -67,7 +68,7 @@ export default async function TwoStartPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-white rounded-lg border border-stone-200 p-5 sm:p-6 shadow-sm">
           <div className="text-[10px] font-mono uppercase tracking-widest text-orange-600 mb-2">
-            § Why two-start weeks matter
+            <XMark /> Why two-start weeks matter
           </div>
           <p className="text-sm text-stone-600 leading-relaxed">
             In weekly H2H fantasy leagues, every two-start pitcher is potentially worth twice the points

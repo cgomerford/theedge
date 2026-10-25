@@ -43,11 +43,11 @@ export default function TeamMakeupLab({ season, runs }: { season: number; runs: 
     <>
       <LoadBar done={done} total={MLB_TEAMS.length} failed={failed.length} season={season} />
 
-      <div style={{ position: 'sticky', top: 0, zIndex: 5, background: C.cream, padding: '12px 0', marginTop: 8 }}>
-        <div style={{ display: 'inline-flex', gap: 4, padding: 4, background: C.soft, borderRadius: 999 }}>
+      <div className="x9-desk-sticky" style={{ position: 'sticky', top: 0, zIndex: 5, background: C.cream, padding: '12px 0', marginTop: 8 }}>
+        <div style={{ display: 'inline-flex', gap: 4, padding: 4, background: C.soft, borderRadius: 4 }}>
           {(['all', 'sp', 'rp'] as Role[]).map(r => (
             <button key={r} onClick={() => setRole(r)} style={{
-              fontFamily: SANS, fontWeight: 700, fontSize: 13, padding: '6px 16px', borderRadius: 999, cursor: 'pointer', border: 'none',
+              fontFamily: SANS, fontWeight: 700, fontSize: 13, padding: '6px 16px', borderRadius: 4, cursor: 'pointer', border: 'none',
               background: r === role ? C.ink : 'transparent', color: r === role ? '#fff' : '#5b5347',
             }}>{ROLE_LABEL[r]}</button>
           ))}
@@ -95,7 +95,7 @@ export default function TeamMakeupLab({ season, runs }: { season: number; runs: 
               </table>
             </div>
           )}
-          <Foot>Usage % of all tracked pitches; darker = a bigger share. Other pitch types are in the explorer below. Source: Baseball Savant, release_speed.</Foot>
+          <Foot>Usage % of all tracked pitches; darker = a bigger share. Other pitch types are in the explorer below.</Foot>
         </Card>
       </Section>
 
@@ -127,7 +127,7 @@ export default function TeamMakeupLab({ season, runs }: { season: number; runs: 
               </div>
             </>
           )}
-          <Foot>Width = highest minus lowest pitcher-average arm angle on the club, so one unusual arm can stretch it; the scatter in § 04 uses the all-pitch standard deviation instead. Hover a dot for the pitcher. Source: Baseball Savant arm_angle.</Foot>
+          <Foot>Width = highest minus lowest pitcher-average arm angle on the club, so one unusual arm can stretch it; the scatter in 04 uses the all-pitch standard deviation instead. Hover a dot for the pitcher.</Foot>
         </Card>
       </Section>
 

@@ -1,26 +1,31 @@
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
+import { CONTACT_EMAIL } from '@/lib/site'
+import { pageMeta } from '@/lib/seo'
+import { FAQSchema, BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: 'FAQ · x9Lab',
-  description: 'Common questions about x9Lab — what it is, how it works, and what it isn\'t.',
-}
+export const metadata = pageMeta({
+  title: 'FAQ',
+  description:
+    'Answers to common questions about x9Lab: what the site shows, how often the numbers update, and what the free daily email includes. Short answers, no jargon.',
+  path: '/faq',
+})
 
 const FAQS = [
   {
-    section: '§ What is x9Lab',
+    section: 'What is x9Lab',
     items: [
       {
         q: 'What is x9Lab?',
-        a: 'x9Lab is a daily sports analysis platform that publishes pre-game statistical breakdowns for MLB (and soon NFL, NBA, and NHL). We pull advanced metrics — Statcast data, pitcher arsenals, bullpen availability, weather, and more — and turn them into a scannable 5-minute read before each game.',
+        a: 'x9Lab is a daily sports analysis platform that publishes pre-game statistical breakdowns for MLB (and soon NFL, NBA, and NHL). We pull advanced metrics — pitch data, pitcher arsenals, bullpen availability, and more — and turn them into a scannable 5-minute read before each game.',
       },
       {
         q: 'Who is it for?',
         a: 'MLB fans who want more than just scores, and fantasy baseball players who want to make smarter Start/Sit decisions. You don\'t need to be a data scientist — we translate the numbers into plain English. If you\'ve ever wanted to understand why a pitcher is struggling beyond "he had a bad night," x9Lab is for you.',
       },
       {
-        q: 'How is it different from Baseball Savant or The Athletic?',
-        a: 'Baseball Savant shows you the raw data — it\'s powerful but dense. The Athletic gives you long-form storytelling — excellent, but a 20-minute read. x9Lab sits between them: we take the same advanced metrics and give you the strategic story in 5 minutes, timed to land before first pitch.',
+        q: 'How is it different from Other stat sites or The Athletic?',
+        a: 'Other stat sites shows you the raw data — it\'s powerful but dense. The Athletic gives you long-form storytelling — excellent, but a 20-minute read. x9Lab sits between them: we take the same advanced metrics and give you the strategic story in 5 minutes, timed to land before first pitch.',
       },
       {
         q: 'Is x9Lab free?',
@@ -29,23 +34,15 @@ const FAQS = [
     ],
   },
   {
-    section: '§ The Data',
+    section: 'The Data',
     items: [
-      {
-        q: 'Where does the data come from?',
-        a: 'We pull from the official MLB Stats API, Baseball Savant\'s Statcast feed, and public weather services. Pitcher velocity and pitch mix data comes from Statcast\'s pitch-by-pitch records. We don\'t invent numbers — everything is traceable to a primary source.',
-      },
-      {
-        q: 'What is the Edge Score?',
-        a: 'x9Lab Score is our proprietary composite rating, running from -100 (strong away edge) to +100 (strong home edge). It\'s built from 8 components: starting pitching (xFIP-adjusted), bullpen strength (WPA/LI), team offence (wRC+), defence, pitcher-batter matchups, park factors, weather, and rest/travel. Each component is weighted and combined into a single number that tells you which side of the game has the genuine statistical advantage.',
-      },
       {
         q: 'Why xFIP and not ERA for pitchers?',
         a: 'ERA includes things a pitcher can\'t control — a ball through a fielder\'s legs, a blooper that falls in. xFIP strips those out, leaving only the stuff the pitcher actually controls: strikeouts, walks, and fly balls that leave the yard. It\'s a much better predictor of future performance than ERA, which is why we use it as the base for our Starting Pitching component.',
       },
       {
         q: 'How current is the data?',
-        a: 'We refresh multiple times daily. The main prediction run happens 10:00 UTC (early UK morning), with lineup confirmations updated at 14:00, 17:00, and 20:00 UTC. Weather gets refreshed closer to game time. We flag when lineups are confirmed vs. projected so you always know what you\'re looking at.',
+        a: 'We refresh multiple times daily. The main prediction run happens 10:00 UTC (early UK morning), with lineup confirmations updated at 14:00, 17:00, and 20:00 UTC. We flag when lineups are confirmed vs. projected so you always know what you\'re looking at.',
       },
       {
         q: 'Can the data be wrong?',
@@ -54,7 +51,7 @@ const FAQS = [
     ],
   },
   {
-    section: '§ Gambling & Legal',
+    section: 'Gambling & Legal',
     items: [
       {
         q: 'Is this a gambling tip site?',
@@ -71,7 +68,7 @@ const FAQS = [
     ],
   },
   {
-    section: '§ Account & Pro',
+    section: 'Account & Pro',
     items: [
       {
         q: 'How do I sign up?',
@@ -96,6 +93,8 @@ const FAQS = [
 export default function FAQPage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
+      <FAQSchema items={FAQS.flatMap(sec => sec.items.map(i => ({ question: i.q, answer: i.a })))} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'FAQ', path: '/faq' }]} />
       <SiteHeader variant="page" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
@@ -156,10 +155,10 @@ export default function FAQPage() {
             If your question isn&apos;t answered above, drop us an email.
           </p>
           <a
-            href="mailto:hello@edgereportdaily.com"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="inline-block text-xs font-mono uppercase tracking-widest bg-yellow-300 text-stone-900 px-5 py-3 hover:bg-yellow-200 transition font-semibold"
           >
-            hello@edgereportdaily.com
+            {CONTACT_EMAIL}
           </a>
         </div>
 

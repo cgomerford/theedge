@@ -21,7 +21,7 @@ export default function PitchRecap({ periods, pitchName, scopeLabel, onDrill }: 
       <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: '-.01em', margin: '2px 0 10px', color: C.ink }}>Where the {lc} stood out</div>
       {oi != null ? (
         <div style={{ background: GOLD.fill, borderRadius: 12, padding: '12px 14px', marginBottom: 10, color: C.ink }}>
-          <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 800, textTransform: 'uppercase' }}>★ Overall standout</div>
+          <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 800, textTransform: 'uppercase' }}>Overall standout</div>
           <div style={{ fontWeight: 800, fontSize: 30, lineHeight: 1.05, margin: '2px 0' }}>{periodLabel(periods[oi])}</div>
           <div style={{ fontSize: 13, fontWeight: 600 }}>
             Standout on {overall.wins[oi].length} of {overall.contested} measures with a real comparison: {overall.wins[oi].map(k => METRICS.find(m => m.key === k)!.title.toLowerCase()).join(', ')}.
@@ -37,7 +37,7 @@ export default function PitchRecap({ periods, pitchName, scopeLabel, onDrill }: 
           const v = best != null ? vals[best] : null
           return best != null && v ? (
             <div key={m.key} style={{ background: GOLD.soft, border: `1px solid ${GOLD.line}`, borderRadius: 12, padding: '10px 12px' }}>
-              <div style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: GOLD.ink, textTransform: 'uppercase' }}>★ {m.crown}</div>
+              <div style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: GOLD.ink, textTransform: 'uppercase' }}>{m.crown}</div>
               <div style={{ fontWeight: 800, fontSize: 26, lineHeight: 1.05, margin: '4px 0 2px', color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{periodLabel(periods[best])}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{m.fmt(v[m.key] as number)}{m.unit}</div>
               <div style={{ fontSize: 10.5, color: GOLD.ink, marginTop: 2 }}>n = {v.n[m.key].toLocaleString()} {m.sample}</div>
@@ -55,7 +55,7 @@ export default function PitchRecap({ periods, pitchName, scopeLabel, onDrill }: 
         <button type="button" className="pv-pill on" onClick={onDrill}>Drill down into the data ↓</button>
         <span style={{ fontSize: 12, color: '#5b5347' }}>The 3D model below is interactive: <b>drag to rotate it</b>, choose a month or year, switch camera, or exaggerate the break.</span>
       </div>
-      <Foot>★ marks the standout {scopeLabel.toLowerCase().includes('year') ? 'season' : 'month'} for each measure (highest, or lowest xwOBA on contact). Weak contact = balls in play Savant classes Weak or Topped, ranked from {GATES.weak}+ balls in play, a lower bar than the other measures, so it is a thinner sample and harder to judge. ABS = challenged calls on this pitch that stood. Descriptions of what already happened.</Foot>
+      <Foot>Overall standout is the standout {scopeLabel.toLowerCase().includes('year') ? 'season' : 'month'} for each measure (highest, or lowest xwOBA on contact). Weak contact = balls in play Savant classes Weak or Topped, ranked from {GATES.weak}+ balls in play, a lower bar than the other measures, so it is a thinner sample and harder to judge. ABS = challenged calls on this pitch that stood. Descriptions of what already happened.</Foot>
     </div>
   )
 }

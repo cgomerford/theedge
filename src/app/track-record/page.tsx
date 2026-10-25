@@ -30,7 +30,7 @@ export default async function HistoricalArchivePage() {
           
           <h1
             className="text-5xl md:text-6xl font-bold text-stone-900 mb-3 tracking-tighter"
-            style={{ fontFamily: 'Fraunces, serif' }}
+            style={{ fontFamily: 'Red Hat Display, sans-serif' }}
           >
             The Archive.
           </h1>
@@ -84,7 +84,7 @@ export default async function HistoricalArchivePage() {
           {recent.length === 0 ? (
             <div className="text-center py-20 bg-white border border-stone-200 rounded-3xl">
               <div className="mx-auto w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-6">
-                📊
+               
               </div>
               <p className="font-light text-stone-400 text-lg">Archive is populating. Check back soon.</p>
             </div>
@@ -123,7 +123,7 @@ export default async function HistoricalArchivePage() {
                         {formatDate(r.game_date)}
                       </div>
                       <div className="h-5 w-px bg-stone-200"></div>
-                      <div className="text-xs px-3 py-1 bg-white border border-stone-200 rounded-full font-mono text-stone-500">
+                      <div className="text-xs px-3 py-1 bg-white border border-stone-200 rounded-sm font-mono text-stone-500">
                         GAME {r.game_pk}
                       </div>
                     </div>
@@ -199,7 +199,7 @@ export default async function HistoricalArchivePage() {
                           
                           <div className="pt-4 border-t border-stone-200">
                             <div className="inline-flex items-center gap-2 text-sm">
-                              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">WINNER</div>
+                              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-sm text-xs font-medium">WINNER</div>
                               <span className="font-semibold text-stone-800">{winnerTeam}</span>
                             </div>
                           </div>

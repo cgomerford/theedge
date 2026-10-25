@@ -1,5 +1,6 @@
 'use client';
 
+import XMark from '@/components/XMark'
 import { useState, useEffect } from 'react';
 import type { MatchupTiltData, ComponentTilt } from '@/lib/matchup-tilt';
 
@@ -12,7 +13,6 @@ const COMPONENT_META: Array<{
   { key: 'offense', label: 'Offensive Form' },
   { key: 'matchup', label: 'Pitch Matchups' },
   { key: 'park', label: 'Park Factor' },
-  { key: 'weather', label: 'Weather' },
   { key: 'defense', label: 'Defense' },
   { key: 'rest', label: 'Rest & Travel' },
 ];
@@ -111,7 +111,7 @@ export default function MatchupTilt({ data, isPro }: MatchupTiltProps) {
       {/* Hero Tilt Meter - Fixed Away @ Home order */}
       <div className="bg-stone-50 border border-stone-200 rounded-2xl px-6 pt-7 pb-5 mb-1 relative overflow-hidden shadow-sm">
         <p className="font-mono text-[10px] tracking-[0.14em] text-stone-500 mb-5">
-          § MATCHUP TILT · {gameTime}
+          <XMark /> MATCHUP TILT · {gameTime}
         </p>
 
         <div className="flex justify-between items-start mb-3">

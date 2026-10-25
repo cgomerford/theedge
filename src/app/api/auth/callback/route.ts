@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { safeReturnPath } from '@/lib/attribution'
 import { consumeLoginLink, createSession } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
@@ -16,5 +17,5 @@ export async function GET(req: NextRequest) {
 
   await createSession(subscriber.id)
 
-  return NextResponse.redirect(new URL('/dugout', req.url), { status: 303 })
+  return NextResponse.redirect(new URL(safeReturnPath(subscriber.return_to) ?? '/dugout', req.url), { status: 303 })
 }

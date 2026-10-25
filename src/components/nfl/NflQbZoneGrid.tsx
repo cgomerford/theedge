@@ -28,7 +28,7 @@ export default function NflQbZoneGrid({
   if (!profile || profile.cells.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No zone data yet for this player.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No zone data yet for this player.</div>
       </div>
     )
   }
@@ -38,7 +38,7 @@ export default function NflQbZoneGrid({
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: 20 }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#78716C', marginBottom: 12 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#78716C', marginBottom: 12 }}>
         Green = above-average CPOE for that zone. Red = below. {profile.totalAttempts} classified attempts.
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 480 }}>
@@ -51,17 +51,17 @@ export default function NflQbZoneGrid({
                 key={`${loc}-${len}`}
                 style={{ background: cellColor(cell?.cpoe ?? null), border: '1px solid rgba(26,26,26,0.1)', borderRadius: 4, padding: 12, textAlign: 'center' }}
               >
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#1A1A1A', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {loc} · {len}
                 </div>
-                <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, fontSize: 22, color: '#1A1A1A', margin: '4px 0' }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontWeight: 900, fontSize: 22, color: '#1A1A1A', margin: '4px 0' }}>
                   {cell?.compPct != null ? `${cell.compPct.toFixed(0)}%` : '—'}
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#57534E' }}>
+                <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#57534E' }}>
                   {cell?.attempts ?? 0} att · CPOE {cell?.cpoe != null ? cell.cpoe.toFixed(1) : '—'}
                 </div>
                   {league?.avgCpoe != null && (
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#78716C', marginTop: 2 }}>
+                  <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: '#78716C', marginTop: 2 }}>
                     Lg avg CPOE {league.avgCpoe.toFixed(1)}
                   </div>
                 )}

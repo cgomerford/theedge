@@ -20,8 +20,8 @@ export function ReelDateBar({ date, setDate, slateDate, label }: { date: string;
       <button onClick={() => setDate(shiftDay(date, -1))} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label="Previous day">←</button>
       <input type="date" value={date} onChange={e => /^\d{4}-\d{2}-\d{2}$/.test(e.target.value) && setDate(e.target.value)} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label={label} />
       <button onClick={() => setDate(shiftDay(date, 1))} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label="Next day">→</button>
-      <button onClick={() => setDate(shiftDay(slateDate, -1))} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">Yesterday</button>
-      {date !== slateDate && <button onClick={() => setDate(slateDate)} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Back to slate</button>}
+      <button onClick={() => setDate(shiftDay(slateDate, -1))} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">Yesterday</button>
+      {date !== slateDate && <button onClick={() => setDate(slateDate)} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Back to slate</button>}
     </div>
   )
 }
@@ -31,7 +31,7 @@ export function Chips({ children }: { children: ReactNode }) {
 }
 
 export function chipClass(active: boolean) {
-  return `px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors ${active ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`
+  return `px-3 py-1.5 rounded-sm text-xs font-mono whitespace-nowrap transition-colors ${active ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`
 }
 
 export function Msg({ children, error = false }: { children: ReactNode; error?: boolean }) {

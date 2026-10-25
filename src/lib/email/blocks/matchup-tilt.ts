@@ -123,7 +123,7 @@ export function matchupTiltBlock(data: MatchupTiltData, previewSlug: string): st
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${COLORS.ink};">
       <tr><td style="padding:16px 18px 4px;">
         <div style="font-family:${FONTS.mono};font-size:9px;letter-spacing:0.16em;color:${COLORS.orange};text-transform:uppercase;">
-          § Scout Report
+          Scout Report
         </div>
       </td></tr>
       <tr><td style="padding:8px 18px 0;">

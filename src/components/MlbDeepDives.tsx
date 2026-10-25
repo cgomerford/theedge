@@ -674,14 +674,14 @@ function DailyTrendBox({ byTeam, isBackfilling }: { byTeam: DailyTeamTrendRow[];
             <div className="flex items-center justify-between mt-4 mb-1 flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <TrendFilterControls filter={filter} onChange={setFilter} />
-                <div className="inline-flex gap-[2px] rounded-full border border-[#DEDACE] p-0.5">
+                <div className="inline-flex gap-[2px] rounded-sm border border-[#DEDACE] p-0.5">
                   {(['day', 'week', 'month'] as const).map(g => (
-                    <button key={g} onClick={() => setGranularity(g)} className={`rounded-full text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${granularity === g ? 'bg-[#1A1A1A] text-white' : 'text-[#8A8577]'}`}>{GRANULARITY_LABEL[g]}</button>
+                    <button key={g} onClick={() => setGranularity(g)} className={`rounded-sm text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${granularity === g ? 'bg-[#1A1A1A] text-white' : 'text-[#8A8577]'}`}>{GRANULARITY_LABEL[g]}</button>
                   ))}
                 </div>
-                <div className="inline-flex gap-[2px] rounded-full border border-[#DEDACE] p-0.5">
-                  <button onClick={() => setMetric('volume')} className={`rounded-full text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${metric === 'volume' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>Volume</button>
-                  <button onClick={() => setMetric('rate')} className={`rounded-full text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${metric === 'rate' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>Overturn rate</button>
+                <div className="inline-flex gap-[2px] rounded-sm border border-[#DEDACE] p-0.5">
+                  <button onClick={() => setMetric('volume')} className={`rounded-sm text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${metric === 'volume' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>Volume</button>
+                  <button onClick={() => setMetric('rate')} className={`rounded-sm text-[10px] font-bold uppercase px-3 py-1 transition-colors duration-200 ${metric === 'rate' ? 'bg-[#FF5722] text-white' : 'text-[#8A8577]'}`}>Overturn rate</button>
                 </div>
               </div>
               <TrendLegend />
@@ -1290,7 +1290,7 @@ function ExtraBasesCard({ rows }: { rows: ExtraBasesRow[] }) {
                   <button
                     key={mode}
                     onClick={() => setSortMode(mode)}
-                    className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition ${sortMode === mode ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
+                    className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm border transition ${sortMode === mode ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
                   >
                     {label}
                   </button>
@@ -1608,7 +1608,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
           <button
             key={m.key}
             onClick={() => setMetric(m.key)}
-            className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition ${metric === m.key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
+            className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm border transition ${metric === m.key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
           >
             {m.short}
           </button>
@@ -1625,7 +1625,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
               key={a.pitchType}
               onClick={() => togglePitch(a.pitchType)}
               title={`${a.pitchType} — ${a.pctUsage}% usage`}
-              className={`text-[9.5px] font-bold px-2 py-0.5 rounded-full border transition whitespace-nowrap ${active ? 'bg-white text-[#1A1A1A] border-[#1A1A1A]' : 'text-[#B5B0A3] border-[#DEDACE] hover:border-[#1A1A1A] hover:text-[#8A8577]'}`}
+              className={`text-[9.5px] font-bold px-2 py-0.5 rounded-sm border transition whitespace-nowrap ${active ? 'bg-white text-[#1A1A1A] border-[#1A1A1A]' : 'text-[#B5B0A3] border-[#DEDACE] hover:border-[#1A1A1A] hover:text-[#8A8577]'}`}
             >
               {PITCH_NAMES[a.pitchType] ?? a.pitchType} <span className="font-normal opacity-70">{a.pctUsage}%</span>
             </button>
@@ -1718,7 +1718,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
                 {official !== null && (
                   <tr>
                     <td className="text-[9.5px] text-left pl-1 pt-0.5" style={{ color: flagGap ? '#B45309' : '#8A8577' }}>
-                      Official season total{flagGap ? ' ⚠' : ''}
+                      Official season total{flagGap ? '' : ''}
                     </td>
                     {COUNT_COLUMNS.map(([b, s]) => <td key={`${b}-${s}`} />)}
                     <td className="border-l-2 border-[#E8E4DC] pl-2 pt-0.5">
@@ -1731,7 +1731,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
                     <td colSpan={COUNT_COLUMNS.length + 2} className="pl-1 pt-1 text-left">
                       <div className="text-[9px] text-[#5B7B4F] leading-relaxed">
                         Includes {backfill.hits} hit{backfill.hits === 1 ? '' : 's'} recovered from MLB&apos;s official play log across {backfill.games} outing
-                        {backfill.games === 1 ? '' : 's'} not yet in Baseball Savant&apos;s own per-pitch log — most often his most recent start, since Savant
+                        {backfill.games === 1 ? '' : 's'} not yet in the public own per-pitch log — most often his most recent start, since Savant
                         typically takes a few hours (sometimes until the next day) to publish a game after it ends.
                       </div>
                     </td>
@@ -1742,7 +1742,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
                     <td colSpan={COUNT_COLUMNS.length + 2} className="pl-1 pt-1 text-left">
                       <div className="text-[9px] text-[#B45309] leading-relaxed">
                         Every arsenal pitch is selected — and we&apos;ve already cross-checked MLB&apos;s official game log and backfilled any outing missing from
-                        Baseball Savant&apos;s per-pitch CSV{backfill.games > 0 ? ` (${backfill.games} recovered above)` : ''} — but this is still {Math.abs(gap)} hit
+                        the public per-pitch CSV{backfill.games > 0 ? ` (${backfill.games} recovered above)` : ''} — but this is still {Math.abs(gap)} hit
                         {Math.abs(gap) === 1 ? '' : 's'} {gap > 0 ? 'short of' : 'over'} his official total. That residual gap is a genuine, unresolved hole in
                         the public data (not something we can backfill further from here), not a bug in how the total above is counted.
                       </div>
@@ -1767,7 +1767,7 @@ function RunValueHeatCard({ pitchers }: { pitchers: PitcherOption[] }) {
             Every ball-strike count is shown above — <span className="font-bold text-[#1A1A1A]">Total</span> sums every count recorded this season. Unlike run
             value and hard-hit%, a hit is an exact fact rather than an average, so a count cell shows its real hit total even at very low sample size — nothing
             is hidden here for noise. Hits are always credited on the pitch that was actually hit, so with every arsenal pitch selected this total should
-            reconcile with his <span className="font-bold text-[#1A1A1A]">official season total</span>. Every outing missing from Baseball Savant&apos;s public
+            reconcile with his <span className="font-bold text-[#1A1A1A]">official season total</span>. Every outing missing from the public public
             per-pitch log gets automatically cross-checked and backfilled from MLB&apos;s own official play-by-play (noted above when it happens) — if a gap
             still shows up after that, it&apos;s flagged as a genuine, unresolved hole in the public data, not an attribution gap in how this total is built.
           </>
@@ -1879,7 +1879,7 @@ function MissDistanceCard({ batters }: { batters: BatterMissOption[] }) {
           <button
             key={key}
             onClick={() => setWinKey(key)}
-            className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition ${winKey === key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
+            className={`text-[9.5px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-sm border transition ${winKey === key ? 'bg-[#1A1A1A] text-white border-[#1A1A1A]' : 'text-[#8A8577] border-[#DEDACE] hover:border-[#1A1A1A]'}`}
           >
             {label}
           </button>

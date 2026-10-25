@@ -6,10 +6,11 @@
  * Admin-only export tool. Renders a fixed 1080×1350 social image +
  * matching tweet copy via html-to-image.
  *
- * Brand: cream / orange / black, Outfit (heavy headers), JetBrains Mono,
+ * Brand: cream / orange / black, Red Hat (heavy headers), Red Hat Display,
  * zero border-radius. No raw scores. No betting language.
  */
 
+import XMark from '@/components/XMark'
 import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
@@ -19,6 +20,7 @@ import type {
   Top3BatterPitcherLine,
   ZoneFitCell,
 } from '@/lib/series-matchup'
+import { SITE_HOST } from '@/lib/site'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -90,7 +92,7 @@ function MiniZoneGrid({
     <div style={{ marginTop: 22 }}>
       <div
         style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'Red Hat Display', sans-serif",
           fontSize: 12,
           fontWeight: 700,
           color: '#78716c',
@@ -126,7 +128,7 @@ function MiniZoneGrid({
             >
               <span
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Red Hat Display', sans-serif",
                   fontSize: 11,
                   fontWeight: 700,
                   color: 'rgba(0,0,0,0.40)',
@@ -151,7 +153,7 @@ function MiniZoneGrid({
           <div style={{ width: 11, height: 11, background: '#15803d' }} />
           <span
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 11,
               color: '#78716c',
             }}
@@ -163,7 +165,7 @@ function MiniZoneGrid({
           <div style={{ width: 11, height: 11, background: '#dc2626' }} />
           <span
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 11,
               color: '#78716c',
             }}
@@ -219,7 +221,7 @@ function ShareCardInner({
         height: CARD_HEIGHT,
         background: '#FAF8F3',
         color: '#1A1A1A',
-        fontFamily: 'Inter, system-ui, sans-serif',
+        fontFamily: 'Red Hat Display, system-ui, sans-serif',
         display: 'flex',
         flexDirection: 'column',
         padding: '48px 52px 44px',
@@ -253,7 +255,7 @@ function ShareCardInner({
         <div>
           <div
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 14,
               fontWeight: 700,
               color: '#FF5722',
@@ -261,11 +263,11 @@ function ShareCardInner({
               textTransform: 'uppercase',
             }}
           >
-            § Top 3 For The Series
+            <XMark /> Top 3 For The Series
           </div>
           <div
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: 13,
               color: '#78716c',
               marginTop: 2,
@@ -304,7 +306,7 @@ function ShareCardInner({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: 13,
                 fontWeight: 700,
                 color: '#FF5722',
@@ -317,7 +319,7 @@ function ShareCardInner({
 
             <div
               style={{
-                fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800,
                 fontSize: 41,
                 lineHeight: 0.95,
                 color: '#1A1A1A',
@@ -330,7 +332,7 @@ function ShareCardInner({
 
             <div
               style={{
-                fontFamily: "'Fraunces', serif",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: 18,
                 fontStyle: 'italic',
                 color: '#44403c',
@@ -345,7 +347,7 @@ function ShareCardInner({
             <div
               style={{
                 display: 'inline-block',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Red Hat Display', sans-serif",
                 fontSize: 13,
                 fontWeight: 700,
                 color: leanColor(top3[0].series_score),
@@ -395,7 +397,7 @@ function ShareCardInner({
             >
               <div
                 style={{
-                  fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                  fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800,
                   fontSize: 29,
                   color: '#A8A29E',
                   width: 36,
@@ -422,7 +424,7 @@ function ShareCardInner({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontFamily: "'Fraunces', serif",
+                    fontFamily: "'Red Hat Display', sans-serif",
                     fontSize: 24,
                     fontWeight: 700,
                     color: '#1A1A1A',
@@ -433,7 +435,7 @@ function ShareCardInner({
                 </div>
                 <div
                   style={{
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'Red Hat Display', sans-serif",
                     fontSize: 14,
                     fontWeight: 700,
                     color: leanColor(b.series_score),
@@ -492,7 +494,7 @@ function ShareCardInner({
       >
         <div
           style={{
-            fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+            fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800,
             fontSize: 24,
             letterSpacing: -0.5,
             color: '#1A1A1A',
@@ -502,13 +504,13 @@ function ShareCardInner({
         </div>
         <div
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'Red Hat Display', sans-serif",
             fontSize: 12,
             color: '#A8A29E',
             letterSpacing: 0.4,
           }}
         >
-          edgereportdaily.com
+          {SITE_HOST}
         </div>
       </div>
 
@@ -538,7 +540,7 @@ function ShareCardInner({
             <span
               key={i}
               style={{
-                fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800,
+                fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800,
                 fontSize: 17,
                 letterSpacing: 2.5,
                 color: 'rgba(26,26,26,0.038)',

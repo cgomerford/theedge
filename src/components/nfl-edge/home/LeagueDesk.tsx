@@ -17,7 +17,7 @@ function HomeSection({ id, title, sub, children }: { id: string; title: string; 
   return (
     <div id={id} className="nh-section">
       <Sec>{title}</Sec>
-      {sub && <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontSize: 10.5, color: '#8A8577', margin: '-6px 0 12px' }}>{sub}</div>}
+      {sub && <div style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontSize: 10.5, color: '#8A8577', margin: '-6px 0 12px' }}>{sub}</div>}
       {children}
     </div>
   )

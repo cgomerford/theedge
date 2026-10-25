@@ -56,7 +56,7 @@ export default function ArmClock({ tile, ctx }: { tile: Tile; ctx: Ctx }) {
         <span>{focus ? `${focus.s.name}${roleNote}` : `League${roleNote}: select a team to see where it sits`}</span>
         {ctx.sel.length > 1 && ctx.sel.map(id => {
           const t = MLB_TEAMS.find(x => x.id === id)
-          return t ? <button key={id} onClick={() => setPick(id)} style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${focusId === id ? C.ink : C.line}`, background: focusId === id ? C.ink : '#fff', color: focusId === id ? '#fff' : '#5b5347' }}>{t.abbrev}</button> : null
+          return t ? <button key={id} onClick={() => setPick(id)} style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${focusId === id ? C.ink : C.line}`, background: focusId === id ? C.ink : '#fff', color: focusId === id ? '#fff' : '#5b5347' }}>{t.abbrev}</button> : null
         })}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginTop: 6, alignItems: 'start' }}>

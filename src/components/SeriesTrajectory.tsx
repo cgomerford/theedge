@@ -65,14 +65,14 @@ export default function SeriesTrajectory({
             marginBottom: '14px',
           }}>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '9px',
               textTransform: 'uppercase',
               letterSpacing: '2px',
               color: '#B5AFA4',
             }}>Series trajectory</span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '9px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
@@ -116,7 +116,7 @@ export default function SeriesTrajectory({
                 >
                   {/* Label */}
                   <div style={{
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'Red Hat Display', sans-serif",
                     fontSize: '8px',
                     textTransform: 'uppercase',
                     letterSpacing: '1px',
@@ -144,14 +144,14 @@ export default function SeriesTrajectory({
                   {/* Away row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <span style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Red Hat Display', sans-serif",
                       fontSize: '11px',
                       letterSpacing: '0.5px',
                       fontWeight: awayWon ? 700 : 400,
                       color: awayWon ? '#1A1A1A' : '#B5AFA4',
                     }}>{g.awayAbbr}</span>
                     <span style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Red Hat Display', sans-serif",
                       fontSize: g.awayScore !== null ? '15px' : '12px',
                       fontWeight: awayWon ? 700 : 400,
                       color: awayWon ? '#1A1A1A' : '#C8C2B8',
@@ -161,14 +161,14 @@ export default function SeriesTrajectory({
                   {/* Home row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Red Hat Display', sans-serif",
                       fontSize: '11px',
                       letterSpacing: '0.5px',
                       fontWeight: homeWon ? 700 : 400,
                       color: homeWon ? '#1A1A1A' : '#B5AFA4',
                     }}>{g.homeAbbr}</span>
                     <span style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Red Hat Display', sans-serif",
                       fontSize: g.homeScore !== null ? '15px' : '12px',
                       fontWeight: homeWon ? 700 : 400,
                       color: homeWon ? '#1A1A1A' : '#C8C2B8',
@@ -180,7 +180,7 @@ export default function SeriesTrajectory({
                     marginTop: '10px',
                     paddingTop: '8px',
                     borderTop: '1px solid #EDE9E0',
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'Red Hat Display', sans-serif",
                     fontSize: '8px',
                     textTransform: 'uppercase',
                     letterSpacing: '0.8px',
@@ -211,40 +211,40 @@ export default function SeriesTrajectory({
             borderTop: '1px solid #E8E3D9',
           }}>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '11px',
               letterSpacing: '0.8px',
               color: awayLeads ? '#1A1A1A' : '#B5AFA4',
               fontWeight: awayLeads ? 700 : 400,
             }}>{awayAbbr}</span>
             <span style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '22px',
               fontWeight: 700,
               color: awayLeads ? (awayPrimaryColor ?? '#1A1A1A') : '#C8C2B8',
               lineHeight: 1,
             }}>{awaySeriesWins}</span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '11px',
               color: '#D4CFC8',
             }}>—</span>
             <span style={{
-              fontFamily: "'Fraunces', serif",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '22px',
               fontWeight: 700,
               color: homeLeads ? (homePrimaryColor ?? '#1A1A1A') : '#C8C2B8',
               lineHeight: 1,
             }}>{homeSeriesWins}</span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '11px',
               letterSpacing: '0.8px',
               color: homeLeads ? '#1A1A1A' : '#B5AFA4',
               fontWeight: homeLeads ? 700 : 400,
             }}>{homeAbbr}</span>
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'Red Hat Display', sans-serif",
               fontSize: '9px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',

@@ -12,16 +12,18 @@
  * rather than duplicating them — one source of truth for the color
  * thresholds, matching the single-writer discipline used elsewhere.
  *
- * Brand: cream / orange / black, Outfit (heavy headers), JetBrains Mono,
+ * Brand: cream / orange / black, Red Hat (heavy headers), Red Hat Display,
  * zero border-radius. No raw scores. No betting language.
  */
 
+import XMark from '@/components/XMark'
 import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import { zoneTiltColor, leanText, leanColor } from '@/components/Top3ShareCard'
 import type { KeyPlayerCandidate } from '@/lib/key-players'
 import type { ZoneFitCell } from '@/lib/series-matchup'
+import { SITE_HOST } from '@/lib/site'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -123,7 +125,7 @@ function MiniZoneGrid({ cells, flip, label }: { cells: ZoneFitCell[]; flip: bool
   return (
     <div style={{ marginTop: 22 }}>
       <div style={{
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#78716c',
+        fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#78716c',
         marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1.1,
       }}>
         {label}
@@ -135,7 +137,7 @@ function MiniZoneGrid({ cells, flip, label }: { cells: ZoneFitCell[]; flip: bool
           const color = cell ? zoneTiltColor(tilt) : '#E7E5E4'
           return (
             <div key={zone} style={{ aspectRatio: '1', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color: 'rgba(0,0,0,0.40)' }}>{zone}</span>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, fontWeight: 700, color: 'rgba(0,0,0,0.40)' }}>{zone}</span>
             </div>
           )
         })}
@@ -143,11 +145,11 @@ function MiniZoneGrid({ cells, flip, label }: { cells: ZoneFitCell[]; flip: bool
       <div style={{ display: 'flex', gap: 16, marginTop: 10, alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 11, height: 11, background: '#15803d' }} />
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#78716c' }}>Edge</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#78716c' }}>Edge</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 11, height: 11, background: '#dc2626' }} />
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#78716c' }}>Tough</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#78716c' }}>Tough</span>
         </div>
       </div>
     </div>
@@ -170,7 +172,7 @@ function ShareCardInner({
   return (
     <div style={{
       width: CARD_WIDTH, height: CARD_HEIGHT, background: '#FAF8F3', color: '#1A1A1A',
-      fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column',
+      fontFamily: 'Red Hat Display, system-ui, sans-serif', display: 'flex', flexDirection: 'column',
       padding: '48px 52px 44px', boxSizing: 'border-box', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', top: 0, left: 0, width: 10, height: '100%', background: '#FF5722' }} />
@@ -181,12 +183,12 @@ function ShareCardInner({
         <img src={teamLogoUrl(teamId)} alt={teamName} width={52} height={52} style={{ objectFit: 'contain' }} />
         <div>
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#FF5722',
+            fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontWeight: 700, color: '#FF5722',
             letterSpacing: 2, textTransform: 'uppercase',
           }}>
-            § Top 3 Key Players
+            <XMark /> Top 3 Key Players
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#78716c', marginTop: 2 }}>
+          <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, color: '#78716c', marginTop: 2 }}>
             {seriesLabel}
           </div>
         </div>
@@ -204,30 +206,30 @@ function ShareCardInner({
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#FF5722',
+              fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700, color: '#FF5722',
               marginBottom: 6, letterSpacing: 1.4,
             }}>
               ⊕ NO. 1 READ
             </div>
             <div style={{
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 41, lineHeight: 0.95, color: '#1A1A1A',
+              fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800, fontSize: 41, lineHeight: 0.95, color: '#1A1A1A',
               marginBottom: 10, letterSpacing: 0.4, display: 'flex', alignItems: 'baseline', gap: 12,
             }}>
               {first.playerName}
               {first.subLabel && (
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, color: '#78716c', letterSpacing: 1 }}>
+                <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 16, color: '#78716c', letterSpacing: 1 }}>
                   {first.subLabel}
                 </span>
               )}
             </div>
             <div style={{
-              fontFamily: "'Fraunces', serif", fontSize: 18, fontStyle: 'italic', color: '#44403c',
+              fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, fontStyle: 'italic', color: '#44403c',
               lineHeight: 1.4, maxWidth: 580, marginBottom: 12,
             }}>
               {first.headline}
             </div>
             <div style={{
-              display: 'inline-block', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700,
+              display: 'inline-block', fontFamily: "'Red Hat Display', sans-serif", fontSize: 13, fontWeight: 700,
               color: leanColor(first.score), border: `2px solid ${leanColor(first.score)}`, padding: '5px 12px',
               textTransform: 'uppercase', letterSpacing: 1.1,
             }}>
@@ -255,7 +257,7 @@ function ShareCardInner({
             borderBottom: i === 0 ? '1.5px solid rgba(26,26,26,0.10)' : 'none',
           }}>
             <div style={{
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 29, color: '#A8A29E', width: 36,
+              fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800, fontSize: 29, color: '#A8A29E', width: 36,
               lineHeight: 1, textAlign: 'center',
             }}>
               {i + 2}
@@ -267,15 +269,15 @@ function ShareCardInner({
             />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 700, color: '#1A1A1A',
+                fontFamily: "'Red Hat Display', sans-serif", fontSize: 24, fontWeight: 700, color: '#1A1A1A',
                 lineHeight: 1.15, display: 'flex', alignItems: 'baseline', gap: 8,
               }}>
                 {c.playerName}
                 {c.subLabel && (
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E' }}>{c.subLabel}</span>
+                  <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#A8A29E' }}>{c.subLabel}</span>
                 )}
               </div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: leanColor(c.score), marginTop: 3 }}>
+              <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontWeight: 700, color: leanColor(c.score), marginTop: 3 }}>
                 {leanText(c.score)}
               </div>
             </div>
@@ -299,8 +301,8 @@ function ShareCardInner({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 20,
         borderTop: '1.5px solid rgba(26,26,26,0.12)',
       }}>
-        <div style={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, color: '#1A1A1A' }}>x9Lab</div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>edgereportdaily.com</div>
+        <div style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, color: '#1A1A1A' }}>x9Lab</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, color: '#A8A29E', letterSpacing: 0.4 }}>{SITE_HOST}</div>
       </div>
 
       {/* Watermark */}
@@ -311,7 +313,7 @@ function ShareCardInner({
         }}>
           {Array.from({ length: 24 }).map((_, i) => (
             <span key={i} style={{
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 800, fontSize: 17, letterSpacing: 2.5,
+              fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontWeight: 800, fontSize: 17, letterSpacing: 2.5,
               color: 'rgba(26,26,26,0.038)', whiteSpace: 'nowrap',
             }}>
               X9LAB · EDGEREPORTDAILY.COM

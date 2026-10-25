@@ -17,7 +17,7 @@ import { pitchColor } from '@/lib/mlb'
 import type { PitcherPitchLog } from '@/lib/pitcher-pitch-log'
 
 const SEASON = new Date().getFullYear()
-const AXIS_TICK = { fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }
+const AXIS_TICK = { fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }
 const NO_ANIM = { isAnimationActive: false } as const
 
 function shortDate(d: string): string {
@@ -82,7 +82,7 @@ export default function ReleaseChart({ pitcherId }: { pitcherId: number }) {
             <YAxis type="number" dataKey="y" name="Release height (ft)" tick={AXIS_TICK} domain={['auto', 'auto']} width={32} />
             <ZAxis range={[12, 12]} />
             <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(2) : '—')} />
-            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+            <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
             {byPitchType.map(([pt, pts]) => (
               <Scatter {...NO_ANIM} key={pt} name={log.pitchNames[pt] ?? pt} data={pts} fill={pitchColor(pt)} fillOpacity={0.35} />
             ))}

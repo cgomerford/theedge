@@ -89,12 +89,12 @@ export default function StoryOverlay({
             </span>
             <span className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.05em', color: '#FAF8F3' }}>{slide.circleLabel}</span>
           </div>
-          <button onClick={onClose} style={{ color: 'rgba(250,248,243,0.55)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18 }}>✕</button>
+          <button onClick={onClose} style={{ color: 'rgba(250,248,243,0.55)', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18 }}>Close</button>
         </div>
 
         <div className="px-5 pb-6" style={{ pointerEvents: 'none' }}>
           <p className="font-mono uppercase" style={{ fontSize: 10, color: '#FF5722', letterSpacing: '0.08em', margin: '0 0 6px' }}>{slide.sectionLabel}</p>
-          <p style={{ fontFamily: "'Fraunces', serif", fontSize: 19, color: '#FAF8F3', lineHeight: 1.35, margin: '0 0 16px' }}>{slide.heading}</p>
+          <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 19, color: '#FAF8F3', lineHeight: 1.35, margin: '0 0 16px' }}>{slide.heading}</p>
           {slide.chips?.map((c, i) => (
             <div key={i} className="flex items-center justify-between rounded-lg" style={{ background: c.emphasis ? 'rgba(255,87,34,0.12)' : 'rgba(250,248,243,0.05)', padding: '8px 12px', marginBottom: 8 }}>
               <span className="font-mono" style={{ fontSize: 11, color: '#FAF8F3' }}>{c.label}</span>

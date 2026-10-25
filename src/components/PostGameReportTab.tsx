@@ -115,19 +115,19 @@ export default function PostGameReportTab({
           <div className="flex flex-col items-center gap-2 min-w-0">
             <TeamLogo teamId={awayTeamId} abbr={awayAbbr} color={awayColor} size={52} />
             <div className="text-center min-w-0">
-              <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.35rem', letterSpacing: '0.02em' }}>
+              <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.35rem', letterSpacing: '0.02em' }}>
                 {awayName}
               </div>
               <div className="font-mono text-2xl font-bold text-stone-900 mt-1">{finalScore.away}</div>
             </div>
           </div>
           <div className="flex flex-col items-center shrink-0 px-2">
-            <span className="text-stone-300 leading-none" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem' }}>FINAL</span>
+            <span className="text-stone-300 leading-none" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.5rem' }}>FINAL</span>
           </div>
           <div className="flex flex-col items-center gap-2 min-w-0">
             <TeamLogo teamId={homeTeamId} abbr={homeAbbr} color={homeColor} size={52} />
             <div className="text-center min-w-0">
-              <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.35rem', letterSpacing: '0.02em' }}>
+              <div className="leading-none text-stone-900 truncate" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '1.35rem', letterSpacing: '0.02em' }}>
                 {homeName}
               </div>
               <div className="font-mono text-2xl font-bold text-stone-900 mt-1">{finalScore.home}</div>

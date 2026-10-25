@@ -69,8 +69,8 @@ export default function PitcherReel({ slateDate }: { slateDate: string }) {
       <button onClick={() => setDate(shiftDay(date, -1))} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label="Previous day">←</button>
       <input type="date" value={date} onChange={e => /^\d{4}-\d{2}-\d{2}$/.test(e.target.value) && setDate(e.target.value)} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label="Pitcher reel game date" />
       <button onClick={() => setDate(shiftDay(date, 1))} className="rounded border border-stone-300 px-2 py-1 font-mono text-xs" aria-label="Next day">→</button>
-      <button onClick={() => setDate(shiftDay(slateDate, -1))} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">Yesterday</button>
-      {date !== slateDate && <button onClick={() => setDate(slateDate)} className="rounded-full border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Back to slate</button>}
+      <button onClick={() => setDate(shiftDay(slateDate, -1))} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-700 hover:bg-stone-100">Yesterday</button>
+      {date !== slateDate && <button onClick={() => setDate(slateDate)} className="rounded-sm border border-stone-300 px-3 py-1 font-mono text-[11px] text-stone-500 hover:bg-stone-100">Back to slate</button>}
     </div>
   )
 
@@ -84,7 +84,7 @@ export default function PitcherReel({ slateDate }: { slateDate: string }) {
         <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
           {shown.map(o => (
             <button key={`${o.gamePk}-${o.pitcherId}`} onClick={() => setPick(o)}
-              className={`px-3 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-colors ${pick?.pitcherId === o.pitcherId && pick?.gamePk === o.gamePk ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}>
+              className={`px-3 py-1.5 rounded-sm text-xs font-mono whitespace-nowrap transition-colors ${pick?.pitcherId === o.pitcherId && pick?.gamePk === o.gamePk ? 'bg-[#FF5722] text-white font-bold' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}>
               {o.name} · {o.teamAbbr} vs {o.oppAbbr} · {o.ip} IP
             </button>
           ))}

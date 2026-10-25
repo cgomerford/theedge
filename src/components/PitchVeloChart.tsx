@@ -25,16 +25,16 @@ export default function PitchVeloChart({ entries }: { entries: VeloEntry[] }) {
       <p className="text-[10px] font-mono text-stone-400 mb-3">Average release speed (mph)</p>
       <ResponsiveContainer width="100%" height={entries.length * 36 + 20}>
         <BarChart data={entries} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
-          <XAxis type="number" domain={[60, 100]} tick={{ fontSize: 9, fontFamily: 'monospace' }} />
+          <XAxis type="number" domain={[60, 100]} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
           <YAxis
             type="category"
             dataKey="pitchName"
-            tick={{ fontSize: 10, fontFamily: "'Fraunces', serif" }}
+            tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif" }}
             width={90}
           />
           <Tooltip
             formatter={(v: any) => [`${v.toFixed(1)} mph`, 'Avg velo']}
-            labelStyle={{ fontFamily: "'Fraunces', serif", fontSize: 12 }}
+            labelStyle={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12 }}
           />
           <Bar dataKey="avgVelo" radius={[0, 4, 4, 0]} barSize={16}>
             {entries.map((e, i) => (

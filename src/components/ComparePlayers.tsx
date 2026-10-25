@@ -127,7 +127,7 @@ export default function ComparePlayers({ a, b, onClose }: { a: SelectedPlayer; b
         </div>
         <div className="flex items-center gap-3">
           <CardExportToolbar targetRef={cardRef} fileName={`${a.fullName}-vs-${b.fullName}-the-edge`.replace(/\s+/g, '-').toLowerCase()} />
-          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900 text-sm">✕ Close compare</button>
+          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900 text-sm">Close compare</button>
         </div>
       </div>
 

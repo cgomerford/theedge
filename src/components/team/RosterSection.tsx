@@ -100,7 +100,7 @@ export default function RosterSection({ team, profile, isPro, composition, ilLis
             ))}
           </div>
         )}
-        <Foot>Real season stats per affiliate from the MLB Stats API.</Foot>
+        
       </div>
     </Section>
   )

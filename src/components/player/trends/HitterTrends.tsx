@@ -189,7 +189,7 @@ export default function HitterTrends({ data, color }: { data: BatterTrendsData; 
       </div>
 
       <Foot>
-        Source: Statcast pitch and batted-ball events (loaded nightly, from March 27) and Baseball Savant hit coordinates. Day/night is known for {data.dayNightKnown} of {data.pa.length} plate appearances (games for his current club); pitcher hand for {data.handKnown}. Trends describe how he has changed against his own baseline — they are not a forecast.
+ Day/night is known for {data.dayNightKnown} of {data.pa.length} plate appearances (games for his current club); pitcher hand for {data.handKnown}. Trends describe how he has changed against his own baseline — they are not a forecast.
       </Foot>
     </div>
   )

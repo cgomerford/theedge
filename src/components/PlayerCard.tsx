@@ -100,7 +100,7 @@ function FormBadge({ formSignal, textColor }: { formSignal: { signal: string; ma
   const hot = formSignal.magnitude > 0
   return (
     <span
-      className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1"
+      className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm mt-1"
       style={{ background: hot ? '#FEF3C7' : '#DBEAFE', color: hot ? '#92400E' : '#1E3A8A' }}
     >
       {formSignal.signal.replace(/_/g, ' ')}
@@ -157,7 +157,7 @@ export default function PlayerCard({ player, onRemove }: { player: SelectedPlaye
           <div className="text-[10px] font-mono uppercase tracking-widest opacity-70">{player.primaryPosition} · {player.subjectType}</div>
           <FormBadge formSignal={pitcherData?.formSignal ?? batterData?.formSignal ?? null} textColor={headerText} />
         </div>
-        <button type="button" onClick={onRemove} className="text-sm opacity-60 hover:opacity-100" style={{ color: headerText }} aria-label={`Remove ${player.fullName}`}>✕</button>
+        <button type="button" onClick={onRemove} className="text-sm opacity-60 hover:opacity-100" style={{ color: headerText }} aria-label={`Remove ${player.fullName}`}>Remove</button>
       </div>
 
       <div className="px-4 pt-3 pb-3 flex items-center justify-between gap-2 flex-wrap border-b border-stone-100">

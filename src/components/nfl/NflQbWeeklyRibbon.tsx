@@ -12,7 +12,7 @@ export default function NflQbWeeklyRibbon({ weekly, playerName, season }: { week
   if (weekly.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No weekly NGS data yet for this player.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No weekly NGS data yet for this player.</div>
       </div>
     )
   }
@@ -33,18 +33,18 @@ export default function NflQbWeeklyRibbon({ weekly, playerName, season }: { week
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: '20px 24px' }}>
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, textAlign: 'center', color: '#1A1A1A', marginBottom: 2 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 20, textAlign: 'center', color: '#1A1A1A', marginBottom: 2 }}>
         {playerName}, {season} — Intended vs Completed Air Yards
       </div>
-      <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 12, textAlign: 'center', color: '#78716C', marginBottom: 16 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontStyle: 'italic', fontSize: 12, textAlign: 'center', color: '#78716C', marginBottom: 16 }}>
         Shaded gap is that week's differential — the wider it gets, the more the deep shots weren't landing.
       </div>
 
       <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 12 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, fontWeight: 700 }}>
           <span style={{ width: 18, height: 3, background: '#1A1A1A', display: 'inline-block' }} /> Intended AY
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, fontWeight: 700 }}>
           <span style={{ width: 18, height: 3, background: '#FF5722', display: 'inline-block' }} /> Completed AY
         </span>
       </div>
@@ -52,10 +52,10 @@ export default function NflQbWeeklyRibbon({ weekly, playerName, season }: { week
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid strokeDasharray="2 2" stroke="rgba(26,26,26,0.06)" vertical={false} />
-          <XAxis dataKey="week" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} label={{ value: 'Week', position: 'insideBottom', offset: -4, fontSize: 10, fill: '#78716C' }} />
-          <YAxis tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} axisLine={false} tickLine={false} width={36} domain={['dataMin - 1', 'dataMax + 1']} />
+          <XAxis dataKey="week" tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} label={{ value: 'Week', position: 'insideBottom', offset: -4, fontSize: 10, fill: '#78716C' }} />
+          <YAxis tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} axisLine={false} tickLine={false} width={36} domain={['dataMin - 1', 'dataMax + 1']} />
           <Tooltip
-            contentStyle={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderRadius: 4 }}
+            contentStyle={{ fontSize: 12, fontFamily: "'Red Hat Display', sans-serif", borderRadius: 4 }}
             formatter={(value: any, name: any) => {
               if (name === 'base' || name === 'gap') return [null, null] // suppress the stacking helpers from the tooltip
               return [typeof value === 'number' ? `${value.toFixed(1)} yds` : '—', name]

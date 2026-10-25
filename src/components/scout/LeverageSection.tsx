@@ -309,7 +309,7 @@ export default async function LeverageSection({ ctx }: { ctx: ScoutContext }) {
         { id: 'late', label: 'Late innings & this matchup', content: <Cols left={<LateInningsPanel club={ctx.away} opp={ctx.home} side="away" li={awayLate} />} right={<LateInningsPanel club={ctx.home} opp={ctx.away} side="home" li={homeLate} />} /> },
       ]} />
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Situational splits are from the MLB Stats API (season to date); bullpen save/hold/blown-save and inherited-runner counts come from each reliever&apos;s game log; challenge and steal timing comes from the game-by-game feed. Every figure shows its sample. This describes tendencies — it isn&apos;t a prediction.
+        Situational splits are season to date; bullpen save/hold/blown-save and inherited-runner counts come from each reliever&apos;s game log; challenge and steal timing comes from the game-by-game feed. Every figure shows its sample. This describes tendencies — it isn&apos;t a prediction.
       </p>
     </div>
   )

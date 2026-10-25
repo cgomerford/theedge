@@ -32,7 +32,7 @@ export default function CollapseToHeight({
         <div className="relative -mt-8 pt-8 bg-gradient-to-t from-white to-transparent flex justify-center">
           <button
             onClick={() => setExpanded(true)}
-            className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold bg-white px-3 py-1 border border-stone-200 rounded-full shadow-sm hover:border-orange-300"
+            className="text-[10px] font-mono uppercase tracking-widest text-orange-600 font-bold bg-white px-3 py-1 border border-stone-200 rounded-sm shadow-sm hover:border-orange-300"
           >
             Show more
           </button>

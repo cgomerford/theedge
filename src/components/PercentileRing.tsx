@@ -43,7 +43,7 @@ export default function PercentileRing({
           strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
         />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.28, fontWeight: 700, color: resolvedColor, fontFamily: 'monospace' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.28, fontWeight: 700, color: resolvedColor, fontFamily: 'var(--font-redhat), sans-serif' }}>
         {percentile}
       </div>
     </div>

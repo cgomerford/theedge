@@ -4,13 +4,14 @@
 // styles + plain divs (no hooks, no client JS) so every card server-renders.
 //
 // House style (CLAUDE.md §6): cream #FAF8F3 / orange #FF5722 / yellow #FDE047 /
-// black #1A1A1A, Outfit (base sans, the sitewide default — also used, heavy, for
-// headers and bold text) · JetBrains Mono (light data labels), § section markers. Team pages are the documented exception to
+// black #1A1A1A, Red Hat (base sans, the sitewide default — also used, heavy, for
+// headers and bold text) · Red Hat Display (light data labels), § section markers. Team pages are the documented exception to
 // zero-radius, so cards keep the soft corners the old team page had.
 //
 // Rank language: "3rd of 30", green → red by rank. A rank chip is always
 // accompanied by the number it ranks — never shown alone.
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import type { Metric } from '@/lib/team-profile'
 import { ordinal } from '@/lib/ordinal'
@@ -20,14 +21,14 @@ export const C = {
   orange: '#FF5722', yellow: '#FDE047', good: '#1D9E75', bad: '#D4533B',
 }
 // Fonts come from the next/font CSS variables set in app/layout.tsx — NOT
-// literal family names (next/font hashes its family names, so 'Fraunces' as a
-// string never resolves). Outfit (the Effra stand-in) is the sitewide brand
+// literal family names (next/font hashes its family names, so 'Red Hat Display' as a
+// string never resolves). Red Hat (the Effra stand-in) is the sitewide brand
 // default and is the ONLY font on the site (CLAUDE.md §6) — no monospace, no
 // squared faces. MONO is kept as an alias so existing imports keep working.
-export const SANS = 'var(--font-outfit), system-ui, sans-serif'
+export const SANS = 'var(--font-redhat), system-ui, sans-serif'
 export const MONO = SANS
-// Headers and big numbers use the rounded brand face (Outfit) at heavy weight —
-// NOT Bebas Neue (condensed caps). DISPLAY_WEIGHT is applied wherever DISPLAY is.
+// Headers and big numbers use the rounded brand face (Red Hat) at heavy weight —
+// NOT Red Hat Display (condensed caps). DISPLAY_WEIGHT is applied wherever DISPLAY is.
 export const DISPLAY = SANS
 export const DISPLAY_WEIGHT = 800
 
@@ -45,7 +46,7 @@ export function Section({ id, num, title, sub, children }: { id: string; num: st
   return (
     <section id={id} style={{ marginTop: 44, scrollMarginTop: 64 }}>
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: MONO, fontSize: 11, color: C.orange, letterSpacing: '.16em' }}>§ {num}</span>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: C.orange, letterSpacing: '.16em' }}><XMark /> {num}</span>
         <h2 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 30, letterSpacing: '-.01em', margin: 0, color: C.ink, lineHeight: 1.1 }}>{title}</h2>
       </div>
       {sub && <p style={{ fontFamily: SANS, fontSize: 14, color: '#5b5347', margin: '-6px 0 16px', maxWidth: 760, lineHeight: 1.5 }}>{sub}</p>}

@@ -10,15 +10,16 @@
 //   Standings        <-> Standings      conference toggle + division blocks
 // Plain-data props only. Sections use the shared `.nh-*` CSS defined once in NflHome.tsx.
 
+import XMark from '@/components/XMark'
 import { useState } from 'react'
 import Link from 'next/link'
 
-const FONT = 'var(--font-outfit), system-ui, sans-serif'
+const FONT = 'var(--font-redhat), system-ui, sans-serif'
 
 export function Sec({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-      <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>§ {children}</span>
+      <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}><XMark /> {children}</span>
       <div style={{ flex: 1, height: 1, background: 'rgba(26,26,26,0.1)' }} />
     </div>
   )

@@ -207,7 +207,7 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
                       </div>
                     )}
                     <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: on ? C.orange : C.mute }}>
-                      {on ? '✓ Situation copied →' : 'Use this situation →'}
+                      {on ? 'Situation copied →' : 'Use this situation →'}
                     </div>
                   </button>
                   <div style={{ padding: '0 12px 6px', textAlign: 'right' }}>
@@ -250,7 +250,7 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
                   <Chip on={sel.count === `${source.balls}-${source.strikes}`} onClick={() => fill({ count: sel.count ? null : `${source.balls}-${source.strikes}` })}>{source.balls}-{source.strikes} count</Chip>
                   <Chip on={sel.stand === source.stand} onClick={() => fill({ stand: sel.stand ? null : (source.stand as 'L' | 'R') })}>{source.stand === 'L' ? 'Left' : 'Right'}-handed batter</Chip>
                   <Chip on={sel.throws === source.throws} onClick={() => fill({ throws: sel.throws ? null : (source.throws as 'L' | 'R') })}>{source.throws === 'L' ? 'Left' : 'Right'}-handed pitcher</Chip>
-                  {source.hit && <Chip on={false} onClick={() => { setHitRef({ ref: source.hit as HitRef, who: source.label.split(' · ')[1] ?? game.batter }); setTimeout(() => hitRef0.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }}>⚾ Find hits like this one ({refText(source.hit)})</Chip>}
+                  {source.hit && <Chip on={false} onClick={() => { setHitRef({ ref: source.hit as HitRef, who: source.label.split(' · ')[1] ?? game.batter }); setTimeout(() => hitRef0.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }}>Find hits like this one ({refText(source.hit)})</Chip>}
                   {source.pitches > 0 && <Chip on={sel.pitchesMin === source.pitches} onClick={() => fill({ pitchesMin: sel.pitchesMin ? null : source.pitches })}>{source.pitches}+ pitch at-bat</Chip>}
                 </div>
               </div>
@@ -305,7 +305,7 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
               style={{ marginTop: 8, fontFamily: SANS, fontSize: 12, border: 'none', background: 'transparent', color: C.mute, cursor: 'pointer', textDecoration: 'underline' }}>Clear the situation</button>
           </Panel>
 
-          <Panel step="3" title="Where & when" hint="Which seasons and kind of games to search. The first search of a season pulls Baseball Savant and takes a little while; after that it is instant.">
+          <Panel step="3" title="Where & when" hint="Which seasons and kind of games to search. The first search of a season takes a little while; after that it is instant.">
             <div style={{ display: 'grid', gap: 12 }}>
               <Field label="Games">
                 <select style={wide()} value={gameType} onChange={e => setGameType(e.target.value)}>
@@ -346,7 +346,7 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
       <div ref={resultsRef} style={{ marginTop: 22 }}>
         {progress && (
           <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 8, padding: 16, maxWidth: 760 }}>
-            <div style={{ fontWeight: 800, fontSize: 15 }}>Pulling Baseball Savant — {progress.done} of {progress.total} game days</div>
+            <div style={{ fontWeight: 800, fontSize: 15 }}>Loading {progress.done} of {progress.total} game days</div>
             <div style={{ height: 8, background: C.soft, borderRadius: 4, margin: '10px 0', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((progress.done / Math.max(1, progress.total)) * 100)}%`, height: '100%', background: C.orange, transition: 'width .3s' }} />
             </div>

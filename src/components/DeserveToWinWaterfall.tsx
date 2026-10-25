@@ -96,7 +96,7 @@ export default function DeserveToWinWaterfall({ standings }: { standings: MLBDiv
             Real Pythagorean-expected wins (from real run differential) walked to the real record, through real close-game luck. Click the close-game bar for the games.
           </div>
         </div>
-        <select value={teamId} onChange={e => { setTeamId(Number(e.target.value)); setShowCloseGames(false) }} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-1.5 cursor-pointer">
+        <select value={teamId} onChange={e => { setTeamId(Number(e.target.value)); setShowCloseGames(false) }} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-1.5 cursor-pointer">
           {teamOptions.map(t => <option key={t.id} value={t.id}>{t.short}</option>)}
         </select>
       </div>

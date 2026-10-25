@@ -76,7 +76,7 @@ function AlignmentField({ side, t }: { side: 'R' | 'L'; t: Tally }) {
         <path d={`M${H[0] - 4} ${H[1] + 1} h8 v-4 l-4 -4 l-4 4 z`} fill="#fff" stroke="#a8a29e" />
         {/* the hitter, in the box on his side of the plate */}
         <circle cx={px(side === 'R' ? -8 : 8)} cy={py(-3)} r={5} fill="#57534e" />
-        <text x={side === 'R' ? 8 : 292} y={14} textAnchor={side === 'R' ? 'start' : 'end'} fontSize={10} fill="#57534e" fontFamily="ui-monospace, monospace" fontWeight={700}>{side === 'R' ? '← pull side' : 'pull side →'}</text>
+        <text x={side === 'R' ? 8 : 292} y={14} textAnchor={side === 'R' ? 'start' : 'end'} fontSize={10} fill="#57534e" fontFamily="monospace" fontWeight={700}>{side === 'R' ? '← pull side' : 'pull side →'}</text>
         {/* infielders: hollow = standard spot, orange = shaded spot */}
         {INFIELD.map((f) => {
           const sx = f.x + dir * SHADE_FT
@@ -85,7 +85,7 @@ function AlignmentField({ side, t }: { side: 'R' | 'L'; t: Tally }) {
               <line x1={px(f.x)} y1={py(f.y)} x2={px(sx)} y2={py(f.y)} stroke={CHART_ORANGE} strokeWidth={2} strokeDasharray="3 2" />
               <circle cx={px(f.x)} cy={py(f.y)} r={dot} fill="#fff" stroke="#57534e" strokeWidth={1.6} />
               <circle cx={px(sx)} cy={py(f.y)} r={dot} fill={CHART_ORANGE} stroke="#fff" strokeWidth={1.6}><title>{`${f.pos} — shaded toward the pull side`}</title></circle>
-              <text x={px(f.x)} y={py(f.y) + 3} textAnchor="middle" fontSize={8} fill="#57534e" fontFamily="ui-monospace, monospace" fontWeight={700}>{f.pos}</text>
+              <text x={px(f.x)} y={py(f.y) + 3} textAnchor="middle" fontSize={8} fill="#57534e" fontFamily="monospace" fontWeight={700}>{f.pos}</text>
             </g>
           )
         })}
@@ -184,7 +184,7 @@ export function Matchup({ defense, offense, side, d }: { defense: ScoutClub; off
           <InfoButton title="What is OAA?" align="left">
             <p className="mb-1.5"><b>Outs Above Average</b> counts how many more (or fewer) outs a fielder made than an average fielder would on the same balls, given how hard the ball was hit, where it went and how far he had to run. +5 is five extra outs over the season; −5 is five fewer.</p>
             <p className="mb-1.5"><b>Player vs club numbers.</b> Each fielder&apos;s number is his season total for every club he has played for. The club number is only the outs earned while wearing this club&apos;s uniform, so traded players make the two differ, and the fielders listed here won&apos;t add up to the club figure.</p>
-            <p><b>Source.</b> Baseball Savant&apos;s OAA leaderboard, first through third base and the outfield. Catchers and pitchers aren&apos;t rated by OAA here. If another site shows a different club total, check whether it counts traded players by club or by season and which positions it includes.</p>
+            <p><b>Source.</b> the public OAA leaderboard, first through third base and the outfield. Catchers and pitchers aren&apos;t rated by OAA here. If another site shows a different club total, check whether it counts traded players by club or by season and which positions it includes.</p>
           </InfoButton>
         </div>
         <ul className="space-y-1">
@@ -221,7 +221,7 @@ export default async function DefenseSection({ ctx }: { ctx: ScoutContext }) {
         <div className="lg:pl-6"><Matchup defense={ctx.home} offense={ctx.away} side="home" d={homeDef} /></div>
       </div>
       <p className="text-[10px] font-mono text-stone-400 leading-relaxed">
-        Alignment: Baseball Savant pitch data for the last ~40 days, as shares of pitches (the full shift is banned, so this is Standard vs Strategic vs infield shade). Pull rates: season spray data. OAA: Baseball Savant. Shade direction is a convention — the infield moves toward the hitter&apos;s pull side — not a measured fielder position. This describes tendencies; it is not a prediction.
+        Alignment: pitch data for the last ~40 days, as shares of pitches (the full shift is banned, so this is Standard vs Strategic vs infield shade). Pull rates: season spray data. Shade direction is a convention — the infield moves toward the hitter&apos;s pull side — not a measured fielder position. This describes tendencies; it is not a prediction.
       </p>
     </div>
   )

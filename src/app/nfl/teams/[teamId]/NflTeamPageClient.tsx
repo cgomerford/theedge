@@ -259,7 +259,7 @@ function YearOverYearTab({ rows, teamColor }: { rows: TeamSeasonTrendRow[]; team
             <LineChart data={chartData}>
               <XAxis dataKey="season" tick={{ fontSize: 11 }} stroke="#A8A29E" />
               <YAxis tick={{ fontSize: 11 }} stroke="#A8A29E" width={30} />
-              <Tooltip contentStyle={{ fontSize: 12, fontFamily: "monospace" }} />
+              <Tooltip contentStyle={{ fontSize: 12, fontFamily: 'var(--font-redhat), sans-serif' }} />
               <Line type="monotone" dataKey="ppg" name="PPG" stroke={teamColor} strokeWidth={2} dot={{ r: 3 }} />
               <Line
                 type="monotone"

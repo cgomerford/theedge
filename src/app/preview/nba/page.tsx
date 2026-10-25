@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
 
@@ -75,7 +76,7 @@ export default function NBAPreviewPage() {
 
         {/* § THE STORY */}
         <section className="space-y-3">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold">§ THE STORY</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold"><XMark /> THE STORY</div>
           <p className="font-serif text-xl text-stone-800 leading-relaxed italic">
             &ldquo;Boston&apos;s defensive perimeter metrics show high capacity to restrict spacing on drop-off vectors,
             leaving Milwaukee over-reliant on high-leverage paint touches inside transition sets.&rdquo;

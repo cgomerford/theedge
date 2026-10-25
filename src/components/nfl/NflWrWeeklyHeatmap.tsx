@@ -15,7 +15,7 @@ export default function NflWrWeeklyHeatmap({ rows, maxWeeks = 18 }: { rows: WrWe
   if (rows.length === 0) {
     return (
       <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No weekly data yet.</div>
+        <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No weekly data yet.</div>
       </div>
     )
   }
@@ -26,8 +26,8 @@ export default function NflWrWeeklyHeatmap({ rows, maxWeeks = 18 }: { rows: WrWe
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: 20, overflowX: 'auto' }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#78716C', marginBottom: 12 }}>Cell = that week's average separation. Darker = more space created.</div>
-      <table style={{ borderCollapse: 'collapse', fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#78716C', marginBottom: 12 }}>Cell = that week's average separation. Darker = more space created.</div>
+      <table style={{ borderCollapse: 'collapse', fontFamily: "'Red Hat Display', sans-serif", fontSize: 10 }}>
         <thead>
           <tr>
             <th style={{ textAlign: 'left', padding: '4px 8px', position: 'sticky', left: 0, background: '#fff' }}>WR</th>

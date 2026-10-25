@@ -10,6 +10,7 @@
 // calls this makes that overlap with KeyPlayersSlotAsync/other slots dedupe
 // for free within the same request.
 
+import XMark from '@/components/XMark'
 import { getScheduleForDate, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { createAdminClient } from '@/lib/supabase'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -72,7 +73,7 @@ export default async function TeamsSlotAsync({ slug }: { slug: string }) {
         awayStandouts={awayStandouts} homeStandouts={homeStandouts}
       />
       <div>
-        <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-orange-600">§ Projected lineups</h3>
+        <h3 className="text-xs font-mono uppercase tracking-widest font-bold mb-4 text-orange-600"><XMark /> Projected lineups</h3>
         <LineupCompare
           awayBatters={awayLineup?.batters ?? []} homeBatters={homeLineup?.batters ?? []}
           awayAbbr={_awayAbbr} homeAbbr={_homeAbbr} isPro={isPro}

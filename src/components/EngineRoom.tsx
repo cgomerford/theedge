@@ -53,7 +53,7 @@ function PlayerRow({ p, maxAbs }: { p: EngineRoomPlayer; maxAbs: number }) {
         <div className="text-[8.5px] text-[#8A8577] truncate">{p.line}</div>
       </div>
       <span
-        className="text-[7.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+        className="text-[7.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm shrink-0"
         style={{ color: '#fff', background: ROLE_COLOR[p.role] }}
       >
         {p.group === 'Pitching' ? 'P' : 'B'} · {p.role === 'regular' ? 'Reg' : p.role === 'callup' ? 'Call-up' : p.role === 'trade' ? 'Trade' : 'Sign'}
@@ -97,7 +97,7 @@ export default function EngineRoom() {
             Real runs above a real league-average hitter/pitcher, for everyone who&apos;s appeared — not WAR, see why in the code comments. Tagged by how they actually joined the roster.
           </div>
         </div>
-        <select value={teamId} onChange={e => setTeamId(Number(e.target.value))} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-full px-3 py-1.5 cursor-pointer">
+        <select value={teamId} onChange={e => setTeamId(Number(e.target.value))} className="text-[11px] font-bold text-[#1A1A1A] bg-white border border-[#DEDACE] rounded-sm px-3 py-1.5 cursor-pointer">
           {teamOptions.map(t => <option key={t.id} value={t.id}>{t.short}</option>)}
         </select>
       </div>

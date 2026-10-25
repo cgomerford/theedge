@@ -70,7 +70,6 @@ export default async function HeaderSection({ ctx }: { ctx: PostgameContext }) {
         {h.venue && <div><dt className="inline font-mono uppercase tracking-wider text-[9px] text-stone-400 mr-1.5">Venue</dt><dd className="inline">{h.venue}</dd></div>}
         {h.attendance != null && <div><dt className="inline font-mono uppercase tracking-wider text-[9px] text-stone-400 mr-1.5">Attendance</dt><dd className="inline">{h.attendance.toLocaleString()}</dd></div>}
         {h.duration && <div><dt className="inline font-mono uppercase tracking-wider text-[9px] text-stone-400 mr-1.5">Time</dt><dd className="inline">{h.duration}</dd></div>}
-        {h.weather && <div><dt className="inline font-mono uppercase tracking-wider text-[9px] text-stone-400 mr-1.5">Weather</dt><dd className="inline">{h.weather}</dd></div>}
         {(h.decisions.w || h.decisions.l) && <div><dt className="inline font-mono uppercase tracking-wider text-[9px] text-stone-400 mr-1.5">Pitchers</dt><dd className="inline">{[h.decisions.w && `W ${h.decisions.w}`, h.decisions.l && `L ${h.decisions.l}`, h.decisions.s && `S ${h.decisions.s}`].filter(Boolean).join(' · ')}</dd></div>}
       </dl>
     </div>

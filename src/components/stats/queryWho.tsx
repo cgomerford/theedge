@@ -60,7 +60,7 @@ export function WhoFilter({ who, onChange }: { who: Who | undefined; onChange: (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 5, background: '#fff', fontFamily: SANS, fontWeight: 700, fontSize: 14 }}>
               <span style={{ flex: 1 }}>{w.playerName ?? `Player ${w.playerId}`}</span>
               <button type="button" aria-label="Remove player" onClick={() => set({ playerId: undefined, playerName: undefined, playerRole: undefined })}
-                style={{ all: 'unset', cursor: 'pointer', color: C.mute, fontSize: 13 }}>✕</button>
+                style={{ all: 'unset', cursor: 'pointer', color: C.mute, fontSize: 13 }}>Remove</button>
             </div>
             <SegBar<'any' | 'bat' | 'pitch'> dense value={w.playerRole ?? 'any'} onChange={v => set({ playerRole: v })}
               options={[{ key: 'any', label: 'Either' }, { key: 'bat', label: 'As batter' }, { key: 'pitch', label: 'As pitcher' }]} />

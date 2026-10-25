@@ -96,7 +96,7 @@ export default function Preview({ preview, isPro }: { preview: NhlPreview; isPro
                 <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 'clamp(24px,4vw,40px)', color: awayOn, letterSpacing: '-.02em', marginTop: 8 }}>{away.fullName}</div>
                 <div style={{ fontFamily: MONO, fontSize: 12, color: awayOn, opacity: 0.85, marginTop: 4 }}>{record(awayForm)} last {awayForm.gamesPlayed}</div>
               </div>
-              <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.2em', background: 'rgba(26,26,26,.78)', color: '#FAF8F3', padding: '6px 12px', borderRadius: 999 }}>@</div>
+              <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '.2em', background: 'rgba(26,26,26,.78)', color: '#FAF8F3', padding: '6px 12px', borderRadius: 4 }}>@</div>
               <div style={{ textAlign: 'right' }}>
                 <TeamChip team={{ id: home.id, abbrev: home.abbrev, color: 'rgba(255,255,255,.2)', textColor: homeOn }} />
                 <div style={{ fontFamily: SANS, fontWeight: 800, fontSize: 'clamp(24px,4vw,40px)', color: homeOn, letterSpacing: '-.02em', marginTop: 8 }}>{home.fullName}</div>
@@ -133,7 +133,7 @@ export default function Preview({ preview, isPro }: { preview: NhlPreview; isPro
               <TwoSidedBar label="5v5 shot-attempt share" awayValue={awayForm.shotAttemptShare5v5} homeValue={homeForm.shotAttemptShare5v5 != null ? 1 - homeForm.shotAttemptShare5v5 : null} awayDisplay={pct(awayForm.shotAttemptShare5v5)} homeDisplay={pct(homeForm.shotAttemptShare5v5)} awayColor={awayColor} homeColor={homeColor} />
             </div>
           </Card>
-          <Foot>Source: NHL. PP%/PK%/5v5 shot-attempt share are computed by x9Lab from play-by-play and the strength timeline, over each club&apos;s last {Math.max(awayForm.gamesPlayed, homeForm.gamesPlayed)} games -- not an NHL-published figure.</Foot>
+          <Foot>PP%/PK%/5v5 shot-attempt share are computed by x9Lab from play-by-play and the strength timeline, over each club&apos;s last {Math.max(awayForm.gamesPlayed, homeForm.gamesPlayed)} games -- not an NHL-published figure.</Foot>
         </Section>
 
         {/* §02 Deployment -- FREE 5v5, PRO the rest */}
@@ -229,7 +229,7 @@ export default function Preview({ preview, isPro }: { preview: NhlPreview; isPro
               </div>
             )}
           </Card>
-          <Foot>Source: NHL. Results from x9Lab&apos;s own nhl_games table.</Foot>
+          <Foot>Results from x9Lab&apos;s own nhl_games table.</Foot>
         </Section>
       </div>
     </div>
@@ -238,7 +238,7 @@ export default function Preview({ preview, isPro }: { preview: NhlPreview; isPro
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ background: 'rgba(255,255,255,.94)', borderRadius: 999, padding: '3px 9px', fontFamily: MONO, fontSize: 9.5, color: '#3a352c', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+    <span style={{ background: 'rgba(255,255,255,.94)', borderRadius: 4, padding: '3px 9px', fontFamily: MONO, fontSize: 9.5, color: '#3a352c', textTransform: 'uppercase', letterSpacing: '.08em' }}>
       {children}
     </span>
   )

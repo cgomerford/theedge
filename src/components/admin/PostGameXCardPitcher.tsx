@@ -13,6 +13,7 @@ import { useState, useRef } from 'react'
 import type { PitcherGameLine, PitchRecord } from '@/types/postgame'
 import type { GameInfo } from '@/lib/postgame'
 import { buildArsenalCard, computeStrikePct, computeOverallWhiffPct } from '@/lib/pitcher-arsenal-card'
+import { SITE_HOST } from '@/lib/site'
 
 type Props = {
   pitcher: PitcherGameLine
@@ -196,7 +197,7 @@ export default function PostGameXCardPitcher({ pitcher, pitches, teamColor, team
 
         {/* Footer */}
         <div className="text-center pt-2 border-t border-stone-100">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · edgereportdaily.com</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-stone-400">x9Lab · {SITE_HOST}</span>
         </div>
       </div>
     </div>

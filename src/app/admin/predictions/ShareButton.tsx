@@ -51,7 +51,7 @@ export default function ShareButton({ tweetText, replyText, imageUrl }: Props) {
               onClick={() => copy('tweet')}
               className="block w-full text-left px-3 py-2 text-xs font-mono uppercase tracking-widest hover:bg-stone-50 border-b border-stone-100"
             >
-              {copied === 'tweet' ? '✓ Copied!' : 'Tweet format'}
+              {copied === 'tweet' ? 'Copied!' : 'Tweet format'}
               <div className="text-[10px] text-stone-400 normal-case tracking-normal font-sans mt-0.5">
                 Short · with link
               </div>
@@ -61,7 +61,7 @@ export default function ShareButton({ tweetText, replyText, imageUrl }: Props) {
               onClick={() => copy('reply')}
               className="block w-full text-left px-3 py-2 text-xs font-mono uppercase tracking-widest hover:bg-stone-50 border-b border-stone-100"
             >
-              {copied === 'reply' ? '✓ Copied!' : 'Reply format'}
+              {copied === 'reply' ? 'Copied!' : 'Reply format'}
               <div className="text-[10px] text-stone-400 normal-case tracking-normal font-sans mt-0.5">
                 Longer · for Reddit/comments
               </div>
@@ -74,7 +74,7 @@ export default function ShareButton({ tweetText, replyText, imageUrl }: Props) {
               className="block w-full text-left px-3 py-2 text-xs font-mono uppercase tracking-widest hover:bg-stone-50 border-t border-stone-100"
               onClick={() => { setOpen(false) }}
             >
-              📥 Download card
+              Download card
               <div className="text-[10px] text-stone-400 normal-case tracking-normal font-sans mt-0.5">
                 1200×630 PNG · attach to post
               </div>

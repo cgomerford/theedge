@@ -107,7 +107,7 @@ export function SectionChips() {
     <nav className="pd-chips" aria-label="Sections">
       {SECTIONS.map(s => (
         <a key={s.id} href={`#${s.id}`} onClick={() => go(s.id)} aria-current={activeSection === s.id ? 'location' : undefined}
-          style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', padding: '7px 11px', borderRadius: 999, textDecoration: 'none', border: `1px solid ${activeSection === s.id ? C.ink : C.line}`, background: activeSection === s.id ? C.ink : '#fff', color: activeSection === s.id ? C.cream : C.ink }}>
+          style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', padding: '7px 11px', borderRadius: 4, textDecoration: 'none', border: `1px solid ${activeSection === s.id ? C.ink : C.line}`, background: activeSection === s.id ? C.ink : '#fff', color: activeSection === s.id ? C.cream : C.ink }}>
           {s.num} {s.label}
         </a>
       ))}

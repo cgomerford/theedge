@@ -6,10 +6,9 @@
 //   isProViewer()  → boolean, from the real subscriber session (subscribers.is_pro).
 //   requirePro()   → null when allowed, or a 403 JSON Response to `return` from a route.
 //
-// Never defaults to true. The single exception is `next dev` (NODE_ENV is
-// 'production' on every Vercel build, so this can never open a deployed site):
-// Pro is unlocked locally so the paid views can be built and tested. To preview
-// the LOCKED state locally, set the cookie `edge_force_locked=1`.
+// Never defaults to true. Local testing only: under `next dev` (NODE_ENV is
+// 'production' on every Vercel build, so this can never open a deployed site)
+// set the cookie `edge_dev_pro=1` to see the Pro views. Nothing is unlocked automatically.
 
 import { cookies } from 'next/headers'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -19,7 +18,7 @@ export async function isProViewer(): Promise<boolean> {
   if (subscriber?.is_pro) return true
   if (process.env.NODE_ENV === 'development') {
     const jar = await cookies()
-    return jar.get('edge_force_locked')?.value !== '1'
+    return jar.get('edge_dev_pro')?.value === '1'
   }
   return false
 }

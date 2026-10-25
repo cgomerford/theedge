@@ -11,6 +11,7 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import { useMemo, useState } from 'react'
 import NflMoversRow from '@/components/nfl/NflMoversRow'
 
@@ -177,20 +178,20 @@ function TeamStrengthScatter({ points, teams }: { points: TeamStrengthPoint[]; t
             type="number"
             dataKey="x"
             name="Offensive strength"
-            tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#A3A3A3' }}
+            tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#A3A3A3' }}
             label={{ value: 'Offensive strength →', position: 'insideBottom', offset: -14, fontSize: 10, fill: '#78716C' }}
           />
           <YAxis
             type="number"
             dataKey="y"
             name="Defensive strength"
-            tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#A3A3A3' }}
+            tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#A3A3A3' }}
             label={{ value: 'Defensive strength →', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#78716C' }}
           />
           <ReferenceLine x={0} stroke="#E7E5E4" />
           <ReferenceLine y={0} stroke="#E7E5E4" />
           <Tooltip
-            contentStyle={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderRadius: 4 }}
+            contentStyle={{ fontSize: 12, fontFamily: "'Red Hat Display', sans-serif", borderRadius: 4 }}
             formatter={(_value: unknown, _name: unknown, item: any) => {
               const p = item?.payload
               if (!p) return ['', '']
@@ -254,16 +255,16 @@ export default function NflHomeClient(props: Props) {
   }
 
   return (
-    <main style={{ maxWidth: 1400, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Inter, system-ui, sans-serif', padding: '10px 0 10px', overflowX: 'hidden' }}>
+    <main style={{ maxWidth: 1400, margin: '0 auto', background: '#F4F0E8', color: '#1A1A1A', fontFamily: 'Red Hat Display, system-ui, sans-serif', padding: '10px 0 10px', overflowX: 'hidden' }}>
       {/* SCHEDULE */}
       <section style={{ margin: 0, padding: 0 }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '14px 24px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
             <div>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
-          § x9Lab · NFL {props.statsSeason}
+              <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11, color: '#FF5722', letterSpacing: '0.16em', textTransform: 'uppercase', margin: 0 }}>
+          <XMark /> x9Lab · NFL {props.statsSeason}
         </p>
-              <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: 0, fontSize: 30, color: '#1A1A1A' }}>{weekLabel}</h2>
+              <h2 style={{ fontFamily: "'Red Hat Display', sans-serif", margin: 0, fontSize: 30, color: '#1A1A1A' }}>{weekLabel}</h2>
             
             </div>
           
@@ -274,7 +275,7 @@ export default function NflHomeClient(props: Props) {
           <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', alignItems: 'flex-end', flex: 1, minWidth: 0 }} role="tablist" aria-label="NFL weeks">
             <button
               onClick={() => loadWeek('current')}
-              style={{ background: weekKey === 'current' ? '#1A1A1A' : 'transparent', color: weekKey === 'current' ? '#FAF8F3' : '#A3A3A3', border: 'none', padding: '4px 9px', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer', flexShrink: 0 }}
+              style={{ background: weekKey === 'current' ? '#1A1A1A' : 'transparent', color: weekKey === 'current' ? '#FAF8F3' : '#A3A3A3', border: 'none', padding: '4px 9px', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', fontFamily: "'Red Hat Display', sans-serif", cursor: 'pointer', flexShrink: 0 }}
             >
               Now
             </button>
@@ -284,11 +285,11 @@ export default function NflHomeClient(props: Props) {
               return (
                 <span key={opt.key} style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
                   {showGroup ? (
-                    <span style={{ fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A3A3A3', paddingLeft: 8, fontFamily: "'JetBrains Mono', monospace" }}>{opt.group}</span>
+                    <span style={{ fontSize: 8, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A3A3A3', paddingLeft: 8, fontFamily: "'Red Hat Display', sans-serif" }}>{opt.group}</span>
                   ) : null}
                   <button
                     onClick={() => loadWeek(opt, season)}
-                    style={{ background: on ? '#1A1A1A' : 'transparent', color: on ? '#FAF8F3' : '#A3A3A3', border: 'none', padding: '4px 9px', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer' }}
+                    style={{ background: on ? '#1A1A1A' : 'transparent', color: on ? '#FAF8F3' : '#A3A3A3', border: 'none', padding: '4px 9px', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', fontFamily: "'Red Hat Display', sans-serif", cursor: 'pointer' }}
                   >
                     {opt.label}
                   </button>
@@ -296,7 +297,7 @@ export default function NflHomeClient(props: Props) {
               )
             })}
           </div>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em', whiteSpace: 'nowrap', flexShrink: 0 }}>Times in US/Eastern (EDT)</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: '#A3A3A3', letterSpacing: '0.04em', whiteSpace: 'nowrap', flexShrink: 0 }}>Times in US/Eastern (EDT)</span>
         </div>
 
         <div
@@ -322,9 +323,9 @@ export default function NflHomeClient(props: Props) {
           <div id="nfl-ticker-scroll" style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
             <div style={{ display: 'flex', paddingLeft: 24 }}>
               {loadingWeek ? (
-                <div style={{ padding: 16, fontSize: 10, color: '#A3A3A3', fontFamily: "'JetBrains Mono', monospace" }}>Loading games…</div>
+                <div style={{ padding: 16, fontSize: 10, color: '#A3A3A3', fontFamily: "'Red Hat Display', sans-serif" }}>Loading games…</div>
               ) : games.length === 0 ? (
-                <div style={{ padding: 16, fontSize: 10, color: '#A3A3A3', fontFamily: "'JetBrains Mono', monospace" }}>No games for that week yet — try another season or jump to Now.</div>
+                <div style={{ padding: 16, fontSize: 10, color: '#A3A3A3', fontFamily: "'Red Hat Display', sans-serif" }}>No games for that week yet — try another season or jump to Now.</div>
               ) : games.map((g, i) => <GameCard key={g.id} game={g} teamColorMap={teamColorMap} isFirst={i === 0} />)}
             </div>
           </div>
@@ -375,7 +376,7 @@ export default function NflHomeClient(props: Props) {
         <div className="nfl-dash-grid">
           <div className="nfl-leaderboard-col">
             <div style={{ marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
+              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
                 League Leaders
               </h3>
               <p style={{ fontSize: 12, color: '#78716C', margin: '4px 0 0', lineHeight: 1.5, maxWidth: 380 }}>
@@ -402,7 +403,7 @@ export default function NflHomeClient(props: Props) {
  
           <div className="nfl-radar-col" style={{ gap: 12 }}>
             <div>
-              <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
+              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
                 Player Radars
               </h3>
               <p style={{ fontSize: 11, color: '#78716C', margin: '4px 0 0', lineHeight: 1.4, maxWidth: 320 }}>
@@ -434,7 +435,7 @@ export default function NflHomeClient(props: Props) {
             <div style={{ height: 2, background: '#A3A3A3', margin: '8px 0 0' }} />
  
             <div style={{ marginTop: 28 }}>
-              <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
+              <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
                 Team Tiers
               </h3>
               <p style={{ fontSize: 12, color: '#78716C', margin: '4px 0 16px', lineHeight: 1.5 }}>
@@ -456,7 +457,7 @@ export default function NflHomeClient(props: Props) {
  
       {/* LEAGUE TRENDS */}
       <div style={{ margin: '28px 24px 0' }}>
-        <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
+        <h3 style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 22, margin: 0, color: '#1A1A1A', letterSpacing: '0.01em' }}>
           League Trends
         </h3>
         <p style={{ fontSize: 12, color: '#78716C', margin: '4px 0 20px', lineHeight: 1.5, maxWidth: 560 }}>
@@ -478,7 +479,7 @@ export default function NflHomeClient(props: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
  
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               Coverage Shell — Share of Plays
             </div>
             {(() => {
@@ -488,7 +489,7 @@ export default function NflHomeClient(props: Props) {
           </div>
  
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               Target Distribution — Share by Route
             </div>
             {(() => {
@@ -498,7 +499,7 @@ export default function NflHomeClient(props: Props) {
           </div>
  
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               Rush Efficiency &amp; Pass Rate Over Expected
             </div>
             <NflTrendLineChart
@@ -515,7 +516,7 @@ export default function NflHomeClient(props: Props) {
           </div>
  
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, fontWeight: 700, color: '#78716C', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               Offensive Scheme Evolution
             </div>
             <NflTrendLineChart
@@ -551,26 +552,26 @@ function GameCard({ game, teamColorMap, isFirst }: { game: ScheduleGame; teamCol
       href={game.href}
       style={{ minWidth: 168, height: 150, padding: '12px 14px 0', borderLeft: isFirst ? 'none' : '1px solid rgba(26,26,26,0.07)', cursor: 'pointer', textDecoration: 'none', display: 'block', flexShrink: 0, color: 'inherit', boxSizing: 'border-box' }}
     >
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, color: live ? '#FF5722' : '#A3A3A3' }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, color: live ? '#FF5722' : '#A3A3A3' }}>
         {live ? '● LIVE' : final ? 'FINAL' : formatWhen(game.when)}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         {game.awayLogo ? <img src={game.awayLogo} alt="" style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }} /> : <span style={{ width: 20, height: 20, background: '#EEE', borderRadius: '50%', flexShrink: 0 }} />}
-        <b style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{game.awayId}</b>
+        <b style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{game.awayId}</b>
         {(live || final) ? (
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{game.awayScore ?? 0}</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{game.awayScore ?? 0}</span>
         ) : (
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3' }}>{game.awayRecord ?? '—'}</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3' }}>{game.awayRecord ?? '—'}</span>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         {game.homeLogo ? <img src={game.homeLogo} alt="" style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }} /> : <span style={{ width: 20, height: 20, background: '#EEE', borderRadius: '50%', flexShrink: 0 }} />}
-        <b style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{game.homeId}</b>
+        <b style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 12, fontWeight: 700, color: '#1A1A1A', letterSpacing: '0.04em', flex: 1 }}>{game.homeId}</b>
         {(live || final) ? (
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{game.homeScore ?? 0}</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 18, color: '#1A1A1A', lineHeight: 1 }}>{game.homeScore ?? 0}</span>
         ) : (
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3' }}>{game.homeRecord ?? '—'}</span>
+          <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3' }}>{game.homeRecord ?? '—'}</span>
         )}
       </div>
 

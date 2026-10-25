@@ -40,7 +40,7 @@ const NAV: [string, string][] = [
 ]
 
 const CSS = `
-.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-outfit),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
+.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-redhat),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
 .tp-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .tp-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .tp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
@@ -82,7 +82,7 @@ export default function TeamPage({
 
         <HeroSection team={team} profile={profile} />
 
-        <nav className="tp-nav" aria-label="Team page sections" style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(250,248,243,.95)', backdropFilter: 'blur(6px)', borderBottom: `1px solid ${C.line}`, margin: '16px -24px 0', padding: '10px 24px', display: 'flex', gap: 4, overflowX: 'auto' }}>
+        <nav className="tp-nav x9-desk-sticky" aria-label="Team page sections" style={{ position: 'sticky', top: 0, zIndex: 40, background: 'rgba(250,248,243,.95)', backdropFilter: 'blur(6px)', borderBottom: `1px solid ${C.line}`, margin: '16px -24px 0', padding: '10px 24px', display: 'flex', gap: 4, overflowX: 'auto' }}>
           {NAV.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
         </nav>
 
@@ -96,7 +96,7 @@ export default function TeamPage({
         <NewsSection team={team} news={news} articlesSlot={articlesSlot} />
 
         <p style={{ fontFamily: MONO, fontSize: 9.5, color: C.faint, textAlign: 'center', marginTop: 40, lineHeight: 1.6 }}>
-          Ranks are among all 30 MLB clubs, season to date. Sources: MLB Stats API (standings, team, starter/reliever and platoon splits, rosters), Baseball Savant (outs above average, batted-ball types, sprint speed, pitch arsenals), MLB&apos;s ABS challenge log. Descriptions of what has happened — not predictions.
+          Ranks are among all 30 MLB clubs, season to date. Descriptions of what has happened — not predictions.
         </p>
       </div>
     </div>

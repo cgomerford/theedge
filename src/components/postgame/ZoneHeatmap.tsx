@@ -52,7 +52,7 @@ export function ZoneHeatmap({
                 <text
                   x={col * cellSize + cellSize / 2} y={row * cellSize + cellSize / 2}
                   textAnchor="middle" dominantBaseline="middle"
-                  fontFamily="'JetBrains Mono', monospace" fontSize={cellSize * 0.16}
+                  fontFamily="'Red Hat Display', sans-serif" fontSize={cellSize * 0.16}
                   fill="#1A1A1A"
                 >
                   {Math.round(value)}%

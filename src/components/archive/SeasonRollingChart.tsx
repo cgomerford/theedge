@@ -43,8 +43,8 @@ export default function SeasonRollingChart({ series, teamColor }: { series: Reco
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
-            <XAxis dataKey="i" tick={{ fontSize: 9, fontFamily: 'monospace' }} hide />
-            <YAxis tick={{ fontSize: 9, fontFamily: 'monospace' }} domain={['auto', 'auto']} width={38} tickFormatter={v => meta.format(v)} />
+            <XAxis dataKey="i" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} hide />
+            <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} domain={['auto', 'auto']} width={38} tickFormatter={v => meta.format(v)} />
             <Tooltip
   formatter={(v: unknown) => (typeof v === 'number' ? meta.format(v) : '—')}
   labelFormatter={() => ''}

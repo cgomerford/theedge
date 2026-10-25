@@ -60,10 +60,10 @@ export default function TeamRollingTrendChart({ teamIds, teamNames }: { teamIds:
         <div ref={chartRef} className="border border-stone-200 bg-white p-4">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-              <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-              <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} tickFormatter={v => metricMeta.format(v)} width={50} domain={['auto', 'auto']} />
+              <XAxis dataKey="gameIndex" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+              <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} tickFormatter={v => metricMeta.format(v)} width={50} domain={['auto', 'auto']} />
               <Tooltip formatter={(v: any) => typeof v === 'number' ? metricMeta.format(v) : '—'} labelFormatter={l => `Game ${l}`} />
-              <Legend formatter={(value: string) => teamNames[Number(value)] ?? value} wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+              <Legend formatter={(value: string) => teamNames[Number(value)] ?? value} wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
               {teamIds.map(id => (
                 <Line key={id} type="monotone" dataKey={String(id)} stroke={teamColorById(id)} strokeWidth={2} dot={false} connectNulls name={String(id)} />
               ))}

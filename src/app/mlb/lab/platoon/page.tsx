@@ -12,11 +12,15 @@ import { Empty } from '@/components/team/ui'
 import { isSignedIn } from '@/lib/require-signup'
 import { getPlatoonLeague } from '@/lib/platoon/data'
 import { getContactLeaders } from '@/lib/contact-profile/data'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata: Metadata = {
-  title: 'Platoon Lab · The Edge',
-  description: 'Whose split against left-handed and right-handed pitching shows up in the swing, and whose only in the results: process gap against wOBA gap for every hitter, with the sample behind each number.',
-}
+export const metadata = pageMeta({
+  title: 'Platoon Lab',
+  description:
+    'Whose split against lefties and righties shows in the swing and whose only in the results: process gap against wOBA gap, with the sample behind each number.',
+  path: '/mlb/lab/platoon',
+})
 export const dynamic = 'force-dynamic'
 
 export default async function PlatoonLabPage() {
@@ -30,11 +34,12 @@ export default async function PlatoonLabPage() {
   const [league, leaders] = await Promise.all([getPlatoonLeague(), getContactLeaders()])
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Platoon Lab', path: '/mlb/lab/platoon' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '22px 24px 100px' }}>
         {!league || league.single.length === 0
-          ? <Empty>Platoon data isn’t built yet. It refreshes weekly from Baseball Savant.</Empty>
+          ? <Empty>Platoon data isn’t built yet.</Empty>
           : <PlatoonLeague league={league} picker={(leaders?.rows ?? []).map(r => ({ id: r.id, name: r.name, team: r.team, n: r.n }))} />}
       </div>
     </main>

@@ -244,7 +244,7 @@ export default function CareerStats({
             <div className="py-12 text-center">
               <p className="font-mono text-xs uppercase tracking-widest text-orange-600 mb-2">Pitchers</p>
               <p className="text-sm font-serif text-stone-500">
-                Arsenal-level Statcast data (whiff%, xwOBA, run value per pitch type) lives on the Pitching tab —
+                Arsenal-level data (whiff%, xwOBA, run value per pitch type) lives on the Pitching tab —
                 it's per-pitch-type, not a single career summary number, so it isn't duplicated here.
               </p>
             </div>
@@ -288,7 +288,7 @@ export default function CareerStats({
                   />
                 </div>
               ) : (
-                <p className="py-12 text-center text-stone-400">No Statcast data available for this player yet.</p>
+                <p className="py-12 text-center text-stone-400">No pitch data available for this player yet.</p>
               )}
             </>
           )}

@@ -24,7 +24,7 @@
 // starts, and team-level series highlight stats (LOB/K/BB/RISP trends).
 
 import {
-  getScheduleForDate, slugifyGame, teamLogoUrl, getGameWeather, type MLBGame
+  getScheduleForDate, slugifyGame, teamLogoUrl, type MLBGame
 } from '@/lib/mlb'
 import { getVenueInfo } from '@/lib/venues'
 import { createAdminClient } from '@/lib/supabase'
@@ -50,6 +50,11 @@ import type { StartingPitcherData } from '@/components/game-preview/StartingPitc
 import type { PercentileRow } from '@/components/charts/types'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getCurrentSubscriber } from '@/lib/auth'
+import type { Metadata } from 'next'
+import { pageMeta, noindex } from '@/lib/seo'
+import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
+import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
+import { devPro } from '@/lib/dev-pro'
 import { findTeamByName } from '@/lib/teams'
 import { getSeriesGamesFromDB, type SeriesGameResult } from '@/lib/series-games'
 import { getSeriesBattingStatsFromDB, getSeriesTeamBoxscoreStats, getSeriesRispStats, getSeriesPitchingStats, type SeriesRispStats, type SeriesPitcherLine } from '@/lib/series-stats'
@@ -61,36 +66,28 @@ import { getPitcherTrend } from '@/lib/streaks'
 import { getPitcherVenueRecord } from '@/lib/pitcher-venue-record'
 import { fetchPitchingSplit } from '@/lib/player-splits'
 import { getTeamSeasonStats, getTeamVenueRecord } from '@/lib/team-season-stats'
+import { SITE_URL } from '@/lib/site'
 
 export const revalidate = 60
 export const maxDuration = 60 // was 15; a brief Supabase stall (pitcher_stats took 7.8s) turned into a hard timeout
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
 
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
-  const dateStr = dateMatch?.[1] ?? ''
-  const matchup = slug
-    .replace(/-(\d{4}-\d{2}-\d{2})(-game\d+)?$/, '')
-    .replace(/-at-/, ' at ')
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-  const displayDate = dateStr
-    ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : ''
-  const title = `${matchup}${displayDate ? ` — ${displayDate}` : ''} · x9Lab`
-  const description = `Pre-game analysis and a data-driven read for ${matchup}.`
-  return {
-    title, description,
-    openGraph: { title, description, type: 'article', url: `https://edgereportdaily.com/mlb/${slug}` },
-    twitter: { card: 'summary_large_image', title, description },
-  }
+  const p = parseGameSlug(slug)
+  if (!p) return { title: 'Game preview', ...noindex() }
+  const title = gameTitle(p)
+  const description = fitDescription(
+    `${p.awayName} at ${p.homeName} on ${p.dateLabel}: probable starters, lineups, bullpen workload and pitch data in plain numbers, with the sample size beside each stat.`,
+    ['Free daily email.'],
+  )
+  return pageMeta({ title, description, path: `/mlb/${slug}`, type: 'article' })
 }
 
 // Reconstructs a slug for another game in the same series from a
@@ -234,21 +231,16 @@ function Skeleton({ h, label }: { h: number; label?: string }) {
   )
 }
 
-// ── Banner: weather + series header stream in; matchup/time/venue are instant ──
+// ── Banner: series header streams in; matchup/time/venue are instant ──
 async function BannerAsync({ ctx }: { ctx: GameCtx }) {
   const venueInfo = getVenueInfo(ctx.venueName)
-  const [weather, seriesGames] = await Promise.all([
-    venueInfo && !venueInfo.indoor
-      ? safe('weather', getGameWeather(venueInfo.lat, venueInfo.lon, ctx.gameDateIso), null)
-      : Promise.resolve(null),
-    safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[]),
-  ])
+  const seriesGames = await safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[])
   return (
     <GameBriefBanner
       awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
       gameTimeFormatted={ctx.gameTimeFormatted}
-      venueName={ctx.venueName} city={venueInfo?.city ?? null} isDome={venueInfo?.indoor ?? false}
-      weather={weather} series={seriesHeaderFrom(seriesGames, ctx.gamePk)}
+      venueName={ctx.venueName} city={venueInfo?.city ?? null}
+      series={seriesHeaderFrom(seriesGames, ctx.gamePk)}
     />
   )
 }
@@ -414,8 +406,9 @@ async function SeriesStatsAsync({ ctx, seriesGames }: { ctx: GameCtx; seriesGame
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function GamePreview({ params }: Props) {
+export default async function GamePreview({ params, searchParams }: Props) {
   const { slug } = await params
+  const { pro } = await searchParams
   const supa = createAdminClient()
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
@@ -426,8 +419,8 @@ export default async function GamePreview({ params }: Props) {
     getScheduleForDate(dateMatch[1]).catch(() => [] as MLBGame[]),
   ])
   // Never default to true (a `?? true` here once leaked Pro to logged-out users).
-  // `next dev` unlocks Pro so the paid views can be built and tested locally.
-  const isPro = (subscriber?.is_pro ?? false) || process.env.NODE_ENV === 'development'
+  // Local testing: add ?pro=1 under `next dev` (see lib/dev-pro.ts).
+  const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
 
   let game: MLBGame | null = freshGames.find(g => slugifyGame(g) === slug) ?? null
   if (!game) {
@@ -482,6 +475,8 @@ export default async function GamePreview({ params }: Props) {
 
   return (
     <>
+      <SportsEventSchema awayTeam={awayTeam.name} homeTeam={homeTeam.name} gameDate={game.gameDate} venue={venueName || null} path={`/mlb/${slug}`} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${awayTeam.name} vs ${homeTeam.name}`, path: `/mlb/${slug}` }]} />
       <SiteHeader variant="page" />
       <LiveTicker />
       <Suspense fallback={<JumpNav hasSeries={false} hasPostgames={false} />}>
@@ -489,13 +484,14 @@ export default async function GamePreview({ params }: Props) {
       </Suspense>
       <div className="min-h-screen bg-stone-50">
         <div className="px-4 py-6 space-y-6" style={centered}>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: '-0.01em', color: '#1A1A1A' }}>{ctx.away.name} vs {ctx.home.name}</h1>
 
           <Suspense fallback={
             <GameBriefBanner
               awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
               gameTimeFormatted={ctx.gameTimeFormatted}
-              venueName={venueName} city={venueInfo?.city ?? null} isDome={venueInfo?.indoor ?? false}
-              weather={null} series={null} pending
+              venueName={venueName} city={venueInfo?.city ?? null}
+              series={null}
             />
           }>
             <BannerAsync ctx={ctx} />

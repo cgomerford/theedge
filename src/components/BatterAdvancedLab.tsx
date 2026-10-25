@@ -6,6 +6,7 @@
 // Mirrors PitcherAdvancedLab.tsx structure exactly — see that file for
 // the fuller commentary on empty-state discipline.
 
+import XMark from '@/components/XMark'
 import { useEffect, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -111,9 +112,9 @@ function ExitVeloSection({ log }: { log: ExitVeloGamePoint[] }) {
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={usable} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
-          <XAxis dataKey="game_date" tick={{ fontSize: 9, fontFamily: 'monospace' }} />
-          <YAxis domain={['dataMin - 3', 'dataMax + 3']} tick={{ fontSize: 9, fontFamily: 'monospace' }} unit=" mph" width={55} />
-          <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} />
+          <XAxis dataKey="game_date" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+          <YAxis domain={['dataMin - 3', 'dataMax + 3']} tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} unit=" mph" width={55} />
+          <Tooltip contentStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} />
           <Line type="monotone" dataKey="avg_exit_velocity" name="Avg EV" stroke={ORANGE} strokeWidth={2} dot={{ r: 3 }} />
           <Line type="monotone" dataKey="max_exit_velocity" name="Max EV" stroke={BLACK} strokeWidth={1} strokeDasharray="4 3" dot={false} />
         </LineChart>
@@ -136,10 +137,10 @@ function HRSection({ log }: { log: HRHitPoint[] }) {
         <ResponsiveContainer width="100%" height={180}>
           <ScatterChart margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E7E5E4" />
-            <XAxis dataKey="game_date" type="category" tick={{ fontSize: 8, fontFamily: 'monospace' }} name="Date" />
-            <YAxis dataKey="hit_distance_ft" tick={{ fontSize: 9, fontFamily: 'monospace' }} unit=" ft" width={50} name="Distance" />
+            <XAxis dataKey="game_date" type="category" tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif' }} name="Date" />
+            <YAxis dataKey="hit_distance_ft" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} unit=" ft" width={50} name="Distance" />
             <ZAxis dataKey="exit_velocity" range={[40, 160]} name="Exit velo" unit=" mph" />
-            <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} cursor={{ strokeDasharray: '3 3' }} />
+            <Tooltip contentStyle={{ fontFamily: 'var(--font-redhat), sans-serif', fontSize: 11 }} cursor={{ strokeDasharray: '3 3' }} />
             <Scatter data={log} fill={ORANGE} />
           </ScatterChart>
         </ResponsiveContainer>
@@ -162,7 +163,7 @@ function HRSection({ log }: { log: HRHitPoint[] }) {
 function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">§ {title}</h3>
+      <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4"><XMark /> {title}</h3>
       {children}
     </section>
   )

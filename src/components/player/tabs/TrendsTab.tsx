@@ -90,8 +90,8 @@ export default function TrendsTab({ playerId, isPitcher }: { playerId: number; i
       ) : (
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={rolling} margin={{ top: 8, right: 24, bottom: 4, left: 0 }}>
-            <XAxis dataKey="gameNum" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} />
-            <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} width={48} domain={['auto', 'auto']} />
+            <XAxis dataKey="gameNum" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+            <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={48} domain={['auto', 'auto']} />
             <Tooltip
               formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(metric.key === 'era' || metric.key === 'whip' ? 2 : 3) : '—')}
               labelFormatter={l => `Through game ${l}`}

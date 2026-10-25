@@ -47,14 +47,14 @@ export function QbPercentileCarousel({ entries, intervalMs = 6000 }: { entries: 
         <p className="nh-empty tight">Not enough data to rank yet.</p>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3', marginBottom: 8 }}>
             <span>POOR</span>
             <span>AVERAGE</span>
             <span>GREAT</span>
           </div>
           {current.dials.map((d) => (
             <div key={d.key} style={{ marginBottom: 10 }}>
-              <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#4B4B4B', margin: '0 0 3px' }}>{d.key}</p>
+              <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#4B4B4B', margin: '0 0 3px' }}>{d.key}</p>
               <div style={{ position: 'relative', height: 6, background: '#EFECE6' }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '100%', background: 'linear-gradient(90deg,#DC2626,#D97706,#16A34A)' }} />
                 <div
@@ -68,7 +68,7 @@ export function QbPercentileCarousel({ entries, intervalMs = 6000 }: { entries: 
                     background: dotColor(d.percentile),
                     color: '#fff',
                     fontSize: 8,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'Red Hat Display', sans-serif",
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

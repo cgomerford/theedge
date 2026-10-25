@@ -111,7 +111,7 @@ export function TeamExplorer({ teams }: { teams: TeamSummary[] }) {
                 </ResponsiveContainer>
               </div>
             )}
-            <Foot>Horizontal break is flipped for right-handers so arm side is always to the right. Vertical = induced (gravity removed). Source: Baseball Savant pfx_x / pfx_z, {team.pitches.toLocaleString()} pitches.</Foot>
+            <Foot>Horizontal break is flipped for right-handers so arm side is always to the right. Vertical = induced (gravity removed). n = {team.pitches.toLocaleString()} pitches.</Foot>
           </Card>
         </div>
       )}
@@ -142,7 +142,7 @@ export function TeamExplorer({ teams }: { teams: TeamSummary[] }) {
               </tbody>
             </table>
           </div>
-          <Foot>Release side is measured from the middle of the rubber, arm side positive. Variation includes pitcher-to-pitcher differences, so a club with many different arm slots shows a wider number. Source: Baseball Savant release_pos_x / release_pos_z / arm_angle.</Foot>
+          <Foot>Release side is measured from the middle of the rubber, arm side positive. Variation includes pitcher-to-pitcher differences, so a club with many different arm slots shows a wider number.</Foot>
         </Card>
       )}
     </div>
@@ -181,7 +181,7 @@ export function SpreadVsRuns({ teams, season, roleLabel }: { teams: TeamSummary[
       <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
         {(Object.keys(SPREADS) as SpreadKey[]).map(k => (
           <button key={k} onClick={() => setKey(k)} style={{
-            fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+            fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 4, cursor: 'pointer',
             border: `1px solid ${k === key ? C.ink : C.line}`, background: k === key ? C.ink : '#fff', color: k === key ? '#fff' : '#5b5347',
           }}>{SPREADS[k].label}</button>
         ))}
@@ -227,7 +227,7 @@ export function SpreadVsRuns({ teams, season, roleLabel }: { teams: TeamSummary[
       )}
       <Foot>
         One dot per club ({season} regular season). r is the Pearson correlation across these {pts.length} clubs: a description of how the two lined up, not proof that one drives the other —
-        run prevention also reflects defence, park and the quality of the arms behind the variation. Runs allowed from the MLB Stats API; everything else from Baseball Savant pitch data. xwOBA against stands in for xERA, which Savant doesn't publish per team.
+        run prevention also reflects defence, park and the quality of the arms behind the variation.  xwOBA against stands in for xERA, which Savant doesn't publish per team.
       </Foot>
     </Card>
   )

@@ -25,13 +25,13 @@ export default function HitterPicker({ rows, selectedId, selectedName, target = 
   return (
     <div ref={box} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <span style={{ fontSize: 13, color: C.mute }}>Hitter</span>
-      <b style={{ fontSize: 15, background: C.ink, color: '#fff', borderRadius: 999, padding: '5px 14px' }}>{selectedName ?? `#${selectedId}`}</b>
+      <b style={{ fontSize: 15, background: C.ink, color: '#fff', borderRadius: 4, padding: '5px 14px' }}>{selectedName ?? `#${selectedId}`}</b>
       <div style={{ position: 'relative' }}>
         <input
           type="search" value={q} placeholder="Search a hitter or team (PHI)" aria-label="Search for a hitter" role="combobox" aria-expanded={open && hits.length > 0} aria-controls="cl-hits"
           onChange={e => { setQ(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={e => { if (e.key === 'Enter' && hits[0]) go(hits[0].id); if (e.key === 'Escape') setOpen(false) }}
-          style={{ border: `1px solid ${C.line}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, minWidth: 250, background: '#fff', color: C.ink, fontFamily: 'inherit' }}
+          style={{ border: `1px solid ${C.line}`, borderRadius: 4, padding: '7px 14px', fontSize: 13, minWidth: 250, background: '#fff', color: C.ink, fontFamily: 'inherit' }}
         />
         {open && hits.length > 0 && (
           <ul id="cl-hits" role="listbox" style={{ position: 'absolute', top: '110%', left: 0, right: 0, margin: 0, padding: 4, listStyle: 'none', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,.08)', zIndex: 30 }}>

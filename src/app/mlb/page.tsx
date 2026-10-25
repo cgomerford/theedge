@@ -14,11 +14,15 @@ import { getLeagueStandardStats } from '@/lib/league-standard-stats'
 import { getTeamRadarStats } from '@/lib/team-radar'
 import MLBSubNav from '@/components/MLBSubNav'
 import ArticlesTeaser from '@/components/ArticlesTeaser'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata = {
-  title: 'MLB · x9Lab',
-  description: "Division standings, stat leaders, and today's edges — the GM briefing for baseball.",
-}
+export const metadata = pageMeta({
+  title: 'MLB games, standings and leaders',
+  description:
+    "Today's MLB games with starting pitchers and bullpen workload, plus division standings and season leaders, in plain numbers with the sample size shown.",
+  path: '/mlb',
+})
 
 export const revalidate = 1800
 
@@ -44,8 +48,10 @@ export default async function MLBPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
+      <h1 style={{ maxWidth: 1600, margin: '0 auto', padding: '20px 24px 0', fontSize: 26, fontWeight: 900, letterSpacing: '-0.01em', color: '#1A1A1A' }}>MLB games, standings and leaders</h1>
       <MLBHomepage
         standings={standings}
         statLeaders={statLeaders}

@@ -12,12 +12,8 @@
 // Promise.allSettled so one endpoint failing doesn't blank the other. A
 // request-id guard drops stale responses (typeahead race protection).
 //
-// maintenance=true → result clicks don't navigate (every player route is
-// behind the proxy wall this week); instead an inline "reopens Sept 18"
-// prompt appears. Flip maintenance=false on Sept 18 and the same rows
-// navigate to the real player pages with no code change.
 
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 type Sport = 'MLB' | 'NFL'
@@ -35,11 +31,9 @@ const mlbHeadshot = (id: string | number) =>
   `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`
 
 export default function PlayerSearch({
-  maintenance = false,
   sport = 'ALL',
   rounded = false,
 }: {
-  maintenance?: boolean
   sport?: 'ALL' | 'MLB' | 'NFL'
   rounded?: boolean
 }) {
@@ -47,7 +41,6 @@ export default function PlayerSearch({
   const [results, setResults] = useState<Result[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [locked, setLocked] = useState<Result | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const latest = useRef(0)
 
@@ -112,25 +105,17 @@ export default function PlayerSearch({
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
-  function onResultClick(e: ReactMouseEvent, r: Result) {
-    if (maintenance) {
-      e.preventDefault()
-      setLocked(r)
-      setOpen(false)
-    }
-  }
-
   const showDropdown = open && query.trim().length >= 2
 
   return (
     <div ref={containerRef} className="relative w-full max-w-md mx-auto">
       <input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); setLocked(null) }}
+        onChange={(e) => { setQuery(e.target.value) }}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
         placeholder={sport === 'MLB' ? 'Search any MLB player…' : sport === 'NFL' ? 'Search any NFL player or team…' : 'Search any MLB or NFL player…'}
         aria-label="Search players"
-        className={`w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-full' : ''}`}
+        className={`w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
       />
 
       {showDropdown && (
@@ -142,7 +127,6 @@ export default function PlayerSearch({
               <Link
                 key={`${r.sport}-${r.id}`}
                 href={r.href}
-                onClick={(e) => onResultClick(e, r)}
                 className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#F4F1EA] border-b border-[#F4F1EA] last:border-b-0"
               >
                 <span className="shrink-0 w-8 h-8 rounded-full overflow-hidden bg-[#F4F1EA] border border-[#DEDACE]">
@@ -171,14 +155,6 @@ export default function PlayerSearch({
         </div>
       )}
 
-      {locked && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[#1A1A1A] text-[#FAF8F3] border border-[#1A1A1A] p-4 z-30 text-left">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-[#FDE047] mb-1">Reopens Sept 18</div>
-          <p className="font-serif text-sm leading-snug">
-            {locked.label}&apos;s full profile is part of the rebuild — sign up above to get in first.
-          </p>
-        </div>
-      )}
     </div>
   )
 }

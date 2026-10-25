@@ -64,6 +64,7 @@ import ProPanel from '@/components/profile/ProPanel'
 import ProfileTabs, { type ProfileTab } from '@/components/profile/ProfileTabs'
 import { Card, Foot, Tile, C, MONO, SANS, DISPLAY } from '@/components/team/ui'
 import { MLB_TEAMS } from '@/lib/teams'
+import { SITE_HOST, X_HANDLE } from '@/lib/site'
 
 function headshotUrl(id: number) {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/w_300,q_100/v1/people/${id}/headshot/67/current`
@@ -184,14 +185,14 @@ function StatDetailPopover({
     <div className="fixed z-50 bg-white border border-stone-300 shadow-xl rounded-xl p-4" style={{ left, top, width }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <div className="flex items-center justify-between mb-2">
         <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">{row.label} — {contextLabel}</p>
-        <button type="button" onClick={onClose} className="text-stone-300 hover:text-stone-600 text-xs leading-none">✕</button>
+        <button type="button" onClick={onClose} className="text-stone-300 hover:text-stone-600 text-xs leading-none">Close</button>
       </div>
       <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           <ResponsiveContainer width="100%" height={130}>
             <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis dataKey="i" tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#a8a29e' }} />
-              <YAxis tick={{ fontSize: 8, fontFamily: 'monospace', fill: '#a8a29e' }} width={34} tickFormatter={v => row.format(v)} domain={['auto', 'auto']} />
+              <XAxis dataKey="i" tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} />
+              <YAxis tick={{ fontSize: 8, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} width={34} tickFormatter={v => row.format(v)} domain={['auto', 'auto']} />
               <Tooltip formatter={(value: unknown) => (typeof value === 'number' ? row.format(value) : '—')} labelFormatter={l => `Game ${l}`} />
               <Line type="monotone" dataKey="v" stroke="#FF5722" strokeWidth={2} dot={false} />
             </LineChart>
@@ -349,7 +350,7 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
         {selectedSeasons.map(season => (
           <span key={season} className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest px-2.5 py-1 text-white" style={{ background: colorForSeason(season) }}>
             {loadingSeasons.has(season) ? `${season}…` : season}
-            {season !== thisYear && <button type="button" onClick={() => removeSeason(season)} className="hover:opacity-70" aria-label={`Remove ${season}`}>✕</button>}
+            {season !== thisYear && <button type="button" onClick={() => removeSeason(season)} className="hover:opacity-70" aria-label={`Remove ${season}`}>Remove</button>}
           </span>
         ))}
         {seasonsLoading ? <span className="text-[9px] font-mono text-stone-300">Loading seasons…</span>
@@ -406,10 +407,10 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
         ) : (
           <ResponsiveContainer width="100%" height={height}>
             <LineChart data={chartData} margin={{ top: 8, right: 24, bottom: 0, left: 0 }}>
-              <XAxis dataKey="gameNumber" tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} label={{ value: 'Game #', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'monospace' }} />
-              <YAxis tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }} domain={['auto', 'auto']} width={48} tickFormatter={v => metricRow.format(v)} />
+              <XAxis dataKey="gameNumber" tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} label={{ value: 'Game #', position: 'insideBottom', offset: -2, fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
+              <YAxis tick={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }} domain={['auto', 'auto']} width={48} tickFormatter={v => metricRow.format(v)} />
               <Tooltip formatter={(value: unknown, name: unknown) => (typeof value !== 'number' ? ['—', name] as [string, string] : [metricRow.format(value), name] as [string, string])} labelFormatter={l => `Game ${l}`} />
-              <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'monospace' }} />
+              <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif' }} />
               {selectedSeasons.map(season => (
                 <Line key={season} type="monotone" dataKey={String(season)} name={String(season)} stroke={colorForSeason(season)} strokeWidth={season === thisYear ? 2 : 1.5} strokeDasharray={season === thisYear ? undefined : '4 3'} dot={false} connectNulls />
               ))}
@@ -782,9 +783,9 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
     const val = lastXStats[headline.row.key]
     const seasonVal = seasonStats[headline.row.key]
     if (val == null) return ''
-    const trending = headline.delta > 0 ? 'heating up 🔥' : 'cooling off ❄️'
+    const trending = headline.delta > 0 ? 'heating up' : 'cooling off'
     const seasonStr = seasonVal != null ? headline.row.format(seasonVal) : '—'
-    return `${identity.fullName} is ${trending} — ${headline.row.format(val)} ${headline.row.label} over his last ${windowSize} games (season: ${seasonStr}). ⊕ via @edgereportdaily`
+    return `${identity.fullName} is ${trending} — ${headline.row.format(val)} ${headline.row.label} over his last ${windowSize} games (season: ${seasonStr}). ⊕ via ${X_HANDLE}`
   }, [headline, lastXStats, seasonStats, identity.fullName, windowSize])
 
  async function downloadCard() {
@@ -868,7 +869,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   ].filter(Boolean).join(' · ')
 
   const CSS = `
-.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-outfit),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
+.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3,.tp-root .font-bold,.tp-root .font-semibold,.tp-root .font-black,.tp-root .font-serif{font-family:var(--font-redhat),system-ui,sans-serif !important;font-variant-numeric:tabular-nums}
 .pl-grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
 .pl-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .pl-grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
@@ -1022,7 +1023,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
               <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.yellow, marginBottom: 6 }}>
                 ⊕ Player profile{identity.currentTeam ? ` · ${identity.currentTeam.abbr}` : ''}{identity.primaryNumber ? ` · #${identity.primaryNumber}` : ''}
               </div>
-              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, letterSpacing: '-.02em', color: on }}>{identity.fullName}</div>
+              <h1 style={{ margin: 0, fontFamily: DISPLAY, fontWeight: 800, fontSize: 'clamp(34px, 5.6vw, 56px)', lineHeight: 1, letterSpacing: '-.02em', color: on }}>{identity.fullName}</h1>
               <div style={{ fontFamily: MONO, fontSize: 11, color: on, opacity: 0.8, marginTop: 8 }}>{bio}</div>
             </div>
           </div>
@@ -1053,8 +1054,8 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
             <>
               <div className="mt-8 mb-4">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Share card preview</p>
-                <div ref={cardRef} className="w-full max-w-md mx-auto" style={{ background: '#FAF8F3', border: '1px solid #1A1A1A', padding: 28, fontFamily: 'Fraunces, serif' }}>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.15em', color: '#FF5722', textTransform: 'uppercase', marginBottom: 10 }}>
+                <div ref={cardRef} className="w-full max-w-md mx-auto" style={{ background: '#FAF8F3', border: '1px solid #1A1A1A', padding: 28, fontFamily: 'Red Hat Display, sans-serif' }}>
+                  <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, letterSpacing: '0.15em', color: '#FF5722', textTransform: 'uppercase', marginBottom: 10 }}>
                     ⊕ x9Lab · Last {windowSize} Games
                   </div>
                   <div style={{ height: 3, background: teamColor, width: 48, marginBottom: 14, borderRadius: 2 }} />
@@ -1064,7 +1065,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
                     </div>
                     <div>
                       <div style={{ fontSize: 20, fontWeight: 700 }}>{identity.fullName}</div>
-                      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#7d7364' }}>
+                      <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 11, color: '#7d7364' }}>
                         {identity.currentTeam?.abbr ?? ''} · {identity.primaryPosition.abbreviation}
                       </div>
                     </div>
@@ -1075,16 +1076,16 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
                       const series = seriesFor(row, lastX, subject)
                       return (
                         <div key={row.key} style={{ textAlign: 'center' }}>
-                          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700 }}>{v != null ? row.format(v) : '—'}</div>
-                          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#7d7364', textTransform: 'uppercase', marginBottom: 4 }}>{row.label}</div>
+                          <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 16, fontWeight: 700 }}>{v != null ? row.format(v) : '—'}</div>
+                          <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#7d7364', textTransform: 'uppercase', marginBottom: 4 }}>{row.label}</div>
                           <div style={{ display: 'flex', justifyContent: 'center' }}><Sparkline values={series} color={teamColor} width={30} height={11} /></div>
                         </div>
                       )
                     })}
                   </div>
                   <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #e7e2d8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#a89e8c', letterSpacing: '0.05em' }}>edgereportdaily.com/mlb/players/{identity.id}</span>
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#a89e8c' }}>⊕</span>
+                    <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#a89e8c', letterSpacing: '0.05em' }}>{SITE_HOST}/mlb/players/{identity.id}</span>
+                    <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#a89e8c' }}>⊕</span>
                   </div>
                 </div>
               </div>
@@ -1095,19 +1096,13 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
                 </button>
               </div>
 
-              {showReferralPrompt && (
-                <div className="border border-[#FF5722]/30 bg-[#FFF3E0] rounded-xl p-4 mb-8 text-center">
-                  <p className="font-sans text-sm text-stone-800 mb-2">Nice card. Invite 2 friends to x9Lab and get a free month of Pro.</p>
-                  <Link href="/account/referrals" className="font-mono text-[10px] uppercase tracking-widest text-[#FF5722] hover:underline">Get your invite link →</Link>
-                </div>
-              )}
 
               {tweetText && (
                 <div className="border border-stone-200 bg-white rounded-xl shadow-sm p-5">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-stone-400 mb-2">Suggested tweet</p>
                   <p className="font-sans text-sm text-stone-800 mb-3">{tweetText}</p>
                   <button onClick={copyTweet} className="font-mono text-[10px] uppercase tracking-widest bg-white border border-stone-300 px-3.5 py-2 rounded-lg hover:border-[#FF5722] hover:text-[#FF5722] transition">
-                    {copied ? 'Copied ✓' : 'Copy tweet text'}
+                    {copied ? 'Copied' : 'Copy tweet text'}
                   </button>
                 </div>
               )}

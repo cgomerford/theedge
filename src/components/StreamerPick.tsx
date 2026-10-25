@@ -22,7 +22,7 @@ const TIER_CONFIG: Record<'strong' | 'viable' | 'avoid', { label: string; badge:
     label: 'Strong Stream',
     badge: 'bg-emerald-600 text-white',
     accent: 'border-emerald-600',
-    icon: '⬆',
+    icon: '↑',
   },
   viable: {
     label: 'Viable Stream',
@@ -34,7 +34,7 @@ const TIER_CONFIG: Record<'strong' | 'viable' | 'avoid', { label: string; badge:
     label: 'Avoid Tonight',
     badge: 'bg-stone-300 text-stone-600',
     accent: 'border-stone-300',
-    icon: '⬇',
+    icon: '↓',
   },
 }
 

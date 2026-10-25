@@ -9,6 +9,7 @@
 //                    it as a small tile so the not-yet-built sections sit in a
 //                    grid instead of a long stack.
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import type { ScoutSectionMeta } from './sections'
 
@@ -27,7 +28,7 @@ export default function ScoutSection({
     <section id={meta.id} className={`scroll-mt-28 bg-white border border-stone-200 rounded-2xl ${compact ? 'p-3.5' : 'p-4 sm:p-5'}`}>
       <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-2.5' : 'mb-4'}`}>
         <div className="min-w-0">
-          <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold">§ {String(meta.num).padStart(2, '0')}</p>
+          <p className="text-[10px] font-mono uppercase tracking-[0.14em] text-orange-600 font-semibold"><XMark /> {String(meta.num).padStart(2, '0')}</p>
           <h2 className={`font-sans font-bold text-stone-900 tracking-tight leading-tight mt-0.5 ${compact ? 'text-[14px]' : 'text-[17px]'}`}>{meta.title}</h2>
         </div>
         <span className={`shrink-0 text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${

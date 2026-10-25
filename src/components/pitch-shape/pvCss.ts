@@ -2,7 +2,7 @@
 //
 // Shared styles for the Pitching Lab / Pitch Shape Lab screens (PitchView, PitchCompare, PitchFinder). Kept apart from
 // PitchView so a screen that only needs the buttons and tables does not load the 3D scene code.
-// Plain CSS (not Tailwind): responsive layout via @media, per DESIGN_SYSTEM.md. One font only (Outfit via var).
+// Plain CSS (not Tailwind): responsive layout via @media, per DESIGN_SYSTEM.md. One font only (Red Hat via var).
 // Lab look: hairline rules, 8px controls, readout rows, tabular numbers, sample size on everything.
 export const PV_CSS = `
 .pv-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
@@ -14,7 +14,7 @@ export const PV_CSS = `
 @media(max-width:640px){.pv-stage{aspect-ratio:1/1;max-height:none}}
 .pv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
 .pv-k{font-size:10px;letter-spacing:.14em;font-weight:800;color:#FF5722;text-transform:uppercase;margin-right:4px}
-.pv-pill{font:600 12px var(--font-outfit),system-ui,sans-serif;border:1px solid #e7e2d8;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:#1A1A1A}
+.pv-pill{font:600 12px var(--font-redhat),system-ui,sans-serif;border:1px solid #e7e2d8;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:#1A1A1A}
 .pv-pill.gold{background:#FFF4CC;border-color:#EBC24A;color:#7A5800}
 .pv-pill.on.gold{background:#1A1A1A;border-color:#F5B800;color:#F5B800}
 .pv-pill.on{background:#1A1A1A;color:#FAF8F3;border-color:#1A1A1A}

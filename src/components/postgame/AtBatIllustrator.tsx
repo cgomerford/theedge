@@ -62,7 +62,7 @@ function AtBatZoneChart({ pitches }: { pitches: PitchRecord[] }) {
       <rect x={0} y={0} width={S} height={S} fill="#fff" />
       <rect x={zoneLeft} y={zoneTop} width={zoneRight - zoneLeft} height={zoneBottom - zoneTop} fill="none" stroke="#1A1A1A" strokeWidth={1} />
       {withCoords.length === 0 ? (
-        <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={8} fill="#A8A29E" fontFamily="JetBrains Mono, monospace">no coords</text>
+        <text x={S / 2} y={S / 2} textAnchor="middle" fontSize={8} fill="#A8A29E" fontFamily="Red Hat Display, sans-serif">no coords</text>
       ) : (
         withCoords.map((p, i) => (
           <g key={i}>
@@ -73,7 +73,7 @@ function AtBatZoneChart({ pitches }: { pitches: PitchRecord[] }) {
             />
             <text
               x={xScale(p.plateX!)} y={yScale(p.plateZ!) + 3} textAnchor="middle"
-              fontSize={8} fontWeight={700} fill="#fff" fontFamily="JetBrains Mono, monospace"
+              fontSize={8} fontWeight={700} fill="#fff" fontFamily="Red Hat Display, sans-serif"
             >
               {p.pitchNumber}
             </text>

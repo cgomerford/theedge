@@ -24,7 +24,7 @@ export default async function ChartBuilderPage() {
         .dash-s1 { grid-column: span 1; } .dash-s2 { grid-column: span 2; } .dash-s4 { grid-column: span 4; }
         @media (max-width: 1000px) { .dash-layout { grid-template-columns: 1fr; } .dash-pane { position: static; max-height: none; } }
         @media (max-width: 700px) { .dash-resize { display: none !important; } .dash-canvas { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dash-s2, .dash-s4 { grid-column: span 2; } }
-        .tp-root b, .tp-root strong, .tp-root h1, .tp-root h2, .tp-root h3 { font-family: var(--font-outfit), system-ui, sans-serif; }
+        .tp-root b, .tp-root strong, .tp-root h1, .tp-root h2, .tp-root h3 { font-family: var(--font-redhat), system-ui, sans-serif; }
       `}</style>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <Link href="/admin/lab" style={{ fontFamily: SANS, fontSize: 11, color: C.orange, letterSpacing: '.16em', textDecoration: 'none' }}>⊕ LAB</Link>

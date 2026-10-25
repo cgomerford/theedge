@@ -13,11 +13,15 @@ import { Empty } from '@/components/team/ui'
 import { isSignedIn } from '@/lib/require-signup'
 import { getContactLeaders, getContactProfile } from '@/lib/contact-profile/data'
 import { getSwingMonthly, getTtoLeaders, getTtoProfile } from '@/lib/nerve-centre/data'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
 
-export const metadata: Metadata = {
-  title: 'Contact Lab · The Edge',
-  description: 'How a hitter stands, swings, makes contact and what the plate appearance becomes: Pull AIR% against barrel rate, month-by-month swing changes, and strikeout-walk-homer mix, with the sample behind every number.',
-}
+export const metadata = pageMeta({
+  title: 'Contact Lab',
+  description:
+    'How a hitter swings and makes contact: Pull AIR% against barrel rate, monthly swing changes and strikeout-walk-homer mix, with the sample behind every number.',
+  path: '/mlb/lab/contact',
+})
 export const dynamic = 'force-dynamic'
 
 export default async function ContactLabPage({ searchParams }: { searchParams: Promise<{ hitter?: string }> }) {
@@ -41,11 +45,12 @@ export default async function ContactLabPage({ searchParams }: { searchParams: P
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Contact Lab', path: '/mlb/lab/contact' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
         {!leaders || leaders.rows.length === 0
-          ? <Empty>Contact data isn’t built yet. It refreshes weekly from Baseball Savant.</Empty>
+          ? <Empty>Contact data isn’t built yet.</Empty>
           : <ContactLab leaders={leaders} selectedId={selectedId} contact={contact} swing={swing?.mine ?? null} ttoProfile={ttoProfile} ttoLeaders={ttoLeaders} ttoSeason={season} />}
       </div>
     </main>

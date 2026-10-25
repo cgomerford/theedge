@@ -21,7 +21,7 @@ function RadarPlot({ axes, color, height }: { axes: { axis: string; value: numbe
     <ResponsiveContainer width="100%" height={height}>
       <RadarChart data={axes} outerRadius="72%">
         <PolarGrid stroke="#e7e5e4" />
-        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'monospace', fill: '#78716c' }} />
+        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fontFamily: 'var(--font-redhat), sans-serif', fill: '#78716c' }} />
         <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
         <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v}th pctile` : '—')} />
         <Radar dataKey="value" stroke={color} fill={color} fillOpacity={0.25} strokeWidth={2} />

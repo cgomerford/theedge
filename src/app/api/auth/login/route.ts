@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createLoginLink } from '@/lib/auth'
 import { loginLinkEmail } from '@/lib/email/auth'
+import { readAttribution } from '@/lib/attribution'
 import { signupLimit, getClientIp } from '@/lib/ratelimit'
 import { Resend } from 'resend'
 import { z } from 'zod'
+import { CONTACT_EMAIL } from '@/lib/site'
 
 const Schema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -16,9 +18,19 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const turnstileToken = formData.get('cf-turnstile-response') as string
 
+  // Sent from /signup as hidden fields; /login sends none. Errors go back to the page the form came from.
+  const attribution = readAttribution((k) => formData.get(k))
+  const fromSignup = formData.get('from') === 'signup'
+  const back = (query: string) => {
+    if (!fromSignup) return `/login?${query}`
+    const params = new URLSearchParams(query)
+    for (const [k, v] of Object.entries(attribution)) params.set(k, v)
+    return `/signup?${params}`
+  }
+
   // === Turnstile gate ===
   if (!turnstileToken) {
-    return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+    return NextResponse.redirect(new URL(back('error=verify-failed'), req.url), { status: 303 })
   }
 
   try {
@@ -33,25 +45,25 @@ export async function POST(req: NextRequest) {
     })
     const verifyData = await verifyRes.json()
     if (!verifyData.success) {
-      return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+      return NextResponse.redirect(new URL(back('error=verify-failed'), req.url), { status: 303 })
     }
   } catch {
-    return NextResponse.redirect(new URL('/login?error=verify-failed', req.url), { status: 303 })
+    return NextResponse.redirect(new URL(back('error=verify-failed'), req.url), { status: 303 })
   }
 
   // Rate limit reuses signupLimit (5/min/IP) — same protection profile
   const { success } = await signupLimit.limit(ip)
   if (!success) {
-    return NextResponse.redirect(new URL('/login?error=rate-limit', req.url), { status: 303 })
+    return NextResponse.redirect(new URL(back('error=rate-limit'), req.url), { status: 303 })
   }
 
   const parsed = Schema.safeParse({ email: formData.get('email') })
 
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/login?error=invalid', req.url), { status: 303 })
+    return NextResponse.redirect(new URL(back('error=invalid'), req.url), { status: 303 })
   }
 
-  const token = await createLoginLink(parsed.data.email)
+  const token = await createLoginLink(parsed.data.email, attribution)
 
   // ALWAYS show the same success message — never reveal if email exists
   // (prevents email-enumeration attacks)
@@ -60,7 +72,7 @@ export async function POST(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = loginLinkEmail(parsed.data.email, token)
       await resend.emails.send({
-        from: 'x9Lab <hello@edgereportdaily.com>',
+        from: `x9Lab <${CONTACT_EMAIL}>`,
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,
@@ -71,5 +83,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL('/login?sent=1', req.url), { status: 303 })
+  return NextResponse.redirect(new URL(back('sent=1'), req.url), { status: 303 })
 }

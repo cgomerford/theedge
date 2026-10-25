@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import type { Team } from '@/lib/teams'
 import type { MLBTeamRecord, MLBNextGame, MLBTeamLeader, MLBNewsItem } from '@/lib/mlb-homepage'
@@ -296,7 +297,7 @@ export default function TeamMiniDugout({ team, record, nextGame, leaders, news }
       {/* ── News ── */}
       <section>
         <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-500 mb-4">
-          § Latest {team.short} news
+          <XMark /> Latest {team.short} news
         </div>
         {news.length === 0 ? (
           <div className="text-center py-12 bg-white border border-stone-200 rounded-lg text-stone-400 font-mono text-sm">

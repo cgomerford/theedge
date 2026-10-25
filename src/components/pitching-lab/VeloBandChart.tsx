@@ -13,7 +13,7 @@ import { pitchColor } from '@/lib/mlb'
 import type { PitcherPitchLog } from '@/lib/pitcher-pitch-log'
 
 const SEASON = new Date().getFullYear()
-const AXIS_TICK = { fontSize: 9, fontFamily: 'monospace', fill: '#a8a29e' }
+const AXIS_TICK = { fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif', fill: '#a8a29e' }
 const NO_ANIM = { isAnimationActive: false } as const
 
 function shortDate(d: string): string {
@@ -106,7 +106,7 @@ export default function VeloBandChart({ pitcherId }: { pitcherId: number }) {
           <XAxis dataKey="date" tick={AXIS_TICK} />
           <YAxis tick={AXIS_TICK} domain={['auto', 'auto']} width={36} unit=" mph" />
           <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)} mph` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
-          <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'monospace' }} />
+          <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
           {topPitches.map(pt => (
             <Line {...NO_ANIM} key={pt} type="monotone" dataKey={pt} name={log.pitchNames[pt] ?? pt} stroke={pitchColor(pt)} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ))}

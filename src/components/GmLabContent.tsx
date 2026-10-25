@@ -5,6 +5,7 @@
 // Four sections: IL Board, Roster Moves, Bullpen Decision Tree, Starter Intel.
 // Nothing here duplicates The Read, Teams, or the Edge factors.
 
+import XMark from '@/components/XMark'
 import { playerHeadshotUrl } from '@/lib/mlb'
 
 type Transaction = {
@@ -116,12 +117,12 @@ function categoryConfig(category: string): { label: string; bg: string; text: st
   switch (category) {
     case 'CALLUP':     return { label: 'Called Up',  bg: 'rgba(21,128,61,0.10)',   text: '#15803D', icon: '↑' }
     case 'OPTION':     return { label: 'Optioned',   bg: 'rgba(120,113,108,0.10)', text: '#78716C', icon: '↓' }
-    case 'DFA':        return { label: 'DFA',        bg: 'rgba(220,38,38,0.10)',   text: '#DC2626', icon: '✕' }
+    case 'DFA':        return { label: 'DFA',        bg: 'rgba(220,38,38,0.10)',   text: '#DC2626', icon: '' }
     case 'TRADE':      return { label: 'Trade',      bg: 'rgba(139,92,246,0.10)',  text: '#7C3AED', icon: '⇄' }
     case 'SIGNING':    return { label: 'Signed',     bg: 'rgba(37,99,235,0.10)',   text: '#2563EB', icon: '+' }
-    case 'RELEASE':    return { label: 'Released',   bg: 'rgba(220,38,38,0.10)',   text: '#DC2626', icon: '✕' }
+    case 'RELEASE':    return { label: 'Released',   bg: 'rgba(220,38,38,0.10)',   text: '#DC2626', icon: '' }
     case 'SUSPENSION': return { label: 'Suspended',  bg: 'rgba(220,38,38,0.10)',   text: '#DC2626', icon: '!' }
-    case 'ACTIVATION': return { label: 'Activated',  bg: 'rgba(21,128,61,0.10)',   text: '#15803D', icon: '✓' }
+    case 'ACTIVATION': return { label: 'Activated',  bg: 'rgba(21,128,61,0.10)',   text: '#15803D', icon: '' }
     default:           return { label: category,     bg: 'rgba(120,113,108,0.10)', text: '#78716C', icon: '·' }
   }
 }
@@ -131,7 +132,7 @@ function categoryConfig(category: string): { label: string; bg: string; text: st
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-4">
-      § {children}
+      <XMark /> {children}
     </h3>
   )
 }
@@ -168,7 +169,7 @@ function ILBoard({
       <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between"
         style={{ background: 'linear-gradient(90deg, rgba(220,38,38,0.04) 0%, transparent 100%)' }}>
         <span className="font-serif font-semibold text-stone-900">{abbr} — Injured List</span>
-        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full"
+        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-sm"
           style={{ background: activeIL.length > 0 ? 'rgba(220,38,38,0.10)' : 'rgba(21,128,61,0.10)', color: activeIL.length > 0 ? '#DC2626' : '#15803D' }}>
           {activeIL.length} {activeIL.length === 1 ? 'player' : 'players'}
         </span>
@@ -346,7 +347,7 @@ function BullpenDecisionTree({
       <div className="px-5 py-4 border-b border-stone-100">
         <div className="flex items-center justify-between mb-3">
           <span className="font-serif font-semibold text-stone-900">{abbr} — Late-Inning Decision Tree</span>
-          <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-full capitalize"
+          <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-sm capitalize"
             style={{ background: `${fatigueColor}18`, color: fatigueColor }}>
             Pen: {fatigueLevel}
           </span>
@@ -368,7 +369,7 @@ function BullpenDecisionTree({
           <div key={i} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 px-5 py-3"
             style={{ background: s.risk === 'high' ? 'rgba(220,38,38,0.02)' : 'transparent' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-              style={{ background: s.inning === 'X' ? '#1A1A1A' : '#F4F0E8', color: s.inning === 'X' ? '#FAF8F3' : '#1A1A1A', fontFamily: "'Bebas Neue', sans-serif", fontSize: '16px' }}>
+              style={{ background: s.inning === 'X' ? '#1A1A1A' : '#F4F0E8', color: s.inning === 'X' ? '#FAF8F3' : '#1A1A1A', fontFamily: "'Red Hat Display', sans-serif", fontSize: '16px' }}>
               {s.inning}
             </div>
             <div>
@@ -388,7 +389,7 @@ function BullpenDecisionTree({
       {teamData.day_after_night && (
         <div className="px-5 py-3 border-t border-stone-100 flex items-center gap-2"
           style={{ background: 'rgba(217,119,6,0.04)' }}>
-          <span className="text-amber-500 font-bold text-sm">⚠</span>
+          <span className="text-amber-500 font-bold text-sm"></span>
           <span className="font-mono text-[10px] text-amber-600 font-bold uppercase tracking-wider">
             Day game after night game — fatigue compounds
           </span>
@@ -463,7 +464,7 @@ function StarterIntel({
           ].map(s => (
             <div key={s.label} className="bg-stone-50 rounded-xl px-3 py-3 text-center">
               <div className="font-bold leading-none mb-1"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '28px', color: s.danger ? '#DC2626' : '#1A1A1A' }}>
+                style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: '28px', color: s.danger ? '#DC2626' : '#1A1A1A' }}>
                 {s.value ?? '–'}
               </div>
               <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider">{s.label}</div>
@@ -477,7 +478,7 @@ function StarterIntel({
           <div className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mb-2 flex items-center justify-between">
             <span>Platoon Splits (BAA against)</span>
             {vulnHanded && (
-              <span className="font-bold text-red-500">⚠ {vulnHanded} vulnerable</span>
+              <span className="font-bold text-red-500">{vulnHanded} vulnerable</span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-2">

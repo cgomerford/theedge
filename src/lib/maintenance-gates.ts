@@ -11,8 +11,6 @@
 // NOT gated by this list.
 
 export const MAINTENANCE_GATED_PREFIXES: readonly string[] = [
-  '/fantasy',
-  '/nfl',
   '/preview/nfl',
   '/nhl',
   '/preview/nhl',

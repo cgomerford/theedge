@@ -4,10 +4,11 @@
 // No LLM narrative — entirely data-driven off the aggregated feed.
 // Organized in the "recap the game from just the data" order: General
 // (what happened) → Specific/Pitchers (why, from the mound) → Specific/
-// Batting (why, from the box). Styling follows brand tokens: Fraunces /
-// Bebas Neue / JetBrains Mono, cream/ink/orange/yellow, zero border-radius,
+// Batting (why, from the box). Styling follows brand tokens: Red Hat Display /
+// Red Hat Display / Red Hat Display, cream/ink/orange/yellow, zero border-radius,
 // § section markers, matching MatchupTilt.tsx's Tailwind pattern.
 
+import XMark from '@/components/XMark'
 import type {
   PostgameReport as PostgameReportData,
   PitcherGameLine,
@@ -67,7 +68,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
 
           <div
             className="font-mono text-center"
-            style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+            style={{ fontFamily: "'Red Hat Display', sans-serif" }}
           >
             <span
               className="text-6xl leading-none"
@@ -103,7 +104,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
       </div>
  {/* ── Win Probability ── */}
       {report.winProbability.length > 0 && (
-        <Section glyph="⊕" title="Win Probability" tag="MLB Stats API · per plate appearance">
+        <Section glyph="⊕" title="Win Probability" tag="per plate appearance">
           <div className="bg-white border-2 border-stone-200 p-5">
             <WinProbabilityChart points={report.winProbability} away={away} home={home} />
           </div>
@@ -116,7 +117,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
             className="font-mono text-[9px] uppercase tracking-[0.22em] mb-3"
             style={{ color: '#FDE047' }}
           >
-            § Most Impactful At-Bat
+            <XMark /> Most Impactful At-Bat
           </div>
           <div className="font-serif text-[17px] italic leading-snug">
             {mostImpactfulAtBat.description}
@@ -129,7 +130,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
       )}
 
       {/* ── Key Plays ── */}
-      <Section glyph="§" title="Key Plays" tag={`${keyPlays.length} shown`}>
+      <Section glyph="" title="Key Plays" tag={`${keyPlays.length} shown`}>
         <div className="space-y-1.5">
           {keyPlays.map((kp, i) => (
             <div
@@ -292,7 +293,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
         Specific — Pitchers
       </div>
 
-      <Section glyph="§" title="Pitching Lines" tag={`${pitchers.length} pitchers`}>
+      <Section glyph="" title="Pitching Lines" tag={`${pitchers.length} pitchers`}>
         {[away, home].map((team) => {
           const teamPitchers = startersFirst(
             pitchers.filter((p) => p.teamId === team.teamId)
@@ -360,7 +361,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
       </Section>
 
       <Section
-        glyph="§"
+        glyph=""
         title="Arsenal, Swing & Miss, Hot Zones"
         tag="starters"
       >
@@ -381,7 +382,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
           SPECIFIC — Batting
           ════════════════════════════════════════════════════════════ */}
 <Section
-        glyph="§"
+        glyph=""
         title="The Illustrator"
         tag="pitch sequence, every at-bat"
       >
@@ -406,7 +407,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
         Specific — Batting
       </div>
 
-      <Section glyph="§" title="Batting Lines" tag="both lineups">
+      <Section glyph="" title="Batting Lines" tag="both lineups">
         {[away, home].map((team) => (
           <BattingTable
             key={team.teamId}
@@ -417,7 +418,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
       </Section>
 
       <Section
-        glyph="§"
+        glyph=""
         title="Contact By Zone"
         tag="both teams · this game only"
       >
@@ -439,7 +440,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
         </div>
       </Section>
 
-      <Section glyph="§" title="Where The Ball Went" tag="all balls in play">
+      <Section glyph="" title="Where The Ball Went" tag="all balls in play">
         <div className="bg-white border-2 border-stone-200 p-5">
           <SprayChart battedBalls={report.battedBalls} />
         </div>
@@ -447,7 +448,7 @@ export function PostgameReport({ report }: { report: PostgameReportData }) {
 
       {/* ── Footer ── */}
      <div className="border-t-2 border-stone-200 pt-5 mt-4 font-mono text-[10px] text-stone-500 leading-relaxed tracking-wide">
-        ⊕ Data — MLB Stats API live game feed, pitch-by-pitch, plus per-play
+        ⊕ Data: pitch-by-pitch game feed, plus per-play
         win probability. Hot zones and contact maps are this game only, not
         season profiles. No Edge Score or pregame-grade comparison appears
         on this page — that stays in /admin.
@@ -510,7 +511,7 @@ function Superlative({
       <div
         className="font-mono text-[26px] leading-none tracking-tight"
         style={{
-          fontFamily: "'Bebas Neue', sans-serif",
+          fontFamily: "'Red Hat Display', sans-serif",
           color: accent ? ORANGE : INK,
         }}
       >

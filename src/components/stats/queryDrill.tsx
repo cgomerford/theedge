@@ -354,7 +354,7 @@ export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
           </table>
         </div>
         <div style={{ fontFamily: SANS, fontSize: 12, color: C.faint, marginTop: 10 }}>
-          {deep ? 'Built from every plate appearance in the selected seasons (Baseball Savant).' : 'A single situation is checked against every plate appearance in the selected seasons (Baseball Savant).'}
+          {deep ? 'Built from every plate appearance in the selected seasons.' : 'A single situation is checked against every plate appearance in the selected seasons.'}
         </div>
       </Card>
     </div>

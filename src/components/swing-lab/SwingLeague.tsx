@@ -119,7 +119,7 @@ export default function SwingLeague({ leaders, league }: { leaders: SwingLeaders
             </div>
           )}
           {rows.length > shown && <button type="button" className="sd-more" onClick={() => setShown(s => s + PAGE)}>Show {Math.min(PAGE, rows.length - shown)} more</button>}
-          <Foot>Source: Baseball Savant via pybaseball. Selection = the share of swing-losing pitches a hitter took; Aggression = the share of hittable pitches he swung at; decision runs = his choices against the league’s average choice in the same count, spot, pitch family and pitcher hand, per 100 pitches. Hitters need {GATE.season} decision pitches in the window. “Last 30 days” ends on the last game day in the data. Click a name for his full decision grid (Pro).</Foot>
+          <Foot>Selection = the share of swing-losing pitches a hitter took; Aggression = the share of hittable pitches he swung at; decision runs = his choices against the league’s average choice in the same count, spot, pitch family and pitcher hand, per 100 pitches. Hitters need {GATE.season} decision pitches in the window. “Last 30 days” ends on the last game day in the data. Click a name for his full decision grid (Pro).</Foot>
         </Card>
       </Section>
 
@@ -149,7 +149,7 @@ export default function SwingLeague({ leaders, league }: { leaders: SwingLeaders
           <div className="sd-legend">
             <span>Take pays</span><span className="sd-ramp" style={{ background: RAMP }} /><span>Swing pays</span><span>(±{CAP} runs per 100 pitches, capped)</span><span><i className="sd-sw" />Rulebook zone</span>
           </div>
-          <Foot>Source: Baseball Savant via pybaseball (delta_run_exp). Each cell: the league’s mean run result of swings minus its mean run result of takes in that spot, pooled over pitcher hands. 5×5 grid around each batter’s own zone, drawn inside-to-away whichever side he bats.</Foot>
+          <Foot>Each cell: the league’s mean run result of swings minus its mean run result of takes in that spot, pooled over pitcher hands. 5×5 grid around each batter’s own zone, drawn inside-to-away whichever side he bats.</Foot>
         </Card>
       </Section>
 

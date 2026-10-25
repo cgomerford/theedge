@@ -66,7 +66,7 @@ function ThumbImage({ row, context, size }: { row: ScoutRow; context: ScoutVideo
       <div style={{
         width: size, height: size, borderRadius: isTeam ? 0 : '50%', flexShrink: 0,
         background: COLORS.stone, color: COLORS.cream, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'JetBrains Mono, monospace', fontSize: size * 0.36, fontWeight: 700,
+        fontFamily: 'Red Hat Display, sans-serif', fontSize: size * 0.36, fontWeight: 700,
       }}>
         ⊕
       </div>
@@ -205,7 +205,7 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
       </div>
 
       {report.degradedNote && (
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: COLORS.gray, marginBottom: 10 }}>
+        <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, color: COLORS.gray, marginBottom: 10 }}>
           Note: report ran short on some sections ({report.degradedNote}) — real data only, nothing padded.
         </div>
       )}
@@ -216,7 +216,7 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
           {bySection.map(({ section, label, rows }) => (
             <div key={section} style={{ borderBottom: `1px solid ${COLORS.line}` }}>
               <div style={{
-                fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: '0.06em', color: COLORS.orange, padding: '8px 10px', background: '#FAF8F3',
               }}>
                 {label}
@@ -237,17 +237,17 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
                   >
                     <ThumbImage row={row} context={context} size={26} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: COLORS.stone, lineHeight: 1.35 }}>
+                      <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, color: COLORS.stone, lineHeight: 1.35 }}>
                         {row.line}
                       </div>
-                      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: COLORS.gray, marginTop: 2 }}>
+                      <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: COLORS.gray, marginTop: 2 }}>
                         {row.subsection ?? ''}{row.highlight ? ` · ${row.highlight}` : ''}
                       </div>
                     </div>
                     {reelPos >= 0 && (
                       <div style={{
                         width: 18, height: 18, borderRadius: '50%', background: COLORS.orange, color: '#fff',
-                        fontSize: 10, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
+                        fontSize: 10, fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
                       }}>
                         {reelPos + 1}
@@ -263,15 +263,15 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
         {/* ── Reel order ── */}
         {mode === 'reel' && reelIds.length > 1 && (
           <div style={{ flex: '0 0 220px' }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.gray, marginBottom: 6 }}>
+            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.gray, marginBottom: 6 }}>
               Reel order
             </div>
             {reelIds.map((id, i) => {
               const row = rowById(id)
               if (!row) return null
               return (
-                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', fontSize: 11, fontFamily: 'Inter, sans-serif' }}>
-                  <span style={{ width: 16, color: COLORS.gray, fontFamily: 'JetBrains Mono, monospace' }}>{i + 1}</span>
+                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', fontSize: 11, fontFamily: 'Red Hat Display, sans-serif' }}>
+                  <span style={{ width: 16, color: COLORS.gray, fontFamily: 'Red Hat Display, sans-serif' }}>{i + 1}</span>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.line}</span>
                   <button onClick={() => moveReelRow(id, -1)} disabled={busy} className="sr-reorder-btn">↑</button>
                   <button onClick={() => moveReelRow(id, 1)} disabled={busy} className="sr-reorder-btn">↓</button>
@@ -295,20 +295,20 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
               : stage === 'done' ? 'Downloaded — export again'
               : 'Export MP4'}
           </button>
-          {errorMsg && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.orange, fontFamily: 'JetBrains Mono, monospace', width: PREVIEW_W }}>{errorMsg}</div>}
-          <div style={{ marginTop: 8, fontSize: 10, color: COLORS.gray, fontFamily: 'JetBrains Mono, monospace', width: PREVIEW_W }}>
+          {errorMsg && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.orange, fontFamily: 'Red Hat Display, sans-serif', width: PREVIEW_W }}>{errorMsg}</div>}
+          <div style={{ marginTop: 8, fontSize: 10, color: COLORS.gray, fontFamily: 'Red Hat Display, sans-serif', width: PREVIEW_W }}>
             {CANVAS.w}×{CANVAS.h} · lean shown as plain text, never the raw score
           </div>
         </div>
       </div>
 
       <style>{`
-        .sr-mode-btn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:8px 16px;border:1px solid;cursor:pointer}
+        .sr-mode-btn{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:8px 16px;border:1px solid;cursor:pointer}
         .sr-mode-btn:disabled{opacity:.5;cursor:default}
-        .sr-export-btn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:12px;cursor:pointer}
+        .sr-export-btn{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:#FF5722;color:#fff;border:none;padding:12px;cursor:pointer}
         .sr-export-btn:hover:not(:disabled){background:#e64a19}
         .sr-export-btn:disabled{opacity:.5;cursor:default}
-        .sr-reorder-btn{font-family:'JetBrains Mono',monospace;font-size:10px;border:1px solid #1A1A1A;background:#fff;width:20px;height:20px;cursor:pointer;flex-shrink:0}
+        .sr-reorder-btn{font-family:'Red Hat Display',sans-serif;font-size:10px;border:1px solid #1A1A1A;background:#fff;width:20px;height:20px;cursor:pointer;flex-shrink:0}
         .sr-reorder-btn:disabled{opacity:.4;cursor:default}
       `}</style>
     </div>

@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { getStreamersWeek } from '@/lib/fantasy-streamers'
@@ -44,7 +45,7 @@ export default async function StreamersPage() {
       <div className="border-b-2 border-stone-900 bg-stone-50">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-6">
           <div className="text-[10px] font-mono uppercase tracking-widest text-emerald-700 mb-2">
-            § Streamer Board
+            <XMark /> Streamer Board
           </div>
           <h1 className="font-serif font-light text-5xl sm:text-7xl tracking-tight leading-none">
             The week in arms<span className="text-orange-600">.</span>

@@ -67,7 +67,7 @@ const ZP = -17 / 12 // front of the plate
 const RUBBER_Y = 60.5
 const INK = 0x1a1a1a
 const OR = 0xff5722
-const FONT = 'var(--font-outfit), system-ui, sans-serif'
+const FONT = 'var(--font-redhat), system-ui, sans-serif'
 const V3 = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 
 export function monthColor(i: number, n: number): THREE.Color {
@@ -323,7 +323,7 @@ export function createPitchViewScene(opt: SceneOptions): SceneApi {
       dots.forEach((d, i) => {
         d.ring.visible = i === sel
         d.m.scale.setScalar(i === sel ? 1.35 : 1)
-        proj(monthLbl[i], M[i].rel.clone().add(V3(0, (i % 2 ? -1 : 1) * 0.06, 0)), (i === opt.goldIndex ? '★ ' : '') + opt.monthLabel(M[i].month), true)
+        proj(monthLbl[i], M[i].rel.clone().add(V3(0, (i % 2 ? -1 : 1) * 0.06, 0)), (i === opt.goldIndex ? '' : '') + opt.monthLabel(M[i].month), true)
         if (i === opt.goldIndex) { monthLbl[i].style.background = '#F5B800'; monthLbl[i].style.color = '#1A1A1A' }
         monthLbl[i].style.opacity = i === sel ? '1' : '0.8'
       })
@@ -348,7 +348,7 @@ export function createPitchViewScene(opt: SceneOptions): SceneApi {
         const isGold = sel === opt.goldIndex
         Lact.style.background = isGold ? '#F5B800' : '#FF5722'
         Lact.style.color = isGold ? '#1A1A1A' : '#fff'
-        proj(Lact, dim.a, `${isGold ? '★ ' : ''}${opt.monthLabel(r.month)} · ${r.speed.toFixed(1)} mph`, near)
+        proj(Lact, dim.a, `${isGold ? '' : ''}${opt.monthLabel(r.month)} · ${r.speed.toFixed(1)} mph`, near)
       }
     }
     renderer.render(scene, camera)

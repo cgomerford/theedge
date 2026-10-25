@@ -4,6 +4,7 @@
 // team slug/abbrev, so make sure whatever maps team pages to ESPN ids is
 // wired before using this.
 
+import XMark from '@/components/XMark'
 import { getTeamNFLGames } from "@/lib/nfl/games";
 
 export default async function TeamRecentResults({
@@ -25,7 +26,7 @@ export default async function TeamRecentResults({
 
   return (
     <section className="team-recent-results">
-      <h3 className="team-recent-results__title">§ Recent Results</h3>
+      <h3 className="team-recent-results__title"><XMark /> Recent Results</h3>
       <ul className="team-recent-results__list">
         {games.map((game) => {
           const isHome = game.homeTeamId === espnTeamId;
@@ -57,7 +58,7 @@ export default async function TeamRecentResults({
           padding: 1.25rem;
         }
         .team-recent-results__title {
-          font-family: 'Bebas Neue', sans-serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-size: 1.25rem;
           color: #1A1A1A;
           margin-bottom: 0.75rem;
@@ -71,7 +72,7 @@ export default async function TeamRecentResults({
           display: flex;
           gap: 0.75rem;
           align-items: center;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Red Hat Display', sans-serif;
           padding: 0.5rem 0;
           border-bottom: 1px solid #1A1A1A22;
         }
@@ -93,7 +94,7 @@ export default async function TeamRecentResults({
         }
         .team-recent-results--empty {
           padding: 1.25rem;
-          font-family: Fraunces, serif;
+          font-family: Red Hat Display, sans-serif;
           color: #1A1A1A99;
         }
       `}</style>

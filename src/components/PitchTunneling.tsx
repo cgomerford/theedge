@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState, useEffect } from 'react'
 
 export type PitchProfile = {
@@ -76,7 +77,7 @@ export default function PitchTunneling({
     <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm font-mono mt-10">
       <div className="flex flex-col md:flex-row md:items-start justify-between mb-6 gap-4">
         <div>
-          <h3 className="text-xs uppercase tracking-widest text-orange-600 font-bold mb-1">§ Pitch Tunneling</h3>
+          <h3 className="text-xs uppercase tracking-widest text-orange-600 font-bold mb-1"><XMark /> Pitch Tunneling</h3>
           <p className="text-sm font-bold text-stone-800">{pitcherName}</p>
           <p className="text-[10px] text-stone-500 mt-1">Release: {releaseZ}ft high, {Math.abs(releaseX)}ft {releaseX < 0 ? 'Right' : 'Left'} side</p>
         </div>

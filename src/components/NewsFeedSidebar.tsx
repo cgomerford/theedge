@@ -1,3 +1,4 @@
+import XMark from '@/components/XMark'
 // src/components/NewsFeedSidebar.tsx
 //
 // Compact "Around the league" list for the sidebar — presentational only,
@@ -30,7 +31,7 @@ export default function NewsFeedSidebar({ items }: { items: NewsSidebarItem[] })
 
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-[#8A8577] mb-3 mt-5">§ Around the league</div>
+      <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-[#8A8577] mb-3 mt-5"><XMark /> Around the league</div>
       {items.slice(0, 5).map((item, i) => (
         <a
           key={item.id}

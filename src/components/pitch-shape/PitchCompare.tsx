@@ -86,7 +86,7 @@ export default function PitchCompare({ field, pitchName, hand, season, isPro }: 
   const sw = four.map(swingPct), wh = four.map(whiffPct), gi = four.map(giftPct), mi = four.map(missPct)
   const L = { sw: lead(sw), wh: lead(wh), gi: lead(gi), mi: lead(mi, true) }
   const gold = (k: keyof typeof L, i: number) => (L[k] === i ? ' pc-gold' : '')
-  const star = (k: keyof typeof L, i: number) => (L[k] === i ? '★ ' : '')
+  const star = (k: keyof typeof L, i: number) => (L[k] === i ? '' : '')
   const f1 = (v: number | null) => (v == null ? '—' : v.toFixed(1))
   const callouts: [string, number | null, (number | null)[]][] = [
     ['Most swings', L.sw, sw], ['Most whiffs per swing', L.wh, wh], ['Most gifted strikes', L.gi, gi], ['Fewest missed strikes', L.mi, mi],
@@ -128,7 +128,7 @@ export default function PitchCompare({ field, pitchName, hand, season, isPro }: 
       <div className="pc-calls">
         {callouts.map(([k, i, vals]) => (
           <div key={k} className={i != null ? 'pc-call on' : 'pc-call'}>
-            <div className="pv-k" style={{ color: i != null ? GOLD.ink : C.mute }}>{i != null ? '★ ' : ''}{k}</div>
+            <div className="pv-k" style={{ color: i != null ? GOLD.ink : C.mute }}>{i != null ? '' : ''}{k}</div>
             <div style={{ fontWeight: 800, fontSize: 18, color: C.ink }}>{i != null ? last(four[i].name) : '—'}</div>
             <div style={{ fontSize: 12, color: '#5b5347' }}>{i != null ? `${(vals[i] as number).toFixed(1)}%` : 'No clear leader on enough sample'}</div>
           </div>
@@ -136,7 +136,7 @@ export default function PitchCompare({ field, pitchName, hand, season, isPro }: 
       </div>
 
       <div style={{ overflowX: 'auto', marginTop: 12 }}>
-        <div className="pv-k" style={{ marginBottom: 6 }}>Results · {season} · <span style={{ color: GOLD.ink }}>★ gold = standout in the row</span></div>
+        <div className="pv-k" style={{ marginBottom: 6 }}>Results · {season} · <span style={{ color: GOLD.ink }}>gold = standout in the row</span></div>
         <table className="pv-tbl">
           <thead><tr><th>Measure</th>{four.map(p => <th key={p.pitcherId}>{last(p.name)}</th>)}</tr></thead>
           <tbody>
@@ -176,7 +176,7 @@ export default function PitchCompare({ field, pitchName, hand, season, isPro }: 
                       </div>
                     )
                   })}
-                  {su.bestRate && <div className="pc-best">★ Most whiffs after {prevName(su.bestRate.prev).toLowerCase()} ({su.bestRate.rate.toFixed(0)}%, {su.bestRate.swings} swings)</div>}
+                  {su.bestRate && <div className="pc-best">Most whiffs after {prevName(su.bestRate.prev).toLowerCase()} ({su.bestRate.rate.toFixed(0)}%, {su.bestRate.swings} swings)</div>}
                 </>
               )}
             </div>
@@ -202,7 +202,7 @@ const PC_CSS = `
 .pc-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:12px;font-size:12px;color:#8a8275}
 .pc-nums{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a8275;font-variant-numeric:tabular-nums}
 .pc-nums b{color:#1A1A1A;font-size:13px}
-.pc-select{margin-top:8px;width:100%;font:600 12px var(--font-outfit),system-ui,sans-serif;border:1px solid #e7e2d8;border-radius:8px;padding:6px 8px;background:#fff;color:#1A1A1A}
+.pc-select{margin-top:8px;width:100%;font:600 12px var(--font-redhat),system-ui,sans-serif;border:1px solid #e7e2d8;border-radius:8px;padding:6px 8px;background:#fff;color:#1A1A1A}
 .pc-calls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
 .pc-call{border:1px dashed #e7e2d8;border-radius:12px;padding:10px 12px;background:#fff}
 .pc-call.on{background:#FFF4CC;border:1px solid #EBC24A}

@@ -13,12 +13,13 @@
 //
 // Own small stylesheet rather than ScoutGraphicCard's cardCss (that one is
 // hard-coded portrait 1080x1350). Same design tokens: C/SANS/MONO from
-// components/team/ui.tsx (Outfit headers/bold, JetBrains Mono light labels,
-// cream/orange — DESIGN_SYSTEM.md; Bebas/Fraunces are retired, not used here).
+// components/team/ui.tsx (Red Hat headers/bold, Red Hat Display light labels,
+// cream/orange — DESIGN_SYSTEM.md; Bebas/Red Hat Display are retired, not used here).
 
 import { forwardRef } from 'react'
 import { C, SANS, MONO } from '@/components/team/ui'
 import { teamLogoUrl } from '@/lib/mlb'
+import { SITE_HOST } from '@/lib/site'
 
 export type BracketTeam = {
   teamId: number | null
@@ -186,7 +187,7 @@ const PostseasonBracketCard = forwardRef<HTMLDivElement, PostseasonBracketCardPr
 
       <div className="pb-foot">
         <div className="pb-note">Matchups and results as reported · x9Lab</div>
-        <div className="pb-cta">edgereportdaily.com</div>
+        <div className="pb-cta">{SITE_HOST}</div>
       </div>
     </div>
   )

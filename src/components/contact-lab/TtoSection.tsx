@@ -25,7 +25,7 @@ export default function TtoSection({ profile, leaders, season }: { profile: TtoR
   const rows = leaders?.rows ?? []
   const cuts = useMemo(() => steadinessCuts(rows), [rows])
   const board = useMemo(() => [...rows].sort((a, b) => (ttoRate(b) ?? 0) - (ttoRate(a) ?? 0)), [rows])
-  if (!profile || !leaders) return <Empty>Three-true-outcome data isn’t built yet. It refreshes weekly from Baseball Savant.</Empty>
+  if (!profile || !leaders) return <Empty>Three-true-outcome data isn’t built yet.</Empty>
 
   const lg = leaders.league
   const mine = profile
@@ -55,7 +55,7 @@ export default function TtoSection({ profile, leaders, season }: { profile: TtoR
         <Card title="The mix">
           <p className="tt-cap">K, BB and HR as a share of his three-true-outcome PAs. Each dot is a hitter with {TTO_MIN_PA}+ PA; closer to a corner means more of that outcome. Dot size = the share of all his PAs that end in one of the three.</p>
           <Ternary me={mine} others={rows} />
-          <Foot>Source: Baseball Savant via pybaseball (events). Position = K, BB, HR counts as shares of K + BB + HR ({fmt(tto(mine))} for him). Hitters with {TTO_MIN_PA}+ PA in {season}; the yellow dot is the hitter shown.</Foot>
+          <Foot>Position = K, BB, HR counts as shares of K + BB + HR ({fmt(tto(mine))} for him). Hitters with {TTO_MIN_PA}+ PA in {season}; the yellow dot is the hitter shown.</Foot>
         </Card>
         <Card title="Consistency">
           <p className="tt-cap">Rolling 100 PAs through the season: how steady each outcome has been. Flat lines = a settled profile; swings = streaks.</p>
@@ -86,7 +86,7 @@ export default function TtoSection({ profile, leaders, season }: { profile: TtoR
         </table></div>
         {board.length > shown && <button type="button" className="tt-more" onClick={() => setShown(s => s + PAGE)}>Show {Math.min(PAGE, board.length - shown)} more</button>}
         {!inBoard && <p className="tt-cap" style={{ margin: '10px 0 0' }}>{mine.name ?? 'This hitter'} has {fmt(mine.pa)} PA in {season}, under the {TTO_MIN_PA} needed for the leaderboard.</p>}
-        <Foot>Source: Baseball Savant via pybaseball (events). Minimum {TTO_MIN_PA} PA. Steadiness = the variation (standard deviation) of his rolling {ROLL_WINDOW}-PA TTO%: the lowest third of these hitters is Steady, the highest third Streaky, so a badge always means “among these hitters”. {board.length} hitters shown.</Foot>
+        <Foot>Minimum {TTO_MIN_PA} PA. Steadiness = the variation (standard deviation) of his rolling {ROLL_WINDOW}-PA TTO%: the lowest third of these hitters is Steady, the highest third Streaky, so a badge always means “among these hitters”. {board.length} hitters shown.</Foot>
       </Card>
     </div>
   )

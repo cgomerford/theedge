@@ -56,7 +56,7 @@ export default async function RecentGamesWidget({
           padding: 1.5rem;
         }
         .nfl-recent-games__title {
-          font-family: 'Bebas Neue', sans-serif;
+          font-family: 'Red Hat Display', sans-serif;
           font-size: 1.5rem;
           color: #1A1A1A;
           margin-bottom: 1rem;
@@ -71,7 +71,7 @@ export default async function RecentGamesWidget({
           border-bottom: 1px solid #1A1A1A22;
         }
         .nfl-recent-games__matchup {
-          font-family: 'JetBrains Mono', monospace;
+          font-family: 'Red Hat Display', sans-serif;
           display: flex;
           gap: 0.75rem;
           align-items: baseline;
@@ -81,14 +81,14 @@ export default async function RecentGamesWidget({
           color: #FF5722;
         }
         .nfl-recent-games__leader {
-          font-family: Fraunces, serif;
+          font-family: Red Hat Display, sans-serif;
           font-size: 0.875rem;
           color: #1A1A1A99;
           margin: 0.25rem 0 0;
         }
         .nfl-recent-games--empty {
           padding: 1.5rem;
-          font-family: Fraunces, serif;
+          font-family: Red Hat Display, sans-serif;
           color: #1A1A1A99;
         }
         @media (max-width: 640px) {

@@ -142,7 +142,7 @@ export default function NewArticlePage() {
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 20px' }}>
-      <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 36, marginBottom: 24 }}>
+      <h1 style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 36, marginBottom: 24 }}>
         ⊕ New Article
       </h1>
 

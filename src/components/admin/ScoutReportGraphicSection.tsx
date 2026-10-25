@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react'
 import ScoutReportGraphicCard from '@/components/admin/ScoutReportGraphicCard'
 import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import type { BatterZoneArsenal } from '@/lib/batter-zone-arsenal'
+import { SITE_HOST } from '@/lib/site'
 
 export type RosterBatter = {
   id: number
@@ -133,7 +134,7 @@ export default function ScoutReportGraphicSection({ games }: Props) {
 
       {missingTeamIds && (
         <p className="text-[11px] font-mono text-orange-600 mb-2">
-          ⚠ Team ID lookup failed for this game — logos will fall back to text badges.
+          Team ID lookup failed for this game — logos will fall back to text badges.
         </p>
       )}
 
@@ -213,7 +214,7 @@ export default function ScoutReportGraphicSection({ games }: Props) {
           }
           return interleaved.slice(0, 3)
         })()}
-        fullReportUrl={`edgereportdaily.com/mlb/${game.gamePk}`}
+        fullReportUrl={`${SITE_HOST}/mlb/${game.gamePk}`}
       />
     </div>
   )

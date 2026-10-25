@@ -136,7 +136,7 @@ function TeamBatterSelector({
           <button
             key={b.batterId}
             onClick={() => setSelectedId(b.batterId)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shrink-0 transition ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border shrink-0 transition ${
               selected?.batterId === b.batterId
                 ? 'text-white border-transparent'
                 : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'

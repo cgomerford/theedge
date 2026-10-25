@@ -8,6 +8,7 @@
 
 'use client'
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 
 export interface TopPerformerEntry {
@@ -27,7 +28,7 @@ export function TopPerformersGrid({ entries, columns = 3 }: { entries: TopPerfor
     <section className="nh-leaders-league" style={{ margin: 0, padding: 0 }}>
       <div className="nh-league-head">
         <div>
-          <p className="nh-kicker">§ Top Performers</p>
+          <p className="nh-kicker"><XMark /> Top Performers</p>
           <h2>This week's headline numbers.</h2>
         </div>
       </div>
@@ -46,20 +47,20 @@ export function TopPerformersGrid({ entries, columns = 3 }: { entries: TopPerfor
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#EEE' }} />
               )}
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontFamily: 'Red Hat Display, sans-serif', fontWeight: 700, fontSize: 13, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {e.fullName}
                 </p>
-                <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#78716C', margin: '2px 0 0' }}>
+                <p style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#78716C', margin: '2px 0 0' }}>
                   {e.teamId} · {e.position}
                 </p>
               </div>
             </div>
             <div style={{ padding: '0 10px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, lineHeight: 1 }}>{e.statValue.toFixed(0)}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#A3A3A3' }}>{e.statLabel}</span>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 22, lineHeight: 1 }}>{e.statValue.toFixed(0)}</span>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 9, color: '#A3A3A3' }}>{e.statLabel}</span>
             </div>
             <div style={{ background: '#F4F0E8', height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid rgba(26,26,26,0.06)' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <span style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 8, color: '#A3A3A3', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Trend chart — next pass
               </span>
             </div>

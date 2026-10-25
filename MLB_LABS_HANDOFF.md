@@ -179,8 +179,8 @@ Several tabs have a "Share this ↗" / "Export ↓" button that renders a
 `html-to-image`'s `toPng()`. All hand-built as **inline styles**, not
 Tailwind classes, inside the captured subtree (keeps `toPng` rendering
 consistent regardless of stylesheet load timing). Brand: cream/orange/
-black, `Outfit` for names/headlines (the sitewide brand font — see
-`layout.tsx`/`globals.css`, `--font-outfit`), `JetBrains Mono` for
+black, `Red Hat` for names/headlines (the sitewide brand font — see
+`layout.tsx`/`globals.css`, `--font-redhat`), `JetBrains Mono` for
 stats/labels, `Bebas Neue` only for the "THE EDGE" wordmark, zero
 border-radius on data elements. Existing cards:
 

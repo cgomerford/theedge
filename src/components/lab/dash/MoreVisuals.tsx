@@ -387,12 +387,12 @@ export function Flight({ tile, ctx }: P) {
   if (!rows.length) return <Empty>{ctx.loading ? 'Loading clubs…' : 'No flight data for this selection.'}</Empty>
   const shown = rows.filter(x => !hidden.includes(x.r.pitchType))
   const zx0 = sx(-17 / 24), zx1 = sx(17 / 24), zy0 = sz(zone.top), zy1 = sz(zone.bot)
-  const btn = (on: boolean): React.CSSProperties => ({ fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : '#5b5347' })
+  const btn = (on: boolean): React.CSSProperties => ({ fontFamily: SANS, fontWeight: 700, fontSize: 12, padding: '4px 10px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#fff' : '#5b5347' })
 
   return (
     <>
       <div data-no-export="1" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
-        <button style={btn(playing)} onClick={e => { e.stopPropagation(); if (playing) setPlaying(false); else { setClock(0); setPlaying(true) } }}>{playing ? '❚❚ Pause' : '▶ Play'}</button>
+        <button style={btn(playing)} onClick={e => { e.stopPropagation(); if (playing) setPlaying(false); else { setClock(0); setPlaying(true) } }}>{playing ? 'Pause' : '▶ Play'}</button>
         <button style={btn(false)} onClick={e => { e.stopPropagation(); setClock(0); setPlaying(false); requestAnimationFrame(() => setPlaying(true)) }}>↺ Replay</button>
         {SPEEDS.map(sp => <button key={sp.k} style={btn(slow === sp.k)} onClick={e => { e.stopPropagation(); setSlow(sp.k) }}>{sp.label}</button>)}
       </div>
@@ -428,7 +428,7 @@ export function Flight({ tile, ctx }: P) {
           const off = hidden.includes(r.pitchType)
           return (
             <button key={r.pitchType} onClick={e => { e.stopPropagation(); setHidden(h => (off ? h.filter(x => x !== r.pitchType) : [...h, r.pitchType])) }}
-              style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${off ? C.line : colorOf(r.pitchType)}`, background: off ? '#fff' : `${colorOf(r.pitchType)}1f`, color: off ? C.faint : '#3a342b' }}>
+              style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 4, cursor: 'pointer', border: `1px solid ${off ? C.line : colorOf(r.pitchType)}`, background: off ? '#fff' : `${colorOf(r.pitchType)}1f`, color: off ? C.faint : '#3a342b' }}>
               <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colorOf(r.pitchType), opacity: off ? 0.3 : 1, marginRight: 5 }} />
               {nameOf(r.pitchType)} <span style={{ fontFamily: SANS, fontSize: 9.5, color: C.mute }}>{r.velo != null ? `${r.velo.toFixed(0)} mph · ` : ''}{(path.T * 1000).toFixed(0)} ms</span>
             </button>

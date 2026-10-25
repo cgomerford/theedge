@@ -5,7 +5,7 @@
 // Shared building blocks for the two halves of /mlb/stats — "Ask the Stats"
 // (StatsQueryLab) and the Player Explorer (StatsExplorer) — so both read as
 // one product: same filter fields, chips, tables, CSV / PNG export and the
-// Pro lock. Fonts and colours come from team/ui.tsx (Outfit is the only font).
+// Pro lock. Fonts and colours come from team/ui.tsx (Red Hat is the only font).
 //
 // Pro rule (DESIGN_SYSTEM §5): `isPro` is a required prop on everything here
 // that gates, never defaulted. Locked state shows a feature list and an

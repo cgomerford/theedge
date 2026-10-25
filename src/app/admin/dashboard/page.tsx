@@ -4,6 +4,7 @@
 // daily — the Game Preview Teaser video and the Scout Report Graphic builder.
 // Everything else moved, unchanged, to /admin/archive.
 
+import XMark from '@/components/XMark'
 import { getTodaysReads, etDate } from '@/lib/admin-dashboard'
 import { getScoutReportBundle } from '@/lib/scout-bundle'
 import GamePreviewTeaser from '@/components/admin/GamePreviewTeaser'
@@ -282,7 +283,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Game Preview Teaser</h2>
             <span className="tag">SP · team numbers · bullpen · 9:16 · fast cut</span>
           </div>
@@ -291,7 +292,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Pitcher Reel</h2>
             <span className="tag">9:16 · box score · arsenal · arm angle · hits · through the order · vs season · next start</span>
           </div>
@@ -300,7 +301,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Postgame Reel</h2>
             <span className="tag">9:16 · final &amp; linescore · game flow · key plays · top hitters · pitching lines · hits on the field</span>
           </div>
@@ -309,7 +310,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Batter Reel</h2>
             <span className="tag">9:16 · box line · every plate appearance · spray chart · contact quality · pitches seen</span>
           </div>
@@ -318,7 +319,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Player Stat Line Graphic</h2>
             <span className="tag">PNG · headshot + team-colour gradient · 4:5 / 1:1 / 9:16</span>
           </div>
@@ -327,7 +328,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Scout Report Graphic</h2>
             <span className="tag">X post · 4:5 · pitcher + key-matchup zone overlay</span>
           </div>
@@ -336,7 +337,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Game Preview Graphic</h2>
             <span className="tag">X post · 4:5 · starting pitchers head to head</span>
           </div>
@@ -345,7 +346,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Postseason Bracket Graphic</h2>
             <span className="tag">X post · 16:9 · Wild Card / DS / CS / World Series · fully manual</span>
           </div>
@@ -354,7 +355,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>Team Snapshot Graphic</h2>
             <span className="tag">X post · 4:5 · one club · record, offense, pitching, bullpen ranks · regular season or postseason · no player headshots</span>
           </div>
@@ -363,7 +364,7 @@ export default async function AdminDashboard({
 
         <section className="sec card">
           <div className="sechead">
-            <span className="glyph">§</span>
+            <span className="glyph"><XMark /></span>
             <h2>In-Game X Cards</h2>
             <span className="tag">pitcher arm angle/arsenal · batter spray/EV/barrels · live games only</span>
           </div>

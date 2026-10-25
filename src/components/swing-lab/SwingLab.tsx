@@ -79,7 +79,7 @@ export default function SwingLab({ data, isPro }: { data: SwingLabData | null; i
       'The pitches behind every spot, and what changed in the last 30 days',
     ]} />
   }
-  if (!data || !idx) return <Empty>Swing decision data isn’t built for this hitter yet. It refreshes weekly from Baseball Savant.</Empty>
+  if (!data || !idx) return <Empty>Swing decision data isn’t built for this hitter yet.</Empty>
   if (data.nSeason < GATE.season) {
     return <Card><div style={{ textAlign: 'center', padding: '26px 10px' }}>
       <div style={{ fontWeight: 800, fontSize: 20 }}>Not enough pitches yet (n = {fmt(data.nSeason)} of {GATE.season} needed)</div>
@@ -141,7 +141,7 @@ export default function SwingLab({ data, isPro }: { data: SwingLabData | null; i
               </div>
             )
           })}
-          <Foot>Source: Baseball Savant via pybaseball. Swing rate = swings ÷ pitches seen in that count. A single count needs {GATE.count} pitches to be shown.</Foot>
+          <Foot>Swing rate = swings ÷ pitches seen in that count. A single count needs {GATE.count} pitches to be shown.</Foot>
         </Card>
       </Section>
 
@@ -202,7 +202,7 @@ export default function SwingLab({ data, isPro }: { data: SwingLabData | null; i
                     </tbody></table></div>
                   </>
                 )}
-              <Foot>Source: Baseball Savant via pybaseball. Location is plate_x, plate_z as Savant reports them (catcher’s view); the grid itself is drawn in the batter’s frame. The list is a pitch-level request made when a cell is tapped, never part of page render.</Foot>
+              <Foot>Location is plate_x, plate_z as Savant reports them (catcher’s view); the grid itself is drawn in the batter’s frame. The list is a pitch-level request made when a cell is tapped, never part of page render.</Foot>
             </Card>
 
             <div className="sl-two">
@@ -229,7 +229,7 @@ export default function SwingLab({ data, isPro }: { data: SwingLabData | null; i
       </Section>
 
       <Foot>
-        Source: Baseball Savant via pybaseball. Method: league run result of swing vs take by count × location cell × pitch family × pitcher hand; decision runs = his choice minus the cell’s average, per 100 pitches.
+ Method: league run result of swing vs take by count × location cell × pitch family × pitcher hand; decision runs = his choice minus the cell’s average, per 100 pitches.
         Cells under {GATE.cell} pitches are hatched. Minimums: {GATE.season} pitches for the season view, {GATE.group} per count group. Only {data.season}-era plate locations are used; eras are never mixed.
         0-1 counts appear on the count ladder only. Inspired by Baseball Prospectus’s SEAGER framework; not a replica.
       </Foot>
@@ -321,7 +321,7 @@ function Changed({ data }: { data: SwingLabData }) {
             <div className="sl-dd"><b>{val(m.b!)}</b> <small>from {val(m.a!)} · {delta}</small></div></div>
         )
       })}
-      <Foot>Source: Baseball Savant via pybaseball. Same method and minimums as the season view. “Last 30 days” ends on the last game day in the data.</Foot>
+      <Foot>Same method and minimums as the season view. “Last 30 days” ends on the last game day in the data.</Foot>
     </Card>
   )
 }

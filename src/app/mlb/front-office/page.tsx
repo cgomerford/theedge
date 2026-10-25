@@ -14,12 +14,15 @@ import { AgeBars, PayrollBars, type AgeBucket, type PayrollYear } from '@/compon
 import { Card, Empty, Foot, Section, Tile, PlayerLink, C, MONO, SANS, DISPLAY } from '@/components/team/ui'
 import { ACQ_COLOR, ACQ_LABEL, ACQ_TYPES, getBlueprint, type AcqKey } from '@/lib/front-office/blueprint'
 import { FO_TEAM, getContracts, getTeamSnapshot, type ContractYear, type Prospect, type RosterPlayer } from '@/lib/front-office/team'
+import { pageMeta } from '@/lib/seo'
 
 export const revalidate = 600
-export const metadata = {
-  title: 'Phillies Front Office · x9Lab',
-  description: 'How the Phillies are built: where the roster came from, WAR, age profile, contracts and the farm system.',
-}
+export const metadata = pageMeta({
+  title: 'Phillies front office',
+  description:
+    'How the Phillies are built: where each player came from, WAR by group, age profile, contract status and the farm system, with the sample behind each figure.',
+  path: '/mlb/front-office',
+})
 
 // ── formatting ──────────────────────────────────────────────────────────────
 const r3 = (v: number | null) => (v == null ? '—' : v.toFixed(3).replace(/^0\./, '.'))
@@ -203,7 +206,7 @@ export default async function FrontOfficePage() {
             <Card title={`${FO_TEAM.short} · ${season} WAR by route`} note="positive WAR only">
               <Legend />
               <BlueprintChart rows={[blueprint]} hrefFor={id => `/mlb/front-office/blueprint?team=${id}#drill`} />
-              <Foot>x9Lab · MLB Stats API (WAR, transactions). A player’s full-season WAR is credited to his current club. Player-by-player routes are on the Roster Blueprint page.</Foot>
+              <Foot>A player’s full-season WAR is credited to his current club. Player-by-player routes are on the Roster Blueprint page.</Foot>
             </Card>
             <Card title="By the numbers">
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
@@ -228,25 +231,25 @@ export default async function FrontOfficePage() {
         )}
       </Section>
 
-      <Section id="war" num="02" title="Where the WAR comes from" sub={`${season} season WAR for players on the 40-man. WAR is the MLB Stats API sabermetrics figure (hitters include batting, fielding and baserunning).`}>
+      <Section id="war" num="02" title="Where the WAR comes from" sub={`${season} season WAR for players on the 40-man. WAR is the sabermetrics figure (hitters include batting, fielding and baserunning).`}>
         <div className="fo-two">
           <Card title="Hitters" note={`${d1(sum(hitters.map(p => p.war ?? 0)))} WAR`}><WarBars rows={hitters.slice(0, 10)} color={color} /></Card>
           <Card title="Pitchers" note={`${d1(sum(pitchers.map(p => p.war ?? 0)))} WAR`}><WarBars rows={pitchers.slice(0, 10)} color={color} /></Card>
         </div>
-        <Foot>x9Lab · MLB Stats API sabermetrics. Top 10 per group; the full list is in the 40-man table.{missingWar ? ` ${missingWar} players have no WAR row (no major-league innings or plate appearances) and show —.` : ''}</Foot>
+        <Foot>Top 10 per group; the full list is in the 40-man table.{missingWar ? ` ${missingWar} players have no WAR row (no major-league innings or plate appearances) and show —.` : ''}</Foot>
       </Section>
 
       <Section id="age" num="03" title="Age profile" sub="How old the roster is, and which age groups are producing the WAR.">
         <Card title="Players and WAR by age" note="age as of today">
           <AgeBars data={ageData} color={color} />
-          <Foot>x9Lab · MLB Stats API. Left axis: players on the 40-man. Right axis: summed {season} WAR for that bracket (a below-replacement player lowers it).</Foot>
+          <Foot>Left axis: players on the 40-man. Right axis: summed {season} WAR for that bracket (a below-replacement player lowers it).</Foot>
         </Card>
       </Section>
 
       <Section id="contracts" num="04" title="Contracts" sub="Salary commitments by season for the players on the 40-man.">
         {contracts.length === 0 ? (
           <Card>
-            <Empty>Contract data has not been loaded. The MLB Stats API publishes no contract terms, so these rows are entered from a checked source (every row carries its source link and date).</Empty>
+            <Empty>Contract data has not been loaded. No free feed publishes contract terms, so these rows are entered from a checked source (every row carries its source link and date).</Empty>
           </Card>
         ) : (
           <>
@@ -307,7 +310,7 @@ export default async function FrontOfficePage() {
             })}
           </div>
         )}
-        <Foot>x9Lab · MLB Stats API. This is a statistical view of the system, not a scouting ranking: grades and org ranks are editorial products with no free source. Minimum 50 PA or 15 IP at the level; a player who played at more than one level appears at each.</Foot>
+        <Foot>This is a statistical view of the system, not a scouting ranking: grades and org ranks are editorial products with no free source. Minimum 50 PA or 15 IP at the level; a player who played at more than one level appears at each.</Foot>
       </Section>
 
       <Section id="roster" num="06" title="The 40-man" sub={`Every player on the 40-man roster with ${season} major-league stats.`}>
@@ -315,7 +318,7 @@ export default async function FrontOfficePage() {
           <Card title="Hitters"><DataTable cols={hitterCols} rows={hitters} /></Card>
           <Card title="Pitchers"><DataTable cols={pitcherCols} rows={pitchers} /></Card>
         </div>
-        <Foot>x9Lab · MLB Stats API. A dash means the player has no plate appearances or innings to measure. Role: starter if he started at least half his appearances.</Foot>
+        <Foot>A dash means the player has no plate appearances or innings to measure. Role: starter if he started at least half his appearances.</Foot>
       </Section>
 
       <p style={{ marginTop: 28, fontFamily: SANS, fontSize: 13, color: '#5b5347' }}>

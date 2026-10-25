@@ -10,6 +10,8 @@
 // rather than fabricated data, matching the site's real-data-only rule.
 
 import Link from 'next/link'
+import { Suspense } from 'react'
+import Tabs from '@/components/ui/Tabs'
 import { usePathname, useParams } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
@@ -31,7 +33,7 @@ function mlbHeadshot(id: number | string): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`
 }
 
-function ShellHeader({ playerId }: { playerId: number }) {
+function ShellHeader({ playerId, playerName }: { playerId: number; playerName: string }) {
   const { data, failed } = usePitchingLabData()
   const pathname = usePathname()
   const base = `/mlb/lab/pitching-lab/${playerId}`
@@ -50,9 +52,9 @@ function ShellHeader({ playerId }: { playerId: number }) {
           <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">
             {data ? `${data.abbr} · SP` : 'Pitching Lab'}
           </div>
-          <div className="text-[22px] font-black text-[#1A1A1A] tracking-tight leading-tight">
-            {failed ? 'Couldn’t load pitcher' : data?.name ?? 'Loading…'}
-          </div>
+          <h1 className="m-0 text-[22px] font-black text-[#1A1A1A] tracking-tight leading-tight">
+            {data?.name ?? playerName}
+          </h1>
         </div>
         <Link
           href="/mlb/lab/pitching-lab"
@@ -62,28 +64,21 @@ function ShellHeader({ playerId }: { playerId: number }) {
         </Link>
       </div>
 
-      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 flex gap-1 overflow-x-auto">
-        {TABS.map(t => {
-          const href = t.seg ? `${base}/${t.seg}` : base
-          const active = pathname === href
-          return (
-            <Link
-              key={t.seg || 'overview'}
-              href={href}
-              className={`whitespace-nowrap font-mono uppercase tracking-wider text-[11px] px-3 py-2.5 border-b-2 transition ${
-                active ? 'border-[#FF5722] text-[#1A1A1A]' : 'border-transparent text-[#8A8577] hover:text-[#1A1A1A]'
-              }`}
-            >
-              {t.label}
-            </Link>
-          )
-        })}
+      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6">
+        <Suspense fallback={null}>
+          <Tabs
+            label="Pitcher lab sections"
+            sticky
+            activeId={TABS.map(t => (t.seg ? `${base}/${t.seg}` : base)).indexOf(pathname) >= 0 ? (TABS[TABS.map(t => (t.seg ? `${base}/${t.seg}` : base)).indexOf(pathname)].seg || 'overview') : undefined}
+            tabs={TABS.map(t => ({ id: t.seg || 'overview', label: t.label, href: t.seg ? `${base}/${t.seg}` : base }))}
+          />
+        </Suspense>
       </div>
     </div>
   )
 }
 
-export default function PitcherLabLayout({ children }: { children: React.ReactNode }) {
+export default function PitcherLabLayout({ children, playerName }: { children: React.ReactNode; playerName: string }) {
   const params = useParams()
   const playerId = Number(params.playerId)
 
@@ -92,7 +87,7 @@ export default function PitcherLabLayout({ children }: { children: React.ReactNo
       <SiteHeader variant="page" />
       <MLBSubNav />
       <PitchingLabProvider key={playerId} pitcherId={playerId}>
-        <ShellHeader playerId={playerId} />
+        <ShellHeader playerId={playerId} playerName={playerName} />
         <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 py-8">
           {children}
         </div>

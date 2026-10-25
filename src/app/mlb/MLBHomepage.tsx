@@ -1,5 +1,6 @@
 'use client'
 
+import XMark from '@/components/XMark'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { MLBDivisionStandings, MLBStatLeader, MLBNewsItem } from '@/lib/mlb-homepage'
@@ -19,11 +20,6 @@ import LeverageBoard from '@/components/LeverageBoard'
 import EngineRoom from '@/components/EngineRoom'
 import DeserveToWinWaterfall from '@/components/DeserveToWinWaterfall'
 import PlayerSearch from '@/components/PlayerSearch'
-
-// Same sitewide flag as src/app/page.tsx and src/proxy.ts — flip all three
-// on Sept 18. Duplicated per-file rather than threaded as a prop because
-// that's the existing pattern this app already uses for it.
-const MAINTENANCE_MODE = false
 
 export type Prospect = {
   rank: number
@@ -83,17 +79,17 @@ function fCount(p: EdgePrediction) {
 /* ── styles ────────────────────────────────────────────── */
 
 const CSS = `
-  /* .m/.s/.b used to switch between JetBrains Mono/Fraunces/Bebas Neue for
-     labels/headlines/hero numbers — Outfit (the sitewide brand font, see
+  /* .m/.s/.b used to switch between JetBrains Mono/Fraunces/Red Hat Display for
+     labels/headlines/hero numbers — Red Hat (the sitewide brand font, see
      layout.tsx/globals.css) is now the standard everywhere, so all three
      just point at it. Kept as named classes rather than deleted so the
      ~50 existing className="m"/"s"/"b" usages below don't all need
      touching individually — each still gets its own size/weight/spacing
      via inline styles, just on the one shared typeface now. */
-  .mlb-page { background: #FAF8F3; min-height: 100vh; font-family: 'Outfit', sans-serif; }
-  .m { font-family: 'Outfit', sans-serif; }
-  .s { font-family: 'Outfit', sans-serif; }
-  .b { font-family: 'Outfit', sans-serif; }
+  .mlb-page { background: #FAF8F3; min-height: 100vh; font-family: 'Red Hat Display', sans-serif; }
+  .m { font-family: 'Red Hat Display', sans-serif; }
+  .s { font-family: 'Red Hat Display', sans-serif; }
+  .b { font-family: 'Red Hat Display', sans-serif; }
 
   /* Ticker — streamlined: individual rounded cards with real gaps instead
      of a hairline-divided strip, tighter per-card content (no team-color
@@ -107,7 +103,7 @@ const CSS = `
   .ticker-card:hover { border-color: rgba(26,26,26,0.2); box-shadow: 0 2px 8px rgba(26,26,26,0.06); }
   .ticker-card-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 4px; padding: 8px; background: rgba(26,26,26,0.9); opacity: 0; pointer-events: none; transition: opacity 0.15s; }
   .ticker-card:hover .ticker-card-overlay { opacity: 1; pointer-events: auto; }
-  .ticker-card-overlay-btn { font-family: 'Outfit', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; text-decoration: none; color: #1A1A1A; background: #fff; border-radius: 6px; padding: 6px 4px; transition: background 0.1s, color 0.1s; }
+  .ticker-card-overlay-btn { font-family: 'Red Hat Display', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; text-decoration: none; color: #1A1A1A; background: #fff; border-radius: 6px; padding: 6px 4px; transition: background 0.1s, color 0.1s; }
   .ticker-card-overlay-btn:hover { background: #FF5722; color: #fff; }
   .ticker-arrow { position: absolute; top: 32px; bottom: 0; width: 40px; display: flex; align-items: center; justify-content: center; background: linear-gradient(to right, rgba(255,255,255,0.95), rgba(255,255,255,0)); z-index: 2; cursor: pointer; border: none; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .ticker-arrow.right { background: linear-gradient(to left, rgba(255,255,255,0.95), rgba(255,255,255,0)); right: 0; }
@@ -162,7 +158,7 @@ function Sec({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
       <span className="m" style={{ fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-        § {children}
+        <XMark /> {children}
       </span>
       <div style={{ flex: 1, height: 1, background: 'rgba(26,26,26,0.1)' }} />
     </div>
@@ -883,7 +879,7 @@ function Pipeline({
     <div className="pipeline-section">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
         <span className="m" style={{ fontSize: 9, fontWeight: 700, color: '#FF5722', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-          § {selectedTeam ? `${selectedTeamObj?.name ?? ''} Farm System` : 'MiLB Pipeline — AAA & AA'}
+          <XMark /> {selectedTeam ? `${selectedTeamObj?.name ?? ''} Farm System` : 'MiLB Pipeline — AAA & AA'}
         </span>
         <div style={{ flex: 1, height: 1, background: 'rgba(26,26,26,0.1)' }} />
         <span className="m" style={{ fontSize: 8, color: '#A3A3A3', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
@@ -1005,7 +1001,7 @@ function Pipeline({
             {selectedTeam ? `No MiLB players found for ${selectedTeamObj?.name ?? 'this organisation'}.` : 'No MiLB data available.'}
           </div>
           <div className="m" style={{ fontSize: 9, color: '#D4D0C8', marginTop: 6 }}>
-            OPS leaders from MLB Stats API — AAA (sportId 11) + AA (sportId 12)
+            OPS leaders
           </div>
         </div>
       )}
@@ -1136,7 +1132,7 @@ export default function MLBHomepage({
           page. */}
       <div style={{ maxWidth: 1600, margin: '0 auto', padding: '12px 24px 0', display: 'flex', justifyContent: 'flex-end' }}>
         <div style={{ width: '100%', maxWidth: 320 }}>
-          <PlayerSearch maintenance={MAINTENANCE_MODE} sport="MLB" rounded />
+          <PlayerSearch sport="MLB" rounded />
         </div>
       </div>
 

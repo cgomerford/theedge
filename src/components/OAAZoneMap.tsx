@@ -166,11 +166,11 @@ function FieldWithOAA({ teamOAA }: { teamOAA: TeamOAA }) {
       {lf && (
         <g>
           <text x="52" y="88" textAnchor="middle" fontSize="10" fontWeight="700"
-            fill={oaaTextColor(lf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(lf.oaa)} fontFamily="Red Hat Display, sans-serif">
             {lf.oaa > 0 ? `+${lf.oaa}` : lf.oaa}
           </text>
           <text x="52" y="100" textAnchor="middle" fontSize="7"
-            fill={oaaTextColor(lf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(lf.oaa)} fontFamily="Red Hat Display, sans-serif">
             LF
           </text>
         </g>
@@ -179,11 +179,11 @@ function FieldWithOAA({ teamOAA }: { teamOAA: TeamOAA }) {
       {cf && (
         <g>
           <text x="110" y="52" textAnchor="middle" fontSize="10" fontWeight="700"
-            fill={oaaTextColor(cf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(cf.oaa)} fontFamily="Red Hat Display, sans-serif">
             {cf.oaa > 0 ? `+${cf.oaa}` : cf.oaa}
           </text>
           <text x="110" y="64" textAnchor="middle" fontSize="7"
-            fill={oaaTextColor(cf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(cf.oaa)} fontFamily="Red Hat Display, sans-serif">
             CF
           </text>
         </g>
@@ -192,11 +192,11 @@ function FieldWithOAA({ teamOAA }: { teamOAA: TeamOAA }) {
       {rf && (
         <g>
           <text x="168" y="88" textAnchor="middle" fontSize="10" fontWeight="700"
-            fill={oaaTextColor(rf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(rf.oaa)} fontFamily="Red Hat Display, sans-serif">
             {rf.oaa > 0 ? `+${rf.oaa}` : rf.oaa}
           </text>
           <text x="168" y="100" textAnchor="middle" fontSize="7"
-            fill={oaaTextColor(rf.oaa)} fontFamily="Space Mono, monospace">
+            fill={oaaTextColor(rf.oaa)} fontFamily="Red Hat Display, sans-serif">
             RF
           </text>
         </g>
@@ -233,7 +233,7 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 120, fontFamily: 'Space Mono, monospace',
+        height: 120, fontFamily: 'Red Hat Display, sans-serif',
         fontSize: 10, color: '#A3A3A3',
       }}>
         Loading fielding data...
@@ -246,12 +246,12 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
     return (
       <div style={{ textAlign: 'center', padding: 16 }}>
         <div style={{
-          fontFamily: 'Space Mono, monospace', fontSize: 24,
+          fontFamily: 'Red Hat Display, sans-serif', fontSize: 24,
           fontWeight: 700, color: fallbackTotal >= 0 ? '#16A34A' : '#DC2626',
         }}>
           {fallbackTotal > 0 ? `+${fallbackTotal}` : fallbackTotal}
         </div>
-        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3', marginTop: 4 }}>
+        <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3', marginTop: 4 }}>
           Team OAA · {teamName}
         </div>
       </div>
@@ -262,7 +262,7 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
     return (
       <div style={{
         textAlign: 'center', padding: 16,
-        fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#A3A3A3',
+        fontFamily: 'Red Hat Display, sans-serif', fontSize: 10, color: '#A3A3A3',
       }}>
         Fielding data not available
       </div>
@@ -284,21 +284,21 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
             borderRadius: 6,
           }}>
             <div style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 9,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 9,
               color: '#A3A3A3', textTransform: 'uppercase',
               letterSpacing: '.05em', marginBottom: 3,
             }}>
               {of.position}
             </div>
             <div style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 13,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 13,
               fontWeight: 700,
               color: oaaTextColor(of.oaa),
             }}>
               {of.oaa > 0 ? `+${of.oaa}` : of.oaa}
             </div>
             <div style={{
-              fontFamily: 'Fraunces, serif', fontSize: 11,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 11,
               color: '#6B6B6B', marginTop: 2,
               whiteSpace: 'nowrap', overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -306,7 +306,7 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
               {of.name.split(' ').slice(-1)[0]}
             </div>
             <div style={{
-              fontFamily: 'Space Mono, monospace', fontSize: 8,
+              fontFamily: 'Red Hat Display, sans-serif', fontSize: 8,
               color: oaaTextColor(of.oaa), marginTop: 2,
             }}>
               {oaaLabel(of.oaa)}
@@ -322,11 +322,11 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
         borderRadius: 6, display: 'flex',
         alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: '#A3A3A3', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#A3A3A3', textTransform: 'uppercase' }}>
           Outfield total OAA
         </span>
         <span style={{
-          fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700,
+          fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, fontWeight: 700,
           color: teamOAA.total >= 0 ? '#16A34A' : '#DC2626',
         }}>
           {teamOAA.total > 0 ? `+${teamOAA.total}` : teamOAA.total}
@@ -334,10 +334,10 @@ export default function OAAZoneMap({ teamId, teamName, oaaFromModel }: OAAZoneMa
       </div>
 
       <div style={{
-        fontFamily: 'Space Mono, monospace', fontSize: 8,
+        fontFamily: 'Red Hat Display, sans-serif', fontSize: 8,
         color: '#C4BDB7', textAlign: 'center', marginTop: 8,
       }}>
-        OAA via Baseball Savant · 2026 season
+        OAA · 2026 season
       </div>
     </div>
   )

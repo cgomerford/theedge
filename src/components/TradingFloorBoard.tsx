@@ -85,7 +85,7 @@ export default function TradingFloorBoard({ games }: TradingFloorBoardProps) {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+          <table className="w-full text-left" style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 11 }}>
             <thead>
               <tr className="border-b border-stone-100">
                 <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wide text-stone-400">Matchup</th>
@@ -157,7 +157,7 @@ export default function TradingFloorBoard({ games }: TradingFloorBoardProps) {
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span className={g.lineups_confirmed ? 'text-emerald-600' : 'text-stone-300'}>
-                      {g.lineups_confirmed ? '✓' : '—'}
+                      {g.lineups_confirmed ? 'Yes' : '—'}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center">

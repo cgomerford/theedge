@@ -6,8 +6,9 @@
 // the locked state. Never defaults to true.
 
 import { getCurrentSubscriber } from '@/lib/auth'
+import { devPro } from '@/lib/dev-pro'
 
 export async function resolveIsPro(proParam?: string): Promise<boolean> {
   const subscriber = await getCurrentSubscriber()
-  return (subscriber?.is_pro ?? false) || (process.env.NODE_ENV === 'development' && proParam !== '0')
+  return (subscriber?.is_pro ?? false) || devPro(proParam)
 }

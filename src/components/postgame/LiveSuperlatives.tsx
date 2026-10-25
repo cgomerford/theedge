@@ -87,7 +87,7 @@ function Cell({ label, value, sub, accent }: { label: string; value: string; sub
   return (
     <div className="px-3 py-3">
       <div className="font-mono text-[9px] uppercase tracking-wide text-stone-500 mb-1">{label}</div>
-      <div className="font-mono text-xl leading-none" style={{ fontFamily: "'Bebas Neue', sans-serif", color: accent ? ORANGE : '#1A1A1A' }}>
+      <div className="font-mono text-xl leading-none" style={{ fontFamily: "'Red Hat Display', sans-serif", color: accent ? ORANGE : '#1A1A1A' }}>
         {value}
       </div>
       {sub && <div className="font-mono text-[9.5px] text-stone-500 mt-1 truncate">{sub}</div>}

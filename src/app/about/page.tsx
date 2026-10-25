@@ -1,28 +1,36 @@
-export const metadata = {
-  title: "About · x9Lab",
-  description: "Why x9Lab exists, who's behind it, and what we believe about sports analytics.",
-}
+export const metadata = pageMeta({
+  title: 'About',
+  description:
+    'Why x9Lab exists, who builds it, and how public baseball data becomes plain-number game previews for fans who want more than a box score gives.',
+  path: '/about',
+})
 
+import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
+import { CONTACT_EMAIL } from '@/lib/site'
+import { pageMeta } from '@/lib/seo'
+import { BreadcrumbSchema } from '@/components/StructuredData'
+import PendingBlock from '@/components/data/PendingBlock'
 
 export default function AboutPage() {
   return (
     <main className="min-h-screen bg-[#FAF8F3] text-stone-900">
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }]} />
       <SiteHeader variant="page" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <Link href="/" className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] hover:underline">
           ← Back to home
         </Link>
 
-        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2">§ About</div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2"><XMark /> About</div>
         <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mb-12">
           About x9Lab<span className="text-[#FF5722]">.</span>
         </h1>
 
         <div className="space-y-6 text-lg leading-relaxed text-stone-700 font-serif">
           <p>
-            Sports media in 2026 is split into two camps. On one side, the data tools — Baseball Savant, NBA Stats, PFF — built for experts, full of insight, but offering no story and no daily ritual.
+            Sports media in 2026 is split into two camps. On one side, the data tools — other stat sites — built for experts, full of insight, but offering no story and no daily ritual.
           </p>
           <p>
             On the other side, mainstream sports media — the takes, the highlights, the box scores. Easy to consume, but rarely teaches you anything you didn&apos;t already know.
@@ -38,8 +46,12 @@ export default function AboutPage() {
           </p>
         </div>
 
+        <div className="mt-12">
+          <PendingBlock label="About bio [George: wording]" />
+        </div>
+
         <div className="mt-16 pt-8 border-t border-stone-200 text-sm text-stone-500 font-mono">
-          <p>Have a question, a story tip, or want to partner? <a href="mailto:hello@edgereportdaily.com" className="text-[#FF5722] hover:underline">hello@edgereportdaily.com</a></p>
+          <p>Have a question, a story tip, or want to partner? <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#FF5722] hover:underline">{CONTACT_EMAIL}</a></p>
         </div>
       </div>
     </main>

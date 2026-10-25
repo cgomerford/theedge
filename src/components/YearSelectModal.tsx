@@ -27,7 +27,7 @@ export default function YearSelectModal({
       <div className="bg-white max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <span className="font-serif font-bold text-lg">Select year</span>
-          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900">✕</button>
+          <button type="button" onClick={onClose} className="text-stone-400 hover:text-stone-900">Close</button>
         </div>
 
         <div className="flex border-b border-stone-200 mb-4 text-[10px] font-mono uppercase tracking-widest">

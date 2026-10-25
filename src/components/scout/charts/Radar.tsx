@@ -36,9 +36,9 @@ export function CenteredRadar({ axes, center = 100, span = 30, size = 260, ariaL
         return (
           <g key={a.label}>
             {a.value != null && <circle cx={x} cy={y} r={3} fill={CHART_BLUE} stroke="#fff" strokeWidth={1.25}><title>{`${a.label}: ${a.value}`}</title></circle>}
-            <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle" className="fill-stone-600" style={{ font: '600 9.5px ui-monospace, monospace' }}>
+            <text x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle" className="fill-stone-600" style={{ font: '600 9.5px monospace' }}>
               {a.label}
-              <tspan x={lx} dy="10.5" className="fill-stone-400" style={{ font: '400 9px ui-monospace, monospace' }}>{a.value ?? '—'}</tspan>
+              <tspan x={lx} dy="10.5" className="fill-stone-400" style={{ font: '400 9px monospace' }}>{a.value ?? '—'}</tspan>
             </text>
           </g>
         )

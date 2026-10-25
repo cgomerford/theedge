@@ -9,7 +9,7 @@ import NflQbHoverCard from './NflQbHoverCard'
 export default function NflWrBeeswarm({ profiles }: { profiles: WrNgsSeasonProfile[] }) {
   if (profiles.length === 0) {
     return <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.08)', padding: 28, textAlign: 'center' }}>
-      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 14, fontStyle: 'italic', color: '#A3A3A3' }}>No data yet.</div>
     </div>
   }
 
@@ -27,12 +27,12 @@ export default function NflWrBeeswarm({ profiles }: { profiles: WrNgsSeasonProfi
 
   return (
     <div style={{ background: '#fff', border: '1px solid rgba(26,26,26,0.1)', padding: 20 }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#78716C', marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Red Hat Display', sans-serif", fontSize: 10, color: '#78716C', marginBottom: 8 }}>
         League distribution of avg target depth · median {median.toFixed(1)}
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <ScatterChart margin={{ top: 20, right: 24, bottom: 20, left: 24 }}>
-          <XAxis type="number" dataKey="x" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} />
+          <XAxis type="number" dataKey="x" tick={{ fontSize: 10, fontFamily: "'Red Hat Display', sans-serif", fill: '#78716C' }} axisLine={{ stroke: 'rgba(26,26,26,0.2)' }} tickLine={false} />
           <YAxis type="number" dataKey="y" hide domain={[-80, 80]} />
           <ReferenceLine x={median} stroke="#FF5722" strokeDasharray="4 4" label={{ value: 'median', fontSize: 9, fill: '#FF5722' }} />
           <Tooltip

@@ -186,7 +186,7 @@ export default function ArsenalPage() {
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSelectedPitch('ALL')}
-            className={`font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition ${
+            className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
               selectedPitch === 'ALL' ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
             }`}
           >
@@ -196,7 +196,7 @@ export default function ArsenalPage() {
             <button
               key={r.pitchType}
               onClick={() => setSelectedPitch(r.pitchType)}
-              className={`font-mono uppercase tracking-wider rounded-full border px-3 py-1.5 text-[10px] transition ${
+              className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
                 selectedPitch === r.pitchType ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
               }`}
             >
@@ -283,7 +283,7 @@ export default function ArsenalPage() {
                 </table>
               </div>
               <p className="text-[9px] font-mono text-stone-400 px-4 py-3">
-                HB/IVB = horizontal/induced-vertical break (arm-side +, glove-side −). Velo/HB/IVB from pitch_arsenals; everything else from a live Baseball Savant pitch-arsenal pull.
+                HB/IVB = horizontal/induced-vertical break (arm-side +, glove-side −). Velo/HB/IVB from pitch_arsenals; everything else from a live pitch-arsenal pull.
                 Run value sign convention: negative = good for the pitcher. Release point, spin rate/axis, extension, and approach angle aren&apos;t in this app&apos;s data pipeline — omitted rather than estimated.
               </p>
             </div>
