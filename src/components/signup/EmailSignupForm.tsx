@@ -16,6 +16,7 @@ type Props = {
   /** one row: field and button side by side, no note under it */
   compact?: boolean
   buttonLabel?: string
+  placeholder?: string
 }
 
 const ERRORS: Record<string, string> = {
@@ -24,7 +25,7 @@ const ERRORS: Record<string, string> = {
   'verify-failed': 'Browser check failed. Reload the page and try again.',
 }
 
-export default function EmailSignupForm({ source, returnTo, extra, autoFocus, compact, buttonLabel }: Props) {
+export default function EmailSignupForm({ source, returnTo, extra, autoFocus, compact, buttonLabel, placeholder }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [sentTo, setSentTo] = useState('')
@@ -78,11 +79,12 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus, co
         type="email"
         required
         autoComplete="email"
+        placeholder={placeholder}
         autoFocus={autoFocus}
         style={{ width: compact ? undefined : '100%', flex: compact ? '1 1 220px' : undefined, minWidth: 0, boxSizing: 'border-box', padding: '12px 14px', background: '#fff', border: '1px solid #1A1A1A', borderRadius: 2, fontSize: 16, color: '#1A1A1A', outline: 'none' }}
       />
 
-      <TurnstileWidget theme="light" />
+      <div style={compact ? { order: 3, flexBasis: '100%' } : undefined}><TurnstileWidget theme="light" className={compact ? 'my-0' : 'my-3'} /></div>
 
       <button
         type="submit"

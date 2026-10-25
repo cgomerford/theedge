@@ -13,7 +13,7 @@ import HomeEmailAsk from '@/components/home/HomeEmailAsk'
 import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
 import GamesStrip from '@/components/home/GamesStrip'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import { getFeaturedScout, getHomeGamesStrip, getHomeSlate } from '@/lib/mlb-homepage'
+import { getFeaturedScout, getHomeSlate, getHomeStrip } from '@/lib/mlb-homepage'
 import { canonical } from '@/lib/seo'
 
 export const revalidate = 600
@@ -31,15 +31,20 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const slate = await getHomeSlate()
-  const [featured, strip] = await Promise.all([getFeaturedScout(slate), getHomeGamesStrip(slate)])
+  const [featured, strip] = await Promise.all([getFeaturedScout(slate), getHomeStrip(slate)])
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
       <style>{`
-        .hm-wrap{max-width:1000px;margin:0 auto;padding:0 16px 48px}
-        .hm-starters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 40px}
+        .hm-wrap{max-width:1160px;margin:0 auto;padding:0 16px 48px}
+        .hm-hero-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px 40px;align-items:start}
+        .hm-tiles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 24px}
+        .hm-mix{margin-top:8px}
+        .hm-mixrow{display:grid;grid-template-columns:minmax(110px,1.3fr) 56px 76px minmax(80px,1fr) 58px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #e7e2d8;font-size:13px}
+        .hm-ask{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px 28px;align-items:center}
         .hm-links a{color:#1A1A1A;font-weight:700;text-decoration:underline;text-underline-offset:3px}
-        @media (max-width:760px){.hm-starters{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:860px){.hm-hero-cols,.hm-ask{grid-template-columns:minmax(0,1fr)}}
+        @media (max-width:480px){.hm-mixrow{grid-template-columns:minmax(0,1fr) 52px 70px;row-gap:2px}.hm-mixrow > :nth-child(4){grid-column:1 / 3}.hm-mixrow > :nth-child(5){grid-column:3;text-align:right}}
       `}</style>
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }]} />
       <SiteHeader variant="home" />
@@ -57,7 +62,7 @@ export default async function HomePage() {
           <HomeEmailAsk />
         </HomeAskOrFollows>
 
-        <GamesStrip {...strip} />
+        <GamesStrip strip={strip} />
 
         <p className="hm-links" style={{ margin: 0, padding: '14px 0', borderTop: '1px solid #e7e2d8', fontSize: 15 }}>
           <Link href="/how-it-works">How the numbers work</Link>

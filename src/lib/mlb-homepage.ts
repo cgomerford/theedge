@@ -566,19 +566,22 @@ export async function getMLBTeamNextGame(mlbTeamId: number): Promise<MLBNextGame
     return null
   }
 }
-// ─── Homepage: featured scout report + today's games strip ───────────────────
+// ─── Homepage: featured scout report + games strip ───────────────────────────
 //
-// Server-only helpers for src/app/page.tsx. Numbers come from the same tables the scout report page reads:
-//   pitch mix and pitch count  -> pitcher_zone_arsenal (split "all"), via getPitcherZoneArsenal
-//   ERA, K%, xwOBA allowed      -> pitcher_stats
-//   batters faced (the n)       -> MLB Stats API season line (pitcher_stats stores no BF)
-//   "Through" date              -> the newest updated_at on the starter's pitcher_zone_arsenal rows
+// Server-only helpers for src/app/page.tsx. The hero is ONE starter (the home team's if named, else the away team's) in
+// the day's most notable game. Numbers come from the same tables the scout report page reads:
+//   pitch mix, velocity, miss rate, pitch counts  -> pitcher_zone_arsenal (split "all"), via getPitcherZoneArsenal
+//   record, ERA, innings, xwOBA allowed           -> pitcher_stats
+//   batters faced (the n for xwOBA)               -> MLB Stats API season line (pitcher_stats stores no BF)
+//   head-to-head                                  -> MLB Stats API vsPlayer, one call per opposing hitter (cached a day)
+//   "Through" date                                -> the newest updated_at on the starter's pitcher_zone_arsenal rows
 // Every function returns null / [] on failure and logs with its name; nothing is invented.
 
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getPitcherHandedness, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
+import { MIN_SAMPLE } from '@/lib/min-sample'
 
 type RawTeamSide = {
   team: { id: number; name: string; abbreviation?: string }
@@ -590,25 +593,32 @@ export type RawGame = MLBGame & {
   gameType?: string
   seriesDescription?: string
   seriesGameNumber?: number
+  gamesInSeries?: number
+  ifNecessary?: string
+  status: { detailedState: string; abstractGameState: string; startTimeTBD?: boolean }
   teams: { away: RawTeamSide; home: RawTeamSide }
 }
 
-async function fetchSchedule(date: string): Promise<RawGame[]> {
+const HYDRATE = 'team,probablePitcher,linescore,venue'
+
+async function fetchRange(start: string, end: string): Promise<{ date: string; games: RawGame[] }[]> {
   try {
-    const res = await fetch(`${MLB_API}/schedule?sportId=1&date=${date}&hydrate=team,probablePitcher,linescore,venue`, { next: { revalidate: 600 } })
+    const res = await fetch(`${MLB_API}/schedule?sportId=1&startDate=${start}&endDate=${end}&hydrate=${HYDRATE}`, { next: { revalidate: 600 } })
     if (!res.ok) {
-      console.error('[fetchSchedule] MLB API status', res.status)
+      console.error('[fetchRange] MLB API status', res.status)
       return []
     }
     const json = await res.json()
-    return (json.dates?.[0]?.games ?? []) as RawGame[]
+    return (json.dates ?? []).map((d: { date: string; games: RawGame[] }) => ({ date: d.date, games: d.games }))
   } catch (e) {
-    console.error('[fetchSchedule] failed:', e instanceof Error ? e.message : e)
+    console.error('[fetchRange] failed:', e instanceof Error ? e.message : e)
     return []
   }
 }
 
 const isoDay = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000)
+const isPostseason = (g: RawGame) => !!g.gameType && !['R', 'S', 'E', 'A'].includes(g.gameType)
 const winPct = (s: RawTeamSide) => {
   const w = s.leagueRecord?.wins ?? 0
   const l = s.leagueRecord?.losses ?? 0
@@ -618,91 +628,184 @@ const winPct = (s: RawTeamSide) => {
 /** Most notable game of a slate: postseason first, then the best combined record among games with both starters named. */
 function pickNotable(games: RawGame[]): RawGame | null {
   if (games.length === 0) return null
-  const post = games.filter(g => g.gameType && !['R', 'S', 'E', 'A'].includes(g.gameType))
+  const post = games.filter(isPostseason)
   const pool = post.length ? post : games
   const named = pool.filter(g => g.teams.away.probablePitcher && g.teams.home.probablePitcher)
   const ranked = (named.length ? named : pool).slice().sort((a, b) => winPct(b.teams.away) + winPct(b.teams.home) - (winPct(a.teams.away) + winPct(a.teams.home)))
   return ranked[0] ?? null
 }
 
-export type HomeGame = {
-  gamePk: number
-  slug: string
-  startIso: string
-  status: 'scheduled' | 'live' | 'final'
-  away: { id: number; abbr: string; record: string | null; starter: string | null; score: number | null }
-  home: { id: number; abbr: string; record: string | null; starter: string | null; score: number | null }
-}
-
-const lastName = (full?: string) => (full ? full.trim().split(/\s+/).slice(-1)[0] : null)
-const abbrOf = (s: RawTeamSide) => findTeamByName(s.team.name)?.abbrev ?? s.team.abbreviation ?? s.team.name.slice(0, 3).toUpperCase()
-const recordOf = (s: RawTeamSide) => (s.leagueRecord ? `${s.leagueRecord.wins}-${s.leagueRecord.losses}` : null)
-
-function toHomeGame(g: RawGame): HomeGame {
-  const state = g.status?.abstractGameState
-  return {
-    gamePk: g.gamePk,
-    slug: slugifyGame(g),
-    startIso: g.gameDate,
-    status: state === 'Final' ? 'final' : state === 'Live' ? 'live' : 'scheduled',
-    away: { id: g.teams.away.team.id, abbr: abbrOf(g.teams.away), record: recordOf(g.teams.away), starter: lastName(g.teams.away.probablePitcher?.fullName) ?? null, score: g.teams.away.score ?? null },
-    home: { id: g.teams.home.team.id, abbr: abbrOf(g.teams.home), record: recordOf(g.teams.home), starter: lastName(g.teams.home.probablePitcher?.fullName) ?? null, score: g.teams.home.score ?? null },
-  }
-}
-
 export type HomeSlate = {
-  /** the date the slate belongs to (YYYY-MM-DD); not today when the season is over */
+  /** the featured game */
+  game: RawGame
+  /** the date the game belongs to (YYYY-MM-DD) */
   date: string
   isToday: boolean
-  games: RawGame[]
+  /** 'today' = on today's slate; 'next' = the next day with games; 'last' = off-season, the last final */
+  mode: 'today' | 'next' | 'last'
+  /** every game of that day (used for the regular-season strip) */
+  dayGames: RawGame[]
 }
 
-/** Today's slate, or (off-season) the most recent day with games, found by looking back up to 60 days. */
+/** Today's most notable game; else the next game within 14 days; else (off-season) the last final within 60 days. */
 export async function getHomeSlate(): Promise<HomeSlate | null> {
   const now = new Date()
   const today = isoDay(now)
-  const todays = await fetchSchedule(today)
-  if (todays.length) return { date: today, isToday: true, games: todays }
-  for (let back = 1; back <= 60; back++) {
-    const day = isoDay(new Date(now.getTime() - back * 86_400_000))
-    const games = await fetchSchedule(day)
-    const finals = games.filter(g => g.status?.abstractGameState === 'Final')
-    if (finals.length) return { date: day, isToday: false, games: finals }
+  const ahead = await fetchRange(today, isoDay(addDays(now, 14)))
+  const todays = ahead.find(d => d.date === today)?.games ?? []
+  if (todays.length) {
+    const game = pickNotable(todays)
+    if (game) return { game, date: today, isToday: true, mode: 'today', dayGames: todays }
+  }
+  const next = ahead.find(d => d.date > today && d.games.length)
+  if (next) {
+    const game = pickNotable(next.games)
+    if (game) return { game, date: next.date, isToday: false, mode: 'next', dayGames: next.games }
+  }
+  const back = await fetchRange(isoDay(addDays(now, -60)), isoDay(addDays(now, -1)))
+  for (const d of back.slice().reverse()) {
+    const finals = d.games.filter(g => g.status?.abstractGameState === 'Final')
+    const game = pickNotable(finals)
+    if (game) return { game, date: d.date, isToday: false, mode: 'last', dayGames: finals }
   }
   return null
 }
 
-export async function getHomeGamesStrip(slate: HomeSlate | null): Promise<{ games: HomeGame[]; offSeason: boolean; lastFinal: HomeGame | null; lastFinalDate: string | null }> {
-  if (!slate) return { games: [], offSeason: true, lastFinal: null, lastFinalDate: null }
-  if (!slate.isToday) {
-    const last = pickNotable(slate.games)
-    return { games: [], offSeason: true, lastFinal: last ? toHomeGame(last) : null, lastFinalDate: slate.date }
+// ─── Games strip ────────────────────────────────────────────────────────────
+
+const lastName = (full?: string) => (full ? full.trim().split(/\s+/).slice(-1)[0] : null)
+const abbrOf = (s: RawTeamSide) => findTeamByName(s.team.name)?.abbrev ?? s.team.abbreviation ?? s.team.name.slice(0, 3).toUpperCase()
+const SERIES_ABBR: Record<string, string> = { 'World Series': 'WS', 'League Championship Series': 'LCS', 'Division Series': 'DS', 'Wild Card Series': 'WC' }
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+/** "Mon 26 Oct" from a YYYY-MM-DD date */
+function dayLabel(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+}
+
+export type StripGame = {
+  gamePk: number
+  slug: string
+  /** "WS G3" for a series game, otherwise the matchup time is the label */
+  label: string | null
+  state: 'final' | 'live' | 'next' | 'scheduled' | 'if-needed'
+  startIso: string
+  timeTbc: boolean
+  dateLabel: string
+  away: { id: number; abbr: string; score: number | null }
+  home: { id: number; abbr: string; score: number | null }
+  /** third line: the final score ("MIL 3-2"), "Gasser vs Peralta", or "Starters TBA" */
+  detail: string
+}
+
+function toStripGame(g: RawGame, date: string, nextPk: number | null): StripGame {
+  const abstract = g.status?.abstractGameState
+  const ifNeeded = g.ifNecessary === 'Y'
+  const away = g.teams.away, home = g.teams.home
+  const state: StripGame['state'] = abstract === 'Final' ? 'final' : abstract === 'Live' ? 'live' : g.gamePk === nextPk ? 'next' : ifNeeded ? 'if-needed' : 'scheduled'
+  const series = g.seriesDescription ? SERIES_ABBR[g.seriesDescription] ?? g.seriesDescription : null
+  let detail: string
+  if (state === 'final' && away.score != null && home.score != null) {
+    const awayWon = away.score > home.score
+    detail = `${abbrOf(awayWon ? away : home)} ${Math.max(away.score, home.score)}-${Math.min(away.score, home.score)}`
+  } else {
+    const a = lastName(away.probablePitcher?.fullName), h = lastName(home.probablePitcher?.fullName)
+    detail = a && h ? `${a} vs ${h}` : 'Starters TBA'
   }
-  const sorted = slate.games.slice().sort((a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime())
-  return { games: sorted.slice(0, 7).map(toHomeGame), offSeason: false, lastFinal: null, lastFinalDate: null }
+  return {
+    gamePk: g.gamePk,
+    slug: slugifyGame(g),
+    label: series && g.seriesGameNumber ? `${series} G${g.seriesGameNumber}${ifNeeded ? '*' : ''}` : null,
+    state,
+    startIso: g.gameDate,
+    timeTbc: !!g.status?.startTimeTBD || abstract === 'Preview' && ifNeeded,
+    dateLabel: dayLabel(date),
+    away: { id: away.team.id, abbr: abbrOf(away), score: away.score ?? null },
+    home: { id: home.team.id, abbr: abbrOf(home), score: home.score ?? null },
+    detail,
+  }
 }
 
-// ─── Featured starter readout ───────────────────────────────────────────────
-
-export const MIN_BF = 50
-
-export type StarterReadout = {
-  id: number
-  name: string
-  hand: 'LHP' | 'RHP' | null
-  mix: { code: string; pct: number; n: number }[]
-  pitches: number
-  era: number | null
-  kPct: number | null
-  xwoba: number | null
-  bf: number | null
-  throughDate: string | null
+export type HomeStrip = {
+  games: StripGame[]
+  /** "No games today (Sun 25 Oct) · next: WS G3, Mon 26 Oct", or null on a game day */
+  note: string | null
+  /** true when the series spans more games than are shown (starred = only if needed) */
+  hasIfNeeded: boolean
 }
+
+/** Postseason: the whole series (up to 7 games). Regular season: the day's slate, up to 7 games. */
+export async function getHomeStrip(slate: HomeSlate | null): Promise<HomeStrip> {
+  if (!slate) return { games: [], note: null, hasIfNeeded: false }
+  const now = new Date()
+  const today = isoDay(now)
+  const g = slate.game
+
+  let rows: { game: RawGame; date: string }[]
+  if (isPostseason(g)) {
+    const days = await fetchRange(isoDay(addDays(new Date(`${slate.date}T12:00:00Z`), -10)), isoDay(addDays(new Date(`${slate.date}T12:00:00Z`), 10)))
+    const ids = new Set([g.teams.away.team.id, g.teams.home.team.id])
+    rows = days.flatMap(d => d.games.filter(x => isPostseason(x) && x.seriesDescription === g.seriesDescription && ids.has(x.teams.away.team.id) && ids.has(x.teams.home.team.id)).map(game => ({ game, date: d.date })))
+    rows.sort((a, b) => (a.game.seriesGameNumber ?? 0) - (b.game.seriesGameNumber ?? 0))
+  } else {
+    rows = slate.dayGames.slice().sort((a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime()).map(game => ({ game, date: slate.date }))
+  }
+  rows = rows.slice(0, 7)
+
+  const nextPk = rows.find(r => r.game.status?.abstractGameState === 'Preview')?.game.gamePk ?? null
+  const games = rows.map(r => toStripGame(r.game, r.date, nextPk))
+  const nextGame = games.find(x => x.state === 'next')
+  const note = slate.mode === 'today' ? null : nextGame
+    ? `No games today (${dayLabel(today)}) · next: ${nextGame.label ?? `${nextGame.away.abbr} at ${nextGame.home.abbr}`}, ${nextGame.dateLabel}`
+    : `No games today (${dayLabel(today)})`
+  return { games, note, hasIfNeeded: games.some(x => x.state === 'if-needed') }
+}
+
+// ─── Featured starter ───────────────────────────────────────────────────────
+
+export const MIN_BF = MIN_SAMPLE.pitcherPercentileBF
 
 const num = (v: unknown): number | null => {
   if (v == null) return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
+}
+
+const PITCH_WORDS: Record<string, { one: string; many: string; label: string }> = {
+  FF: { one: 'four-seamer', many: 'four-seamers', label: '4-Seam' },
+  SI: { one: 'sinker', many: 'sinkers', label: 'Sinker' },
+  FC: { one: 'cutter', many: 'cutters', label: 'Cutter' },
+  SL: { one: 'slider', many: 'sliders', label: 'Slider' },
+  ST: { one: 'sweeper', many: 'sweepers', label: 'Sweeper' },
+  SV: { one: 'slurve', many: 'slurves', label: 'Slurve' },
+  CU: { one: 'curve', many: 'curves', label: 'Curve' },
+  KC: { one: 'knuckle-curve', many: 'knuckle-curves', label: 'Knuckle-curve' },
+  CH: { one: 'changeup', many: 'changeups', label: 'Changeup' },
+  FS: { one: 'splitter', many: 'splitters', label: 'Splitter' },
+  FO: { one: 'forkball', many: 'forkballs', label: 'Forkball' },
+  KN: { one: 'knuckleball', many: 'knuckleballs', label: 'Knuckleball' },
+}
+const wordsFor = (code: string, fallback: string) => PITCH_WORDS[code] ?? { one: fallback.toLowerCase(), many: `${fallback.toLowerCase()}s`, label: fallback }
+
+export type MixRow = { code: string; label: string; one: string; many: string; usagePct: number; velo: number | null; n: number; missPct: number | null; swings: number }
+
+export type FeaturedStarter = {
+  id: number
+  name: string
+  teamId: number
+  teamAbbr: string
+  hand: 'LHP' | 'RHP' | null
+  wins: number | null
+  losses: number | null
+  era: number | null
+  ip: string | null
+  bf: number | null
+  xwoba: number | null
+  /** all pitches thrown (the n under the mix) */
+  pitches: number
+  mix: MixRow[]
+  throughDate: string | null
 }
 
 async function getBattersFaced(pitcherId: number): Promise<number | null> {
@@ -717,84 +820,124 @@ async function getBattersFaced(pitcherId: number): Promise<number | null> {
   }
 }
 
-export async function getStarterReadout(pitcherId: number, name: string): Promise<StarterReadout> {
+export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string): Promise<FeaturedStarter> {
   const supa = createAdminClient()
   const [arsenalBySplit, hand, bf, statsRes, throughRes] = await Promise.all([
     getPitcherZoneArsenal(pitcherId),
     getPitcherHandedness(pitcherId),
     getBattersFaced(pitcherId),
-    supa.from('pitcher_stats').select('era, k_pct, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
+    supa.from('pitcher_stats').select('era, wins, losses, innings_pitched, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', pitcherId).eq('season', SEASON).order('updated_at', { ascending: false }).limit(1),
   ])
-  if (statsRes.error) console.error('[getStarterReadout] pitcher_stats error:', statsRes.error.message)
-  if (throughRes.error) console.error('[getStarterReadout] arsenal date error:', throughRes.error.message)
+  if (statsRes.error) console.error('[getFeaturedStarter] pitcher_stats error:', statsRes.error.message)
+  if (throughRes.error) console.error('[getFeaturedStarter] arsenal date error:', throughRes.error.message)
 
   const all = arsenalBySplit['all']
-  const pitches = num(all?.total_pitches) ?? 0
-  // Pitch types under the arsenal minimum (25 pitches) are left out of the mix line.
-  const mix = Object.entries(all?.arsenal ?? {})
-    .map(([code, p]) => ({ code, pct: num(p.usage_pct) ?? 0, n: num(p.total_pitches) ?? 0 }))
-    .filter(p => p.n >= 25 && p.pct > 0)
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 4)
+  const mix: MixRow[] = Object.entries(all?.arsenal ?? {})
+    .map(([code, p]) => {
+      let swings = 0, whiffs = 0
+      for (const z of Object.values(p.zones ?? {})) { swings += num(z.swings) ?? 0; whiffs += num(z.whiffs) ?? 0 }
+      const w = wordsFor(code, p.pitch_name)
+      return { code, label: w.label, one: w.one, many: w.many, usagePct: num(p.usage_pct) ?? 0, velo: num(p.avg_velo), n: num(p.total_pitches) ?? 0, missPct: swings >= MIN_SAMPLE.whiffSwings ? (whiffs / swings) * 100 : null, swings }
+    })
+    .filter(m => m.usagePct > 0)
+    .sort((a, b) => b.usagePct - a.usagePct)
 
-  const row = (statsRes.data?.[0] ?? null) as { era: unknown; k_pct: unknown; xwoba_allowed: unknown } | null
+  const row = (statsRes.data?.[0] ?? null) as { era: unknown; wins: unknown; losses: unknown; innings_pitched: unknown; xwoba_allowed: unknown } | null
+  const ip = num(row?.innings_pitched)
   const through = (throughRes.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? null
 
   return {
-    id: pitcherId,
-    name,
+    id: pitcherId, name, teamId, teamAbbr,
     hand: hand === 'L' ? 'LHP' : hand === 'R' ? 'RHP' : null,
-    mix,
-    pitches,
-    era: num(row?.era),
-    kPct: num(row?.k_pct),
-    xwoba: num(row?.xwoba_allowed),
-    bf,
+    wins: num(row?.wins), losses: num(row?.losses), era: num(row?.era),
+    ip: ip != null ? ip.toFixed(1) : null,
+    bf, xwoba: num(row?.xwoba_allowed),
+    pitches: num(all?.total_pitches) ?? 0,
+    mix: mix.slice(0, 5),
     throughDate: through ? through.slice(0, 10) : null,
   }
 }
 
+// ─── Head-to-head: the opposing hitter with the most PA against him ──────────
+
+export type H2H = { teamShort: string; name: string; pa: number; avg: string | null; ops: string | null } | null
+
+export async function getMostPaAgainst(pitcherId: number, opposingTeamId: number, teamShort: string): Promise<H2H> {
+  try {
+    const rosterRes = await fetch(`${MLB_API}/teams/${opposingTeamId}/roster?rosterType=active`, { next: { revalidate: 86400 } })
+    if (!rosterRes.ok) return null
+    const roster = ((await rosterRes.json()).roster ?? []) as { person: { id: number; fullName: string }; position?: { type?: string } }[]
+    const hitters = roster.filter(r => r.position?.type !== 'Pitcher')
+
+    let best: H2H = null
+    // MLB Stats API rejects big bursts from one process (CLAUDE.md): small batches of 6.
+    for (let i = 0; i < hitters.length; i += 6) {
+      const batch = hitters.slice(i, i + 6)
+      const results = await Promise.all(batch.map(async h => {
+        try {
+          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${h.person.id}`, { next: { revalidate: 86400 } })
+          if (!r.ok) return null
+          const split = (await r.json()).stats?.find((s: { type?: { displayName?: string } }) => s.type?.displayName === 'vsPlayerTotal')?.splits?.[0]?.stat
+          const pa = num(split?.plateAppearances) ?? num(split?.battersFaced)
+          return pa ? { name: h.person.fullName, pa, avg: (split?.avg as string) ?? null, ops: (split?.ops as string) ?? null } : null
+        } catch {
+          return null
+        }
+      }))
+      for (const r of results) if (r && (!best || r.pa > best.pa)) best = { teamShort, ...r }
+    }
+    return best
+  } catch (e) {
+    console.error('[getMostPaAgainst] failed:', e instanceof Error ? e.message : e)
+    return null
+  }
+}
+
+// ─── The featured scout report ──────────────────────────────────────────────
+
 export type FeaturedScout = {
   slug: string
-  kicker: string
-  heading: string
-  /** set when the slate is not today's: "Oct 24" */
-  dateLabel: string | null
-  /** a finished game links to its postgame report instead of the scout report */
   isFinal: boolean
-  away: { id: number; abbr: string; name: string; score: number | null; starter: StarterReadout | null }
-  home: { id: number; abbr: string; name: string; score: number | null; starter: StarterReadout | null }
+  kicker: string
+  /** "Mon 26 Oct · Tropicana Field" */
+  meta: string
+  starter: FeaturedStarter
+  opp: { id: number; abbr: string; name: string; short: string; city: string; starterLast: string | null }
+  h2h: H2H
   throughDate: string | null
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const shortDate = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`
+const cityOf = (fullName: string, short: string) => fullName.replace(short, '').trim() || fullName
 
 export async function getFeaturedScout(slate: HomeSlate | null): Promise<FeaturedScout | null> {
   if (!slate) return null
-  const game = pickNotable(slate.games)
-  if (!game) return null
+  const g = slate.game
+  // Home team's named starter, else the away team's.
+  const homeFirst = !!g.teams.home.probablePitcher
+  const mine = homeFirst ? g.teams.home : g.teams.away
+  const other = homeFirst ? g.teams.away : g.teams.home
+  if (!mine.probablePitcher) return null
 
-  const post = game.gameType && !['R', 'S', 'E', 'A'].includes(game.gameType)
-  const kicker = post && game.seriesDescription
-    ? `${game.seriesDescription.toUpperCase()}${game.seriesGameNumber ? ` · GAME ${game.seriesGameNumber}` : ''}`
-    : `MLB · ${shortDate(slate.date).toUpperCase()}`
+  const oppTeam = findTeamByName(other.team.name)
+  const oppShort = oppTeam?.short ?? other.team.name
+  const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine))
+  const h2h = await getMostPaAgainst(starter.id, other.team.id, oppShort)
 
-  const [away, home] = await Promise.all([
-    game.teams.away.probablePitcher ? getStarterReadout(game.teams.away.probablePitcher.id, game.teams.away.probablePitcher.fullName) : Promise.resolve(null),
-    game.teams.home.probablePitcher ? getStarterReadout(game.teams.home.probablePitcher.id, game.teams.home.probablePitcher.fullName) : Promise.resolve(null),
-  ])
-  const dates = [away?.throughDate, home?.throughDate].filter((d): d is string => !!d).sort()
+  const post = isPostseason(g)
+  const kicker = post && g.seriesDescription
+    ? `FEATURED SCOUT REPORT · ${(SERIES_ABBR[g.seriesDescription] ?? g.seriesDescription).toUpperCase()} G${g.seriesGameNumber ?? ''}`.trim()
+    : 'FEATURED SCOUT REPORT'
+  const meta = `${dayLabel(slate.date)}${g.venue?.name ? ` · ${g.venue.name}` : ''}${slate.mode === 'last' ? ' · last game of the season' : ''}`
 
   return {
-    slug: slugifyGame(game),
+    slug: slugifyGame(g),
+    isFinal: g.status?.abstractGameState === 'Final',
     kicker,
-    heading: `${game.teams.away.team.name} at ${game.teams.home.team.name}`,
-    dateLabel: slate.isToday ? null : shortDate(slate.date),
-    isFinal: game.status?.abstractGameState === 'Final',
-    away: { id: game.teams.away.team.id, abbr: abbrOf(game.teams.away), name: game.teams.away.team.name, score: game.teams.away.score ?? null, starter: away },
-    home: { id: game.teams.home.team.id, abbr: abbrOf(game.teams.home), name: game.teams.home.team.name, score: game.teams.home.score ?? null, starter: home },
-    throughDate: dates.length ? dates[dates.length - 1] : null,
+    meta,
+    starter,
+    opp: { id: other.team.id, abbr: abbrOf(other), name: other.team.name, short: oppShort, city: cityOf(other.team.name, oppShort), starterLast: lastName(other.probablePitcher?.fullName) ?? null },
+    h2h,
+    throughDate: starter.throughDate,
   }
 }
