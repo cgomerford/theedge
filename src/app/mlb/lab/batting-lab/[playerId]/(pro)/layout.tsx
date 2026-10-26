@@ -6,14 +6,17 @@
 // Overview and the Nerve Centre tabs are free. The tabs' data APIs check the same look (lib/deep-look.ts), so bypassing the
 // page does not reach the data. A route group: it adds no URL segment.
 
+import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
 import ProGate from '@/components/pro/ProGate'
 import LabTabShell from '@/components/pro/LabTabShell'
 
 export default async function ProBattingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
+  const person = await getMlbPerson(Number(playerId))
+  const name = person?.fullName ?? 'this player'
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<LabTabShell lab="batting" />} full={async () => children} />
+      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<LabTabShell lab="batting" name={name} />} who={{ lab: 'batting', name }} full={async () => children} />
     </div>
   )
 }

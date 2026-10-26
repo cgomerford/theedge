@@ -3,6 +3,7 @@ import type { ViewerTier } from '@/lib/require-pro-types'
 import ProCheckoutButton from './ProCheckoutButton'
 import CreateAccountButton from './CreateAccountButton'
 import OpenLookButton from './OpenLookButton'
+import LabAnonLine from './LabAnonLine'
 
 // Client-safe half of the gate (no server imports), so client components that already know the viewer's state can use it.
 // See ProGate.tsx for the server component that works the state out.
@@ -21,7 +22,9 @@ export const SIGNUP_LABEL = 'Create account'
 
 export type Openable = { feature: string; entityId: string }
 
-export function ProGateRow({ tier, source, openable, noButton, lockedLine }: { tier: Exclude<ViewerTier, 'pro'>; source: string; openable?: Openable; noButton?: boolean; lockedLine?: string }) {
+export type LabWho = { lab: 'batting' | 'pitching'; name: string }
+
+export function ProGateRow({ tier, source, openable, noButton, lockedLine, who }: { tier: Exclude<ViewerTier, 'pro'>; source: string; openable?: Openable; noButton?: boolean; lockedLine?: string; who?: LabWho }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 20px', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '14px 0', marginTop: 12 }}>
       {tier === 'member' && openable ? (
@@ -36,7 +39,7 @@ export function ProGateRow({ tier, source, openable, noButton, lockedLine }: { t
         </>
       ) : (
         <>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>{ANON_LINE}</span>
+          {who ? <LabAnonLine lab={who.lab} name={who.name} /> : <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>{ANON_LINE}</span>}
           {!noButton && <CreateAccountButton source={source} label={SIGNUP_LABEL} accent />}
         </>
       )}

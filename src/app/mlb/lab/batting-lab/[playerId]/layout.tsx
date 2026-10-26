@@ -40,8 +40,8 @@ export default async function BattingLabGate({ children, params }: { children: R
     return (
       <LabShell playerName={person.fullName}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 24px 60px' }}>
-          <LabTabShell lab="batting" />
-          <ProGateRow tier="anon" source="batting_lab" />
+          <LabTabShell lab="batting" name={person.fullName} />
+          <ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />
         </div>
       </LabShell>
     )
