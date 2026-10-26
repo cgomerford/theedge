@@ -33,8 +33,7 @@ export default async function PitchingLabGate({ children, params }: { children: 
     // Signed out: every tab is the REAL tab on a sample player (DemoFrame), labelled as an example, with the create-account row.
     return (
       <LabShell playerName={person.fullName}>
-        <DemoFrame lab="pitching" realName={person.fullName}>{children}</DemoFrame>
-        <ProGateRow tier="anon" source="pitching_lab" who={{ lab: 'pitching', name: person.fullName }} />
+        <DemoFrame lab="pitching" realName={person.fullName} footer={<ProGateRow tier="anon" source="pitching_lab" who={{ lab: 'pitching', name: person.fullName }} />}>{children}</DemoFrame>
       </LabShell>
     )
   }

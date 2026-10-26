@@ -39,8 +39,7 @@ export default async function BattingLabGate({ children, params }: { children: R
     // The pages below swap the requested player for the sample (lib/lab-player.ts), so none of this player's data is loaded.
     return (
       <LabShell playerName={person.fullName}>
-        <DemoFrame lab="batting" realName={person.fullName}>{children}</DemoFrame>
-        <ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />
+        <DemoFrame lab="batting" realName={person.fullName} footer={<ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />}>{children}</DemoFrame>
       </LabShell>
     )
   }
