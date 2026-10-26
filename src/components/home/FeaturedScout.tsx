@@ -139,10 +139,18 @@ export default function FeaturedScout({ data }: { data: Featured }) {
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', marginTop: 6, fontSize: 14, color: '#5b5347' }}>
             <TeamMark id={s.teamId} abbr={s.teamAbbr} size={20} />
             {s.hand && <span>{s.hand}</span>}
-            {s.wins != null && s.losses != null && s.era != null && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.wins}-{s.losses}, {s.era.toFixed(2)} ERA</span>}
-            {s.ip != null && !bfSmall && <span style={{ fontVariantNumeric: 'tabular-nums' }}>n {s.ip} IP</span>}
+            {s.line.wins != null && s.line.losses != null && s.line.era != null && (
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.line.postseason ? 'Postseason ' : ''}{s.line.wins}-{s.line.losses}, {s.line.era.toFixed(2)} ERA</span>
+            )}
+            {s.line.ip != null && <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.line.ip} IP</span>}
             {bfSmall && <SmallSample n={s.bf} />}
           </div>
+          {s.lastGame && (
+            <p style={{ margin: '8px 0 0', fontSize: 14, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}>
+              <b>{s.lastGame.postseason ? 'Last postseason game' : 'Last game'}</b> · {fmtDay(s.lastGame.date)} {s.lastGame.home ? 'vs' : 'at'} {s.lastGame.opp} · {s.lastGame.ip} IP, {s.lastGame.h} H, {s.lastGame.er} ER, {s.lastGame.k} K, {s.lastGame.bb} BB
+              {s.lastGame.slug && <> · <Link href={`/mlb/${s.lastGame.slug}/postgame`} style={{ color: '#1A1A1A', fontWeight: 800, textDecoration: 'underline', textUnderlineOffset: 3 }}>Postgame report</Link></>}
+            </p>
+          )}
         </div>
       </div>
 
@@ -171,11 +179,6 @@ export default function FeaturedScout({ data }: { data: Featured }) {
               />
             )}
           </div>
-          {s.lastGame && (
-            <p style={{ margin: '16px 0 0', fontSize: 14, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}>
-              <b>{s.lastGame.postseason ? 'Last postseason game' : 'Last game'}</b> · {fmtDay(s.lastGame.date)} {s.lastGame.home ? 'vs' : 'at'} {s.lastGame.opp} · {s.lastGame.ip} IP, {s.lastGame.h} H, {s.lastGame.er} ER, {s.lastGame.k} K, {s.lastGame.bb} BB
-            </p>
-          )}
           <div style={{ marginTop: 10 }}><ThroughDate date={data.throughDate} /></div>
           <H2HTable d={data} />
           <Link

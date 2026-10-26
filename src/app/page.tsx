@@ -43,7 +43,7 @@ export default async function HomePage() {
         .hm-figure{position:absolute;right:20px;top:0;width:230px;height:230px;pointer-events:none}
         .hm-figure img{position:absolute;right:0;bottom:0;width:230px;height:230px;object-fit:contain;object-position:bottom}
         .hm-figure-abbr{position:absolute;right:120px;top:10px;font-size:150px;font-weight:800;letter-spacing:-0.04em;line-height:1}
-        .hm-hero-head{padding-right:210px;min-height:150px}
+        .hm-hero-head{padding-right:210px;min-height:110px}
         .hm-hero > *:not(.hm-figure){position:relative}
         @media (max-width:640px){.hm-figure{width:104px;height:104px;right:10px}.hm-figure img{width:104px;height:104px}.hm-figure-abbr{font-size:64px;right:56px;top:6px}.hm-hero-head{padding-right:104px;min-height:96px}}
         .hm-rail{padding-top:20px}

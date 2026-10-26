@@ -793,10 +793,13 @@ const wordsFor = (code: string, fallback: string) => PITCH_WORDS[code] ?? { one:
 
 export type MixRow = { code: string; label: string; one: string; many: string; usagePct: number; velo: number | null; n: number; missPct: number | null; swings: number }
 
-export type LastGame = { postseason: boolean; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
+export type LastGame = { postseason: boolean; /** slug of that game, for its postgame report */ slug: string | null; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
 
 /** One pitch type's average flight in feet (Statcast frame), from his release point to the front of the plate. The page draws it in the catcher's view. */
 export type FlightPath = { code: string; label: string; usagePct: number; n: number; speed: number; points: P3[] }
+
+/** Wins, losses, ERA and innings for the line under his name: the postseason line once the featured game is in the postseason. */
+export type SeasonLine = { postseason: boolean; wins: number | null; losses: number | null; era: number | null; ip: string | null }
 
 export type FeaturedStarter = {
   id: number
@@ -817,10 +820,24 @@ export type FeaturedStarter = {
   mix: MixRow[]
   throughDate: string | null
   lastGame: LastGame | null
+  line: SeasonLine
   /** monthly share (%) of his pitches by type, oldest first: the pitch-mix trend */
   trend: Record<string, { month: number; pct: number }[]>
   /** flight paths for the animation; empty unless he has 3+ types with 30+ pitches */
   flights: FlightPath[]
+}
+
+async function getSeasonLine(pitcherId: number, postseason: boolean): Promise<SeasonLine | null> {
+  try {
+    const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}&gameType=${postseason ? 'P' : 'R'}`, { next: { revalidate: 3600 } })
+    if (!res.ok) return null
+    const st = (await res.json()).stats?.[0]?.splits?.[0]?.stat
+    if (!st) return null
+    return { postseason, wins: num(st.wins), losses: num(st.losses), era: num(st.era), ip: st.inningsPitched != null ? String(st.inningsPitched) : null }
+  } catch (e) {
+    console.error('[getSeasonLine] failed:', e instanceof Error ? e.message : e)
+    return null
+  }
 }
 
 async function getBattersFaced(pitcherId: number): Promise<number | null> {
@@ -835,16 +852,22 @@ async function getBattersFaced(pitcherId: number): Promise<number | null> {
   }
 }
 
+const toSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+function gameSlug(team?: string, opp?: string, home?: boolean, date?: string): string | null {
+  if (!team || !opp || !date) return null
+  return home ? `${toSlug(opp)}-vs-${toSlug(team)}-${date}` : `${toSlug(team)}-vs-${toSlug(opp)}-${date}`
+}
+
 async function getLastGame(pitcherId: number, preferPostseason: boolean): Promise<LastGame | null> {
   try {
-    const rows: { postseason: boolean; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
+    const rows: { postseason: boolean; slug: string | null; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
     for (const gt of ['R', 'P']) {
       const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}&gameType=${gt}`, { next: { revalidate: 3600 } })
       if (!res.ok) continue
       const splits = (await res.json()).stats?.[0]?.splits ?? []
       for (const sp of splits) {
         rows.push({
-          postseason: gt === 'P', date: sp.date, opp: findTeamByName(sp.opponent?.name ?? '')?.abbrev ?? sp.opponent?.abbreviation ?? '', home: !!sp.isHome,
+          postseason: gt === 'P', slug: gameSlug(sp.team?.name, sp.opponent?.name, !!sp.isHome, sp.date), date: sp.date, opp: findTeamByName(sp.opponent?.name ?? '')?.abbrev ?? sp.opponent?.abbreviation ?? '', home: !!sp.isHome,
           ip: String(sp.stat?.inningsPitched ?? ''), er: Number(sp.stat?.earnedRuns ?? 0), k: Number(sp.stat?.strikeOuts ?? 0), bb: Number(sp.stat?.baseOnBalls ?? 0), h: Number(sp.stat?.hits ?? 0),
         })
       }
@@ -894,11 +917,12 @@ async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: Fe
 
 export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string, preferPostseason = false): Promise<FeaturedStarter> {
   const supa = createAdminClient()
-  const [arsenalBySplit, hand, bf, lastGame, statsRes, throughRes] = await Promise.all([
+  const [arsenalBySplit, hand, bf, lastGame, postLine, statsRes, throughRes] = await Promise.all([
     getPitcherZoneArsenal(pitcherId),
     getPitcherHandedness(pitcherId),
     getBattersFaced(pitcherId),
     getLastGame(pitcherId, preferPostseason),
+    preferPostseason ? getSeasonLine(pitcherId, true) : Promise.resolve(null),
     supa.from('pitcher_stats').select('era, wins, losses, innings_pitched, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', pitcherId).eq('season', SEASON).order('updated_at', { ascending: false }).limit(1),
   ])
@@ -934,6 +958,8 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
     mix: mix.slice(0, 5),
     throughDate: through ? through.slice(0, 10) : null,
     lastGame, trend, flights,
+    // Postseason line when the featured game is in the postseason and he has one; otherwise his regular-season line.
+    line: postLine ?? { postseason: false, wins: num(row?.wins), losses: num(row?.losses), era: num(row?.era), ip: ip != null ? ip.toFixed(1) : null },
   }
 }
 
