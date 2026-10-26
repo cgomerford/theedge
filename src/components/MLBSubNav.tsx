@@ -36,7 +36,7 @@ const MLB_NAV: NavItem[] = [
   { href: '/mlb/scores',       label: 'Scores'        },
   { href: '/mlb/stats',        label: 'Stats'         },
   { href: '/mlb/glossary',     label: 'Glossary'      },
-  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab',  pro: true },
+  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab' },
   { href: '/mlb/lab/contact',      label: 'Contact Lab' },
   { href: '/mlb/lab/platoon',      label: 'Platoon Lab' },
 ]

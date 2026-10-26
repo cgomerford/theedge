@@ -7,13 +7,13 @@
 // page does not reach the data. A route group: it adds no URL segment.
 
 import ProGate from '@/components/pro/ProGate'
-import { ArsenalZonesPreview } from '@/components/pro/previews'
+import LabTabShell from '@/components/pro/LabTabShell'
 
 export default async function ProBattingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<ArsenalZonesPreview />} full={async () => children} />
+      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<LabTabShell lab="batting" />} full={async () => children} />
     </div>
   )
 }

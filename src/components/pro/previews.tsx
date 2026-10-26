@@ -81,3 +81,39 @@ export function ArsenalZonesPreview() {
     </div>
   )
 }
+
+/** Table with real column labels and named rows, blank values (no numbers). */
+export function TablePreview({ title, cols, rows }: { title: string; cols: string[]; rows: string[] }) {
+  return (
+    <div>
+      <h3 style={TITLE}>{title}</h3>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead><tr>{cols.map((c, i) => <th key={c} scope="col" style={{ ...TH, ...(i === 0 ? { position: 'sticky', left: 0, background: '#FAF8F3' } : null) }}>{c}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r}>
+                <th scope="row" style={{ ...TD, textAlign: 'left', fontSize: 14, fontWeight: 700, color: '#1A1A1A', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: '#FAF8F3' }}>{r}</th>
+                {cols.slice(1).map(c => <td key={c} style={TD} aria-label={`${r} ${c}: not shown`} />)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/** An empty chart frame with its axis titles, no line and no values. */
+export function ChartFramePreview({ title, x, y }: { title: string; x: string; y: string }) {
+  return (
+    <div>
+      <h3 style={TITLE}>{title}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 8, alignItems: 'stretch' }}>
+        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 12, fontWeight: 800, color: '#8a8275', textAlign: 'center' }}>{y}</div>
+        <div style={{ height: 180, border: '1px solid #e7e2d8', borderTop: 0, borderRight: 0 }} />
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 800, color: '#8a8275', textAlign: 'center', marginTop: 6 }}>{x}</div>
+    </div>
+  )
+}

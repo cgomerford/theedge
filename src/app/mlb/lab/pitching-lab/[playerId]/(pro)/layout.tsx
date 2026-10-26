@@ -6,13 +6,13 @@
 // same look (lib/deep-look.ts). A route group: it adds no URL segment.
 
 import ProGate from '@/components/pro/ProGate'
-import { ArsenalZonesPreview } from '@/components/pro/previews'
+import LabTabShell from '@/components/pro/LabTabShell'
 
 export default async function ProPitchingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="pitching_lab" entityId={playerId} source="pitching_lab" claim shell={<ArsenalZonesPreview />} full={async () => children} />
+      <ProGate feature="pitching_lab" entityId={playerId} source="pitching_lab" claim shell={<LabTabShell lab="pitching" />} full={async () => children} />
     </div>
   )
 }
