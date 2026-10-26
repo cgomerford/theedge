@@ -582,6 +582,7 @@ import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getPitcherHandedness, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
 import { MIN_SAMPLE } from '@/lib/min-sample'
+import { getProjectedLineup } from '@/lib/lineups'
 import { getPitchViewMonths } from '@/lib/pitch-shape/data'
 import { pathFor, type P3 } from '@/components/admin/story-v5/trajectory'
 
@@ -969,6 +970,40 @@ export async function getMostPaAgainst(pitcherId: number, opposingTeamId: number
   }
 }
 
+// ─── Head-to-head table against the other club's lineup ──────────────────────
+
+export type H2HRow = { id: number; name: string; order: number; pa: number; avg: string | null; ops: string | null; hr: number | null; k: number | null }
+export type H2HTable = { rows: H2HRow[]; source: 'confirmed' | 'projected' | 'unavailable' }
+
+/** The starter against each hitter in the other club's (confirmed or projected) lineup: career PA, AVG, OPS, HR, K. */
+export async function getH2HTable(pitcherId: number, opposingTeamId: number, date: string, gamePk: number): Promise<H2HTable> {
+  try {
+    const lineup = await getProjectedLineup(opposingTeamId, date, gamePk)
+    if (!lineup.batters.length) return { rows: [], source: 'unavailable' }
+    const rows: H2HRow[] = []
+    for (let i = 0; i < lineup.batters.length; i += 5) {
+      const batch = lineup.batters.slice(i, i + 5)
+      const part = await Promise.all(batch.map(async b => {
+        const base: H2HRow = { id: b.player_id, name: b.player_name, order: b.batting_order, pa: 0, avg: null, ops: null, hr: null, k: null }
+        try {
+          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${b.player_id}`, { next: { revalidate: 86400 } })
+          if (!r.ok) return base
+          const st = (await r.json()).stats?.find((x: { type?: { displayName?: string } }) => x.type?.displayName === 'vsPlayerTotal')?.splits?.[0]?.stat
+          if (!st) return base
+          return { ...base, pa: num(st.plateAppearances) ?? num(st.battersFaced) ?? 0, avg: (st.avg as string) ?? null, ops: (st.ops as string) ?? null, hr: num(st.homeRuns), k: num(st.strikeOuts) }
+        } catch {
+          return base
+        }
+      }))
+      rows.push(...part)
+    }
+    return { rows: rows.sort((a, b) => a.order - b.order), source: lineup.source === 'confirmed' ? 'confirmed' : 'projected' }
+  } catch (e) {
+    console.error('[getH2HTable] failed:', e instanceof Error ? e.message : e)
+    return { rows: [], source: 'unavailable' }
+  }
+}
+
 // ─── The featured scout report ──────────────────────────────────────────────
 
 export type FeaturedScout = {
@@ -980,6 +1015,7 @@ export type FeaturedScout = {
   starter: FeaturedStarter
   opp: { id: number; abbr: string; name: string; short: string; city: string; starterLast: string | null }
   h2h: H2H
+  h2hTable: H2HTable
   throughDate: string | null
 }
 
@@ -997,7 +1033,7 @@ export async function getFeaturedScout(slate: HomeSlate | null): Promise<Feature
   const oppTeam = findTeamByName(other.team.name)
   const oppShort = oppTeam?.short ?? other.team.name
   const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine), mine.team.name)
-  const h2h = await getMostPaAgainst(starter.id, other.team.id, oppShort)
+  const [h2h, h2hTable] = await Promise.all([getMostPaAgainst(starter.id, other.team.id, oppShort), getH2HTable(starter.id, other.team.id, slate.date, g.gamePk)])
 
   const post = isPostseason(g)
   const kicker = post && g.seriesDescription
@@ -1013,6 +1049,7 @@ export async function getFeaturedScout(slate: HomeSlate | null): Promise<Feature
     starter,
     opp: { id: other.team.id, abbr: abbrOf(other), name: other.team.name, short: oppShort, city: cityOf(other.team.name, oppShort), starterLast: lastName(other.probablePitcher?.fullName) ?? null },
     h2h,
+    h2hTable,
     throughDate: starter.throughDate,
   }
 }
