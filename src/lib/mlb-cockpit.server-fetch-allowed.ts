@@ -11,3 +11,14 @@ export async function mlb<T>(path: string): Promise<T | null> {
     return null
   }
 }
+
+/** Same as mlb() but against the v1.1 API (game feed: linescore, boxscore, decisions, weather, officials). Cached 5 minutes. */
+export async function mlb11<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`https://statsapi.mlb.com/api/v1.1${path}`, { signal: AbortSignal.timeout(10000), next: { revalidate: REVALIDATE_SECONDS } })
+    return res.ok ? ((await res.json()) as T) : null
+  } catch (e) {
+    console.error('[game-tabs] fetch failed:', path, e instanceof Error ? e.message : e)
+    return null
+  }
+}

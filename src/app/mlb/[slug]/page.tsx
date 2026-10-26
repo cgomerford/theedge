@@ -36,6 +36,7 @@ import { Suspense, cache } from 'react'
 import { after } from 'next/server'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
+import { PitchersTab } from '@/components/game-tabs/PitchersTab'
 import LiveTicker from '@/components/LiveTicker'
 import KeyPlayersSlotAsync from '@/components/KeyPlayersSlotAsync'
 import { SeriesTeamPlayerCard } from '@/components/SeriesPlayerStats'
@@ -56,7 +57,7 @@ import FollowControl from '@/components/signup/FollowControl'
 import Tabs from '@/components/ui/Tabs'
 import { TeamMark } from '@/components/home/Logo'
 import { PreviewTab } from '@/components/game-cockpit/PreviewTab'
-import { PitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
+import { PitchersTab as OldPitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
 import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
@@ -499,17 +500,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
 
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === 'preview' && <Suspense fallback={tabFallback}><PreviewTab ctx={cockpitCtx} seriesLabel={seriesContext} /></Suspense>}
-            {tab === 'pitchers' && (
-              <Suspense fallback={tabFallback}>
-                <PitchersTab ctx={cockpitCtx} zones={
-                  <div className="gc-two">
-                    {(['away', 'home'] as const).map(side => (
-                      <Suspense key={side} fallback={<Skeleton h={260} label="Starting Pitcher" />}><PitcherAsync ctx={ctx} side={side} /></Suspense>
-                    ))}
-                  </div>
-                } />
-              </Suspense>
-            )}
+            {tab === 'pitchers' && <Suspense fallback={tabFallback}><PitchersTab ctx={cockpitCtx} /></Suspense>}
             {tab === 'batters' && (
               <Suspense fallback={tabFallback}>
                 <BattersTab ctx={cockpitCtx} zones={
