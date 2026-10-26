@@ -1059,6 +1059,8 @@ export type FeaturedScout = {
   h2h: H2H
   h2hTable: H2HTable
   throughDate: string | null
+  /** World Series game: the card gets the gold background */
+  worldSeries: boolean
 }
 
 const cityOf = (fullName: string, short: string) => fullName.replace(short, '').trim() || fullName
@@ -1093,5 +1095,6 @@ export async function getFeaturedScout(slate: HomeSlate | null): Promise<Feature
     h2h,
     h2hTable,
     throughDate: starter.throughDate,
+    worldSeries: g.gameType === 'W',
   }
 }

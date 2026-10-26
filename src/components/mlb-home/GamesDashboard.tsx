@@ -103,8 +103,9 @@ function Card({ g, compact, live }: { g: DashGame; compact: boolean; live: Live 
   const showScore = group !== 'upcoming' && !/postponed|cancelled/i.test(state)
   const time = g.startsAfterGame1 ? 'Starts after Game 1' : `${fmtTime(g.startUtc, 'Europe/London')} UK (${fmtTime(g.startUtc, 'America/New_York')} ET)`
   const ac = colorOf(g.away.id), hc = colorOf(g.home.id)
+  const ws = g.series?.label === 'World Series'   // gold background marks a World Series game
   return (
-    <article style={{ display: 'grid', gridTemplateColumns: '6px minmax(0,1fr)', background: '#fff', border: '1px solid #e7e2d8', borderRadius: 2 }}>
+    <article style={{ display: 'grid', gridTemplateColumns: '6px minmax(0,1fr)', background: ws ? 'linear-gradient(165deg, #FDE047 0%, #FBEA9A 38%, #ffffff 88%)' : '#fff', border: `1px solid ${ws ? '#F5C518' : '#e7e2d8'}`, borderRadius: 2 }}>
       <div aria-hidden="true" style={{ background: `linear-gradient(180deg, ${ac} 50%, ${hc} 50%)` }} />
       <div style={{ padding: compact ? '10px 14px 12px' : '14px 18px 16px', display: 'grid', gap: compact ? 8 : 12, minWidth: 0 }}>
         <header className="dc-head">

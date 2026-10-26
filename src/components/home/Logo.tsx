@@ -16,6 +16,6 @@ export function TeamMark({ id, abbr, size = 24 }: { id: number; abbr: string; si
 export function Headshot({ id, name, size = 40 }: { id: number; name: string; size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={headshotUrl(id, size * 2)} alt={name} width={size} height={size} style={{ borderRadius: '50%', objectFit: 'cover', background: '#f1eee6', border: '1px solid #e7e2d8', flexShrink: 0 }} />
+    <img src={headshotUrl(id, size * 2)} alt={name} width={size} height={size} style={{ width: size, height: size, minWidth: size, minHeight: size, maxWidth: 'none', aspectRatio: '1 / 1', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top', background: '#f1eee6', border: '1px solid #e7e2d8', flexShrink: 0, display: 'block' }} />
   )
 }
