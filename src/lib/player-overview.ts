@@ -18,6 +18,24 @@ const n = (v: unknown) => (v == null || v === '' ? null : Number.isFinite(Number
 export type GameLine = { date: string; opp: string; home: boolean; stage: string | null; stat: Record<string, string | number>; slug: string | null }
 export type SplitRow = { label: string; n: number; stat: Record<string, string | number> }
 export type BatterPitchRow = { code: string; name: string; pa: number; whiffPct: number | null; xwoba: number | null }
+// League-average spin and movement per pitch type, from the heaviest-used pitcher-months in pitch_shape_monthly (kept 6 hours in memory).
+// Drives the turning baseballs for a batter's vs-pitch-type table, where no single pitcher's spin applies.
+const leagueSpin = new Map<string, { at: number; v: { rpm: number | null; ivb: number | null; hb: number | null } }>()
+export async function getLeagueSpin(season: number, codes: string[]): Promise<Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>> {
+  const out: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }> = {}
+  await Promise.all(codes.map(async code => {
+    const key = `${season}|${code}`
+    const hit = leagueSpin.get(key)
+    if (hit && Date.now() - hit.at < 6 * 3600_000) { out[code] = hit.v; return }
+    const { data, error } = await createAdminClient().from('pitch_shape_monthly').select('n_pitches, release_spin_rate, ivb, hb').eq('season', season).eq('pitch_type', code).order('n_pitches', { ascending: false }).limit(400)
+    if (error) { console.error('[getLeagueSpin] Supabase error:', error.message); return }
+    const wavg = (f: string) => { let sum = 0, n = 0; for (const r of (data ?? []) as Record<string, unknown>[]) { const v = r[f] == null ? NaN : Number(r[f]), w = Number(r.n_pitches ?? 0); if (Number.isFinite(v) && w > 0) { sum += v * w; n += w } } return n >= 100 ? sum / n : null }
+    const v = { rpm: wavg('release_spin_rate'), ivb: wavg('ivb'), hb: wavg('hb') }
+    leagueSpin.set(key, { at: Date.now(), v }); out[code] = v
+  }))
+  return out
+}
+
 export type PlayerOverview = {
   isPitcher: boolean
   season: number
@@ -29,7 +47,7 @@ export type PlayerOverview = {
   splits: SplitRow[]
   last30: { stat: Record<string, string | number>; n: number } | null
   mix: PitchMixRow[]; mixPitches: number; spin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>
-  vsPitch: BatterPitchRow[]; vsPitchThrough: string | null
+  vsPitch: BatterPitchRow[]; vsPitchThrough: string | null; vsPitchSpin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>
   percentiles: { stats: PercentileStat[]; qualified: boolean } | null
   /** batters: rank among the league's top 500 for each counting/rate stat (same method as the Batting Lab); empty when he is outside every top 500 */
   batterPercentiles: { key: string; label: string; value: string; percentile: number }[]
@@ -108,6 +126,7 @@ export async function getPlayerOverview(data: PlayerPageData): Promise<PlayerOve
     isPitcher, season, seasonNote, line, lineN, recent, latest: games[0] ?? null, splits,
     last30: l30 && l30n >= 30 ? { stat: l30, n: l30n } : null,
     mix, mixPitches, spin, vsPitch, vsPitchThrough,
+    vsPitchSpin: isPitcher ? {} : await getLeagueSpin(season, vsPitch.map(r => r.code)),
     percentiles: pct,
     batterPercentiles: isPitcher ? [] : BATTER_METRICS.flatMap((k, i) => {
       const r = (batPct as ({ percentile: number } | null)[])[i]

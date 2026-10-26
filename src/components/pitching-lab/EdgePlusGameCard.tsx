@@ -244,7 +244,7 @@ export default function EdgePlusGameCard({
                   <p className="text-[10px] sm:text-[11px] font-mono text-stone-500">{fmtDateShort(activeDate)}{opponents[activeDate] ? ` vs ${opponents[activeDate]}` : ''}</p>
                 </div>
               </div>
-              <p className="relative text-[8px] font-mono uppercase tracking-widest text-stone-400">Edge+ Game Card</p>
+              <p className="relative text-[8px] font-mono uppercase tracking-widest text-stone-400">Stuff Game Card</p>
             </div>
 
             <div className="flex-1 p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -287,7 +287,7 @@ export default function EdgePlusGameCard({
               })}
             </div>
           </div>
-          <p className="text-[9px] font-mono text-stone-400 px-1">Real per-pitch counts/averages from this exact start. Edge+ gauges shown are this pitcher&apos;s season-long grade — a single game is too small a sample to honestly re-rank against a league pool.</p>
+          <p className="text-[9px] font-mono text-stone-400 px-1">Real per-pitch counts/averages from this exact start. Stuff gauges shown are this pitcher&apos;s season-long grade — a single game is too small a sample to honestly re-rank against a league pool.</p>
 
           {/* Real velo across the outing — every pitch, true thrown order, plus a faint linear trend per pitch */}
           {veloByType.length > 0 && (

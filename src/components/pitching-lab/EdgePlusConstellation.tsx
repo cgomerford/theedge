@@ -86,9 +86,9 @@ export default function EdgePlusConstellation({ pitcherId, pitches }: { pitcherI
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Edge+ constellation</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Stuff constellation</p>
       <p className="text-[10px] font-mono text-stone-400 mb-3">
-        Node size = Edge+ score. Each pitch&apos;s satellites are always in the same order — 12 o&apos;clock Whiff%, clockwise through Hard-Hit%, xwOBA, Put-Away%, Extension, Spin, Velo, Movement — brighter/bigger satellite = higher real percentile. Hover or tap any dot — it expands with the real number.
+        Node size = Stuff score. Each pitch&apos;s satellites are always in the same order — 12 o&apos;clock Whiff%, clockwise through Hard-Hit%, xwOBA, Put-Away%, Extension, Spin, Velo, Movement — brighter/bigger satellite = higher real percentile. Hover or tap any dot — it expands with the real number.
       </p>
       <div ref={containerRef} className="relative w-full max-w-[640px] mx-auto" onMouseLeave={clearHover}>
         <svg viewBox={`0 0 ${size} ${size}`} className="w-full block">
@@ -141,7 +141,7 @@ export default function EdgePlusConstellation({ pitcherId, pitches }: { pitcherI
             const isHovered = hover?.key === key
             const baseR = 20 + ((p.score ?? 0) / 100) * 16
             const r = isHovered ? baseR * 1.15 : baseR
-            const sub = `Edge+ ${p.score ?? 'unranked'}`
+            const sub = `Stuff ${p.score ?? 'unranked'}`
             return (
               <g key={key}>
                 <circle

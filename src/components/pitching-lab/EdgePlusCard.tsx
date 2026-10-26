@@ -82,7 +82,7 @@ export default function EdgePlusCard({ pitcherId, pitchType, pitchName, stats }:
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Edge+ — {pitchName}</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Stuff — {pitchName}</p>
       <p className="text-[10px] font-mono text-stone-400 mb-4">This app&apos;s own composite grade — not the industry Stuff+ (confirmed unavailable from any source this app can reach). Real percentiles below; the 4 physical-trait weights (spin/extension/velo/movement) come from a real regression (N={STUFF_MODEL_N.toLocaleString()}, R²={(STUFF_MODEL_R2 * 100).toFixed(1)}%) — honestly modest explanatory power, disclosed rather than hidden behind a clean-looking number.</p>
 
       <div className="flex items-center gap-4 mb-5">

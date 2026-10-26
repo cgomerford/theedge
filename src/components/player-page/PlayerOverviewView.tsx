@@ -7,6 +7,7 @@ import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import PendingBlock from '@/components/data/PendingBlock'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
 import { findTeamByName } from '@/lib/teams'
+import { ordinal } from '@/lib/ordinal'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import type { PlayerPageData } from '@/lib/player-page'
@@ -155,10 +156,12 @@ export function Arsenal({ o }: { o: PlayerOverview }) {
   return (
     <>
       <Table head={['Pitch', 'Whiff%', 'xwOBA', 'n PA']} rows={o.vsPitch.map(r => [
-        <span key={r.code} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 10, height: 10, background: pitchColor(r.code), display: 'inline-block' }} />{pitchLabel(r.code)}{r.pa < MIN_SAMPLE.vsPitchTypeSeen ? <Star /> : null}</span>,
+        <span key={r.code} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><SpinBall code={r.code} spin={o.vsPitchSpin[r.code]} />{pitchLabel(r.code)}{r.pa < MIN_SAMPLE.vsPitchTypeSeen ? <Star /> : null}</span>,
         r.whiffPct == null ? '' : `${r.whiffPct.toFixed(1)}%`, r.xwoba == null ? '' : r.xwoba.toFixed(3).replace(/^0/, ''), r.pa.toLocaleString('en-US'),
       ])} />
+      <SpinBallStyles />
       <ThroughDate date={o.vsPitchThrough} />
+      <div style={{ fontSize: 12, color: MUTE, marginTop: 4 }}>The turning ball shows the league-average spin and movement for that pitch type.</div>
       <Note text={`under ${MIN_SAMPLE.vsPitchTypeSeen} plate appearances against that pitch`} />
     </>
   )
@@ -184,10 +187,10 @@ export function Percentiles({ o }: { o: PlayerOverview }) {
       <>
         <div style={{ display: 'grid', gap: 6 }}>
           {o.batterPercentiles.map(s => (
-            <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 92px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
+            <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '84px 1fr 112px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
               <span style={{ fontWeight: 700 }}>{s.label}</span>
               <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: '#1A1A1A', width: `${s.percentile}%` }} /></span>
-              <span style={{ textAlign: 'right' }}><b>{s.value}</b>{smallB ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>{s.percentile}th</span></span>
+              <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{smallB ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile)}</b></span>
             </div>
           ))}
         </div>
@@ -203,10 +206,10 @@ export function Percentiles({ o }: { o: PlayerOverview }) {
     <>
       <div style={{ display: 'grid', gap: 6 }}>
         {p.stats.filter(s => s.percentile != null).map(s => (
-          <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 92px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
+          <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '84px 1fr 112px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
             <span style={{ fontWeight: 700 }}>{s.label}</span>
             <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: '#1A1A1A', width: `${s.percentile}%` }} /></span>
-            <span style={{ textAlign: 'right' }}><b>{s.value}</b>{small ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>{s.percentile}th</span></span>
+            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{small ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile as number)}</b></span>
           </div>
         ))}
       </div>

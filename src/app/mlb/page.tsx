@@ -85,7 +85,7 @@ export default async function MLBPage() {
        <div className="ml-layout">
         <div style={{ minWidth: 0 }}>
         <HomeAskOrFollows>{null}</HomeAskOrFollows>
-        <GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} />
+        <div id="scout-reports" style={{ scrollMarginTop: 16 }}><GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} /></div>
         <BracketOrStandings season={season} bracket={bracket} divisions={divisions} />
         <Leaders season={season} groups={[{ label: 'HOME RUNS', rows: hr }, { label: 'BATTING AVERAGE', rows: avg }, { label: 'STRIKEOUTS', rows: so }]} />
         {season.state !== 'offseason' && <HotThisWeek hitters={hitters} pitchers={pitchers} week={WEEK_LABEL(date)} post={post} />}

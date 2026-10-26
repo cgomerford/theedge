@@ -15,6 +15,8 @@ import { getScheduleForDate, slugifyGame, teamLogoUrl, type MLBGame } from '@/li
 import { createAdminClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import MLBSubNav from '@/components/MLBSubNav'
+import ContextStrip from '@/components/nav/ContextStrip'
 import SiteHeader from '@/components/SiteHeader'
 import LiveTicker from '@/components/LiveTicker'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -44,6 +46,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ['Free account.'],
   )
   return pageMeta({ title, description, path: `/mlb/${slug}/scout-report`, type: 'article' })
+}
+
+const ROUND_SHORT: Record<string, string> = { 'World Series': 'WS', 'League Championship Series': 'LCS', 'Division Series': 'DS', 'Wild Card Game': 'WC', 'Wild Card Series': 'WC' }
+
+// Breadcrumb strip under the MLB tabs. Uses only what the schedule row for this game already holds; a missing part is dropped.
+function ScoutStrip({ game, slug, isFinal, awayAbbr, homeAbbr, gameDate }: { game: MLBGame; slug: string; isFinal: boolean; awayAbbr: string; homeAbbr: string; gameDate: string }) {
+  const series = game.seriesDescription && game.seriesDescription !== 'Regular Season' ? game.seriesDescription : null
+  const gameNo = series && game.seriesGameNumber ? game.seriesGameNumber : null
+  const when = new Date(game.gameDate)
+  const day = new Date(`${gameDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }).toLowerCase().replace(' ', '') // 8:00pm
+  const timeEt = `${time.replace(/(am|pm)$/, ' $1')} ET`
+  const venue = game.venue?.name
+  return (
+    <ContextStrip
+      left={<>
+        <span className="x9-strip-d">MLB / {series ?? 'Regular season'} / {gameNo ? `Game ${gameNo} / ` : ''}<b>Scout report</b> <span style={{ color: '#B5AFA2' }}>·</span> {awayAbbr} at {homeAbbr}, {day}, {timeEt}{venue ? `, ${venue}` : ''}</span>
+        <span className="x9-strip-m"><b>{awayAbbr} at {homeAbbr}</b> <span style={{ color: '#B5AFA2' }}>·</span> {series ? `${ROUND_SHORT[series] ?? series}${gameNo ? ` G${gameNo}` : ''} · ` : ''}{day}, {timeEt}</span>
+      </>}
+      right={<span className="x9-strip-d">Also: <a href={`/mlb/${slug}`}>Preview</a>{isFinal ? <> · <a href={`/mlb/${slug}/postgame`}>Postgame</a></> : ' · Postgame after the game'}</span>}
+    />
+  )
 }
 
 export default async function ScoutReportPage({ params, searchParams }: Props) {
@@ -81,42 +105,12 @@ export default async function ScoutReportPage({ params, searchParams }: Props) {
       <SportsEventSchema awayTeam={game.teams.away.team.name} homeTeam={game.teams.home.team.name} gameDate={game.gameDate} venue={game.venue?.name ?? null} path={`/mlb/${slug}/scout-report`} />
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${game.teams.away.team.name} vs ${game.teams.home.team.name}`, path: `/mlb/${slug}` }, { name: 'Scout report', path: `/mlb/${slug}/scout-report` }]} />
       <SiteHeader variant="page" />
+      <MLBSubNav />
       <LiveTicker />
       <div className="min-h-screen bg-stone-50">
-        <div className="x9-desk-sticky sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
-          <div className="flex items-center px-4 py-2 gap-2" style={centered}>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <img src={teamLogoUrl(game.teams.away.team.id)} alt={awayAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{awayAbbr}</span>
-            </div>
-
-            <div className="flex flex-col items-center shrink-0 px-1">
-              <span className="text-[11px] font-serif italic text-stone-400 leading-none">at</span>
-              <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">
-                {isFinal ? 'Final' : gameTimeFormatted}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{homeAbbr}</span>
-              <img src={teamLogoUrl(game.teams.home.team.id)} alt={homeAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0 ml-3">
-              <Link href={`/mlb/${slug}`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">
-                Game Preview →
-              </Link>
-              {isFinal && (
-                <Link href={`/mlb/${slug}/postgame`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">
-                  Postgame →
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <div className="px-4 py-2 border-t border-stone-100" style={centered}>
-            <h1 className="m-0 text-[12px] font-mono uppercase tracking-widest font-bold text-orange-600"><XMark /> {game.teams.away.team.name} vs {game.teams.home.team.name}: scout report</h1>
-          </div>
+        <ScoutStrip game={game} slug={slug} isFinal={isFinal} awayAbbr={awayAbbr} homeAbbr={homeAbbr} gameDate={dateMatch[1]} />
+        <div style={centered}>
+          <h1 className="m-0 px-4 pt-4 text-[12px] uppercase tracking-widest font-bold text-orange-600"><XMark /> {game.teams.away.team.name} vs {game.teams.home.team.name}: scout report</h1>
         </div>
 
         <div className="px-4 py-6" style={centered}>

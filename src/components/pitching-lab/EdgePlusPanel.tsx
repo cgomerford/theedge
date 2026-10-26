@@ -118,7 +118,7 @@ export default function EdgePlusPanel({
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-1">Edge+</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-1">Stuff</p>
           <p className="text-[13px] text-[#57534E] max-w-3xl">This app&apos;s own composite pitch grade, and why it lands where it does — 8 real league percentiles (whiff%, hard-hit%, xwOBA, put-away%, movement, velo, spin rate, release extension); the 4 physical-trait weights come from a real regression, not a hand pick (see the cards below). Below that, real release height and arm angle per pitch, plus a velo band over the last 8 starts. Movement itself (HB/IVB) is on the Arsenal tab.</p>
         </div>
         <div className="flex gap-1 shrink-0">
@@ -202,7 +202,7 @@ export default function EdgePlusPanel({
                 </tbody>
               </table>
             </div>
-            <p className="text-[9px] font-mono text-stone-400 px-4 py-3">All real per-pitch Statcast fields, season-wide. Spin and extension here are this pitcher&apos;s own raw averages; the Edge+ score above uses their real league percentile instead. Release height/arm angle still aren&apos;t blended into the score — no league pool to rank a release slot as better or worse.</p>
+            <p className="text-[9px] font-mono text-stone-400 px-4 py-3">All real per-pitch Statcast fields, season-wide. Spin and extension here are this pitcher&apos;s own raw averages; the Stuff score above uses their real league percentile instead. Release height/arm angle still aren&apos;t blended into the score — no league pool to rank a release slot as better or worse.</p>
           </>
         )}
       </div>

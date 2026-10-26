@@ -4,9 +4,13 @@ import XMark from '@/components/XMark'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { usePathname } from 'next/navigation'
 import LabsMenu from '@/components/LabsMenu'
+import PlayerSearch from '@/components/PlayerSearch'
+import { useAccount } from '@/components/header/useAccount'
 import { openSignup } from '@/components/signup/openSignup'
 import { LABS_MENU, STATUS_LABEL } from '@/lib/nav/labsMenu'
+import { MLB_TABS } from '@/lib/nav/mlbTabs'
 
 // ─── MLB Data ─────────────────────────────────────────────────────────────────
 
@@ -28,21 +32,8 @@ const MLB_DIVISIONS = [
   { label: 'NL West',    teams: [{ slug: 'diamondbacks', short: 'Arizona D-Backs' }, { slug: 'rockies', short: 'Colorado Rockies' }, { slug: 'dodgers', short: 'Los Angeles Dodgers' }, { slug: 'padres', short: 'San Diego Padres' }, { slug: 'giants', short: 'San Francisco Giants' }] },
 ]
 
-// Kept identical to MLBSubNav.tsx's MLB_NAV (same hrefs, labels, order,
-// pro flags) — the main header's MLB dropdown and the MLB pages' own sub
-// header must show the same links as each other, not two independently
-// drifted lists (Articles has its own standalone top-level link already,
-// so it's deliberately not repeated here).
-const MLB_SUB_LINKS = [
-  { href: '/mlb',              label: 'Home',           pro: false },
-  { href: '/mlb/scores',       label: 'Scores',         pro: false },
-  { href: '/mlb/stats',        label: 'Stats',          pro: false },
-  { href: '/mlb/lab/pitching-lab', label: 'Pitching Lab',   pro: false },
-  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab' },
-  { href: '/mlb/lab/contact',      label: 'Contact Lab',     pro: false },
-  { href: '/mlb/lab/platoon',      label: 'Platoon Lab',     pro: false },
-  { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
-]
+// MLB links come from the one shared list (src/lib/nav/mlbTabs.ts).
+const MLB_SUB_LINKS = MLB_TABS.map(t => ({ href: t.href, label: t.label, pro: false }))
 
 // ─── About / More Data ────────────────────────────────────────────────────────
 // Replaces four separate top-level links (About, Why the Edge, Pricing,
@@ -87,7 +78,7 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
               className="group flex items-center gap-1.5 font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
               {link.label}
              {link.pro && (
-  <span className="text-[9px] font-mono uppercase tracking-widest bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-sm group-hover:bg-[#FF5722]/10 group-hover:text-[#FF5722] transition">
+  <span className="text-[9px] uppercase tracking-widest bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded-sm group-hover:bg-[#FF5722]/10 group-hover:text-[#FF5722] transition">
     Pro
   </span>
 )}
@@ -96,7 +87,7 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-8 gap-y-2">
+        <div className="gap-x-8 gap-y-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}>
           {columns.map((col, ci) => (
             <div key={ci} className="flex flex-col gap-y-3">
               {col.map(team => (
@@ -411,155 +402,154 @@ const utilLink: React.CSSProperties = {
 
 
 // ─── SiteHeader ───────────────────────────────────────────────────────────────
+// One header for the whole site: wordmark, the MLB tab (the only sport for now), search, and the account area.
+// The account area resolves on the client from /api/auth/status (useAccount), so pages stay static/ISR.
+// Desktop: 60px row. Mobile: 56px row with search, account and a menu button (the menu itself is the drawer above).
 
 type Props = { variant?: 'home' | 'page' }
 
-export default function SiteHeader({ variant = 'page' }: Props) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [mlbOpen, setMlbOpen]       = useState(false)
-  const [aboutOpen, setAboutOpen]   = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [isPro, setIsPro]           = useState(false)
+const INK = '#1A1A1A', LINE = '#E8E4DC', MUTED = '#57534E'
+const FONT = 'var(--font-redhat), system-ui, sans-serif'
 
-  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+function ProTag() {
+  return <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 10, letterSpacing: '.1em', color: '#FF5722', border: '1px solid #FF5722', padding: '1px 5px', borderRadius: 2, lineHeight: 1.3 }}>PRO</span>
+}
 
-  const mlbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const aboutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
+function AccountArea({ mobile }: { mobile?: boolean }) {
+  const acct = useAccount()
+  const [menu, setMenu] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    fetch('/api/auth/status')
-      .then(r => r.json())
-      .then(d => {
-        setIsLoggedIn(d.authenticated === true)
-        setIsPro(d.is_pro === true)
-      })
-      .catch(() => {})
-  }, [])
+    if (!menu) return
+    const off = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setMenu(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false) }
+    document.addEventListener('mousedown', off); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', off); document.removeEventListener('keydown', esc) }
+  }, [menu])
 
-  // MLB hover handlers
-  const openMlb = () => {
-    if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
-    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
-    setAboutOpen(false)
-    setMlbOpen(true)
-  }
-  const closeMlb = () => {
-    mlbTimerRef.current = setTimeout(() => setMlbOpen(false), 150)
+  // Loading: the signed-out footprint with the controls invisible, so nothing shifts and no wrong state flashes.
+  if (acct.state === 'loading' || acct.state === 'signed-out') {
+    const hide: React.CSSProperties = acct.state === 'loading' ? { visibility: 'hidden' } : {}
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, ...hide }} aria-hidden={acct.state === 'loading' || undefined}>
+        <Link href="/login" className="x9h-dsk" style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, color: INK, textDecoration: 'none' }}>Sign in</Link>
+        <button type="button" className="x9h-signup" onClick={() => openSignup('header')}
+          style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13, color: '#fff', background: '#FF5722', border: 0, borderRadius: 2, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          Sign up
+        </button>
+      </div>
+    )
   }
 
-  // About hover handlers
-  const openAbout = () => {
-    if (aboutTimerRef.current) clearTimeout(aboutTimerRef.current)
-    if (mlbTimerRef.current) clearTimeout(mlbTimerRef.current)
-    setMlbOpen(false)
-    setAboutOpen(true)
-  }
-  const closeAbout = () => {
-    aboutTimerRef.current = setTimeout(() => setAboutOpen(false), 150)
-  }
+  const chip = (
+    <button type="button" onClick={() => setMenu(m => !m)} aria-haspopup="menu" aria-expanded={menu} aria-label="Account menu"
+      style={{ width: 34, height: 34, borderRadius: '50%', background: INK, color: '#fff', border: 0, fontFamily: FONT, fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+      {acct.initials}
+    </button>
+  )
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Link href="/me" className="x9h-dsk" style={{ fontFamily: FONT, fontSize: 13, color: MUTED, textDecoration: 'none' }}>Following</Link>
+      {acct.state === 'pro' && <ProTag />}
+      {chip}
+      {menu && (
+        <div role="menu" style={{ position: 'absolute', top: 42, right: 0, minWidth: 170, background: '#fff', border: `1px solid ${LINE}`, borderRadius: 2, zIndex: 60, padding: '4px 0' }}>
+          <Link role="menuitem" href="/me" onClick={() => setMenu(false)} style={{ display: 'block', padding: '9px 14px', fontFamily: FONT, fontSize: 14, fontWeight: 600, color: INK, textDecoration: 'none' }}>My x9Lab</Link>
+          <form action="/api/auth/logout" method="POST">
+            <button role="menuitem" type="submit" style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontFamily: FONT, fontSize: 14, fontWeight: 600, color: INK, background: 'none', border: 0, borderTop: `1px solid ${LINE}`, cursor: 'pointer' }}>Sign out</button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function SiteHeader({ variant = 'page' }: Props) {
+  void variant
+  const pathname = usePathname()
+  const acct = useAccount()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [mlbOpen, setMlbOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const mlbTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aboutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openMlb = () => { if (mlbTimer.current) clearTimeout(mlbTimer.current); if (aboutTimer.current) clearTimeout(aboutTimer.current); setAboutOpen(false); setMlbOpen(true) }
+  const closeMlb = () => { mlbTimer.current = setTimeout(() => setMlbOpen(false), 150) }
+  const openAbout = () => { if (aboutTimer.current) clearTimeout(aboutTimer.current); if (mlbTimer.current) clearTimeout(mlbTimer.current); setMlbOpen(false); setAboutOpen(true) }
+  const closeAbout = () => { aboutTimer.current = setTimeout(() => setAboutOpen(false), 150) }
+  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+  const mlbActive = pathname === '/' || pathname?.startsWith('/mlb')
 
   return (
     <>
-      <header style={{ position: 'relative', zIndex: 50, borderBottom: '1px solid #E8E4DC', background: '#FAF8F3' }}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-
-            {/* LEFT: Hamburger + Logo + Nav */}
-            <div className="flex items-center flex-1">
-
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(o => !o)}
-                aria-label="Open menu"
-                className="flex flex-col justify-center items-center w-8 h-8 gap-[5px] hover:opacity-60 transition shrink-0 mr-3 md:mr-4"
-              >
-                <span className="block w-[18px] h-px bg-stone-900 rounded-full" />
-                <span className="block w-[18px] h-px bg-stone-900 rounded-full" />
-                <span className="block w-[18px] h-px bg-stone-900 rounded-full" />
-              </button>
-
-              <Link
-                href="/"
-                aria-label="x9Lab home"
-                className="hover:opacity-70 transition flex items-center shrink-0"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/x9labs-mark.png" alt="x9Lab" height={40} style={{ height: 40, width: 'auto', display: 'block' }} />
-              </Link>
-
-              <div className="hidden md:block w-px h-6 bg-stone-300 mx-4 lg:mx-6 shrink-0" />
-
-              <nav className="hidden md:flex items-center gap-4 lg:gap-6 flex-1">
-
-                {/* MLB dropdown */}
-                <div className="relative h-full flex items-center" onMouseEnter={openMlb} onMouseLeave={closeMlb}>
-                  <button className={`py-2 font-sans text-[14px] transition flex items-center gap-1.5 ${mlbOpen ? 'text-stone-900 font-bold' : 'text-stone-500 hover:text-stone-900'}`}>
-                    MLB
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`transition-transform ${mlbOpen ? 'rotate-180' : ''}`}>
-                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </div>
-
-
-{/* Articles — standalone link, not a dropdown */}
-                <Link href="/articles" className="py-2 font-sans text-[14px] text-stone-500 hover:text-stone-900 transition">
-                  Articles
-                </Link>
-
-                {/* Labs — one data array drives it (src/lib/nav/labsMenu.ts) */}
-                <LabsMenu />
-
-                {/* About dropdown — replaces separate About / Why the Edge / Pricing / Past Games links */}
-                <div className="relative h-full flex items-center" onMouseEnter={openAbout} onMouseLeave={closeAbout}>
-                  <button className={`py-2 font-sans text-[14px] transition flex items-center gap-1.5 ${aboutOpen ? 'text-stone-900 font-bold' : 'text-stone-500 hover:text-stone-900'}`}>
-                    About
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className={`transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>
-                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  {aboutOpen && <AboutMegaPanel onClose={() => setAboutOpen(false)} />}
-                </div>
-              </nav>
+      <style>{`
+        .x9h{position:relative;z-index:50;background:#FAF8F3;border-bottom:1px solid ${LINE}}
+        .x9h-row{display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;max-width:1400px;margin:0 auto}
+        .x9h-wm{display:flex;align-items:center;flex-shrink:0;text-decoration:none}
+        .x9h-sports,.x9h-search{display:none}
+        .x9h-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+        .x9h-ico{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;padding:0}
+        .x9h-sub{display:block;padding:0 16px 10px}
+        @media (min-width:768px){
+          .x9h-row{height:60px;padding:0 32px;gap:28px}
+          .x9h-sports{display:flex;align-self:stretch}
+          .x9h-search{display:block;margin-left:auto;width:360px;max-width:36vw}
+          .x9h-right{margin-left:0;gap:18px}
+          .x9h-ico{display:none}
+          .x9h-sub{display:none}
+        }
+        .x9h-tab{display:inline-flex;align-items:center;height:100%;padding:0;border-bottom:3px solid transparent;margin-bottom:-1px;font-family:${FONT};font-weight:800;font-size:15px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:${MUTED}}
+        .x9h-tab[aria-current="page"]{color:${INK};border-bottom-color:#FF5722}
+        .x9h-signup{padding:8px 12px}
+        .x9h-dsk{display:none}
+        .x9h-sports{gap:22px;align-items:stretch}
+        .x9h-item{display:flex;align-items:center}
+        .x9h-link{display:inline-flex;align-items:center;font-family:${FONT};font-weight:600;font-size:14px;color:${MUTED};text-decoration:none;background:none;border:0;padding:0;cursor:pointer}
+        .x9h-link:hover{color:${INK}}
+        .x9h-caret{display:inline-block;width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);margin-left:7px}
+        .x9h-hide-d{display:inline-flex}
+        @media (min-width:768px){.x9h-hide-d{display:none}.x9h-dsk{display:inline}.x9h-signup{padding:9px 16px;font-size:14px}}
+      `}</style>
+      <header className="x9h">
+        <div className="x9h-row">
+          <Link href="/" aria-label="x9Lab home" className="x9h-wm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/x9labs-mark.png" alt="x9Lab" style={{ height: 36, width: 'auto', display: 'block' }} />
+          </Link>
+          <nav className="x9h-sports" aria-label="Main">
+            <div className="x9h-item" onMouseEnter={openMlb} onMouseLeave={closeMlb}>
+              <Link href="/mlb" className="x9h-tab" aria-current={mlbActive ? 'page' : undefined} aria-expanded={mlbOpen}>MLB<span className="x9h-caret" aria-hidden="true" /></Link>
             </div>
-
-            {/* RIGHT: Auth */}
-            <div className="flex items-center gap-4 ml-auto pl-4 shrink-0">
-              {isLoggedIn ? (
-                <Link href="/me" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition whitespace-nowrap">
-                  My page
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition hidden sm:block whitespace-nowrap">
-                    Log in
-                  </Link>
-                  <button type="button" onClick={() => openSignup('header')} className="font-sans text-[13px] font-bold bg-[#FF5722] text-white px-4 py-2 hover:bg-orange-700 transition rounded-sm whitespace-nowrap">
-                    Sign up
-                  </button>
-                </>
-              )}
+            <Link href="/articles" className="x9h-link">Articles</Link>
+            <div className="x9h-item"><LabsMenu /></div>
+            <div className="x9h-item" style={{ position: 'relative' }} onMouseEnter={openAbout} onMouseLeave={closeAbout}>
+              <button type="button" className="x9h-link x9h-btn" aria-expanded={aboutOpen}>About<span className="x9h-caret" aria-hidden="true" /></button>
+              {aboutOpen && <AboutMegaPanel onClose={() => setAboutOpen(false)} />}
             </div>
-
+          </nav>
+          <div className="x9h-search"><PlayerSearch header sport="MLB" placeholder="Search players" /></div>
+          <div className="x9h-right">
+            <button type="button" className="x9h-ico x9h-hide-d" aria-label="Search" aria-expanded={searchOpen} onClick={() => setSearchOpen(o => !o)}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" stroke={INK} strokeWidth="2" /><path d="M13 13l5 5" stroke={INK} strokeWidth="2" strokeLinecap="round" /></svg>
+            </button>
+            <AccountArea mobile={false} />
+            <button type="button" className="x9h-ico" aria-label={drawerOpen ? 'Close menu' : 'Open menu'} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(o => !o)}>
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+                {drawerOpen ? <path d="M4 4l12 12M16 4L4 16" stroke={INK} strokeWidth="2" strokeLinecap="round" /> : <path d="M3 5h14M3 10h14M3 15h14" stroke={INK} strokeWidth="2" strokeLinecap="round" />}
+              </svg>
+            </button>
           </div>
         </div>
-
-        {/* MLB mega panel */}
+        {searchOpen && <div className="x9h-sub"><PlayerSearch header autoFocus sport="MLB" placeholder="Search players" /></div>}
         {mlbOpen && (
           <div onMouseEnter={openMlb} onMouseLeave={closeMlb}>
             <MLBMegaPanel onClose={() => setMlbOpen(false)} />
           </div>
         )}
-
-
       </header>
 
-      <MobileDrawer
-        open={drawerOpen}
-        onClose={closeDrawer}
-        isLoggedIn={isLoggedIn}
-        isPro={isPro}
-      />
+      <MobileDrawer open={drawerOpen} onClose={closeDrawer} isLoggedIn={acct.state === 'free' || acct.state === 'pro'} isPro={acct.state === 'pro'} />
     </>
   )
 }

@@ -3,126 +3,37 @@
 /**
  * src/components/MLBSubNav.tsx
  *
- * Replaces the current sub-nav strip on the MLB homepage.
- * Only links to routes that actually exist.
- * Designed to sit between SiteHeader and the page content.
- *
- * Real routes linked:
- *   /mlb              — Home (exists)
- *   /mlb/scores       — Live Scores (exists)
- *   /mlb/abs          — ABS Challenges (exists)
- *   /mlb/stats        — Stats search (exists — /mlb/leaders now just redirects here)
- *   /mlb/glossary     — Stats glossary (exists)
- *   /mlb/lab/batting-lab  — Batting Lab (placeholder — real thing lives per-game today, see GamePageShell.tsx)
- *   /track-record     — Past Games (exists)
- *
- * Kept identical to SiteHeader.tsx's MLB_SUB_LINKS (same hrefs, labels,
- * order, pro flags) — the main header's MLB dropdown and this sub header
- * must show the same links as each other. Update both together.
+ * The MLB sub-header: underline tabs (shared Tabs component, 3px orange bar). One list for the whole site: src/lib/nav/mlbTabs.ts.
+ * 44px row, white, 1px bottom border. On mobile the row scrolls sideways with a soft fade over the right edge,
+ * and the active tab is scrolled into view (Tabs does that on mount).
  */
 
-import Link from 'next/link'
+import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
+import Tabs from '@/components/ui/Tabs'
+import { MLB_TABS, activeMlbTab } from '@/lib/nav/mlbTabs'
 
-type NavItem = {
-  href: string
-  label: string
-  pro?: boolean
-  external?: boolean
-}
-
-const MLB_NAV: NavItem[] = [
-  { href: '/mlb',              label: 'Home'          },
-  { href: '/mlb/scores',       label: 'Scores'        },
-  { href: '/mlb/stats',        label: 'Stats'         },
-  { href: '/mlb/lab/pitching-lab', label: 'Pitching Lab' },
-  { href: '/mlb/lab/batting-lab',  label: 'Batting Lab' },
-  { href: '/mlb/lab/contact',      label: 'Contact Lab' },
-  { href: '/mlb/lab/platoon',      label: 'Platoon Lab' },
-  { href: '/mlb/glossary',     label: 'Glossary'      },
-]
-
-export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
+export default function MLBSubNav({ isPro }: { isPro?: boolean } = {}) {
+  void isPro
   const pathname = usePathname()
-
   return (
-    <>
+    <nav className="mlb-subnav" aria-label="MLB navigation">
       <style>{`
-        .mlb-subnav {
-          background: #FAF8F3;
-          border-bottom: 1px solid #e7e2d8;
-          overflow-x: auto;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        .mlb-subnav::-webkit-scrollbar { display: none; }
-        .mlb-subnav-inner {
-          display: flex;
-          align-items: flex-end;
-          max-width: 1160px;
-          margin: 0 auto;
-          padding: 0 24px;
-          gap: 28px;
-          white-space: nowrap;
-        }
-        .mlb-subnav-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 16px 2px 12px;
-          font-family: var(--font-redhat), system-ui, sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          text-decoration: none;
-          color: #3a352c;
-          border-bottom: 3px solid transparent;
-          margin-bottom: -1px;
-          transition: color 0.12s, border-color 0.12s;
-          position: relative;
-          flex-shrink: 0;
-        }
-        .mlb-subnav-link:hover {
-          color: #1A1A1A;
-        }
-        .mlb-subnav-link.active {
-          color: #1A1A1A;
-          font-weight: 800;
-          border-bottom-color: #E8603A;
-        }
-        .mlb-subnav-pro {
-          font-family: 'Red Hat Display', sans-serif;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          color: #FF5722;
-          background: rgba(255,87,34,0.08);
-          padding: 2px 5px;
-          border-radius: 2px;
-          flex-shrink: 0;
-        }
+        .mlb-subnav{position:relative;background:#fff;border-bottom:1px solid #E8E4DC}
+        .mlb-subnav .x9-tabs{background:#fff;border-bottom:0;gap:20px;padding:0 16px;max-width:1400px;margin:0 auto}
+        .mlb-subnav .x9-tab{height:44px;display:inline-flex;align-items:center;padding:0;margin-bottom:0;font-weight:600;font-size:15px;color:#57534E}
+        .mlb-subnav .x9-tab[aria-selected="true"]{color:#1A1A1A}
+        .mlb-subnav::after{content:"";position:absolute;top:0;right:0;bottom:1px;width:32px;pointer-events:none;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+        @media (min-width:768px){.mlb-subnav .x9-tabs{gap:24px;padding:0 32px}.mlb-subnav::after{display:none}}
       `}</style>
-
-      <nav className="mlb-subnav" aria-label="MLB navigation">
-        <div className="mlb-subnav-inner">
-          {MLB_NAV.map(item => {
-            const isActive = pathname === item.href ||
-              (item.href !== '/mlb' && pathname?.startsWith(item.href))
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`mlb-subnav-link${isActive ? ' active' : ''}`}
-              >
-                {item.label}
-                {item.pro && (
-                  <span className="mlb-subnav-pro">PRO</span>
-                )}
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
-    </>
+      <Suspense fallback={<div style={{ height: 44 }} />}>
+        <Tabs
+          label="MLB sections"
+          sticky={false}
+          activeId={activeMlbTab(pathname) ?? ''}
+          tabs={MLB_TABS.map(t => ({ id: t.id, label: t.label, href: t.href }))}
+        />
+      </Suspense>
+    </nav>
   )
 }

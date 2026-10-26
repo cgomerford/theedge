@@ -31,7 +31,7 @@ export default function EdgePlusRadarChart({ pitches }: { pitches: RadarPitch[] 
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Edge+, one graphic</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Stuff, one graphic</p>
       <p className="text-[10px] font-mono text-stone-400 mb-3">Every pitch overlaid on the same 6 real percentile axes — where each one wins, and where it doesn&apos;t.</p>
       <ResponsiveContainer width="100%" height={360}>
         <RadarChart data={data} outerRadius="68%">

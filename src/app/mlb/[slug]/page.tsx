@@ -35,6 +35,7 @@ import { notFound } from 'next/navigation'
 import { Suspense, cache } from 'react'
 import { after } from 'next/server'
 import SiteHeader from '@/components/SiteHeader'
+import MLBSubNav from '@/components/MLBSubNav'
 import LiveTicker from '@/components/LiveTicker'
 import KeyPlayersSlotAsync from '@/components/KeyPlayersSlotAsync'
 import { SeriesTeamPlayerCard } from '@/components/SeriesPlayerStats'
@@ -455,6 +456,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${awayTeam.name} at ${homeTeam.name}`, path: `/mlb/${slug}` }]} />
       <style>{`.gc-two{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}.gc-three{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.gc-two,.gc-three{grid-template-columns:1fr}}`}</style>
       <SiteHeader variant="page" />
+      <MLBSubNav />
       <LiveTicker />
       <div className="min-h-screen" style={{ background: '#FAF8F3' }}>
         <div className="px-4 py-6" style={centered}>

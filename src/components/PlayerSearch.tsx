@@ -34,11 +34,18 @@ export default function PlayerSearch({
   sport = 'ALL',
   rounded = false,
   labLinks = false,
+  header = false,
+  placeholder,
+  autoFocus = false,
 }: {
   sport?: 'ALL' | 'MLB' | 'NFL'
   rounded?: boolean
   /** MLB results open the player's lab (pitchers: Pitching Lab, everyone else: Batting Lab; two-way players get both) */
   labLinks?: boolean
+  /** Site header style: 36px white field with a magnifier, full width of its container */
+  header?: boolean
+  placeholder?: string
+  autoFocus?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Result[]>([])
@@ -110,14 +117,20 @@ export default function PlayerSearch({
   const showDropdown = open && query.trim().length >= 2
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md mx-auto">
+    <div ref={containerRef} className={header ? 'relative w-full' : 'relative w-full max-w-md mx-auto'}>
+      {header ? (
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 20 20" fill="none" style={{ position: 'absolute', left: 11, top: 10.5, pointerEvents: 'none' }}>
+          <circle cx="8.5" cy="8.5" r="6" stroke="#8A8577" strokeWidth="2" /><path d="M13 13l5 5" stroke="#8A8577" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      ) : null}
       <input
+        autoFocus={autoFocus}
         value={query}
         onChange={(e) => { setQuery(e.target.value) }}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
-        placeholder={sport === 'MLB' ? 'Search any MLB player…' : sport === 'NFL' ? 'Search any NFL player or team…' : 'Search any MLB or NFL player…'}
+        placeholder={placeholder ?? (sport === 'MLB' ? 'Search any MLB player…' : sport === 'NFL' ? 'Search any NFL player or team…' : 'Search any MLB or NFL player…')}
         aria-label="Search players"
-        className={`w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
+        className={header ? 'w-full bg-white text-[#1A1A1A] border border-[#E8E4DC] rounded-sm h-9 pl-8 pr-3 text-[13px] outline-none placeholder:text-[#8A8577]' : `w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
       />
 
       {showDropdown && (

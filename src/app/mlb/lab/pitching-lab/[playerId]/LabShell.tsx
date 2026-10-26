@@ -15,6 +15,7 @@ import Tabs from '@/components/ui/Tabs'
 import { usePathname, useParams } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
+import ContextStrip from '@/components/nav/ContextStrip'
 import { PitchingLabProvider, usePitchingLabData } from '@/lib/pitching-lab-context'
 
 const TABS = [
@@ -23,46 +24,28 @@ const TABS = [
   { seg: 'location',  label: 'Location Lab'     },
   { seg: 'overlay',   label: 'Hot Zone Overlay' },
   { seg: 'shape',     label: 'Shape'            },
-  { seg: 'stuff',     label: 'Edge+'            },
+  { seg: 'stuff',     label: 'Stuff'            },
   { seg: 'sequencing',label: 'Sequencing'       },
   { seg: 'h2h',       label: 'H2H'              },
   { seg: 'trends',    label: 'Trends'           },
 ]
 
-function mlbHeadshot(id: number | string): string {
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`
-}
-
 function ShellHeader({ playerId, playerName }: { playerId: number; playerName: string }) {
-  const { data, failed } = usePitchingLabData()
+  const { data } = usePitchingLabData()
   const pathname = usePathname()
   const base = `/mlb/lab/pitching-lab/${playerId}`
+  const name = data?.name ?? playerName
+  // Only what the lab data already holds; a missing part is dropped (hand, record and innings are not in it today).
+  const era = data?.fullStats?.era
+  const line = [data?.abbr, era != null ? `${era.toFixed(2)} ERA` : null].filter(Boolean).join(' · ')
 
   return (
     <div className="border-b border-[#E8E4DC]">
-      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 py-5 flex items-center gap-4 flex-wrap">
-        <img
-          src={mlbHeadshot(playerId)}
-          alt=""
-          width={48}
-          height={48}
-          style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', background: '#F4F1EA', border: '1px solid #DEDACE' }}
-        />
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">
-            {data ? `${data.abbr} · SP` : 'Pitching Lab'}
-          </div>
-          <h1 className="m-0 text-[22px] font-black text-[#1A1A1A] tracking-tight leading-tight">
-            {data?.name ?? playerName}
-          </h1>
-        </div>
-        <Link
-          href="/mlb/lab/pitching-lab"
-          className="ml-auto text-[11px] font-mono uppercase tracking-widest text-[#8A8577] hover:text-[#1A1A1A]"
-        >
-          ← Search another pitcher
-        </Link>
-      </div>
+      <ContextStrip
+        left={<><span style={{ color: '#8A8577' }}>Pitching Lab /</span> <b>{name}</b>{line ? <span> {line}</span> : null}</>}
+        right={<Link href="/mlb/lab/pitching-lab" style={{ background: '#fff', border: '1px solid #E8E4DC', borderRadius: 2, padding: '4px 10px', fontWeight: 600, color: '#1A1A1A' }}>Change pitcher</Link>}
+      />
+      <h1 className="sr-only">{name}: Pitching Lab</h1>
 
       <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6">
         <Suspense fallback={null}>
