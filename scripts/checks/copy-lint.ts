@@ -24,7 +24,7 @@ export const ALLOWED: RegExp[] = [
   /goalie starts/gi, /recent starts/gi, /start time/gi, /since the start/gi, /start of/gi,
   /special[ -]teams units/gi, /(?:PP|PK) units?/gi, /unit [12]/gi, /by unit/gi,
   /cover [0-9]/gi, /fade routes?/gi, /lock in/gi, /\bvalues\b/gi,
-  /projected lineup, not yet confirmed/gi, /first mlb start/gi, /most recent outing/gi,
+  /pick a (?:batter|pitcher)/gi, /projected lineup, not yet confirmed/gi, /first mlb start/gi, /most recent outing/gi,
   /swing[ -]path tilt/gi, /swing tilt/gi,   // Savant's own bat-tracking metric (swing_path_tilt), not a lean
 ]
 
