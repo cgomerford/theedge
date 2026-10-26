@@ -15,6 +15,9 @@ import type { PlayerOverview, GameLine } from '@/lib/player-overview'
 
 const MUTE = '#8a8275', LINE = '#e7e2d8'
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
+// Percentile colour: 100th = green, 0 = red, middle neutral. The number is always printed too, so colour is never the only cue.
+function pctBar(p: number) { return p >= 80 ? '#1D9E75' : p >= 60 ? '#7CC4A8' : p >= 40 ? '#B7AE9C' : p >= 20 ? '#E39A8B' : '#D4533B' }
+function pctText(p: number) { return p >= 60 ? '#137A5A' : p < 40 ? '#B8402B' : '#1A1A1A' }
 const Star = () => <span title="Small sample size" style={{ color: '#FF5722', fontWeight: 800 }}>*</span>
 const Note = ({ text }: { text: string }) => <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>* Small sample size: {text}. Read with caution.</div>
 
@@ -189,12 +192,12 @@ export function Percentiles({ o }: { o: PlayerOverview }) {
           {o.batterPercentiles.map(s => (
             <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '84px 1fr 112px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
               <span style={{ fontWeight: 700 }}>{s.label}</span>
-              <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: '#1A1A1A', width: `${s.percentile}%` }} /></span>
-              <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{smallB ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile)}</b></span>
+              <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: pctBar(s.percentile as number), width: `${Math.max(s.percentile as number, 2)}%` }} /></span>
+              <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{smallB ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: pctText(s.percentile), display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile)}</b></span>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right = 100th percentile (best). n {o.lineN.toLocaleString('en-US')} PA; ranked among the league&apos;s top 500 in each stat.</div>
+        <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right and green = 100th percentile (best); red is low. n {o.lineN.toLocaleString('en-US')} PA; ranked among the league&apos;s top 500 in each stat.</div>
         {smallB ? <Note text={`under ${MIN_SAMPLE.batterPercentilePA} plate appearances`} /> : null}
       </>
     )
@@ -208,12 +211,12 @@ export function Percentiles({ o }: { o: PlayerOverview }) {
         {p.stats.filter(s => s.percentile != null).map(s => (
           <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '84px 1fr 112px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
             <span style={{ fontWeight: 700 }}>{s.label}</span>
-            <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: '#1A1A1A', width: `${s.percentile}%` }} /></span>
-            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{small ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: '#1A1A1A', display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile as number)}</b></span>
+            <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: pctBar(s.percentile as number), width: `${Math.max(s.percentile as number, 2)}%` }} /></span>
+            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}{small ? <Star /> : null}</span> <b style={{ fontSize: 17, fontWeight: 800, color: pctText(s.percentile as number), display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile as number)}</b></span>
           </div>
         ))}
       </div>
-      <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right = 100th percentile (best). n {o.lineN.toLocaleString('en-US')} batters faced, among pitchers in the league pool.</div>
+      <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right and green = 100th percentile (best); red is low. n {o.lineN.toLocaleString('en-US')} batters faced, among pitchers in the league pool.</div>
       {small ? <Note text={`under ${MIN_SAMPLE.pitcherPercentileBF} batters faced`} /> : null}
     </>
   )
