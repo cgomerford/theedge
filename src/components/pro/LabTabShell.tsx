@@ -5,5 +5,6 @@ export const LAB_NOUN: Record<'batting' | 'pitching', Record<string, string>> = 
 }
 
 export function tabOf(path: string | null): string {
-  return (path ?? '').replace(/\/$/, '').split('/').pop() ?? ''
+  const last = (path ?? '').replace(/\/$/, '').split('/').pop() ?? ''
+  return /^\d+$/.test(last) ? '' : last   // the Overview URL ends in the player id
 }
