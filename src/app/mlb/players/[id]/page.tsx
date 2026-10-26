@@ -13,7 +13,11 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getPlayerPageData } from '@/lib/player-page'
 import SiteHeader from '@/components/SiteHeader'
-import PlayerPageClient from './PlayerPageClient'
+import MLBSubNav from '@/components/MLBSubNav'
+import ProGate from '@/components/pro/ProGate'
+import PendingBlock from '@/components/data/PendingBlock'
+import { getPlayerOverview } from '@/lib/player-overview'
+import { PlayerHeader, LatestGame, LastFive, SeasonAndCareer, Arsenal, ZonesShell, Percentiles, WhatChanged, Splits, Section } from '@/components/player-page/PlayerOverviewView'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
@@ -67,32 +71,42 @@ export default async function PlayerPage({
   // The zones tab is the page's one gate. A free account may spend today's deep look on it (see lib/deep-look.ts).
   const gate = isPro ? { tier: 'pro' as const, freeLook: false, state: 'pro' as const } : await resolveViewer('player_trends', String(playerId))
 
+  const overview = await getPlayerOverview(data)
+  const centered: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '16px 16px 72px' }
+
   return (
-    <main className="min-h-screen bg-stone-50">
+    <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
       <PersonSchema name={data.identity.fullName} path={`/mlb/players/${playerId}`} teamName={data.identity.currentTeam?.name ?? null} />
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: data.identity.fullName, path: `/mlb/players/${playerId}` }]} />
       <SiteHeader variant="page" />
-      <PlayerPageClient
-        data={data}
-        initialSection={tab}
-        isPro={isPro}
-        viewerTier={gate.tier}
-        freeLook={gate.freeLook}
-        lookOpen={gate.state === 'look_left' ? { feature: 'player_trends', entityId: String(playerId) } : null}
-        followSlot={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />}
-        // Built ONLY for Pro: a non-Pro request never queries or renders trend data.
-        trendsSlot={gate.tier === 'pro' ? (
-          <Suspense fallback={<p style={{ fontSize: 13, color: '#a89e8c', fontStyle: 'italic', padding: '30px 0', textAlign: 'center' }}>Loading Statcast trends…</p>}>
-            <StatcastTrendsSlot
-              playerId={playerId}
-              subject={data.identity.isPitcher ? 'pitcher' : 'batter'}
-              teamId={data.identity.currentTeam?.id ?? null}
-              color={data.identity.currentTeam?.primaryColor ?? '#1A1A1A'}
-              season={new Date().getFullYear()}
-            />
-          </Suspense>
-        ) : null}
-      />
+      <MLBSubNav />
+      <div style={centered}>
+        <PlayerHeader data={data} follow={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />} />
+        {overview.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{overview.seasonNote}</p> : null}
+        <LatestGame o={overview} />
+
+        <Section title="Last 5 games"><LastFive o={overview} /></Section>
+        <Section title={`${overview.season} season and career`}><SeasonAndCareer o={overview} data={data} /></Section>
+        <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={overview} /></Section>
+
+        <Section title="Zones">
+          <ProGate
+            feature="player_trends"
+            entityId={String(playerId)}
+            source="follow"
+            full={async () => (
+              <Suspense fallback={<PendingBlock label="Statcast zones" />}>
+                <StatcastTrendsSlot playerId={playerId} subject={data.identity.isPitcher ? 'pitcher' : 'batter'} teamId={data.identity.currentTeam?.id ?? null} color={data.identity.currentTeam?.primaryColor ?? '#1A1A1A'} season={overview.season} />
+              </Suspense>
+            )}
+            shell={<ZonesShell />}
+          />
+        </Section>
+
+        <Section title="Percentiles"><Percentiles o={overview} /></Section>
+        <Section title="What changed" sub="Last 30 days against the season"><WhatChanged o={overview} /></Section>
+        <Section title="Splits"><Splits o={overview} /></Section>
+      </div>
     </main>
   )
 }

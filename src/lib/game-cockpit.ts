@@ -42,6 +42,25 @@ export type StarterBlock = {
   hasPitchData: boolean
 }
 
+
+/** Pitch mix rows (usage, velo, whiff with n swings) from the stored zone arsenal's "all" split. */
+export function mixFromArsenal(arsenal: unknown): { mix: PitchMixRow[]; mixPitches: number } {
+  const all = (arsenal as Record<string, { arsenal: Record<string, { pitch_name: string; usage_pct: number | null; avg_velo: number | null; total_pitches: number; zones: Record<string, { whiffs: number; swings: number }> }>; total_pitches: number }>)['all']
+  const mix: PitchMixRow[] = all
+    ? Object.entries(all.arsenal).map(([code, p]) => {
+        let whiffs = 0, swings = 0
+        for (const z of Object.values(p.zones)) { whiffs += Number(z.whiffs ?? 0); swings += Number(z.swings ?? 0) }
+        return { code, name: p.pitch_name, usagePct: p.usage_pct == null ? null : Number(p.usage_pct), pitches: Number(p.total_pitches), velo: p.avg_velo == null ? null : Number(p.avg_velo), whiffPct: swings > 0 ? (whiffs / swings) * 100 : null, swings }
+      }).sort((x, y) => (y.usagePct ?? 0) - (x.usagePct ?? 0))
+    : []
+  return { mix, mixPitches: all ? Number(all.total_pitches) : 0 }
+}
+
+export async function getPitcherMix(id: number) {
+  const arsenal = await getPitcherZoneArsenal(id).catch(() => ({}))
+  return mixFromArsenal(arsenal)
+}
+
 // Percentile of xwOBA allowed among pitchers with 30+ IP: 100 = lowest (best), shown at the right end of the gauge.
 const xwobaPercentiles = cache(async (season: number): Promise<Map<number, number>> => {
   const rows = await getPitcherStatsTable({ season, minIp: 30 })
@@ -80,15 +99,7 @@ export async function getStarterBlock(id: number | undefined, name: string | und
   const ipNum = (v: unknown) => { const [a, b] = String(v ?? '0').split('.'); return Number(a) + Number(b ?? 0) / 3 }
   const opener = gs >= 3 && ipNum(seasonStat?.inningsPitched) / gs < 2
 
-  const all = (arsenal as Record<string, { arsenal: Record<string, { pitch_name: string; usage_pct: number | null; avg_velo: number | null; total_pitches: number; zones: Record<string, { whiffs: number; swings: number }> }>; total_pitches: number }>)['all']
-  const mix: PitchMixRow[] = all
-    ? Object.entries(all.arsenal).map(([code, p]) => {
-        let whiffs = 0, swings = 0
-        for (const z of Object.values(p.zones)) { whiffs += Number(z.whiffs ?? 0); swings += Number(z.swings ?? 0) }
-        return { code, name: p.pitch_name, usagePct: p.usage_pct == null ? null : Number(p.usage_pct), pitches: Number(p.total_pitches), velo: p.avg_velo == null ? null : Number(p.avg_velo), whiffPct: swings > 0 ? (whiffs / swings) * 100 : null, swings }
-      }).sort((a, b) => (b.usagePct ?? 0) - (a.usagePct ?? 0))
-    : []
-
+  const { mix, mixPitches } = mixFromArsenal(arsenal)
   const careerBf = num(careerStat?.battersFaced) ?? 0
   const firstStart = careerBf === 0 && bf === 0
 
@@ -100,7 +111,7 @@ export async function getStarterBlock(id: number | undefined, name: string | und
     bbPct: bf > 0 ? (Number(seasonStat?.baseOnBalls) / bf) * 100 : null,
     xwoba: num((ps.data as { xwoba_allowed?: unknown } | null)?.xwoba_allowed),
     xwobaPct: pool.get(id) ?? null, spin,
-    mix, mixPitches: all ? Number(all.total_pitches) : 0,
+    mix, mixPitches,
     lastStart: lastS ? { stage, date: lastS.date ?? null, opponent: lastS.opponent?.abbreviation ?? lastS.opponent?.name ?? null, ip: String(lastS.stat.inningsPitched ?? '0.0'), h: Number(lastS.stat.hits ?? 0), r: Number(lastS.stat.runs ?? 0), k: Number(lastS.stat.strikeOuts ?? 0), pitches: num(lastS.stat.numberOfPitches) } : null,
     throughDate: log.length ? (log[log.length - 1].date ?? null) : null,
     hasPitchData: mix.length > 0,
