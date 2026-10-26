@@ -83,18 +83,16 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: St
                       <td style={{ padding: 5, textAlign: 'right' }}>{m.usagePct == null ? '' : `${m.usagePct.toFixed(1)}%`}</td>
                       <td style={{ padding: 5, textAlign: 'right' }}>{m.velo == null ? '' : `${m.velo.toFixed(1)} mph`}</td>
                       <td style={{ padding: 5, textAlign: 'right', whiteSpace: 'nowrap' }}>{m.whiffPct == null ? '' : <><b>{m.whiffPct.toFixed(1)}% miss</b>{m.swings < MIN_SAMPLE.whiffSwings || m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? <Star /> : null}</>}</td>
-                      <td style={{ padding: '5px 0 5px 6px', textAlign: 'right', color: MUTE, fontSize: 12 }}>n {m.pitches.toLocaleString('en-US')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div style={{ fontSize: 12, color: MUTE }}>n = pitches thrown</div>
               <SpinBallStyles />
             </>
           ) : <PendingBlock label="Team pitching numbers" />}
           {s.lastStart ? (
             <p style={{ margin: '12px 0 0', fontSize: 14, ...num }}>
-              <b>Most recent outing</b> {s.lastStart.date}{s.lastStart.opponent ? ` vs ${s.lastStart.opponent}` : ''}: {s.lastStart.ip} IP, {s.lastStart.h} H, {s.lastStart.r} R, {s.lastStart.k} K{s.lastStart.pitches != null ? `, ${s.lastStart.pitches} pitches` : ''}
+              <b>Most recent outing</b>{s.lastStart.stage ? ` (${s.lastStart.stage})` : ''} {formatThrough(s.lastStart.date) ?? s.lastStart.date}{s.lastStart.opponent ? ` vs ${s.lastStart.opponent}` : ''}: {s.lastStart.ip} IP, {s.lastStart.h} H, {s.lastStart.r} R, {s.lastStart.k} K{s.lastStart.pitches != null ? `, ${s.lastStart.pitches} pitches` : ''}
             </p>
           ) : null}
           {s.bf < MIN_SAMPLE.pitcherPercentileBF || s.mix.some(m => m.pitches < MIN_SAMPLE.arsenalPitchesPerType || m.swings < MIN_SAMPLE.whiffSwings) ? <Note /> : null}

@@ -18,7 +18,7 @@ const num = (v: unknown) => (v == null || v === '' ? null : Number.isFinite(Numb
 
 // ── Starters ────────────────────────────────────────────────────────────────
 export type PitchMixRow = { code: string; name: string; usagePct: number | null; pitches: number; velo: number | null; whiffPct: number | null; swings: number }
-export type LastStart = { date: string | null; opponent: string | null; ip: string; h: number; r: number; k: number; pitches: number | null }
+export type LastStart = { stage: string | null; date: string | null; opponent: string | null; ip: string; h: number; r: number; k: number; pitches: number | null }
 export type StarterBlock = {
   status: 'ok' | 'not_announced' | 'first_start'
   id: number | null
@@ -54,8 +54,9 @@ const xwobaPercentiles = cache(async (season: number): Promise<Map<number, numbe
 export async function getStarterBlock(id: number | undefined, name: string | undefined, season: number): Promise<StarterBlock> {
   const empty: StarterBlock = { status: 'not_announced', id: null, name: null, hand: null, opener: false, era: null, wins: null, losses: null, ip: null, bf: 0, kPct: null, bbPct: null, xwoba: null, xwobaPct: null, spin: {}, mix: [], mixPitches: 0, lastStart: null, throughDate: null, hasPitchData: false }
   if (!id) return empty
-  const [stats, hands, arsenal, ps, pool, spin] = await Promise.all([
+  const [stats, post, hands, arsenal, ps, pool, spin] = await Promise.all([
     mlb<{ stats: StatBlock[] }>(`/people/${id}/stats?stats=season,gameLog,career&group=pitching&season=${season}`),
+    mlb<{ stats: StatBlock[] }>(`/people/${id}/stats?stats=gameLog&group=pitching&season=${season}&gameType=W,L,D,F`),
     fetchPitcherHands([id]).catch(() => new Map<number, 'L' | 'R'>()),
     getPitcherZoneArsenal(id).catch(() => ({})),
     createAdminClient().from('pitcher_stats').select('xwoba_allowed').eq('player_id', id).eq('season', season).maybeSingle(),
@@ -66,7 +67,13 @@ export async function getStarterBlock(id: number | undefined, name: string | und
   const seasonStat = by('season')[0]?.stat
   const careerStat = by('career')[0]?.stat
   const log = by('gameLog')
-  const lastS = [...log].reverse().find(s => num(s.stat.gamesStarted) === 1)
+  const lastReg = [...log].reverse().find(s => num(s.stat.gamesStarted) === 1)
+  // A postseason start is his most recent outing when he has one (the regular-season log does not include playoff games).
+  const postLog = post?.stats?.[0]?.splits ?? []
+  const lastPost = [...postLog].reverse().find(s => num(s.stat.gamesStarted) === 1)
+  const lastS = lastPost ?? lastReg
+  const STAGE: Record<string, string> = { W: 'World Series', L: 'Championship Series', D: 'Division Series', F: 'Wild Card' }
+  const stage = lastPost ? (STAGE[String((lastPost as unknown as { gameType?: string }).gameType ?? '')] ?? 'Postseason') : null
 
   const bf = num(seasonStat?.battersFaced) ?? 0
   const gs = num(seasonStat?.gamesStarted) ?? 0
@@ -94,7 +101,7 @@ export async function getStarterBlock(id: number | undefined, name: string | und
     xwoba: num((ps.data as { xwoba_allowed?: unknown } | null)?.xwoba_allowed),
     xwobaPct: pool.get(id) ?? null, spin,
     mix, mixPitches: all ? Number(all.total_pitches) : 0,
-    lastStart: lastS ? { date: lastS.date ?? null, opponent: lastS.opponent?.abbreviation ?? lastS.opponent?.name ?? null, ip: String(lastS.stat.inningsPitched ?? '0.0'), h: Number(lastS.stat.hits ?? 0), r: Number(lastS.stat.runs ?? 0), k: Number(lastS.stat.strikeOuts ?? 0), pitches: num(lastS.stat.numberOfPitches) } : null,
+    lastStart: lastS ? { stage, date: lastS.date ?? null, opponent: lastS.opponent?.abbreviation ?? lastS.opponent?.name ?? null, ip: String(lastS.stat.inningsPitched ?? '0.0'), h: Number(lastS.stat.hits ?? 0), r: Number(lastS.stat.runs ?? 0), k: Number(lastS.stat.strikeOuts ?? 0), pitches: num(lastS.stat.numberOfPitches) } : null,
     throughDate: log.length ? (log[log.length - 1].date ?? null) : null,
     hasPitchData: mix.length > 0,
   }
