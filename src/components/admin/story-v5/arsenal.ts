@@ -7,7 +7,7 @@
 
 import { MIN_PITCHES, averagePath, pathFor, type StatcastPitch } from './trajectory'
 import type { ArsenalPitch, TimesThrough } from './types'
-import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
+import { PITCH_COLOR } from '../../../lib/lab/pitch-meta'
 
 type Row = Record<string, string>
 const num = (v: string | undefined): number => (v == null || v === '' ? NaN : Number(v))
