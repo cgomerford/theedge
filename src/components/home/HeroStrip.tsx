@@ -22,7 +22,7 @@ export default function HeroStrip({ reportHref }: { reportHref: string }) {
   return (
     <section aria-label="x9Lab" style={{ margin: '16px 0 20px', padding: 'clamp(24px, 4vw, 40px) clamp(20px, 4vw, 28px) clamp(24px, 4vw, 34px)', background: 'linear-gradient(115deg, #FAF8F3 0%, #FAF8F3 38%, #FF5722 100%)', border: '1px solid #e7e2d8', color: '#1A1A1A', borderRadius: 2 }}>
       <div aria-hidden="true" style={{ width: 44, height: 5, background: '#1A1A1A', marginBottom: 16 }} />
-      <h1 style={{ margin: 0, fontWeight: 800, fontSize: 'clamp(36px, 6vw, 60px)', letterSpacing: '-0.02em', lineHeight: 1.02 }}>Every pitch, read plainly.</h1>
+      <h1 style={{ margin: 0, fontWeight: 800, fontSize: 'clamp(36px, 6vw, 60px)', letterSpacing: '-0.02em', lineHeight: 1.02 }}>Read like a GM.</h1>
       <p style={{ margin: '18px 0 20px', maxWidth: 560, fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.5, color: '#1A1A1A' }}>
         Bringing baseball analytics to the fan. See the game like the front office.
       </p>
