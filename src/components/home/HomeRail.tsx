@@ -19,11 +19,12 @@ function ago(iso: string | null): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-export default async function HomeRail() {
+export default async function HomeRail({ top }: { /** extra sections shown above the articles (e.g. on /mlb) */ top?: React.ReactNode }) {
   const [articles, news] = await Promise.all([getLatestArticles(4).catch(() => []), getMLBNewsMultiSource().catch(() => [])])
 
   return (
     <aside aria-label="Articles" className="hm-rail">
+      {top}
       {articles.length > 0 && (
         <section style={{ marginBottom: 28 }}>
           <h2 style={H}>From x9Lab</h2>

@@ -27,11 +27,11 @@ function Bracket({ series }: { series: BracketSeries[] }) {
           <h3 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: MUTED }}>{ROUND_NAME[r]}</h3>
           {series.filter(s => s.round === r).map(s => (
             <div key={`${s.a.id}-${s.b.id}`} style={{ padding: '10px 0', borderTop: '1px solid #e7e2d8' }}>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{s.text}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{s.text}</div>
               <div style={{ display: 'grid', gap: 5, margin: '6px 0 4px' }}>
                 {[s.a, s.b].map(t => (
-                  <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0,1fr)', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, fontWeight: 800 }}>{t.abbr}</span>
+                  <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '78px minmax(0,1fr)', gap: 8, alignItems: 'center' }}>
+                    <TeamMark id={t.id} abbr={t.abbr} size={26} />
                     <Bar id={t.id} wins={t.wins} firstTo={s.firstTo} />
                   </div>
                 ))}

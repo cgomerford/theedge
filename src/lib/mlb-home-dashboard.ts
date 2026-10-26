@@ -278,3 +278,63 @@ export const WEEK_LABEL = (date: string) => {
   const f = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
   return `${f(addDays(date, -7))} to ${f(addDays(date, -1))}`
 }
+
+// ─── Postseason leaders ───────────────────────────────────────────────────────
+
+export type PostLeader = { id: number; name: string; team: string; value: number; games: number }
+export type PostLeaderGroup = { label: string; unit: string; rows: PostLeader[] }
+
+/** Top 3 in the postseason so far: home runs and RBI (hitting), strikeouts (pitching). `games` is the sample behind each number. */
+export async function getPostseasonLeaders(year: number): Promise<PostLeaderGroup[]> {
+  const one = async (group: 'hitting' | 'pitching', sortStat: string, field: string): Promise<PostLeader[]> => {
+    const j = await getJson(`${API}/stats?stats=season&group=${group}&gameType=P&season=${year}&sportId=1&playerPool=ALL&sortStat=${sortStat}&order=desc&limit=3`, `getPostseasonLeaders ${sortStat}`)
+    return ((j?.stats?.[0]?.splits ?? []) as any[]).map(sp => ({
+      id: sp.player?.id, name: sp.player?.fullName ?? '—', team: sp.team?.abbreviation ?? findTeamByName(sp.team?.name ?? '')?.abbrev ?? sp.team?.name ?? '—',
+      value: num(sp.stat?.[field]) ?? 0, games: num(sp.stat?.gamesPlayed) ?? 0,
+    })).filter(r => r.value > 0)
+  }
+  const [hr, rbi, so] = await Promise.all([one('hitting', 'homeRuns', 'homeRuns'), one('hitting', 'rbi', 'rbi'), one('pitching', 'strikeOuts', 'strikeOuts')])
+  return [{ label: 'Home runs', unit: 'HR', rows: hr }, { label: 'RBI', unit: 'RBI', rows: rbi }, { label: 'Strikeouts', unit: 'K', rows: so }]
+}
+
+// ─── Stat of the day ──────────────────────────────────────────────────────────
+
+export type StatOfDay = {
+  date: string; n: number; games: number
+  hardest: { mph: number; feet: number | null; batter: string; batterId: number; team: string; event: string } | null
+  longestHr: { feet: number; mph: number | null; batter: string; batterId: number; team: string } | null
+}
+
+/** The hardest-hit ball (and longest home run) of the latest day with finished games, from the league's play-by-play tracking. */
+export async function getStatOfTheDay(today: string): Promise<StatOfDay | null> {
+  for (let back = 1; back <= 7; back++) {
+    const date = addDays(today, -back)
+    const j = await getJson(`${API}/schedule?sportId=1&date=${date}&hydrate=team`, 'getStatOfTheDay schedule')
+    const finals: any[] = (j?.dates?.[0]?.games ?? []).filter((g: any) => g.status?.abstractGameState === 'Final' && g.status?.detailedState !== 'Postponed')
+    if (finals.length === 0) continue
+    let n = 0
+    let hardest: StatOfDay['hardest'] = null
+    let longest: StatOfDay['longestHr'] = null
+    for (let i = 0; i < finals.length; i += 6) {
+      const feeds = await Promise.all(finals.slice(i, i + 6).map(g => getJson(`${API}/game/${g.gamePk}/playByPlay`, 'getStatOfTheDay pbp', 3600)))
+      feeds.forEach((f, k) => {
+        const g = finals[i + k]
+        for (const p of f?.allPlays ?? []) {
+          for (const e of p.playEvents ?? []) {
+            const h = e.hitData
+            const mph = num(h?.launchSpeed)
+            if (!h || mph == null) continue
+            n++
+            const bat = p.matchup?.batter
+            const team = p.about?.isTopInning ? g.teams.away.team.abbreviation : g.teams.home.team.abbreviation
+            if (!hardest || mph > hardest.mph) hardest = { mph, feet: num(h.totalDistance), batter: bat?.fullName ?? '—', batterId: bat?.id, team, event: p.result?.event ?? '' }
+            const ft = num(h.totalDistance)
+            if (p.result?.eventType === 'home_run' && ft != null && (!longest || ft > longest.feet)) longest = { feet: ft, mph, batter: bat?.fullName ?? '—', batterId: bat?.id, team }
+          }
+        }
+      })
+    }
+    return { date, n, games: finals.length, hardest, longestHr: longest }
+  }
+  return null
+}

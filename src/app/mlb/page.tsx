@@ -9,14 +9,15 @@ import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
 import GamesDashboard from '@/components/mlb-home/GamesDashboard'
 import BracketOrStandings from '@/components/mlb-home/BracketOrStandings'
 import { Leaders, HotThisWeek } from '@/components/mlb-home/LeadersAndHot'
-import { News, LabsSearch } from '@/components/mlb-home/NewsAndSearch'
+import { LabsSearch } from '@/components/mlb-home/NewsAndSearch'
+import HomeRail from '@/components/home/HomeRail'
+import { PostseasonLeadersRail, StatOfTheDayRail } from '@/components/mlb-home/RailExtras'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import { pageMeta } from '@/lib/seo'
-import { getMLBNewsMultiSource, getMLBStatLeaders } from '@/lib/mlb-homepage'
-import { getLatestArticles } from '@/lib/articles'
+import { getMLBStatLeaders } from '@/lib/mlb-homepage'
 import { getHomeSlate } from '@/lib/mlb-homepage'
 import {
-  etDate, getSeasonState, getDashboardGames, getPostseasonBracket, getStandingsDash, getHotThisWeek, WEEK_LABEL,
+  etDate, getSeasonState, getDashboardGames, getPostseasonBracket, getStandingsDash, getHotThisWeek, getPostseasonLeaders, getStatOfTheDay, WEEK_LABEL,
   type DashDivision,
 } from '@/lib/mlb-home-dashboard'
 
@@ -56,11 +57,11 @@ export default async function MLBPage() {
     getStandingsDash(date),
     showBracket ? getPostseasonBracket(season.year - (season.state === 'offseason' && Number(date.slice(5, 7)) <= 2 ? 1 : 0)) : Promise.resolve([]),
   ])
-  const [hitters, pitchers, news, articles] = await Promise.all([
+  const [hitters, pitchers, postLeaders, statOfDay] = await Promise.all([
     season.state === 'offseason' ? Promise.resolve([]) : getHotThisWeek('hitting', post, date),
     season.state === 'offseason' ? Promise.resolve([]) : getHotThisWeek('pitching', post, date),
-    getMLBNewsMultiSource(),
-    getLatestArticles(6),
+    season.state === 'postseason' || season.state === 'offseason' ? getPostseasonLeaders(season.year - (season.state === 'offseason' && Number(date.slice(5, 7)) <= 2 ? 1 : 0)) : Promise.resolve([]),
+    getStatOfTheDay(date),
   ])
   const [hr, avg, so] = await Promise.all([
     getMLBStatLeaders('homeRuns', 5, 'batting'),
@@ -79,14 +80,21 @@ export default async function MLBPage() {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '8px 24px 60px' }}>
+      <style>{`.ml-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0 40px;align-items:start}.ml-rail{padding-top:20px}@media (max-width:1100px){.ml-layout{grid-template-columns:minmax(0,1fr)}}`}</style>
+      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '8px 16px 60px' }}>
+       <div className="ml-layout">
+        <div style={{ minWidth: 0 }}>
         <HomeAskOrFollows>{null}</HomeAskOrFollows>
         <GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} />
         <BracketOrStandings season={season} bracket={bracket} divisions={divisions} />
         <Leaders season={season} groups={[{ label: 'HOME RUNS', rows: hr }, { label: 'BATTING AVERAGE', rows: avg }, { label: 'STRIKEOUTS', rows: so }]} />
         {season.state !== 'offseason' && <HotThisWeek hitters={hitters} pitchers={pitchers} week={WEEK_LABEL(date)} post={post} />}
-        <News news={news} articles={articles.map(a => ({ slug: a.slug, title: a.title, published_at: (a as unknown as { published_at?: string | null }).published_at ?? null }))} />
         <LabsSearch />
+        </div>
+        <div className="ml-rail">
+          <HomeRail top={<><PostseasonLeadersRail groups={postLeaders} year={season.year} /><StatOfTheDayRail stat={statOfDay} /></>} />
+        </div>
+       </div>
       </div>
     </main>
   )
