@@ -1,5 +1,8 @@
 // src/app/mlb/[slug]/page.tsx
 //
+// 2026-10-26: tabs added (?tab=): Cockpit (new default) · Pitchers · Batters · Bullpen & park · Series · Scout report (link).
+// The old single-scroll page now lives under "Series" (team snapshots, key players, series stats, postgame links).
+//
 // REBUILT 2026-09-18 (per George's wireframe): Header/Ticker →
 // [Home team panel | Away team panel | Edge Indicator] → Series header
 // bar → [Player stats of the series + Series highlights | 3 Key Players]
@@ -39,18 +42,19 @@ import SeriesMomentum from '@/components/SeriesMomentum'
 import TeamPitcherCard from '@/components/game-preview/TeamPitcherCard'
 import TeamBatterCard from '@/components/game-preview/TeamBatterCard'
 import TeamSnapshotCard from '@/components/game-preview/TeamSnapshotCard'
-import GameBriefBanner from '@/components/game-preview/GameBriefBanner'
 import SeriesTeamStats from '@/components/game-preview/SeriesTeamStats'
 import SeriesTopPerformers from '@/components/game-preview/SeriesTopPerformers'
 import SeriesPostgameLinks from '@/components/game-preview/SeriesPostgameLinks'
 import ShellPlaceholder from '@/components/game-preview/ShellPlaceholder'
-import JumpNav from '@/components/game-preview/JumpNav'
 import type { StartingPitcherData } from '@/components/game-preview/StartingPitcherPanel'
 import type { PercentileRow } from '@/components/charts/types'
 import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
-import SignupAsk from '@/components/signup/SignupAsk'
+import FollowControl from '@/components/signup/FollowControl'
+import Tabs from '@/components/ui/Tabs'
+import { TeamMark } from '@/components/home/Logo'
+import { CockpitTab, PitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
 import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
@@ -70,10 +74,10 @@ import { fetchPitchingSplit } from '@/lib/player-splits'
 import { getTeamSeasonStats, getTeamVenueRecord } from '@/lib/team-season-stats'
 import { SITE_URL } from '@/lib/site'
 
-export const revalidate = 60
+export const revalidate = 300 // lineups + probables refresh every 5 minutes
 export const maxDuration = 60 // was 15; a brief Supabase stall (pitcher_stats took 7.8s) turned into a hard timeout
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string; tab?: string }> }
 
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
@@ -232,29 +236,10 @@ function seriesHeaderFrom(seriesGames: SeriesGameResult[], gamePk: number) {
 function Skeleton({ h, label }: { h: number; label?: string }) {
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4 animate-pulse" style={{ minHeight: h }} aria-busy="true">
-      {label ? <p className="text-[9px] font-mono uppercase tracking-widest text-stone-300 font-bold mb-3">{label}</p> : <div className="h-2.5 w-24 bg-stone-200 rounded mb-4" />}
+      {label ? <p className="text-[9px] uppercase tracking-widest text-stone-300 font-bold mb-3">{label}</p> : <div className="h-2.5 w-24 bg-stone-200 rounded mb-4" />}
       <div className="h-10 bg-stone-100 rounded" />
     </div>
   )
-}
-
-// ── Banner: series header streams in; matchup/time/venue are instant ──
-async function BannerAsync({ ctx }: { ctx: GameCtx }) {
-  const venueInfo = getVenueInfo(ctx.venueName)
-  const seriesGames = await safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[])
-  return (
-    <GameBriefBanner
-      awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
-      gameTimeFormatted={ctx.gameTimeFormatted}
-      venueName={ctx.venueName} city={venueInfo?.city ?? null}
-      series={seriesHeaderFrom(seriesGames, ctx.gamePk)}
-    />
-  )
-}
-
-async function JumpNavAsync({ ctx }: { ctx: GameCtx }) {
-  const seriesGames = await safe('series-games', getSeriesGamesFromDB(ctx.gamePk), [] as SeriesGameResult[])
-  return <JumpNav hasSeries={seriesGames.length >= 2} hasPostgames={seriesGames.some(g => g.isFinal)} />
 }
 
 // ── Team snapshot ──
@@ -297,7 +282,7 @@ async function SeriesBelowAsync({ ctx }: { ctx: GameCtx }) {
   return (
     <>
       <div id="series-stats" className="space-y-4">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold">Series Stats</p>
+        <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold">Series Stats</p>
         {/* The ~9 box-score / win-probability fetches live in here, off the critical path. */}
         <Suspense fallback={<Skeleton h={320} label="Loading series stats…" />}>
           <SeriesStatsAsync ctx={ctx} seriesGames={seriesGames} />
@@ -339,20 +324,20 @@ async function SeriesStatsAsync({ ctx, seriesGames }: { ctx: GameCtx; seriesGame
 
   return (
     <>
-      <div className="grid lg:grid-cols-[1fr_1.1fr_1fr] gap-4 items-start">
+      <div className="gc-three">
         <SeriesTeamPlayerCard
           title="Home stats" abbr={ctx.home.abbr} rows={homeSeriesStats}
           gamePks={seriesGames.map(g => g.gamePk)}
         />
         <div className="bg-white border border-stone-200 rounded-xl p-5">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Series highlights</p>
+          <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold mb-3">Series highlights</p>
           <SeriesMomentum
             momentum={seriesMomentum}
             awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
             awayColor={ctx.away.color} homeColor={ctx.home.color}
           />
           <div className="mt-4 pt-4 border-t border-stone-100">
-            <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-3">Team stats — this series</p>
+            <p className="text-[9px] uppercase tracking-widest text-stone-400 font-bold mb-3">Team stats — this series</p>
             <SeriesTeamStats
               awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
               awayRows={awaySeriesStats} homeRows={homeSeriesStats}
@@ -368,7 +353,7 @@ async function SeriesStatsAsync({ ctx, seriesGames }: { ctx: GameCtx; seriesGame
       </div>
 
       <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">Top performers — this series</p>
+        <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold mb-3">Top performers — this series</p>
         <SeriesTopPerformers
           batters={seriesTopBatters} pitchers={seriesTopPitchers}
           awayBattingLines={awaySeriesStats} homeBattingLines={homeSeriesStats}
@@ -383,7 +368,7 @@ async function SeriesStatsAsync({ ctx, seriesGames }: { ctx: GameCtx; seriesGame
 
 export default async function GamePreview({ params, searchParams }: Props) {
   const { slug } = await params
-  const { pro } = await searchParams
+  const { pro, tab: tabParam } = await searchParams
   const supa = createAdminClient()
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
@@ -450,79 +435,118 @@ export default async function GamePreview({ params, searchParams }: Props) {
   }
 
   const battingCardFallback = <Skeleton h={90} />
+  const tabIds = ['cockpit', 'pitchers', 'batters', 'bullpen', 'series'] as const
+  const tab = (tabIds as readonly string[]).includes(String(tabParam)) ? String(tabParam) : 'cockpit'
+
+  const cockpitCtx: CockpitCtx = {
+    gamePk: ctx.gamePk, season: ctx.season, gameDate: dateMatch[1], venueId: game.venue?.id ?? null, venueName,
+    home: { id: ctx.home.id, name: ctx.home.name, abbr: ctx.home.abbr, pitcherId: ctx.home.pitcherId, pitcherName: ctx.home.pitcherName },
+    away: { id: ctx.away.id, name: ctx.away.name, abbr: ctx.away.abbr, pitcherId: ctx.away.pitcherId, pitcherName: ctx.away.pitcherName },
+  }
+  const dateLabel = new Date(`${dateMatch[1]}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const seriesContext = game.seriesDescription && game.seriesDescription !== 'Regular Season' && game.seriesGameNumber
+    ? `${game.seriesDescription} · Game ${game.seriesGameNumber}` : null
+  const tabFallback = <div style={{ padding: '24px 0', fontSize: 14, color: '#8a8275' }}>Loading</div>
 
   return (
     <>
       <SportsEventSchema awayTeam={awayTeam.name} homeTeam={homeTeam.name} gameDate={game.gameDate} venue={venueName || null} path={`/mlb/${slug}`} />
-      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${awayTeam.name} vs ${homeTeam.name}`, path: `/mlb/${slug}` }]} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${awayTeam.name} at ${homeTeam.name}`, path: `/mlb/${slug}` }]} />
+      <style>{`.gc-two{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}.gc-three{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:16px;align-items:start}@media(max-width:900px){.gc-two,.gc-three{grid-template-columns:1fr}}`}</style>
       <SiteHeader variant="page" />
       <LiveTicker />
-      <Suspense fallback={<JumpNav hasSeries={false} hasPostgames={false} />}>
-        <JumpNavAsync ctx={ctx} />
-      </Suspense>
-      <div className="min-h-screen bg-stone-50">
-        <div className="px-4 py-6 space-y-6" style={centered}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: '-0.01em', color: '#1A1A1A' }}>{ctx.away.name} vs {ctx.home.name}</h1>
-
-          <Suspense fallback={
-            <GameBriefBanner
-              awayAbbr={ctx.away.abbr} homeAbbr={ctx.home.abbr}
-              gameTimeFormatted={ctx.gameTimeFormatted}
-              venueName={venueName} city={venueInfo?.city ?? null}
-              series={null}
-            />
-          }>
-            <BannerAsync ctx={ctx} />
-          </Suspense>
-
-          <SignupAsk source="preview_inline" />
-
-          {/* ── Home / Away team panels + Edge Indicator ── */}
-          <div className="grid lg:grid-cols-[1fr_1fr_340px] gap-4 items-start">
-            {(['home', 'away'] as const).map(side => {
-              const t = ctx[side]
-              const opp = ctx[side === 'home' ? 'away' : 'home']
-              return (
-                <section key={side} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <img src={teamLogoUrl(t.id)} alt="" className="w-5 h-5 object-contain" />
-                    <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">
-                      {side === 'home' ? 'Home' : 'Away'} — {t.name}
-                    </h2>
+      <div className="min-h-screen" style={{ background: '#FAF8F3' }}>
+        <div className="px-4 py-6" style={centered}>
+          <header style={{ marginBottom: 16 }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(26px, 4vw, 40px)', fontWeight: 800, letterSpacing: '-0.02em', color: '#1A1A1A' }}>{ctx.away.name} at {ctx.home.name}</h1>
+            <div style={{ marginTop: 6, fontSize: 14, color: '#5b5347', fontVariantNumeric: 'tabular-nums' }}>
+              {dateLabel} · {ctx.gameTimeFormatted} · {venueName}{venueInfo?.city ? `, ${venueInfo.city}` : ''}{seriesContext ? ` · ${seriesContext}` : ''}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 28px', marginTop: 12 }}>
+              {(['away', 'home'] as const).map(side => {
+                const t = ctx[side]
+                return (
+                  <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <TeamMark id={t.id} abbr={t.abbr} size={32} />
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{t.name}</div>
+                      {t.record ? <div style={{ fontSize: 13, color: '#8a8275', fontVariantNumeric: 'tabular-nums' }}>{t.record.wins}-{t.record.losses}</div> : null}
+                    </div>
+                    <FollowControl kind="team" refId={String(t.id)} name={t.name} />
                   </div>
-                  <Suspense fallback={<Skeleton h={180} label="Team Snapshot" />}>
-                    <SnapshotAsync ctx={ctx} side={side} />
-                  </Suspense>
-                  <Suspense fallback={<Skeleton h={260} label="Starting Pitcher" />}>
-                    <PitcherAsync ctx={ctx} side={side} />
-                  </Suspense>
-                  <Suspense fallback={battingCardFallback}>
-                    <TeamBatterCard
-                      slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
-                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook} lookOpen={ctx.lookOpen}
-                      opposingPitcherId={opp.pitcherId ?? null}
-                      opposingPitcherName={opp.pitcherName ?? null}
-                    />
-                  </Suspense>
-                </section>
-              )
-            })}
+                )
+              })}
+            </div>
+          </header>
 
-          </div>
-
-          {/* ── 3 Key Players (independent stream) ── */}
-          <div id="key-players">
-            <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
-            <Suspense fallback={<div className="p-8 text-center font-mono text-xs text-stone-400">Loading Key Players…</div>}>
-              <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
-            </Suspense>
-          </div>
-
-          {/* ── Series stats + postgame links (only when the game is part of a tracked series) ── */}
           <Suspense fallback={null}>
-            <SeriesBelowAsync ctx={ctx} />
+            <Tabs
+              label="Game sections"
+              defaultTab="cockpit"
+              tabs={[
+                { id: 'cockpit', label: 'Cockpit' },
+                { id: 'pitchers', label: 'Pitchers' },
+                { id: 'batters', label: 'Batters' },
+                { id: 'bullpen', label: 'Bullpen & park' },
+                { id: 'series', label: 'Series' },
+                { id: 'scout', label: 'Scout report', href: `/mlb/${slug}/scout-report` },
+              ]}
+            />
           </Suspense>
 
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {tab === 'cockpit' && <Suspense fallback={tabFallback}><CockpitTab ctx={cockpitCtx} /></Suspense>}
+            {tab === 'pitchers' && (
+              <Suspense fallback={tabFallback}>
+                <PitchersTab ctx={cockpitCtx} zones={
+                  <div className="gc-two">
+                    {(['away', 'home'] as const).map(side => (
+                      <Suspense key={side} fallback={<Skeleton h={260} label="Starting Pitcher" />}><PitcherAsync ctx={ctx} side={side} /></Suspense>
+                    ))}
+                  </div>
+                } />
+              </Suspense>
+            )}
+            {tab === 'batters' && (
+              <Suspense fallback={tabFallback}>
+                <BattersTab ctx={cockpitCtx} zones={
+                  <div className="gc-two">
+                    {(['away', 'home'] as const).map(side => {
+                      const t = ctx[side]
+                      const opp = ctx[side === 'home' ? 'away' : 'home']
+                      return (
+                        <Suspense key={side} fallback={battingCardFallback}>
+                          <TeamBatterCard
+                            slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
+                            venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook} lookOpen={ctx.lookOpen}
+                            opposingPitcherId={opp.pitcherId ?? null}
+                            opposingPitcherName={opp.pitcherName ?? null}
+                          />
+                        </Suspense>
+                      )
+                    })}
+                  </div>
+                } />
+              </Suspense>
+            )}
+            {tab === 'bullpen' && <Suspense fallback={tabFallback}><BullpenParkTab ctx={cockpitCtx} /></Suspense>}
+            {tab === 'series' && (
+              <div className="space-y-6" style={{ marginTop: 16 }}>
+                <div className="gc-two">
+                  {(['away', 'home'] as const).map(side => (
+                    <Suspense key={side} fallback={<Skeleton h={180} label="Team Snapshot" />}><SnapshotAsync ctx={ctx} side={side} /></Suspense>
+                  ))}
+                </div>
+                <div id="key-players">
+                  <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
+                  <Suspense fallback={<div className="p-8 text-center text-xs text-stone-400">Loading Key Players…</div>}>
+                    <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
+                  </Suspense>
+                </div>
+                <Suspense fallback={null}><SeriesBelowAsync ctx={ctx} /></Suspense>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

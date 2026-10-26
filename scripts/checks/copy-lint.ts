@@ -17,13 +17,14 @@ export const BANNED: string[] = [
   'buy low', 'sell high', 'trade value', 'ECR', 'FAAB', 'trending',
 ]
 
-// Phrases stripped before matching. "Projected" is never allowed.
+// Phrases stripped before matching. "Projected" is never allowed, except in George's exact lineup label below (a batting order, not a forecast).
 export const ALLOWED: RegExp[] = [
   /forward line/gi, /line-?mates/gi,
   /receiver drops?/gi, /drop rate/gi,
   /goalie starts/gi, /recent starts/gi, /start time/gi, /since the start/gi, /start of/gi,
   /special[ -]teams units/gi, /(?:PP|PK) units?/gi, /unit [12]/gi, /by unit/gi,
   /cover [0-9]/gi, /fade routes?/gi, /lock in/gi, /\bvalues\b/gi,
+  /projected lineup, not yet confirmed/gi, /first mlb start/gi, /most recent outing/gi,
   /swing[ -]path tilt/gi, /swing tilt/gi,   // Savant's own bat-tracking metric (swing_path_tilt), not a lean
 ]
 

@@ -47,6 +47,9 @@ export type MLBGame = {
   dayNight?: 'day' | 'night'  // MLB schedule's own day/night flag (local first-pitch time)
   doubleHeader?: string  // 'N' | 'Y' (traditional) | 'S' (split)
   gameNumber?: number
+  seriesDescription?: string  // e.g. 'World Series', 'Regular Season'
+  seriesGameNumber?: number
+  gamesInSeries?: number
   status: { detailedState: string; abstractGameState: string }
   teams: {
     home: {

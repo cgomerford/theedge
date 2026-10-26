@@ -1,0 +1,38 @@
+// x9Lab park index (see supabase/migrations/20261028100000_park_index.sql).
+// Returns null until the table exists and has a row for the venue; callers show PendingBlock("Park index").
+import { createAdminClient } from '@/lib/supabase'
+
+export type ParkIndex = {
+  venueId: number
+  index: number
+  homeGames: number
+  roadGames: number
+  homeRpg: number
+  roadRpg: number
+  seasons: string
+}
+
+export async function getParkIndex(venueId: number | null | undefined): Promise<ParkIndex | null> {
+  if (!venueId) return null
+  const { data, error } = await createAdminClient()
+    .from('park_index')
+    .select('venue_id, seasons, home_rpg, road_rpg, index, home_games, road_games')
+    .eq('venue_id', venueId)
+    .maybeSingle()
+  if (error) {
+    // Missing table is expected until the migration is run.
+    console.error('[getParkIndex] Supabase error:', error.message)
+    return null
+  }
+  if (!data) return null
+  const d = data as Record<string, unknown>
+  return {
+    venueId: Number(d.venue_id),
+    index: Number(d.index),
+    homeGames: Number(d.home_games),
+    roadGames: Number(d.road_games),
+    homeRpg: Number(d.home_rpg),
+    roadRpg: Number(d.road_rpg),
+    seasons: String(d.seasons),
+  }
+}

@@ -15,6 +15,7 @@ export type LineupBatter = {
   season_ops: number | null
   season_slg: number | null
   season_rbi: number | null
+  season_pa?: number | null
   bat_side?: 'L' | 'R' | null   // null for switch hitters (see switch_hitter) and unknowns
   switch_hitter?: boolean
 }
@@ -243,6 +244,7 @@ async function enrichBattersWithStats(batters: LineupBatter[]): Promise<LineupBa
           season_ops: stat.ops ? parseFloat(stat.ops) : null,
           // slg + rbi come from the same stat block, previously discarded
           season_slg: stat.slg ? parseFloat(stat.slg) : null,
+          season_pa: typeof stat.plateAppearances === 'number' ? stat.plateAppearances : null,
           season_rbi: typeof stat.rbi === 'number' ? stat.rbi : (stat.rbi ? parseInt(stat.rbi, 10) : null),
         }
       } catch {
