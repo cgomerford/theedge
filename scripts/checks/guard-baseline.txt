@@ -39,3 +39,5 @@ fetch	src/components/pro/ManageSubscriptionButton.tsx
 fetch	src/components/home/HomeAskOrFollows.tsx
 fetch	src/components/pro/UpgradePrompt.tsx
 fetch	src/components/pro/OpenLookButton.tsx
+fetch	src/components/mlb-home/GamesDashboard.tsx
+fetch	src/lib/mlb-home-dashboard.ts

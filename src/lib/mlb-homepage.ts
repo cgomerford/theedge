@@ -842,7 +842,7 @@ async function getSeasonLine(pitcherId: number, postseason: boolean): Promise<Se
   }
 }
 
-async function getBattersFaced(pitcherId: number): Promise<number | null> {
+export async function getBattersFaced(pitcherId: number): Promise<number | null> {
   try {
     const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}`, { next: { revalidate: 3600 } })
     if (!res.ok) return null

@@ -33,9 +33,12 @@ const mlbHeadshot = (id: string | number) =>
 export default function PlayerSearch({
   sport = 'ALL',
   rounded = false,
+  labLinks = false,
 }: {
   sport?: 'ALL' | 'MLB' | 'NFL'
   rounded?: boolean
+  /** MLB results open the player's lab (pitchers: Pitching Lab, everyone else: Batting Lab; two-way players get both) */
+  labLinks?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Result[]>([])
@@ -66,15 +69,14 @@ export default function PlayerSearch({
 
       const mlbResults: Result[] =
         mlb.status === 'fulfilled'
-          ? (mlb.value?.people ?? []).slice(0, 5).map((p: any) => ({
-              sport: 'MLB' as const,
-              type: 'player' as const,
-              id: String(p.id),
-              label: p.fullName ?? '—',
-              sublabel: p.primaryPosition ? `${p.primaryPosition} · MLB` : 'MLB',
-              imageUrl: mlbHeadshot(p.id),
-              href: `/mlb/players/${p.id}`,
-            }))
+          ? (mlb.value?.people ?? []).slice(0, 5).flatMap((p: any): Result[] => {
+              const base = { sport: 'MLB' as const, type: 'player' as const, id: String(p.id), label: p.fullName ?? '—', imageUrl: mlbHeadshot(p.id) }
+              const pos = String(p.primaryPosition ?? '')
+              if (!labLinks) return [{ ...base, sublabel: pos ? `${pos} · MLB` : 'MLB', href: `/mlb/players/${p.id}` }]
+              const pitching = { ...base, sublabel: `${pos} · Pitching Lab`, href: `/mlb/lab/pitching-lab/${p.id}` }
+              const batting = { ...base, sublabel: `${pos} · Batting Lab`, href: `/mlb/lab/batting-lab/${p.id}` }
+              return pos === 'P' ? [pitching] : pos === 'TWP' || pos === 'Two-Way Player' ? [pitching, batting] : [batting]
+            })
           : []
 
       const nflResults: Result[] =
@@ -95,7 +97,7 @@ export default function PlayerSearch({
       setLoading(false)
     }, 250)
     return () => clearTimeout(t)
-  }, [query, sport])
+  }, [query, sport, labLinks])
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -125,7 +127,7 @@ export default function PlayerSearch({
           ) : results.length > 0 ? (
             results.map((r) => (
               <Link
-                key={`${r.sport}-${r.id}`}
+                key={`${r.sport}-${r.id}-${r.href}`}
                 href={r.href}
                 className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#F4F1EA] border-b border-[#F4F1EA] last:border-b-0"
               >
