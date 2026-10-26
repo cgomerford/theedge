@@ -47,7 +47,7 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
 
   return (
     <div className="border-b border-[#E8E4DC]">
-      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 py-5 flex items-center gap-4 flex-wrap">
+      <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-5 flex items-center gap-4 flex-wrap">
         <img
           src={mlbHeadshot(playerId)}
           alt=""
@@ -70,7 +70,7 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
         </div>
       </div>
 
-      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6">
+      <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className="">
         <Suspense fallback={null}>
           <Tabs
             label="Batter lab sections"
@@ -105,7 +105,7 @@ export default function BatterLabLayout({ children, playerName, followSlot }: { 
       <MLBSubNav />
       <BattingLabProvider key={playerId} batterId={playerId}>
         <ShellHeader playerId={playerId} playerName={playerName} followSlot={followSlot} />
-        <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 py-8">
+        <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-8">
           {children}
         </div>
       </BattingLabProvider>

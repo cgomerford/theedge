@@ -30,7 +30,7 @@ const TABS = [
   { seg: 'trends',    label: 'Trends'           },
 ]
 
-function ShellHeader({ playerId, playerName }: { playerId: number; playerName: string }) {
+function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; playerName: string; followSlot?: React.ReactNode }) {
   const { data } = usePitchingLabData()
   const pathname = usePathname()
   const base = `/mlb/lab/pitching-lab/${playerId}`
@@ -43,11 +43,11 @@ function ShellHeader({ playerId, playerName }: { playerId: number; playerName: s
     <div className="border-b border-[#E8E4DC]">
       <ContextStrip
         left={<><span style={{ color: '#8A8577' }}>Pitching Lab /</span> <b>{name}</b>{line ? <span> {line}</span> : null}</>}
-        right={<Link href="/mlb/lab/pitching-lab" style={{ background: '#fff', border: '1px solid #E8E4DC', borderRadius: 2, padding: '4px 10px', fontWeight: 600, color: '#1A1A1A' }}>Change pitcher</Link>}
+        right={<>{followSlot}<Link href="/mlb/lab/pitching-lab" style={{ background: '#fff', border: '1px solid #E8E4DC', borderRadius: 2, padding: '4px 10px', fontWeight: 600, color: '#1A1A1A' }}>Change pitcher</Link></>}
       />
       <h1 className="sr-only">{name}: Pitching Lab</h1>
 
-      <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6">
+      <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className="">
         <Suspense fallback={null}>
           <Tabs
             label="Pitcher lab sections"
@@ -61,7 +61,7 @@ function ShellHeader({ playerId, playerName }: { playerId: number; playerName: s
   )
 }
 
-export default function PitcherLabLayout({ children, playerName }: { children: React.ReactNode; playerName: string }) {
+export default function PitcherLabLayout({ children, playerName, followSlot }: { children: React.ReactNode; playerName: string; followSlot?: React.ReactNode }) {
   const params = useParams()
   const playerId = Number(params.playerId)
 
@@ -70,8 +70,8 @@ export default function PitcherLabLayout({ children, playerName }: { children: R
       <SiteHeader variant="page" />
       <MLBSubNav />
       <PitchingLabProvider key={playerId} pitcherId={playerId}>
-        <ShellHeader playerId={playerId} playerName={playerName} />
-        <div style={{ maxWidth: 1600, margin: '0 auto' }} className="px-4 sm:px-6 py-8">
+        <ShellHeader playerId={playerId} playerName={playerName} followSlot={followSlot} />
+        <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-8">
           {children}
         </div>
       </PitchingLabProvider>

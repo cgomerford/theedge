@@ -485,14 +485,14 @@ export default function SiteHeader({ variant = 'page' }: Props) {
     <>
       <style>{`
         .x9h{position:relative;z-index:50;background:#FAF8F3;border-bottom:1px solid ${LINE}}
-        .x9h-row{display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;max-width:1400px;margin:0 auto}
+        .x9h-row{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px;max-width:1360px;margin:0 auto}
         .x9h-wm{display:flex;align-items:center;flex-shrink:0;text-decoration:none}
         .x9h-sports,.x9h-search{display:none}
         .x9h-right{margin-left:auto;display:flex;align-items:center;gap:12px}
         .x9h-ico{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;padding:0}
         .x9h-sub{display:block;padding:0 16px 10px}
         @media (min-width:768px){
-          .x9h-row{height:60px;padding:0 32px;gap:28px}
+          .x9h-row{height:60px;gap:28px}
           .x9h-sports{display:flex;align-self:stretch}
           .x9h-search{display:block;margin-left:auto;width:360px;max-width:36vw}
           .x9h-right{margin-left:0;gap:18px}
