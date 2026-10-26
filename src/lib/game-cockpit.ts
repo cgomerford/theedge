@@ -153,7 +153,7 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
 // ── Bullpen ────────────────────────────────────────────────────────────────
 // A relief appearance is any pitcher in a game's boxscore pitchers list except the first one listed for that team (the game's starter).
 // Season role is never used as a filter, so a pitcher who has started games this year (Ashby, May, Hall, Seymour, Matz) still counts when he relieves.
-// Window: the N days BEFORE the game date (the game's own day is not played yet), counted in the schedule's official dates.
+// Window: the N days BEFORE the game date (the game's own day is not played yet), counted in the schedule's game dates.
 export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number; games: number; lastDate: string }
 type BoxTeam = { pitchers?: number[]; players?: Record<string, { person?: { fullName?: string }; stats?: { pitching?: { numberOfPitches?: number | string } } }> }
 type SchedResp = { dates?: { date: string; games: { gamePk: number; officialDate?: string; status?: { abstractGameState?: string } }[] }[] }
