@@ -16,16 +16,20 @@ export function PostseasonLeadersRail({ groups, year }: { groups: PostLeaderGrou
       {groups.map(g => g.rows.length > 0 && (
         <div key={g.label} style={{ borderTop: '1px solid #e7e2d8', padding: '10px 0' }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: MUTED, textTransform: 'uppercase' }}>{g.label}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '2px 0 4px' }}>
-            <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{g.rows[0].value}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: MUTED }}>{g.unit}</span>
-            <span style={{ marginLeft: 'auto' }}><Headshot id={g.rows[0].id} name={g.rows[0].name} size={44} /></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '6px 0 6px' }}>
+            <Headshot id={g.rows[0].id} name={g.rows[0].name} size={52} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{g.rows[0].value}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: MUTED }}>{g.unit}</span>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 800 }}>{g.rows[0].name} <span style={{ color: MUTED, fontWeight: 600 }}>{g.rows[0].team}</span></div>
+            </div>
           </div>
           <ol style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
             {g.rows.map((r, i) => (
               <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
                 <span style={{ width: 14, color: MUTED }}>{i + 1}</span>
-                <Headshot id={r.id} name={r.name} size={24} />
                 {teamId(r.team) && <TeamMark id={teamId(r.team)!} abbr={r.team} size={16} />}
                 <Link href={`/mlb/players/${r.id}`} style={{ color: '#1A1A1A', fontWeight: 700, textDecoration: 'none' }}>{r.name}</Link>
                 <span style={{ marginLeft: 'auto', fontWeight: 800 }}>{r.value}</span>

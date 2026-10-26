@@ -120,7 +120,7 @@ export default function FeaturedScout({ data }: { data: Featured }) {
   const color = s.teamColor ?? '#8a8275'
 
   return (
-    <section aria-labelledby="featured-h" className="hm-hero" style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${INK}`, borderRadius: 2, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: data.worldSeries ? 'radial-gradient(circle at 88% 12%, #F5C518 0%, transparent 55%), linear-gradient(165deg, #FDE047 0%, #FBEA9A 42%, #ffffff 90%)' : `radial-gradient(circle at 88% 12%, ${color}38 0%, transparent 52%), linear-gradient(165deg, ${color}1f 0%, #ffffff 62%)` }}>
+    <section aria-labelledby="featured-h" className="hm-hero" style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${INK}`, borderRadius: 2, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: data.worldSeries ? 'radial-gradient(circle at 88% 12%, rgba(201,162,39,.30) 0%, transparent 55%), linear-gradient(165deg, #F0E0AE 0%, #F7EDCC 42%, #ffffff 90%)' : `radial-gradient(circle at 88% 12%, ${color}38 0%, transparent 52%), linear-gradient(165deg, ${color}1f 0%, #ffffff 62%)` }}>
       {/* floating cutout portrait over the club's initials, top right */}
       <div aria-hidden="true" className="hm-figure">
         <span className="hm-figure-abbr" style={{ color: `${color}26` }}>{s.teamAbbr}</span>
