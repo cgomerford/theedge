@@ -2,80 +2,105 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { pitchColor } from '@/lib/mlb'
+import { PLATE_Y, project, type P3 } from '@/components/admin/story-v5/trajectory'
 import type { FlightPath } from '@/lib/mlb-homepage'
 
-// The starter's pitches being thrown, from behind the plate: each type's average flight (from his own release point,
-// velocity and movement) toward the strike zone, one after another. The server HTML is the finished picture (all paths
-// and landing spots drawn); the moving ball is added in the browser, only while the panel is on screen, and not at all
-// when the visitor prefers reduced motion.
+// His pitches being thrown, from behind the plate. Same engine as the Story v5 catcher view: real 3D paths from his release
+// point, one camera, a faint strike zone and mound, a tapered trail that grows toward the ball, ease-in so the ball speeds
+// up like a real pitch, and on arrival the ball shrinks and fills with the pitch colour.
+//
+// The server HTML is the finished picture (every trail drawn, every landing filled). The motion runs in the browser only
+// while the panel is on screen, and not at all if the visitor prefers reduced motion.
 
-const W = 320, H = 366
-const FLIGHT_MS = 1000, GAP_MS = 350
 const MUTED = '#8a8275'
+const BALL_FT = 0.12
+const FLY_MS = 900, GAP_MS = 250, HOLD_MS = 1300
+const VIEW = { x: 250, y: 300, w: 580, h: 700 }
 
-export default function PitchFlight({ flights, zone, throughLabel }: { flights: FlightPath[]; zone: { x0: number; x1: number; y0: number; y1: number }; throughLabel: string }) {
+const at = (pts: P3[], f: number): P3 => {
+  const x = f * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(x)), k = x - i
+  const a = pts[i], b = pts[i + 1]
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k }
+}
+
+function Stage() {
+  const tl = project({ x: -0.708, y: PLATE_Y, z: 3.45 }), br = project({ x: 0.708, y: PLATE_Y, z: 1.55 })
+  const w = br.x - tl.x, h = br.y - tl.y
+  const mound = project({ x: 0, y: 60.5, z: 0.8 })
+  const horizon = project({ x: 0, y: 60.5, z: 2.5 }).y
+  return (
+    <g>
+      <ellipse cx={mound.x} cy={mound.y + 6} rx={150} ry={34} fill="#1A1A1A" opacity={0.07} />
+      <line x1={VIEW.x} x2={VIEW.x + VIEW.w} y1={horizon} y2={horizon} stroke="#1A1A1A" strokeOpacity={0.1} strokeWidth={2} />
+      {[1, 2].map(k => <line key={`v${k}`} x1={tl.x + (w * k) / 3} x2={tl.x + (w * k) / 3} y1={tl.y} y2={br.y} stroke="#1A1A1A" strokeOpacity={0.12} strokeWidth={2} />)}
+      {[1, 2].map(k => <line key={`h${k}`} x1={tl.x} x2={br.x} y1={tl.y + (h * k) / 3} y2={tl.y + (h * k) / 3} stroke="#1A1A1A" strokeOpacity={0.12} strokeWidth={2} />)}
+      <rect x={tl.x} y={tl.y} width={w} height={h} fill="none" stroke="#1A1A1A" strokeOpacity={0.55} strokeWidth={3} />
+    </g>
+  )
+}
+
+/** One pitch at progress u (0..1 of its flight; 1 = landed). `trailOpacity` fades older pitches back. */
+function Flight({ f, u, trailOpacity }: { f: FlightPath; u: number; trailOpacity: number }) {
+  const color = pitchColor(f.code)
+  const pts = f.points
+  const prog = u * u
+  const head = at(pts, prog)
+  const N = pts.length - 1
+  const upto = Math.floor(prog * N)
+  const segs = []
+  for (let k = 0; k <= upto && k < N; k++) {
+    const a = project(pts[k]), b = k === upto ? project(head) : project(pts[k + 1])
+    const m = (k + 1) / N
+    segs.push(<line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeLinecap="round" strokeWidth={2 + 20 * m * m} strokeOpacity={(0.1 + 0.7 * m) * trailOpacity} />)
+  }
+  const p = project(head)
+  const landed = u >= 1
+  const r = Math.max(3, BALL_FT * p.scale) * (landed ? 0.55 * 1.8 : 1.8)
+  return (
+    <g>
+      {segs}
+      <circle cx={p.x} cy={p.y} r={r} fill={landed ? color : '#fff'} stroke={color} strokeWidth={landed ? 3 : 4} />
+    </g>
+  )
+}
+
+export default function PitchFlight({ flights, throughLabel }: { flights: FlightPath[]; throughLabel: string }) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const [ball, setBall] = useState<{ x: number; y: number; r: number; color: string } | null>(null)
-  const [active, setActive] = useState<string | null>(null)
+  const [t, setT] = useState<number | null>(null) // null = finished picture (server HTML, reduced motion, off screen)
+  const cycle = flights.length * (FLY_MS + GAP_MS) + HOLD_MS
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !rootRef.current) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let raf = 0
-    let visible = false
-    let start = 0
-    const cycle = FLIGHT_MS + GAP_MS
+    if (!rootRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let raf = 0, start = 0, visible = false
     const step = (now: number) => {
       if (!visible) return
       if (!start) start = now
-      const e = now - start
-      const idx = Math.floor(e / cycle) % flights.length
-      const local = e % cycle
-      const f = flights[idx]
-      if (local < FLIGHT_MS) {
-        const p = (local / FLIGHT_MS) * (f.pts.length - 1)
-        const i = Math.min(f.pts.length - 2, Math.floor(p)), k = p - i
-        const a = f.pts[i], b = f.pts[i + 1]
-        setBall({ x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k, r: a[2] + (b[2] - a[2]) * k, color: pitchColor(f.code) })
-      } else {
-        setBall(null)
-      }
-      setActive(f.code)
+      setT((now - start) % cycle)
       raf = requestAnimationFrame(step)
     }
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting
-      if (visible) { start = 0; raf = requestAnimationFrame(step) } else { cancelAnimationFrame(raf); setBall(null); setActive(null) }
+    const io = new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting
+      if (visible) { start = 0; raf = requestAnimationFrame(step) } else { cancelAnimationFrame(raf); setT(null) }
     })
     io.observe(rootRef.current)
     return () => { io.disconnect(); cancelAnimationFrame(raf) }
-  }, [flights])
+  }, [cycle])
 
-  const zoneW = zone.x1 - zone.x0, zoneH = zone.y1 - zone.y0
+  const slot = FLY_MS + GAP_MS
+  const current = t == null ? -1 : Math.min(flights.length - 1, Math.floor(t / slot))
+  const progress = (i: number) => (t == null ? 1 : Math.max(0, Math.min(1, (t - i * slot) / FLY_MS)))
+  const active = t != null && current >= 0 && t < flights.length * slot ? flights[current].code : null
+
   return (
     <div ref={rootRef}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', color: MUTED, marginBottom: 6 }}>HIS PITCHES, THROWN</div>
-      <svg viewBox={`0 84 ${W} ${H - 84}`} role="img" aria-label="Illustrative path of each of his pitch types from release to the strike zone" style={{ width: '100%', maxWidth: 340, height: 'auto', display: 'block' }}>
-        {/* mound and plate, far and near */}
-        <ellipse cx={W / 2} cy={104} rx={26} ry={6} fill="#e7e2d8" />
-        <path d={`M${W / 2 - 20} 342 h40 v7 l-20 10 l-20 -10 z`} fill="#fff" stroke="#c9c4b6" />
-        {/* strike zone */}
-        <rect x={zone.x0} y={zone.y0} width={zoneW} height={zoneH} fill="none" stroke="#8a8275" strokeWidth={1.5} />
-        {[1, 2].map(i => <line key={`v${i}`} x1={zone.x0 + (zoneW * i) / 3} x2={zone.x0 + (zoneW * i) / 3} y1={zone.y0} y2={zone.y1} stroke="#d8d2c4" />)}
-        {[1, 2].map(i => <line key={`h${i}`} y1={zone.y0 + (zoneH * i) / 3} y2={zone.y0 + (zoneH * i) / 3} x1={zone.x0} x2={zone.x1} stroke="#d8d2c4" />)}
-        {/* each type's path (final state) and landing spot */}
-        {flights.map(f => {
-          const c = pitchColor(f.code)
-          const d = f.pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
-          const on = active === f.code
-          return (
-            <g key={f.code}>
-              <path d={d} fill="none" stroke={c} strokeWidth={on ? 2.6 : 1.6} strokeDasharray="4 3" opacity={on ? 1 : 0.55} />
-              <circle cx={f.plate[0]} cy={f.plate[1]} r={on ? 7 : 5} fill={c} opacity={on ? 0.95 : 0.7} />
-            </g>
-          )
+      <svg viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`} role="img" aria-label="Illustrative path of each of his pitch types from release to the strike zone" style={{ width: '100%', maxWidth: 340, height: 'auto', display: 'block' }}>
+        <Stage />
+        {flights.map((f, i) => {
+          const u = progress(i)
+          if (t != null && u <= 0) return null
+          return <Flight key={f.code} f={f} u={u} trailOpacity={t == null || i < current ? 0.45 : 1} />
         })}
-        {ball && <circle cx={ball.x} cy={ball.y} r={ball.r} fill={ball.color} stroke="#1A1A1A" strokeWidth={0.8} />}
       </svg>
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0, display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
         {flights.map(f => (

@@ -4,7 +4,7 @@ import PitchFlight from './PitchFlight'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import SmallSample from '@/components/data/SmallSample'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
-import { FLIGHT_VIEW, MIN_BF, type FeaturedScout as Featured, type MixRow } from '@/lib/mlb-homepage'
+import { MIN_BF, type FeaturedScout as Featured, type MixRow } from '@/lib/mlb-homepage'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor } from '@/lib/mlb'
 
@@ -175,7 +175,7 @@ export default function FeaturedScout({ data }: { data: Featured }) {
           )}
           {s.flights.length > 0 && (
             <div style={{ marginTop: 22, borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
-              <PitchFlight flights={s.flights} zone={FLIGHT_VIEW.zone} throughLabel={`Through ${formatThrough(data.throughDate) ?? ''}`} />
+              <PitchFlight flights={s.flights} throughLabel={`Through ${formatThrough(data.throughDate) ?? ''}`} />
             </div>
           )}
         </div>

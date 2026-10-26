@@ -583,6 +583,7 @@ import { getPitcherHandedness, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { getPitchViewMonths } from '@/lib/pitch-shape/data'
+import { pathFor, type P3 } from '@/components/admin/story-v5/trajectory'
 
 type RawTeamSide = {
   team: { id: number; name: string; abbreviation?: string }
@@ -793,8 +794,8 @@ export type MixRow = { code: string; label: string; one: string; many: string; u
 
 export type LastGame = { date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
 
-/** One pitch type's average flight, already projected to the hero panel (catcher's view, perspective). */
-export type FlightPath = { code: string; label: string; usagePct: number; n: number; speed: number; pts: [number, number, number][]; plate: [number, number] }
+/** One pitch type's average flight in feet (Statcast frame), from his release point to the front of the plate. The page draws it in the catcher's view. */
+export type FlightPath = { code: string; label: string; usagePct: number; n: number; speed: number; points: P3[] }
 
 export type FeaturedStarter = {
   id: number
@@ -855,14 +856,6 @@ async function getLastGame(pitcherId: number): Promise<LastGame | null> {
   }
 }
 
-// Perspective from behind the plate (catcher's view). Statcast feet: x + is the catcher's right, z is height, y runs 50 -> 0.
-const VIEW = { W: 320, H: 300, K: 731, C: 8, HORIZON: 120, CAM_H: 4.0, CX: 160, BALL_FT: 0.12 }
-const proj = (x: number, y: number, z: number): [number, number, number] => {
-  const sc = VIEW.K / (y + VIEW.C)
-  return [VIEW.CX + x * sc, VIEW.HORIZON + (VIEW.CAM_H - z) * sc, Math.max(1.2, VIEW.BALL_FT * sc)]
-}
-export const FLIGHT_VIEW = { W: VIEW.W, H: VIEW.H, zone: { x0: proj(-0.708, 1.4167, 3.5)[0], x1: proj(0.708, 1.4167, 3.5)[0], y0: proj(0, 1.4167, 3.5)[1], y1: proj(0, 1.4167, 1.5)[1] } }
-
 async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: FeaturedStarter['trend']; flights: FlightPath[] }> {
   const months = await getPitchViewMonths(pitcherId, SEASON)
   const codes = Object.keys(months)
@@ -883,21 +876,14 @@ async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: Fe
     const n = ms.reduce((a, m) => a + m.n, 0)
     if (n < 30) continue
     const w = (f: (m: (typeof ms)[number]) => number) => ms.reduce((a, m) => a + f(m) * m.n, 0) / n
-    const x0 = w(m => m.releaseX), y0 = w(m => m.releaseY), z0 = w(m => m.releaseZ)
-    const vx = w(m => m.vx0), vy = w(m => m.vy0), vz = w(m => m.vz0)
-    const ax = w(m => m.ax), ay = w(m => m.ay), az = w(m => m.az)
-    // time until the ball reaches the front of the plate (y = 17/12 ft)
-    const a = 0.5 * ay, b = vy, c = y0 - 1.4167
-    const disc = b * b - 4 * a * c
-    if (!Number.isFinite(disc) || disc < 0 || a === 0) continue
-    const T = (-b - Math.sqrt(disc)) / (2 * a) > 0 ? (-b - Math.sqrt(disc)) / (2 * a) : (-b + Math.sqrt(disc)) / (2 * a)
-    if (!(T > 0.2 && T < 0.8)) continue
-    const pts: [number, number, number][] = []
-    for (let i = 0; i <= 28; i++) {
-      const t = (T * i) / 28
-      pts.push(proj(x0 + vx * t + 0.5 * ax * t * t, y0 + vy * t + 0.5 * ay * t * t, z0 + vz * t + 0.5 * az * t * t))
-    }
-    flights.push({ code: row.code, label: row.label, usagePct: row.usagePct, n, speed: row.velo ?? 0, pts, plate: [pts[28][0], pts[28][1]] })
+    // Same maths as the Story v5 catcher view (components/admin/story-v5/trajectory.ts): the y = 50 ft frame is backed out of
+    // the release point, then position(t) = p50 + v0 t + 1/2 a t^2 to the front of the plate. Inputs are his monthly averages weighted by pitches.
+    const path = pathFor({
+      release_pos_x: w(m => m.releaseX), release_pos_y: w(m => m.releaseY), release_pos_z: w(m => m.releaseZ),
+      vx0: w(m => m.vx0), vy0: w(m => m.vy0), vz0: w(m => m.vz0), ax: w(m => m.ax), ay: w(m => m.ay), az: w(m => m.az),
+    }, 40)
+    if (!path) continue
+    flights.push({ code: row.code, label: row.label, usagePct: row.usagePct, n, speed: row.velo ?? 0, points: path.points })
     if (flights.length === 5) break
   }
   return { trend, flights: flights.length >= 3 ? flights : [] }
