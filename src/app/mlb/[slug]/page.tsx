@@ -60,6 +60,7 @@ import { TeamMark } from '@/components/home/Logo'
 import { PreviewTab } from '@/components/game-cockpit/PreviewTab'
 import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
 import { BullpenParkTab } from '@/components/game-tabs/BullpenParkTab'
+import { SeriesTab } from '@/components/game-tabs/SeriesTab'
 import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
@@ -505,22 +506,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
             {tab === 'pitchers' && <Suspense fallback={tabFallback}><PitchersTab ctx={cockpitCtx} /></Suspense>}
             {tab === 'batters' && <Suspense fallback={tabFallback}><BattersTab ctx={cockpitCtx} /></Suspense>}
             {tab === 'bullpen' && <Suspense fallback={tabFallback}><BullpenParkTab ctx={cockpitCtx} /></Suspense>}
-            {tab === 'series' && (
-              <div className="space-y-6" style={{ marginTop: 16 }}>
-                <div className="gc-two">
-                  {(['away', 'home'] as const).map(side => (
-                    <Suspense key={side} fallback={<Skeleton h={180} label="Team Snapshot" />}><SnapshotAsync ctx={ctx} side={side} /></Suspense>
-                  ))}
-                </div>
-                <div id="key-players">
-                  <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold mb-3">3 Key Players</p>
-                  <Suspense fallback={<div className="p-8 text-center text-xs text-stone-400">Loading Key Players…</div>}>
-                    <KeyPlayersSlotAsync slug={slug} isPro={isPro} />
-                  </Suspense>
-                </div>
-                <Suspense fallback={null}><SeriesBelowAsync ctx={ctx} /></Suspense>
-              </div>
-            )}
+            {tab === 'series' && <Suspense fallback={tabFallback}><SeriesTab ctx={cockpitCtx} /></Suspense>}
           </div>
         </div>
       </div>

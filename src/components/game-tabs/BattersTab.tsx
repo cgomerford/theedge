@@ -7,7 +7,8 @@ import { pitchLabel } from '@/lib/lab/pitch-meta'
 import { getBattersData, type TeamBatters } from '@/lib/game-tabs/batters'
 import { getSeriesList } from '@/lib/game-tabs/common'
 import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
-import { Card, Label, Star, MUTE, LINE, num, ops3, ZoneGrid, GhostBlock, Pending } from './ui'
+import ZoneMaps from './ZoneMaps'
+import { Card, Star, MUTE, LINE, num, ops3, GhostBlock, Pending } from './ui'
 
 function Table({ t }: { t: TeamBatters }) {
   const hand = t.vs.hand
@@ -56,18 +57,14 @@ function Zones({ t, open }: { t: TeamBatters; open: boolean }) {
   const hand = t.vs.hand ?? 'R'
   return (
     <Card>
-      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: MUTE }}>{t.teamName} hot zones v {hand}HP · xwOBA by zone, catcher&apos;s view, {new Date().getFullYear()} all games</div>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: MUTE }}>{t.teamName} hot zones v {hand}HP · all 13 zones, catcher&apos;s view, {new Date().getFullYear()} all games</div>
       {open ? (
         <>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
-            {t.rows.map(r => (
-              <div key={r.id}>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>{r.name.split(' ').slice(-1)[0]} <span style={{ color: MUTE, fontWeight: 400 }}>v {hand}HP</span></div>
-                {r.zones ? <ZoneGrid values={r.zones.v} fmt={ops3} scale={[0.15, 0.5]} small={r.zones.small} /> : <Pending />}
-              </div>
-            ))}
+          <div style={{ marginTop: 10 }}>
+            <ZoneMaps modes={['xwoba', 'ba', 'slg']} defaultMode="xwoba" minN={5}
+              maps={t.rows.filter(r => r.zones).map(r => ({ title: r.name.split(' ').slice(-1)[0], sub: `v ${hand}HP`, cells: r.zones! }))}
+              footnote="All 13 zones, catcher's view: the 3x3 strike zone in the middle and the four chase zones in the corners. * under 5 PA ending in that zone (left uncoloured)." />
           </div>
-          <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>* under 5 PA ending in that zone (left uncoloured).</div>
         </>
       ) : <GhostBlock title="Hot zones are a deep look" detail="Create a free account to open one full look a day." />}
     </Card>

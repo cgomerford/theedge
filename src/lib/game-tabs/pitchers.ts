@@ -4,6 +4,8 @@
 import { mlb } from '@/lib/mlb-cockpit.server-fetch-allowed'
 import { getPitcherZoneArsenal, type PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getPitcherCountTendency } from '@/lib/pitcher-sequencing'
+import { getPitcherHotZones, type PitcherHotZones } from '@/lib/hot-zones'
+import type { Cell } from '@/components/game-tabs/ZoneMaps'
 import { getPitcherStatsFull } from '@/lib/pitcher-full-stats'
 import { getSpinByPitch } from '@/lib/mlb-homepage'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
@@ -27,7 +29,7 @@ export type PitcherTabData = {
   arsenal: ArsenalRow[]; totalPitches: number; arsenalThrough: string | null
   tto: { label: string; pa: number | null; woba: number | null }[]
   recent: Recent[]
-  zones?: { lhb: ZoneGrid | null; rhb: ZoneGrid | null }    // gated: only present when the viewer may see zone maps
+  zones?: { lhb: { cells: Record<string, Cell>; n: number } | null; rhb: { cells: Record<string, Cell>; n: number } | null }    // gated: all 13 zones, only present when the viewer may see zone maps
   counts?: CountRow[]                                        // gated
 }
 
@@ -68,7 +70,7 @@ const GROUPS: { label: string; counts: string[] }[] = [
 export async function getPitcherTabData(id: number | undefined, name: string | undefined, teamAbbr: string, season: number, includeGated: boolean): Promise<PitcherTabData> {
   const empty: PitcherTabData = { id: null, name: null, hand: null, teamAbbr, line: null, xwLHB: null, xwRHB: null, post: null, arsenal: [], totalPitches: 0, arsenalThrough: null, tto: [], recent: [] }
   if (!id) return empty
-  const [seasonResp, logReg, logPost, arsenal, spin, full, hands, counts] = await Promise.all([
+  const [seasonResp, logReg, logPost, arsenal, spin, full, hands, counts, hot] = await Promise.all([
     mlb<StatsResp>(`/people/${id}/stats?stats=season&group=pitching&season=${season}`),
     mlb<StatsResp>(`/people/${id}/stats?stats=gameLog&group=pitching&season=${season}`),
     mlb<StatsResp>(`/people/${id}/stats?stats=gameLog&group=pitching&season=${season}&gameType=W,L,D,F`),
@@ -77,6 +79,7 @@ export async function getPitcherTabData(id: number | undefined, name: string | u
     getPitcherStatsFull(id).catch(() => null),
     fetchPitcherHands([id]).catch(() => new Map<number, 'L' | 'R'>()),
     includeGated ? getPitcherCountTendency(id).catch(() => ({})) : Promise.resolve({}),
+    includeGated ? getPitcherHotZones(id).catch(() => ({} as Record<string, PitcherHotZones>)) : Promise.resolve({} as Record<string, PitcherHotZones>),
   ])
   const s = seasonResp?.stats?.[0]?.splits?.[0]?.stat
   const all = arsenal['all'], vl = arsenal['vs_lhb'], vr = arsenal['vs_rhb']
@@ -113,7 +116,8 @@ export async function getPitcherTabData(id: number | undefined, name: string | u
     recent,
   }
   if (includeGated) {
-    out.zones = { lhb: zoneGrid(vl), rhb: zoneGrid(vr) }
+    const cellsOf = (h: PitcherHotZones | undefined) => h ? { n: Number(h.total_pitches ?? 0), cells: Object.fromEntries(Object.entries(h.zones).map(([z, c]) => [z, { n: Number(c.pitches ?? 0), ba: c.ba_against ?? null, slg: c.slg_against ?? null, xwoba: c.woba_against ?? null, share: c.usage_pct ?? null } as Cell])) } : null
+    out.zones = { lhb: cellsOf((hot as Record<string, PitcherHotZones>)['vs_lhb']), rhb: cellsOf((hot as Record<string, PitcherHotZones>)['vs_rhb']) }
     const ct = (counts as Record<string, { counts: Record<string, { total_pitches: number; pitches: { pitch_type: string; count_n: number }[] }> }>)['all']
     out.counts = ct ? GROUPS.map(g => {
       const byPitch = new Map<string, number>(); let total = 0

@@ -5,30 +5,12 @@ import { ProGateRow } from '@/components/pro/ProGateView'
 import { resolveViewer } from '@/lib/gate'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
-import { getPitcherTabData, ipText, type PitcherTabData, type ZoneGrid as ZG } from '@/lib/game-tabs/pitchers'
+import { getPitcherTabData, ipText, type PitcherTabData } from '@/lib/game-tabs/pitchers'
 import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
-import { Card, Label, Tile, Pending, Star, SMALL, MUTE, LINE, num, ops3, ZoneGrid, GhostBlock } from './ui'
+import ZoneMaps from './ZoneMaps'
+import { Card, Label, Tile, Pending, Star, SMALL, MUTE, LINE, num, ops3, GhostBlock } from './ui'
 
 const pct0 = (v: number | null) => (v == null ? '' : `${Math.round(v)}%`)
-
-function Zones({ grid, hand }: { grid: ZG | null; hand: 'LHB' | 'RHB' }) {
-  if (!grid) return <div style={{ fontSize: 13, color: MUTE }}>v {hand}: <Pending /></div>
-  return (
-    <div>
-      <div style={{ fontSize: 12, color: MUTE }}>v {hand} · n {grid.n.toLocaleString('en-US')} pitches</div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <ZoneGrid values={grid.share} fmt={v => `${Math.round(v)}%`} scale={[0, 12]} />
-          <div style={{ fontSize: 12, color: MUTE }}>{grid.outside != null ? `Outside zone ${Math.round(grid.outside)}%` : ''}</div>
-        </div>
-        <div>
-          <ZoneGrid values={grid.xwoba} fmt={v => ops3(v)} scale={[0.15, 0.5]} small={grid.bbe.map(b => b < 5)} />
-          <div style={{ fontSize: 12, color: MUTE }}>xwOBA allowed, catcher&apos;s view</div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string; gated: boolean; teamId: number }) {
   if (!p.id) return <Card><div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', color: MUTE }}>{label}</div><div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}><TeamMark id={teamId} abbr={p.teamAbbr} size={28} />Starter not announced yet</div></Card>
@@ -92,7 +74,11 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
       {gated ? (
         <>
           <Label>Where he locates · share of pitches by zone, {new Date().getFullYear()}</Label>
-          <div style={{ display: 'grid', gap: 14 }}><Zones grid={p.zones?.lhb ?? null} hand="LHB" /><Zones grid={p.zones?.rhb ?? null} hand="RHB" /></div>
+          {p.zones && (p.zones.lhb || p.zones.rhb) ? (
+            <ZoneMaps modes={['share', 'ba', 'slg', 'xwoba']} defaultMode="share" minN={15}
+              maps={[p.zones.lhb && { title: 'v LHB', sub: `n ${p.zones.lhb.n.toLocaleString('en-US')} pitches`, cells: p.zones.lhb.cells }, p.zones.rhb && { title: 'v RHB', sub: `n ${p.zones.rhb.n.toLocaleString('en-US')} pitches`, cells: p.zones.rhb.cells }].filter((m): m is NonNullable<typeof m> => !!m)}
+              footnote="All 13 zones, catcher's view: the 3x3 strike zone in the middle and the four chase zones in the corners. * under 15 pitches in that zone (left uncoloured)." />
+          ) : <Pending />}
           <Label>How he attacks counts · top pitches by count</Label>
           {p.counts && p.counts.length ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, ...num }}>

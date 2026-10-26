@@ -5,6 +5,7 @@ import { mlb } from '@/lib/mlb-cockpit.server-fetch-allowed'
 import { getBatterHotZones, type BatterHotZones } from '@/lib/hot-zones'
 import { getStarterBlock, getTeamLineup, type TeamLineup, type StarterBlock } from '@/lib/game-cockpit'
 import { getBox, type SeriesGame } from '@/lib/game-tabs/common'
+import type { Cell } from '@/components/game-tabs/ZoneMaps'
 import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
 
 type Splits = { date?: string; gameType?: string; stat: Record<string, string | number> }[]
@@ -15,7 +16,7 @@ export type BatterRow = {
   vSame: { v: number | null; n: number } | null; vOther: { v: number | null; n: number } | null
   pitches: { code: string; xwoba: number | null; pa: number; whiff: number | null }[]
   post: { h: number; ab: number; hr: number; bb: number; k: number; wsH: number; wsPa: number } | null
-  zones?: { v: (number | null)[]; small: boolean[] } | null      // gated
+  zones?: Record<string, Cell> | null      // gated: all 13 zones with AVG, SLG and xwOBA
 }
 export type TeamBatters = { teamId: number; teamName: string; abbr: string; source: TeamLineup['source']; vs: StarterBlock; rows: BatterRow[]; pitchCodes: string[]; through: string | null; lineupIds: number[] }
 export type BattersData = { away: TeamBatters; home: TeamBatters; chips: { confirmed: boolean; changes: string[] } }
@@ -68,7 +69,7 @@ export async function getBattersData(ctx: CockpitCtx, series: SeriesGame[], gate
         vSame: splitXwoba(same), vOther: splitXwoba(zs[otherKey]),
         pitches: r.vsPitch.map(v => ({ code: v.code, xwoba: v.xwoba, pa: v.pa, whiff: v.whiff ?? null })),
         post: ps.length ? { h: sumN(ps, 'hits'), ab: sumN(ps, 'atBats'), hr: sumN(ps, 'homeRuns'), bb: sumN(ps, 'baseOnBalls'), k: sumN(ps, 'strikeOuts'), wsH: sumN(ws, 'hits'), wsPa: sumN(ws, 'plateAppearances') } : null,
-        zones: gated ? (same ? { v: Array.from({ length: 9 }, (_, i) => same.zones[String(i + 1)]?.xwoba ?? null), small: Array.from({ length: 9 }, (_, i) => Number(same.zones[String(i + 1)]?.ab ?? 0) < 5) } : null) : undefined,
+        zones: gated ? (same ? Object.fromEntries(Object.entries(same.zones).map(([z, c]) => [z, { n: Number(c.ab ?? 0), ba: c.ba ?? null, slg: c.slg ?? null, xwoba: c.xwoba ?? null } as Cell])) : null) : undefined,
       }
     }))
     return { teamId: team.id, teamName: team.name, abbr: team.abbr, source: lu.source, vs: opp, rows, pitchCodes: codes(opp), through: lu.splitsThrough, lineupIds: lu.rows.map(r => r.id) }
