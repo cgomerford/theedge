@@ -17,7 +17,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import ProGate from '@/components/pro/ProGate'
 import PendingBlock from '@/components/data/PendingBlock'
 import { getPlayerOverview } from '@/lib/player-overview'
-import { PlayerHeader, LatestGame, LastFive, SeasonAndCareer, Arsenal, ZonesShell, Percentiles, WhatChanged, Splits, Section } from '@/components/player-page/PlayerOverviewView'
+import { PlayerHeader, LatestGame, LastFive, SeasonReadout, CareerTable, Arsenal, ZonesShell, Percentiles, WhatChanged, Splits, Section } from '@/components/player-page/PlayerOverviewView'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
@@ -72,7 +72,7 @@ export default async function PlayerPage({
   const gate = isPro ? { tier: 'pro' as const, freeLook: false, state: 'pro' as const } : await resolveViewer('player_trends', String(playerId))
 
   const overview = await getPlayerOverview(data)
-  const centered: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '16px 16px 72px' }
+  const centered: React.CSSProperties = { maxWidth: 1360, margin: '0 auto', padding: '16px 24px 72px' }
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -80,14 +80,25 @@ export default async function PlayerPage({
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: data.identity.fullName, path: `/mlb/players/${playerId}` }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
+      <style>{`.pl-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0 48px;align-items:start}.pl-rail{border-left:1px solid #e7e2d8;padding-left:32px}@media (max-width:1000px){.pl-layout{grid-template-columns:minmax(0,1fr)}.pl-rail{border-left:0;padding-left:0}}`}</style>
       <div style={centered}>
         <PlayerHeader data={data} follow={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />} />
         {overview.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{overview.seasonNote}</p> : null}
         <LatestGame o={overview} />
 
-        <Section title="Last 5 games"><LastFive o={overview} /></Section>
-        <Section title={`${overview.season} season and career`}><SeasonAndCareer o={overview} data={data} /></Section>
-        <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={overview} /></Section>
+        <div className="pl-layout">
+          <div style={{ minWidth: 0 }}>
+            <Section title="Last 5 games"><LastFive o={overview} /></Section>
+            <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={overview} /></Section>
+            <Section title="Career"><CareerTable o={overview} data={data} /></Section>
+          </div>
+          <aside className="pl-rail" aria-label="Season summary">
+            <Section title={`${overview.season} season`}><SeasonReadout o={overview} /></Section>
+            <Section title="Percentiles"><Percentiles o={overview} /></Section>
+            <Section title="What changed" sub="Last 30 days against the season"><WhatChanged o={overview} /></Section>
+            <Section title="Splits"><Splits o={overview} /></Section>
+          </aside>
+        </div>
 
         <Section title="Zones">
           <ProGate
@@ -102,10 +113,6 @@ export default async function PlayerPage({
             shell={<ZonesShell />}
           />
         </Section>
-
-        <Section title="Percentiles"><Percentiles o={overview} /></Section>
-        <Section title="What changed" sub="Last 30 days against the season"><WhatChanged o={overview} /></Section>
-        <Section title="Splits"><Splits o={overview} /></Section>
       </div>
     </main>
   )

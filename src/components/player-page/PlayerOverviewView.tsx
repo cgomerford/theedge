@@ -95,35 +95,39 @@ export function LastFive({ o }: { o: PlayerOverview }) {
   return <Table head={head} rows={rows} leftSecond />
 }
 
-export function SeasonAndCareer({ o, data }: { o: PlayerOverview; data: PlayerPageData }) {
+function seasonItems(o: PlayerOverview) {
   const l = o.line
-  const small = o.lineN < MIN_SAMPLE.batterPercentilePA
-  const items = o.isPitcher
+  return o.isPitcher
     ? [['ERA', rate(l?.era)], ['WHIP', rate(l?.whip)], ['K/9', rate(l?.strikeoutsPer9Inn)], ['IP', rate(l?.inningsPitched)]]
     : [['AVG', rate(l?.avg)], ['OBP', rate(l?.obp)], ['SLG', rate(l?.slg)], ['OPS', rate(l?.ops)]]
+}
+
+export function SeasonReadout({ o }: { o: PlayerOverview }) {
+  const small = o.lineN < MIN_SAMPLE.batterPercentilePA
+  if (!o.line) return <PendingBlock label="Season line" />
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }}>
+        {seasonItems(o).map(([k, v]) => (
+          <div key={k}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: MUTE }}>{k}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, ...num }}>{v}{small ? <Star /> : null}</div>
+            <div style={{ fontSize: 12, color: MUTE, ...num }}>n {o.lineN.toLocaleString('en-US')} {o.isPitcher ? 'BF' : 'PA'}</div>
+          </div>
+        ))}
+      </div>
+      {small ? <Note text={`under ${MIN_SAMPLE.batterPercentilePA} ${o.isPitcher ? 'batters faced' : 'plate appearances'}`} /> : null}
+    </>
+  )
+}
+
+export function CareerTable({ o, data }: { o: PlayerOverview; data: PlayerPageData }) {
   const careerRows = (o.isPitcher ? data.yearByYearPitching : data.yearByYearHitting)
   const head = o.isPitcher ? ['Season', 'Team', 'W', 'L', 'ERA', 'IP', 'K', 'BB', 'WHIP'] : ['Season', 'Team', 'G', 'AVG', 'OBP', 'SLG', 'OPS', 'HR', 'RBI']
   const rows = careerRows.map(r => [String(r.season), r.team ?? '', ...(o.isPitcher
     ? [r.stat.wins, r.stat.losses, r.stat.era, r.stat.inningsPitched, r.stat.strikeOuts, r.stat.baseOnBalls, r.stat.whip]
     : [r.stat.gamesPlayed, r.stat.avg, r.stat.obp, r.stat.slg, r.stat.ops, r.stat.homeRuns, r.stat.rbi]).map(v => (v == null ? '' : String(v)))])
-  return (
-    <>
-      {l ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 34px' }}>
-          {items.map(([k, v]) => (
-            <div key={k}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: MUTE }}>{k}</div>
-              <div style={{ fontSize: 28, fontWeight: 800, ...num }}>{v}{small ? <Star /> : null}</div>
-              <div style={{ fontSize: 12, color: MUTE, ...num }}>n {o.lineN.toLocaleString('en-US')} {o.isPitcher ? 'BF' : 'PA'}</div>
-            </div>
-          ))}
-        </div>
-      ) : <PendingBlock label="Season line" />}
-      {small && l ? <Note text={`under ${MIN_SAMPLE.batterPercentilePA} ${o.isPitcher ? 'batters faced' : 'plate appearances'}`} /> : null}
-      <h3 style={{ margin: '22px 0 4px', fontSize: 16, fontWeight: 800 }}>{o.isPitcher ? 'Pitching · year on year' : 'Batting · year on year'}</h3>
-      {rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE }}>No prior MLB seasons</div> : <Table head={head} rows={rows} leftSecond />}
-    </>
-  )
+  return rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE }}>No prior MLB seasons</div> : <Table head={head} rows={rows} leftSecond />
 }
 
 export function Arsenal({ o }: { o: PlayerOverview }) {
