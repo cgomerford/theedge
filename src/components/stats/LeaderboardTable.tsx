@@ -8,9 +8,14 @@ import { Headshot } from '@/components/home/Logo'
 import TeamChip from '@/components/ui/TeamChip'
 
 type Row = { id: number; name: string; team: string; n: number; qualified: boolean; v: Record<string, number | null> }
-type Col = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean }
+type Col = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; signed?: boolean; tip?: string }
 
-const fmt = (v: number | null, c: Col) => (v == null ? '' : c.digits === 3 ? v.toFixed(3).replace(/^0/, '') : v.toFixed(c.digits ?? 0)) + (v != null && c.pct ? '%' : '')
+const fmt = (v: number | null, c: Col) => {
+  if (v == null) return ''
+  const body = c.digits === 3 ? Math.abs(v).toFixed(3).replace(/^0/, '') : Math.abs(v).toFixed(c.digits ?? 0)
+  const sign = c.signed ? (v > 0 ? '+' : v < 0 ? '−' : '') : v < 0 ? '−' : ''
+  return sign + body + (c.pct ? '%' : '')
+}
 
 export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText }: {
   rows: Row[]; cols: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null
@@ -30,9 +35,24 @@ export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sort
       return asc ? x - y : y - x
     })
   }, [rows, key, asc, qual, canFilter])
+  // Percentile of each value among the players in the table now (qualified only when that toggle is on): 100th = best, so low-is-better columns count backwards.
+  const ranks = useMemo(() => {
+    const pool = canFilter && qual ? rows.filter(r => r.qualified) : rows
+    const m: Record<string, { sorted: number[]; asc: boolean }> = {}
+    for (const c of cols) m[c.key] = { sorted: pool.map(r => r.v[c.key]).filter((v): v is number => v != null).sort((a, b) => a - b), asc: !!c.asc }
+    return m
+  }, [rows, cols, qual, canFilter])
+  const tip = (c: Col, v: number | null) => {
+    const r = ranks[c.key]
+    if (v == null || !r || r.sorted.length < 2) return undefined
+    const below = r.sorted.filter(x => (r.asc ? x > v : x < v)).length
+    const pct = Math.round((below / (r.sorted.length - 1)) * 100)
+    const better = r.sorted.filter(x => (r.asc ? x < v : x > v)).length
+    return `${pct}${['th', 'st', 'nd', 'rd'][pct % 100 > 10 && pct % 100 < 14 ? 0 : pct % 10 < 4 ? pct % 10 : 0]} percentile · ${better + 1} of ${r.sorted.length}`
+  }
   const click = (k: string, defAsc: boolean) => { if (k === key) setAsc(a => !a); else { setKey(k); setAsc(defAsc) } }
-  const th = (k: string, label: string, defAsc: boolean, left = false) => (
-    <th key={k} aria-sort={key === k ? (asc ? 'ascending' : 'descending') : 'none'} style={{ padding: '8px 10px', textAlign: left ? 'left' : 'right', whiteSpace: 'nowrap', ...(left ? { position: 'sticky', left: 0, background: '#FAF8F3', zIndex: 1 } : {}) }}>
+  const th = (k: string, label: string, defAsc: boolean, left = false, tipText?: string) => (
+    <th key={k} title={tipText} aria-sort={key === k ? (asc ? 'ascending' : 'descending') : 'none'} style={{ padding: '8px 10px', textAlign: left ? 'left' : 'right', whiteSpace: 'nowrap', ...(left ? { position: 'sticky', left: 0, background: '#FAF8F3', zIndex: 1 } : {}) }}>
       <button type="button" onClick={() => click(k, defAsc)} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: key === k ? '#1A1A1A' : '#8a8275', cursor: 'pointer', borderBottom: key === k ? '3px solid #FF5722' : '3px solid transparent' }}>
         {label}{key === k ? (asc ? ' ▲' : ' ▼') : ''}
       </button>
@@ -55,7 +75,7 @@ export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sort
             <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: 12, color: '#8a8275' }}>#</th>
             {th('__player', 'Player', false, true)}
             {th('__n', nLabel, false)}
-            {cols.map(c => th(c.key, c.label, !!c.asc))}
+            {cols.map(c => th(c.key, c.label, !!c.asc, false, c.tip))}
           </tr></thead>
           <tbody>{sorted.slice(0, shown).map((r, i) => (
             <tr key={r.id} style={{ borderTop: '1px solid #e7e2d8' }}>
@@ -66,7 +86,7 @@ export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sort
                 </Link>
               </td>
               <td style={{ padding: '6px 10px', textAlign: 'right', color: '#57534E' }}>{nDigits ? r.n.toFixed(nDigits) : r.n}</td>
-              {cols.map(c => <td key={c.key} style={{ padding: '6px 10px', textAlign: 'right', fontWeight: c.lead ? 800 : 400 }}>{fmt(r.v[c.key], c)}</td>)}
+              {cols.map(c => <td key={c.key} title={tip(c, r.v[c.key])} style={{ padding: '6px 10px', textAlign: 'right', fontWeight: c.lead ? 800 : 400, cursor: 'default' }}>{fmt(r.v[c.key], c)}</td>)}
             </tr>
           ))}</tbody>
         </table>

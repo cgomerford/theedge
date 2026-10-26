@@ -6,7 +6,7 @@ import { getAllBattersSeasonTable } from '@/lib/stats-data'
 import { MLB_TEAMS } from '@/lib/teams'
 
 export type BoardRow = { id: number; name: string; team: string; teamId: number | null; n: number; qualified: boolean; v: Record<string, number | null> }
-export type BoardCol = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; tip?: string }
+export type BoardCol = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; tip?: string; signed?: boolean }
 export type Board = { rows: BoardRow[]; cols: BoardCol[]; n: { key: string; label: string }; sortKey: string; sortAsc: boolean; minText: string | null; through: string }
 
 const abbr = (teamId: number | null | undefined) => MLB_TEAMS.find(t => t.id === teamId)?.abbrev ?? ''
@@ -30,7 +30,7 @@ export const PITCHING_COLS: BoardCol[] = [
   { key: 'fip', label: 'FIP', digits: 2, asc: true }, { key: 'w', label: 'W', digits: 0 }, { key: 'l', label: 'L', digits: 0, asc: true }, { key: 'sv', label: 'SV', digits: 0 },
 ]
 export const STATCAST_BAT_COLS: BoardCol[] = [
-  { key: 'xwoba', label: 'xwOBA', digits: 3, lead: true }, { key: 'xba', label: 'xBA', digits: 3 }, { key: 'xslg', label: 'xSLG', digits: 3 },
+  { key: 'xwoba', label: 'xwOBA', digits: 3, lead: true }, { key: 'xba', label: 'xBA', digits: 3 }, { key: 'xbadiff', label: 'xBA − AVG', digits: 3, signed: true, tip: 'Expected average minus actual average. Positive means the contact quality was better than the results: unlucky.' }, { key: 'xslg', label: 'xSLG', digits: 3 },
   { key: 'ev', label: 'Avg EV', digits: 1 }, { key: 'hh', label: 'Hard-hit%', digits: 1, pct: true }, { key: 'barrel', label: 'Barrel%', digits: 1, pct: true },
 ]
 export const STATCAST_PIT_COLS: BoardCol[] = [
@@ -79,7 +79,7 @@ export async function getStatcastBatters(season: number): Promise<Board> {
   const rows = await getAllBattersSeasonTable(season)
   const out: BoardRow[] = rows.filter(r => Number(r.stats.pa ?? 0) >= 50 && r.stats.xwoba != null).map(r => ({
     id: r.id, name: r.name, team: r.team, teamId: r.teamId, n: Number(r.stats.pa), qualified: true,
-    v: { xwoba: num(r.stats.xwoba), xba: num(r.stats.xba), xslg: num(r.stats.xslg), ev: num(r.stats.avg_exit_velocity), hh: num(r.stats.hard_hit_pct), barrel: num(r.stats.barrel_pct) },
+    v: { xwoba: num(r.stats.xwoba), xba: num(r.stats.xba), xbadiff: num(r.stats.xba) != null && num(r.stats.avg) != null ? (num(r.stats.xba) as number) - (num(r.stats.avg) as number) : null, xslg: num(r.stats.xslg), ev: num(r.stats.avg_exit_velocity), hh: num(r.stats.hard_hit_pct), barrel: num(r.stats.barrel_pct) },
   }))
   return { rows: out, cols: STATCAST_BAT_COLS, n: { key: 'pa', label: 'PA' }, sortKey: 'xwoba', sortAsc: false, minText: 'Minimum: 50 plate appearances. Hard-hit% needs 25 batted balls.', through: today() }
 }
@@ -92,4 +92,34 @@ export async function getStatcastPitchers(season: number): Promise<Board> {
     v: { xwoba: num(r.xwoba_allowed), xera: num(r.xera), hh: num(r.hard_hit_pct), barrel: num(r.barrel_pct), swstr: num(r.swstr_pct), chase: num(r.chase_rate) },
   }))
   return { rows: out, cols: STATCAST_PIT_COLS, n: { key: 'ip', label: 'IP' }, sortKey: 'xwoba', sortAsc: true, minText: 'Minimum: 50 batters faced (about 12 innings).', through: today() }
+}
+
+export const ADV_BAT_COLS: BoardCol[] = [
+  { key: 'xbadiff', label: 'xBA − AVG', digits: 3, signed: true, lead: true, tip: 'Expected average minus actual average. Positive means the contact quality was better than the results: unlucky.' }, { key: 'iso', label: 'ISO', digits: 3 }, { key: 'babip', label: 'BABIP', digits: 3 }, { key: 'bbp', label: 'BB%', digits: 1, pct: true }, { key: 'kp', label: 'K%', digits: 1, pct: true, asc: true },
+  { key: 'bbk', label: 'BB/K', digits: 2 }, { key: 'sweet', label: 'Sweet spot%', digits: 1, pct: true }, { key: 'maxev', label: 'Max EV', digits: 1 }, { key: 'sprint', label: 'Sprint speed', digits: 1 },
+]
+export const ADV_PIT_COLS: BoardCol[] = [
+  { key: 'kbb', label: 'K-BB%', digits: 1, pct: true, lead: true }, { key: 'kp', label: 'K%', digits: 1, pct: true }, { key: 'bbp', label: 'BB%', digits: 1, pct: true, asc: true }, { key: 'kbbr', label: 'K/BB', digits: 2 },
+  { key: 'babip', label: 'BABIP', digits: 3, asc: true }, { key: 'lob', label: 'LOB%', digits: 1, pct: true }, { key: 'gb', label: 'GB%', digits: 1, pct: true }, { key: 'fip', label: 'FIP', digits: 2, asc: true }, { key: 'xera', label: 'xERA', digits: 2, asc: true },
+]
+
+export async function getAdvancedBatters(season: number): Promise<Board> {
+  const [rows, games] = await Promise.all([getAllBattersSeasonTable(season), teamGames(season)])
+  const out: BoardRow[] = rows.filter(r => Number(r.stats.pa ?? 0) > 0).map(r => {
+    const pa = Number(r.stats.pa), bb = num(r.stats.walks), k = num(r.stats.strikeouts), tg = games.get(r.teamId) ?? leagueGames(games)
+    return { id: r.id, name: r.name, team: r.team, teamId: r.teamId, n: pa, qualified: pa >= 3.1 * tg,
+      v: { xbadiff: num(r.stats.xba) != null && num(r.stats.avg) != null ? (num(r.stats.xba) as number) - (num(r.stats.avg) as number) : null, iso: num(r.stats.iso), babip: num(r.stats.babip), bbp: bb != null ? (bb / pa) * 100 : null, kp: k != null ? (k / pa) * 100 : null, bbk: bb != null && k ? bb / k : null, sweet: num(r.stats.sweet_spot_pct), maxev: num(r.stats.max_exit_velocity), sprint: num(r.stats.sprint_speed) } }
+  })
+  return { rows: out, cols: ADV_BAT_COLS, n: { key: 'pa', label: 'PA' }, sortKey: 'xbadiff', sortAsc: false, minText: `Qualified: ${(3.1 * leagueGames(games)).toFixed(0)} plate appearances (3.1 per team game). xBA − AVG above zero marks players whose contact has been better than their results.`, through: today() }
+}
+
+export async function getAdvancedPitchers(season: number): Promise<Board> {
+  const [rows, games] = await Promise.all([pitcherRows(season), teamGames(season)])
+  const out: BoardRow[] = rows.filter(r => Number(r.innings_pitched ?? 0) > 0).map(r => {
+    const ip = Number(r.innings_pitched), tid = Number(r.team_id), tg = games.get(tid) ?? leagueGames(games)
+    const k = num(r.k_pct), bb = num(r.bb_pct), lob = num(r.strand_rate)
+    return { id: Number(r.player_id), name: String(r.player_name), team: abbr(tid), teamId: tid || null, n: ip, qualified: ip >= tg,
+      v: { kbb: k != null && bb != null ? k - bb : null, kp: k, bbp: bb, kbbr: num(r.k_bb_ratio), babip: num(r.babip), lob: lob != null ? lob * 100 : null, gb: num(r.gb_rate), fip: num(r.fip), xera: num(r.xera) } }
+  })
+  return { rows: out, cols: ADV_PIT_COLS, n: { key: 'ip', label: 'IP' }, sortKey: 'kbb', sortAsc: false, minText: `Qualified: ${leagueGames(games)} innings pitched (1.0 per team game).`, through: today() }
 }

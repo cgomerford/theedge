@@ -9,7 +9,7 @@ import LeaderboardTable from '@/components/stats/LeaderboardTable'
 import { isProViewer } from '@/lib/require-pro'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import { getBattingBoard, getPitchingBoard, getStatcastBatters, getStatcastPitchers, type Board } from '@/lib/stats-leaderboards'
+import { getBattingBoard, getPitchingBoard, getStatcastBatters, getStatcastPitchers, getAdvancedBatters, getAdvancedPitchers, type Board } from '@/lib/stats-leaderboards'
 
 export const metadata = pageMeta({
   title: 'MLB stats',
@@ -17,7 +17,7 @@ export const metadata = pageMeta({
   path: '/mlb/stats',
 })
 
-const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }]
+const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }, { id: 'advanced', label: 'Advanced' }]
 
 function Board({ b, qualifiable }: { b: Board; qualifiable: boolean }) {
   return <LeaderboardTable rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
@@ -39,6 +39,17 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
         <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable={false} />
         <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable={false} />
         <p style={{ fontSize: 12, color: '#8a8275' }}>Baseball Savant expected stats and batted-ball data, {season} regular season, through the latest game stored.</p>
+      </>
+    )
+  }
+
+  else if (tab === 'advanced') {
+    const [bat, pit] = await Promise.all([getAdvancedBatters(season), getAdvancedPitchers(season)])
+    body = (
+      <>
+        <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable />
+        <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable />
+        <p style={{ fontSize: 12, color: '#8a8275' }}>Rates are worked out from the season totals above. Hover a number for its percentile among the players in the table.</p>
       </>
     )
   }
