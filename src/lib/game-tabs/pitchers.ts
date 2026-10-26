@@ -18,7 +18,7 @@ export const outsOf = (ip: unknown) => { const [a, b] = String(ip ?? '0').split(
 export const ipText = (outs: number) => `${Math.floor(outs / 3)}.${outs % 3}`
 
 export type ArsenalRow = { code: string; name: string; use: number | null; vL: number | null; vR: number | null; mph: number | null; ivb: number | null; hb: number | null; spin: number | null; whiff: number | null; swings: number; xwoba: number | null; bbe: number; pitches: number }
-export type Recent = { date: string; game: string; ip: string; h: number; er: number; bb: number; k: number; hr: number; pit: number | null }
+export type Recent = { date: string; game: string; ip: string; h: number; er: number; bb: number; k: number; hr: number; pit: number | null; gs: boolean }
 export type ZoneGrid = { share: (number | null)[]; xwoba: (number | null)[]; bbe: number[]; outside: number | null; n: number }
 export type CountRow = { label: string; n: number; mix: { code: string; pct: number }[] }
 export type PitcherTabData = {
@@ -67,7 +67,7 @@ const GROUPS: { label: string; counts: string[] }[] = [
   { label: 'Two strikes', counts: ['0-2', '1-2', '2-2', '3-2'] },
 ]
 
-export async function getPitcherTabData(id: number | undefined, name: string | undefined, teamAbbr: string, season: number, includeGated: boolean): Promise<PitcherTabData> {
+async function getPitcherTabDataRaw(id: number | undefined, name: string | undefined, teamAbbr: string, season: number, includeGated: boolean): Promise<PitcherTabData> {
   const empty: PitcherTabData = { id: null, name: null, hand: null, teamAbbr, line: null, xwLHB: null, xwRHB: null, post: null, arsenal: [], totalPitches: 0, arsenalThrough: null, tto: [], recent: [] }
   if (!id) return empty
   const [seasonResp, logReg, logPost, arsenal, spin, full, hands, counts, hot] = await Promise.all([
@@ -98,7 +98,7 @@ export async function getPitcherTabData(id: number | undefined, name: string | u
 
   const toGame = (sp: Splits[number], post: boolean): Recent & { sortKey: string } => ({
     sortKey: sp.date ?? '', date: (sp.date ?? '').slice(5).replace('-', '/'), game: `${post ? 'Post' : 'Reg'} · ${sp.opponent?.name?.split(' ').slice(-1)[0] ?? sp.opponent?.abbreviation ?? ''}`,
-    ip: String(sp.stat.inningsPitched ?? '0.0'), h: Number(sp.stat.hits ?? 0), er: Number(sp.stat.earnedRuns ?? 0), bb: Number(sp.stat.baseOnBalls ?? 0), k: Number(sp.stat.strikeOuts ?? 0), hr: Number(sp.stat.homeRuns ?? 0), pit: n(sp.stat.numberOfPitches),
+    ip: String(sp.stat.inningsPitched ?? '0.0'), h: Number(sp.stat.hits ?? 0), er: Number(sp.stat.earnedRuns ?? 0), bb: Number(sp.stat.baseOnBalls ?? 0), k: Number(sp.stat.strikeOuts ?? 0), hr: Number(sp.stat.homeRuns ?? 0), pit: n(sp.stat.numberOfPitches), gs: Number(sp.stat.gamesStarted ?? 0) > 0,
   })
   const postSplits = logPost?.stats?.[0]?.splits ?? []
   const games = [...(logReg?.stats?.[0]?.splits ?? []).map(x => toGame(x, false)), ...postSplits.map(x => toGame(x, true))].filter(g => g.sortKey).sort((a, b) => b.sortKey.localeCompare(a.sortKey))
@@ -127,3 +127,7 @@ export async function getPitcherTabData(id: number | undefined, name: string | u
   }
   return out
 }
+
+import { cache } from 'react'
+/** Same data, shared within one request (the Game Preview and Pitchers tabs both ask for it). */
+export const getPitcherTabData = cache(getPitcherTabDataRaw)

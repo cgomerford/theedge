@@ -9,6 +9,7 @@ import SignupAsk from '@/components/signup/SignupAsk'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import { getBullpenRecent, type StarterBlock, type TeamLineup, type LineupRow, type BullpenRow } from '@/lib/game-cockpit'
+import { getPitcherTabData, type PitcherTabData } from '@/lib/game-tabs/pitchers'
 import { getParkIndex, getParkHitSummary, type ParkIndex } from '@/lib/park-index'
 import ParkHitTable from './ParkHitTable'
 import { cockpitData, type CockpitCtx } from './GameTabs'
@@ -41,7 +42,7 @@ function Gauge({ pct, text, color, star }: { pct: number | null; text: string; c
   )
 }
 
-function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: StarterBlock; label: string; teamName: string; teamId: number; teamAbbr: string; lookHref: string }) {
+function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref, extra, vsLine }: { s: StarterBlock; label: string; teamName: string; teamId: number; teamAbbr: string; lookHref: string; extra: PitcherTabData | null; vsLine: { abbr: string; lines: { code: string; xwoba: number | null; pa: number }[] } }) {
   const line = [s.wins != null && s.losses != null ? `${s.wins}-${s.losses}` : null, s.era != null ? `${s.era.toFixed(2)} ERA` : null, s.ip ? `${s.ip} IP` : null].filter(Boolean).join(' · ')
   return (
     <section style={card}>
@@ -96,11 +97,63 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: St
             </p>
           ) : null}
           {s.bf < MIN_SAMPLE.pitcherPercentileBF || s.mix.some(m => m.pitches < MIN_SAMPLE.arsenalPitchesPerType || m.swings < MIN_SAMPLE.whiffSwings) ? <Note /> : null}
+          {extra ? <StarterExtras e={extra} vs={vsLine} /> : null}
           <p style={{ margin: '12px 0 0', fontSize: 14 }}><Link href={lookHref} style={{ color: '#FF5722', fontWeight: 800 }}>Attack zones and per-pitch detail</Link></p>
         </>
       )}
       {s.status === 'not_announced' ? <p style={{ margin: '14px 0 0', fontSize: 14 }}>Starter not announced yet</p> : null}
     </section>
+  )
+}
+
+function StarterExtras({ e, vs }: { e: PitcherTabData; vs: { abbr: string; lines: { code: string; xwoba: number | null; pa: number }[] } }) {
+  const starts = e.recent.filter(r => r.gs && r.pit != null).slice(0, 5).reverse()   // oldest to newest
+  const maxP = Math.max(100, ...starts.map(r => r.pit as number))
+  const W = 150, H = 38
+  const pts = starts.map((r, i) => [starts.length > 1 ? (i / (starts.length - 1)) * (W - 12) + 6 : W / 2, H - 4 - ((r.pit as number) / maxP) * (H - 10)] as const)
+  const tile = (label: string, v: { v: number; n: number } | null, rule: string) => (
+    <div style={{ background: '#f0ece1', borderLeft: `4px solid ${rule}`, padding: '6px 10px', minWidth: 0 }}>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: MUTE }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, ...num, lineHeight: 1.15 }}>{v ? ops3(v.v) : <span style={{ fontSize: 13, color: MUTE, fontWeight: 400 }}>pending</span>}</div>
+      <div style={{ fontSize: 12, color: MUTE, ...num }}>{v ? `n ${v.n} balls in play` : ''}</div>
+    </div>
+  )
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>{tile('xwOBA v LHB', e.xwLHB, '#6CABDD')}{tile('xwOBA v RHB', e.xwRHB, '#FF5722')}</div>
+
+      <p style={{ ...kicker, margin: '14px 0 6px' }}>Times through the order · wOBA</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        {e.tto.map(t => (
+          <div key={t.label} style={num}>
+            <div style={{ fontSize: 12, color: MUTE }}>{t.label}{t.pa != null ? ` · n ${t.pa} PA` : ''}</div>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>{t.woba != null ? ops3(t.woba) : <span style={{ fontSize: 13, color: MUTE, fontWeight: 400 }}>pending</span>}{t.pa != null && t.pa < 10 ? <Star /> : null}</div>
+            {t.woba != null ? <span style={{ display: 'block', background: '#f1eee6', height: 8, borderRadius: 4, marginTop: 3 }}><span style={{ display: 'block', height: 8, borderRadius: 4, background: '#FF5722', width: `${Math.min(100, (t.woba / 0.5) * 100)}%` }} /></span> : null}
+          </div>
+        ))}
+      </div>
+
+      <p style={{ ...kicker, margin: '14px 0 4px' }}>Last five starts · pitches</p>
+      {starts.length >= 2 ? (
+        <div style={{ ...num }}>
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Pitches in his last ${starts.length} starts: ${starts.map(r => r.pit).join(', ')}`}>
+            <polyline points={pts.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="#1A1A1A" strokeWidth="2" />
+            {pts.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3" fill="#FF5722" />)}
+          </svg>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: W, fontSize: 12, color: MUTE }}>{starts.map((r, i) => <span key={i} style={{ width: 28, textAlign: 'center' }}>{r.pit}<br />{r.ip}</span>)}</div>
+          <div style={{ fontSize: 12, color: MUTE }}>Pitches over innings pitched, oldest to newest.</div>
+        </div>
+      ) : <span style={{ fontSize: 13, color: MUTE }}>pending</span>}
+
+      <p style={{ ...kicker, margin: '14px 0 4px' }}>This lineup v his top two pitches</p>
+      <div style={{ display: 'grid', gap: 3, fontSize: 14, ...num }}>
+        {vs.lines.map(l => (
+          <Link key={l.code} href="?tab=batters" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <b>{vs.abbr} hitters v {pitchLabel(l.code).toLowerCase()}s</b>: {l.xwoba != null ? `${ops3(l.xwoba)} xwOBA` : 'pending'}{l.pa < 10 ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {l.pa} PA</span> <span style={{ color: '#FF5722', fontWeight: 800 }}>Batters tab</span>
+          </Link>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -208,12 +261,23 @@ function Chip({ children, tone = '#8a8275' }: { children: ReactNode; tone?: stri
 }
 
 export async function PreviewTab({ ctx, seriesLabel }: { ctx: CockpitCtx; seriesLabel: string | null }) {
-  const [{ away, home, s }, bpA, bpH, park] = await Promise.all([
+  const [{ away, home, s }, bpA, bpH, park, exAway, exHome] = await Promise.all([
     cockpitData(ctx),
     getBullpenRecent(ctx.away.id, [ctx.away.pitcherId ?? 0], ctx.gameDate, 3),
     getBullpenRecent(ctx.home.id, [ctx.home.pitcherId ?? 0], ctx.gameDate, 3),
     getParkIndex(ctx.venueId),
+    getPitcherTabData(ctx.away.pitcherId, ctx.away.pitcherName, ctx.away.abbr, ctx.season, false),
+    getPitcherTabData(ctx.home.pitcherId, ctx.home.pitcherName, ctx.home.abbr, ctx.season, false),
   ])
+  // The opposing lineup against each starter's top two pitches (PA-weighted xwOBA across the nine).
+  const vsLines = (lu: typeof home) => {
+    const codes = lu.rows[0]?.vsPitch.map(v => v.code) ?? []
+    return codes.map(code => {
+      let w = 0, pa = 0
+      for (const r of lu.rows) { const v = r.vsPitch.find(x => x.code === code); if (v && v.xwoba != null && v.pa > 0) { w += v.xwoba * v.pa; pa += v.pa } }
+      return { code, xwoba: pa > 0 ? w / pa : null, pa }
+    })
+  }
   const GREEN = '#1D9E75'
   const neverA = home.rows.filter(r => r.h2h?.pa === 0).length  // home batters who never faced the away starter
   const neverB = away.rows.filter(r => r.h2h?.pa === 0).length
@@ -232,7 +296,7 @@ export async function PreviewTab({ ctx, seriesLabel }: { ctx: CockpitCtx; series
         {seriesLabel ? <Chip>{seriesLabel}</Chip> : null}
       </div>
       <div className="gp-grid">
-        <StarterCard s={s.away} label="Away" teamName={ctx.away.name} teamId={ctx.away.id} teamAbbr={ctx.away.abbr} lookHref={lookHref} />
+        <StarterCard s={s.away} label="Away" teamName={ctx.away.name} teamId={ctx.away.id} teamAbbr={ctx.away.abbr} lookHref={lookHref} extra={exAway} vsLine={{ abbr: ctx.home.abbr, lines: vsLines(home) }} />
         <div className="gp-mid">
           <section style={card}>
             <p style={kicker}>Bullpen · pitches thrown, last 3 days</p>
@@ -242,7 +306,7 @@ export async function PreviewTab({ ctx, seriesLabel }: { ctx: CockpitCtx; series
           </section>
           <ParkCard park={park} venue={ctx.venueName} venueId={ctx.venueId} />
         </div>
-        <StarterCard s={s.home} label="Home" teamName={ctx.home.name} teamId={ctx.home.id} teamAbbr={ctx.home.abbr} lookHref={lookHref} />
+        <StarterCard s={s.home} label="Home" teamName={ctx.home.name} teamId={ctx.home.id} teamAbbr={ctx.home.abbr} lookHref={lookHref} extra={exHome} vsLine={{ abbr: ctx.away.abbr, lines: vsLines(away) }} />
       </div>
       <div style={{ margin: '18px 0' }}><SignupAsk source="preview_inline" /></div>
       <div style={{ display: 'grid', gap: 20 }}>
