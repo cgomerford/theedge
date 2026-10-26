@@ -1,13 +1,11 @@
 // /mlb/stats: league leaderboards (Batting, Pitching, Statcast) with MLB's qualification rule, sortable tables and a "Qualified only" toggle.
-// The earlier query lab and Player Explorer (StatsHub) stay available under the "Ask the stats" tab, with its Pro gates unchanged.
+// The query lab and Player Explorer are their own page now: /mlb/ask ("Ask the stats").
 // Server-rendered; the active tab lives in ?tab= and the canonical address carries no query string.
 import { Suspense } from 'react'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import Tabs from '@/components/ui/Tabs'
-import StatsHub from '@/components/stats/StatsHub'
 import LeaderboardTable from '@/components/stats/LeaderboardTable'
-import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
@@ -19,7 +17,7 @@ export const metadata = pageMeta({
   path: '/mlb/stats',
 })
 
-const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }, { id: 'ask', label: 'Ask the stats' }]
+const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }]
 
 function Board({ b, qualifiable }: { b: Board; qualifiable: boolean }) {
   return <LeaderboardTable rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
@@ -29,7 +27,7 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
   const { tab: asked } = await searchParams
   const tab = TABS.some(t => t.id === asked) ? (asked as string) : 'batting'
   const season = new Date().getFullYear()
-  const [subscriber, isPro] = await Promise.all([getCurrentSubscriber(), isProViewer()])
+  const isPro = await isProViewer()
 
   let body: React.ReactNode = null
   if (tab === 'batting') body = <Board b={await getBattingBoard(season)} qualifiable />
@@ -55,7 +53,7 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
         <h1 style={{ margin: '4px 0 14px', fontSize: 'clamp(34px, 6vw, 56px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02 }}>Stats</h1>
         <Suspense fallback={null}><Tabs label="Stats sections" defaultTab="batting" tabs={TABS} /></Suspense>
         <div style={{ marginTop: 12 }}>
-          {tab === 'ask' ? <StatsHub isPro={isPro} isSignedIn={!!subscriber} /> : body}
+          {body}
         </div>
       </div>
     </main>

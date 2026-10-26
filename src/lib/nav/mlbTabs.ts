@@ -11,6 +11,7 @@ export const MLB_TABS: MlbTab[] = [
   { id: 'pitching', href: '/mlb/lab/pitching-lab', label: 'Pitching Lab' },
   { id: 'batting', href: '/mlb/lab/batting-lab', label: 'Batting Lab' },
   { id: 'stats', href: '/mlb/stats', label: 'Stats' },
+  { id: 'ask', href: '/mlb/ask', label: 'Ask the stats' },
   { id: 'glossary', href: '/mlb/glossary', label: 'Glossary' },
 ]
 
@@ -21,6 +22,7 @@ export function activeMlbTab(pathname: string | null): string | undefined {
   if (p.startsWith('/mlb/lab/pitching-lab')) return 'pitching'
   if (p.startsWith('/mlb/lab/batting-lab')) return 'batting'
   if (p.startsWith('/mlb/scores')) return 'scores'
+  if (p.startsWith('/mlb/ask')) return 'ask'
   if (p.startsWith('/mlb/stats')) return 'stats'
   if (p.startsWith('/mlb/glossary')) return 'glossary'
   if (p === '/mlb' || /^\/mlb\/\d{4}|^\/mlb\/[a-z0-9-]+-\d{4}-\d{2}-\d{2}/.test(p)) return 'games'
