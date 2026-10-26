@@ -173,7 +173,7 @@ export default function FeaturedScout({ data }: { data: Featured }) {
           </div>
           {s.lastGame && (
             <p style={{ margin: '16px 0 0', fontSize: 14, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}>
-              <b>Last game</b> · {fmtDay(s.lastGame.date)} {s.lastGame.home ? 'vs' : 'at'} {s.lastGame.opp} · {s.lastGame.ip} IP, {s.lastGame.h} H, {s.lastGame.er} ER, {s.lastGame.k} K, {s.lastGame.bb} BB
+              <b>{s.lastGame.postseason ? 'Last postseason game' : 'Last game'}</b> · {fmtDay(s.lastGame.date)} {s.lastGame.home ? 'vs' : 'at'} {s.lastGame.opp} · {s.lastGame.ip} IP, {s.lastGame.h} H, {s.lastGame.er} ER, {s.lastGame.k} K, {s.lastGame.bb} BB
             </p>
           )}
           <div style={{ marginTop: 10 }}><ThroughDate date={data.throughDate} /></div>

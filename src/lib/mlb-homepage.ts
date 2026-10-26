@@ -793,7 +793,7 @@ const wordsFor = (code: string, fallback: string) => PITCH_WORDS[code] ?? { one:
 
 export type MixRow = { code: string; label: string; one: string; many: string; usagePct: number; velo: number | null; n: number; missPct: number | null; swings: number }
 
-export type LastGame = { date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
+export type LastGame = { postseason: boolean; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
 
 /** One pitch type's average flight in feet (Statcast frame), from his release point to the front of the plate. The page draws it in the catcher's view. */
 export type FlightPath = { code: string; label: string; usagePct: number; n: number; speed: number; points: P3[] }
@@ -835,22 +835,24 @@ async function getBattersFaced(pitcherId: number): Promise<number | null> {
   }
 }
 
-async function getLastGame(pitcherId: number): Promise<LastGame | null> {
+async function getLastGame(pitcherId: number, preferPostseason: boolean): Promise<LastGame | null> {
   try {
-    const rows: { date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
+    const rows: { postseason: boolean; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
     for (const gt of ['R', 'P']) {
       const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}&gameType=${gt}`, { next: { revalidate: 3600 } })
       if (!res.ok) continue
       const splits = (await res.json()).stats?.[0]?.splits ?? []
       for (const sp of splits) {
         rows.push({
-          date: sp.date, opp: findTeamByName(sp.opponent?.name ?? '')?.abbrev ?? sp.opponent?.abbreviation ?? '', home: !!sp.isHome,
+          postseason: gt === 'P', date: sp.date, opp: findTeamByName(sp.opponent?.name ?? '')?.abbrev ?? sp.opponent?.abbreviation ?? '', home: !!sp.isHome,
           ip: String(sp.stat?.inningsPitched ?? ''), er: Number(sp.stat?.earnedRuns ?? 0), k: Number(sp.stat?.strikeOuts ?? 0), bb: Number(sp.stat?.baseOnBalls ?? 0), h: Number(sp.stat?.hits ?? 0),
         })
       }
     }
-    rows.sort((a, b) => a.date.localeCompare(b.date))
-    return rows[rows.length - 1] ?? null
+    // In the postseason the last game is his last postseason game (if he has one); otherwise the latest of any kind.
+    const pool = preferPostseason && rows.some(r => r.postseason) ? rows.filter(r => r.postseason) : rows
+    pool.sort((a, b) => a.date.localeCompare(b.date))
+    return pool[pool.length - 1] ?? null
   } catch (e) {
     console.error('[getLastGame] failed:', e instanceof Error ? e.message : e)
     return null
@@ -890,13 +892,13 @@ async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: Fe
   return { trend, flights: flights.length >= 3 ? flights : [] }
 }
 
-export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string): Promise<FeaturedStarter> {
+export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string, preferPostseason = false): Promise<FeaturedStarter> {
   const supa = createAdminClient()
   const [arsenalBySplit, hand, bf, lastGame, statsRes, throughRes] = await Promise.all([
     getPitcherZoneArsenal(pitcherId),
     getPitcherHandedness(pitcherId),
     getBattersFaced(pitcherId),
-    getLastGame(pitcherId),
+    getLastGame(pitcherId, preferPostseason),
     supa.from('pitcher_stats').select('era, wins, losses, innings_pitched, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', pitcherId).eq('season', SEASON).order('updated_at', { ascending: false }).limit(1),
   ])
@@ -1032,7 +1034,7 @@ export async function getFeaturedScout(slate: HomeSlate | null): Promise<Feature
 
   const oppTeam = findTeamByName(other.team.name)
   const oppShort = oppTeam?.short ?? other.team.name
-  const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine), mine.team.name)
+  const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine), mine.team.name, isPostseason(g))
   const [h2h, h2hTable] = await Promise.all([getMostPaAgainst(starter.id, other.team.id, oppShort), getH2HTable(starter.id, other.team.id, slate.date, g.gamePk)])
 
   const post = isPostseason(g)
