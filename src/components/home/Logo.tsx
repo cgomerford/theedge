@@ -19,7 +19,7 @@ export function Headshot({ id, name, size = 40 }: { id: number; name: string; si
   return (
     <span style={{ display: 'inline-block', width: size, height: size, minWidth: size, minHeight: size, borderRadius: '50%', overflow: 'hidden', background: '#a9abae', border: '1px solid #e7e2d8', flexShrink: 0, boxSizing: 'border-box', lineHeight: 0 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={headshotUrl(id, size * 2)} alt={name} width={size} height={size} style={{ width: '100%', height: '100%', maxWidth: 'none', objectFit: 'cover', objectPosition: 'center top', transform: 'translateY(10%) scale(0.9)', transformOrigin: 'center top', display: 'block' }} />
+      <img src={headshotUrl(id, size * 2)} alt={name} width={size} height={size} style={{ width: '100%', height: '100%', maxWidth: 'none', objectFit: 'cover', objectPosition: 'center top', transform: 'translateY(16%) scale(0.78)', transformOrigin: 'center top', display: 'block' }} />
     </span>
   )
 }
