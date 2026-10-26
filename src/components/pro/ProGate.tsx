@@ -13,7 +13,8 @@ export default async function ProGate({ feature, entityId, full, shell, source, 
   feature: DeepLookFeature
   entityId: string
   full: () => Promise<React.ReactNode>
-  shell: React.ReactNode
+  /** labels / example shown instead of the module; a function is only called when the viewer is locked out */
+  shell: React.ReactNode | (() => Promise<React.ReactNode>)
   source: string
   claim?: boolean
 }) {
@@ -35,7 +36,7 @@ export default async function ProGate({ feature, entityId, full, shell, source, 
   const tier = state === 'look_left' || state === 'used' ? 'member' : 'anon'
   return (
     <section aria-label={feature}>
-      <div>{shell}</div>
+      <div>{typeof shell === 'function' ? await shell() : shell}</div>
       <ProGateRow tier={tier} source={source} openable={state === 'look_left' ? { feature, entityId } : undefined} noButton={state === 'unavailable'} who={who} />
     </section>
   )

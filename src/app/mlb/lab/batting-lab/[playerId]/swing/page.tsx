@@ -7,11 +7,14 @@ import SwingChanges from '@/components/contact-lab/SwingChanges'
 import { Empty } from '@/components/team/ui'
 import { getContactProfile } from '@/lib/contact-profile/data'
 import { getSwingMonthly } from '@/lib/nerve-centre/data'
+import { labBatterId } from '@/lib/lab-player'
 
 export const dynamic = 'force-dynamic'
 
 export default async function BattingSwingPage({ params }: { params: Promise<{ playerId: string }> }) {
-  const { playerId } = await params
+  const { playerId: requestedId } = await params
+  // Signed out: the sample player's data, never the requested player's (the layout labels it as an example).
+  const playerId = String(await labBatterId(Number(requestedId)))
   const id = Number(playerId)
   const contact = await getContactProfile(id)
   const season = contact?.season ?? new Date().getFullYear()

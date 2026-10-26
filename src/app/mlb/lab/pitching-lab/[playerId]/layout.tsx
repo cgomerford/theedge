@@ -5,6 +5,9 @@
 // data API (/api/mlb/pitching-lab) only returns the overview fields to people without Pro.
 
 import LabShell from './LabShell'
+import DemoFrame from '@/components/pro/DemoFrame'
+import { ProGateRow } from '@/components/pro/ProGateView'
+import { isSignedIn } from '@/lib/require-signup'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
@@ -26,5 +29,14 @@ export default async function PitchingLabGate({ children, params }: { children: 
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
+  if (!(await isSignedIn())) {
+    // Signed out: every tab is the REAL tab on a sample player (DemoFrame), labelled as an example, with the create-account row.
+    return (
+      <LabShell playerName={person.fullName}>
+        <DemoFrame lab="pitching" realName={person.fullName}>{children}</DemoFrame>
+        <ProGateRow tier="anon" source="pitching_lab" who={{ lab: 'pitching', name: person.fullName }} />
+      </LabShell>
+    )
+  }
   return <LabShell playerName={person.fullName}>{children}</LabShell>
 }

@@ -10,7 +10,7 @@
 // Pro data APIs are gated separately (lib/require-pro.ts), so bypassing a page does not reach that data either.
 
 import { isSignedIn } from '@/lib/require-signup'
-import LabTabShell from '@/components/pro/LabTabShell'
+import DemoFrame from '@/components/pro/DemoFrame'
 import { ProGateRow } from '@/components/pro/ProGateView'
 import LabShell from './LabShell'
 import type { Metadata } from 'next'
@@ -35,14 +35,12 @@ export default async function BattingLabGate({ children, params }: { children: R
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
   if (!(await isSignedIn())) {
-    // Signed out: the lab's own header and tab bar, and on every tab a barebones placeholder of that tab (labels only, no numbers)
-    // with the create-account row, so a visitor can see what each tab is before signing up.
+    // Signed out: every tab is the REAL tab running on a sample player (DemoFrame), labelled as an example, with the create-account row.
+    // The pages below swap the requested player for the sample (lib/lab-player.ts), so none of this player's data is loaded.
     return (
       <LabShell playerName={person.fullName}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 24px 60px' }}>
-          <LabTabShell lab="batting" name={person.fullName} />
-          <ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />
-        </div>
+        <DemoFrame lab="batting" realName={person.fullName}>{children}</DemoFrame>
+        <ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />
       </LabShell>
     )
   }

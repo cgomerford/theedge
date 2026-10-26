@@ -8,10 +8,12 @@ import 'server-only'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
 import { createAdminClient } from '@/lib/supabase'
+import { isSampleEntity } from '@/lib/lab-sample'
+import type { DeepLookFeature } from '@/lib/deep-look-types'
 
 export const DEEP_LOOKS_PER_DAY = 1
 
-export type DeepLookFeature = 'batting_lab' | 'pitching_lab' | 'pitch_shape' | 'player_trends' | 'game_zones' | 'scout_report'
+export type { DeepLookFeature } from '@/lib/deep-look-types'
 export type DeepLookState = 'pro' | 'signed_out' | 'look_left' | 'this_look' | 'used' | 'unavailable'
 
 let warned = false
@@ -55,6 +57,7 @@ export async function claimDeepLook(feature: DeepLookFeature, entityId: string):
 
 /** For API guards: true if Pro or this exact feature + entity is today's look. Never claims. */
 export async function canReadDeepData(feature: DeepLookFeature, entityId: string): Promise<boolean> {
+  if (isSampleEntity(feature, entityId)) return true // the lab preview's sample players are public (lib/lab-sample.ts)
   const s = await getDeepLookState(feature, entityId)
   return s === 'pro' || s === 'this_look'
 }

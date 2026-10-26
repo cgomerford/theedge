@@ -8,15 +8,18 @@
 
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
 import ProGate from '@/components/pro/ProGate'
-import LabTabShell from '@/components/pro/LabTabShell'
+import DemoFrame from '@/components/pro/DemoFrame'
+import { isSignedIn } from '@/lib/require-signup'
 
 export default async function ProBattingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   const name = person?.fullName ?? 'this player'
+  // Signed out: the parent layout already shows the sample demo for every tab.
+  if (!(await isSignedIn())) return <>{children}</>
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<LabTabShell lab="batting" name={name} />} who={{ lab: 'batting', name }} full={async () => children} />
+      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<DemoFrame lab="batting" realName={name}>{children}</DemoFrame>} who={{ lab: 'batting', name }} full={async () => children} />
     </div>
   )
 }
