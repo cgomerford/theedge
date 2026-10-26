@@ -1,47 +1,27 @@
-// One full Pro module a day for a free account. A "module" is a feature plus a key (for example 'batting_lab' + a player id).
-// Opening the same module again the same day does not use another. The day rolls over at midnight Europe/London.
-// Table: deep_looks (supabase/migrations/20261026120000_deep_looks.sql). If the table is missing, free accounts count as having
-// no deep look left (locked state); nothing throws. Single writer: recordDeepLook below.
+// Server-side reads of the free deep-look cookie (see deep-look-cookie.ts). The cookie is SET by the proxy (src/proxy.ts) the
+// first time a signed-in free account opens a gated module page, and by allowDeepLookFor() for the pitch-shape APIs.
+import { cookies } from 'next/headers'
+import { LOOK_COOKIE, LOOK_MAX_AGE, signLook, verifyLook, type Look } from '@/lib/deep-look-cookie'
 
-import { createAdminClient } from '@/lib/supabase'
+export type { Look }
 
-export const dayLondon = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
-
-type Row = { feature: string; key: string }
-
-async function todaysRow(userId: string): Promise<{ row: Row | null; ok: boolean }> {
-  const { data, error } = await createAdminClient().from('deep_looks').select('feature, key').eq('user_id', userId).eq('day', dayLondon()).maybeSingle()
-  if (error) {
-    console.error('[deepLook] read error (run the deep_looks migration?):', error.message)
-    return { row: null, ok: false }
-  }
-  return { row: (data as Row | null) ?? null, ok: true }
+/** Today's look for this browser, or null if none was claimed today. */
+export async function readLook(): Promise<Look | null> {
+  const jar = await cookies()
+  return verifyLook(jar.get(LOOK_COOKIE)?.value)
 }
 
-/** True while the account has not used today's deep look. False if it has, or the table is not there yet. */
-export async function hasDeepLookLeft(userId: string): Promise<boolean> {
-  const { row, ok } = await todaysRow(userId)
-  return ok && !row
+/** True if today's look was spent on exactly this module. */
+export async function isTodaysModule(feature: string, key: string): Promise<boolean> {
+  const l = await readLook()
+  return !!l && l.feature === feature && l.key === key
 }
 
-/** True if any module was opened today (used to let that account's data requests through). */
-export async function hasDeepLookToday(userId: string): Promise<boolean> {
-  const { row } = await todaysRow(userId)
-  return !!row
-}
-
-/** True if today's deep look was spent on exactly this module. */
-export async function isTodaysModule(userId: string, feature: string, key: string): Promise<boolean> {
-  const { row } = await todaysRow(userId)
-  return !!row && row.feature === feature && row.key === key
-}
-
-/** Spend today's deep look on a module. Returns false if it was already spent or the write failed. */
-export async function recordDeepLook(userId: string, feature: string, key: string): Promise<boolean> {
-  const { error } = await createAdminClient().from('deep_looks').insert({ user_id: userId, day: dayLondon(), feature, key })
-  if (error) {
-    if (error.code !== '23505') console.error('[recordDeepLook] insert error:', error.message)
-    return false
-  }
+/** For route handlers only (cookies can be set there): claim today's look for a module if it is still free. */
+export async function claimLook(feature: string, key: string): Promise<boolean> {
+  const l = await readLook()
+  if (l) return l.feature === feature && l.key === key
+  const jar = await cookies()
+  jar.set(LOOK_COOKIE, await signLook(feature, key), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: LOOK_MAX_AGE, secure: process.env.NODE_ENV === 'production' })
   return true
 }

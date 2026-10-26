@@ -14,7 +14,7 @@ import PitchFinder from '@/components/pitch-shape/PitchFinder'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import { getCurrentSubscriber } from '@/lib/auth'
-import { hasDeepLookLeft } from '@/lib/deep-look'
+import { readLook } from '@/lib/deep-look'
 import Link from 'next/link'
 import { getAvailablePitchTypes } from '@/lib/pitch-shape/data'
 import { pageMeta } from '@/lib/seo'
@@ -32,7 +32,8 @@ export default async function ShapeSandboxPage() {
   const isPro = await isProViewer()
   // A free account with today's deep look still unspent may open one locked pitch type (the API spends it on first use).
   const sub = await getCurrentSubscriber()
-  const lookLeft = !isPro && !!sub && (await hasDeepLookLeft(sub.id))
+  const look = await readLook()
+  const lookLeft = !isPro && !!sub && (!look || look.feature === 'pitch_shape')
   const pitchTypes = await getAvailablePitchTypes()
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
