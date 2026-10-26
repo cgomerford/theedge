@@ -61,7 +61,7 @@ function Zones({ t, open }: { t: TeamBatters; open: boolean }) {
       {open ? (
         <>
           <div style={{ marginTop: 10 }}>
-            <ZoneMaps modes={['xwoba', 'ba', 'slg']} defaultMode="xwoba" minN={5}
+            <ZoneMaps modes={['xwoba', 'ba', 'slg']} defaultMode="xwoba" minN={5} nLabel="at-bats ending in the zone"
               maps={t.rows.filter(r => r.zones).map(r => ({ title: r.name.split(' ').slice(-1)[0], sub: `v ${hand}HP`, cells: r.zones! }))}
               footnote="All 13 zones, catcher's view: the 3x3 strike zone in the middle and the four chase zones in the corners. * under 5 PA ending in that zone (left uncoloured)." />
           </div>
