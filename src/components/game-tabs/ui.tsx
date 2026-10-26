@@ -13,12 +13,12 @@ export function Card({ children, style }: { children: ReactNode; style?: CSSProp
 export function Label({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: MUTE, margin: '18px 0 8px', ...style }}>{children}</div>
 }
-export function Tile({ label, value, sub, rule }: { label: string; value: ReactNode; sub?: ReactNode; rule: string }) {
+export function Tile({ label, value, sub, rule, title }: { label: string; value: ReactNode; sub?: ReactNode; rule: string; title?: string }) {
   return (
     <div style={{ background: TILE, borderLeft: `4px solid ${rule}`, padding: '8px 10px', minWidth: 0 }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: MUTE }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, ...num, lineHeight: 1.15 }}>{value}</div>
-      <div style={{ fontSize: 12, color: MUTE, ...num }}>{sub}</div>
+      <div title={title} style={{ fontSize: 26, fontWeight: 800, ...num, lineHeight: 1.15 }}>{value}</div>
+      {sub ? <div style={{ fontSize: 12, color: MUTE, ...num }}>{sub}</div> : null}
     </div>
   )
 }

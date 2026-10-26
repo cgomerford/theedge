@@ -56,8 +56,8 @@ function Arm({ a }: { a: Leverage }) {
         </>
       ) : <div style={{ marginTop: 8 }}><Pending /></div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10 }}>
-        <Tile rule="#6CB4E8" label="xwOBA v LHB" value={a.xwLHB ? ops3(a.xwLHB.v) : <Pending />} sub={a.xwLHB ? `n ${a.xwLHB.n} in play` : ''} />
-        <Tile rule="#FF5722" label="xwOBA v RHB" value={a.xwRHB ? ops3(a.xwRHB.v) : <Pending />} sub={a.xwRHB ? `n ${a.xwRHB.n} in play` : ''} />
+        <Tile rule="#6CB4E8" label="xwOBA v LHB" value={a.xwLHB ? ops3(a.xwLHB.v) : <Pending />} title={a.xwLHB ? `n ${a.xwLHB.n} balls in play` : undefined} />
+        <Tile rule="#FF5722" label="xwOBA v RHB" value={a.xwRHB ? ops3(a.xwRHB.v) : <Pending />} title={a.xwRHB ? `n ${a.xwRHB.n} balls in play` : undefined} />
         <Tile rule="#1D9E75" label="Postseason" value={a.post ? `${ipText(a.post.outs)} IP` : <Pending />} sub={a.post ? `${a.post.g} G · ${eraPost} ERA · ${a.post.k} K` : ''} />
       </div>
     </Card>

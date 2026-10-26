@@ -114,8 +114,7 @@ function StarterExtras({ e, vs }: { e: PitcherTabData; vs: { abbr: string; lines
   const tile = (label: string, v: { v: number; n: number } | null, rule: string) => (
     <div style={{ background: '#f0ece1', borderLeft: `4px solid ${rule}`, padding: '6px 10px', minWidth: 0 }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: MUTE }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, ...num, lineHeight: 1.15 }}>{v ? ops3(v.v) : <span style={{ fontSize: 13, color: MUTE, fontWeight: 400 }}>pending</span>}</div>
-      <div style={{ fontSize: 12, color: MUTE, ...num }}>{v ? `n ${v.n} balls in play` : ''}</div>
+      <div title={v ? `n ${v.n} balls in play` : undefined} style={{ fontSize: 24, fontWeight: 800, ...num, lineHeight: 1.15 }}>{v ? ops3(v.v) : <span style={{ fontSize: 13, color: MUTE, fontWeight: 400 }}>pending</span>}</div>
     </div>
   )
   return (
@@ -233,8 +232,8 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
                       <span style={{ color: MUTE, fontSize: 12 }}>bats {r.hand ?? ''}</span>
                     </span>
                   </td>
-                  <td style={{ padding: 8, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {!r.contact ? '' : <><b>{ops3(r.contact.xwoba)}</b>{r.contact.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {Math.round(r.contact.pa).toLocaleString('en-US')}</span></>}
+                  <td title={r.contact ? `n ${Math.round(r.contact.pa).toLocaleString('en-US')} PA` : undefined} style={{ padding: 8, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {!r.contact ? '' : <><b>{ops3(r.contact.xwoba)}</b>{r.contact.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null}</>}
                   </td>
                   <td style={{ padding: 8, textAlign: 'right' }}>{h2h(r)}</td>
                   {r.vsPitch.map(v => (

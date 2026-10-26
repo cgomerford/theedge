@@ -35,9 +35,9 @@ function Table({ t }: { t: TeamBatters }) {
                   <Link href={`/mlb/players/${r.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', textDecoration: 'none' }}><Headshot id={r.id} name={r.name} size={30} /><b>{r.name}</b></Link>
                   <span style={{ color: MUTE, fontSize: 12 }}> {r.pos} · {r.hand ?? ''}</span>
                 </td>
-                <td style={{ padding: '6px 6px' }}>{r.vSame?.v != null ? <>{ops3(r.vSame.v)}{r.vSame.n < 50 ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {r.vSame.n}</span></> : <Pending />}</td>
-                <td style={{ padding: '6px 6px' }}>{r.vOther?.v != null ? <>{ops3(r.vOther.v)}{r.vOther.n < 50 ? <Star /> : null}</> : <Pending />}</td>
-                {r.pitches.map(p => <td key={p.code} style={{ padding: '6px 6px' }}>{p.xwoba != null ? <>{ops3(p.xwoba)}{p.pa < 10 ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>{p.whiff != null ? `${Math.round(p.whiff)}%` : ''}</span></> : <Pending />}</td>)}
+                <td title={r.vSame ? `n ${r.vSame.n} PA` : undefined} style={{ padding: '6px 6px' }}>{r.vSame?.v != null ? <>{ops3(r.vSame.v)}{r.vSame.n < 50 ? <Star /> : null}</> : <Pending />}</td>
+                <td title={r.vOther ? `n ${r.vOther.n} PA` : undefined} style={{ padding: '6px 6px' }}>{r.vOther?.v != null ? <>{ops3(r.vOther.v)}{r.vOther.n < 50 ? <Star /> : null}</> : <Pending />}</td>
+                {r.pitches.map(p => <td key={p.code} title={`n ${p.pa} PA`} style={{ padding: '6px 6px' }}>{p.xwoba != null ? <>{ops3(p.xwoba)}{p.pa < 10 ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>{p.whiff != null ? `${Math.round(p.whiff)}%` : ''}</span></> : <Pending />}</td>)}
                 <td style={{ padding: '6px 6px' }}>{r.post ? `${r.post.h}-${r.post.ab}` : <Pending />}</td>
                 <td style={{ padding: '6px 6px' }}>{r.post?.hr ?? ''}</td><td style={{ padding: '6px 6px' }}>{r.post?.bb ?? ''}</td><td style={{ padding: '6px 6px' }}>{r.post?.k ?? ''}</td>
                 <td style={{ padding: '6px 6px' }}><Pending /></td>
@@ -47,7 +47,7 @@ function Table({ t }: { t: TeamBatters }) {
           </table>
         </div>
       )}
-      <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>xwOBA, {new Date().getFullYear()} regular season (zone data: xwOBA over the pitches he put in play, n = plate appearances). &quot;v pitch&quot; columns: xwOBA against that pitch from any pitcher, then his whiff rate. Postseason lines from the MLB game logs. * under 50 PA v a hand, or 10 PA v a pitch.</div>
+      <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>xwOBA, {new Date().getFullYear()} regular season; hover a number for its sample. &quot;v pitch&quot; columns: xwOBA against that pitch from any pitcher, then his whiff rate. Postseason lines from the MLB game logs. * under 50 PA v a hand, or 10 PA v a pitch.</div>
     </Card>
   )
 }

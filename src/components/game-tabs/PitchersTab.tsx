@@ -28,9 +28,8 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
       </div>
 
       <div className="gt-tiles">
-        <Tile rule="#6CB4E8" label="xwOBA v LHB" value={p.xwLHB ? ops3(p.xwLHB.v) : <Pending />} sub={p.xwLHB ? `n ${p.xwLHB.n} balls in play` : ''} />
-        <Tile rule="#FF5722" label="xwOBA v RHB" value={p.xwRHB ? ops3(p.xwRHB.v) : <Pending />} sub={p.xwRHB ? `n ${p.xwRHB.n} balls in play` : ''} />
-        <Tile rule="#1D9E75" label="First-pitch strike" value={<Pending />} sub="" />
+        <Tile rule="#6CABDD" label="xwOBA v LHB" value={p.xwLHB ? ops3(p.xwLHB.v) : <Pending />} title={p.xwLHB ? `n ${p.xwLHB.n} balls in play` : undefined} />
+        <Tile rule="#FF5722" label="xwOBA v RHB" value={p.xwRHB ? ops3(p.xwRHB.v) : <Pending />} title={p.xwRHB ? `n ${p.xwRHB.n} balls in play` : undefined} />
         <Tile rule="#8A5A2B" label="Postseason" value={p.post ? `${ipText(p.post.outs)} IP` : <Pending />} sub={p.post ? `${p.post.g} G · ${postEra ?? ''} ERA · ${p.post.k} K` : ''} />
       </div>
 
@@ -62,11 +61,10 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
 
       <Label>Times through the order · {new Date().getFullYear()}</Label>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, ...num }}>
-        <thead><tr style={{ color: MUTE, fontSize: 12, textAlign: 'right' }}><th style={{ textAlign: 'left', padding: 4 }}>Time</th><th style={{ padding: 4 }}>PA</th><th style={{ padding: 4 }}>wOBA</th><th style={{ padding: 4 }}>K%</th><th style={{ padding: 4 }}>BB%</th><th style={{ width: '34%' }} /></tr></thead>
+        <thead><tr style={{ color: MUTE, fontSize: 12, textAlign: 'right' }}><th style={{ textAlign: 'left', padding: 4 }}>Time</th><th style={{ padding: 4 }}>PA</th><th style={{ padding: 4 }}>wOBA</th><th style={{ width: '48%' }} /></tr></thead>
         <tbody>{p.tto.map(t => (
           <tr key={t.label} style={{ borderTop: `1px solid ${LINE}`, textAlign: 'right' }}>
-            <td style={{ textAlign: 'left', padding: '5px 4px', fontWeight: 700 }}>{t.label}</td><td style={{ padding: 4 }}>{t.pa ?? ''}</td><td style={{ padding: 4 }}>{ops3(t.woba)}{t.pa != null && t.pa < 10 ? <Star /> : null}</td><td style={{ padding: 4 }}><Pending /></td><td style={{ padding: 4 }}><Pending /></td>
-            <td style={{ padding: '4px 4px 4px 12px' }}>{t.woba != null ? <span style={{ display: 'block', background: '#f1eee6', height: 8, borderRadius: 4 }}><span style={{ display: 'block', height: 8, borderRadius: 4, background: '#FF5722', width: `${Math.min(100, (t.woba / 0.5) * 100)}%` }} /></span> : null}</td>
+            <td style={{ textAlign: 'left', padding: '5px 4px', fontWeight: 700 }}>{t.label}</td><td style={{ padding: 4 }}>{t.pa ?? ''}</td><td style={{ padding: 4 }}>{ops3(t.woba)}{t.pa != null && t.pa < 10 ? <Star /> : null}</td><td style={{ padding: '4px 4px 4px 12px' }}>{t.woba != null ? <span style={{ display: 'block', background: '#f1eee6', height: 8, borderRadius: 4 }}><span style={{ display: 'block', height: 8, borderRadius: 4, background: '#FF5722', width: `${Math.min(100, (t.woba / 0.5) * 100)}%` }} /></span> : null}</td>
           </tr>
         ))}</tbody>
       </table>
@@ -92,7 +90,7 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
               ))}</tbody>
             </table>
           ) : <Pending />}
-          <div style={{ fontSize: 12, color: MUTE, marginTop: 4 }}>Strikeout pitch: <Pending /></div>
+          <div style={{ fontSize: 12, color: MUTE, marginTop: 4 }}></div>
         </>
       ) : (
         <GhostBlock title="Zone maps and count plans are a deep look" detail="Create a free account to open one full look a day." />
@@ -123,7 +121,7 @@ export async function PitchersTab({ ctx }: { ctx: CockpitCtx }) {
   ])
   return (
     <div style={{ marginTop: 16 }}>
-      <style>{`.gt-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}.gt-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}@media(max-width:900px){.gt-two{grid-template-columns:minmax(0,1fr)}.gt-tiles{grid-template-columns:repeat(2,1fr)}}`}</style>
+      <style>{`.gt-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}.gt-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}@media(max-width:900px){.gt-two{grid-template-columns:minmax(0,1fr)}}`}</style>
       <div className="gt-two">
         <Starter p={away} label="Away starter" gated={open} teamId={ctx.away.id} />
         <Starter p={home} label="Home starter" gated={open} teamId={ctx.home.id} />
