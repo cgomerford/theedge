@@ -13,6 +13,8 @@ import Tabs from '@/components/ui/Tabs'
 import { usePathname, useParams } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
+import LabPlayerHeader from '@/components/labs/LabPlayerHeader'
+import { MLB_TEAMS } from '@/lib/teams'
 import { BattingLabProvider, useBattingLabData } from '@/lib/batting-lab-context'
 
 // Main row (the build guide's four, plus Overview). The rest of the lab stays one click away in the "More" row.
@@ -45,30 +47,12 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
   const pathname = usePathname()
   const base = `/mlb/lab/batting-lab/${playerId}`
 
+  const team = MLB_TEAMS.find(t => t.abbrev === data?.abbr)
   return (
     <div className="border-b border-[#E8E4DC]">
-      <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-5 flex items-center gap-4 flex-wrap">
-        <img
-          src={mlbHeadshot(playerId)}
-          alt=""
-          width={48}
-          height={48}
-          style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', background: '#F4F1EA', border: '1px solid #DEDACE' }}
-        />
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722]">
-            {data ? `${data.abbr} · Batter` : 'Batting Lab'}
-          </div>
-          <h1 className="m-0 text-[22px] font-black text-[#1A1A1A] tracking-tight leading-tight">
-            {data?.name ?? playerName}
-          </h1>
-        </div>
-        {data?.bio.bats ? <span className="text-[13px] text-[#57534E]">Bats {data.bio.bats}</span> : null}
-        <div className="ml-auto flex items-center gap-4">
-          {followSlot}
-          <Link href="/mlb/lab/batting-lab" className="text-[12px] font-semibold text-[#57534E] hover:text-[#1A1A1A]">Search another batter</Link>
-        </div>
-      </div>
+      <LabPlayerHeader id={playerId} name={data?.name ?? playerName} teamId={team?.id} teamAbbr={data?.abbr} teamName={team?.name}
+        facts={[data?.bio.position, data?.bio.bats ? `Bats ${data.bio.bats}` : null].filter(Boolean).join(' · ')}
+        followSlot={followSlot} changeHref="/mlb/lab/batting-lab" changeLabel="Change batter" />
 
       <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className="">
         <Suspense fallback={null}>

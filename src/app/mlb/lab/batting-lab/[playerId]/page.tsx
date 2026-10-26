@@ -5,17 +5,10 @@
 // Bat speed & contact quality stays here (Pro / the viewer's deep look), read from the lab data on the client.
 
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getPlayerPageData } from '@/lib/player-page'
 import { getPlayerOverview } from '@/lib/player-overview'
 import BatSpeedPanel from '@/components/batting-lab/BatSpeedPanel'
 import { LatestGame, OverviewBody } from '@/components/player-page/PlayerOverviewView'
-
-const LAB_TABS = [
-  { seg: 'hot-zones', label: 'Hot zones' }, { seg: 'spray', label: 'Spray' }, { seg: 'arsenal', label: 'vs pitch type' }, { seg: 'h2h', label: 'Head to head' }, { seg: 'location', label: 'Location Lab' },
-  { seg: 'sequencing', label: 'Sequencing' }, { seg: 'trends', label: 'Trends' }, { seg: 'swing', label: 'Swing' },
-  { seg: 'contact', label: 'Contact' }, { seg: 'outcomes', label: 'Outcomes' }, { seg: 'platoon', label: 'Platoon' }, { seg: 'approach', label: 'Approach' },
-]
 
 export default async function BattingLabOverview({ params }: { params: Promise<{ playerId: string }> }) {
   const playerId = Number((await params).playerId)
@@ -23,20 +16,10 @@ export default async function BattingLabOverview({ params }: { params: Promise<{
   const data = await getPlayerPageData(playerId)
   if (!data) notFound()
   const o = await getPlayerOverview(data)
-  const base = `/mlb/lab/batting-lab/${playerId}`
 
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 18px', paddingBottom: 12 }}>
-        <Link href={`/mlb/players/${playerId}`} style={{ color: '#FF5722', fontWeight: 800, fontSize: 14 }}>Player page →</Link>
-      </div>
       {o.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{o.seasonNote}</p> : null}
-      <div style={{ fontSize: 14, padding: '10px 0', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', lineHeight: 1.9 }}>
-        <b>Go deeper in the Batting Lab:</b>{' '}
-        {LAB_TABS.map((t, i) => (
-          <span key={t.seg}>{i ? ' · ' : ''}<Link href={`${base}/${t.seg}`} style={{ color: '#FF5722', fontWeight: 800 }}>{t.label}</Link></span>
-        ))}
-      </div>
       <LatestGame o={o} />
       <OverviewBody o={o} data={data} />
       <div style={{ marginTop: 36 }}><BatSpeedPanel /></div>

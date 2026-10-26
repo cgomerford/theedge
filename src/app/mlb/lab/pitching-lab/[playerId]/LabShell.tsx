@@ -15,7 +15,8 @@ import Tabs from '@/components/ui/Tabs'
 import { usePathname, useParams } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
-import ContextStrip from '@/components/nav/ContextStrip'
+import LabPlayerHeader from '@/components/labs/LabPlayerHeader'
+import { MLB_TEAMS } from '@/lib/teams'
 import { PitchingLabProvider, usePitchingLabData } from '@/lib/pitching-lab-context'
 
 const TABS = [
@@ -36,16 +37,13 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
   const base = `/mlb/lab/pitching-lab/${playerId}`
   const name = data?.name ?? playerName
   // Only what the lab data already holds; a missing part is dropped (hand, record and innings are not in it today).
-  const era = data?.fullStats?.era
-  const line = [data?.abbr, era != null ? `${era.toFixed(2)} ERA` : null].filter(Boolean).join(' · ')
 
+  const team = MLB_TEAMS.find(t => t.abbrev === data?.abbr)
   return (
     <div className="border-b border-[#E8E4DC]">
-      <ContextStrip
-        left={<><span style={{ color: '#8A8577' }}>Pitching Lab /</span> <b>{name}</b>{line ? <span> {line}</span> : null}</>}
-        right={<>{followSlot}<Link href="/mlb/lab/pitching-lab" style={{ background: '#fff', border: '1px solid #E8E4DC', borderRadius: 2, padding: '4px 10px', fontWeight: 600, color: '#1A1A1A' }}>Change pitcher</Link></>}
-      />
-      <h1 className="sr-only">{name}: Pitching Lab</h1>
+      <LabPlayerHeader id={playerId} name={name} teamId={team?.id} teamAbbr={data?.abbr} teamName={team?.name}
+        facts={[data?.fullStats?.era != null ? `${data.fullStats.era.toFixed(2)} ERA` : null].filter(Boolean).join(' · ')}
+        followSlot={followSlot} changeHref="/mlb/lab/pitching-lab" changeLabel="Change pitcher" />
 
       <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className="">
         <Suspense fallback={null}>
