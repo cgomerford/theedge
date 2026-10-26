@@ -21,7 +21,7 @@ const kicker: React.CSSProperties = { fontSize: 12, fontWeight: 800, letterSpaci
 const ops3 = (v: number | null) => (v == null ? '' : v.toFixed(3).replace(/^0/, ''))
 
 const Star = () => <span title="Small sample size" style={{ color: '#FF5722', fontWeight: 800 }}>*</span>
-const SMALL_NOTE = `* Small sample size: under ${MIN_SAMPLE.arsenalPitchesPerType} pitches of a type, ${MIN_SAMPLE.whiffSwings} swings, or ${MIN_SAMPLE.batterPercentilePA} batters faced / plate appearances. Read with caution.`
+const SMALL_NOTE = `* Small sample size: under ${MIN_SAMPLE.arsenalPitchesPerType} pitches of a type, ${MIN_SAMPLE.whiffSwings} swings, ${MIN_SAMPLE.h2hPA} head-to-head PA, or ${MIN_SAMPLE.batterPercentilePA} batters faced / plate appearances. Read with caution.`
 const Note = () => <div style={{ fontSize: 12, color: MUTE, marginTop: 8 }}>{SMALL_NOTE}</div>
 
 // Half-circle gauge: the fill runs left to right by PERCENTILE, so 100th percentile is the far right end and 0 is the far left.
@@ -147,8 +147,8 @@ async function ParkCard({ park, venue, venueId }: { park: ParkIndex | null; venu
 function h2h(r: LineupRow) {
   if (!r.h2h) return ''
   if (r.h2h.pa === 0) return <b>Never faced</b>
-  if (r.h2h.pa < MIN_SAMPLE.h2hPA) return <span><b>Under {MIN_SAMPLE.h2hPA} PA (n = {r.h2h.pa})</b><div style={{ fontSize: 12, color: MUTE }}>read pitch-mix columns</div></span>
-  return <b>{r.h2h.pa} · {r.h2h.h} · {r.h2h.hr} · {r.h2h.k}</b>
+  // PA · H · HR · K, always shown; a small sample gets an asterisk (explained in the note under the table).
+  return <span title={`n ${r.h2h.pa} PA`}><b>{r.h2h.pa} · {r.h2h.h} · {r.h2h.hr} · {r.h2h.k}</b>{r.h2h.pa < MIN_SAMPLE.h2hPA ? <Star /> : null}</span>
 }
 
 function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup: TeamLineup; pitcher: StarterBlock; through: string | null }) {
@@ -166,7 +166,7 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
             <thead><tr style={{ borderBottom: '1px solid #1A1A1A' }}>
               <th style={{ ...th, textAlign: 'left', paddingLeft: 0, position: 'sticky', left: 0, background: '#fff' }}>Batter</th>
               <th style={th}>Contact (xwOBA)</th>
-              <th style={th}>vs {pitcher.name?.split(' ').slice(-1)[0] ?? 'starter'} before</th>
+              <th style={th}>vs {pitcher.name?.split(' ').slice(-1)[0] ?? 'starter'} (PA · H · HR · K)</th>
               {codes.map(c => <th key={c} style={th}>vs {pitchLabel(c)}</th>)}
             </tr></thead>
             <tbody>
@@ -186,7 +186,7 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
                   <td style={{ padding: 8, textAlign: 'right' }}>{h2h(r)}</td>
                   {r.vsPitch.map(v => (
                     <td key={v.code} style={{ padding: 8, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {v.xwoba == null ? '' : <><b>{ops3(v.xwoba)}</b>{v.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {v.pa}</span></>}
+                      {v.xwoba == null ? '' : <span title={`n ${v.pa} PA`}><b>{ops3(v.xwoba)}</b>{v.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null}</span>}
                     </td>
                   ))}
                 </tr>
@@ -196,7 +196,7 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
         </div>
       )}
       <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>
-        {formatThrough(through) ? `Through ${formatThrough(through)} · regular season. ` : ''}Head-to-head needs {MIN_SAMPLE.h2hPA}+ PA; under that we show n and you read the pitch-mix columns (xwOBA against that pitch from any pitcher).
+        {formatThrough(through) ? `Through ${formatThrough(through)} · regular season. ` : ''}Head-to-head is shown even when small; under {MIN_SAMPLE.h2hPA} PA it carries an asterisk. The pitch columns are xwOBA against that pitch from any pitcher; hover for the number of PA.
       </div>
       <Note />
     </section>
