@@ -27,8 +27,8 @@ type Pt = { hb: number; ivb: number }
 
 const cache = new Map<string, MovementCellsPayload | null>()
 
-export default function MovementHeat({ pitchType, pitchName, hand, avg, points, season, isPro }: {
-  pitchType: string; pitchName: string; hand: 'L' | 'R'; avg: Avg; points: Pt[]; season: number; isPro: boolean
+export default function MovementHeat({ pitchType, pitchName, hand, avg, points, season, isPro, pitcherId }: {
+  pitcherId: number; pitchType: string; pitchName: string; hand: 'L' | 'R'; avg: Avg; points: Pt[]; season: number; isPro: boolean
 }) {
   const lc = pitchName.toLowerCase()
   // Default view: tight around his cluster (about 2 standard deviations, 4-7 in each way). "Wider" shows every sampled
@@ -52,12 +52,12 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
     if (cache.has(key)) { setPayload(cache.get(key)); return }
     setPayload(undefined)
     let live = true
-    fetch(`/api/mlb/pitch-shape/cells?type=${pitchType}&hand=${hand}&hb=${avg.hb.toFixed(2)}&ivb=${avg.ivb.toFixed(2)}&half=${half}`)
+    fetch(`/api/mlb/pitch-shape/cells?type=${pitchType}&hand=${hand}&hb=${avg.hb.toFixed(2)}&ivb=${avg.ivb.toFixed(2)}&half=${half}&pitcherId=${pitcherId}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cache.set(key, j.payload); if (live) setPayload(j.payload) })
       .catch(e => { console.error('[MovementHeat] cells fetch failed:', e instanceof Error ? e.message : e); if (live) setPayload(null) })
     return () => { live = false }
-  }, [isPro, key, pitchType, hand, avg.hb, avg.ivb, half])
+  }, [isPro, key, pitchType, hand, avg.hb, avg.ivb, half, pitcherId])
 
   const grids = useMemo(() => (payload ? { latest: makeGrid(payload, 'latest'), all: makeGrid(payload, 'all') } : null), [payload])
   const grid = grids ? grids[span] : null

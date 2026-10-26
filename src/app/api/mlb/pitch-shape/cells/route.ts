@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
-import { allowDeepLookFor } from '@/lib/gate'
+import { requireDeepLook } from '@/lib/deep-look'
 import { getMovementCells } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
 
@@ -23,9 +23,13 @@ export async function GET(req: NextRequest) {
   if (!(type in PITCH_NAMES) || (hand !== 'R' && hand !== 'L') || !Number.isFinite(half) || half < 3 || half > 15 || (!league && (!Number.isFinite(hb) || !Number.isFinite(ivb)))) {
     return NextResponse.json({ error: 'Bad type, hand, center, hb, ivb or half' }, { status: 400 })
   }
-  // A pitcher's own tab is always Pro; the league-wide map is free only for the free sandbox types.
+  // The league-wide map is free only for the free sandbox types. A pitcher's own map (hb/ivb given) is Pro, or the free
+  // account's daily 'pitch_shape' look for THAT pitcher (the pitcherId param must be the one the look was claimed for).
   const free = league && (FREE_SANDBOX_TYPES as readonly string[]).includes(type)
-  if (!free && !(await isProViewer()) && !(await allowDeepLookFor('pitch_shape', type))) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+  if (!free && !(await isProViewer())) {
+    const denied = league ? Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 }) : await requireDeepLook('pitch_shape', sp.get('pitcherId'))
+    if (denied) return denied
+  }
   const payload = await getMovementCells(type, hand as Hand, hb, ivb, half)
   return NextResponse.json({ payload })
 }

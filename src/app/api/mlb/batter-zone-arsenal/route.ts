@@ -8,13 +8,13 @@
 
 import { NextResponse } from 'next/server'
 import { getBatterZoneArsenal } from '@/lib/batter-zone-arsenal'
-import { requirePro } from '@/lib/require-pro'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'  // per-viewer: guarded by the deep look
 
 export async function GET(request: Request) {
   // Pro-only data (Batting / Pitching Lab). Enforced server-side — the UI lock is not the gate.
-  const denied = await requirePro()
+  const denied = await requireAnyDeepLook([['batting_lab', new URL(request.url).searchParams.get('playerId')], ['pitching_lab', new URL(request.url).searchParams.get('forPitcher')]])
   if (denied) return denied
   const { searchParams } = new URL(request.url)
   const playerId = Number(searchParams.get('playerId'))

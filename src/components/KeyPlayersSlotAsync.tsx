@@ -77,8 +77,11 @@ export default async function KeyPlayersSlotAsync({ slug, isPro }: { slug: strin
     const all = await getKeyPlayersSnapshot(game.gamePk)
     const awayId = game.teams.away.team.id
     const homeId = game.teams.home.team.id
-    const awaySnap = all.filter(s => s.team_id === awayId)
-    const homeSnap = all.filter(s => s.team_id === homeId)
+    // Cut on the server: non-Pro readers are sent only the first FREE_VISIBLE items of each list, never the rest hidden by the client.
+    const FREE_VISIBLE = 2
+    const trimmed = isPro ? all : all.map(r => ({ ...r, reason_summary: { ...r.reason_summary, factors: (r.reason_summary.factors ?? []).slice(0, FREE_VISIBLE) } }))
+    const awaySnap = trimmed.filter(s => s.team_id === awayId)
+    const homeSnap = trimmed.filter(s => s.team_id === homeId)
 
     // Recorded lines + pitch-by-pitch, fetched server-side so the report card
     // (rating next to each pick) is on the card at first paint. This used to

@@ -111,7 +111,7 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
         <div className="ps-grid2">
           <Card title="Movement map · 0.1 in">
             <p style={{ color: '#5b5347', fontSize: 13, margin: '0 0 12px' }}>Every league {lc} by how it moves, in 0.1-inch boxes, coloured by whiffs per swing. His pitches go on top as dots, so you can see where they are grouped and what the league has done from that spot.</p>
-            <MovementHeat pitchType={P.pitchType} pitchName={name} hand={data.hand} avg={{ hb: cur.hb, ivb: cur.ivb, sdHb: cur.sdHb, sdIvb: cur.sdIvb }} points={P.points} season={data.season} isPro={isPro} />
+            <MovementHeat pitchType={P.pitchType} pitchName={name} hand={data.hand} avg={{ hb: cur.hb, ivb: cur.ivb, sdHb: cur.sdHb, sdIvb: cur.sdIvb }} points={P.points} season={data.season} isPro={isPro} pitcherId={data.pitcherId} />
           </Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card title="Outcome profile">

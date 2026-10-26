@@ -1,13 +1,40 @@
-import { resolveViewer } from '@/lib/gate'
-import { ProGateView } from './ProGateView'
+import { headers } from 'next/headers'
+import { getDeepLookState, claimDeepLook, type DeepLookFeature } from '@/lib/deep-look'
+import { ProGateRow, FREE_LOOK_NOTE } from './ProGateView'
 
-// The ONE Pro gate a page may carry (server component). It checks the viewer, spends the free deep look when it is used, and
-// for anyone without access never renders the children, so Pro data is not in their HTML (callers must not FETCH it either:
-// build heavy children inside this tree). `lookKey` identifies the module (for example a player id) so re-opening it
-// the same day costs nothing.
+// The ONE Pro gate a page may carry (server component). `full()` is only called for Pro or the viewer's look for this entity, so Pro
+// data is never loaded, rendered or passed to a client component for anyone else. `shell` is labels only (no numbers, n or dates).
+// claim = true only where opening the page is itself the choice to spend the look (the lab Pro tabs); everywhere else
+// a free account sees an "Open" button and visiting alone never spends the look.
 
-export default async function ProGate(props: { feature: string; source: string; lookKey: string; preview: React.ReactNode; children?: React.ReactNode }) {
-  const { lookKey, ...rest } = props
-  const { tier, freeLook } = await resolveViewer(rest.source, lookKey)
-  return <ProGateView tier={tier} freeLook={freeLook} {...rest} />
+export default async function ProGate({ feature, entityId, full, shell, source, claim = false }: {
+  feature: DeepLookFeature
+  entityId: string
+  full: () => Promise<React.ReactNode>
+  shell: React.ReactNode
+  source: string
+  claim?: boolean
+}) {
+  let state = await getDeepLookState(feature, entityId)
+  // Next.js link prefetches must never spend a look.
+  const h = await headers()
+  const prefetch = !!h.get('next-router-prefetch') || h.get('purpose') === 'prefetch' || !!h.get('sec-purpose')?.includes('prefetch')
+  if (claim && !prefetch && state === 'look_left') state = await claimDeepLook(feature, entityId)
+
+  if (state === 'pro') return <>{await full()}</>
+  if (state === 'this_look') {
+    return (
+      <>
+        <p style={{ margin: '0 0 10px', fontSize: 13, color: '#8a8275' }}>{FREE_LOOK_NOTE}</p>
+        {await full()}
+      </>
+    )
+  }
+  const tier = state === 'look_left' || state === 'used' ? 'member' : 'anon'
+  return (
+    <section aria-label={feature}>
+      <div>{shell}</div>
+      <ProGateRow tier={tier} source={source} openable={state === 'look_left' ? { feature, entityId } : undefined} noButton={state === 'unavailable'} />
+    </section>
+  )
 }

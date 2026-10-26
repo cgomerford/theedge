@@ -7,9 +7,9 @@
 // matches the cell's count.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requirePro } from '@/lib/require-pro'
 import { getBatterPitchLog } from '@/lib/batter-pitch-log'
 import { COUNT_GROUPS, FAMILIES, SEASON, classifyPitch, type CountGroup, type Family, type HandFilter } from '@/lib/swing-decisions/model'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
 const LIMIT = 50
 
@@ -29,9 +29,9 @@ function outcome(description: string | null, result: string | null): string {
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requirePro()
+  // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
+  const denied = await requireAnyDeepLook([['batting_lab', new URL(req.url).searchParams.get('batterId')]])
   if (denied) return denied
-
   const sp = new URL(req.url).searchParams
   const batterId = Number(sp.get('batterId'))
   const count = sp.get('count') as CountGroup | null

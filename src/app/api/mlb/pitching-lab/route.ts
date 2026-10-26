@@ -12,11 +12,11 @@ import { getPitcherCountTendency, getPitcherSequencing } from '@/lib/pitcher-seq
 import { getPitcherHotZones } from '@/lib/hot-zones'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { MLB_TEAMS } from '@/lib/teams'
-import { isProViewer } from '@/lib/require-pro'
+import { canReadDeepData } from '@/lib/deep-look'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'  // per-viewer: guarded by the deep look
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   // Overview fields (name, team, season line) are free. Movement, tendencies, sequencing, hot zones and the zone arsenal are
   // Pro-only and are neither fetched nor returned for anyone else: this check is the gate, the UI lock is not.
-  const isPro = await isProViewer()
+  const isPro = await canReadDeepData('pitching_lab', String(pitcherId))
   const [personRes, fullStats, movementRows, countTendency, sequencing, hotZones, arsenal] = await Promise.all([
     fetch(`${MLB_API}/people/${pitcherId}?hydrate=currentTeam`, { next: { revalidate: 3600 } }),
     getPitcherStatsFull(pitcherId),

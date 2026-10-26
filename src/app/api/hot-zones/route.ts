@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
-export const dynamic    = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = 'force-dynamic'  // per-viewer: guarded by the deep look
 
 function parseCSVLine(line: string): string[] {
   const cells: string[] = []
@@ -23,6 +23,9 @@ function parseCSVLine(line: string): string[] {
 }
 
 export async function GET(request: Request) {
+  // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
+  const denied = await requireAnyDeepLook([['batting_lab', new URL(request.url).searchParams.get('playerId')], ['pitching_lab', new URL(request.url).searchParams.get('playerId')], ['player_trends', new URL(request.url).searchParams.get('playerId')]])
+  if (denied) return denied
   const { searchParams } = new URL(request.url)
   const playerId = searchParams.get('playerId')
   const season   = searchParams.get('season') ?? new Date().getFullYear().toString()

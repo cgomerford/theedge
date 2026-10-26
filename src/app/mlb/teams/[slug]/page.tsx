@@ -27,7 +27,6 @@ import { pageMeta, noindex } from '@/lib/seo'
 import { fitDescription } from '@/lib/game-slug'
 import { SportsTeamSchema, BreadcrumbSchema } from '@/components/StructuredData'
 import { devPro } from '@/lib/dev-pro'
-import { resolveViewer } from '@/lib/gate'
 
 // Reading the subscriber session makes this route dynamic (per-request), like the
 // Scout Report page. That is what lets the Pro "expand" panels be gated for real.
@@ -60,8 +59,8 @@ export default async function TeamRoute({ params, searchParams }: Props) {
   // deployed build, so real visitors are gated by is_pro alone.
   const subscriber = await getCurrentSubscriber()
   const isPro = (subscriber?.is_pro ?? false) || devPro(sp.pro)
-  // The team page's one gate (pitch quality by type): a free account may spend today's deep look on it.
-  const gate = isPro ? { tier: 'pro' as const } : await resolveViewer('team_arsenal', slug)
+  // The team page's one gate (pitch quality by type). It is not one of the six deep-look features, so it is Pro only.
+  const gate = { tier: isPro ? ('pro' as const) : subscriber ? ('member' as const) : ('anon' as const) }
 
   const season = new Date().getFullYear()
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })

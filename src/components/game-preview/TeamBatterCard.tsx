@@ -21,8 +21,9 @@ import BatterSelector from './BatterSelector'
 import type { ViewerTier } from '@/lib/require-pro-types'
 
 export default async function TeamBatterCard({
-  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro, viewerTier, freeLook,
+  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro, viewerTier, freeLook, lookOpen,
 }: {
+  lookOpen?: { feature: string; entityId: string } | null
   slug: string
   teamId: number
   gameDate: string
@@ -63,6 +64,7 @@ export default async function TeamBatterCard({
       isPro={isPro}
       viewerTier={viewerTier}
       freeLook={freeLook}
+      lookOpen={lookOpen}
     />
   )
 }

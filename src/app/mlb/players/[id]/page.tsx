@@ -65,7 +65,7 @@ export default async function PlayerPage({
   const subscriber = await getCurrentSubscriber()
   const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
   // The zones tab is the page's one gate. A free account may spend today's deep look on it (see lib/deep-look.ts).
-  const gate = isPro ? { tier: 'pro' as const, freeLook: false } : await resolveViewer('player_zones', String(playerId))
+  const gate = isPro ? { tier: 'pro' as const, freeLook: false, state: 'pro' as const } : await resolveViewer('player_trends', String(playerId))
 
   return (
     <main className="min-h-screen bg-stone-50">
@@ -78,6 +78,7 @@ export default async function PlayerPage({
         isPro={isPro}
         viewerTier={gate.tier}
         freeLook={gate.freeLook}
+        lookOpen={gate.state === 'look_left' ? { feature: 'player_trends', entityId: String(playerId) } : null}
         followSlot={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />}
         // Built ONLY for Pro: a non-Pro request never queries or renders trend data.
         trendsSlot={gate.tier === 'pro' ? (

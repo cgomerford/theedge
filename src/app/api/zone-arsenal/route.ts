@@ -9,8 +9,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
 export async function GET(req: NextRequest) {
+  // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
+  const denied = await requireAnyDeepLook([['pitching_lab', req.nextUrl.searchParams.get('playerId')], ['batting_lab', req.nextUrl.searchParams.get('forBatter')], ['player_trends', req.nextUrl.searchParams.get('playerId')]])
+  if (denied) return denied
   const playerId = req.nextUrl.searchParams.get('playerId')
 
   if (!playerId || isNaN(Number(playerId))) {

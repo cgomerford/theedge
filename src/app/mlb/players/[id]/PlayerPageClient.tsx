@@ -631,7 +631,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
 type BatterSection = 'career' | 'form' | 'log' | 'bio'
 type PitcherSection = 'career' | 'form' | 'starts' | 'log' | 'bio'
 
-export default function PlayerPageClient({ data, initialSection, isPro, viewerTier, freeLook, trendsSlot, followSlot }: { freeLook?: boolean; /** resolved server-side: pro | member (signed in) | anon */ viewerTier: ViewerTier; data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
+export default function PlayerPageClient({ data, initialSection, isPro, viewerTier, freeLook, lookOpen, trendsSlot, followSlot }: { freeLook?: boolean; /** set when a free account still has today's look to open on this player */ lookOpen?: { feature: string; entityId: string } | null; /** resolved server-side: pro | member (signed in) | anon */ viewerTier: ViewerTier; data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
   const { identity } = data
   const subject: 'batter' | 'pitcher' = identity.isPitcher ? 'pitcher' : 'batter'
   const rows = subject === 'batter' ? BATTER_ROWS : PITCHER_ROWS
@@ -964,6 +964,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
     <ProGateView
       tier={viewerTier}
       freeLook={freeLook}
+      openable={lookOpen ?? undefined}
       feature="Zones and arsenal detail"
       source={subject === 'batter' ? 'player_batter_zones' : 'player_pitcher_arsenal'}
       preview={<ArsenalZonesPreview />}

@@ -11,6 +11,8 @@
 // takes ~10s on a cold cache) never holds up the others.
 
 import { Suspense } from 'react'
+import { getDeepLookState } from '@/lib/deep-look'
+import { ProGateRow, FREE_LOOK_NOTE } from '@/components/pro/ProGateView'
 import type { MLBGame } from '@/lib/mlb'
 import ScoutSection from './ScoutSection'
 import ClubStatusSection from './ClubStatusSection'
@@ -64,9 +66,15 @@ function Skeleton() {
   )
 }
 
-// The Scout Report has no Pro gate: every section is free for everyone. `ctx.isPro` stays true on purpose so the sections
-// that used to hold back extras (flag games, overlays, the full watch-for list) show them to all readers.
-export default function ScoutReport({ game, gameDate }: { game: MLBGame; gameDate: string }) {
+// The free and teaser sections are open to everyone. The 8 'pro' sections (registry: sections.ts) open for Pro, or for a free account
+// that opens its daily deep look for this game ('scout_report', one look opens all 8). Anyone else gets the section titles and their
+// scope lines with ONE row before the first locked section, and the section bodies are never built (no Pro data in the HTML).
+// Visiting this page never spends a look: the row's Open button does.
+export default async function ScoutReport({ game, gameDate }: { game: MLBGame; gameDate: string }) {
+  const state = await getDeepLookState('scout_report', String(game.gamePk))
+  const proOpen = state === 'pro' || state === 'this_look'
+  const tier = state === 'look_left' || state === 'used' ? 'member' : 'anon'
+  let rowShown = false
   const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro: true,
     venueId: (game.venue as { id?: number }).id ?? null, venueName: game.venue.name, dayNight: game.dayNight ?? null }
   const withStatus = SCOUT_SECTIONS.map((meta) => ({ ...meta, status: SECTION_BODIES[meta.id] ? ('live' as const) : ('planned' as const) }))
@@ -96,11 +104,26 @@ export default function ScoutReport({ game, gameDate }: { game: MLBGame; gameDat
           ))}
         </nav>
 
-        {live.map((meta) => (
-          <ScoutSection key={meta.id} meta={meta} locked={false}>
-            <Suspense fallback={<Skeleton />}>{SECTION_BODIES[meta.id]?.(ctx)}</Suspense>
-          </ScoutSection>
-        ))}
+        {state === 'this_look' && <p style={{ margin: 0, fontSize: 13, color: '#8a8275' }}>{FREE_LOOK_NOTE}</p>}
+        {live.map((meta) => {
+          if (meta.tier === 'pro' && !proOpen) {
+            const showRow = !rowShown
+            rowShown = true
+            return (
+              <div key={meta.id}>
+                {showRow && <ProGateRow tier={tier} source="scout_report" openable={state === 'look_left' ? { feature: 'scout_report', entityId: String(game.gamePk) } : undefined} noButton={state === 'unavailable'} />}
+                <ScoutSection meta={meta} locked>
+                  <ul className="space-y-1">{meta.scope.map((line) => <li key={line} className="font-sans text-[12px] text-stone-500 leading-snug">{line}</li>)}</ul>
+                </ScoutSection>
+              </div>
+            )
+          }
+          return (
+            <ScoutSection key={meta.id} meta={meta} locked={false}>
+              <Suspense fallback={<Skeleton />}>{SECTION_BODIES[meta.id]?.(ctx)}</Suspense>
+            </ScoutSection>
+          )
+        })}
 
         {planned.length > 0 && (
           <div>

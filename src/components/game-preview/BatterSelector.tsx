@@ -27,8 +27,9 @@ import LabFunnelLink from './LabFunnelLink'
 
 export default function BatterSelector({
   slug, batters, lineupSource, hotZonesByBatter, streaksByBatter,
-  venueName, opposingPitcherId, opposingPitcherName, season, isPro, viewerTier, freeLook,
+  venueName, opposingPitcherId, opposingPitcherName, season, isPro, viewerTier, freeLook, lookOpen,
 }: {
+  lookOpen?: { feature: string; entityId: string } | null
   slug: string
   batters: LineupBatter[]
   lineupSource: 'confirmed' | 'projected_from_previous_game' | 'unavailable'
@@ -135,7 +136,7 @@ export default function BatterSelector({
       {modal === 'radar' && selected && (
         <DetailModal eyebrow="Batting Radar" title={selected.player_name} onClose={() => setModal(null)}>
           <div className="space-y-4">
-            <ProGateView tier={viewerTier} freeLook={freeLook} feature="Zone heatmaps" source="preview_zones" preview={<ZonesPreview title="Hot zones" />}>
+            <ProGateView tier={viewerTier} freeLook={freeLook} openable={lookOpen ?? undefined} feature="Zone heatmaps" source="preview_zones" preview={<ZonesPreview title="Hot zones" />}>
               {hasZones ? (
                 <HotZone mode="batter" data={selectedZones!} isPro playerName={selected.player_name} />
               ) : (

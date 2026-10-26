@@ -1,9 +1,10 @@
 // src/app/mlb/lab/batting-lab/[playerId]/(pro)/layout.tsx
 //
-// The Batting Lab tabs behind the page's one ProGate: Vs Arsenal, Hot Zones, Location, Sequencing, Trends, H2H.
-// Overview (the lab's index page) sits outside this group and is free; Contact and the other Nerve Centre tabs stay open
-// to any signed-up member. The tabs' data APIs are gated separately (lib/require-pro.ts), so bypassing the page does not reach the data.
-// A route group: it adds no URL segment.
+// The Batting Lab Pro tabs behind the page's one ProGate: Vs Arsenal, Hot Zones, Location, Sequencing, Trends, H2H.
+// Opening one of these tabs IS the choice to spend a free account's daily deep look, so the gate claims (claim): one look opens
+// every one of these tabs for this batter that day. The Reaction tab is outside this group and never claims (Pro only).
+// Overview and the Nerve Centre tabs are free. The tabs' data APIs check the same look (lib/deep-look.ts), so bypassing the
+// page does not reach the data. A route group: it adds no URL segment.
 
 import ProGate from '@/components/pro/ProGate'
 import { ArsenalZonesPreview } from '@/components/pro/previews'
@@ -12,9 +13,7 @@ export default async function ProBattingTabs({ children, params }: { children: R
   const { playerId } = await params
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="Zones and arsenal detail" source="batting_lab" lookKey={playerId} preview={<ArsenalZonesPreview />}>
-        {children}
-      </ProGate>
+      <ProGate feature="batting_lab" entityId={playerId} source="batting_lab" claim shell={<ArsenalZonesPreview />} full={async () => children} />
     </div>
   )
 }

@@ -9,8 +9,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getBatterPitchByPitchResult, type PitchTypeFitLine } from '@/lib/series-matchup'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
 export async function GET(req: NextRequest) {
+  // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
+  const denied = await requireAnyDeepLook([])  // Pro only: no look opens this
+  if (denied) return denied
   const { searchParams } = new URL(req.url)
   const batterId = Number(searchParams.get('batterId'))
   const pitcherId = Number(searchParams.get('pitcherId'))

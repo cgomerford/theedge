@@ -45,7 +45,6 @@ import SeriesTopPerformers from '@/components/game-preview/SeriesTopPerformers'
 import SeriesPostgameLinks from '@/components/game-preview/SeriesPostgameLinks'
 import ShellPlaceholder from '@/components/game-preview/ShellPlaceholder'
 import JumpNav from '@/components/game-preview/JumpNav'
-import EdgeIndicatorPanel, { type EdgeIndicatorPanelProps } from '@/components/game-preview/EdgeIndicatorPanel'
 import type { StartingPitcherData } from '@/components/game-preview/StartingPitcherPanel'
 import type { PercentileRow } from '@/components/charts/types'
 import { getEdgePrediction } from '@/lib/edge-fetch'
@@ -119,6 +118,11 @@ const PITCHER_HIGHER_IS_BETTER: Record<string, boolean> = {
   whiff_pct: true, chase_rate: true, barrel_pct: false, hard_hit_pct: false,
 }
 
+// The Standard Stats modal reads only these four fields of MLB's raw split object; send nothing else (the rest of it would sit in the page payload).
+function pickSit(raw: { avg?: unknown; era?: unknown; battersFaced?: unknown; plateAppearances?: unknown } | null): { avg?: unknown; era?: unknown; battersFaced?: unknown; plateAppearances?: unknown } | null {
+  return raw ? { avg: raw.avg, era: raw.era, battersFaced: raw.battersFaced, plateAppearances: raw.plateAppearances } : null
+}
+
 async function buildSpData(
   pitcherId: number | undefined, pitcherName: string | undefined,
   teamAbbr: string, teamColor: string, venueName: string,
@@ -164,7 +168,7 @@ async function buildSpData(
 
   return {
     pitcherId, pitcherName: pitcherName ?? 'TBD', teamAbbr, teamColor, percentileRows, arsenal,
-    qualified: percentiles.qualified, trend, venueRecord, situational: { risp, basesEmpty },
+    qualified: percentiles.qualified, trend, venueRecord, situational: { risp: pickSit(risp), basesEmpty: pickSit(basesEmpty) },
   }
 }
 
@@ -203,7 +207,7 @@ type TeamCtx = {
   pitcherId?: number; pitcherName?: string
 }
 type GameCtx = {
-  slug: string; isPro: boolean; viewerTier: ViewerTier; freeLook: boolean; gamePk: number; season: number
+  slug: string; isPro: boolean; viewerTier: ViewerTier; freeLook: boolean; lookOpen: { feature: string; entityId: string } | null; gamePk: number; season: number
   gameDateApi: string; gameDateIso: string; gameTimeFormatted: string; venueName: string
   home: TeamCtx; away: TeamCtx
 }
@@ -274,38 +278,6 @@ async function PitcherAsync({ ctx, side }: { ctx: GameCtx; side: 'home' | 'away'
   const t = ctx[side]
   const sp = await safe('starting-pitcher', loadSp(t.pitcherId, t.pitcherName, t.abbr, t.color, ctx.venueName), null)
   return <TeamPitcherCard pitcherId={t.pitcherId} pitcherName={t.pitcherName} sp={sp} isPro={ctx.isPro} />
-}
-
-// ── Edge indicator ──
-async function EdgeAsync({ ctx }: { ctx: GameCtx }) {
-  const prediction = await safe('edge-prediction', loadPrediction(ctx.gamePk), null)
-  if (!prediction) {
-    return <ShellPlaceholder title="Edge Indicator" note="No prediction on record for this game yet." />
-  }
-  const edgeProps: EdgeIndicatorPanelProps = {
-    edge_score: prediction.edge_score,
-    predicted_winner: prediction.predicted_winner,
-    confidence_tier: prediction.confidence_tier,
-    components: prediction.components,
-    components_raw: prediction.components_raw,
-    is_pro: ctx.isPro,
-    home_team: ctx.home.name,
-    away_team: ctx.away.name,
-    home_team_abbr: ctx.home.abbr,
-    away_team_abbr: ctx.away.abbr,
-    updated_at: prediction.updated_at,
-    away_primary_color: ctx.away.color,
-    home_primary_color: ctx.home.color,
-    lineups_confirmed: prediction.lineups_confirmed,
-    home_team_id: ctx.home.id,
-    away_team_id: ctx.away.id,
-    away_team_slug: ctx.away.slug,
-    home_team_slug: ctx.home.slug,
-    llm_narrative: prediction.narrative,
-    llm_narrative_pro: prediction.narrative_pro,
-    pro_takeaways: prediction.pro_takeaways,
-  }
-  return <EdgeIndicatorPanel {...edgeProps} />
 }
 
 // ── Series sections (below Key Players). Renders nothing for a one-off game. ──
@@ -424,8 +396,6 @@ export default async function GamePreview({ params, searchParams }: Props) {
   // Never default to true (a `?? true` here once leaked Pro to logged-out users).
   // Local testing: add ?pro=1 under `next dev` (see lib/dev-pro.ts).
   const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
-  // The zone heatmaps are the page's one gate; a free account may spend today's deep look on them (lib/deep-look.ts).
-  const gate = isPro ? { tier: 'pro' as const, freeLook: false } : await resolveViewer('preview_zones', slug)
 
   let game: MLBGame | null = freshGames.find(g => slugifyGame(g) === slug) ?? null
   if (!game) {
@@ -454,8 +424,11 @@ export default async function GamePreview({ params, searchParams }: Props) {
   const venueName = game.venue?.name ?? ''
   const venueInfo = getVenueInfo(venueName)
 
+  // The zone heatmaps are the page's one gate. A free account opens its daily look with a button; visiting does not spend it.
+  const gate = isPro ? { tier: 'pro' as const, freeLook: false, state: 'pro' as const } : await resolveViewer('game_zones', String(game.gamePk))
+
   const ctx: GameCtx = {
-    slug, isPro, viewerTier: gate.tier, freeLook: gate.freeLook, gamePk: game.gamePk, season: new Date().getFullYear(),
+    slug, isPro, viewerTier: gate.tier, freeLook: gate.freeLook, lookOpen: gate.state === 'look_left' ? { feature: 'game_zones', entityId: String(game.gamePk) } : null, gamePk: game.gamePk, season: new Date().getFullYear(),
     gameDateApi: game.gameDate?.split('T')[0] ?? dateMatch[1],
     gameDateIso: game.gameDate,
     gameTimeFormatted: new Date(game.gameDate).toLocaleTimeString('en-US', {
@@ -526,7 +499,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
                   <Suspense fallback={battingCardFallback}>
                     <TeamBatterCard
                       slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
-                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook}
+                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook} lookOpen={ctx.lookOpen}
                       opposingPitcherId={opp.pitcherId ?? null}
                       opposingPitcherName={opp.pitcherName ?? null}
                     />
@@ -535,12 +508,6 @@ export default async function GamePreview({ params, searchParams }: Props) {
               )
             })}
 
-            <section className="space-y-3">
-              <h2 className="text-[10px] font-mono uppercase tracking-widest font-bold text-stone-500">Edge Indicator</h2>
-              <Suspense fallback={<Skeleton h={320} />}>
-                <EdgeAsync ctx={ctx} />
-              </Suspense>
-            </section>
           </div>
 
           {/* ── 3 Key Players (independent stream) ── */}

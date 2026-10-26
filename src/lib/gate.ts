@@ -1,26 +1,23 @@
-// Works out what one viewer gets for one Pro module.
-//   pro                              -> 'pro'    (open, no note)
-//   free, signed in, this module     -> 'pro' + freeLook: the first module they opened today opens in full (and again for free)
-//   free, signed in, another module  -> 'member' (labels only, then the upgrade row)
-//   signed out                       -> 'anon'   (barebones shell, "Sign up to see this for free")
-// Which module is "theirs" for the day is a signed cookie set by the proxy (see deep-look-cookie.ts); nothing is written here.
-// Server only. Pages call resolveViewer(feature, key) once and hand the result to the gate.
-
-import { getViewerTier } from '@/lib/require-pro'
+// Bridges the deep-look state to the older tier-based pieces (ProGateView and the client components that take a tier).
+//   pro / this_look  -> 'pro'    (open; this_look adds the muted "your free deep look" line)
+//   used             -> 'member' (labels only + upgrade)
+//   look_left        -> 'member' with openable = true (labels + "open your free deep look")
+//   signed_out / unavailable -> 'anon' (labels + create account; no price)
+import { getDeepLookState, claimDeepLook, type DeepLookFeature, type DeepLookState } from '@/lib/deep-look'
 import type { ViewerTier } from '@/lib/require-pro-types'
-import { claimLook, isTodaysModule } from '@/lib/deep-look'
-import { getCurrentSubscriber } from '@/lib/auth'
 
-export type ResolvedViewer = { tier: ViewerTier; freeLook: boolean }
+export type ResolvedViewer = { tier: ViewerTier; freeLook: boolean; state: DeepLookState }
 
-export async function resolveViewer(feature: string, key: string): Promise<ResolvedViewer> {
-  const tier = await getViewerTier()
-  if (tier !== 'member') return { tier, freeLook: false }
-  return (await isTodaysModule(feature, key)) ? { tier: 'pro', freeLook: true } : { tier: 'member', freeLook: false }
+export function tierOf(state: DeepLookState): ResolvedViewer {
+  if (state === 'pro') return { tier: 'pro', freeLook: false, state }
+  if (state === 'this_look') return { tier: 'pro', freeLook: true, state }
+  if (state === 'used' || state === 'look_left') return { tier: 'member', freeLook: false, state }
+  return { tier: 'anon', freeLook: false, state }
 }
 
-/** For API route handlers: may this signed-in free account use this module's data today? Claims today's look if it is still free. */
-export async function allowDeepLookFor(feature: string, key: string): Promise<boolean> {
-  if (!(await getCurrentSubscriber())) return false
-  return claimLook(feature, key)
+/** claim = true only where opening the page is itself the choice to spend the look (the lab Pro tabs). */
+export async function resolveViewer(feature: DeepLookFeature, entityId: string, claim = false): Promise<ResolvedViewer> {
+  let state = await getDeepLookState(feature, entityId)
+  if (claim && state === 'look_left') state = await claimDeepLook(feature, entityId)
+  return tierOf(state)
 }

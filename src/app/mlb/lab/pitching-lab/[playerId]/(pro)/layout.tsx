@@ -1,8 +1,9 @@
 // src/app/mlb/lab/pitching-lab/[playerId]/(pro)/layout.tsx
 //
-// The Pitching Lab tabs behind the page's one ProGate: Arsenal, Location, Hot Zone Overlay, Shape, Sequencing, H2H, Trends.
-// Overview (the lab's index page) sits outside this group and is free. The tabs' data APIs are gated separately
-// (lib/require-pro.ts), so bypassing the page does not reach the data. A route group: it adds no URL segment.
+// The Pitching Lab Pro tabs behind the page's one ProGate: Arsenal, Location, Hot Zone Overlay, Sequencing, H2H, Trends, Stuff.
+// Opening one of these tabs IS the choice to spend a free account's daily deep look (claim). The Shape tab sits outside this
+// group because it shares ONE look with Pitch Shape Lab (feature 'pitch_shape'). Overview is free. The tabs' data APIs check the
+// same look (lib/deep-look.ts). A route group: it adds no URL segment.
 
 import ProGate from '@/components/pro/ProGate'
 import { ArsenalZonesPreview } from '@/components/pro/previews'
@@ -11,9 +12,7 @@ export default async function ProPitchingTabs({ children, params }: { children: 
   const { playerId } = await params
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="Zones and arsenal detail" source="pitching_lab" lookKey={playerId} preview={<ArsenalZonesPreview />}>
-        {children}
-      </ProGate>
+      <ProGate feature="pitching_lab" entityId={playerId} source="pitching_lab" claim shell={<ArsenalZonesPreview />} full={async () => children} />
     </div>
   )
 }

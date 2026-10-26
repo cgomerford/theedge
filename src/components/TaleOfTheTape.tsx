@@ -135,7 +135,7 @@ function usePitcherArsenal(
     if (playerId == null || playerId === defaultPlayerId) return
     if (fetched[playerId] !== undefined) return
     setLoading(true)
-    fetch(`/api/zone-arsenal?playerId=${playerId}`)
+    fetch(`/api/zone-arsenal/summary?playerId=${playerId}`)
       .then(r => r.json())
       .then(data => {
         const all = data?.arsenal?.['all'] ?? null
@@ -162,7 +162,7 @@ function useBatterZones(
     if (playerId == null || playerId === defaultPlayerId) return
     if (fetched[playerId] !== undefined) return
     setLoading(true)
-    fetch(`/api/batter-zones?playerId=${playerId}`)
+    fetch(`/api/batter-zones/summary?playerId=${playerId}`)
       .then(r => r.json())
       .then(data => {
         const all = data?.zones?.['all'] ?? null

@@ -1,11 +1,12 @@
 // src/app/api/stats/live/route.ts
 //
 // GET /api/stats/live — which games in progress right now are in the situation the person has set up?
-// Open to everyone: signed out gets each game's 3 newest pitch lines, a free account the full pitch-by-pitch. The filters come in the same shape as /api/stats/query (a `split` chip code and/or a `deep`
+// Open to everyone (filters are Pro only): signed out gets each game's 3 newest pitch lines, a free account the full pitch-by-pitch. The filters come in the same shape as /api/stats/query (a `split` chip code and/or a `deep`
 // JSON object) and are validated the same way before use.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { isProViewer } from '@/lib/require-pro'
 import { checkLive } from '@/lib/stats-live'
 import { deepSupports, deepToParams, type DeepFilters, type Group } from '@/lib/stats-query-catalog'
 
@@ -16,6 +17,8 @@ const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Nu
 export async function GET(req: NextRequest) {
   const signedIn = !!(await getCurrentSubscriber())
   const sp = new URL(req.url).searchParams
+  // The base live feed is open (signed out is trimmed below). Filters (the finder) are Pro only: refused here, not just hidden in the UI.
+  if ((sp.get('split') || sp.get('deep')) && !(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   const gp = sp.get('group')
   const group: Group = gp === 'pitching' ? 'pitching' : 'hitting'
 

@@ -191,7 +191,7 @@ export default function BatterHotZoneOverlay({ batterId, bats }: { batterId: num
   useEffect(() => {
     if (!activePitcher) return
     let cancelled = false
-    fetch(`/api/pitcher-zones?playerId=${activePitcher.id}`)
+    fetch(`/api/pitcher-zones?playerId=${activePitcher.id}&forBatter=${batterId}`)
       .then(r => r.json())
       .then(json => { if (!cancelled) setPitcherZonesState({ id: activePitcher.id, zones: json.zones ?? {} }) })
       .catch(() => { if (!cancelled) setPitcherZonesState({ id: activePitcher.id, zones: {} }) })

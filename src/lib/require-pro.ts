@@ -12,7 +12,6 @@
 
 import { cookies } from 'next/headers'
 import { getCurrentSubscriber } from '@/lib/auth'
-import { readLook } from '@/lib/deep-look'
 
 export async function isProViewer(): Promise<boolean> {
   const subscriber = await getCurrentSubscriber()
@@ -26,9 +25,6 @@ export async function isProViewer(): Promise<boolean> {
 
 export async function requirePro(): Promise<Response | null> {
   if (await isProViewer()) return null
-  // A free account that spent today's deep look on a module may fetch that module's data today (see lib/deep-look.ts).
-  const sub = await getCurrentSubscriber()
-  if (sub && (await readLook())) return null
   return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
 }
 

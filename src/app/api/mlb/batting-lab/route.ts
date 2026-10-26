@@ -13,7 +13,7 @@ import { getBatterSeasonStats, getBatterStatcast, type BatterStatcast } from '@/
 import { getBatterBatSpeedProfile } from '@/lib/batter-bat-speed'
 import { getMetricPercentile, LEADER_METRICS } from '@/lib/lab'
 import { MLB_TEAMS } from '@/lib/teams'
-import { isProViewer } from '@/lib/require-pro'
+import { canReadDeepData } from '@/lib/deep-look'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -32,7 +32,7 @@ const HITTING_PERCENTILE_KEYS = [
   'doubles', 'triples', 'baseOnBalls', 'totalBases',
 ] as const
 
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'  // per-viewer: guarded by the deep look
 
 function formatStatcastRows(sc: BatterStatcast | null): { key: string; label: string; value: string }[] {
   if (!sc) return []
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
   // Overview fields (bio, season line, Statcast quality-of-contact rows, percentiles) are free. The raw Statcast object and
   // the bat-speed profile are Pro-only and neither fetched nor returned for anyone else.
-  const isPro = await isProViewer()
+  const isPro = await canReadDeepData('batting_lab', String(batterId))
   const [personRes, seasonStats, statcast, batSpeed, ...percentileResults] = await Promise.all([
     fetch(`${MLB_API}/people/${batterId}?hydrate=currentTeam`, { next: { revalidate: 3600 } }),
     getBatterSeasonStats(batterId),

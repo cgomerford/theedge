@@ -143,7 +143,7 @@ export default function HotZoneOverlay({ pitcherId, pitcherThrows }: { pitcherId
     // never reaches the UI.
     if (!batter) return
     let cancelled = false
-    fetch(`/api/batter-zones?playerId=${batter.id}`)
+    fetch(`/api/batter-zones?playerId=${batter.id}&forPitcher=${pitcherId}`)
       .then(r => r.json())
       .then(json => { if (!cancelled) setBatterZones(json.zones ?? {}) })
       .catch(() => { if (!cancelled) setBatterZones({}) })
@@ -157,7 +157,7 @@ export default function HotZoneOverlay({ pitcherId, pitcherThrows }: { pitcherId
     // below pitch-type-aware instead of zone-only.
     if (!batter) return
     let cancelled = false
-    fetch(`/api/mlb/batter-zone-arsenal?playerId=${batter.id}`)
+    fetch(`/api/mlb/batter-zone-arsenal?playerId=${batter.id}&forPitcher=${pitcherId}`)
       .then(r => r.json())
       .then(json => { if (!cancelled) setBatterArsenal(json.arsenal ?? {}) })
       .catch(() => { if (!cancelled) setBatterArsenal({}) })

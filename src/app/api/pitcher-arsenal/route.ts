@@ -3,6 +3,7 @@
 // put_away, usage, all per pitch type per pitcher. Replaces the Python
 // cron → Supabase pipeline which had accuracy issues per user feedback.
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAnyDeepLook } from '@/lib/deep-look'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,9 @@ export type ArsenalRow = {
 }
 
 export async function GET(req: NextRequest) {
+  // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
+  const denied = await requireAnyDeepLook([['pitching_lab', new URL(req.url).searchParams.get('pitcherId')], ['player_trends', new URL(req.url).searchParams.get('pitcherId')]])
+  if (denied) return denied
   const { searchParams } = new URL(req.url)
   const pitcherId = Number(searchParams.get('pitcherId'))
   const season = Number(searchParams.get('season') ?? new Date().getFullYear())

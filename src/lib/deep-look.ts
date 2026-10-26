@@ -1,27 +1,76 @@
-// Server-side reads of the free deep-look cookie (see deep-look-cookie.ts). The cookie is SET by the proxy (src/proxy.ts) the
-// first time a signed-in free account opens a gated module page, and by allowDeepLookFor() for the pitch-shape APIs.
-import { cookies } from 'next/headers'
-import { LOOK_COOKIE, LOOK_MAX_AGE, signLook, verifyLook, type Look } from '@/lib/deep-look-cookie'
+import 'server-only'
+// The free deep look: a free account opens ONE full Pro module a day. Unit of a look = one feature for one entity for one
+// Europe/London day (re-opening the same one is free). State lives in public.deep_looks (supabase/migrations/..._deep_looks.sql);
+// the day is worked out in SQL, so it is DST-safe and never depends on the server clock.
+// Fails closed: any Supabase error (table or function not created yet, network) is 'unavailable' for free users, logged once, never thrown.
+// Pro never reaches the database here.
 
-export type { Look }
+import { getCurrentSubscriber } from '@/lib/auth'
+import { isProViewer } from '@/lib/require-pro'
+import { createAdminClient } from '@/lib/supabase'
 
-/** Today's look for this browser, or null if none was claimed today. */
-export async function readLook(): Promise<Look | null> {
-  const jar = await cookies()
-  return verifyLook(jar.get(LOOK_COOKIE)?.value)
+export const DEEP_LOOKS_PER_DAY = 1
+
+export type DeepLookFeature = 'batting_lab' | 'pitching_lab' | 'pitch_shape' | 'player_trends' | 'game_zones' | 'scout_report'
+export type DeepLookState = 'pro' | 'signed_out' | 'look_left' | 'this_look' | 'used' | 'unavailable'
+
+let warned = false
+function unavailable(code: string | undefined): 'unavailable' {
+  if (!warned) { warned = true; console.warn('[deep-look] unavailable', code ?? 'error') }
+  return 'unavailable'
 }
 
-/** True if today's look was spent on exactly this module. */
-export async function isTodaysModule(feature: string, key: string): Promise<boolean> {
-  const l = await readLook()
-  return !!l && l.feature === feature && l.key === key
+export async function getDeepLookState(feature: DeepLookFeature, entityId: string): Promise<DeepLookState> {
+  if (await isProViewer()) return 'pro'
+  const sub = await getCurrentSubscriber()
+  if (!sub) return 'signed_out'
+  try {
+    const supa = createAdminClient()
+    const has = await supa.rpc('has_deep_look', { p_subscriber: sub.id, p_feature: feature, p_entity: String(entityId) })
+    if (has.error) return unavailable(has.error.code)
+    if (has.data === true) return 'this_look'
+    const used = await supa.rpc('deep_looks_used_today', { p_subscriber: sub.id })
+    if (used.error) return unavailable(used.error.code)
+    return Number(used.data) >= DEEP_LOOKS_PER_DAY ? 'used' : 'look_left'
+  } catch (e) {
+    return unavailable(e instanceof Error ? e.message : undefined)
+  }
 }
 
-/** For route handlers only (cookies can be set there): claim today's look for a module if it is still free. */
-export async function claimLook(feature: string, key: string): Promise<boolean> {
-  const l = await readLook()
-  if (l) return l.feature === feature && l.key === key
-  const jar = await cookies()
-  jar.set(LOOK_COOKIE, await signLook(feature, key), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: LOOK_MAX_AGE, secure: process.env.NODE_ENV === 'production' })
-  return true
+/** Spend today's look on this feature + entity if one is left. Claims nothing for Pro or signed-out visitors. */
+export async function claimDeepLook(feature: DeepLookFeature, entityId: string): Promise<DeepLookState> {
+  if (await isProViewer()) return 'pro'
+  const sub = await getCurrentSubscriber()
+  if (!sub) return 'signed_out'
+  try {
+    const supa = createAdminClient()
+    const { data, error } = await supa.rpc('claim_deep_look', { p_subscriber: sub.id, p_feature: feature, p_entity: String(entityId), p_limit: DEEP_LOOKS_PER_DAY })
+    if (error) return unavailable(error.code)
+    // Funnel events (look_used / look_limit_hit): skipped, there is no funnel_events helper in this codebase.
+    return data === 'claimed' || data === 'existing' ? 'this_look' : 'used'
+  } catch (e) {
+    return unavailable(e instanceof Error ? e.message : undefined)
+  }
+}
+
+/** For API guards: true if Pro or this exact feature + entity is today's look. Never claims. */
+export async function canReadDeepData(feature: DeepLookFeature, entityId: string): Promise<boolean> {
+  const s = await getDeepLookState(feature, entityId)
+  return s === 'pro' || s === 'this_look'
+}
+
+/** API guard: null when allowed, otherwise the same 403 shape requirePro uses. */
+export async function requireDeepLook(feature: DeepLookFeature, entityId: string | number | null | undefined): Promise<Response | null> {
+  if (entityId != null && entityId !== '' && (await canReadDeepData(feature, String(entityId)))) return null
+  return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+}
+
+/** API guard for routes several modules share: null when Pro, or when ANY listed (feature, entity) is today's look. */
+export async function requireAnyDeepLook(candidates: Array<[DeepLookFeature, string | null | undefined]>): Promise<Response | null> {
+  for (const [feature, id] of candidates) {
+    if (id != null && id !== '' && (await canReadDeepData(feature, String(id)))) return null
+  }
+  // Pro viewers pass even when no id was sent (getDeepLookState returns 'pro' before looking at the entity).
+  if (await isProViewer()) return null
+  return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
 }
