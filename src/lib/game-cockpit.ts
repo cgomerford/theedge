@@ -22,6 +22,9 @@ export type StarterBlock = {
   hand: 'L' | 'R' | null
   opener: boolean
   era: number | null
+  wins: number | null
+  losses: number | null
+  ip: string | null
   bf: number
   kPct: number | null
   bbPct: number | null
@@ -34,7 +37,7 @@ export type StarterBlock = {
 }
 
 export async function getStarterBlock(id: number | undefined, name: string | undefined, season: number): Promise<StarterBlock> {
-  const empty: StarterBlock = { status: 'not_announced', id: null, name: null, hand: null, opener: false, era: null, bf: 0, kPct: null, bbPct: null, xwoba: null, mix: [], mixPitches: 0, lastStart: null, throughDate: null, hasPitchData: false }
+  const empty: StarterBlock = { status: 'not_announced', id: null, name: null, hand: null, opener: false, era: null, wins: null, losses: null, ip: null, bf: 0, kPct: null, bbPct: null, xwoba: null, mix: [], mixPitches: 0, lastStart: null, throughDate: null, hasPitchData: false }
   if (!id) return empty
   const [stats, hands, arsenal, ps] = await Promise.all([
     mlb<{ stats: StatBlock[] }>(`/people/${id}/stats?stats=season,gameLog,career&group=pitching&season=${season}`),
@@ -68,7 +71,7 @@ export async function getStarterBlock(id: number | undefined, name: string | und
   return {
     status: firstStart ? 'first_start' : 'ok',
     id, name: name ?? null, hand: hands.get(id) ?? null, opener,
-    era: num(seasonStat?.era), bf,
+    era: num(seasonStat?.era), wins: num(seasonStat?.wins), losses: num(seasonStat?.losses), ip: seasonStat?.inningsPitched != null ? String(seasonStat.inningsPitched) : null, bf,
     kPct: bf > 0 ? (Number(seasonStat?.strikeOuts) / bf) * 100 : null,
     bbPct: bf > 0 ? (Number(seasonStat?.baseOnBalls) / bf) * 100 : null,
     xwoba: num((ps.data as { xwoba_allowed?: unknown } | null)?.xwoba_allowed),
@@ -85,11 +88,14 @@ export type LineupRow = {
   ops: number | null; pa: number | null
   h2h: { pa: number; h: number; hr: number; k: number } | null
   vsHand: { pa: number; ops: number | null } | null  // batter's split vs the opposing starter's hand
+  contact: { xwoba: number; pa: number } | null      // xwOBA over every pitch type he has faced this season
+  vsPitch: { code: string; xwoba: number | null; pa: number }[]  // against the opposing starter's top pitch types
 }
-export type TeamLineup = { source: ProjectedLineup['source']; dateUsed: string | null; rows: LineupRow[] }
+export type TeamLineup = { source: ProjectedLineup['source']; dateUsed: string | null; rows: LineupRow[]; splitsThrough: string | null }
 
-export async function getTeamLineup(teamId: number, gameDate: string, gamePk: number, opp: { id: number | null; hand: 'L' | 'R' | null }): Promise<TeamLineup> {
+export async function getTeamLineup(teamId: number, gameDate: string, gamePk: number, opp: { id: number | null; hand: 'L' | 'R' | null; pitchCodes?: string[] }): Promise<TeamLineup> {
   const lineup = await getProjectedLineup(teamId, gameDate, gamePk)
+  const pitchSplits = await getBatterPitchSplits(lineup.batters.map(b => b.player_id))
   const rows = await Promise.all(lineup.batters.map(async (b): Promise<LineupRow> => {
     const [vs, split] = await Promise.all([
       opp.id ? mlb<{ stats: StatBlock[] }>(`/people/${b.player_id}/stats?stats=vsPlayer&opposingPlayerId=${opp.id}&group=hitting`) : Promise.resolve(null),
@@ -103,9 +109,11 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
       ops: b.season_ops, pa: b.season_pa ?? null,
       h2h: opp.id ? { pa: Number(t?.plateAppearances ?? 0), h: Number(t?.hits ?? 0), hr: Number(t?.homeRuns ?? 0), k: Number(t?.strikeOuts ?? 0) } : null,
       vsHand: sp ? { pa: Number(sp.plateAppearances ?? 0), ops: num(sp.ops) } : null,
+      contact: pitchSplits.rows.get(b.player_id)?.contact ?? null,
+      vsPitch: (opp.pitchCodes ?? []).map(code => ({ code, xwoba: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.xwoba ?? null, pa: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.pa ?? 0 })),
     }
   }))
-  return { source: lineup.source, dateUsed: lineup.game_date_used, rows: rows.sort((a, b) => a.order - b.order) }
+  return { source: lineup.source, dateUsed: lineup.game_date_used, rows: rows.sort((a, b) => a.order - b.order), splitsThrough: pitchSplits.through }
 }
 
 // ── Bullpen ────────────────────────────────────────────────────────────────
@@ -122,4 +130,29 @@ export async function getBullpenRecent(teamId: number, starterIds: number[], anc
     .filter(p => p.total > 0)
     .sort((a, b) => b.total - a.total)
   return { dates, rows }
+}
+
+// ── Batter xwOBA by pitch type (table batter_pitch_type_splits, filled by scripts/fetch_batter_pitch_splits.py) ──
+export async function getBatterPitchSplits(ids: number[]): Promise<{ rows: Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number }> }>; through: string | null }> {
+  const rows = new Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number }> }>()
+  if (!ids.length) return { rows, through: null }
+  const { data, error } = await createAdminClient()
+    .from('batter_pitch_type_splits')
+    .select('player_id, pitch_type, pa, est_woba, computed_date')
+    .eq('season', new Date().getFullYear())
+    .in('player_id', ids)
+    .range(0, 999)
+  if (error) { console.error('[getBatterPitchSplits] Supabase error:', error.message); return { rows, through: null } }
+  let through: string | null = null
+  const sums = new Map<number, { w: number; pa: number }>()
+  for (const r of (data ?? []) as { player_id: number; pitch_type: string | null; pa: number | string | null; est_woba: number | string | null; computed_date: string | null }[]) {
+    const id = Number(r.player_id), pa = Number(r.pa ?? 0), xw = r.est_woba == null ? null : Number(r.est_woba)
+    if (r.computed_date && (!through || r.computed_date > through)) through = r.computed_date
+    const row = rows.get(id) ?? { contact: null, byPitch: {} }
+    if (r.pitch_type) row.byPitch[r.pitch_type] = { xwoba: xw, pa }
+    rows.set(id, row)
+    if (xw != null) { const t = sums.get(id) ?? { w: 0, pa: 0 }; t.w += xw * pa; t.pa += pa; sums.set(id, t) }
+  }
+  for (const [id, t] of sums) { const row = rows.get(id); if (row && t.pa > 0) row.contact = { xwoba: t.w / t.pa, pa: t.pa } }
+  return { rows, through }
 }

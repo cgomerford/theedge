@@ -1,6 +1,6 @@
 // src/app/mlb/[slug]/page.tsx
 //
-// 2026-10-26: tabs added (?tab=): Cockpit (new default) · Pitchers · Batters · Bullpen & park · Series · Scout report (link).
+// 2026-10-26: tabs added (?tab=): Game Preview (default) · Pitchers · Batters · Bullpen & park · Series · Scout report (link).
 // The old single-scroll page now lives under "Series" (team snapshots, key players, series stats, postgame links).
 //
 // REBUILT 2026-09-18 (per George's wireframe): Header/Ticker →
@@ -54,7 +54,8 @@ import type { Metadata } from 'next'
 import FollowControl from '@/components/signup/FollowControl'
 import Tabs from '@/components/ui/Tabs'
 import { TeamMark } from '@/components/home/Logo'
-import { CockpitTab, PitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
+import { PreviewTab } from '@/components/game-cockpit/PreviewTab'
+import { PitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
 import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
@@ -435,8 +436,8 @@ export default async function GamePreview({ params, searchParams }: Props) {
   }
 
   const battingCardFallback = <Skeleton h={90} />
-  const tabIds = ['cockpit', 'pitchers', 'batters', 'bullpen', 'series'] as const
-  const tab = (tabIds as readonly string[]).includes(String(tabParam)) ? String(tabParam) : 'cockpit'
+  const tabIds = ['preview', 'pitchers', 'batters', 'bullpen', 'series'] as const
+  const tab = (tabIds as readonly string[]).includes(String(tabParam)) ? String(tabParam) : 'preview'
 
   const cockpitCtx: CockpitCtx = {
     gamePk: ctx.gamePk, season: ctx.season, gameDate: dateMatch[1], venueId: game.venue?.id ?? null, venueName,
@@ -482,9 +483,9 @@ export default async function GamePreview({ params, searchParams }: Props) {
           <Suspense fallback={null}>
             <Tabs
               label="Game sections"
-              defaultTab="cockpit"
+              defaultTab="preview"
               tabs={[
-                { id: 'cockpit', label: 'Cockpit' },
+                { id: 'preview', label: 'Game Preview' },
                 { id: 'pitchers', label: 'Pitchers' },
                 { id: 'batters', label: 'Batters' },
                 { id: 'bullpen', label: 'Bullpen & park' },
@@ -495,7 +496,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
           </Suspense>
 
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-            {tab === 'cockpit' && <Suspense fallback={tabFallback}><CockpitTab ctx={cockpitCtx} /></Suspense>}
+            {tab === 'preview' && <Suspense fallback={tabFallback}><PreviewTab ctx={cockpitCtx} seriesLabel={seriesContext} /></Suspense>}
             {tab === 'pitchers' && (
               <Suspense fallback={tabFallback}>
                 <PitchersTab ctx={cockpitCtx} zones={

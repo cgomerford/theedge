@@ -33,12 +33,14 @@ async function starters(ctx: CockpitCtx) {
 }
 const lineups = cache(async (ctx: CockpitCtx) => {
   const s = await starters(ctx)
+  const codes = (b: StarterBlock) => b.mix.slice(0, 2).map(m => m.code)
   const [away, home] = await Promise.all([
-    getTeamLineup(ctx.away.id, ctx.gameDate, ctx.gamePk, { id: s.home.id, hand: s.home.hand }),
-    getTeamLineup(ctx.home.id, ctx.gameDate, ctx.gamePk, { id: s.away.id, hand: s.away.hand }),
+    getTeamLineup(ctx.away.id, ctx.gameDate, ctx.gamePk, { id: s.home.id, hand: s.home.hand, pitchCodes: codes(s.home) }),
+    getTeamLineup(ctx.home.id, ctx.gameDate, ctx.gamePk, { id: s.away.id, hand: s.away.hand, pitchCodes: codes(s.away) }),
   ])
   return { away, home, s }
 })
+export const cockpitData = lineups
 
 export async function CockpitTab({ ctx }: { ctx: CockpitCtx }) {
   const [{ away, home, s }, bpA, bpH, park] = await Promise.all([
