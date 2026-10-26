@@ -825,6 +825,8 @@ export type FeaturedStarter = {
   trend: Record<string, { month: number; pct: number }[]>
   /** flight paths for the animation; empty unless he has 3+ types with 30+ pitches */
   flights: FlightPath[]
+  /** average spin rate and movement per pitch type, for the spinning baseballs in the pitch mix */
+  spin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>
 }
 
 async function getSeasonLine(pitcherId: number, postseason: boolean): Promise<SeasonLine | null> {
@@ -882,10 +884,10 @@ async function getLastGame(pitcherId: number, preferPostseason: boolean): Promis
   }
 }
 
-async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: FeaturedStarter['trend']; flights: FlightPath[] }> {
+async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: FeaturedStarter['trend']; flights: FlightPath[]; spin: FeaturedStarter['spin'] }> {
   const months = await getPitchViewMonths(pitcherId, SEASON)
   const codes = Object.keys(months)
-  if (codes.length === 0) return { trend: {}, flights: [] }
+  if (codes.length === 0) return { trend: {}, flights: [], spin: {} }
 
   // Monthly share of all his pitches, per type. A month under 25 pitches in total is skipped as too thin.
   const totals: Record<number, number> = {}
@@ -893,6 +895,18 @@ async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: Fe
   const trend: FeaturedStarter['trend'] = {}
   for (const c of codes) {
     trend[c] = months[c].filter(m => (totals[m.month] ?? 0) >= 25).map(m => ({ month: m.month, pct: (m.n / totals[m.month]) * 100 })).sort((a, b) => a.month - b.month)
+  }
+
+  // Pitch-weighted average spin rate and movement per type (months with no spin reading are left out of the spin average).
+  const spin: FeaturedStarter['spin'] = {}
+  for (const c of codes) {
+    const ms = months[c]
+    const wavg = (f: (m: (typeof ms)[number]) => number | null) => {
+      let sum = 0, n = 0
+      for (const m of ms) { const v = f(m); if (v != null && Number.isFinite(v)) { sum += v * m.n; n += m.n } }
+      return n >= 30 ? sum / n : null
+    }
+    spin[c] = { rpm: wavg(m => m.spin), ivb: wavg(m => m.ivb), hb: wavg(m => m.hb) }
   }
 
   const flights: FlightPath[] = []
@@ -912,7 +926,7 @@ async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: Fe
     flights.push({ code: row.code, label: row.label, usagePct: row.usagePct, n, speed: row.velo ?? 0, points: path.points })
     if (flights.length === 5) break
   }
-  return { trend, flights: flights.length >= 3 ? flights : [] }
+  return { trend, flights: flights.length >= 3 ? flights : [], spin }
 }
 
 export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string, preferPostseason = false): Promise<FeaturedStarter> {
@@ -945,7 +959,7 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
   const through = (throughRes.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? null
 
   // Separate await (not a slot in the Promise.all above): the flight maths needs the mix.
-  const { trend, flights } = await getFlights(pitcherId, mix.slice(0, 5))
+  const { trend, flights, spin } = await getFlights(pitcherId, mix.slice(0, 5))
 
   return {
     id: pitcherId, name, teamId, teamAbbr,
@@ -957,7 +971,7 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
     pitches: num(all?.total_pitches) ?? 0,
     mix: mix.slice(0, 5),
     throughDate: through ? through.slice(0, 10) : null,
-    lastGame, trend, flights,
+    lastGame, trend, flights, spin,
     // Postseason line when the featured game is in the postseason and he has one; otherwise his regular-season line.
     line: postLine ?? { postseason: false, wins: num(row?.wins), losses: num(row?.losses), era: num(row?.era), ip: ip != null ? ip.toFixed(1) : null },
   }

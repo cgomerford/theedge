@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { TeamMark } from './Logo'
 import PitchFlight from './PitchFlight'
+import SpinBall, { SpinBallStyles } from './SpinBall'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import SmallSample from '@/components/data/SmallSample'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
@@ -196,11 +197,12 @@ export default function FeaturedScout({ data }: { data: Featured }) {
               <div aria-hidden="true" style={{ display: 'flex', height: 14, borderRadius: 3, overflow: 'hidden' }}>
                 {s.mix.map(m => <span key={m.code} style={{ width: `${(m.usagePct / total) * 100}%`, background: pitchColor(m.code) }} />)}
               </div>
+              <SpinBallStyles />
               <div className="hm-mix">
                 {s.mix.map(m => (
                   <div key={m.code} className="hm-mixrow">
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 14 }}>
-                      <span aria-hidden="true" style={{ width: 10, height: 10, background: pitchColor(m.code), display: 'inline-block' }} />{m.label}
+                      <SpinBall code={m.code} spin={s.spin[m.code]} />{m.label}
                     </span>
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>{m.usagePct.toFixed(1)}%</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>{m.velo != null ? `${m.velo.toFixed(1)} mph` : ''}</span>
