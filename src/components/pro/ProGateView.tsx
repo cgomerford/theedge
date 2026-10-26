@@ -8,11 +8,11 @@ import CreateAccountButton from './CreateAccountButton'
 //
 //   tier 'pro'    -> children. With freeLook, one muted line above them: "Your free deep look for today. Pro opens every one."
 //   tier 'member' -> the shell (real labels, no numbers), then "Your free deep look today is used." and the upgrade button
-//   tier 'anon'   -> the shell, then "Free account: open one full deep look a day." and "Create account". No price.
+//   tier 'anon'   -> the barebones shell (labels, no numbers), then "Sign up to see this for free." and "Create account". No price.
 
 export const FREE_LOOK_NOTE = 'Your free deep look for today. Pro opens every one.'
-export const USED_LINE = 'Your free deep look today is used.'
-export const ANON_LINE = 'Free account: open one full deep look a day.'
+export const USED_LINE = 'Your free deep look today is on another player. Pro opens every one.'
+export const ANON_LINE = 'Sign up to see this for free.'
 export const UNLOCK_LABEL = `Unlock with Founding Pro, £${FOUNDING.price}/yr`
 
 export function ProGateView({

@@ -46,6 +46,7 @@ import {
   type ArsenalPitch,
 } from '@/lib/pitcher-arsenal'
 import { type BatterHotZones } from '@/lib/hot-zones'
+import { pitchColor } from '@/lib/lab/pitch-meta'
 
 const ZONES: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
@@ -624,16 +625,6 @@ function HitterProfile({ zones }: { zones: BatterHotZones }) {
 
 // ─── Pitch colors (consistent with arsenal chart) ──────────────────────────────
 
-function pitchColor(code: string): string {
-  const map: Record<string, string> = {
-    FF: '#E24B4A', SI: '#EF6C4A', FC: '#D9803A',
-    SL: '#FF8A4C', ST: '#F2A640', SV: '#E0A33A',
-    CU: '#9B8CFF', KC: '#7F77DD', CS: '#6E66C8',
-    CH: '#5DCAA5', FS: '#3FB089', FO: '#2E9E78',
-    EP: '#888780', KN: '#A3A3A3', SC: '#B4B2A9',
-  }
-  return map[code] ?? '#A3A3A3'
-}
 
 // ─── Styles ─────────────────────────────────────────────────────────────────────
 

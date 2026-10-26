@@ -5,13 +5,12 @@
 
 import { Line, LineChart, Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { C, MONO, SANS } from '@/components/team/ui'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 export const AXIS = { fontSize: 10, fontFamily: MONO, fill: '#a89e8c' }
 export const GRID = '#f1eee6'
 export const BASE = '#8a8275'
-export const PITCH_COLOR: Record<string, string> = {
-  FF: '#D4533B', SI: '#EF9F27', FC: '#B8860B', SL: '#378ADD', ST: '#7F77DD', CU: '#1D9E75', SV: '#5DCAA5', CH: '#8a8275', FS: '#D4537E', KN: '#444444', UN: '#bbbbbb',
-}
+export { PITCH_COLOR }
 export const PITCH_NAME: Record<string, string> = { FF: '4-Seam', SI: 'Sinker', FC: 'Cutter', SL: 'Slider', ST: 'Sweeper', CU: 'Curve', SV: 'Slurve', CH: 'Changeup', FS: 'Splitter', KN: 'Knuckle', UN: 'Other' }
 
 export function Segmented<T extends string | number>({ options, value, onChange, label }: { options: { v: T; label: string }[]; value: T; onChange: (v: T) => void; label?: string }) {

@@ -587,16 +587,7 @@ est_woba: r.est_woba !== null ? Number(r.est_woba) : null,
   }))
 }
 
-export function pitchColor(pitchCode: string): string {
-  const colors: Record<string, string> = {
-    'FF': '#dc2626', 'SI': '#ea580c', 'FC': '#d97706',
-    'SL': '#7c3aed', 'ST': '#9333ea', 'SV': '#1d4ed8',
-    'CU': '#2563eb', 'KC': '#0891b2',
-    'CH': '#059669', 'FS': '#65a30d', 'FO': '#65a30d', 'SC': '#16a34a',
-    'KN': '#a16207', 'EP': '#92400e',
-  }
-  return colors[pitchCode] ?? '#525252'
-}
+export { pitchColor } from '@/lib/lab/pitch-meta' // the one shared palette
 
 // =====================================================
 // TEAM FORM — last 10 games, streak, run differential

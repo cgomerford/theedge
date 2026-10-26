@@ -26,6 +26,7 @@
 
 import { useState, useMemo } from 'react'
 import type { PitcherGameLine, PitchRecord } from '@/types/postgame'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 type Props = {
   pitchers: PitcherGameLine[]
@@ -225,17 +226,7 @@ const DECISION_LABEL: Record<NonNullable<PitcherGameLine['decision']>, string> =
   W: 'Win', L: 'Loss', S: 'Save', H: 'Hold', BS: 'Blown Save',
 }
 
-const PITCH_COLORS: Record<string, string> = {
-  FF: '#E03C31', FA: '#E03C31',
-  SI: '#C45C26',
-  FC: '#933F2C',
-  SL: '#C9A227',
-  ST: '#9B3FA0', SV: '#9B3FA0',
-  CU: '#1AA7C2', KC: '#6236CD', CS: '#1AA7C2',
-  CH: '#2FA84F',
-  FS: '#2A9D8F', FO: '#2A9D8F',
-  KN: '#6B7280',
-}
+const PITCH_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 
 function pitchColor(typeCode: string, typeName: string): string {
   const code = typeCode.toUpperCase()

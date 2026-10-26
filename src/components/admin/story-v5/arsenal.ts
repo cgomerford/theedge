@@ -7,6 +7,7 @@
 
 import { MIN_PITCHES, averagePath, pathFor, type StatcastPitch } from './trajectory'
 import type { ArsenalPitch, TimesThrough } from './types'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 type Row = Record<string, string>
 const num = (v: string | undefined): number => (v == null || v === '' ? NaN : Number(v))
@@ -17,9 +18,7 @@ export const PITCH_NAME: Record<string, string> = {
 }
 export const FASTBALLS = ['FF', 'SI', 'FC']
 /** Pitch colours for the renderer. */
-export const PITCH_COLOR: Record<string, string> = {
-  FF: '#FF5722', SI: '#FFC52F', FC: '#8FBCE6', CH: '#5CE1A0', SL: '#C77DFF', CU: '#4D96FF', ST: '#E85D9E', FS: '#2EC4B6', KC: '#7A5CFF',
-}
+export { PITCH_COLOR }
 const SWING = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul_tip', 'foul', 'foul_bunt', 'missed_bunt', 'hit_into_play', 'bunt_foul_tip'])
 const WHIFF = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul_tip', 'missed_bunt', 'bunt_foul_tip'])
 

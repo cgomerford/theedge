@@ -17,12 +17,9 @@
 //    chart when no park-specific SVG is loaded.
 
 import type { PitchRecord, BattedBallRecord } from '@/types/postgame'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
-const TYPE_COLORS: Record<string, string> = {
-  FF: '#FF5722', SI: '#1A1A1A', ST: '#FDE047', SL: '#2C6E8F',
-  CH: '#6b6b66', FS: '#8B5CF6', CU: '#15803d', KC: '#DC2626',
-  FC: '#EA580C',
-}
+const TYPE_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 const DEFAULT_COLOR = '#A8A29E'
 
 export function PitchLocationChart({ pitches }: { pitches: PitchRecord[] }) {

@@ -14,15 +14,9 @@
 import { useEffect, useState } from 'react'
 import type { ScoutExpand, ArsenalPitch, ArsenalRadarPayload, PitchDetailPayload } from '@/lib/scout'
 import { normPct } from '@/lib/scout'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 // ─── Pitch color palette ──────────────────────────────────────────────
-const PITCH_COLOR: Record<string, string> = {
-  FF: '#dc2626', SI: '#ea580c', FC: '#d97706',
-  SL: '#7c3aed', ST: '#9333ea', SV: '#1d4ed8',
-  CU: '#2563eb', KC: '#0891b2',
-  CH: '#059669', FS: '#65a30d', FO: '#65a30d', SC: '#16a34a',
-  KN: '#a16207', EP: '#92400e',
-}
 const pitchColorFor = (code: string) => PITCH_COLOR[code] ?? '#78716c'
 
 function fmtAvg(v: number | null): string {

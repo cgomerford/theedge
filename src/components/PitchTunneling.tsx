@@ -2,6 +2,7 @@
 
 import XMark from '@/components/XMark'
 import { useState, useEffect } from 'react'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 export type PitchProfile = {
   pitchName: string;
@@ -27,9 +28,7 @@ const DEFAULT_ARSENAL: PitchProfile[] = [
   { pitchName: 'Changeup', pitchType: 'CH', velocity: 86, vBreak: 5, hBreak: -12, color: '#10B981' },
 ]
 
-const PITCH_COLORS: Record<string, string> = {
-  'FF': '#EF4444', 'SL': '#EAB308', 'CU': '#3B82F6', 'CH': '#10B981', 'SI': '#F97316', 'FC': '#8B5CF6'
-}
+const PITCH_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 
 export default function PitchTunneling({ 
   pitcherName = 'League Average RHP', 

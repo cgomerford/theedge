@@ -2,13 +2,9 @@
 'use client'
 
 import type { BatterPitchTypeRow } from '@/lib/postgame-batter-adapt'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
-const PITCH_COLORS: Record<string, string> = {
-  FF: '#dc2626', FA: '#dc2626', SI: '#f59e0b', FC: '#7c2d12',
-  SL: '#e11d48', ST: '#9333ea', SV: '#9333ea',
-  CU: '#7c3aed', KC: '#7c3aed', CS: '#7c3aed',
-  CH: '#16a34a', FS: '#0d9488', FO: '#0d9488', KN: '#6b7280',
-}
+const PITCH_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 function colorFor(code: string): string {
   return PITCH_COLORS[code.toUpperCase()] ?? '#57534e'
 }

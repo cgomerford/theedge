@@ -9,6 +9,7 @@ import type {
   Grade,
   LongestAB,
 } from '@/lib/mlb-recap'
+import { pitchColor } from '@/lib/lab/pitch-meta'
 
 type Props = {
   batters: EnrichedBatterPerformance[]
@@ -18,14 +19,6 @@ type Props = {
 
 // ─── Pitch type colors ──────────────────────────────────────────────────
 
-const PITCH_COLORS: Record<string, string> = {
-  FF: '#DC2626', SI: '#F97316', FC: '#FB923C', CH: '#3B82F6',
-  SL: '#8B5CF6', CU: '#10B981', KC: '#059669', ST: '#EC4899',
-  FS: '#06B6D4', SV: '#14B8A6', KN: '#6B7280', EP: '#6B7280',
-}
-function pitchColor(code: string): string {
-  return PITCH_COLORS[code] ?? '#78716c'
-}
 
 // ─── Grade badge ────────────────────────────────────────────────────────
 

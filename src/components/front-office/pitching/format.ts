@@ -1,3 +1,4 @@
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 // Formatting, pitch-type names/colours (from the approved mockup) and the "vs league" shading used by every
 // Pitching Desk table. Pure functions, no hooks: safe to import from server and client components.
 
@@ -5,10 +6,7 @@ export const PITCH_NAME: Record<string, string> = {
   FF: 'Four-seam', SI: 'Sinker', FC: 'Cutter', SL: 'Slider', ST: 'Sweeper', SV: 'Slurve', CU: 'Curveball', KC: 'Knuckle-curve',
   CS: 'Slow curve', CH: 'Changeup', FS: 'Splitter', FO: 'Forkball', SC: 'Screwball', KN: 'Knuckleball',
 }
-export const PITCH_COLOR: Record<string, string> = {
-  FF: '#D63A3A', SI: '#E8842C', FC: '#8C5A3C', SL: '#E3B53B', ST: '#B08A1E', SV: '#9C7A2E', CU: '#3E7CB1', KC: '#2F5F8A',
-  CS: '#5C93C4', CH: '#3E9C7A', FS: '#6FBFA8', FO: '#4F9E8B', SC: '#7A6FBF', KN: '#8a8275',
-}
+export { PITCH_COLOR }
 export const pitchName = (t: string) => PITCH_NAME[t] ?? t
 export const pitchColor = (t: string) => PITCH_COLOR[t] ?? '#8a8275'
 

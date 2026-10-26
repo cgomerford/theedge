@@ -13,10 +13,8 @@ import type { ViewerTier } from '@/lib/require-pro-types'
 import { getTeamArsenal, type PitcherLine } from '@/lib/team-profile'
 import { PITCH_NAMES } from '@/lib/team-profile/roster'
 import { Card, Empty, Foot, StackedBar, C, MONO, SANS } from './ui'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
-const PITCH_COLOR: Record<string, string> = {
-  FF: '#D4533B', SI: '#EF9F27', FC: '#B8860B', SL: '#378ADD', ST: '#7F77DD', CU: '#1D9E75', SV: '#5DCAA5', CH: '#8a8275', FS: '#D4537E', KN: '#444444',
-}
 const GROUP_COLOR = { Fastball: '#D4533B', Breaking: '#378ADD', Offspeed: '#8a8275' } as const
 
 export default async function PitchMixPanel({ team, season, pitchers, starters, viewerTier }: { team: Team; season: number; pitchers: PitcherLine[]; starters: PitcherLine[]; viewerTier: ViewerTier }) {

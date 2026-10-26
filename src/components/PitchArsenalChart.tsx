@@ -1,19 +1,14 @@
 'use client'
 
 import type { PitchType } from '@/lib/mlb'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 type Props = {
   arsenal: PitchType[]
   pitcherName: string
 }
 
-const PITCH_COLORS: Record<string, string> = {
-  FF: '#dc2626', SI: '#ea580c', FC: '#d97706',
-  SL: '#7c3aed', ST: '#9333ea', SV: '#1d4ed8',
-  CU: '#2563eb', KC: '#0891b2',
-  CH: '#059669', FS: '#65a30d', FO: '#65a30d', SC: '#16a34a',
-  KN: '#a16207', EP: '#92400e',
-}
+const PITCH_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 
 function StatBadge({ value, good, bad }: { value: string; good?: boolean; bad?: boolean }) {
   return (

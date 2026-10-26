@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
+import { PITCH_COLOR } from '@/lib/lab/pitch-meta'
 
 type SeasonStatcastRow = {
   season: number
@@ -23,11 +24,7 @@ type SeasonStatcastRow = {
 
 // Fixed palette so pitch-type colors stay stable across renders/seasons —
 // not derived from data, same spirit as TEAM_COLORS being a static map.
-const PITCH_COLORS: Record<string, string> = {
-  FF: '#FF5722', SI: '#F97316', FC: '#EA580C', SL: '#2563EB', ST: '#3B82F6',
-  SV: '#60A5FA', CU: '#059669', KC: '#10B981', CH: '#9333EA', FS: '#A855F7',
-  KN: '#78716C', EP: '#A8A29E', FA: '#DC2626', CS: '#78716C',
-}
+const PITCH_COLORS: Record<string, string> = PITCH_COLOR // shared palette (src/lib/lab/pitch-meta.ts)
 
 function Skeleton({ label }: { label: string }) {
   return (
