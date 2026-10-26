@@ -9,9 +9,8 @@ import SignupAsk from '@/components/signup/SignupAsk'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import { getBullpenRecent, type StarterBlock, type TeamLineup, type LineupRow, type BullpenRow } from '@/lib/game-cockpit'
-import { getParkIndex, getParkHitMap, type ParkIndex } from '@/lib/park-index'
-import { getVenueFieldDimensions } from '@/lib/venue-dimensions'
-import ParkHeatmap from './ParkHeatmap'
+import { getParkIndex, getParkHitSummary, type ParkIndex } from '@/lib/park-index'
+import ParkHitTable from './ParkHitTable'
 import { cockpitData, type CockpitCtx } from './GameTabs'
 
 const MUTE = '#8a8275'
@@ -128,7 +127,7 @@ function BullpenBars({ team, abbr, id, rows }: { team: string; abbr: string; id:
 }
 
 async function ParkCard({ park, venue, venueId }: { park: ParkIndex | null; venue: string; venueId: number | null }) {
-  const [map, dims] = await Promise.all([getParkHitMap(venueId), venueId ? getVenueFieldDimensions(venueId) : Promise.resolve(null)])
+  const hits = await getParkHitSummary(venueId)
   return (
     <section style={card}>
       <p style={kicker}>x9Lab park index · {venue}</p>
@@ -142,7 +141,7 @@ async function ParkCard({ park, venue, venueId }: { park: ParkIndex | null; venu
           </div>
         </div>
       )}
-      {map ? <ParkHeatmap map={map} dims={dims} venue={venue} /> : <div style={{ marginTop: 12 }}><PendingBlock label="Park hit heatmap" /></div>}
+      {hits ? <ParkHitTable s={hits} venue={venue} /> : <div style={{ marginTop: 12 }}><PendingBlock label="Park hit rankings" /></div>}
     </section>
   )
 }

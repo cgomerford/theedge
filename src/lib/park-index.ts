@@ -42,14 +42,29 @@ export async function getParkIndex(venueId: number | null | undefined): Promise<
   }
 }
 
-// ── Hit heatmap data (table park_hit_map, filled by scripts/compute-park-hits.ts) ──
-export type ParkHitMap = { venueId: number; seasons: string; nHits: number; through: string; points: number[] }
+// ── Hits at this park vs the other parks (table park_hit_map, filled by scripts/compute-park-hits.ts) ──
+export type HitKind = 'all' | 'single' | 'double' | 'triple' | 'hr'
+export type ParkHitSummary = {
+  seasons: string; through: string; games: number
+  kinds: Record<HitKind, { n: number; perGame: number; rank: number; of: number }>
+  direction: { left: number; center: number; right: number }
+}
 
-export async function getParkHitMap(venueId: number | null | undefined): Promise<ParkHitMap | null> {
+export async function getParkHitSummary(venueId: number | null | undefined): Promise<ParkHitSummary | null> {
   if (!venueId) return null
-  const { data, error } = await createAdminClient().from('park_hit_map').select('venue_id, seasons, n_hits, through, points').eq('venue_id', venueId).maybeSingle()
-  if (error) { console.error('[getParkHitMap] Supabase error:', error.message); return null }
-  if (!data) return null
-  const d = data as Record<string, unknown>
-  return { venueId: Number(d.venue_id), seasons: String(d.seasons), nHits: Number(d.n_hits), through: String(d.through), points: (d.points as number[]).map(Number) }
+  const { data, error } = await createAdminClient()
+    .from('park_hit_map')
+    .select('venue_id, seasons, through, n_hits, n_games, n_single, n_double, n_triple, n_hr, n_left, n_center, n_right')
+  if (error) { console.error('[getParkHitSummary] Supabase error:', error.message); return null }
+  type R = { venue_id: number; seasons: string; through: string; n_hits: number; n_games: number | null; n_single: number | null; n_double: number | null; n_triple: number | null; n_hr: number | null; n_left: number | null; n_center: number | null; n_right: number | null }
+  const rows = ((data ?? []) as R[]).filter(r => Number(r.n_games) > 0)
+  const mine = rows.find(r => Number(r.venue_id) === venueId)
+  if (!mine) return null
+  const val = (r: R, k: HitKind) => Number(k === 'all' ? r.n_hits : k === 'single' ? r.n_single : k === 'double' ? r.n_double : k === 'triple' ? r.n_triple : r.n_hr)
+  const kinds = {} as ParkHitSummary['kinds']
+  for (const k of ['all', 'single', 'double', 'triple', 'hr'] as HitKind[]) {
+    const rate = (r: R) => val(r, k) / Number(r.n_games)
+    kinds[k] = { n: val(mine, k), perGame: rate(mine), rank: rows.filter(r => rate(r) > rate(mine)).length + 1, of: rows.length }
+  }
+  return { seasons: mine.seasons, through: String(mine.through), games: Number(mine.n_games), kinds, direction: { left: Number(mine.n_left), center: Number(mine.n_center), right: Number(mine.n_right) } }
 }

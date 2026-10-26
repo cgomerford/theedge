@@ -1,4 +1,4 @@
-// One-off: builds public.park_hit_map from Baseball Savant hit locations (single, double, triple, home run), last 3 seasons.
+// One-off: builds public.park_hit_map (hit counts by type and direction, games played) from Baseball Savant hit locations (single, double, triple, home run), last 3 seasons.
 // Every hit hit AT the park counts, by either team. Needs public.park_index to be filled first (it supplies venue and team ids).
 // Single writer of park_hit_map. Run: npx tsx scripts/compute-park-hits.ts
 // Prints a 5-row sample and waits 8 seconds (Ctrl-C to abort) before upserting.
@@ -28,11 +28,12 @@ async function main() {
   const teamsRes = await fetch('https://statsapi.mlb.com/api/v1/teams?sportId=1')
   const abbr = new Map<number, string>(((await teamsRes.json()).teams as { id: number; abbreviation: string }[]).map(t => [t.id, t.abbreviation]))
 
-  const rows: { venue_id: number; seasons: string; n_hits: number; through: string; points: number[]; updated_at: string }[] = []
+  type Row = { venue_id: number; seasons: string; n_hits: number; through: string; points: number[]; updated_at: string; n_games: number; n_single: number; n_double: number; n_triple: number; n_hr: number; n_left: number; n_center: number; n_right: number }
+  const rows: Row[] = []
   for (const p of parks as { venue_id: number; team_id: number }[]) {
     const team = abbr.get(Number(p.team_id))
     if (!team) { console.log(`No abbreviation for team ${p.team_id}, skipping venue ${p.venue_id}`); continue }
-    const points: number[] = []; let through = ''
+    const points: number[] = []; let through = ''; const games = new Set<string>()
     // Savant filters by the BATTER's club: the home club's own hits (hfTeam) plus the visitors' hits against it (hfOpponent + Away).
     // Rows are then kept only when the game was played at this club's park.
     const base = (season: number) => `https://baseballsavant.mlb.com/statcast_search/csv?all=true&hfGT=R%7C&hfSea=${season}%7C&hfAB=single%7Cdouble%7Ctriple%7Chome%5C\.%5C\.run%7C&player_type=batter&type=details&min_pitches=0&min_results=0&min_pas=0`
@@ -43,7 +44,7 @@ async function main() {
         const lines: string[] = (await res.text()).replace(/^\uFEFF/, '').trim().split('\n')
         const h = parseLine(lines[0]).map(s => s.replace(/"/g, '').toLowerCase())
         const ix = (k: string) => h.indexOf(k)
-        const [iHome, iEv, iX, iY, iDate] = [ix('home_team'), ix('events'), ix('hc_x'), ix('hc_y'), ix('game_date')]
+        const [iHome, iEv, iX, iY, iDate, iPk] = [ix('home_team'), ix('events'), ix('hc_x'), ix('hc_y'), ix('game_date'), ix('game_pk')]
         for (let i = 1; i < lines.length; i++) {
           const c = parseLine(lines[i]).map(s => s.replace(/"/g, ''))
           if (c[iHome] !== team) continue                       // only games AT this park
@@ -51,14 +52,23 @@ async function main() {
           if (!kind || !Number.isFinite(hx) || !Number.isFinite(hy)) continue
           points.push(Math.round((hx - 125.42) * 2.5), Math.round((198.27 - hy) * 2.5), kind)
           if (c[iDate] > through) through = c[iDate]
+          games.add(c[iPk])
         }
         await sleep(1200)
       }
     }
     console.log(`${team}: ${points.length / 3} hits through ${through}`)
-    if (points.length >= 300) rows.push({ venue_id: Number(p.venue_id), seasons: `${SEASONS[0]}-${SEASONS[2]}`, n_hits: points.length / 3, through, points, updated_at: new Date().toISOString() })
+    if (points.length >= 300) {
+      const by = [0, 0, 0, 0, 0]; const dir = [0, 0, 0]
+      for (let i = 0; i < points.length; i += 3) {
+        by[points[i + 2]]++
+        const deg = (Math.atan2(points[i], points[i + 1]) * 180) / Math.PI   // 0 = straight to centre, negative = left field
+        dir[deg < -15 ? 0 : deg > 15 ? 2 : 1]++
+      }
+      rows.push({ venue_id: Number(p.venue_id), seasons: `${SEASONS[0]}-${SEASONS[2]}`, n_hits: points.length / 3, through, points: [], updated_at: new Date().toISOString(), n_games: games.size, n_single: by[1], n_double: by[2], n_triple: by[3], n_hr: by[4], n_left: dir[0], n_center: dir[1], n_right: dir[2] })
+    }
   }
-  console.log(`${rows.length} parks. Sample:`); console.table(rows.slice(0, 5).map(r => ({ venue_id: r.venue_id, seasons: r.seasons, n_hits: r.n_hits, through: r.through, first_points: r.points.slice(0, 6).join(',') })))
+  console.log(`${rows.length} parks. Sample:`); console.table(rows.slice(0, 5).map(r => ({ venue_id: r.venue_id, seasons: r.seasons, n_hits: r.n_hits, through: r.through, games: r.n_games, hr: r.n_hr, L_C_R: `${r.n_left}/${r.n_center}/${r.n_right}` })))
   console.log('Upserting in 8 seconds. Ctrl-C to abort.')
   await sleep(8000)
   const { error: e2 } = await supa.from('park_hit_map').upsert(rows, { onConflict: 'venue_id' })
