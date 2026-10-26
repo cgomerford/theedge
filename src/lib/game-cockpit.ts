@@ -118,12 +118,12 @@ export async function getStarterBlock(id: number | undefined, name: string | und
 
 // ── Lineups + H2H + splits ──────────────────────────────────────────────────
 export type LineupRow = {
-  id: number; name: string; order: number; hand: 'L' | 'R' | 'S' | null
+  id: number; name: string; pos: string; order: number; hand: 'L' | 'R' | 'S' | null
   ops: number | null; pa: number | null
   h2h: { pa: number; h: number; hr: number; k: number } | null
   vsHand: { pa: number; ops: number | null } | null  // batter's split vs the opposing starter's hand
   contact: { xwoba: number; pa: number } | null      // xwOBA over every pitch type he has faced this season
-  vsPitch: { code: string; xwoba: number | null; pa: number }[]  // against the opposing starter's top pitch types
+  vsPitch: { code: string; xwoba: number | null; pa: number; whiff?: number | null }[]  // against the opposing starter's top pitch types
 }
 export type TeamLineup = { source: ProjectedLineup['source']; dateUsed: string | null; rows: LineupRow[]; splitsThrough: string | null }
 
@@ -138,13 +138,13 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
     const t = vs?.stats?.find(s => s.type.displayName === 'vsPlayerTotal')?.splits[0]?.stat
     const sp = split?.stats?.[0]?.splits?.[0]?.stat
     return {
-      id: b.player_id, name: b.player_name, order: b.batting_order,
+      id: b.player_id, name: b.player_name, pos: b.position, order: b.batting_order,
       hand: b.switch_hitter ? 'S' : (b.bat_side ?? null),
       ops: b.season_ops, pa: b.season_pa ?? null,
       h2h: opp.id ? { pa: Number(t?.plateAppearances ?? 0), h: Number(t?.hits ?? 0), hr: Number(t?.homeRuns ?? 0), k: Number(t?.strikeOuts ?? 0) } : null,
       vsHand: sp ? { pa: Number(sp.plateAppearances ?? 0), ops: num(sp.ops) } : null,
       contact: pitchSplits.rows.get(b.player_id)?.contact ?? null,
-      vsPitch: (opp.pitchCodes ?? []).map(code => ({ code, xwoba: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.xwoba ?? null, pa: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.pa ?? 0 })),
+      vsPitch: (opp.pitchCodes ?? []).map(code => ({ code, xwoba: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.xwoba ?? null, pa: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.pa ?? 0, whiff: pitchSplits.rows.get(b.player_id)?.byPitch[code]?.whiff ?? null })),
     }
   }))
   return { source: lineup.source, dateUsed: lineup.game_date_used, rows: rows.sort((a, b) => a.order - b.order), splitsThrough: pitchSplits.through }
@@ -154,8 +154,8 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
 // A relief appearance is any pitcher in a game's boxscore pitchers list except the first one listed for that team (the game's starter).
 // Season role is never used as a filter, so a pitcher who has started games this year (Ashby, May, Hall, Seymour, Matz) still counts when he relieves.
 // Window: the N days BEFORE the game date (the game's own day is not played yet), counted in the schedule's game dates.
-export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number; games: number; lastDate: string }
-type BoxTeam = { pitchers?: number[]; players?: Record<string, { person?: { fullName?: string }; stats?: { pitching?: { numberOfPitches?: number | string } } }> }
+export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number; games: number; lastDate: string; outs: number }
+type BoxTeam = { pitchers?: number[]; players?: Record<string, { person?: { fullName?: string }; stats?: { pitching?: { numberOfPitches?: number | string; inningsPitched?: number | string } } }> }
 type SchedResp = { dates?: { date: string; games: { gamePk: number; officialDate?: string; status?: { abstractGameState?: string } }[] }[] }
 
 const shiftDay = (d: string, by: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + by); return x.toISOString().slice(0, 10) }
@@ -174,9 +174,10 @@ export async function getBullpenRecent(teamId: number, _starterIds: number[], an
       const pl = t.players?.[`ID${id}`]
       const n = Number(pl?.stats?.pitching?.numberOfPitches ?? 0)
       if (!(n > 0)) continue
-      const row = byPitcher.get(id) ?? { id, name: pl?.person?.fullName ?? `Player ${id}`, byDate: {}, total: 0, games: 0, lastDate: '' }
+      const row = byPitcher.get(id) ?? { id, name: pl?.person?.fullName ?? `Player ${id}`, byDate: {}, total: 0, games: 0, lastDate: '', outs: 0 }
       row.byDate[g.date] = (row.byDate[g.date] ?? 0) + n
       row.total += n; row.games += 1
+      { const [w, f] = String((pl?.stats?.pitching as Record<string, unknown> | undefined)?.inningsPitched ?? '0').split('.'); row.outs += Number(w) * 3 + Number(f ?? 0) }
       if (g.date > row.lastDate) row.lastDate = g.date
       byPitcher.set(id, row)
     }
@@ -185,23 +186,23 @@ export async function getBullpenRecent(teamId: number, _starterIds: number[], an
 }
 
 // ── Batter xwOBA by pitch type (table batter_pitch_type_splits, filled by scripts/fetch_batter_pitch_splits.py) ──
-export async function getBatterPitchSplits(ids: number[]): Promise<{ rows: Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number }> }>; through: string | null }> {
-  const rows = new Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number }> }>()
+export async function getBatterPitchSplits(ids: number[]): Promise<{ rows: Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number; whiff?: number | null }> }>; through: string | null }> {
+  const rows = new Map<number, { contact: { xwoba: number; pa: number } | null; byPitch: Record<string, { xwoba: number | null; pa: number; whiff?: number | null }> }>()
   if (!ids.length) return { rows, through: null }
   const { data, error } = await createAdminClient()
     .from('batter_pitch_type_splits')
-    .select('player_id, pitch_type, pa, est_woba, computed_date')
+    .select('player_id, pitch_type, pa, est_woba, whiff_percent, computed_date')
     .eq('season', new Date().getFullYear())
     .in('player_id', ids)
     .range(0, 999)
   if (error) { console.error('[getBatterPitchSplits] Supabase error:', error.message); return { rows, through: null } }
   let through: string | null = null
   const sums = new Map<number, { w: number; pa: number }>()
-  for (const r of (data ?? []) as { player_id: number; pitch_type: string | null; pa: number | string | null; est_woba: number | string | null; computed_date: string | null }[]) {
+  for (const r of (data ?? []) as { player_id: number; pitch_type: string | null; pa: number | string | null; est_woba: number | string | null; whiff_percent: number | string | null; computed_date: string | null }[]) {
     const id = Number(r.player_id), pa = Number(r.pa ?? 0), xw = r.est_woba == null ? null : Number(r.est_woba)
     if (r.computed_date && (!through || r.computed_date > through)) through = r.computed_date
     const row = rows.get(id) ?? { contact: null, byPitch: {} }
-    if (r.pitch_type) row.byPitch[r.pitch_type] = { xwoba: xw, pa }
+    if (r.pitch_type) row.byPitch[r.pitch_type] = { xwoba: xw, pa, whiff: r.whiff_percent == null ? null : Number(r.whiff_percent) }
     rows.set(id, row)
     if (xw != null) { const t = sums.get(id) ?? { w: 0, pa: 0 }; t.w += xw * pa; t.pa += pa; sums.set(id, t) }
   }

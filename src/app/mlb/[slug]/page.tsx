@@ -37,6 +37,7 @@ import { after } from 'next/server'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import { PitchersTab } from '@/components/game-tabs/PitchersTab'
+import { BattersTab } from '@/components/game-tabs/BattersTab'
 import LiveTicker from '@/components/LiveTicker'
 import KeyPlayersSlotAsync from '@/components/KeyPlayersSlotAsync'
 import { SeriesTeamPlayerCard } from '@/components/SeriesPlayerStats'
@@ -57,7 +58,8 @@ import FollowControl from '@/components/signup/FollowControl'
 import Tabs from '@/components/ui/Tabs'
 import { TeamMark } from '@/components/home/Logo'
 import { PreviewTab } from '@/components/game-cockpit/PreviewTab'
-import { PitchersTab as OldPitchersTab, BattersTab, BullpenParkTab, type CockpitCtx } from '@/components/game-cockpit/GameTabs'
+import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
+import { BullpenParkTab } from '@/components/game-tabs/BullpenParkTab'
 import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
@@ -501,28 +503,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === 'preview' && <Suspense fallback={tabFallback}><PreviewTab ctx={cockpitCtx} seriesLabel={seriesContext} /></Suspense>}
             {tab === 'pitchers' && <Suspense fallback={tabFallback}><PitchersTab ctx={cockpitCtx} /></Suspense>}
-            {tab === 'batters' && (
-              <Suspense fallback={tabFallback}>
-                <BattersTab ctx={cockpitCtx} zones={
-                  <div className="gc-two">
-                    {(['away', 'home'] as const).map(side => {
-                      const t = ctx[side]
-                      const opp = ctx[side === 'home' ? 'away' : 'home']
-                      return (
-                        <Suspense key={side} fallback={battingCardFallback}>
-                          <TeamBatterCard
-                            slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
-                            venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook} lookOpen={ctx.lookOpen}
-                            opposingPitcherId={opp.pitcherId ?? null}
-                            opposingPitcherName={opp.pitcherName ?? null}
-                          />
-                        </Suspense>
-                      )
-                    })}
-                  </div>
-                } />
-              </Suspense>
-            )}
+            {tab === 'batters' && <Suspense fallback={tabFallback}><BattersTab ctx={cockpitCtx} /></Suspense>}
             {tab === 'bullpen' && <Suspense fallback={tabFallback}><BullpenParkTab ctx={cockpitCtx} /></Suspense>}
             {tab === 'series' && (
               <div className="space-y-6" style={{ marginTop: 16 }}>

@@ -49,7 +49,7 @@ function zoneGrid(a: PitcherZoneArsenal | undefined): ZoneGrid | null {
   return { share: share.map(v => (v / total) * 100), xwoba: woba.map((w, i) => (bbe[i] > 0 ? w / bbe[i] : null)), bbe, outside: total > inZone ? ((total - inZone) / total) * 100 : null, n: total }
 }
 
-function sideXwoba(a: PitcherZoneArsenal | undefined): { v: number; n: number } | null {
+export function sideXwoba(a: PitcherZoneArsenal | undefined): { v: number; n: number } | null {
   if (!a) return null
   let w = 0, bb = 0
   for (const p of Object.values(a.arsenal)) for (const c of Object.values(p.zones)) { const k = Number(c.batted_balls ?? 0); if (c.woba_against != null && k > 0) { w += Number(c.woba_against) * k; bb += k } }
