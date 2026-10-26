@@ -7,6 +7,7 @@
 import { getContactLeaders, getContactProfile } from '@/lib/contact-profile/data'
 import ContactTab from '@/components/contact-lab/ContactTab'
 import { labBatterId } from '@/lib/lab-player'
+import { demoOr } from '@/lib/lab-demo-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export default async function BattingContactPage({ params }: { params: Promise<{
   const { playerId: requestedId } = await params
   // Signed out: the sample player's data, never the requested player's (the layout labels it as an example).
   const playerId = String(await labBatterId(Number(requestedId)))
-  const [data, leaders] = await Promise.all([getContactProfile(Number(playerId)), getContactLeaders()])
+  const [data, leaders] = await Promise.all([demoOr('contactProfile', () => getContactProfile(Number(playerId))), demoOr('contactLeaders', () => getContactLeaders())])
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '8px 24px 100px' }}>
       <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722', marginTop: 22 }}>⊕ CONTACT</div>

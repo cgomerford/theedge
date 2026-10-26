@@ -7,6 +7,7 @@
 import { getSwingLabData } from '@/lib/swing-decisions/data'
 import Approach from '@/components/swing-lab/Approach'
 import { labBatterId } from '@/lib/lab-player'
+import { demoOr } from '@/lib/lab-demo-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export default async function BattingApproachPage({ params }: { params: Promise<
   const { playerId: requestedId } = await params
   // Signed out: the sample player's data, never the requested player's (the layout labels it as an example).
   const playerId = String(await labBatterId(Number(requestedId)))
-  const data = await getSwingLabData(Number(playerId))
+  const data = await demoOr('swingLab', () => getSwingLabData(Number(playerId)))
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '8px 24px 100px' }}>
       <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722', marginTop: 22 }}>⊕ APPROACH</div>

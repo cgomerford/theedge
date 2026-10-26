@@ -8,6 +8,7 @@ import { Empty } from '@/components/team/ui'
 import { getContactProfile } from '@/lib/contact-profile/data'
 import { getSwingMonthly } from '@/lib/nerve-centre/data'
 import { labBatterId } from '@/lib/lab-player'
+import { demoOr } from '@/lib/lab-demo-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,9 +17,9 @@ export default async function BattingSwingPage({ params }: { params: Promise<{ p
   // Signed out: the sample player's data, never the requested player's (the layout labels it as an example).
   const playerId = String(await labBatterId(Number(requestedId)))
   const id = Number(playerId)
-  const contact = await getContactProfile(id)
+  const contact = await demoOr('contactProfile', () => getContactProfile(id))
   const season = contact?.season ?? new Date().getFullYear()
-  const swing = await getSwingMonthly(id, season)
+  const swing = await demoOr('swingMonthly', () => getSwingMonthly(id, season))
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '8px 24px 100px' }}>
       <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722', marginTop: 22 }}>⊕ SWING</div>

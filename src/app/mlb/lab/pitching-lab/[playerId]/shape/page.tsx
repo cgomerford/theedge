@@ -12,10 +12,10 @@ import ShapeLab from '@/components/pitch-shape/ShapeLab'
 import { Card, Empty } from '@/components/team/ui'
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
 import { isSignedIn } from '@/lib/require-signup'
-import { SAMPLE_PITCHER } from '@/lib/lab-sample'
+import { demoSnapshot } from '@/lib/lab-demo-server'
 
 async function sampleShape() {
-  const data = await getShapeLabData(SAMPLE_PITCHER.id)
+  const data = demoSnapshot<Awaited<ReturnType<typeof getShapeLabData>>>('shape')   // stored sample, never a live read
   return data ? <ShapeLab data={data} isPro /> : <Card title="Pitch Shape"><Empty>No example available right now.</Empty></Card>
 }
 

@@ -8,6 +8,7 @@ import { Empty } from '@/components/team/ui'
 import { gapsOf, getPlatoonHitter, getPlatoonLeague } from '@/lib/platoon/data'
 import { sidesOf } from '@/lib/platoon/model'
 import { labBatterId } from '@/lib/lab-player'
+import { demoOr } from '@/lib/lab-demo-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export default async function BattingPlatoonPage({ params }: { params: Promise<{
   const { playerId: requestedId } = await params
   // Signed out: the sample player's data, never the requested player's (the layout labels it as an example).
   const playerId = String(await labBatterId(Number(requestedId)))
-  const [found, league] = await Promise.all([getPlatoonHitter(Number(playerId)), getPlatoonLeague()])
+  const [found, league] = await Promise.all([demoOr('platoonHitter', () => getPlatoonHitter(Number(playerId))), demoOr('platoonLeague', () => getPlatoonLeague())])
   const sides = found ? sidesOf(found.hitter) : []
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '8px 24px 100px' }}>
