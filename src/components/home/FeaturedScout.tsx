@@ -75,11 +75,6 @@ function H2HTable({ d }: { d: Featured }) {
                 <th scope="row" style={{ ...td, textAlign: 'left', fontWeight: 700, position: 'sticky', left: 0 }}>{r.name}</th>
                 {r.pa === 0 ? (
                   <td colSpan={5} style={{ ...td, textAlign: 'left', color: MUTED }}>Never faced</td>
-                ) : r.pa < MIN_SAMPLE.h2hPA ? (
-                  <>
-                    <td style={td}>{r.pa}</td>
-                    <td colSpan={4} style={{ ...td, textAlign: 'left', color: MUTED }}>Small sample (n = {r.pa})</td>
-                  </>
                 ) : (
                   <>
                     <td style={td}>{r.pa}</td><td style={td}>{r.avg ?? ''}</td><td style={td}>{r.ops ?? ''}</td><td style={td}>{r.hr ?? ''}</td><td style={td}>{r.k ?? ''}</td>
@@ -90,7 +85,7 @@ function H2HTable({ d }: { d: Featured }) {
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>Career, regular season and playoffs · line shown from {MIN_SAMPLE.h2hPA} PA</div>
+      <div style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>Career, regular season and playoffs</div>
     </div>
   )
 }
