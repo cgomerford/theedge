@@ -9,8 +9,11 @@
 
 import { cookies } from 'next/headers'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { getDevView } from '@/lib/dev-view'
 
 export async function isSignedIn(): Promise<boolean> {
+  const devView = await getDevView()
+  if (devView) return devView !== 'out'
   if (await getCurrentSubscriber()) return true
   if (process.env.NODE_ENV === 'development') {
     const jar = await cookies()

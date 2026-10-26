@@ -12,8 +12,11 @@
 
 import { cookies } from 'next/headers'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { getDevView } from '@/lib/dev-view'
 
 export async function isProViewer(): Promise<boolean> {
+  const devView = await getDevView()
+  if (devView) return devView === 'pro'
   const subscriber = await getCurrentSubscriber()
   if (subscriber?.is_pro) return true
   if (process.env.NODE_ENV === 'development') {
@@ -33,6 +36,8 @@ export type { ViewerTier } from '@/lib/require-pro-types'
 import type { ViewerTier } from '@/lib/require-pro-types'
 
 export async function getViewerTier(): Promise<ViewerTier> {
+  const devView = await getDevView()
+  if (devView) return devView === 'pro' ? 'pro' : devView === 'member' ? 'member' : 'anon'
   const subscriber = await getCurrentSubscriber()
   if (subscriber?.is_pro) return 'pro'
   if (process.env.NODE_ENV === 'development') {

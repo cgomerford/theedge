@@ -5,6 +5,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieConsent from "@/components/CookieConsent";
 import BottomNav from '@/components/BottomNav'
 import SiteFooter from '@/components/SiteFooter'
+import DevViewSwitcher from '@/components/dev/DevViewSwitcher'
 import SignupModal from '@/components/signup/SignupModal'
 import { SiteSchema } from '@/components/StructuredData'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <BottomNav />
         <SignupModal />
         <CookieConsent />
+        {process.env.NODE_ENV === 'development' && <DevViewSwitcher />}
       </body>
     </html>
   );

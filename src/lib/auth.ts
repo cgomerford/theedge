@@ -1,3 +1,4 @@
+import { getDevView } from '@/lib/dev-view'
 import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
@@ -153,8 +154,18 @@ export async function createSession(subscriberId: string): Promise<string> {
   return token
 }
 
-// Get current session's subscriber, or null
+// Get current session's subscriber, or null.
+// Under `next dev` only, the DevViewSwitcher cookie can force the signed out / signed in / Pro view (lib/dev-view.ts).
 export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
+  const real = await readSession()
+  const view = await getDevView()
+  if (!view) return real
+  if (view === 'out') return null
+  const base: AuthSubscriber = real ?? { id: '00000000-0000-0000-0000-000000000000', email: 'dev@localhost', teams: [], primary_team: null, preferences_token: '', is_pro: false, role: 'user' }
+  return { ...base, is_pro: view === 'pro' }
+}
+
+async function readSession(): Promise<AuthSubscriber | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
