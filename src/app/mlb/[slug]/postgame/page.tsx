@@ -21,7 +21,10 @@ import { pageMeta, noindex } from '@/lib/seo'
 import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
 import { SportsEventSchema, BreadcrumbSchema } from '@/components/StructuredData'
 import SiteHeader from '@/components/SiteHeader'
-import LiveTicker from '@/components/LiveTicker'
+import MLBSubNav from '@/components/MLBSubNav'
+import Tabs from '@/components/ui/Tabs'
+import RecapTab from '@/components/postgame/report/RecapTab'
+import { Suspense } from 'react'
 import PostgameShell from '@/components/postgame/report/PostgameShell'
 import type { PostgameContext } from '@/components/postgame/report/types'
 import { SITE_URL } from '@/lib/site'
@@ -29,7 +32,7 @@ import { SITE_URL } from '@/lib/site'
 export const revalidate = 300
 export const maxDuration = 30
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string; tab?: string }> }
 
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
@@ -74,48 +77,40 @@ export default async function PostGamePage({ params, searchParams }: Props) {
     home: { id: home.team.id, name: home.team.name, abbr: homeAbbr },
   }
 
+  const aScore = (away as { score?: number }).score ?? 0, hScore = (home as { score?: number }).score ?? 0
+  const short = (n: string) => n.split(' ').slice(-1)[0]
+  const [w, l] = aScore > hScore ? [away, home] : [home, away]
+  const headline = `Final: ${short(w.team.name)} ${Math.max(aScore, hScore)}, ${short(l.team.name)} ${Math.min(aScore, hScore)}`
+  const dateText = new Date(`${dateMatch[1]}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const seriesText = game.seriesDescription && game.seriesDescription !== 'Regular Season' && game.seriesGameNumber ? `${game.seriesDescription}, Game ${game.seriesGameNumber}` : null
+  const tab = (await searchParams).tab === 'full' ? 'full' : 'recap'
+
   return (
     <>
       <SportsEventSchema awayTeam={away.team.name} homeTeam={home.team.name} gameDate={game.gameDate} venue={game.venue?.name ?? null} path={`/mlb/${slug}/postgame`} />
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: `${away.team.name} vs ${home.team.name}`, path: `/mlb/${slug}` }, { name: 'Postgame report', path: `/mlb/${slug}/postgame` }]} />
       <SiteHeader variant="page" />
-      <LiveTicker />
-      <div className="min-h-screen bg-stone-50">
-        <div className="x9-desk-sticky sticky top-0 z-30 bg-white border-b border-stone-200 shadow-sm">
-          <div className="flex items-center px-4 py-2 gap-2" style={centered}>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={teamLogoUrl(away.team.id)} alt={awayAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{awayAbbr}</span>
-              {isFinal && <span className="text-[15px] font-mono font-bold text-stone-900 ml-1">{(away as { score?: number }).score ?? ''}</span>}
-            </div>
-            <div className="flex flex-col items-center shrink-0 px-1">
-              <span className="text-[11px] font-serif italic text-stone-400 leading-none">at</span>
-              <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">{isFinal ? 'Final' : (game.status?.detailedState ?? 'Not final')}</span>
-            </div>
-            <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-              {isFinal && <span className="text-[15px] font-mono font-bold text-stone-900 mr-1">{(home as { score?: number }).score ?? ''}</span>}
-              <span className="text-[13px] font-mono font-bold text-stone-900 truncate">{homeAbbr}</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={teamLogoUrl(home.team.id)} alt={homeAbbr} className="w-8 h-8 object-contain flex-shrink-0" />
-            </div>
-            <div className="flex items-center gap-3 shrink-0 ml-3">
-              <Link href={`/mlb/${slug}`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">Game Preview →</Link>
-              <Link href={`/mlb/${slug}/scout-report`} className="text-[10px] font-mono uppercase tracking-widest text-stone-500 hover:text-orange-600 transition whitespace-nowrap">Scout Report →</Link>
-            </div>
-          </div>
-          <div className="px-4 py-2 border-t border-stone-100" style={centered}>
-            <h1 className="m-0 text-[12px] font-mono uppercase tracking-widest font-bold text-orange-600"><XMark /> {away.team.name} vs {home.team.name}: postgame report</h1>
-          </div>
-        </div>
-
-        <div className="px-4 py-6" style={centered}>
-          {isFinal ? <PostgameShell ctx={ctx} /> : (
-            <div className="max-w-2xl mx-auto py-16 text-center">
-              <p className="font-mono text-xs uppercase tracking-widest text-orange-600 mb-3">Not final yet</p>
-              <h2 className="font-serif text-2xl text-stone-900 mb-3">{away.team.name} @ {home.team.name}</h2>
-              <p className="text-stone-500 mb-6">The postgame report appears once the game ends. Status: {game.status?.detailedState ?? 'Scheduled'}.</p>
-              <Link href={`/mlb/${slug}`} className="font-mono text-sm underline text-stone-900">← Back to the game preview</Link>
+      <MLBSubNav />
+      <div style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
+        <div style={{ maxWidth: 1360, margin: '0 auto', padding: '28px 24px 80px' }}>
+          {isFinal ? (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Postgame</div>
+              <h1 style={{ margin: '4px 0 8px', fontSize: 'clamp(30px, 5.5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{headline}</h1>
+              <div style={{ fontSize: 15, color: '#57534E', marginBottom: 14 }}>{dateText}{game.venue?.name ? ` · ${game.venue.name}` : ''}{seriesText ? ` · ${seriesText}` : ''}</div>
+              <Suspense fallback={null}>
+                <Tabs label="Postgame sections" defaultTab="recap" tabs={[{ id: 'recap', label: 'Recap' }, { id: 'full', label: 'Full report' }]} />
+              </Suspense>
+              <div style={{ marginTop: 8 }}>
+                {tab === 'full' ? <PostgameShell ctx={ctx} /> : <Suspense fallback={null}><RecapTab ctx={ctx} /></Suspense>}
+              </div>
+            </>
+          ) : (
+            <div style={{ maxWidth: 640, margin: '0 auto', padding: '64px 0', textAlign: 'center' }}>
+              <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Not final yet</p>
+              <h1 style={{ fontSize: 28, margin: '8px 0 12px' }}>{away.team.name} at {home.team.name}</h1>
+              <p style={{ color: '#57534E', marginBottom: 20 }}>The postgame report appears once the game ends. Status: {game.status?.detailedState ?? 'Scheduled'}.</p>
+              <Link href={`/mlb/${slug}`} style={{ color: '#FF5722', fontWeight: 800 }}>← Back to the game preview</Link>
             </div>
           )}
         </div>

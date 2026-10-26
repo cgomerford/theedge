@@ -34,9 +34,16 @@ export type BoxTeam = { team?: { id: number; abbreviation?: string }; pitchers?:
 export type Box = { teams?: { away?: BoxTeam; home?: BoxTeam } }
 export const getBox = cache(async (pk: number) => mlb<Box>(`/game/${pk}/boxscore`))
 
+export type FeedPlay = {
+  result?: { event?: string; description?: string; rbi?: number }
+  about?: { inning?: number; halfInning?: string; captivatingIndex?: number; isScoringPlay?: boolean }
+  matchup?: { batter?: { id: number; fullName: string }; pitcher?: { id: number; fullName: string } }
+  playEvents?: { isPitch?: boolean; details?: { type?: { code?: string } }; hitData?: { launchSpeed?: number } }[]
+}
 export type Feed = {
   gameData?: { weather?: { condition?: string; temp?: string; wind?: string }; venue?: { name?: string; fieldInfo?: { roofType?: string } } }
   liveData?: {
+    plays?: { allPlays?: FeedPlay[] }
     linescore?: { innings?: { num: number; away?: { runs?: number }; home?: { runs?: number } }[]; teams?: { away?: { runs?: number; hits?: number; errors?: number }; home?: { runs?: number; hits?: number; errors?: number } } }
     decisions?: { winner?: { id: number; fullName: string }; loser?: { id: number; fullName: string }; save?: { id: number; fullName: string } }
     boxscore?: { officials?: { officialType?: string; official?: { fullName?: string } }[]; teams?: { away?: BoxTeam; home?: BoxTeam } }
