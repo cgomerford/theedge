@@ -134,9 +134,9 @@ export default function FeaturedScout({ data }: { data: Featured }) {
 
       <div className="hm-hero-head" style={{ margin: '14px 0 6px' }}>
         <div style={{ minWidth: 0 }}>
-          <h1 id="featured-h" style={{ margin: 0, fontSize: 'clamp(28px, 4.6vw, 44px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
+          <h2 id="featured-h" style={{ margin: 0, fontSize: 'clamp(28px, 4.6vw, 44px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
             {s.name} vs the {data.opp.short}
-          </h1>
+          </h2>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', marginTop: 6, fontSize: 14, color: '#5b5347' }}>
             <TeamMark id={s.teamId} abbr={s.teamAbbr} size={20} />
             {s.hand && <span>{s.hand}</span>}

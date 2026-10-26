@@ -13,6 +13,7 @@ import HomeEmailAsk from '@/components/home/HomeEmailAsk'
 import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
 import GamesStrip from '@/components/home/GamesStrip'
 import HomeRail from '@/components/home/HomeRail'
+import HeroStrip from '@/components/home/HeroStrip'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import { getFeaturedScout, getHomeSlate, getHomeStrip } from '@/lib/mlb-homepage'
 import { canonical } from '@/lib/seo'
@@ -61,13 +62,14 @@ export default async function HomePage() {
       <SiteHeader variant="home" />
 
       <div className="hm-wrap">
+        <HeroStrip reportHref={featured ? `/mlb/${featured.slug}/${featured.isFinal ? 'postgame' : 'scout-report'}` : '/mlb'} />
         <div className="hm-layout">
           <div className="hm-main">
         {featured ? (
           <FeaturedScout data={featured} />
         ) : (
           <section style={{ padding: '32px 0 8px' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em' }}>MLB game previews in plain numbers</h1>
+            <h2 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em' }}>MLB game previews in plain numbers</h2>
           </section>
         )}
 
