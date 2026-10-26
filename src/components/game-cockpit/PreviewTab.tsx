@@ -9,7 +9,9 @@ import SignupAsk from '@/components/signup/SignupAsk'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import { getBullpenRecent, type StarterBlock, type TeamLineup, type LineupRow, type BullpenRow } from '@/lib/game-cockpit'
-import { getParkIndex, type ParkIndex } from '@/lib/park-index'
+import { getParkIndex, getParkHitMap, type ParkIndex } from '@/lib/park-index'
+import { getVenueFieldDimensions } from '@/lib/venue-dimensions'
+import ParkHeatmap from './ParkHeatmap'
 import { cockpitData, type CockpitCtx } from './GameTabs'
 
 const MUTE = '#8a8275'
@@ -125,7 +127,8 @@ function BullpenBars({ team, abbr, id, rows }: { team: string; abbr: string; id:
   )
 }
 
-function ParkCard({ park, venue }: { park: ParkIndex | null; venue: string }) {
+async function ParkCard({ park, venue, venueId }: { park: ParkIndex | null; venue: string; venueId: number | null }) {
+  const [map, dims] = await Promise.all([getParkHitMap(venueId), venueId ? getVenueFieldDimensions(venueId) : Promise.resolve(null)])
   return (
     <section style={card}>
       <p style={kicker}>x9Lab park index · {venue}</p>
@@ -139,6 +142,7 @@ function ParkCard({ park, venue }: { park: ParkIndex | null; venue: string }) {
           </div>
         </div>
       )}
+      {map ? <ParkHeatmap map={map} dims={dims} venue={venue} /> : <div style={{ marginTop: 12 }}><PendingBlock label="Park hit heatmap" /></div>}
     </section>
   )
 }
@@ -239,7 +243,7 @@ export async function PreviewTab({ ctx, seriesLabel }: { ctx: CockpitCtx; series
             <div style={{ height: 12 }} />
             <BullpenBars team={ctx.home.name} abbr={ctx.home.abbr} id={ctx.home.id} rows={bpH.rows} />
           </section>
-          <ParkCard park={park} venue={ctx.venueName} />
+          <ParkCard park={park} venue={ctx.venueName} venueId={ctx.venueId} />
         </div>
         <StarterCard s={s.home} label="Home" teamName={ctx.home.name} teamId={ctx.home.id} teamAbbr={ctx.home.abbr} lookHref={lookHref} />
       </div>

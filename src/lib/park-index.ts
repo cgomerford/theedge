@@ -41,3 +41,15 @@ export async function getParkIndex(venueId: number | null | undefined): Promise<
     pct,
   }
 }
+
+// ── Hit heatmap data (table park_hit_map, filled by scripts/compute-park-hits.ts) ──
+export type ParkHitMap = { venueId: number; seasons: string; nHits: number; through: string; points: number[] }
+
+export async function getParkHitMap(venueId: number | null | undefined): Promise<ParkHitMap | null> {
+  if (!venueId) return null
+  const { data, error } = await createAdminClient().from('park_hit_map').select('venue_id, seasons, n_hits, through, points').eq('venue_id', venueId).maybeSingle()
+  if (error) { console.error('[getParkHitMap] Supabase error:', error.message); return null }
+  if (!data) return null
+  const d = data as Record<string, unknown>
+  return { venueId: Number(d.venue_id), seasons: String(d.seasons), nHits: Number(d.n_hits), through: String(d.through), points: (d.points as number[]).map(Number) }
+}
