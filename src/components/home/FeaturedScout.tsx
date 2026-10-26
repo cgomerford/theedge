@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { TeamMark } from './Logo'
+import PitchFlight from './PitchFlight'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import SmallSample from '@/components/data/SmallSample'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
-import { MIN_BF, type FeaturedScout as Featured, type MixRow } from '@/lib/mlb-homepage'
+import { FLIGHT_VIEW, MIN_BF, type FeaturedScout as Featured, type MixRow } from '@/lib/mlb-homepage'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor } from '@/lib/mlb'
 
@@ -14,6 +15,7 @@ import { pitchColor } from '@/lib/mlb'
 const MUTED = '#8a8275'
 const INK = '#1A1A1A'
 const n0 = (v: number) => v.toLocaleString('en-US')
+const fmtDay = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 function Tile({ label, bar, value, n, small, sub }: { label: string; bar: string; value: string; n?: string; small?: React.ReactNode; sub?: string }) {
   return (
@@ -27,6 +29,25 @@ function Tile({ label, bar, value, n, small, sub }: { label: string; bar: string
       )}
       {sub && <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{sub}</div>}
     </div>
+  )
+}
+
+const MONTH_LETTER = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+
+/** Tiny line of a pitch's monthly share. Needs 3+ months; otherwise nothing (no guess). */
+function Trend({ points, color, label }: { points: { month: number; pct: number }[] | undefined; color: string; label: string }) {
+  if (!points || points.length < 3) return <span />
+  const W = 84, H = 22
+  const max = Math.max(...points.map(p => p.pct), 1)
+  const xs = (i: number) => (i / (points.length - 1)) * (W - 4) + 2
+  const ys = (v: number) => H - 3 - (v / max) * (H - 6)
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)} ${ys(p.pct).toFixed(1)}`).join(' ')
+  const first = points[0], last = points[points.length - 1]
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label} share by month, ${MONTH_LETTER[first.month - 1]} ${first.pct.toFixed(0)}% to ${MONTH_LETTER[last.month - 1]} ${last.pct.toFixed(0)}%`}>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+      <circle cx={xs(points.length - 1)} cy={ys(last.pct)} r={2.4} fill={color} />
+    </svg>
   )
 }
 
@@ -93,12 +114,12 @@ export default function FeaturedScout({ data }: { data: Featured }) {
           <div className="hm-tiles">
             {fastball && (
               <Tile
-                label="Fastball share" bar="#FF5722" value={`${fastball.usagePct.toFixed(1)}%`} n={`n ${n0(fastball.n)} pitches`}
+                label="Fastball share" bar="#FF5722" value={`${fastball.usagePct.toFixed(1)}%`}
                 small={fastball.n < MIN_SAMPLE.arsenalPitchesPerType ? <SmallSample n={fastball.n} /> : undefined}
               />
             )}
             {miss && (
-              <Tile label={`${miss.label} miss rate`} bar="#a855a8" value={`${(miss.missPct ?? 0).toFixed(1)}%`} n={`n ${n0(miss.n)} pitches`} />
+              <Tile label={`${miss.label} miss rate`} bar="#a855a8" value={`${(miss.missPct ?? 0).toFixed(1)}%`} />
             )}
             <Tile
               label="Contact allowed" bar={INK} value={s.xwoba != null ? s.xwoba.toFixed(3).replace(/^0/, '') : ''} n={`xwOBA · n ${n0(s.bf ?? 0)} BF`}
@@ -111,7 +132,18 @@ export default function FeaturedScout({ data }: { data: Featured }) {
               />
             )}
           </div>
-          <div style={{ marginTop: 14 }}><ThroughDate date={data.throughDate} /></div>
+          {s.lastGame && (
+            <p style={{ margin: '16px 0 0', fontSize: 14, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}>
+              <b>Last game</b> · {fmtDay(s.lastGame.date)} {s.lastGame.home ? 'vs' : 'at'} {s.lastGame.opp} · {s.lastGame.ip} IP, {s.lastGame.h} H, {s.lastGame.er} ER, {s.lastGame.k} K, {s.lastGame.bb} BB
+            </p>
+          )}
+          <div style={{ marginTop: 10 }}><ThroughDate date={data.throughDate} /></div>
+          <Link
+            href={`/mlb/${data.slug}/${data.isFinal ? 'postgame' : 'scout-report'}`}
+            style={{ display: 'inline-block', marginTop: 18, background: '#FF5722', color: '#fff', fontWeight: 800, fontSize: 15, padding: '11px 18px', borderRadius: 2, textDecoration: 'none' }}
+          >
+            {data.isFinal ? 'Read the postgame report' : 'Read the scout report'} →
+          </Link>
         </div>
 
         <div>
@@ -132,24 +164,23 @@ export default function FeaturedScout({ data }: { data: Featured }) {
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                       {m.n < MIN_SAMPLE.arsenalPitchesPerType || m.missPct == null ? <SmallSample n={m.n} /> : <><b>{m.missPct.toFixed(1)}%</b> miss</>}
                     </span>
-                    <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>n {n0(m.n)}</span>
+                    <Trend points={s.trend[m.code]} color={pitchColor(m.code)} label={m.label} />
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>n = pitches thrown · Through {formatThrough(data.throughDate) ?? ''}</div>
+              <div style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>Line = share of his pitches by month · Through {formatThrough(data.throughDate) ?? ''}</div>
             </>
           ) : (
             <SmallSample n={s.pitches} />
           )}
+          {s.flights.length > 0 && (
+            <div style={{ marginTop: 22, borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
+              <PitchFlight flights={s.flights} zone={FLIGHT_VIEW.zone} throughLabel={`Through ${formatThrough(data.throughDate) ?? ''}`} />
+            </div>
+          )}
         </div>
       </div>
 
-      <Link
-        href={`/mlb/${data.slug}/${data.isFinal ? 'postgame' : 'scout-report'}`}
-        style={{ display: 'inline-block', marginTop: 20, background: '#FF5722', color: '#fff', fontWeight: 800, fontSize: 15, padding: '11px 18px', borderRadius: 2, textDecoration: 'none' }}
-      >
-        {data.isFinal ? 'Read the postgame report' : 'Read the scout report'} →
-      </Link>
     </section>
   )
 }

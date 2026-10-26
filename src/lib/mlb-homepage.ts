@@ -582,6 +582,7 @@ import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getPitcherHandedness, slugifyGame, type MLBGame } from '@/lib/mlb'
 import { findTeamByName } from '@/lib/teams'
 import { MIN_SAMPLE } from '@/lib/min-sample'
+import { getPitchViewMonths } from '@/lib/pitch-shape/data'
 
 type RawTeamSide = {
   team: { id: number; name: string; abbreviation?: string }
@@ -790,6 +791,11 @@ const wordsFor = (code: string, fallback: string) => PITCH_WORDS[code] ?? { one:
 
 export type MixRow = { code: string; label: string; one: string; many: string; usagePct: number; velo: number | null; n: number; missPct: number | null; swings: number }
 
+export type LastGame = { date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }
+
+/** One pitch type's average flight, already projected to the hero panel (catcher's view, perspective). */
+export type FlightPath = { code: string; label: string; usagePct: number; n: number; speed: number; pts: [number, number, number][]; plate: [number, number] }
+
 export type FeaturedStarter = {
   id: number
   name: string
@@ -808,6 +814,11 @@ export type FeaturedStarter = {
   pitches: number
   mix: MixRow[]
   throughDate: string | null
+  lastGame: LastGame | null
+  /** monthly share (%) of his pitches by type, oldest first: the pitch-mix trend */
+  trend: Record<string, { month: number; pct: number }[]>
+  /** flight paths for the animation; empty unless he has 3+ types with 30+ pitches */
+  flights: FlightPath[]
 }
 
 async function getBattersFaced(pitcherId: number): Promise<number | null> {
@@ -822,12 +833,83 @@ async function getBattersFaced(pitcherId: number): Promise<number | null> {
   }
 }
 
+async function getLastGame(pitcherId: number): Promise<LastGame | null> {
+  try {
+    const rows: { date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
+    for (const gt of ['R', 'P']) {
+      const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}&gameType=${gt}`, { next: { revalidate: 3600 } })
+      if (!res.ok) continue
+      const splits = (await res.json()).stats?.[0]?.splits ?? []
+      for (const sp of splits) {
+        rows.push({
+          date: sp.date, opp: findTeamByName(sp.opponent?.name ?? '')?.abbrev ?? sp.opponent?.abbreviation ?? '', home: !!sp.isHome,
+          ip: String(sp.stat?.inningsPitched ?? ''), er: Number(sp.stat?.earnedRuns ?? 0), k: Number(sp.stat?.strikeOuts ?? 0), bb: Number(sp.stat?.baseOnBalls ?? 0), h: Number(sp.stat?.hits ?? 0),
+        })
+      }
+    }
+    rows.sort((a, b) => a.date.localeCompare(b.date))
+    return rows[rows.length - 1] ?? null
+  } catch (e) {
+    console.error('[getLastGame] failed:', e instanceof Error ? e.message : e)
+    return null
+  }
+}
+
+// Perspective from behind the plate (catcher's view). Statcast feet: x + is the catcher's right, z is height, y runs 50 -> 0.
+const VIEW = { W: 320, H: 300, K: 731, C: 8, HORIZON: 120, CAM_H: 4.0, CX: 160, BALL_FT: 0.12 }
+const proj = (x: number, y: number, z: number): [number, number, number] => {
+  const sc = VIEW.K / (y + VIEW.C)
+  return [VIEW.CX + x * sc, VIEW.HORIZON + (VIEW.CAM_H - z) * sc, Math.max(1.2, VIEW.BALL_FT * sc)]
+}
+export const FLIGHT_VIEW = { W: VIEW.W, H: VIEW.H, zone: { x0: proj(-0.708, 1.4167, 3.5)[0], x1: proj(0.708, 1.4167, 3.5)[0], y0: proj(0, 1.4167, 3.5)[1], y1: proj(0, 1.4167, 1.5)[1] } }
+
+async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: FeaturedStarter['trend']; flights: FlightPath[] }> {
+  const months = await getPitchViewMonths(pitcherId, SEASON)
+  const codes = Object.keys(months)
+  if (codes.length === 0) return { trend: {}, flights: [] }
+
+  // Monthly share of all his pitches, per type. A month under 25 pitches in total is skipped as too thin.
+  const totals: Record<number, number> = {}
+  for (const c of codes) for (const m of months[c]) totals[m.month] = (totals[m.month] ?? 0) + (m.n ?? 0)
+  const trend: FeaturedStarter['trend'] = {}
+  for (const c of codes) {
+    trend[c] = months[c].filter(m => (totals[m.month] ?? 0) >= 25).map(m => ({ month: m.month, pct: (m.n / totals[m.month]) * 100 })).sort((a, b) => a.month - b.month)
+  }
+
+  const flights: FlightPath[] = []
+  for (const row of mix) {
+    const ms = months[row.code]
+    if (!ms?.length) continue
+    const n = ms.reduce((a, m) => a + m.n, 0)
+    if (n < 30) continue
+    const w = (f: (m: (typeof ms)[number]) => number) => ms.reduce((a, m) => a + f(m) * m.n, 0) / n
+    const x0 = w(m => m.releaseX), y0 = w(m => m.releaseY), z0 = w(m => m.releaseZ)
+    const vx = w(m => m.vx0), vy = w(m => m.vy0), vz = w(m => m.vz0)
+    const ax = w(m => m.ax), ay = w(m => m.ay), az = w(m => m.az)
+    // time until the ball reaches the front of the plate (y = 17/12 ft)
+    const a = 0.5 * ay, b = vy, c = y0 - 1.4167
+    const disc = b * b - 4 * a * c
+    if (!Number.isFinite(disc) || disc < 0 || a === 0) continue
+    const T = (-b - Math.sqrt(disc)) / (2 * a) > 0 ? (-b - Math.sqrt(disc)) / (2 * a) : (-b + Math.sqrt(disc)) / (2 * a)
+    if (!(T > 0.2 && T < 0.8)) continue
+    const pts: [number, number, number][] = []
+    for (let i = 0; i <= 28; i++) {
+      const t = (T * i) / 28
+      pts.push(proj(x0 + vx * t + 0.5 * ax * t * t, y0 + vy * t + 0.5 * ay * t * t, z0 + vz * t + 0.5 * az * t * t))
+    }
+    flights.push({ code: row.code, label: row.label, usagePct: row.usagePct, n, speed: row.velo ?? 0, pts, plate: [pts[28][0], pts[28][1]] })
+    if (flights.length === 5) break
+  }
+  return { trend, flights: flights.length >= 3 ? flights : [] }
+}
+
 export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string): Promise<FeaturedStarter> {
   const supa = createAdminClient()
-  const [arsenalBySplit, hand, bf, statsRes, throughRes] = await Promise.all([
+  const [arsenalBySplit, hand, bf, lastGame, statsRes, throughRes] = await Promise.all([
     getPitcherZoneArsenal(pitcherId),
     getPitcherHandedness(pitcherId),
     getBattersFaced(pitcherId),
+    getLastGame(pitcherId),
     supa.from('pitcher_stats').select('era, wins, losses, innings_pitched, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', pitcherId).eq('season', SEASON).order('updated_at', { ascending: false }).limit(1),
   ])
@@ -849,6 +931,9 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
   const ip = num(row?.innings_pitched)
   const through = (throughRes.data?.[0] as { updated_at?: string } | undefined)?.updated_at ?? null
 
+  // Separate await (not a slot in the Promise.all above): the flight maths needs the mix.
+  const { trend, flights } = await getFlights(pitcherId, mix.slice(0, 5))
+
   return {
     id: pitcherId, name, teamId, teamAbbr,
     teamColor: findTeamByName(teamName)?.primary_color ?? null,
@@ -859,6 +944,7 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
     pitches: num(all?.total_pitches) ?? 0,
     mix: mix.slice(0, 5),
     throughDate: through ? through.slice(0, 10) : null,
+    lastGame, trend, flights,
   }
 }
 

@@ -50,12 +50,12 @@ export default async function HomePage() {
         .hm-hero-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:20px 40px;align-items:start}
         .hm-tiles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 24px}
         .hm-mix{margin-top:8px}
-        .hm-mixrow{display:grid;grid-template-columns:minmax(110px,1.3fr) 56px 76px minmax(80px,1fr) 58px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #e7e2d8;font-size:13px}
+        .hm-mixrow{display:grid;grid-template-columns:minmax(110px,1.3fr) 54px 74px minmax(76px,1fr) 88px;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #e7e2d8;font-size:13px}
         .hm-ask{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px 28px;align-items:center}
         .hm-links a{color:#1A1A1A;font-weight:700;text-decoration:underline;text-underline-offset:3px}
         @media (max-width:1100px){.hm-layout{grid-template-columns:minmax(0,1fr)}}
         @media (max-width:860px){.hm-hero-cols,.hm-ask{grid-template-columns:minmax(0,1fr)}}
-        @media (max-width:480px){.hm-mixrow{grid-template-columns:minmax(0,1fr) 52px 70px;row-gap:2px}.hm-mixrow > :nth-child(4){grid-column:1 / 3}.hm-mixrow > :nth-child(5){grid-column:3;text-align:right}}
+        @media (max-width:480px){.hm-mixrow{grid-template-columns:minmax(0,1fr) 52px 70px;row-gap:2px}.hm-mixrow > :nth-child(4){grid-column:1 / 3}.hm-mixrow > :nth-child(5){grid-column:3;justify-self:end}}
       `}</style>
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }]} />
       <SiteHeader variant="home" />
