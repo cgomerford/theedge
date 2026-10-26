@@ -99,8 +99,8 @@ export async function BullpenParkTab({ ctx }: { ctx: CockpitCtx }) {
               <Gauge index={d.park.index} />
               <div style={{ fontSize: 14, ...num }}>
                 <b>Runs per game (both teams)</b>
-                <div>Home games here: {d.park.homeRpg.toFixed(2)} (n = {d.park.homeGames} games)</div>
-                <div>Road games: {d.park.roadRpg.toFixed(2)} (n = {d.park.roadGames} games)</div>
+                <div>Home games here: {d.park.homeRpg.toFixed(2)} ({d.park.homeGames} games)</div>
+                <div>Road games: {d.park.roadRpg.toFixed(2)} ({d.park.roadGames} games)</div>
                 <div style={{ fontSize: 12, color: MUTE }}>Index = home ÷ road × 100, {d.park.seasons}. 100 is average.</div>
               </div>
             </div>

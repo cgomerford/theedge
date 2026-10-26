@@ -10,6 +10,8 @@ import type { CockpitCtx } from '@/components/game-cockpit/GameTabs'
 import ZoneMaps from './ZoneMaps'
 import { Card, Label, Tile, Pending, Star, SMALL, MUTE, LINE, num, ops3, GhostBlock } from './ui'
 
+// Relative luminance of a #rrggbb colour, to pick dark or light text on a pitch-colour segment.
+const lum = (hex: string) => { const n = parseInt(hex.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => v / 255); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] }
 const pct0 = (v: number | null) => (v == null ? '' : `${Math.round(v)}%`)
 
 function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string; gated: boolean; teamId: number }) {
@@ -33,7 +35,7 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
         <Tile rule="#8A5A2B" label="Postseason" value={p.post ? `${ipText(p.post.outs)} IP` : <Pending />} sub={p.post ? `${p.post.g} G · ${postEra ?? ''} ERA · ${p.post.k} K` : ''} />
       </div>
 
-      <Label>Full arsenal · {new Date().getFullYear()} incl. postseason · n {p.totalPitches.toLocaleString('en-US')} pitches</Label>
+      <Label>Full arsenal · {new Date().getFullYear()} incl. postseason</Label>
       <div aria-hidden style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
         {p.arsenal.map(r => <span key={r.code} style={{ width: `${r.use}%`, background: pitchColor(r.code) }} />)}
       </div>
@@ -74,21 +76,25 @@ function Starter({ p, label, gated, teamId }: { p: PitcherTabData; label: string
           <Label>Where he locates · share of pitches by zone, {new Date().getFullYear()}</Label>
           {p.zones && (p.zones.lhb || p.zones.rhb) ? (
             <ZoneMaps modes={['share', 'ba', 'slg', 'xwoba']} defaultMode="share" minN={15}
-              maps={[p.zones.lhb && { title: 'v LHB', sub: `n ${p.zones.lhb.n.toLocaleString('en-US')} pitches`, cells: p.zones.lhb.cells }, p.zones.rhb && { title: 'v RHB', sub: `n ${p.zones.rhb.n.toLocaleString('en-US')} pitches`, cells: p.zones.rhb.cells }].filter((m): m is NonNullable<typeof m> => !!m)}
+              maps={[p.zones.lhb && { title: 'v LHB', cells: p.zones.lhb.cells }, p.zones.rhb && { title: 'v RHB', cells: p.zones.rhb.cells }].filter((m): m is NonNullable<typeof m> => !!m)}
               footnote="All 13 zones, catcher's view: the 3x3 strike zone in the middle and the four chase zones in the corners. * under 15 pitches in that zone (left uncoloured)." />
           ) : <Pending />}
           <Label>How he attacks counts · top pitches by count</Label>
           {p.counts && p.counts.length ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, ...num }}>
-              <tbody>{p.counts.map(c => (
-                <tr key={c.label} style={{ borderTop: `1px solid ${LINE}` }}>
-                  <td style={{ padding: '5px 4px', fontWeight: 700, whiteSpace: 'nowrap' }}>{c.label}</td>
-                  <td style={{ padding: 4, width: 120 }}><span aria-hidden style={{ display: 'flex', height: 8, overflow: 'hidden' }}>{c.mix.map(m => <span key={m.code} style={{ width: `${m.pct}%`, background: pitchColor(m.code) }} />)}</span></td>
-                  <td style={{ padding: 4 }}>{c.mix.slice(0, 2).map(m => `${pitchLabel(m.code)} ${Math.round(m.pct)}%`).join(' · ')}</td>
-                  <td style={{ padding: 4, textAlign: 'right', color: MUTE }}>n {c.n.toLocaleString('en-US')}</td>
-                </tr>
-              ))}</tbody>
-            </table>
+            <div>
+              {p.counts.map(c => (
+                <div key={c.label} title={`n ${c.n.toLocaleString('en-US')} pitches`} style={{ display: 'grid', gridTemplateColumns: '88px 1fr', alignItems: 'center', gap: 10, padding: '5px 0', borderTop: `1px solid ${LINE}` }}>
+                  <b style={{ fontSize: 14, whiteSpace: 'nowrap' }}>{c.label}</b>
+                  <span style={{ display: 'flex', height: 28, overflow: 'hidden', borderRadius: 3 }}>
+                    {c.mix.map(m => (
+                      <span key={m.code} title={`${pitchLabel(m.code)} ${Math.round(m.pct)}%`} style={{ width: `${m.pct}%`, background: pitchColor(m.code), display: 'flex', alignItems: 'center', paddingLeft: 6, overflow: 'hidden', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 800, color: lum(pitchColor(m.code)) > 0.5 ? '#1A1A1A' : '#fff', ...num }}>
+                        {m.pct >= 18 ? `${pitchLabel(m.code)} ${Math.round(m.pct)}%` : ''}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : <Pending />}
           <div style={{ fontSize: 12, color: MUTE, marginTop: 4 }}></div>
         </>
@@ -127,7 +133,7 @@ export async function PitchersTab({ ctx }: { ctx: CockpitCtx }) {
         <Starter p={home} label="Home starter" gated={open} teamId={ctx.home.id} />
       </div>
       {!open ? <ProGateRow tier={gate.tier === 'member' ? 'member' : 'anon'} source="game_pitchers" openable={gate.state === 'look_left' ? { feature: 'scout_report', entityId: String(ctx.gamePk) } : undefined} noButton={gate.state === 'unavailable'} /> : null}
-      <div style={{ fontSize: 12, color: MUTE, margin: '12px 0' }}>Savant data through the latest date stored for each pitcher; season line is regular season, postseason from the MLB game logs. {SMALL} IVB and HB in inches.</div>
+      <div style={{ fontSize: 12, color: MUTE, margin: '12px 0' }}>Appendix: sample sizes (n) show when you hover a number. Season line is regular season, postseason from the MLB game logs. {SMALL} IVB and HB in inches.</div>
     </div>
   )
 }

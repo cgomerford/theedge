@@ -63,8 +63,7 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref, extra, vs
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 4px' }}>
             {s.xwoba != null ? <Gauge pct={s.xwobaPct} text={ops3(s.xwoba)} color="#FF5722" star={s.bf < MIN_SAMPLE.pitcherPercentileBF} /> : <span style={{ fontSize: 13, color: MUTE }}>No xwOBA yet</span>}
             <div style={{ fontSize: 13, color: MUTE }}>
-              Contact allowed (xwOBA). Far right = 100th percentile, the weakest contact allowed among pitchers with 30+ IP.{s.xwobaPct != null ? ` He sits at the ${s.xwobaPct}th.` : ''}
-              <div style={num}>n {s.bf.toLocaleString('en-US')} batters faced</div>
+              Contact allowed (xwOBA). Far right = 100th percentile, the weakest contact allowed among pitchers with 30+ IP.{s.xwobaPct != null ? ` He sits at the ${s.xwobaPct}th.` : ''}{s.bf < MIN_SAMPLE.pitcherPercentileBF ? <Star /> : null}
               <ThroughDate date={s.throughDate} />
             </div>
           </div>
@@ -147,8 +146,8 @@ function StarterExtras({ e, vs }: { e: PitcherTabData; vs: { abbr: string; lines
       <p style={{ ...kicker, margin: '14px 0 4px' }}>This lineup v his top two pitches</p>
       <div style={{ display: 'grid', gap: 3, fontSize: 14, ...num }}>
         {vs.lines.map(l => (
-          <Link key={l.code} href="?tab=batters" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <b>{vs.abbr} hitters v {pitchLabel(l.code).toLowerCase()}s</b>: {l.xwoba != null ? `${ops3(l.xwoba)} xwOBA` : 'pending'}{l.pa < 10 ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {l.pa} PA</span> <span style={{ color: '#FF5722', fontWeight: 800 }}>Batters tab</span>
+          <Link key={l.code} href="?tab=batters" title={`n ${l.pa} PA`} style={{ color: 'inherit', textDecoration: 'none' }}>
+            <b>{vs.abbr} hitters v {pitchLabel(l.code).toLowerCase()}s</b>: {l.xwoba != null ? `${ops3(l.xwoba)} xwOBA` : 'pending'}{l.pa < 10 ? <Star /> : null} <span style={{ color: '#FF5722', fontWeight: 800 }}>Batters tab</span>
           </Link>
         ))}
       </div>
@@ -163,7 +162,7 @@ function BullpenBars({ team, abbr, id, rows }: { team: string; abbr: string; id:
     <div style={{ marginTop: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}><TeamMark id={id} abbr={abbr} size={22} />{team}</span>
-        <span style={{ fontWeight: 800, ...num }}>{total} pitches <span style={{ fontSize: 12, color: MUTE, fontWeight: 500 }}>n {rows.length} relievers</span></span>
+        <span style={{ fontWeight: 800, ...num }}>{total} pitches <span style={{ fontSize: 12, color: MUTE, fontWeight: 500 }}>{rows.length} relievers</span></span>
       </div>
       {rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE, padding: '6px 0' }}>No relief pitches recorded in this window</div> : rows.map(r => (
         <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 32px', gap: 8, alignItems: 'center', fontSize: 14, padding: '2px 0', ...num }}>
@@ -186,7 +185,7 @@ async function ParkCard({ park, venue, venueId }: { park: ParkIndex | null; venu
           <Gauge pct={park.pct} text={String(park.index)} color="#1A1A1A" />
           <div style={{ fontSize: 13, color: MUTE, ...num }}>
             Runs per game in home games vs road games. Far right = 100th percentile, the highest-scoring park in the league{park.pct != null ? `; this one sits at the ${park.pct}th` : ''}.
-            <div>n = {park.homeGames.toLocaleString('en-US')} home / {park.roadGames.toLocaleString('en-US')} road games, {park.seasons}</div>
+            <div title={`${park.homeGames} home and ${park.roadGames} road games`}>{park.seasons} regular seasons</div>
             <div>Index 100 = average. Under 100 = fewer runs here.</div>
           </div>
         </div>
@@ -312,6 +311,7 @@ export async function PreviewTab({ ctx, seriesLabel }: { ctx: CockpitCtx; series
         <BatsTable title={`${ctx.away.name} bats vs ${s.home.name ?? 'starter'}`} lineup={away} pitcher={s.home} through={through} />
         <BatsTable title={`${ctx.home.name} bats vs ${s.away.name ?? 'starter'}`} lineup={home} pitcher={s.away} through={through} />
       </div>
+      <div style={{ fontSize: 12, color: MUTE, marginTop: 14 }}>Appendix: sample sizes (n) show when you hover a number. * marks a small sample: under {MIN_SAMPLE.pitcherPercentileBF} batters faced or plate appearances, {MIN_SAMPLE.arsenalPitchesPerType} pitches of a type, {MIN_SAMPLE.whiffSwings} swings or {MIN_SAMPLE.h2hPA} head-to-head plate appearances.</div>
     </div>
   )
 }
