@@ -35,10 +35,11 @@ const MLB_NAV: NavItem[] = [
   { href: '/mlb',              label: 'Home'          },
   { href: '/mlb/scores',       label: 'Scores'        },
   { href: '/mlb/stats',        label: 'Stats'         },
-  { href: '/mlb/glossary',     label: 'Glossary'      },
+  { href: '/mlb/lab/pitching-lab', label: 'Pitching Lab' },
   { href: '/mlb/lab/batting-lab',  label: 'Batting Lab' },
   { href: '/mlb/lab/contact',      label: 'Contact Lab' },
   { href: '/mlb/lab/platoon',      label: 'Platoon Lab' },
+  { href: '/mlb/glossary',     label: 'Glossary'      },
 ]
 
 export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
@@ -49,7 +50,7 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
       <style>{`
         .mlb-subnav {
           background: #FAF8F3;
-          border-bottom: 1px solid rgba(26,26,26,0.08);
+          border-bottom: 1px solid #e7e2d8;
           overflow-x: auto;
           scrollbar-width: none;
           -ms-overflow-style: none;
@@ -57,26 +58,25 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
         .mlb-subnav::-webkit-scrollbar { display: none; }
         .mlb-subnav-inner {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           max-width: 1160px;
           margin: 0 auto;
           padding: 0 24px;
-          gap: 0;
+          gap: 28px;
           white-space: nowrap;
         }
         .mlb-subnav-link {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 10px 16px;
-          font-family: 'Red Hat Display', sans-serif;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
+          padding: 16px 2px 12px;
+          font-family: var(--font-redhat), system-ui, sans-serif;
+          font-size: 16px;
+          font-weight: 500;
           text-decoration: none;
-          color: #A3A3A3;
-          border-bottom: 2px solid transparent;
+          color: #3a352c;
+          border-bottom: 3px solid transparent;
+          margin-bottom: -1px;
           transition: color 0.12s, border-color 0.12s;
           position: relative;
           flex-shrink: 0;
@@ -85,8 +85,9 @@ export default function MLBSubNav({ isPro = false }: { isPro?: boolean }) {
           color: #1A1A1A;
         }
         .mlb-subnav-link.active {
-          color: #FF5722;
-          border-bottom-color: #FF5722;
+          color: #1A1A1A;
+          font-weight: 800;
+          border-bottom-color: #E8603A;
         }
         .mlb-subnav-pro {
           font-family: 'Red Hat Display', sans-serif;

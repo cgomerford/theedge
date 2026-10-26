@@ -37,10 +37,11 @@ const MLB_SUB_LINKS = [
   { href: '/mlb',              label: 'Home',           pro: false },
   { href: '/mlb/scores',       label: 'Scores',         pro: false },
   { href: '/mlb/stats',        label: 'Stats',          pro: false },
-  { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
+  { href: '/mlb/lab/pitching-lab', label: 'Pitching Lab',   pro: false },
   { href: '/mlb/lab/batting-lab',  label: 'Batting Lab' },
   { href: '/mlb/lab/contact',      label: 'Contact Lab',     pro: false },
   { href: '/mlb/lab/platoon',      label: 'Platoon Lab',     pro: false },
+  { href: '/mlb/glossary',     label: 'Glossary',       pro: false },
 ]
 
 // ─── About / More Data ────────────────────────────────────────────────────────
