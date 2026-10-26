@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
-import { getLast7DaysPitcherWorkloadFromDB, type Last7DaysWorkload } from '@/lib/pitcher-workload'
+import { getLast7DaysPitcherWorkloadFromDB, getLast7DaysPitcherWorkload, type Last7DaysWorkload } from '@/lib/pitcher-workload'
 import { filterOutStarters } from '@/lib/bullpen-usage'
 import { getProjectedLineup, type ProjectedLineup } from '@/lib/lineups'
 
@@ -119,7 +119,11 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
 // ── Bullpen ────────────────────────────────────────────────────────────────
 export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number }
 export async function getBullpenRecent(teamId: number, starterIds: number[], anchorDate: string, days: 3 | 7): Promise<{ dates: string[]; rows: BullpenRow[] }> {
-  const w: Last7DaysWorkload = await getLast7DaysPitcherWorkloadFromDB(teamId, undefined, anchorDate)
+  let w: Last7DaysWorkload = await getLast7DaysPitcherWorkloadFromDB(teamId, undefined, anchorDate)
+  // The stored daily table is filled by the regular-season cron and has no postseason days; read the games' own play-by-play (cached 30 min) when it has nothing for this window.
+  if (!w.pitchers.some(p => w.dates.slice(-days).some(d => (p.byDate[d] ?? 0) > 0))) {
+    w = await getLast7DaysPitcherWorkload(teamId, undefined, anchorDate).catch(e => { console.error('[getBullpenRecent] live workload failed:', e instanceof Error ? e.message : e); return w })
+  }
   const dates = w.dates.slice(-days)
   const skip = new Set(starterIds)
   const recent = w.pitchers.filter(p => !skip.has(p.playerId) && dates.some(d => (p.byDate[d] ?? 0) > 0))

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Headshot, TeamMark } from '@/components/home/Logo'
 import SmallSample from '@/components/data/SmallSample'
-import ThroughDate from '@/components/data/ThroughDate'
+import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
 import PendingBlock from '@/components/data/PendingBlock'
 import SignupAsk from '@/components/signup/SignupAsk'
 import { MIN_SAMPLE } from '@/lib/min-sample'
@@ -192,7 +192,7 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
         </div>
       )}
       <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>
-        {through ? `Through ${through} · regular season. ` : ''}Head-to-head needs {MIN_SAMPLE.h2hPA}+ PA; under that we show n and you read the pitch-mix columns (xwOBA against that pitch from any pitcher). Under {MIN_SAMPLE.batterPercentilePA} PA = Small sample.
+        {formatThrough(through) ? `Through ${formatThrough(through)} · regular season. ` : ''}Head-to-head needs {MIN_SAMPLE.h2hPA}+ PA; under that we show n and you read the pitch-mix columns (xwOBA against that pitch from any pitcher). Under {MIN_SAMPLE.batterPercentilePA} PA = Small sample.
       </div>
     </section>
   )
