@@ -41,3 +41,5 @@ fetch	src/components/pro/UpgradePrompt.tsx
 fetch	src/components/pro/OpenLookButton.tsx
 fetch	src/components/mlb-home/GamesDashboard.tsx
 fetch	src/lib/mlb-home-dashboard.ts
+fetch	src/components/header/useAccount.ts
+fetch	src/components/stats/LeaderboardTable.tsx
