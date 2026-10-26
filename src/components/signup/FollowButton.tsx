@@ -59,7 +59,7 @@ export default function FollowButton({ kind, refId, name, signedIn, following: i
       aria-pressed={signedIn ? following : undefined}
       style={{ padding: '8px 16px', fontSize: 14, fontWeight: 800, borderRadius: 2, cursor: 'pointer', border: '1px solid currentColor', background: following ? 'currentColor' : 'transparent', color: 'inherit' }}
     >
-      <span style={{ color: following ? 'var(--follow-on, #FAF8F3)' : 'inherit', mixBlendMode: 'normal' }}>{following ? 'Following' : 'Follow'}</span>
+      <span style={{ color: following ? 'var(--follow-on, #FAF8F3)' : 'inherit', mixBlendMode: 'normal' }}>{following ? 'Following' : '+ Follow'}</span>
     </button>
   )
 }

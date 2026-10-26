@@ -177,7 +177,25 @@ export function ZonesShell() {
 }
 
 export function Percentiles({ o }: { o: PlayerOverview }) {
-  if (!o.isPitcher) return <PendingBlock label="Batter percentiles" />
+  if (!o.isPitcher) {
+    if (!o.batterPercentiles.length) return <PendingBlock label="Percentile ranks (he is outside the league's top 500 in these stats)" />
+    const smallB = o.lineN < MIN_SAMPLE.batterPercentilePA
+    return (
+      <>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {o.batterPercentiles.map(s => (
+            <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 92px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
+              <span style={{ fontWeight: 700 }}>{s.label}</span>
+              <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: '#1A1A1A', width: `${s.percentile}%` }} /></span>
+              <span style={{ textAlign: 'right' }}><b>{s.value}</b>{smallB ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>{s.percentile}th</span></span>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right = 100th percentile (best). n {o.lineN.toLocaleString('en-US')} PA; ranked among the league&apos;s top 500 in each stat.</div>
+        {smallB ? <Note text={`under ${MIN_SAMPLE.batterPercentilePA} plate appearances`} /> : null}
+      </>
+    )
+  }
   const p = o.percentiles
   if (!p || !p.qualified) return <PendingBlock label="Percentile ranks" />
   const small = o.lineN < MIN_SAMPLE.pitcherPercentileBF
@@ -217,6 +235,46 @@ export function Splits({ o }: { o: PlayerOverview }) {
         r.label, ...cols.map(([, k]) => <span key={k}>{rate(r.stat[k])}{r.n < MIN_SAMPLE.splitPA ? <Star /> : null}</span>), r.n.toLocaleString('en-US'),
       ])} />
       {o.splits.some(r => r.n < MIN_SAMPLE.splitPA) ? <Note text={`under ${MIN_SAMPLE.splitPA} ${o.isPitcher ? 'batters faced' : 'plate appearances'}`} /> : null}
+    </>
+  )
+}
+
+/** A clear pointer from the player page to the lab for a deeper view. Two-way players get both. */
+export function GoDeeper({ data, current }: { data: PlayerPageData; current?: 'player' | 'batting' | 'pitching' }) {
+  const id = data.identity.id
+  const bat = { href: `/mlb/lab/batting-lab/${id}`, label: 'Batting Lab', note: 'swing, contact, zones, pitch types, head-to-head' }
+  const pit = { href: `/mlb/lab/pitching-lab/${id}`, label: 'Pitching Lab', note: 'arsenal, location, shape, sequencing, head-to-head' }
+  const links = data.identity.isPitcher ? [pit] : [bat]
+  if (data.identity.primaryPosition.abbreviation === 'TWP' || (data.yearByYearHitting.length > 0 && data.yearByYearPitching.length > 0)) { if (!links.includes(bat)) links.push(bat); if (!links.includes(pit)) links.push(pit) }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 18px', padding: '10px 0', borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}`, fontSize: 14 }}>
+      <b>{current === 'player' || !current ? 'Go deeper' : 'More on this player'}:</b>
+      {links.map(l => (
+        <span key={l.href}><Link href={l.href} style={{ color: '#FF5722', fontWeight: 800 }}>{l.label} →</Link> <span style={{ color: MUTE }}>{l.note}</span></span>
+      ))}
+      {current && current !== 'player' ? <Link href={`/mlb/players/${id}`} style={{ color: '#FF5722', fontWeight: 800 }}>Player page →</Link> : null}
+    </div>
+  )
+}
+
+/** The shared body: main column + right rail. Zones (the gate) are passed in by the player page; the lab overview leaves them to the lab tabs. */
+export function OverviewBody({ o, data }: { o: PlayerOverview; data: PlayerPageData }) {
+  return (
+    <>
+      <style>{`.pl-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0 48px;align-items:start}.pl-rail{border-left:1px solid #e7e2d8;padding-left:32px}@media (max-width:1000px){.pl-layout{grid-template-columns:minmax(0,1fr)}.pl-rail{border-left:0;padding-left:0}}`}</style>
+      <div className="pl-layout">
+        <div style={{ minWidth: 0 }}>
+          <Section title="Last 5 games"><LastFive o={o} /></Section>
+          <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={o} /></Section>
+          <Section title="Career"><CareerTable o={o} data={data} /></Section>
+        </div>
+        <aside className="pl-rail" aria-label="Season summary">
+          <Section title={`${o.season} season`}><SeasonReadout o={o} /></Section>
+          <Section title="Percentiles"><Percentiles o={o} /></Section>
+          <Section title="What changed" sub="Last 30 days against the season"><WhatChanged o={o} /></Section>
+          <Section title="Splits"><Splits o={o} /></Section>
+        </aside>
+      </div>
     </>
   )
 }
