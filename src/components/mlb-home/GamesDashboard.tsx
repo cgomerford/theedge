@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { useEffect, useMemo, useState } from 'react'
 import { TeamMark, Headshot } from '@/components/home/Logo'
 import { pitchColor } from '@/lib/lab/pitch-meta'
@@ -46,7 +47,7 @@ function useLive(initial: DashGame[], date: string) {
   return live
 }
 
-function Mix({ s }: { s: NonNullable<DashStarter> }) {
+function Mix({ s, animated }: { s: NonNullable<DashStarter>; animated: boolean }) {
   const shown = s.mix.filter(m => m.pct >= 5)
   if (shown.length === 0) return null
   return (
@@ -57,7 +58,7 @@ function Mix({ s }: { s: NonNullable<DashStarter> }) {
       <ul style={{ listStyle: 'none', margin: '4px 0 0', padding: 0, display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 12 }}>
         {shown.map(m => (
           <li key={m.code} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span aria-hidden="true" style={{ width: 8, height: 8, background: pitchColor(m.code), display: 'inline-block' }} />
+            {animated ? <SpinBall code={m.code} spin={s.spin?.[m.code]} /> : <span aria-hidden="true" style={{ width: 8, height: 8, background: pitchColor(m.code), display: 'inline-block' }} />}
             {m.code} {m.label} <span style={{ fontVariantNumeric: 'tabular-nums', color: MUTED }}>{Math.round(m.pct)}%</span>
           </li>
         ))}
@@ -87,7 +88,7 @@ function Starter({ s, compact }: { s: DashStarter; compact: boolean }) {
           <div style={{ fontSize: 12, color: MUTED }}>xwOBA allowed</div>
         </div>
       </div>
-      <Mix s={s} />
+      <Mix s={s} animated={!compact} />
       <div style={{ fontSize: 12, color: MUTED }}>
         {s.through ? `Through ${new Date(`${s.through}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}` : ''}{s.bf != null ? ` · n = ${s.bf.toLocaleString('en-US')} BF` : ''}
         {bfSmall && <> · <SmallSample n={s.bf} /></>}
@@ -189,6 +190,7 @@ export default function GamesDashboard({ season, date, games, tightest, next }: 
 
   return (
     <section aria-label="Today's games">
+      <SpinBallStyles />
       <style>{`
         .dc-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
         .dc-starters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 28px}

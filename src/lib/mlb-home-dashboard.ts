@@ -6,7 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
-import { getBattersFaced } from '@/lib/mlb-homepage'
+import { getBattersFaced, getSpinByPitch } from '@/lib/mlb-homepage'
 import { slugifyGame, type MLBGame } from '@/lib/mlb'
 import { PITCH_NAME } from '@/lib/lab/pitch-meta'
 import { MIN_SAMPLE } from '@/lib/min-sample'
@@ -78,6 +78,7 @@ export type DashStarter = {
   era: number | null; w: number | null; l: number | null; ip: string | null; k: number | null; postseason: boolean
   xwoba: number | null; bf: number | null; through: string | null
   mix: { code: string; label: string; pct: number }[]
+  spin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>   // average spin and movement per pitch, for the turning baseballs
 } | null
 export type DashGame = {
   gamePk: number; slug: string; group: GameGroup
@@ -124,11 +125,12 @@ async function starter(id: number, name: string, season: number, postseason: boo
   if (!used?.s) used = await stat('R')
   const s = used?.s
   const supa = createAdminClient()
-  const [arsenal, bf, ps, through] = await Promise.all([
+  const [arsenal, bf, ps, through, spin] = await Promise.all([
     getPitcherZoneArsenal(id).catch(() => ({} as Record<string, never>)),
     getBattersFaced(id),
     supa.from('pitcher_stats').select('xwoba_allowed').eq('player_id', id).eq('season', season).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', id).eq('season', season).order('updated_at', { ascending: false }).limit(1),
+    getSpinByPitch(id).catch(() => ({})),
   ])
   if (ps.error) console.error('[dash starter] pitcher_stats error:', ps.error.message)
   const all = (arsenal as any)?.all?.arsenal as Record<string, { usage_pct: number | null }> | undefined
@@ -138,7 +140,7 @@ async function starter(id: number, name: string, season: number, postseason: boo
     era: num(s?.era), w: num(s?.wins), l: num(s?.losses), ip: s?.inningsPitched ?? null, k: num(s?.strikeOuts), postseason: isPost,
     xwoba: num((ps.data?.[0] as { xwoba_allowed?: unknown } | undefined)?.xwoba_allowed), bf,
     through: (through.data?.[0] as { updated_at?: string } | undefined)?.updated_at?.slice(0, 10) ?? null,
-    mix,
+    mix, spin,
   }
 }
 
