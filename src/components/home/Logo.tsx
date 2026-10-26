@@ -1,4 +1,4 @@
-import { headshotUrl } from '@/lib/mlb-assets'
+import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import { teamLogoUrl } from '@/lib/mlb'
 import TeamChip from '@/components/ui/TeamChip'
 
@@ -13,13 +13,11 @@ export function TeamMark({ id, abbr, size = 24 }: { id: number; abbr: string; si
   )
 }
 
-// Round player photo. The league's photo has the head close to the top edge, so a plain circle crop cuts the cap off:
-// the picture is kept anchored to its top, scaled down and lowered a little, on the photo's own grey, so the whole head shows.
+// Floating player portrait: the league's transparent cut-out (head and shoulders, no background, no frame), so the head is never
+// cropped. It sits on the page with nothing around it. Falls back to nothing if the picture is missing.
 export function Headshot({ id, name, size = 40 }: { id: number; name: string; size?: number }) {
   return (
-    <span style={{ display: 'inline-block', width: size, height: size, minWidth: size, minHeight: size, borderRadius: '50%', overflow: 'hidden', background: '#a9abae', border: '1px solid #e7e2d8', flexShrink: 0, boxSizing: 'border-box', lineHeight: 0 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={headshotUrl(id, size * 2)} alt={name} width={size} height={size} style={{ width: '100%', height: '100%', maxWidth: 'none', objectFit: 'cover', objectPosition: 'center top', transform: 'translateY(16%) scale(0.78)', transformOrigin: 'center top', display: 'block' }} />
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={headshotCutoutUrl(id)} alt={name} width={size} height={size} style={{ width: size, height: size, minWidth: size, maxWidth: 'none', objectFit: 'contain', objectPosition: 'center bottom', flexShrink: 0, display: 'block' }} />
   )
 }
