@@ -59,7 +59,7 @@ export default function FeaturedScout({ data }: { data: Featured }) {
   const color = s.teamColor ?? '#8a8275'
 
   return (
-    <section aria-labelledby="featured-h" className="hm-hero" style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${INK}`, borderRadius: 18, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: `radial-gradient(circle at 88% 12%, ${color}38 0%, transparent 52%), linear-gradient(165deg, ${color}1f 0%, #ffffff 62%)` }}>
+    <section aria-labelledby="featured-h" className="hm-hero" style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${INK}`, borderRadius: 2, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: `radial-gradient(circle at 88% 12%, ${color}38 0%, transparent 52%), linear-gradient(165deg, ${color}1f 0%, #ffffff 62%)` }}>
       {/* floating cutout portrait over the club's initials, top right */}
       <div aria-hidden="true" className="hm-figure">
         <span className="hm-figure-abbr" style={{ color: `${color}26` }}>{s.teamAbbr}</span>
@@ -146,7 +146,7 @@ export default function FeaturedScout({ data }: { data: Featured }) {
 
       <Link
         href={`/mlb/${data.slug}/${data.isFinal ? 'postgame' : 'scout-report'}`}
-        style={{ display: 'inline-block', marginTop: 20, background: '#FF5722', color: '#fff', fontWeight: 800, fontSize: 15, padding: '11px 18px', borderRadius: 8, textDecoration: 'none' }}
+        style={{ display: 'inline-block', marginTop: 20, background: '#FF5722', color: '#fff', fontWeight: 800, fontSize: 15, padding: '11px 18px', borderRadius: 2, textDecoration: 'none' }}
       >
         {data.isFinal ? 'Read the postgame report' : 'Read the scout report'} →
       </Link>

@@ -14,7 +14,7 @@ function Card({ g }: { g: StripGame }) {
   return (
     <Link
       href={`/mlb/${g.slug}${g.state === 'final' ? '/postgame' : ''}`}
-      style={{ flex: '0 0 auto', width: 208, boxSizing: 'border-box', borderTop: `4px solid ${bar}`, border: '1px solid #e7e2d8', borderTopWidth: 4, borderTopColor: bar, borderRadius: 14, padding: '10px 14px 12px', background: '#fff', color: '#1A1A1A', textDecoration: 'none', display: 'grid', gap: 4 }}
+      style={{ flex: '0 0 auto', width: 208, boxSizing: 'border-box', borderTop: `4px solid ${bar}`, border: '1px solid #e7e2d8', borderTopWidth: 4, borderTopColor: bar, borderRadius: 2, padding: '10px 14px 12px', background: '#fff', color: '#1A1A1A', textDecoration: 'none', display: 'grid', gap: 4 }}
     >
       <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 800 }}>
         <span>{g.label ?? ''}</span>

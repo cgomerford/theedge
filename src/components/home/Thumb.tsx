@@ -6,7 +6,7 @@ import { useState } from 'react'
 // row never looks broken.
 export default function Thumb({ src, size = 56 }: { src?: string | null; size?: number }) {
   const [failed, setFailed] = useState(false)
-  const box: React.CSSProperties = { width: size, height: size, flexShrink: 0, borderRadius: 8, background: '#f1eee6', border: '1px solid #e7e2d8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }
+  const box: React.CSSProperties = { width: size, height: size, flexShrink: 0, borderRadius: 2, background: '#f1eee6', border: '1px solid #e7e2d8', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }
   if (!src || failed) {
     return (
       <span aria-hidden="true" style={box}>

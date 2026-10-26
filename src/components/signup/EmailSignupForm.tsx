@@ -84,7 +84,7 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus, co
         style={{ width: compact ? undefined : '100%', flex: compact ? '1 1 220px' : undefined, minWidth: 0, boxSizing: 'border-box', padding: '12px 14px', background: '#fff', border: '1px solid #1A1A1A', borderRadius: 2, fontSize: 16, color: '#1A1A1A', outline: 'none' }}
       />
 
-      <div style={compact ? { order: 3, flexBasis: '100%' } : undefined}><TurnstileWidget theme="light" className={compact ? 'my-0' : 'my-3'} /></div>
+      <div style={compact ? { order: 3, flexBasis: '100%' } : undefined}><TurnstileWidget theme="light" appearance={compact ? 'interaction-only' : 'always'} className={compact ? 'my-0' : 'my-3'} /></div>
 
       <button
         type="submit"

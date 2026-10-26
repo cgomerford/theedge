@@ -20,9 +20,11 @@ type Props = {
   className?: string
   /** Theme: 'dark' matches the site's dark background, 'light' for light forms */
   theme?: 'light' | 'dark' | 'auto'
+  /** 'interaction-only' hides the widget unless Cloudflare needs the visitor to do something (used by one-row forms) */
+  appearance?: 'always' | 'interaction-only'
 }
 
-export default function TurnstileWidget({ className = 'my-3', theme = 'dark' }: Props) {
+export default function TurnstileWidget({ className = 'my-3', theme = 'dark', appearance = 'always' }: Props) {
   const widgetRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
 
@@ -39,7 +41,7 @@ export default function TurnstileWidget({ className = 'my-3', theme = 'dark' }: 
       widgetIdRef.current = window.turnstile.render(widgetRef.current, {
         sitekey: siteKey,
         theme,
-        appearance: 'always',
+        appearance,
       })
     }
 

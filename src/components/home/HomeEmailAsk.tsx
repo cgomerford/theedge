@@ -6,7 +6,7 @@ export const HOME_EMAIL_LINE = 'One email before first pitch on game days: start
 
 export default function HomeEmailAsk() {
   return (
-    <div className="hm-ask" style={{ border: '2px solid #FF5722', borderRadius: 14, padding: '16px 20px', margin: '0 0 24px', background: '#fff' }}>
+    <div className="hm-ask" style={{ border: '2px solid #FF5722', borderRadius: 2, padding: '16px 20px', margin: '0 0 24px', background: '#fff' }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em' }}>{HOME_EMAIL_TITLE}</div>
         <div style={{ fontSize: 13, color: '#5b5347', marginTop: 2, lineHeight: 1.4 }}>{HOME_EMAIL_LINE}</div>
