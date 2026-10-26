@@ -8,10 +8,11 @@
 import ProGate from '@/components/pro/ProGate'
 import { ArsenalZonesPreview } from '@/components/pro/previews'
 
-export default function ProBattingTabs({ children }: { children: React.ReactNode }) {
+export default async function ProBattingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
+  const { playerId } = await params
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <ProGate feature="Zones and arsenal detail" source="batting_lab" preview={<ArsenalZonesPreview />}>
+      <ProGate feature="Zones and arsenal detail" source="batting_lab" lookKey={playerId} preview={<ArsenalZonesPreview />}>
         {children}
       </ProGate>
     </div>

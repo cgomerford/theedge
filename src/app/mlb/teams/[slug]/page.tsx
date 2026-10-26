@@ -27,6 +27,7 @@ import { pageMeta, noindex } from '@/lib/seo'
 import { fitDescription } from '@/lib/game-slug'
 import { SportsTeamSchema, BreadcrumbSchema } from '@/components/StructuredData'
 import { devPro } from '@/lib/dev-pro'
+import { resolveViewer } from '@/lib/gate'
 
 // Reading the subscriber session makes this route dynamic (per-request), like the
 // Scout Report page. That is what lets the Pro "expand" panels be gated for real.
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!team) return { title: 'Team not found', ...noindex() }
   const description = fitDescription(
     `${team.name} 2026: how the season has gone, rotation and bullpen ranks among the 30 clubs, pitch mix, offense, defense, roster and schedule, with the sample size beside each number.`,
-    ['Free daily email.'],
+    ['Free account.'],
   )
   return pageMeta({ title: `${team.name} 2026`, description, path: `/mlb/teams/${slug}` })
 }
@@ -59,6 +60,8 @@ export default async function TeamRoute({ params, searchParams }: Props) {
   // deployed build, so real visitors are gated by is_pro alone.
   const subscriber = await getCurrentSubscriber()
   const isPro = (subscriber?.is_pro ?? false) || devPro(sp.pro)
+  // The team page's one gate (pitch quality by type): a free account may spend today's deep look on it.
+  const gate = isPro ? { tier: 'pro' as const } : await resolveViewer('team_arsenal', slug)
 
   const season = new Date().getFullYear()
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
@@ -91,7 +94,7 @@ export default async function TeamRoute({ params, searchParams }: Props) {
         season={season}
         todayET={todayET}
         isPro={isPro}
-        viewerTier={isPro ? 'pro' : subscriber ? 'member' : 'anon'}
+        viewerTier={gate.tier}
         nextGame={nextGame}
         schedule={schedule}
         news={news}

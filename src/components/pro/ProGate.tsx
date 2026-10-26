@@ -1,17 +1,13 @@
-import { getViewerTier } from '@/lib/require-pro'
+import { resolveViewer } from '@/lib/gate'
 import { ProGateView } from './ProGateView'
 
-// The ONE Pro gate a page may carry. Server component: the Pro check happens here, and for anyone without Pro the
-// children are never rendered, so Pro data is never in their HTML (callers must also not FETCH Pro data unless
-// the viewer is Pro; pass the heavy node as children, built lazily inside this tree).
-//
-//   pro     -> children
-//   member  -> preview, then one plain row: the Pro line, the price, and the unlock button (goes to Stripe checkout)
-//   anon    -> preview, then "Create a free account" (opens the signup form with `source`). No price.
-//
-// `preview` is the real component with its real labels and blank values. No fake chart, no fade to nothing.
+// The ONE Pro gate a page may carry (server component). It checks the viewer, spends the free deep look when it is used, and
+// for anyone without access never renders the children, so Pro data is not in their HTML (callers must not FETCH it either:
+// build heavy children inside this tree). `lookKey` identifies the module (for example a player id) so re-opening it
+// the same day costs nothing.
 
-export default async function ProGate(props: { feature: string; source: string; preview: React.ReactNode; children?: React.ReactNode }) {
-  const tier = await getViewerTier()
-  return <ProGateView tier={tier} {...props} />
+export default async function ProGate(props: { feature: string; source: string; lookKey: string; preview: React.ReactNode; children?: React.ReactNode }) {
+  const { lookKey, ...rest } = props
+  const { tier, freeLook } = await resolveViewer(rest.source, lookKey)
+  return <ProGateView tier={tier} freeLook={freeLook} {...rest} />
 }

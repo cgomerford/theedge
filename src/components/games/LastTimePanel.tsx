@@ -22,6 +22,7 @@ import type { PitchMatchResult } from '@/lib/pitch-match'
 import { BASE_CHIP, CURRENT_SEASON, MATCH_LEVELS, describeDeep, hitFromRef, type DeepFilters, type Who } from '@/lib/stats-query-catalog'
 import { MLB_TEAMS } from '@/lib/teams'
 import { baseText, ord, zoneWords } from '@/components/games/gamesUi'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
 
 type Mode = 'pitch' | 'contact' | 'ab'
 type Scope = 'batter' | 'pitcher' | 'club' | 'lineup' | 'anyone'
@@ -169,7 +170,7 @@ export default function LastTimePanel({ game, play, pitch, isPro }: { game: ExGa
   const heading = past ? 'When had this happened before?' : 'When did this last happen?'
   const subject = mode === 'pitch' && pitch ? `pitch ${pitch.n}` : mode === 'contact' ? 'the batted ball' : 'this plate appearance'
 
-  if (!isPro) return null
+  if (!isPro) return <UpgradePrompt source="last_time" line="Find the last time something like this happened" />
 
   const toggles: { k: keyof typeof on; label: string; off?: boolean }[] = [
     { k: 'outs', label: `${play.outs} out${play.outs === 1 ? '' : 's'}` },

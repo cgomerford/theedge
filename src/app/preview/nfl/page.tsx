@@ -41,7 +41,7 @@ export default function NFLPreviewPage() {
             This is a preview of what NFL coverage on x9Lab will look like.
             The data below is illustrative — real game analysis goes live when NFL season opens.{' '}
             <Link href="/#signup" className="text-orange-600 hover:underline font-semibold">
-              Sign up free to get notified.
+              Create a free account and we'll tell you when it opens.
             </Link>
           </p>
         </div>
@@ -280,7 +280,7 @@ export default function NFLPreviewPage() {
             Be first in the door.
           </h2>
           <p className="text-stone-400 font-serif mb-6 leading-relaxed">
-            NFL analysis drops when the season opens. Sign up free and we&apos;ll notify you the moment it goes live.
+            NFL analysis drops when the season opens. Create a free account and we&apos;ll tell you when it goes live.
             MLB coverage is available right now.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -288,7 +288,7 @@ export default function NFLPreviewPage() {
               href="/#signup"
               className="text-center bg-yellow-300 text-stone-900 font-mono text-xs uppercase tracking-widest px-6 py-3 hover:bg-yellow-200 transition font-bold"
             >
-              Sign up free →
+              Create account
             </Link>
             <Link
               href="/"

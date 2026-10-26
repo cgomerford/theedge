@@ -10,7 +10,7 @@ const LINKS: { href: string; label: string }[] = [
   { href: '/mlb/glossary', label: 'Glossary' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
-  { href: signupHref('footer_signup'), label: 'Free daily email' },
+  { href: signupHref('footer_signup'), label: 'Create a free account' },
 ]
 
 // Rendered once from the root layout. Server component; HideOnPaths only decides visibility.

@@ -22,6 +22,7 @@ import { PV_CSS } from './pvCss'
 import { GOLD } from './monthStats'
 import { hexToRgb, makeGrid, stats, type Grid, type Span } from './heatGrid'
 import LocationPanel from './LocationPanel'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
 
 const MIN_WINDOW_SWINGS = 40
 const SPOT_MIN_SWINGS = 200      // a "most effective spot" needs a real sample, more than a blank-or-not map box
@@ -50,7 +51,7 @@ function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4): Spot[] {
   return out
 }
 
-export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pitchTypes: string[] }) {
+export default function PitchFinder({ isPro, lookLeft = false, pitchTypes }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[] }) {
   const isFree = (t: string) => (FREE_SANDBOX_TYPES as readonly string[]).includes(t)
   const [type, setType] = useState(pitchTypes.find(isFree) ?? pitchTypes[0] ?? 'FF')
   const [hand, setHand] = useState<Hand>('R')
@@ -64,7 +65,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
   const [throwers, setThrowers] = useState<Thrower[] | null | undefined>(null)
   const [sort, setSort] = useState<Sort>('most')
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const locked = !isPro && !isFree(type)
+  const locked = !isPro && !lookLeft && !isFree(type)
 
   useEffect(() => {
     setTarget(null); setThrowers(null)
@@ -172,7 +173,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
       <div className="pv-row" style={{ marginTop: 0 }}>
         <span className="pv-k">Pitch</span>
         {pitchTypes.map(t => {
-          const lockedT = !isPro && !isFree(t)
+          const lockedT = !isPro && !lookLeft && !isFree(t)
           return <button key={t} type="button" disabled={lockedT} className={`pv-pill${t === type ? ' on' : ''}`} style={lockedT ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => setType(t)}>{PITCH_NAMES[t] ?? t}{lockedT ? ' · Pro' : ''}</button>
         })}
         <span className="pv-k" style={{ marginLeft: 10 }}>Thrown by</span>
@@ -190,7 +191,7 @@ export default function PitchFinder({ isPro, pitchTypes }: { isPro: boolean; pit
         {RADII.map(r => <button key={r} type="button" className={`pv-pill${radius === r ? ' on' : ''}`} onClick={() => setRadius(r)}>±{r} in</button>)}
       </div>
 
-      {locked ? <Empty>The {lc} map is part of Pro. Four-seam and sweeper are free.</Empty>
+      {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
         : payload === null || !grid ? <Empty>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</Empty>
         : (

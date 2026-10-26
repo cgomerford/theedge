@@ -2,10 +2,10 @@
 
 import { useRef, useState } from 'react'
 import TurnstileWidget from '@/components/TurnstileWidget'
-import { SIGNUP_BUTTON, SIGNUP_NOTE } from './copy'
+import { SIGNUP_BUTTON, SIGNUP_NOTE, SIGNUP_SENT } from './copy'
 
 // Email-only signup. Posts to /api/auth/login (the existing magic-link route) and asks for JSON so the form can swap to
-// "Check your inbox" in place. Without JavaScript the same form still works as a normal POST (the route redirects).
+// "Check your email" in place. Without JavaScript the same form still works as a normal POST (the route redirects).
 // The source (and utm_* / return_to when present) travels as hidden fields and is saved on the subscriber.
 
 type Props = {
@@ -59,7 +59,7 @@ export default function EmailSignupForm({ source, returnTo, extra, autoFocus, co
   if (state === 'sent') {
     return (
       <div role="status" aria-live="polite">
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A' }}>Check your inbox</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1A1A' }}>{SIGNUP_SENT}</div>
         <div style={{ marginTop: 6, fontSize: 16, color: '#1A1A1A', wordBreak: 'break-all' }}>{sentTo}</div>
       </div>
     )

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     for (const [k, v] of Object.entries(attribution)) params.set(k, v)
     return `/signup?${params}`
   }
-  // The pop-up form asks for JSON so it can swap to "Check your inbox" without leaving the page.
+  // The pop-up form asks for JSON so it can swap to "Check your email" without leaving the page.
   const reply = (query: string) => {
     if (!wantsJson) return NextResponse.redirect(new URL(back(query), req.url), { status: 303 })
     const q = new URLSearchParams(query)

@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import EmailSignupForm from '@/components/signup/EmailSignupForm'
-import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER } from '@/components/signup/copy'
+import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER, SIGNUP_SENT, SIGNUP_SUBHEAD } from '@/components/signup/copy'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { ATTRIBUTION_KEYS, readAttribution, safeReturnPath } from '@/lib/attribution'
 import { noindex } from '@/lib/seo'
@@ -61,9 +61,10 @@ export default async function SignupPage({ searchParams }: Props) {
         <div className="su-grid">
           <div>
             <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.14em', color: '#FF5722' }}>{SIGNUP_KICKER}</div>
-            <h1 style={{ margin: '12px 0 24px', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: '12px 0 8px', fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
               {SIGNUP_HEADLINE}
             </h1>
+            <p style={{ margin: '0 0 20px', fontSize: 17, color: '#5b5347' }}>{SIGNUP_SUBHEAD}</p>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {SIGNUP_BENEFITS.map(b => (
                 <li key={b} style={{ padding: '12px 0', borderTop: '1px solid #e7e2d8', fontSize: 17 }}>{b}</li>
@@ -74,7 +75,7 @@ export default async function SignupPage({ searchParams }: Props) {
           <div>
             {sent ? (
               <div role="status">
-                <div style={{ fontSize: 22, fontWeight: 800 }}>Check your inbox</div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>{SIGNUP_SENT}</div>
               </div>
             ) : (
               <>

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
+import { allowDeepLookFor } from '@/lib/gate'
 import { getMovementCells } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
 
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
   // A pitcher's own tab is always Pro; the league-wide map is free only for the free sandbox types.
   const free = league && (FREE_SANDBOX_TYPES as readonly string[]).includes(type)
-  if (!free && !(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+  if (!free && !(await isProViewer()) && !(await allowDeepLookFor('pitch_shape', type))) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   const payload = await getMovementCells(type, hand as Hand, hb, ivb, half)
   return NextResponse.json({ payload })
 }

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
+import { allowDeepLookFor } from '@/lib/gate'
 import { getLocationWindow } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Bad type, hand, hb, ivb or radius' }, { status: 400 })
   }
   const free = sp.get('scope') === 'league' && (FREE_SANDBOX_TYPES as readonly string[]).includes(type)
-  if (!free && !(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+  if (!free && !(await isProViewer()) && !(await allowDeepLookFor('pitch_shape', type))) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   const payload = await getLocationWindow(type, hand as Hand, hb, ivb, radius)
   return NextResponse.json({ payload })
 }

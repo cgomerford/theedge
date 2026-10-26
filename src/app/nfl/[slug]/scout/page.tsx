@@ -78,7 +78,7 @@ export default async function NflScoutPage({ params, searchParams }: Props) {
             <div style={{ marginTop: 28, maxWidth: 760 }}>
               <Card title="Free with signup">
                 <div style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.01em', color: C.ink }}>The operating brief for this game.</div>
-                <p style={{ fontSize: 14.5, color: '#5b5347', lineHeight: 1.55, margin: '8px 0 14px' }}>Sign up free to open the Scout Report. Here is what is inside:</p>
+                <p style={{ fontSize: 14.5, color: '#5b5347', lineHeight: 1.55, margin: '8px 0 14px' }}>Create a free account to open the Scout Report. Here is what is inside:</p>
                 <ul style={{ margin: '0 0 16px', padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
                   {['Availability desk with next-man-up arrows', 'Form trends: EPA game by game, with the plays behind each number', 'Snap and personnel shares, last 3 vs season', 'Situational football: by down and in the red zone', 'A coach card of what to watch'].map(f => (
                     <li key={f} style={{ display: 'flex', gap: 8, fontSize: 13.5 }}><span style={{ color: C.orange }}>◆</span>{f}</li>

@@ -5,7 +5,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import CookieConsent from "@/components/CookieConsent";
 import BottomNav from '@/components/BottomNav'
 import SiteFooter from '@/components/SiteFooter'
-import EmailSignupModal from '@/components/signup/EmailSignupModal'
+import SignupModal from '@/components/signup/SignupModal'
 import { SiteSchema } from '@/components/StructuredData'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
 
@@ -32,7 +32,7 @@ const redhat = Red_Hat_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'x9Lab: MLB game previews in plain numbers', template: `%s · ${SITE_NAME}` },
-  description: 'Free MLB game previews: starting pitchers, lineups, bullpens and Statcast pitch data in plain numbers, with the sample size shown. Free daily email.',
+  description: 'Front-office-style breakdowns for fans. Built on public game data.',
   openGraph: { siteName: SITE_NAME, type: 'website', url: SITE_URL },
   twitter: { card: 'summary_large_image' },
   // og:image comes from src/app/opengraph-image.tsx (our own image).
@@ -47,7 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {children}
         <SiteFooter />
         <BottomNav />
-        <EmailSignupModal />
+        <SignupModal />
         <CookieConsent />
       </body>
     </html>

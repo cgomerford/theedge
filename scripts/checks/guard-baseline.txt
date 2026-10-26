@@ -37,3 +37,4 @@ fetch	src/components/signup/FollowButton.tsx
 fetch	src/components/pro/ProCheckoutButton.tsx
 fetch	src/components/pro/ManageSubscriptionButton.tsx
 fetch	src/components/home/HomeAskOrFollows.tsx
+fetch	src/components/pro/UpgradePrompt.tsx

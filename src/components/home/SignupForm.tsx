@@ -11,7 +11,7 @@ type Props = {
 export default function SignupForm({
   source,
   id,
-  buttonLabel = 'Get free access →',
+  buttonLabel = 'Create account',
   layout = 'inline',
   className = '',
 }: Props) {

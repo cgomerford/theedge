@@ -21,7 +21,7 @@ export const revalidate = 600
 
 const TITLE = 'x9Lab: MLB game previews in plain numbers'
 const DESCRIPTION =
-  'Starting pitchers, bullpen workload and Statcast pitch data for every MLB game, in plain numbers with the sample size beside each stat. Free daily email.'
+  'Starting pitchers, bullpen workload and Statcast pitch data for every MLB game, in plain numbers with the sample size beside each stat. Free account.'
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

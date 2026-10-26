@@ -22,6 +22,7 @@ import {
 import { C, SANS, MONO } from '@/components/team/ui'
 import { ProBadge } from '@/components/profile/ProPanel'
 import { CHART_TYPES, type ChartType } from '@/lib/stats-query-catalog'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
 
 // ── styles ──────────────────────────────────────────────────────────────
 
@@ -112,8 +113,13 @@ export function Chip({ on, onClick, children, title, solid = false }: { on: bool
 
 // ── Pro lock + exports ──────────────────────────────────────────────────
 
-export function ProLockBar(_props: { features: string[] }) {
-  return null
+export function ProLockBar({ features }: { features: string[] }) {
+  return (
+    <div data-noexport="1">
+      <span style={{ display: 'block', fontSize: 13, color: '#5b5347', marginBottom: 6 }}>{features.join(' · ')}</span>
+      <UpgradePrompt source="stats" />
+    </div>
+  )
 }
 
 const smallBtn: React.CSSProperties = {

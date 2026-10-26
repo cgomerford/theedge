@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: article.title,
-    description: fitDescription(article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free daily email.', 'Read the full piece on x9Lab.']),
+    description: fitDescription(article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free account.', 'Read the full piece on x9Lab.']),
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: article.title,

@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = gameTitle(p, ' scout report')
   const description = fitDescription(
     `${p.awayName} at ${p.homeName} on ${p.dateLabel}: starting pitching, lineups and batter zones, bullpen, defense and situational splits, with the sample size beside each stat.`,
-    ['Free daily email.'],
+    ['Free account.'],
   )
   return pageMeta({ title, description, path: `/mlb/${slug}/scout-report`, type: 'article' })
 }

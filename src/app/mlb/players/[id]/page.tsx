@@ -19,6 +19,7 @@ import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
 
 import { devPro } from '@/lib/dev-pro'
+import { resolveViewer } from '@/lib/gate'
 import FollowControl from '@/components/signup/FollowControl'
 import { pageMeta, noindex } from '@/lib/seo'
 import { fitDescription } from '@/lib/game-slug'
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const team = identity.currentTeam?.name ? ` (${identity.currentTeam.name})` : ''
   const description = fitDescription(
     `${identity.fullName}${team}: season stats, recent form, career history and game log, with pitch-level views in the ${identity.isPitcher ? 'Pitching' : 'Batting'} Lab. Sample size beside every number.`,
-    ['Free daily email.'],
+    ['Free account.'],
   )
   return pageMeta({ title: `${identity.fullName} stats and pitch data`, description, path: `/mlb/players/${id}`, type: 'website' })
 }
@@ -63,6 +64,8 @@ export default async function PlayerPage({
   // visitors are gated by is_pro alone. Required prop below, never defaulted.
   const subscriber = await getCurrentSubscriber()
   const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
+  // The zones tab is the page's one gate. A free account may spend today's deep look on it (see lib/deep-look.ts).
+  const gate = isPro ? { tier: 'pro' as const, freeLook: false } : await resolveViewer('player_zones', String(playerId))
 
   return (
     <main className="min-h-screen bg-stone-50">
@@ -73,10 +76,11 @@ export default async function PlayerPage({
         data={data}
         initialSection={tab}
         isPro={isPro}
-        viewerTier={isPro ? 'pro' : subscriber ? 'member' : 'anon'}
+        viewerTier={gate.tier}
+        freeLook={gate.freeLook}
         followSlot={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />}
         // Built ONLY for Pro: a non-Pro request never queries or renders trend data.
-        trendsSlot={isPro ? (
+        trendsSlot={gate.tier === 'pro' ? (
           <Suspense fallback={<p style={{ fontSize: 13, color: '#a89e8c', fontStyle: 'italic', padding: '30px 0', textAlign: 'center' }}>Loading Statcast trends…</p>}>
             <StatcastTrendsSlot
               playerId={playerId}

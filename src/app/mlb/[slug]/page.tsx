@@ -52,6 +52,7 @@ import { getEdgePrediction } from '@/lib/edge-fetch'
 import { getCurrentSubscriber } from '@/lib/auth'
 import type { Metadata } from 'next'
 import SignupAsk from '@/components/signup/SignupAsk'
+import { resolveViewer } from '@/lib/gate'
 import type { ViewerTier } from '@/lib/require-pro-types'
 import { pageMeta, noindex } from '@/lib/seo'
 import { parseGameSlug, gameTitle, fitDescription } from '@/lib/game-slug'
@@ -87,7 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = gameTitle(p)
   const description = fitDescription(
     `${p.awayName} at ${p.homeName} on ${p.dateLabel}: probable starters, lineups, bullpen workload and pitch data in plain numbers, with the sample size beside each stat.`,
-    ['Free daily email.'],
+    ['Free account.'],
   )
   return pageMeta({ title, description, path: `/mlb/${slug}`, type: 'article' })
 }
@@ -202,7 +203,7 @@ type TeamCtx = {
   pitcherId?: number; pitcherName?: string
 }
 type GameCtx = {
-  slug: string; isPro: boolean; viewerTier: ViewerTier; gamePk: number; season: number
+  slug: string; isPro: boolean; viewerTier: ViewerTier; freeLook: boolean; gamePk: number; season: number
   gameDateApi: string; gameDateIso: string; gameTimeFormatted: string; venueName: string
   home: TeamCtx; away: TeamCtx
 }
@@ -423,6 +424,8 @@ export default async function GamePreview({ params, searchParams }: Props) {
   // Never default to true (a `?? true` here once leaked Pro to logged-out users).
   // Local testing: add ?pro=1 under `next dev` (see lib/dev-pro.ts).
   const isPro = (subscriber?.is_pro ?? false) || devPro(pro)
+  // The zone heatmaps are the page's one gate; a free account may spend today's deep look on them (lib/deep-look.ts).
+  const gate = isPro ? { tier: 'pro' as const, freeLook: false } : await resolveViewer('preview_zones', slug)
 
   let game: MLBGame | null = freshGames.find(g => slugifyGame(g) === slug) ?? null
   if (!game) {
@@ -452,7 +455,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
   const venueInfo = getVenueInfo(venueName)
 
   const ctx: GameCtx = {
-    slug, isPro, viewerTier: isPro ? 'pro' : subscriber ? 'member' : 'anon', gamePk: game.gamePk, season: new Date().getFullYear(),
+    slug, isPro, viewerTier: gate.tier, freeLook: gate.freeLook, gamePk: game.gamePk, season: new Date().getFullYear(),
     gameDateApi: game.gameDate?.split('T')[0] ?? dateMatch[1],
     gameDateIso: game.gameDate,
     gameTimeFormatted: new Date(game.gameDate).toLocaleTimeString('en-US', {
@@ -523,7 +526,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
                   <Suspense fallback={battingCardFallback}>
                     <TeamBatterCard
                       slug={slug} teamId={t.id} gameDate={ctx.gameDateApi} gamePk={ctx.gamePk}
-                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier}
+                      venueName={venueName} isPro={isPro} viewerTier={ctx.viewerTier} freeLook={ctx.freeLook}
                       opposingPitcherId={opp.pitcherId ?? null}
                       opposingPitcherName={opp.pitcherName ?? null}
                     />

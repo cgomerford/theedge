@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import EmailSignupForm from './EmailSignupForm'
 import { OPEN_SIGNUP_EVENT } from './openSignup'
-import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER } from './copy'
+import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER, SIGNUP_SUBHEAD } from './copy'
 
 // Centred dialog on desktop, sheet from the bottom on phones. Esc and the close button close it, Tab stays inside it,
 // and focus goes back to whatever opened it. Mounted once in the root layout; open it with openSignup(source).
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
 
-export default function EmailSignupModal() {
+export default function SignupModal() {
   const [source, setSource] = useState<string | null>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const openerRef = useRef<HTMLElement | null>(null)
@@ -87,6 +87,7 @@ export default function EmailSignupModal() {
         <h2 id="x9-signup-title" style={{ margin: '10px 0 14px', fontSize: 26, fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.01em', color: '#1A1A1A' }}>
           {SIGNUP_HEADLINE}
         </h2>
+        <p style={{ margin: '0 0 14px', fontSize: 15, color: '#5b5347' }}>{SIGNUP_SUBHEAD}</p>
         <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none' }}>
           {SIGNUP_BENEFITS.map(b => (
             <li key={b} style={{ padding: '8px 0', borderTop: '1px solid #e7e2d8', fontSize: 15, color: '#1A1A1A' }}>{b}</li>

@@ -21,7 +21,7 @@ import BatterSelector from './BatterSelector'
 import type { ViewerTier } from '@/lib/require-pro-types'
 
 export default async function TeamBatterCard({
-  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro, viewerTier,
+  slug, teamId, gameDate, gamePk, venueName, opposingPitcherId, opposingPitcherName, isPro, viewerTier, freeLook,
 }: {
   slug: string
   teamId: number
@@ -32,13 +32,14 @@ export default async function TeamBatterCard({
   opposingPitcherName: string | null
   isPro: boolean
   viewerTier: ViewerTier
+  freeLook?: boolean
 }) {
   const season = new Date(gameDate).getFullYear()
   const lineup = await getProjectedLineup(teamId, gameDate, gamePk)
 
   const [hotZonesList, streaks] = await Promise.all([
     // Zone heatmaps are behind the page's one ProGate: not fetched, so not sent, for anyone without Pro.
-    isPro ? Promise.all(lineup.batters.map(b => getBatterHotZones(b.player_id))) : Promise.resolve(lineup.batters.map(() => ({}) as Record<string, BatterHotZones>)),
+    viewerTier === 'pro' ? Promise.all(lineup.batters.map(b => getBatterHotZones(b.player_id))) : Promise.resolve(lineup.batters.map(() => ({}) as Record<string, BatterHotZones>)),
     getTopBatterStreaks(teamId),
   ])
 
@@ -61,6 +62,7 @@ export default async function TeamBatterCard({
       season={season}
       isPro={isPro}
       viewerTier={viewerTier}
+      freeLook={freeLook}
     />
   )
 }

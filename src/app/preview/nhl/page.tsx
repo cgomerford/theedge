@@ -42,7 +42,7 @@ export default function NHLPreviewPage() {
             This is a preview of what NHL coverage on x9Lab will look like.
             The data below is illustrative — real game analysis goes live when coverage launches.{' '}
             <Link href="/#signup" className="text-orange-600 hover:underline font-semibold">
-              Sign up free to get notified.
+              Create a free account and we'll tell you when it opens.
             </Link>
           </p>
         </div>
@@ -372,7 +372,7 @@ export default function NHLPreviewPage() {
             Be first in the door.
           </h2>
           <p className="text-stone-400 font-serif mb-6 leading-relaxed">
-            NHL analysis drops when coverage launches. Sign up free and we&apos;ll notify you the moment it goes live.
+            NHL analysis drops when coverage launches. Create a free account and we&apos;ll tell you when it goes live.
             MLB coverage is available right now.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -380,7 +380,7 @@ export default function NHLPreviewPage() {
               href="/#signup"
               className="text-center bg-yellow-300 text-stone-900 font-mono text-xs uppercase tracking-widest px-6 py-3 hover:bg-yellow-200 transition font-bold"
             >
-              Sign up free →
+              Create account
             </Link>
             <Link
               href="/"

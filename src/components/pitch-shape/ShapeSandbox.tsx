@@ -56,15 +56,16 @@ function Readout({ who, compare, hand, pitchType, L, league }: { who: 'A' | 'B';
   )
 }
 
-export default function ShapeSandbox({ isPro, pitchTypes, loadBins, searchPitchers }: {
+export default function ShapeSandbox({ isPro, lookLeft = false, pitchTypes, loadBins, searchPitchers }: {
   isPro: boolean
+  lookLeft?: boolean
   /** pitch types the league table has rows for (FF first); the UI only offers these */
   pitchTypes: string[]
   loadBins: LoadBins
   searchPitchers: SearchPitchers
 }) {
   const isFree = (t: string) => (FREE_SANDBOX_TYPES as readonly string[]).includes(t)
-  const locked = (t: string) => !isPro && !isFree(t)
+  const locked = (t: string) => !isPro && !lookLeft && !isFree(t)
 
   const [type, setType] = useState(pitchTypes[0] ?? 'FF')
   const [hand, setHand] = useState<Hand>('R')
@@ -104,7 +105,7 @@ export default function ShapeSandbox({ isPro, pitchTypes, loadBins, searchPitche
   // derived from whether the last response matches the current choice, not set inside the effect.
   const key = `${type}|${hand}`
   useEffect(() => {
-    if (!isPro && !(FREE_SANDBOX_TYPES as readonly string[]).includes(type)) return
+    if (!isPro && !lookLeft && !(FREE_SANDBOX_TYPES as readonly string[]).includes(type)) return
     let cancelled = false
     loadBins(type, hand).then(rows => {
       if (cancelled) return
@@ -202,7 +203,7 @@ export default function ShapeSandbox({ isPro, pitchTypes, loadBins, searchPitche
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
         {locked(type) ? (
           <LockedCard
-            title={`${PITCH_NAMES[type] ?? type} shapes are part of Pro`}
+            title={`${PITCH_NAMES[type] ?? type} shapes`}
             note="Free covers four-seam fastballs and sweepers. Pro opens every pitch type."
             features={['Sinker, slider, changeup, curveball and cutter neighborhoods', 'Compare two shapes side by side', 'Slot context and the full outcome profile']}
           />

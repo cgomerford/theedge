@@ -13,6 +13,8 @@ import SandboxClient from '@/components/pitch-shape/SandboxClient'
 import PitchFinder from '@/components/pitch-shape/PitchFinder'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
+import { getCurrentSubscriber } from '@/lib/auth'
+import { hasDeepLookLeft } from '@/lib/deep-look'
 import Link from 'next/link'
 import { getAvailablePitchTypes } from '@/lib/pitch-shape/data'
 import { pageMeta } from '@/lib/seo'
@@ -28,6 +30,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function ShapeSandboxPage() {
   const isPro = await isProViewer()
+  // A free account with today's deep look still unspent may open one locked pitch type (the API spends it on first use).
+  const sub = await getCurrentSubscriber()
+  const lookLeft = !isPro && !!sub && (await hasDeepLookLeft(sub.id))
   const pitchTypes = await getAvailablePitchTypes()
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
@@ -47,7 +52,7 @@ export default async function ShapeSandboxPage() {
           ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
           : (
             <>
-              <PitchFinder isPro={isPro} pitchTypes={pitchTypes} />
+              <PitchFinder isPro={isPro} lookLeft={lookLeft} pitchTypes={pitchTypes} />
               <div style={{ margin: '40px 0 10px', borderTop: '1px solid #1A1A1A', paddingTop: 14 }}>
                 <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722' }}><XMark /> 02</div>
                 <h2 style={{ margin: '2px 0 4px', fontWeight: 800, fontSize: 28, letterSpacing: '-.01em' }}>Dial in a shape</h2>
@@ -55,7 +60,7 @@ export default async function ShapeSandboxPage() {
                   Set a velocity, ride, run and arm angle and see what pitches shaped like it have produced.
                 </p>
               </div>
-              <SandboxClient isPro={isPro} pitchTypes={pitchTypes} />
+              <SandboxClient isPro={isPro} lookLeft={lookLeft} pitchTypes={pitchTypes} />
             </>
           )}
       </div>

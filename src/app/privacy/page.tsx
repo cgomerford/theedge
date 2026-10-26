@@ -35,7 +35,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-serif font-semibold mb-3">How we use it</h2>
             <p>
-              Your email is used solely to send you the daily brief and occasional updates about x9Lab (e.g., a new sport launching). We do not sell, rent, or share your email with third parties.
+              // George to confirm
+              Your email is used to sign you in and, when recaps start, to send the emails you choose. We don&apos;t sell, rent or share your email.
             </p>
           </section>
 

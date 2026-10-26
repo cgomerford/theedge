@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ playerId:
   if (!person) notFound()
   return pageMeta({
     title: `${person.fullName} batting lab`,
-    description: fitDescription(`${person.fullName} batting lab: contact quality, spray direction, swing decisions and zone breakdowns by pitch type, with the number of pitches or batted balls behind every stat.`, ['Free daily email.']),
+    description: fitDescription(`${person.fullName} batting lab: contact quality, spray direction, swing decisions and zone breakdowns by pitch type, with the number of pitches or batted balls behind every stat.`, ['Free account.']),
     path: `/mlb/lab/batting-lab/${playerId}`,
   })
 }

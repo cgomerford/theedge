@@ -41,7 +41,7 @@ export default function NBAPreviewPage() {
             This is a preview of what NBA coverage on x9Lab will look like.
             The data below is illustrative — real game analysis goes live when coverage launches.{' '}
             <Link href="/#signup" className="text-orange-600 hover:underline font-semibold">
-              Sign up free to get notified.
+              Create a free account and we'll tell you when it opens.
             </Link>
           </p>
         </div>
@@ -236,7 +236,7 @@ export default function NBAPreviewPage() {
             Be first in the door.
           </h2>
           <p className="text-stone-400 font-serif mb-6 leading-relaxed">
-            NBA analysis drops when coverage launches. Sign up free and we&apos;ll notify you the moment it goes live.
+            NBA analysis drops when coverage launches. Create a free account and we&apos;ll tell you when it goes live.
             MLB coverage is available right now.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -244,7 +244,7 @@ export default function NBAPreviewPage() {
               href="/#signup"
               className="text-center bg-yellow-300 text-stone-900 font-mono text-xs uppercase tracking-widest px-6 py-3 hover:bg-yellow-200 transition font-bold"
             >
-              Sign up free →
+              Create account
             </Link>
             <Link
               href="/"

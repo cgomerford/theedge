@@ -7,7 +7,7 @@ import { FAQSchema, BreadcrumbSchema } from '@/components/StructuredData'
 export const metadata = pageMeta({
   title: 'FAQ',
   description:
-    'Answers to common questions about x9Lab: what the site shows, how often the numbers update, and what the free daily email includes. Short answers, no jargon.',
+    'Answers to common questions about x9Lab: what the site shows, how often the numbers update, and what a free account includes. Short answers, no jargon.',
   path: '/faq',
 })
 
@@ -15,73 +15,31 @@ const FAQS = [
   {
     section: 'What is x9Lab',
     items: [
-      {
-        q: 'What is x9Lab?',
-        a: 'x9Lab is a daily sports analysis platform that publishes pre-game statistical breakdowns for MLB (and soon NFL, NBA, and NHL). We pull advanced metrics — pitch data, pitcher arsenals, bullpen availability, and more — and turn them into a scannable 5-minute read before each game.',
-      },
-      {
-        q: 'Who is it for?',
-        a: 'MLB fans who want more than just scores, and fantasy baseball players who want to make smarter Start/Sit decisions. You don\'t need to be a data scientist — we translate the numbers into plain English. If you\'ve ever wanted to understand why a pitcher is struggling beyond "he had a bad night," x9Lab is for you.',
-      },
-      {
-        q: 'How is it different from Other stat sites or The Athletic?',
-        a: 'Other stat sites shows you the raw data — it\'s powerful but dense. The Athletic gives you long-form storytelling — excellent, but a 20-minute read. x9Lab sits between them: we take the same advanced metrics and give you the strategic story in 5 minutes, timed to land before first pitch.',
-      },
-      {
-        q: 'Is x9Lab free?',
-        a: 'Yes. Game previews, scout reports, postgame reports and the daily email are free, always.',
-      },
+      { q: 'What is x9Lab?', a: 'x9Lab turns public MLB game data into plain-number breakdowns of players, pitchers and games, with the sample size shown beside every stat.' },
+      { q: 'Who is it for?', a: "Fans who want more than a box score. You don't need to be a data scientist: the numbers come with plain labels and their sample sizes." },
+      { q: 'Is x9Lab free?', a: 'Yes. A free account gets the scout report summary and recap, follows for up to 10 players and 3 teams, the free Batting Lab tabs, live games and one full deep look a day. Pro opens every deep module.' },
     ],
   },
   {
-    section: 'The Data',
+    section: 'The data',
     items: [
-      {
-        q: 'Why xFIP and not ERA for pitchers?',
-        a: 'ERA includes things a pitcher can\'t control — a ball through a fielder\'s legs, a blooper that falls in. xFIP strips those out, leaving only the stuff the pitcher actually controls: strikeouts, walks, and fly balls that leave the yard. It\'s a much better predictor of future performance than ERA, which is why we use it as the base for our Starting Pitching component.',
-      },
-      {
-        q: 'How current is the data?',
-        a: 'We refresh multiple times daily. The main prediction run happens 10:00 UTC (early UK morning), with lineup confirmations updated at 14:00, 17:00, and 20:00 UTC. We flag when lineups are confirmed vs. projected so you always know what you\'re looking at.',
-      },
-      {
-        q: 'Can the data be wrong?',
-        a: 'Yes, and we\'re transparent about it. We have a public Track Record page that logs every prediction with win/loss results. We also include a "Why We Might Be Wrong" section on each game page — a genuine counter-take on our own analysis. No model is perfect. Ours is a starting point for your own thinking, not gospel.',
-      },
+      { q: 'How current is the data?', a: 'Game data refreshes through the day. Pitch-level pages carry a "Through" date showing the latest game in the data.' },
+      { q: 'Can the data be wrong?', a: 'Yes. Small samples especially can mislead, which is why every stat shows its n and small samples are labelled instead of shown as a number.' },
     ],
   },
   {
-    section: 'Gambling & Legal',
+    section: 'Betting and legal',
     items: [
-      {
-        q: 'Is this a gambling tip site?',
-        a: 'No. x9Lab is an information-only platform. We provide statistical analysis for educational and entertainment purposes. We do not give gambling advice, picks, or recommendations of any kind. Our Edge Score is an analytical tool — not a betting line. We deliberately avoid betting language in all our content.',
-      },
-      {
-        q: 'Can I use x9Lab to inform bets?',
-        a: 'We can\'t stop you reading our analysis and making your own decisions — that\'s your right. But x9Lab does not endorse, encourage, or facilitate gambling. If you choose to gamble, please do so responsibly. The UK\'s GamCare (gamcare.org.uk) and BeGambleAware (begambleaware.org) offer free support.',
-      },
-      {
-        q: 'Is x9Lab affiliated with MLB, any team, or any sportsbook?',
-        a: 'No. We are entirely independent. Team names and league names are trademarks of their respective owners — we use them for informational reference only. We are not sponsored by, affiliated with, or endorsed by any professional sports league, team, or gambling operator.',
-      },
+      { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
+      { q: 'Is x9Lab affiliated with MLB, any team, or any sportsbook?', a: 'No. We are entirely independent. Team and league names are trademarks of their owners and are used for reference only.' },
     ],
   },
   {
     section: 'Account',
     items: [
-      {
-        q: 'How do I sign up?',
-        a: 'Drop your email on the homepage. We\'ll send a one-click verification link — no password needed. Pick which teams you follow and you\'re in. Takes about 30 seconds.',
-      },
-      {
-        q: 'Can I cancel?',
-        a: 'Yes, any time. No cancellation fees, no awkward forms. If you cancel, you keep access until the end of your billing period.',
-      },
-      {
-        q: 'Do you store my payment details?',
-        a: 'We use Stripe for payments — an industry-standard processor used by millions of businesses. Your card details never touch our servers. Stripe holds them securely under PCI-DSS compliance.',
-      },
+      { q: 'How do I sign up?', a: "Create a free account with your email. We send a one-click sign-in link; there's no password." },
+      { q: 'Can I cancel?', a: 'Yes, any time, from your account page. You keep access until the end of your billing period.' },
+      { q: 'Do you store my payment details?', a: 'No. Payments run through Stripe; your card details never touch our servers.' },
     ],
   },
 ]

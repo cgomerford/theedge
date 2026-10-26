@@ -7,6 +7,7 @@
 import Link from 'next/link'
 import { C, SANS, Foot } from '@/components/team/ui'
 import { ProBadge } from '@/components/profile/ProPanel'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
 import {
   GATE, SLOT_BANDS, fmtN, pct, woba,
   type LeagueAverages, type Reach, type ShapeLookup, type SlotRead,
@@ -61,8 +62,13 @@ export function EmptyBox({ title, children }: { title: string; children?: React.
 }
 
 /** Not Pro: nothing. The page's one ProGate is the only upgrade prompt. */
-export function LockedCard(_props: { title: string; features: string[]; note?: string }) {
-  return null
+export function LockedCard({ title }: { title: string; features?: string[]; note?: string }) {
+  return (
+    <div>
+      <h4 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800 }}>{title}</h4>
+      <UpgradePrompt source="pitch_shape" />
+    </div>
+  )
 }
 
 export function MapLegend({ withPitcher }: { withPitcher: boolean }) {

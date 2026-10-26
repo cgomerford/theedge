@@ -23,3 +23,9 @@ export function formatPrice(p: Money): string {
 export function foundingThenMonthly(): string {
   return `${formatPrice(FOUNDING)} ${FOUNDING.label}, then ${formatPrice(MONTHLY)}`
 }
+
+/** What a free account can follow. The one place the limits live. */
+export const FREE_FOLLOW_LIMITS = { players: 10, teams: 3 } as const
+
+/** When true, signed-out visitors see the prices on /pricing (and only there). When false they see "Create account to see Pro pricing". */
+export const SHOW_PRICE_SIGNED_OUT_ON_PRICING = true

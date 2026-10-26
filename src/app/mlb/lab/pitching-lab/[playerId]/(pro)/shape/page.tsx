@@ -4,14 +4,14 @@
 // shape data when Pro (the layout already gates the whole lab; this keeps the rule local too).
 // Until pitch_shape_pitcher exists the data is null and we show an honest empty state.
 
-import { isProViewer } from '@/lib/require-pro'
+import { requirePro } from '@/lib/require-pro'
 import { getShapeLabData } from '@/lib/pitch-shape/data'
 import ShapeLab from '@/components/pitch-shape/ShapeLab'
 import { Card, Empty } from '@/components/team/ui'
 
 export default async function ShapeTab({ params }: { params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
-  const isPro = await isProViewer()
+  const isPro = (await requirePro()) === null
   const data = isPro ? await getShapeLabData(Number(playerId)) : null
   if (!data) {
     return (

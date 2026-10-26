@@ -33,7 +33,7 @@ export default async function LoginPage({ searchParams }: Props) {
         {sent ? (
           <div className="p-6 bg-stone-900 text-stone-100 border-l-4 border-yellow-300">
             <div className="text-xs font-mono uppercase tracking-widest text-yellow-300 mb-2">
-              Check your inbox
+              Check your email
             </div>
             <p className="font-serif">
               We&apos;ve sent a sign-in link to your email. The link works once and expires in 30 minutes.
@@ -81,9 +81,9 @@ export default async function LoginPage({ searchParams }: Props) {
         )}
 
         <div className="mt-12 pt-8 border-t border-stone-200 text-stone-500 font-serif text-sm">
-          New to x9Lab?{' '}
+          New here?{' '}
           <a href="/signup?source=login" className="text-orange-600 hover:underline">
-            Sign up
+            Create a free account
           </a>
         </div>
       </div>

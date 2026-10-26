@@ -30,6 +30,6 @@ const searchPitchers: SearchPitchers = async q => {
   }
 }
 
-export default function SandboxClient({ isPro, pitchTypes }: { isPro: boolean; pitchTypes: string[] }) {
-  return <ShapeSandbox isPro={isPro} pitchTypes={pitchTypes} loadBins={loadBins} searchPitchers={searchPitchers} />
+export default function SandboxClient({ isPro, lookLeft, pitchTypes }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[] }) {
+  return <ShapeSandbox isPro={isPro} lookLeft={lookLeft} pitchTypes={pitchTypes} loadBins={loadBins} searchPitchers={searchPitchers} />
 }

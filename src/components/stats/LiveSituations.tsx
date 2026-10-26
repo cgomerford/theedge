@@ -19,6 +19,8 @@ import { RecentList } from '@/components/stats/queryDrill'
 import { WhoFilter } from '@/components/stats/queryWho'
 import { HitMatchPanel, refText, type HitSearch } from '@/components/stats/queryHit'
 import { LiveHelp } from '@/components/stats/queryHelp'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
+import CreateAccountButton from '@/components/pro/CreateAccountButton'
 import type { LiveGame, LiveResult, Moment } from '@/lib/stats-live'
 import type { QueryResult } from '@/lib/stats-query'
 import {
@@ -60,7 +62,7 @@ const momentLabel = (m: Moment) =>
 
 const anyChosen = (sel: Sel, who: Who | undefined) => Object.values(sel).some(v => v !== null && v !== false) || !!who
 
-export default function LiveSituations({ isPro }: { isPro: boolean }) {
+export default function LiveSituations({ isPro, signedIn }: { isPro: boolean; signedIn: boolean }) {
   const [live, setLive] = useState<LiveResult | null>(null)
   const [liveErr, setLiveErr] = useState<string | null>(null)
   const [auto, setAuto] = useState(true)
@@ -93,12 +95,11 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
     } catch (e) { setLiveErr((e as Error).message) }
   }, [])
   useEffect(() => {
-    if (!isPro) return
     refresh()
     if (!auto) return
     const id = setInterval(refresh, 30_000)
     return () => clearInterval(id)
-  }, [isPro, auto, refresh])
+  }, [auto, refresh])
 
   const game: LiveGame | null = useMemo(() => live?.games.find(g => g.gamePk === picked) ?? null, [live, picked])
 
@@ -150,17 +151,6 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
   const summary = lastDeep ? describeDeep(lastDeep).join(' + ') || 'any situation' : ''
   const wide = (o: React.CSSProperties = {}): React.CSSProperties => ({ ...selectStyle, ...o })
 
-  if (!isPro) {
-    return (
-      <div style={{ display: 'grid', gap: 14, maxWidth: 760 }}>
-        <style>{QUERY_CSS}</style>
-        <div style={{ fontFamily: SANS, fontSize: 15, color: '#3a352c', lineHeight: 1.55 }}>
-          See every game in progress with its situation, then ask <b>“when did this last happen?”</b> — filtered by year, postseason or regular season, club and player — and open any result down to the pitches.
-        </div>
-        <ProLockBar features={['Live games & their situations', 'Last-time finder', 'Filter by year, club and player', 'Pitch-by-pitch detail']} />
-      </div>
-    )
-  }
 
   return (
     <div style={{ fontFamily: SANS, color: C.ink }}>
@@ -235,9 +225,17 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
               })}
             </div>
           </Panel>
+          {!signedIn && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '12px 0' }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Free account: the full pitch-by-pitch for every live game.</span>
+              <CreateAccountButton source="live_situations" label="Create account" accent />
+            </div>
+          )}
           <LiveHelp />
         </div>
 
+        {isPro ? (
+          <>
         {/* ── right: ask when it last happened ── */}
         <div style={{ display: 'grid', gap: 12, position: 'sticky', top: 16, minWidth: 0 }}>
           <Panel step="2" title="The situation" hint="Each box is optional — leave it on “Any” to ignore it. The more you set, the rarer the moment you are looking for.">
@@ -333,6 +331,13 @@ export default function LiveSituations({ isPro }: { isPro: boolean }) {
           </button>
           {!anyChosen(sel, who) && <div style={{ fontSize: 12, color: C.faint }}>Nothing is set — this would list the latest plate appearances of any kind. Set at least one thing for a useful answer.</div>}
         </div>
+          </>
+        ) : (
+          <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>The last-time finder (club and player filters, longer year ranges) is part of Pro.</div>
+            <UpgradePrompt source="live_situations" />
+          </div>
+        )}
       </div>
 
       {/* ── results ── */}

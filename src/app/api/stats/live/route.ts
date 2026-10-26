@@ -1,11 +1,11 @@
 // src/app/api/stats/live/route.ts
 //
 // GET /api/stats/live — which games in progress right now are in the situation the person has set up?
-// Pro-only. The filters come in the same shape as /api/stats/query (a `split` chip code and/or a `deep`
+// Open to everyone: signed out gets each game's 3 newest pitch lines, a free account the full pitch-by-pitch. The filters come in the same shape as /api/stats/query (a `split` chip code and/or a `deep`
 // JSON object) and are validated the same way before use.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { isProViewer } from '@/lib/require-pro'
+import { getCurrentSubscriber } from '@/lib/auth'
 import { checkLive } from '@/lib/stats-live'
 import { deepSupports, deepToParams, type DeepFilters, type Group } from '@/lib/stats-query-catalog'
 
@@ -14,7 +14,7 @@ export const maxDuration = 30
 const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : undefined)
 
 export async function GET(req: NextRequest) {
-  if (!(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+  const signedIn = !!(await getCurrentSubscriber())
   const sp = new URL(req.url).searchParams
   const gp = sp.get('group')
   const group: Group = gp === 'pitching' ? 'pitching' : 'hitting'
@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
     }
   }
   try {
-    return NextResponse.json(await checkLive(deepToParams(deep, group)), { headers: { 'Cache-Control': 'private, no-store' } })
+    const live = await checkLive(deepToParams(deep, group))
+    // Signed out: the live cards and only the 3 newest summary lines per game.
+    const out = signedIn ? live : { ...live, games: live.games.map(g => ({ ...g, sequence: g.sequence.slice(-3) })) }
+    return NextResponse.json(out, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
     console.error('[stats/live] failed:', (e as Error).message)
     return NextResponse.json({ error: 'MLB Stats API did not respond. Try again in a moment.' }, { status: 502 })

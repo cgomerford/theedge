@@ -631,7 +631,7 @@ function BioTab({ data }: { data: PlayerPageData }) {
 type BatterSection = 'career' | 'form' | 'log' | 'bio'
 type PitcherSection = 'career' | 'form' | 'starts' | 'log' | 'bio'
 
-export default function PlayerPageClient({ data, initialSection, isPro, viewerTier, trendsSlot, followSlot }: { /** resolved server-side: pro | member (signed in) | anon */ viewerTier: ViewerTier; data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
+export default function PlayerPageClient({ data, initialSection, isPro, viewerTier, freeLook, trendsSlot, followSlot }: { freeLook?: boolean; /** resolved server-side: pro | member (signed in) | anon */ viewerTier: ViewerTier; data: PlayerPageData; /** server-rendered Follow button */ followSlot?: React.ReactNode; initialSection?: string; /** REQUIRED, never defaulted — resolved server-side from the subscriber session */ isPro: boolean; /** server-rendered trend charts; only ever provided when isPro is true */ trendsSlot?: React.ReactNode }) {
   const { identity } = data
   const subject: 'batter' | 'pitcher' = identity.isPitcher ? 'pitcher' : 'batter'
   const rows = subject === 'batter' ? BATTER_ROWS : PITCHER_ROWS
@@ -963,11 +963,12 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   const zonesTab = (
     <ProGateView
       tier={viewerTier}
+      freeLook={freeLook}
       feature="Zones and arsenal detail"
       source={subject === 'batter' ? 'player_batter_zones' : 'player_pitcher_arsenal'}
       preview={<ArsenalZonesPreview />}
     >
-      {isPro ? (
+      {viewerTier === 'pro' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* own wrapper: a server-rendered element among sibling children trips React's dev-only key check */}
           <div>{trendsSlot}</div>

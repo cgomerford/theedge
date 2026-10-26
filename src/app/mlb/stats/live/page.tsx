@@ -9,6 +9,7 @@ import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import LiveSituations from '@/components/stats/LiveSituations'
 import { isProViewer } from '@/lib/require-pro'
+import { getCurrentSubscriber } from '@/lib/auth'
 import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
@@ -20,6 +21,7 @@ export const metadata = pageMeta({
 
 export default async function LiveStatsPage() {
   const isPro = await isProViewer()
+  const signedIn = !!(await getCurrentSubscriber())
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader variant="page" />
@@ -32,7 +34,7 @@ export default async function LiveStatsPage() {
         <p style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontSize: 15, color: '#5b5347', margin: '0 0 18px', maxWidth: 760 }}>
           See what is happening in games right now, then find the last time that exact situation came up.
         </p>
-        <LiveSituations isPro={isPro} />
+        <LiveSituations isPro={isPro} signedIn={signedIn} />
       </div>
     </main>
   )

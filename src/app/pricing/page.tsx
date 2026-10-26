@@ -1,96 +1,156 @@
 import SiteHeader from '@/components/SiteHeader'
 import ProCheckoutButton from '@/components/pro/ProCheckoutButton'
 import CreateAccountButton from '@/components/pro/CreateAccountButton'
+import ManageSubscriptionButton from '@/components/pro/ManageSubscriptionButton'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import { UNLOCK_WORDING } from '@/components/pro/ProGateView'
 import { getViewerTier } from '@/lib/require-pro'
-import { FOUNDING, MONTHLY } from '@/lib/pricing'
+import { FOUNDING, MONTHLY, formatPrice, FREE_FOLLOW_LIMITS, SHOW_PRICE_SIGNED_OUT_ON_PRICING } from '@/lib/pricing'
 import { pageMeta } from '@/lib/seo'
 
-// Who sees what (one card, divider rows):
-//   signed out        -> the free account and "Create free account". No price, no plan name.
-//   signed in, no Pro -> Free ("Your plan"), then the yearly and monthly prices with checkout buttons.
-//   Pro               -> the plan row only. No prices, no upgrade prompts (billing is on /me, "Manage subscription").
+// Who sees what:
+//   signed out        -> everything below. The price block only while SHOW_PRICE_SIGNED_OUT_ON_PRICING is true (this page only);
+//                        otherwise "Create account to see Pro pricing". Checkout always needs an account.
+//   signed in, free   -> the same, with the two Stripe checkout buttons.
+//   Pro               -> "You're on Pro" and "Manage subscription". No prices, no upgrade prompts.
 
 export const metadata = pageMeta({
-  title: 'Plans',
-  description:
-    'What the free x9Lab account includes: the daily email, every game cockpit, scout reports and a dashboard for 10 players and 3 teams. No card needed.',
+  title: 'Pricing',
+  description: `Front-office-style breakdowns for fans. Built on public game data. Free account, or Founding Pro at ${formatPrice(FOUNDING).replace('/yr', ' a year')}.`,
   path: '/pricing',
 })
 
-const FREE_LINE = 'Daily email, every game cockpit, scout reports, dashboard for 10 players and 3 teams.'
+const FOLLOWS = `${FREE_FOLLOW_LIMITS.players} players, ${FREE_FOLLOW_LIMITS.teams} teams`
 
-const QUESTIONS = [
-  { q: 'Is the free account free?', a: 'Yes. No card needed.' },
-  { q: 'What is in the free account?', a: 'Every cockpit, every scout report and the daily email.' },
-  { q: 'Do you give picks?', a: 'No.' },
+const COMPARE: { feature: string; free: string; pro: string }[] = [
+  { feature: 'Scout report: summary and recap', free: 'Yes', pro: 'Yes' },
+  { feature: 'Follow players and teams, your own page', free: FOLLOWS, pro: FOLLOWS },
+  { feature: 'Batting Lab: Contact, Approach, Swing, Decisions, Outcomes, Platoon', free: 'Yes', pro: 'Yes' },
+  { feature: 'Live games, pitch by pitch', free: 'Yes', pro: 'Plus club and player filters, longer year ranges' },
+  { feature: 'Deep modules: hot zones, vs arsenal, pitch shapes', free: 'One a day', pro: 'All, every player' },
+  { feature: 'Batting Lab: Location, Sequencing, Trends, career head-to-head', free: 'One a day', pro: 'Yes' },
+  { feature: 'Pitching Lab: Arsenal, Shape, Stuff, Location, Sequencing, Overlay, Trends, H2H', free: 'One a day', pro: 'Yes' },
+  { feature: 'Pitch Shape Lab: every pitch type', free: 'Free types, one locked type a day', pro: 'Every pitch type' },
 ]
 
-const ROW: React.CSSProperties = { display: 'grid', gridTemplateColumns: '160px minmax(0,1fr) auto', gap: '8px 24px', alignItems: 'center', padding: '16px 0', borderTop: '1px solid #e7e2d8' }
-const NAME: React.CSSProperties = { fontSize: 18, fontWeight: 800, color: '#1A1A1A' }
-const DESC: React.CSSProperties = { fontSize: 13, color: '#5b5347', lineHeight: 1.45 }
-const TAG: React.CSSProperties = { fontSize: 12, fontWeight: 800, background: '#FDE047', color: '#1A1A1A', padding: '2px 8px', borderRadius: 2, justifySelf: 'end' }
+const OPENS: { name: string; shows: string; why: string }[] = [
+  { name: 'Hot zones vs this pitcher', shows: 'Where a hitter does damage, square by square, laid over where the starter actually throws.', why: 'You see the at-bat before it happens.' },
+  { name: 'Vs arsenal', shows: 'How a hitter does against each pitch type: fastball, slider, changeup.', why: 'Which pitch beats him, and which one he punishes.' },
+  { name: 'Arsenal and Shape', shows: 'Every pitch a starter throws, how much it moves and how hard, against league average.', why: 'Why a 93 mph fastball can play like 97.' },
+  { name: 'Sequencing', shows: 'What he throws in each count, and what follows what.', why: "Watch a 1-2 count and know what's coming." },
+  { name: 'Location and Overlay', shows: 'Where his pitches finish, by batter hand and count.', why: 'The plan, drawn on the zone.' },
+  { name: 'Trends', shows: 'Velocity and usage, start by start.', why: "Spot the arm that's fading, or the new pitch he's leaning on." },
+  { name: 'Career head-to-head', shows: 'Every plate appearance between a hitter and a pitcher, with the sample size on it.', why: 'The history, with honest sample sizes.' },
+]
+
+const FAQ: { q: string; a: string }[] = [
+  { q: 'Can I cancel anytime?', a: 'Yes, from your account page. You keep Pro until the end of the period you paid for.' },
+  { q: 'What does Founding mean?', a: `The first 100 subscribers pay ${formatPrice(FOUNDING).replace('/yr', ' a year')} or ${formatPrice(MONTHLY).replace('/mo', ' a month')}, and keep that price as long as they stay subscribed.` },
+  { q: 'What happens in the off-season?', a: 'The labs, player pages and your own page run on the full 2026 season, so you can look back at any player or pitcher. Game-day pages return in spring.' },
+  { q: 'Where does the data come from?', a: 'Built on public game data. Independent, not affiliated with MLB.' },
+  { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
+  { q: 'Can I get a refund?', a: '[George: refund policy]' },
+  { q: 'Do I need an account to buy?', a: 'Yes. Create a free account first, then upgrade from inside it, so Pro is attached to you.' },
+  { q: "What's free forever?", a: 'The scout report summary and recap, following players and teams, the free Batting Lab tabs, live games and one full deep look a day.' },
+]
+
+const H2: React.CSSProperties = { margin: '0 0 6px', fontSize: 13, fontWeight: 800, letterSpacing: '.12em', color: '#FF5722', textTransform: 'uppercase' }
+const MUTED = '#8a8275'
 
 export default async function PricingPage() {
   const tier = await getViewerTier()
+  const showPrice = tier !== 'anon' || SHOW_PRICE_SIGNED_OUT_ON_PRICING
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
-      <style>{`@media (max-width:640px){.pl-row{grid-template-columns:minmax(0,1fr) !important}.pl-row > *{justify-self:start !important}}`}</style>
-      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Plans', path: '/pricing' }]} />
+      <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
       <SiteHeader variant="page" />
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 16px 80px' }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', color: '#FF5722' }}>PRICING</div>
-        <h1 style={{ margin: '4px 0 20px', fontSize: 'clamp(32px, 5vw, 44px)', fontWeight: 800, letterSpacing: '-0.02em' }}>Plans</h1>
+        <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(32px, 5vw, 46px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>Baseball, read like a front office.</h1>
+        <p style={{ margin: '0 0 28px', fontSize: 17, color: '#5b5347' }}>Front-office-style breakdowns for fans. Built on public game data.</p>
 
-        <section style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: '4px 20px 12px' }}>
-          {tier === 'anon' && (
+        {/* b) free account first */}
+        <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 20px', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '16px 0', marginBottom: 36 }}>
+          {tier === 'anon' ? (
             <>
-              <div className="pl-row" style={{ ...ROW, borderTop: 0 }}>
-                <span style={NAME}>Free account</span>
-                <span style={DESC}>{FREE_LINE}</span>
-                <CreateAccountButton source="pricing" label="Create free account" accent />
-              </div>
-              <p style={{ margin: '0 0 8px', padding: '12px 0', borderTop: '1px solid #e7e2d8', fontSize: 12, color: '#8a8275' }}>
-                Paid options (attack zones, per-pitch detail, full Labs) are listed after you sign in.
-              </p>
+              <span style={{ fontSize: 20, fontWeight: 800, flex: '1 1 240px' }}>Start free. No card.</span>
+              <CreateAccountButton source="pricing_free" label="Create account" accent />
             </>
+          ) : (
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{tier === 'pro' ? "You're on Pro" : "You're on the free account"}</span>
           )}
+        </section>
 
-          {tier === 'member' && (
-            <>
-              <div className="pl-row" style={{ ...ROW, borderTop: 0 }}>
-                <span style={NAME}>Free</span>
-                <span style={DESC}>{FREE_LINE}</span>
-                <span style={TAG}>Your plan</span>
-              </div>
-              <div className="pl-row" style={ROW}>
-                <span style={NAME}>£{FOUNDING.price} / {FOUNDING.interval}</span>
-                <span style={DESC}>Founding price, kept while you stay. Adds attack zones and per-pitch detail on every game, and full Labs.</span>
-                <ProCheckoutButton interval="year">{UNLOCK_WORDING}</ProCheckoutButton>
-              </div>
-              <div className="pl-row" style={ROW}>
-                <span style={NAME}>£{MONTHLY.price} / {MONTHLY.interval}</span>
-                <span style={DESC}>Same as yearly. Cancel anytime.</span>
-                <ProCheckoutButton interval="month" variant="outline">{UNLOCK_WORDING}</ProCheckoutButton>
-              </div>
-            </>
-          )}
+        {/* c) comparison */}
+        <section aria-labelledby="compare-h" style={{ marginBottom: 40 }}>
+          <h2 id="compare-h" style={H2}>Free account and Pro</h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+              <thead>
+                <tr>
+                  {['Feature', 'Free account', 'Pro'].map((h, i) => (
+                    <th key={h} scope="col" style={{ textAlign: 'left', fontSize: 13, fontWeight: 800, color: MUTED, padding: '8px 10px', borderBottom: '1px solid #e7e2d8', position: i === 0 ? 'sticky' : undefined, left: i === 0 ? 0 : undefined, background: i === 0 ? '#FAF8F3' : undefined }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE.map(r => (
+                  <tr key={r.feature}>
+                    <th scope="row" style={{ textAlign: 'left', fontSize: 14, fontWeight: 700, padding: '12px 10px', borderBottom: '1px solid #e7e2d8', verticalAlign: 'top', minWidth: 220, position: 'sticky', left: 0, background: '#FAF8F3' }}>{r.feature}</th>
+                    <td style={{ fontSize: 14, padding: '12px 10px', borderBottom: '1px solid #e7e2d8', verticalAlign: 'top' }}>{r.free}</td>
+                    <td style={{ fontSize: 14, padding: '12px 10px', borderBottom: '1px solid #e7e2d8', verticalAlign: 'top' }}>{r.pro}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          {tier === 'pro' && (
-            <div className="pl-row" style={{ ...ROW, borderTop: 0 }}>
-              <span style={NAME}>Pro</span>
-              <span style={DESC}>Attack zones and per-pitch detail on every game, and full Labs. Billing is under My x9Lab.</span>
-              <span style={TAG}>Your plan</span>
+        {/* d) what Pro opens */}
+        <section aria-labelledby="opens-h" style={{ marginBottom: 40 }}>
+          <h2 id="opens-h" style={H2}>What Pro opens</h2>
+          {OPENS.map(o => (
+            <div key={o.name} style={{ padding: '14px 0', borderTop: '1px solid #e7e2d8' }}>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{o.name}</div>
+              <div style={{ fontSize: 14, color: '#3a352c', marginTop: 2 }}>{o.shows}</div>
+              <div style={{ fontSize: 14, color: MUTED, marginTop: 2 }}>{o.why}</div>
             </div>
-          )}
+          ))}
+        </section>
 
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', color: '#8a8275', padding: '16px 0 4px', borderTop: tier === 'anon' ? 0 : '1px solid #e7e2d8' }}>QUESTIONS</div>
-          {QUESTIONS.map(item => (
-            <div key={item.q} style={{ padding: '12px 0', borderTop: '1px solid #e7e2d8' }}>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{item.q}</div>
-              <div style={{ fontSize: 13, color: '#5b5347', marginTop: 2 }}>{item.a}</div>
+        {/* e) price block */}
+        <section aria-labelledby="price-h" style={{ borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '20px 0', marginBottom: 40 }}>
+          <h2 id="price-h" style={H2}>Founding Pro</h2>
+          {tier === 'pro' ? (
+            <div style={{ display: 'grid', gap: 10 }}>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>{"You're on Pro"}</span>
+              <div><ManageSubscriptionButton style={{ padding: '11px 18px', background: '#1A1A1A', color: '#FAF8F3', border: 0, borderRadius: 2, fontSize: 15 }} /></div>
+            </div>
+          ) : showPrice ? (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>Founding Pro: {formatPrice(FOUNDING).replace('/yr', ' a year')}.</div>
+              <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>For the first 100 subscribers. Your price stays while you stay subscribed.</p>
+              <p style={{ margin: '4px 0 14px', fontSize: 15, color: '#5b5347' }}>Or {formatPrice(MONTHLY).replace('/mo', ' a month')}.</p>
+              {tier === 'member' ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  <ProCheckoutButton interval="year">{`Founding Pro, ${formatPrice(FOUNDING)}`}</ProCheckoutButton>
+                  <ProCheckoutButton interval="month" variant="outline">{`Monthly, ${formatPrice(MONTHLY)}`}</ProCheckoutButton>
+                </div>
+              ) : (
+                <CreateAccountButton source="pricing" label="Create an account to upgrade" accent />
+              )}
+            </>
+          ) : (
+            <CreateAccountButton source="pricing" label="Create account to see Pro pricing" accent />
+          )}
+        </section>
+
+        {/* f) FAQ */}
+        <section aria-labelledby="faq-h">
+          <h2 id="faq-h" style={H2}>Questions</h2>
+          {FAQ.map(f => (
+            <div key={f.q} style={{ padding: '12px 0', borderTop: '1px solid #e7e2d8' }}>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{f.q}</div>
+              <div style={{ fontSize: 14, color: '#5b5347', marginTop: 2 }}>{f.a}</div>
             </div>
           ))}
         </section>

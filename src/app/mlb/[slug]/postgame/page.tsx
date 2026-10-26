@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = gameTitle(p, ' postgame')
   const description = fitDescription(
     `${p.awayName} at ${p.homeName} on ${p.dateLabel}: how the game went, top performers, pitch-by-pitch charts and the full box score, with the sample size beside each stat.`,
-    ['Free daily email.'],
+    ['Free account.'],
   )
   return pageMeta({ title, description, path: `/mlb/${slug}/postgame`, type: 'article' })
 }

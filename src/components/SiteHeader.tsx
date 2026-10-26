@@ -318,11 +318,11 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
             {/* ─── COL 4: Auth + utilities (right sidebar) ─── */}
             <div style={{ borderLeft: '1px solid #E2DCCF', paddingLeft: 32 }}>
               {isLoggedIn ? (
-                <Link href="/me" onClick={onClose} style={authLink}>My x9Lab</Link>
+                <Link href="/me" onClick={onClose} style={authLink}>My page</Link>
               ) : (
                 <>
                   <Link href="/login"   onClick={onClose} style={authLink}>Log In</Link>
-                  <button type="button" onClick={() => { onClose(); openSignup('header') }} style={{ ...authLink, background: 'none', border: 0, padding: 0, textAlign: 'left', cursor: 'pointer' }}>Free daily email</button>
+                  <button type="button" onClick={() => { onClose(); openSignup('header') }} style={{ ...authLink, background: 'none', border: 0, padding: 0, textAlign: 'left', cursor: 'pointer' }}>Sign up</button>
                 </>
               )}
 
@@ -526,7 +526,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
             <div className="flex items-center gap-4 ml-auto pl-4 shrink-0">
               {isLoggedIn ? (
                 <Link href="/me" className="font-sans text-[13px] font-bold text-stone-900 hover:text-[#FF5722] transition whitespace-nowrap">
-                  My x9Lab
+                  My page
                 </Link>
               ) : (
                 <>
@@ -534,7 +534,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
                     Log in
                   </Link>
                   <button type="button" onClick={() => openSignup('header')} className="font-sans text-[13px] font-bold bg-[#FF5722] text-white px-4 py-2 hover:bg-orange-700 transition rounded-sm whitespace-nowrap">
-                    Free daily email
+                    Sign up
                   </button>
                 </>
               )}
