@@ -33,23 +33,27 @@ async function main() {
     const team = abbr.get(Number(p.team_id))
     if (!team) { console.log(`No abbreviation for team ${p.team_id}, skipping venue ${p.venue_id}`); continue }
     const points: number[] = []; let through = ''
+    // Savant filters by the BATTER's club: the home club's own hits (hfTeam) plus the visitors' hits against it (hfOpponent + Away).
+    // Rows are then kept only when the game was played at this club's park.
+    const base = (season: number) => `https://baseballsavant.mlb.com/statcast_search/csv?all=true&hfGT=R%7C&hfSea=${season}%7C&hfAB=single%7Cdouble%7Ctriple%7Chome%5C\.%5C\.run%7C&player_type=batter&type=details&min_pitches=0&min_results=0&min_pas=0`
     for (const season of SEASONS) {
-      const url: string = `https://baseballsavant.mlb.com/statcast_search/csv?all=true&hfGT=R%7C&hfSea=${season}%7C&hfAB=single%7Cdouble%7Ctriple%7Chome%5C.%5C.run%7C&hfTeam=${team}%7C&player_type=batter&type=details&min_pitches=0&min_results=0&min_pas=0`
-      const res: Response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-      if (!res.ok) { console.error(`  ${team} ${season}: HTTP ${res.status}`); continue }
-      const lines: string[] = (await res.text()).replace(/^﻿/, '').trim().split('\n')
-      const h = parseLine(lines[0]).map(s => s.replace(/"/g, '').toLowerCase())
-      const ix = (k: string) => h.indexOf(k)
-      const [iHome, iEv, iX, iY, iDate] = [ix('home_team'), ix('events'), ix('hc_x'), ix('hc_y'), ix('game_date')]
-      for (let i = 1; i < lines.length; i++) {
-        const c = parseLine(lines[i]).map(s => s.replace(/"/g, ''))
-        if (c[iHome] !== team) continue                       // only games AT this park
-        const kind = KIND[c[iEv]]; const hx = parseFloat(c[iX]); const hy = parseFloat(c[iY])
-        if (!kind || !Number.isFinite(hx) || !Number.isFinite(hy)) continue
-        points.push(Math.round((hx - 125.42) * 2.5), Math.round((198.27 - hy) * 2.5), kind)
-        if (c[iDate] > through) through = c[iDate]
+      for (const filter of [`&hfTeam=${team}%7C`, `&hfOpponent=${team}%7C&home_road=Away`]) {
+        const res: Response = await fetch(base(season) + filter, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+        if (!res.ok) { console.error(`  ${team} ${season}: HTTP ${res.status}`); continue }
+        const lines: string[] = (await res.text()).replace(/^\uFEFF/, '').trim().split('\n')
+        const h = parseLine(lines[0]).map(s => s.replace(/"/g, '').toLowerCase())
+        const ix = (k: string) => h.indexOf(k)
+        const [iHome, iEv, iX, iY, iDate] = [ix('home_team'), ix('events'), ix('hc_x'), ix('hc_y'), ix('game_date')]
+        for (let i = 1; i < lines.length; i++) {
+          const c = parseLine(lines[i]).map(s => s.replace(/"/g, ''))
+          if (c[iHome] !== team) continue                       // only games AT this park
+          const kind = KIND[c[iEv]]; const hx = parseFloat(c[iX]); const hy = parseFloat(c[iY])
+          if (!kind || !Number.isFinite(hx) || !Number.isFinite(hy)) continue
+          points.push(Math.round((hx - 125.42) * 2.5), Math.round((198.27 - hy) * 2.5), kind)
+          if (c[iDate] > through) through = c[iDate]
+        }
+        await sleep(1200)
       }
-      await sleep(1200)
     }
     console.log(`${team}: ${points.length / 3} hits through ${through}`)
     if (points.length >= 300) rows.push({ venue_id: Number(p.venue_id), seasons: `${SEASONS[0]}-${SEASONS[2]}`, n_hits: points.length / 3, through, points, updated_at: new Date().toISOString() })
