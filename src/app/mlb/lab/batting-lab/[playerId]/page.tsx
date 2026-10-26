@@ -8,13 +8,12 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPlayerPageData } from '@/lib/player-page'
 import { getPlayerOverview } from '@/lib/player-overview'
-import FollowControl from '@/components/signup/FollowControl'
 import BatSpeedPanel from '@/components/batting-lab/BatSpeedPanel'
 import { LatestGame, OverviewBody } from '@/components/player-page/PlayerOverviewView'
 
 const LAB_TABS = [
-  { seg: 'arsenal', label: 'Vs Arsenal' }, { seg: 'location', label: 'Location Lab' }, { seg: 'hot-zones', label: 'Hot Zone Overlay' },
-  { seg: 'sequencing', label: 'Sequencing' }, { seg: 'trends', label: 'Trends' }, { seg: 'h2h', label: 'H2H' }, { seg: 'swing', label: 'Swing' },
+  { seg: 'hot-zones', label: 'Hot zones' }, { seg: 'spray', label: 'Spray' }, { seg: 'arsenal', label: 'vs pitch type' }, { seg: 'h2h', label: 'Head to head' }, { seg: 'location', label: 'Location Lab' },
+  { seg: 'sequencing', label: 'Sequencing' }, { seg: 'trends', label: 'Trends' }, { seg: 'swing', label: 'Swing' },
   { seg: 'contact', label: 'Contact' }, { seg: 'outcomes', label: 'Outcomes' }, { seg: 'platoon', label: 'Platoon' }, { seg: 'approach', label: 'Approach' },
 ]
 
@@ -29,7 +28,6 @@ export default async function BattingLabOverview({ params }: { params: Promise<{
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 18px', paddingBottom: 12 }}>
-        <FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />
         <Link href={`/mlb/players/${playerId}`} style={{ color: '#FF5722', fontWeight: 800, fontSize: 14 }}>Player page →</Link>
       </div>
       {o.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{o.seasonNote}</p> : null}

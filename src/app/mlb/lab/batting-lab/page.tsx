@@ -1,27 +1,16 @@
-// src/app/mlb/lab/batting-lab/page.tsx
-//
-// v1 of the standalone Batting Lab: search any real batter and see real
-// season stats/percentiles, zone-by-pitch-type breakdown, bat speed and
-// contact quality, and the real reaction-window physics graphic — see
-// BattingLabExplorer.tsx + /api/mlb/batting-lab. Mirrors
-// /mlb/lab/pitching-lab/page.tsx exactly, batter side. Tonight's games stay
-// listed below as a quick jump into the live matchup view for anyone who
-// wants that instead.
-
+// src/app/mlb/lab/batting-lab/page.tsx — Batting Lab index: the one h1, one search field, and today's lineups as plain link rows.
+// Each lineup row opens that game's preview on the Batters tab (confirmed or last-known lineup, with head-to-head and splits).
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
-import BattingLabExplorer from '@/components/BattingLabExplorer'
-import FeaturedPlayers from '@/components/FeaturedPlayers'
+import PlayerSearch from '@/components/PlayerSearch'
 import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
-import { getLeaders } from '@/lib/lab'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 
 export const metadata = pageMeta({
   title: 'Batting Lab',
-  description:
-    'Search any MLB hitter for zone-by-pitch-type breakdowns, bat speed and contact quality, with the number of pitches or batted balls behind every stat.',
+  description: 'Search any MLB hitter for hot zones, spray direction, results by pitch type and head-to-head numbers, with the number of pitches or batted balls behind every stat.',
   path: '/mlb/lab/batting-lab',
 })
 
@@ -29,54 +18,32 @@ export const revalidate = 1800
 
 export default async function BattingLabPage() {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-  const season = new Date().getFullYear()
-  const [games, opsLeaders] = await Promise.all([
-    getScheduleForDate(today),
-    getLeaders('ops', season, 8).catch(() => []),
-  ])
+  const games = await getScheduleForDate(today).catch(() => [])
 
   return (
-    <main className="min-h-screen bg-stone-50">
+    <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Batting Lab', path: '/mlb/lab/batting-lab' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-
-      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-8">
-        <div>
-          <div className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] mb-2">Batting Lab</div>
-          <h1 className="m-0 text-[26px] font-black text-[#1A1A1A] tracking-tight">Search any batter</h1>
-          <div className="text-[13px] text-[#57534E] mt-1 max-w-[640px]">
-            Real season stats and percentiles, zone-by-pitch-type breakdown, bat speed and contact quality, and a
-            real reaction-window physics graphic — not tied to tonight&apos;s slate.
-          </div>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 16px 80px' }}>
+        <h1 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 800, letterSpacing: '-0.02em' }}>Batting Lab</h1>
+        <div style={{ marginTop: 18 }}>
+          <PlayerSearch header sport="MLB" placeholder="Search a batter" />
         </div>
-
-        <BattingLabExplorer />
-
-        <FeaturedPlayers
-          title="Or explore a real current OPS leader"
-          statLabel="OPS"
-          leaders={opsLeaders}
-          labPath="batting-lab"
-          fmt={v => v.toFixed(3).replace(/^0\./, '.')}
-        />
-
-        {games.length > 0 && (
-          <div className="rounded-xl border border-stone-200 bg-white p-4">
-            <div className="text-[11px] font-mono uppercase tracking-widest text-[#8A8577] mb-3">Or jump into tonight&apos;s live matchup view</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {games.map(g => (
-                <Link
-                  key={g.gamePk}
-                  href={`/mlb/${slugifyGame(g)}?tab=batting`}
-                  className="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2.5 text-[13px] font-medium text-[#1A1A1A] hover:border-[#FF5722] transition"
-                >
-                  <span>{g.teams.away.team.abbreviation} @ {g.teams.home.team.abbreviation}</span>
-                  <span className="text-[10px] font-mono uppercase tracking-wide text-[#FF5722]">Open →</span>
+        <h2 style={{ margin: '34px 0 4px', fontSize: 20, fontWeight: 800 }}>Today&apos;s lineups</h2>
+        {games.length === 0 ? (
+          <p style={{ fontSize: 14, color: '#8a8275', margin: '6px 0' }}>No games today.</p>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {games.map(g => (
+              <li key={g.gamePk} style={{ borderTop: '1px solid #e7e2d8' }}>
+                <Link href={`/mlb/${slugifyGame(g)}?tab=batters`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 0', color: 'inherit', textDecoration: 'none', fontSize: 16 }}>
+                  <b>{g.teams.away.team.name} at {g.teams.home.team.name}</b>
+                  <span style={{ color: '#FF5722', fontWeight: 800 }}>Lineups</span>
                 </Link>
-              ))}
-            </div>
-          </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </main>

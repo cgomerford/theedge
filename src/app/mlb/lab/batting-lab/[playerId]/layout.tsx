@@ -13,6 +13,7 @@ import { isSignedIn } from '@/lib/require-signup'
 import DemoFrame from '@/components/pro/DemoFrame'
 import { ProGateRow } from '@/components/pro/ProGateView'
 import LabShell from './LabShell'
+import FollowControl from '@/components/signup/FollowControl'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
@@ -34,14 +35,15 @@ export default async function BattingLabGate({ children, params }: { children: R
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
+  const follow = <FollowControl kind="player" refId={playerId} name={person.fullName} />
   if (!(await isSignedIn())) {
     // Signed out: every tab is the REAL tab running on a sample player (DemoFrame), labelled as an example, with the create-account row.
     // The pages below swap the requested player for the sample (lib/lab-player.ts), so none of this player's data is loaded.
     return (
-      <LabShell playerName={person.fullName}>
+      <LabShell playerName={person.fullName} followSlot={follow}>
         <DemoFrame lab="batting" realName={person.fullName} footer={<ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />}>{children}</DemoFrame>
       </LabShell>
     )
   }
-  return <LabShell playerName={person.fullName}>{children}</LabShell>
+  return <LabShell playerName={person.fullName} followSlot={follow}>{children}</LabShell>
 }
