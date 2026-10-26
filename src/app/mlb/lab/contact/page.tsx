@@ -8,6 +8,7 @@ import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import SignUpGate from '@/components/SignUpGate'
+import { ChartFramePreview } from '@/components/pro/previews'
 import ContactLab from '@/components/contact-lab/ContactLab'
 import { Empty } from '@/components/team/ui'
 import { isSignedIn } from '@/lib/require-signup'
@@ -29,6 +30,7 @@ export default async function ContactLabPage({ searchParams }: { searchParams: P
     return <SignUpGate
       title="Sign up to open the Contact Lab"
       blurb="Follow a hitter from how he stands to what the ball did, with the sample behind every number."
+      preview={<ChartFramePreview title="Contact Engine" x="Pull AIR%" y="Barrel rate" />}
       features={['Contact Engine: Pull AIR% against barrel rate for every hitter with 100+ batted balls', 'Swing Changes: stance, bat speed and attack angle by month, beside the results', 'Three True Outcomes: the strikeout, walk and home-run mix, and how steady it is']}
     />
   }

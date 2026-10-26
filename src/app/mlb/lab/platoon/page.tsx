@@ -7,6 +7,7 @@ import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import SignUpGate from '@/components/SignUpGate'
+import { TablePreview } from '@/components/pro/previews'
 import PlatoonLeague from '@/components/platoon-lab/PlatoonLeague'
 import { Empty } from '@/components/team/ui'
 import { isSignedIn } from '@/lib/require-signup'
@@ -28,6 +29,7 @@ export default async function PlatoonLabPage() {
     return <SignUpGate
       title="Sign up to open the Platoon Lab"
       blurb="Is a hitter's split against left-handed vs right-handed pitching real, or sample size? Every number comes with its sample."
+      preview={<TablePreview title="Platoon, league view" cols={['Hitter', 'Process gap', 'wOBA gap', 'Plate appearances (n)']} rows={['Hitter name']} />}
       features={['Process splits (bat speed, chase, contact point) beside results splits (K%, BB%, wOBA)', 'The sample behind every number, and what is not enough data yet', 'A league view of every hitter: process gap against wOBA gap']}
     />
   }

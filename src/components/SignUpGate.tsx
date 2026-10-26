@@ -8,7 +8,7 @@ import CreateAccountButton from '@/components/pro/CreateAccountButton'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 
-export default function SignUpGate({ title, blurb, features }: { title: string; blurb: string; features: string[] }) {
+export default function SignUpGate({ title, blurb, features, preview }: { title: string; blurb: string; features: string[]; preview?: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader variant="page" />
@@ -22,6 +22,7 @@ export default function SignUpGate({ title, blurb, features }: { title: string; 
             <li key={f} style={{ display: 'flex', gap: 10, fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontSize: 14.5, color: '#3a352c' }}><span style={{ color: '#FF5722' }}>◆</span>{f}</li>
           ))}
         </ul>
+        {preview && <div style={{ margin: '0 0 22px' }}>{preview}</div>}
         <CreateAccountButton source="gate" label="Create account" accent />
       </div>
     </main>
