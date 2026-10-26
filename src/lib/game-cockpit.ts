@@ -7,8 +7,6 @@ import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
-import { getLast7DaysPitcherWorkloadFromDB, getLast7DaysPitcherWorkload, type Last7DaysWorkload } from '@/lib/pitcher-workload'
-import { filterOutStarters } from '@/lib/bullpen-usage'
 import { getProjectedLineup, type ProjectedLineup } from '@/lib/lineups'
 
 import { mlb, REVALIDATE_SECONDS } from '@/lib/mlb-cockpit.server-fetch-allowed'
@@ -153,23 +151,37 @@ export async function getTeamLineup(teamId: number, gameDate: string, gamePk: nu
 }
 
 // ── Bullpen ────────────────────────────────────────────────────────────────
-export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number }
-export async function getBullpenRecent(teamId: number, starterIds: number[], anchorDate: string, days: 3 | 7): Promise<{ dates: string[]; rows: BullpenRow[] }> {
-  let w: Last7DaysWorkload = await getLast7DaysPitcherWorkloadFromDB(teamId, undefined, anchorDate)
-  // The stored daily table is filled by the regular-season cron and has no postseason days; read the games' own play-by-play (cached 30 min) when it has nothing for this window.
-  if (!w.pitchers.some(p => w.dates.slice(-days).some(d => (p.byDate[d] ?? 0) > 0))) {
-    w = await getLast7DaysPitcherWorkload(teamId, undefined, anchorDate).catch(e => { console.error('[getBullpenRecent] live workload failed:', e instanceof Error ? e.message : e); return w })
-  }
-  const dates = w.dates.slice(-days)
-  const skip = new Set(starterIds)
-  const recent = w.pitchers.filter(p => !skip.has(p.playerId) && dates.some(d => (p.byDate[d] ?? 0) > 0))
-  const relievers = await filterOutStarters(recent.map(p => p.playerId), new Date().getFullYear())  // pitchers with no starts this season
-  const rows = recent
-    .filter(p => relievers.has(p.playerId))
-    .map(p => ({ id: p.playerId, name: p.playerName, byDate: p.byDate, total: dates.reduce((n, d) => n + (p.byDate[d] ?? 0), 0) }))
-    .filter(p => p.total > 0)
-    .sort((a, b) => b.total - a.total)
-  return { dates, rows }
+// A relief appearance is any pitcher in a game's boxscore pitchers list except the first one listed for that team (the game's starter).
+// Season role is never used as a filter, so a pitcher who has started games this year (Ashby, May, Hall, Seymour, Matz) still counts when he relieves.
+// Window: the N days BEFORE the game date (the game's own day is not played yet), counted in the schedule's official dates.
+export type BullpenRow = { id: number; name: string; byDate: Record<string, number>; total: number; games: number; lastDate: string }
+type BoxTeam = { pitchers?: number[]; players?: Record<string, { person?: { fullName?: string }; stats?: { pitching?: { numberOfPitches?: number | string } } }> }
+type SchedResp = { dates?: { date: string; games: { gamePk: number; officialDate?: string; status?: { abstractGameState?: string } }[] }[] }
+
+const shiftDay = (d: string, by: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + by); return x.toISOString().slice(0, 10) }
+
+export async function getBullpenRecent(teamId: number, _starterIds: number[], anchorDate: string, days: 3 | 7): Promise<{ dates: string[]; rows: BullpenRow[]; games: number }> {
+  const dates = Array.from({ length: days }, (_, i) => shiftDay(anchorDate, i - days))   // oldest to newest, ending the day before the game
+  const sched = await mlb<SchedResp>(`/schedule?sportId=1&teamId=${teamId}&startDate=${dates[0]}&endDate=${dates[days - 1]}`)
+  const finals = (sched?.dates ?? []).flatMap(d => d.games.map(g => ({ pk: g.gamePk, date: g.officialDate ?? d.date, state: g.status?.abstractGameState })))
+    .filter(g => g.state === 'Final' && dates.includes(g.date))
+  const boxes = await Promise.all(finals.map(g => mlb<{ teams?: { away?: BoxTeam & { team?: { id: number } }; home?: BoxTeam & { team?: { id: number } } } }>(`/game/${g.pk}/boxscore`)))
+  const byPitcher = new Map<number, BullpenRow>()
+  finals.forEach((g, i) => {
+    const t = [boxes[i]?.teams?.away, boxes[i]?.teams?.home].find(x => x?.team?.id === teamId)
+    if (!t?.pitchers) return
+    for (const id of t.pitchers.slice(1)) {                                   // the first pitcher listed is the starter
+      const pl = t.players?.[`ID${id}`]
+      const n = Number(pl?.stats?.pitching?.numberOfPitches ?? 0)
+      if (!(n > 0)) continue
+      const row = byPitcher.get(id) ?? { id, name: pl?.person?.fullName ?? `Player ${id}`, byDate: {}, total: 0, games: 0, lastDate: '' }
+      row.byDate[g.date] = (row.byDate[g.date] ?? 0) + n
+      row.total += n; row.games += 1
+      if (g.date > row.lastDate) row.lastDate = g.date
+      byPitcher.set(id, row)
+    }
+  })
+  return { dates, rows: [...byPitcher.values()].sort((a, b) => b.total - a.total), games: finals.length }
 }
 
 // ── Batter xwOBA by pitch type (table batter_pitch_type_splits, filled by scripts/fetch_batter_pitch_splits.py) ──

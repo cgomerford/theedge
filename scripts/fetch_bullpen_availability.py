@@ -32,7 +32,9 @@ supa = create_client(SUPABASE_URL, SUPABASE_KEY)
 MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 # Role classification by jersey number ranges is unreliable —
-# we use games_started vs appearances to infer relievers.
+# we use games_started vs appearances to infer relievers, for the LABEL only.
+# Pitches are counted per appearance: a game-log entry with gamesStarted == 0 is a relief appearance, whoever the pitcher is
+# (a pitcher who has started games this season still counts when he relieves, e.g. a piggyback or a bullpen day).
 RELIEVER_START_RATIO = 0.3   # if starts/apps < this, treat as reliever
 MIN_APPEARANCES = 3          # ignore pitchers with fewer appearances (small sample)
 
@@ -118,12 +120,13 @@ def get_pitcher_game_log(player_id: int) -> list:
         entries.append({
             'game_date':      sp.get('date', ''),
             'pitches':        int(stat.get('numberOfPitches', 0) or 0),
+            'relief':         int(stat.get('gamesStarted', 0) or 0) == 0,
         })
     return entries
 
 def pitches_on_date(game_log: list, date_iso_str: str) -> int:
-    """Sum pitches thrown on a specific date."""
-    return sum(g['pitches'] for g in game_log if g['game_date'] == date_iso_str)
+    """Sum RELIEF pitches thrown on a specific date (starts are not bullpen work)."""
+    return sum(g['pitches'] for g in game_log if g['game_date'] == date_iso_str and g.get('relief', True))
 
 def classify_role(season_stats: dict) -> str:
     games   = season_stats['games']
@@ -165,10 +168,11 @@ def process_team(team_id: int, team_name: str, game_date: str) -> int:
             season = get_pitcher_season_stats(p['player_id'])
             if not season:
                 continue
-            if not is_reliever(season):
-                continue
-
             game_log = get_pitcher_game_log(p['player_id'])
+            # Keep the arm if the season role says reliever OR he made a relief appearance in the 3-day window.
+            recent_relief = any(g['relief'] and g['game_date'] in (date_iso(0), date_iso(1), date_iso(2)) for g in game_log)
+            if not is_reliever(season) and not recent_relief:
+                continue
 
             # Pitches per day for last 3 calendar days (offset 2, 1, 0)
             days = []

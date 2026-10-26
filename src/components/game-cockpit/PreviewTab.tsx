@@ -113,7 +113,7 @@ function BullpenBars({ team, abbr, id, rows }: { team: string; abbr: string; id:
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}><TeamMark id={id} abbr={abbr} size={22} />{team}</span>
         <span style={{ fontWeight: 800, ...num }}>{total} pitches <span style={{ fontSize: 12, color: MUTE, fontWeight: 500 }}>n {rows.length} relievers</span></span>
       </div>
-      {rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE, padding: '6px 0' }}>No relief pitches recorded in this window</div> : rows.slice(0, 6).map(r => (
+      {rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE, padding: '6px 0' }}>No relief pitches recorded in this window</div> : rows.map(r => (
         <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 32px', gap: 8, alignItems: 'center', fontSize: 14, padding: '2px 0', ...num }}>
           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
           <span style={{ background: '#f1eee6', height: 8, borderRadius: 4 }}><span style={{ display: 'block', height: 8, borderRadius: 4, background: '#1A1A1A', width: `${(r.total / max) * 100}%` }} /></span>
