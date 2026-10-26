@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Headshot, TeamMark } from '@/components/home/Logo'
-import SmallSample from '@/components/data/SmallSample'
+import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
 import PendingBlock from '@/components/data/PendingBlock'
 import SignupAsk from '@/components/signup/SignupAsk'
@@ -19,18 +19,23 @@ const card: React.CSSProperties = { background: '#fff', border: `1px solid ${LIN
 const kicker: React.CSSProperties = { fontSize: 12, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: MUTE, margin: '0 0 8px' }
 const ops3 = (v: number | null) => (v == null ? '' : v.toFixed(3).replace(/^0/, ''))
 
-function Gauge({ value, min, max, text, color }: { value: number; min: number; max: number; text: string; color: string }) {
-  const t = Math.max(0, Math.min(1, (value - min) / (max - min)))
+const Star = () => <span title="Small sample size" style={{ color: '#FF5722', fontWeight: 800 }}>*</span>
+const SMALL_NOTE = `* Small sample size: under ${MIN_SAMPLE.arsenalPitchesPerType} pitches of a type, ${MIN_SAMPLE.whiffSwings} swings, or ${MIN_SAMPLE.batterPercentilePA} batters faced / plate appearances. Read with caution.`
+const Note = () => <div style={{ fontSize: 12, color: MUTE, marginTop: 8 }}>{SMALL_NOTE}</div>
+
+// Half-circle gauge: the fill runs left to right by PERCENTILE, so 100th percentile is the far right end and 0 is the far left.
+function Gauge({ pct, text, color, star }: { pct: number | null; text: string; color: string; star?: boolean }) {
   const r = 52, cx = 60, cy = 60
   const pt = (f: number) => [cx - r * Math.cos(Math.PI * f), cy - r * Math.sin(Math.PI * f)]
+  const t = pct == null ? 0 : Math.max(0, Math.min(1, pct / 100))
   const [x1, y1] = pt(0), [x2, y2] = pt(1), [xv, yv] = pt(t)
   return (
-    <svg width="120" height="76" viewBox="0 0 120 76" role="img" aria-label={text}>
+    <svg width="120" height="78" viewBox="0 0 120 78" style={{ flex: '0 0 120px' }} role="img" aria-label={`${text}${pct != null ? `, ${pct}th percentile` : ''}`}>
       <path d={`M${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2}`} fill="none" stroke="#e7e2d8" strokeWidth="10" strokeLinecap="round" />
-      <path d={`M${x1},${y1} A${r},${r} 0 0 1 ${xv},${yv}`} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" />
-      <text x="60" y="58" textAnchor="middle" fontSize="22" fontWeight="800">{text}</text>
-      <text x="8" y="74" fontSize="12" fill={MUTE}>{min}</text>
-      <text x="112" y="74" textAnchor="end" fontSize="12" fill={MUTE}>{max}</text>
+      {pct != null && t > 0 ? <path d={`M${x1},${y1} A${r},${r} 0 0 1 ${xv},${yv}`} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" /> : null}
+      <text x="60" y="58" textAnchor="middle" fontSize="22" fontWeight="800">{text}{star ? '*' : ''}</text>
+      <text x="8" y="75" fontSize="12" fill={MUTE}>0</text>
+      <text x="112" y="75" textAnchor="end" fontSize="12" fill={MUTE}>100</text>
     </svg>
   )
 }
@@ -54,11 +59,9 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: St
       {s.status === 'ok' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 4px' }}>
-            {s.xwoba != null && s.bf >= MIN_SAMPLE.pitcherPercentileBF
-              ? <Gauge value={s.xwoba} min={0.2} max={0.4} text={ops3(s.xwoba)} color="#FF5722" />
-              : <SmallSample n={s.bf} />}
+            {s.xwoba != null ? <Gauge pct={s.xwobaPct} text={ops3(s.xwoba)} color="#FF5722" star={s.bf < MIN_SAMPLE.pitcherPercentileBF} /> : <span style={{ fontSize: 13, color: MUTE }}>No xwOBA yet</span>}
             <div style={{ fontSize: 13, color: MUTE }}>
-              Contact allowed (xwOBA). Lower means weaker contact against him.
+              Contact allowed (xwOBA). Far right = 100th percentile, the weakest contact allowed among pitchers with 30+ IP.{s.xwobaPct != null ? ` He sits at the ${s.xwobaPct}th.` : ''}
               <div style={num}>n {s.bf.toLocaleString('en-US')} batters faced</div>
               <ThroughDate date={s.throughDate} />
             </div>
@@ -74,19 +77,18 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: St
                   {s.mix.map(m => (
                     <tr key={m.code} style={{ borderTop: `1px solid ${LINE}` }}>
                       <td style={{ padding: '5px 0', whiteSpace: 'nowrap' }}>
-                        <span aria-hidden style={{ display: 'inline-block', width: 10, height: 10, background: pitchColor(m.code), marginRight: 7 }} /><b>{pitchLabel(m.code)}</b>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><SpinBall code={m.code} spin={s.spin[m.code]} /><b>{pitchLabel(m.code)}</b>{m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? <Star /> : null}</span>
                       </td>
-                      {m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? <td colSpan={3} style={{ padding: 5, textAlign: 'right' }}><SmallSample n={m.pitches} /></td> : (<>
-                        <td style={{ padding: 5, textAlign: 'right' }}>{m.usagePct == null ? '' : `${m.usagePct.toFixed(1)}%`}</td>
-                        <td style={{ padding: 5, textAlign: 'right' }}>{m.velo == null ? '' : `${m.velo.toFixed(1)} mph`}</td>
-                        <td style={{ padding: 5, textAlign: 'right', whiteSpace: 'nowrap' }}>{m.swings < MIN_SAMPLE.whiffSwings ? <SmallSample n={m.swings} /> : <b>{m.whiffPct?.toFixed(1)}% miss</b>}</td>
-                      </>)}
+                      <td style={{ padding: 5, textAlign: 'right' }}>{m.usagePct == null ? '' : `${m.usagePct.toFixed(1)}%`}</td>
+                      <td style={{ padding: 5, textAlign: 'right' }}>{m.velo == null ? '' : `${m.velo.toFixed(1)} mph`}</td>
+                      <td style={{ padding: 5, textAlign: 'right', whiteSpace: 'nowrap' }}>{m.whiffPct == null ? '' : <><b>{m.whiffPct.toFixed(1)}% miss</b>{m.swings < MIN_SAMPLE.whiffSwings || m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? <Star /> : null}</>}</td>
                       <td style={{ padding: '5px 0 5px 6px', textAlign: 'right', color: MUTE, fontSize: 12 }}>n {m.pitches.toLocaleString('en-US')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div style={{ fontSize: 12, color: MUTE }}>n = pitches thrown</div>
+              <SpinBallStyles />
             </>
           ) : <PendingBlock label="Team pitching numbers" />}
           {s.lastStart ? (
@@ -94,6 +96,7 @@ function StarterCard({ s, label, teamName, teamId, teamAbbr, lookHref }: { s: St
               <b>Most recent outing</b> {s.lastStart.date}{s.lastStart.opponent ? ` vs ${s.lastStart.opponent}` : ''}: {s.lastStart.ip} IP, {s.lastStart.h} H, {s.lastStart.r} R, {s.lastStart.k} K{s.lastStart.pitches != null ? `, ${s.lastStart.pitches} pitches` : ''}
             </p>
           ) : null}
+          {s.bf < MIN_SAMPLE.pitcherPercentileBF || s.mix.some(m => m.pitches < MIN_SAMPLE.arsenalPitchesPerType || m.swings < MIN_SAMPLE.whiffSwings) ? <Note /> : null}
           <p style={{ margin: '12px 0 0', fontSize: 14 }}><Link href={lookHref} style={{ color: '#FF5722', fontWeight: 800 }}>Attack zones and per-pitch detail</Link></p>
         </>
       )}
@@ -128,11 +131,11 @@ function ParkCard({ park, venue }: { park: ParkIndex | null; venue: string }) {
       <p style={kicker}>x9Lab park index · {venue}</p>
       {!park ? <PendingBlock label="Park index" /> : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Gauge value={park.index} min={80} max={120} text={String(park.index)} color="#1A1A1A" />
+          <Gauge pct={park.pct} text={String(park.index)} color="#1A1A1A" />
           <div style={{ fontSize: 13, color: MUTE, ...num }}>
-            Runs per game in home games vs road games.
+            Runs per game in home games vs road games. Far right = 100th percentile, the highest-scoring park in the league{park.pct != null ? `; this one sits at the ${park.pct}th` : ''}.
             <div>n = {park.homeGames.toLocaleString('en-US')} home / {park.roadGames.toLocaleString('en-US')} road games, {park.seasons}</div>
-            <div>Under 100 = fewer runs here. 100 = average.</div>
+            <div>Index 100 = average. Under 100 = fewer runs here.</div>
           </div>
         </div>
       )}
@@ -177,12 +180,12 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
                     </span>
                   </td>
                   <td style={{ padding: 8, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {!r.contact ? '' : r.contact.pa < MIN_SAMPLE.batterPercentilePA ? <SmallSample n={r.contact.pa} /> : <><b>{ops3(r.contact.xwoba)}</b> <span style={{ fontSize: 12, color: MUTE }}>n {Math.round(r.contact.pa).toLocaleString('en-US')}</span></>}
+                    {!r.contact ? '' : <><b>{ops3(r.contact.xwoba)}</b>{r.contact.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {Math.round(r.contact.pa).toLocaleString('en-US')}</span></>}
                   </td>
                   <td style={{ padding: 8, textAlign: 'right' }}>{h2h(r)}</td>
                   {r.vsPitch.map(v => (
                     <td key={v.code} style={{ padding: 8, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {v.pa < MIN_SAMPLE.batterPercentilePA ? <SmallSample n={v.pa} /> : <><b>{ops3(v.xwoba)}</b> <span style={{ fontSize: 12, color: MUTE }}>n {v.pa}</span></>}
+                      {v.xwoba == null ? '' : <><b>{ops3(v.xwoba)}</b>{v.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {v.pa}</span></>}
                     </td>
                   ))}
                 </tr>
@@ -192,8 +195,9 @@ function BatsTable({ title, lineup, pitcher, through }: { title: string; lineup:
         </div>
       )}
       <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>
-        {formatThrough(through) ? `Through ${formatThrough(through)} · regular season. ` : ''}Head-to-head needs {MIN_SAMPLE.h2hPA}+ PA; under that we show n and you read the pitch-mix columns (xwOBA against that pitch from any pitcher). Under {MIN_SAMPLE.batterPercentilePA} PA = Small sample.
+        {formatThrough(through) ? `Through ${formatThrough(through)} · regular season. ` : ''}Head-to-head needs {MIN_SAMPLE.h2hPA}+ PA; under that we show n and you read the pitch-mix columns (xwOBA against that pitch from any pitcher).
       </div>
+      <Note />
     </section>
   )
 }

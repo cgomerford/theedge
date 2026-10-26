@@ -14,6 +14,8 @@ const FIRST_START = 'First MLB start, no pitch data yet'
 const PROJECTED = 'Projected lineup, not yet confirmed'
 const MUTE = '#8a8275'
 const LINE = '#e7e2d8'
+export const Star = () => <span title="Small sample size" style={{ color: '#FF5722', fontWeight: 800 }}>*</span>
+export const SmallNote = ({ text }: { text: string }) => <div style={{ fontSize: 12, color: '#8a8275', marginTop: 8 }}>* Small sample size: {text}. Read with caution.</div>
 const num: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' }
 
 export function SectionTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
@@ -105,7 +107,7 @@ function h2hCell(r: LineupRow, handWord: string) {
   const line = `${r.h2h.pa} · ${r.h2h.h} · ${r.h2h.hr} · ${r.h2h.k}`
   if (r.h2h.pa >= MIN_SAMPLE.h2hPA) return line
   // 1 to 9 PA: show the n, then the batter's numbers against this pitcher's hand
-  const split = r.vsHand && meetsMin('splitPA', r.vsHand.pa) ? `${ops3(r.vsHand.ops)} OPS vs ${handWord} (n ${r.vsHand.pa} PA)` : r.vsHand ? `Small sample (n = ${r.vsHand.pa})` : ''
+  const split = r.vsHand ? `${ops3(r.vsHand.ops)}${r.vsHand.pa < MIN_SAMPLE.splitPA ? '*' : ''} OPS vs ${handWord} (n ${r.vsHand.pa} PA)` : ''
   return `n ${r.h2h.pa} PA${split ? ` · ${split}` : ''}`
 }
 
@@ -140,12 +142,12 @@ export function LineupTable({ team, teamName, lineup, full, oppHand }: { team: {
                 </td>
                 <td style={{ padding: 6 }}>{r.hand ?? ''}</td>
                 <td style={{ padding: 6, whiteSpace: 'nowrap' }}>
-                  {r.pa != null && r.pa < MIN_SAMPLE.batterPercentilePA ? <SmallSample n={r.pa} /> : r.ops != null ? <>{ops3(r.ops)} <span style={{ fontSize: 12, color: MUTE }}>n {r.pa ?? '?'} PA</span></> : ''}
+                  {r.ops != null ? <>{ops3(r.ops)}{r.pa != null && r.pa < MIN_SAMPLE.batterPercentilePA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {r.pa ?? '?'} PA</span></> : ''}
                 </td>
                 <td style={{ padding: 6, whiteSpace: 'nowrap' }}>{h2hCell(r, handWord)}</td>
                 {full ? (
                   <td style={{ padding: 6, whiteSpace: 'nowrap' }}>
-                    {!r.vsHand ? '' : r.vsHand.pa < MIN_SAMPLE.splitPA ? <SmallSample n={r.vsHand.pa} /> : <>{ops3(r.vsHand.ops)} <span style={{ fontSize: 12, color: MUTE }}>n {r.vsHand.pa} PA</span></>}
+                    {!r.vsHand ? '' : <>{ops3(r.vsHand.ops)}{r.vsHand.pa < MIN_SAMPLE.splitPA ? <Star /> : null} <span style={{ fontSize: 12, color: MUTE }}>n {r.vsHand.pa} PA</span></>}
                   </td>
                 ) : null}
               </tr>
@@ -153,6 +155,7 @@ export function LineupTable({ team, teamName, lineup, full, oppHand }: { team: {
           </tbody>
         </table>
       </div>
+      <SmallNote text={`under ${MIN_SAMPLE.batterPercentilePA} PA season, ${MIN_SAMPLE.splitPA} PA in a split`} />
     </div>
   )
 }

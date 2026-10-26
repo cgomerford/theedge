@@ -1,5 +1,9 @@
 // Data for the game page's Cockpit / Pitchers / Batters / Bullpen & park tabs.
 // Everything here is read-only: MLB Stats API (cached 5 min) + tables the repo already fills.
+import { getSpinByPitch } from '@/lib/mlb-homepage'
+import { getPitcherStatsTable } from '@/lib/stats-data'
+import { computeGroupedPercentiles } from '@/lib/percentiles'
+import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
@@ -29,6 +33,8 @@ export type StarterBlock = {
   kPct: number | null
   bbPct: number | null
   xwoba: number | null
+  xwobaPct: number | null  // 0-100, 100 = best (lowest xwOBA allowed) among pitchers with 30+ IP
+  spin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>
   mix: PitchMixRow[]
   mixPitches: number
   lastStart: LastStart | null
@@ -36,14 +42,25 @@ export type StarterBlock = {
   hasPitchData: boolean
 }
 
+// Percentile of xwOBA allowed among pitchers with 30+ IP: 100 = lowest (best), shown at the right end of the gauge.
+const xwobaPercentiles = cache(async (season: number): Promise<Map<number, number>> => {
+  const rows = await getPitcherStatsTable({ season, minIp: 30 })
+  const m = computeGroupedPercentiles(rows, [{ key: 'xwoba_allowed', label: 'xwOBA', higherIsBetter: false }], () => 'all')
+  const out = new Map<number, number>()
+  for (const [id, v] of m) { const p = v.get('xwoba_allowed'); if (p != null) out.set(id, p) }
+  return out
+})
+
 export async function getStarterBlock(id: number | undefined, name: string | undefined, season: number): Promise<StarterBlock> {
-  const empty: StarterBlock = { status: 'not_announced', id: null, name: null, hand: null, opener: false, era: null, wins: null, losses: null, ip: null, bf: 0, kPct: null, bbPct: null, xwoba: null, mix: [], mixPitches: 0, lastStart: null, throughDate: null, hasPitchData: false }
+  const empty: StarterBlock = { status: 'not_announced', id: null, name: null, hand: null, opener: false, era: null, wins: null, losses: null, ip: null, bf: 0, kPct: null, bbPct: null, xwoba: null, xwobaPct: null, spin: {}, mix: [], mixPitches: 0, lastStart: null, throughDate: null, hasPitchData: false }
   if (!id) return empty
-  const [stats, hands, arsenal, ps] = await Promise.all([
+  const [stats, hands, arsenal, ps, pool, spin] = await Promise.all([
     mlb<{ stats: StatBlock[] }>(`/people/${id}/stats?stats=season,gameLog,career&group=pitching&season=${season}`),
     fetchPitcherHands([id]).catch(() => new Map<number, 'L' | 'R'>()),
     getPitcherZoneArsenal(id).catch(() => ({})),
     createAdminClient().from('pitcher_stats').select('xwoba_allowed').eq('player_id', id).eq('season', season).maybeSingle(),
+    xwobaPercentiles(season),
+    getSpinByPitch(id).catch(() => ({})),
   ])
   const by = (t: string) => stats?.stats?.find(s => s.type.displayName === t)?.splits ?? []
   const seasonStat = by('season')[0]?.stat
@@ -75,6 +92,7 @@ export async function getStarterBlock(id: number | undefined, name: string | und
     kPct: bf > 0 ? (Number(seasonStat?.strikeOuts) / bf) * 100 : null,
     bbPct: bf > 0 ? (Number(seasonStat?.baseOnBalls) / bf) * 100 : null,
     xwoba: num((ps.data as { xwoba_allowed?: unknown } | null)?.xwoba_allowed),
+    xwobaPct: pool.get(id) ?? null, spin,
     mix, mixPitches: all ? Number(all.total_pitches) : 0,
     lastStart: lastS ? { date: lastS.date ?? null, opponent: lastS.opponent?.abbreviation ?? lastS.opponent?.name ?? null, ip: String(lastS.stat.inningsPitched ?? '0.0'), h: Number(lastS.stat.hits ?? 0), r: Number(lastS.stat.runs ?? 0), k: Number(lastS.stat.strikeOuts ?? 0), pitches: num(lastS.stat.numberOfPitches) } : null,
     throughDate: log.length ? (log[log.length - 1].date ?? null) : null,

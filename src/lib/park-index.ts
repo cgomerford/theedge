@@ -10,6 +10,7 @@ export type ParkIndex = {
   homeRpg: number
   roadRpg: number
   seasons: string
+  pct: number | null  // 0-100: share of parks with an index at or below this one (100 = highest-scoring park)
 }
 
 export async function getParkIndex(venueId: number | null | undefined): Promise<ParkIndex | null> {
@@ -26,6 +27,9 @@ export async function getParkIndex(venueId: number | null | undefined): Promise<
   }
   if (!data) return null
   const d = data as Record<string, unknown>
+  const all = await createAdminClient().from('park_index').select('index')
+  const idx = ((all.data ?? []) as { index: number | string }[]).map(r => Number(r.index))
+  const pct = idx.length >= 2 ? Math.round((idx.filter(v => v <= Number(d.index)).length / idx.length) * 100) : null
   return {
     venueId: Number(d.venue_id),
     index: Number(d.index),
@@ -34,5 +38,6 @@ export async function getParkIndex(venueId: number | null | undefined): Promise<
     homeRpg: Number(d.home_rpg),
     roadRpg: Number(d.road_rpg),
     seasons: String(d.seasons),
+    pct,
   }
 }

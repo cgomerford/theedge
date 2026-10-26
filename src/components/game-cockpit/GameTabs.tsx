@@ -8,7 +8,7 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import { getStarterBlock, getTeamLineup, getBullpenRecent, type StarterBlock } from '@/lib/game-cockpit'
 import { getParkIndex } from '@/lib/park-index'
-import { LineupTable, BullpenTable, ParkLine, SectionTitle, StarterRow } from './parts'
+import { LineupTable, BullpenTable, ParkLine, SectionTitle, StarterRow, Star, SmallNote } from './parts'
 
 export type CockpitCtx = {
   gamePk: number; season: number; gameDate: string; venueId: number | null; venueName: string
@@ -89,19 +89,16 @@ function ArsenalTable({ s, teamName }: { s: StarterBlock; teamName: string }) {
                   <span aria-hidden style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: pitchColor(m.code), marginRight: 6 }} />
                   <b>{pitchLabel(m.code)}</b>
                 </td>
-                {m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? (
-                  <td colSpan={3} style={{ padding: 6 }}><SmallSample n={m.pitches} /></td>
-                ) : (<>
-                  <td style={{ padding: 6 }}>{m.usagePct == null ? '' : `${m.usagePct.toFixed(1)}%`} <span style={{ fontSize: 12, color: '#8a8275' }}>n {m.pitches.toLocaleString('en-US')}</span></td>
-                  <td style={{ padding: 6 }}>{m.velo == null ? '' : `${m.velo.toFixed(1)} mph`}</td>
-                  <td style={{ padding: 6 }}>{m.swings < MIN_SAMPLE.whiffSwings ? <SmallSample n={m.swings} /> : <>{m.whiffPct?.toFixed(1)}% <span style={{ fontSize: 12, color: '#8a8275' }}>n {m.swings} swings</span></>}</td>
-                </>)}
+                <td style={{ padding: 6 }}>{m.usagePct == null ? '' : `${m.usagePct.toFixed(1)}%`}{m.pitches < MIN_SAMPLE.arsenalPitchesPerType ? <Star /> : null} <span style={{ fontSize: 12, color: '#8a8275' }}>n {m.pitches.toLocaleString('en-US')}</span></td>
+                <td style={{ padding: 6 }}>{m.velo == null ? '' : `${m.velo.toFixed(1)} mph`}</td>
+                <td style={{ padding: 6 }}>{m.whiffPct == null ? '' : <>{m.whiffPct.toFixed(1)}%{m.swings < MIN_SAMPLE.whiffSwings ? <Star /> : null} <span style={{ fontSize: 12, color: '#8a8275' }}>n {m.swings} swings</span></>}</td>
               </tr>
             ))}</tbody>
           </table>
         </div>
       )}
       <ThroughDate date={s.throughDate} />
+      <SmallNote text={`under ${MIN_SAMPLE.arsenalPitchesPerType} pitches of a type or ${MIN_SAMPLE.whiffSwings} swings`} />
     </div>
   )
 }

@@ -884,6 +884,22 @@ async function getLastGame(pitcherId: number, preferPostseason: boolean): Promis
   }
 }
 
+/** Pitch-weighted average spin rate and movement per pitch type (for SpinBall). Empty when there is no pitch-level data. */
+export async function getSpinByPitch(pitcherId: number): Promise<Record<string, { rpm: number | null; ivb: number | null; hb: number | null }>> {
+  const months = await getPitchViewMonths(pitcherId, SEASON)
+  const spin: Record<string, { rpm: number | null; ivb: number | null; hb: number | null }> = {}
+  for (const c of Object.keys(months)) {
+    const ms = months[c]
+    const wavg = (f: (m: (typeof ms)[number]) => number | null) => {
+      let sum = 0, n = 0
+      for (const m of ms) { const v = f(m); if (v != null && Number.isFinite(v)) { sum += v * m.n; n += m.n } }
+      return n >= 30 ? sum / n : null
+    }
+    spin[c] = { rpm: wavg(m => m.spin), ivb: wavg(m => m.ivb), hb: wavg(m => m.hb) }
+  }
+  return spin
+}
+
 async function getFlights(pitcherId: number, mix: MixRow[]): Promise<{ trend: FeaturedStarter['trend']; flights: FlightPath[]; spin: FeaturedStarter['spin'] }> {
   const months = await getPitchViewMonths(pitcherId, SEASON)
   const codes = Object.keys(months)
