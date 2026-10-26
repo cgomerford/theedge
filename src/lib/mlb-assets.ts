@@ -69,6 +69,11 @@ export function teamLogoUrl(teamId: number): string {
   return `https://www.mlbstatic.com/team-logos/${teamId}.svg`
 }
 
+/** Transparent cutout (head and shoulders, no background) for floating-portrait layouts. */
+export function headshotCutoutUrl(playerId: number, widthPx = 640): string {
+  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:silo:current.png/w_${widthPx},q_auto:best/v1/people/${playerId}/headshot/silo/current`
+}
+
 export function headshotUrl(playerId: number, widthPx = 40): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_${widthPx},q_auto:best/v1/people/${playerId}/headshot/67/current`
 }

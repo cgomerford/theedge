@@ -795,6 +795,8 @@ export type FeaturedStarter = {
   name: string
   teamId: number
   teamAbbr: string
+  /** the club's primary colour, for the hero's soft background */
+  teamColor: string | null
   hand: 'LHP' | 'RHP' | null
   wins: number | null
   losses: number | null
@@ -820,7 +822,7 @@ async function getBattersFaced(pitcherId: number): Promise<number | null> {
   }
 }
 
-export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string): Promise<FeaturedStarter> {
+export async function getFeaturedStarter(pitcherId: number, name: string, teamId: number, teamAbbr: string, teamName: string): Promise<FeaturedStarter> {
   const supa = createAdminClient()
   const [arsenalBySplit, hand, bf, statsRes, throughRes] = await Promise.all([
     getPitcherZoneArsenal(pitcherId),
@@ -849,6 +851,7 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
 
   return {
     id: pitcherId, name, teamId, teamAbbr,
+    teamColor: findTeamByName(teamName)?.primary_color ?? null,
     hand: hand === 'L' ? 'LHP' : hand === 'R' ? 'RHP' : null,
     wins: num(row?.wins), losses: num(row?.losses), era: num(row?.era),
     ip: ip != null ? ip.toFixed(1) : null,
@@ -921,7 +924,7 @@ export async function getFeaturedScout(slate: HomeSlate | null): Promise<Feature
 
   const oppTeam = findTeamByName(other.team.name)
   const oppShort = oppTeam?.short ?? other.team.name
-  const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine))
+  const starter = await getFeaturedStarter(mine.probablePitcher.id, mine.probablePitcher.fullName, mine.team.id, abbrOf(mine), mine.team.name)
   const h2h = await getMostPaAgainst(starter.id, other.team.id, oppShort)
 
   const post = isPostseason(g)

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Headshot, TeamMark } from './Logo'
+import { TeamMark } from './Logo'
+import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import SmallSample from '@/components/data/SmallSample'
 import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
 import { MIN_BF, type FeaturedScout as Featured, type MixRow } from '@/lib/mlb-homepage'
@@ -55,16 +56,22 @@ export default function FeaturedScout({ data }: { data: Featured }) {
   const bfSmall = s.bf == null || s.bf < MIN_BF
   const total = s.mix.reduce((a, m) => a + m.usagePct, 0)
   const line = summary(data)
+  const color = s.teamColor ?? '#8a8275'
 
   return (
-    <section aria-labelledby="featured-h" style={{ border: `2px solid ${INK}`, borderRadius: 18, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: '#fff' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px 16px', flexWrap: 'wrap' }}>
+    <section aria-labelledby="featured-h" className="hm-hero" style={{ position: 'relative', overflow: 'hidden', border: `2px solid ${INK}`, borderRadius: 18, padding: 'clamp(16px, 3vw, 28px)', margin: '20px 0 16px', background: `radial-gradient(circle at 88% 12%, ${color}38 0%, transparent 52%), linear-gradient(165deg, ${color}1f 0%, #ffffff 62%)` }}>
+      {/* floating cutout portrait over the club's initials, top right */}
+      <div aria-hidden="true" className="hm-figure">
+        <span className="hm-figure-abbr" style={{ color: `${color}26` }}>{s.teamAbbr}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={headshotCutoutUrl(s.id, 640)} alt="" width={220} height={220} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingRight: 'min(240px, 40%)' }}>
         <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.14em', color: '#FF5722' }}>{data.kicker}</div>
         <div style={{ fontSize: 13, color: MUTED }}>{data.meta}</div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0 6px' }}>
-        <Headshot id={s.id} name={s.name} size={64} />
+      <div className="hm-hero-head" style={{ margin: '14px 0 6px' }}>
         <div style={{ minWidth: 0 }}>
           <h1 id="featured-h" style={{ margin: 0, fontSize: 'clamp(28px, 4.6vw, 44px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
             {s.name} vs the {data.opp.short}
