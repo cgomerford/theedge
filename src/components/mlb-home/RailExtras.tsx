@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { TeamMark } from '@/components/home/Logo'
+import { TeamMark, Headshot } from '@/components/home/Logo'
 import { MLB_TEAMS } from '@/lib/teams'
 import type { PostLeaderGroup, StatOfDay } from '@/lib/mlb-home-dashboard'
 
@@ -19,11 +19,13 @@ export function PostseasonLeadersRail({ groups, year }: { groups: PostLeaderGrou
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '2px 0 4px' }}>
             <span style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{g.rows[0].value}</span>
             <span style={{ fontSize: 13, fontWeight: 800, color: MUTED }}>{g.unit}</span>
+            <span style={{ marginLeft: 'auto' }}><Headshot id={g.rows[0].id} name={g.rows[0].name} size={44} /></span>
           </div>
           <ol style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
             {g.rows.map((r, i) => (
               <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
                 <span style={{ width: 14, color: MUTED }}>{i + 1}</span>
+                <Headshot id={r.id} name={r.name} size={24} />
                 {teamId(r.team) && <TeamMark id={teamId(r.team)!} abbr={r.team} size={16} />}
                 <Link href={`/mlb/players/${r.id}`} style={{ color: '#1A1A1A', fontWeight: 700, textDecoration: 'none' }}>{r.name}</Link>
                 <span style={{ marginLeft: 'auto', fontWeight: 800 }}>{r.value}</span>
@@ -52,6 +54,7 @@ export function StatOfTheDayRail({ stat }: { stat: StatOfDay | null }) {
           <span style={{ fontSize: 13, fontWeight: 800, color: MUTED }}>mph</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <Headshot id={hardest.batterId} name={hardest.batter} size={28} />
           {tid && <TeamMark id={tid} abbr={hardest.team} size={18} />}
           <Link href={`/mlb/players/${hardest.batterId}`} style={{ color: '#1A1A1A', fontWeight: 800, textDecoration: 'none' }}>{hardest.batter}</Link>
           <span style={{ color: MUTED }}>{hardest.event}{hardest.feet != null ? `, ${Math.round(hardest.feet)} ft` : ''}</span>
