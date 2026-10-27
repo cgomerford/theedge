@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherPitchLog } from '@/lib/pitcher-pitch-log'
-import { requireDeepLook } from '@/lib/deep-look'
+import { canReadDeepData } from '@/lib/deep-look'
 import { aggToArr, aggregate } from '@/lib/zone-stats'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  // Pro-only data (Batting / Pitching Lab). Enforced server-side — the UI lock is not the gate.
-  const denied = await requireDeepLook('pitching_lab', new URL(req.url).searchParams.get('playerId'))
-  if (denied) return denied
   const { searchParams } = new URL(req.url)
+  // Everyone gets the log the free Arsenal and Location tabs need: each pitch's type, location, speed, spin, break, flight and result. The rest
+  // (which game, which at-bat, which hitter, runners, inning: what Sequencing, H2H and the overlay are built on) goes only to Pro or the
+  // viewer's deep look for this pitcher, and so do the summary and single-hitter modes. Enforced here; the UI lock is not the gate.
+  const full = await canReadDeepData('pitching_lab', searchParams.get('playerId') ?? '')
+  if (!full && (searchParams.get('summary') || searchParams.get('batterId'))) {
+    return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
+  }
   const playerId = Number(searchParams.get('playerId'))
   const season = Number(searchParams.get('season') ?? new Date().getFullYear())
   const pitchType = searchParams.get('pitchType')
@@ -59,8 +63,12 @@ export async function GET(req: NextRequest) {
   if (batterId) {
     return NextResponse.json({ ...log, pitches: log.pitches.filter(p => p.batterId === batterId), batterNames: { [batterId]: log.batterNames[batterId] ?? `#${batterId}` } })
   }
-  if (pitchType && pitchType !== 'ALL') {
-    return NextResponse.json({ ...log, pitches: log.pitches.filter(p => p.pitchType === pitchType) })
+  const shaped = full ? log : {
+    ...log, batterNames: {}, batterActive: {},
+    pitches: log.pitches.map(p => ({ ...p, gamePk: null, atBatNumber: null, pitchNumber: null, batterId: null, inning: null, onBase: { first: false, second: false, third: false } })),
   }
-  return NextResponse.json(log)
+  if (pitchType && pitchType !== 'ALL') {
+    return NextResponse.json({ ...shaped, pitches: shaped.pitches.filter(p => p.pitchType === pitchType) })
+  }
+  return NextResponse.json(shaped)
 }

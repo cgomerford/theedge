@@ -29,15 +29,17 @@ export async function GET(req: NextRequest) {
 
   // Overview fields (name, team, season line) are free. Movement, tendencies, sequencing, hot zones and the zone arsenal are
   // Pro-only and are neither fetched nor returned for anyone else: this check is the gate, the UI lock is not.
+  // Movement, hot zones and the zone arsenal feed the free Arsenal and Location tabs, so they go to everyone. Count tendencies and sequencing
+  // stay behind the deep look (`isPro` below).
   const isPro = await canReadDeepData('pitching_lab', String(pitcherId))
   const [personRes, fullStats, movementRows, countTendency, sequencing, hotZones, arsenal] = await Promise.all([
     fetch(`${MLB_API}/people/${pitcherId}?hydrate=currentTeam`, { next: { revalidate: 3600 } }),
     getPitcherStatsFull(pitcherId),
-    isPro ? getPitchMovementFromDB(pitcherId, seasonYear) : Promise.resolve([]),
+    getPitchMovementFromDB(pitcherId, seasonYear),
     isPro ? getPitcherCountTendency(pitcherId) : Promise.resolve({}),
     isPro ? getPitcherSequencing(pitcherId) : Promise.resolve({}),
-    isPro ? getPitcherHotZones(pitcherId) : Promise.resolve({}),
-    isPro ? getPitcherZoneArsenal(pitcherId) : Promise.resolve({}),
+    getPitcherHotZones(pitcherId),
+    getPitcherZoneArsenal(pitcherId),
   ])
 
   let name = 'Pitcher'

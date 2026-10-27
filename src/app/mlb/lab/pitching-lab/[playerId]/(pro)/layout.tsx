@@ -9,13 +9,14 @@ import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
 import ProGate from '@/components/pro/ProGate'
 import DemoFrame from '@/components/pro/DemoFrame'
 import { isSignedIn } from '@/lib/require-signup'
+import LockedTab from '@/components/pro/LockedTab'
 
 export default async function ProPitchingTabs({ children, params }: { children: React.ReactNode; params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   const name = person?.fullName ?? 'this player'
-  // Signed out: the parent layout already shows the sample demo for every tab.
-  if (!(await isSignedIn())) return <>{children}</>
+  // Signed out: these tabs need an account. Nothing is read or rendered for them.
+  if (!(await isSignedIn())) return <LockedTab name={name} />
   return (
     <div style={{ margin: '0 auto' }}>
       <ProGate feature="pitching_lab" entityId={playerId} source="pitching_lab" claim shell={<DemoFrame lab="pitching" realName={name}>{children}</DemoFrame>} who={{ lab: 'pitching', name }} full={async () => children} />

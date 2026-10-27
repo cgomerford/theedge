@@ -12,6 +12,7 @@ import ShapeLab from '@/components/pitch-shape/ShapeLab'
 import { Card, Empty } from '@/components/team/ui'
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
 import { isSignedIn } from '@/lib/require-signup'
+import LockedTab from '@/components/pro/LockedTab'
 import { demoSnapshot } from '@/lib/lab-demo-server'
 
 async function sampleShape() {
@@ -21,10 +22,10 @@ async function sampleShape() {
 
 export default async function ShapeTab({ params }: { params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
-  // Signed out: the layout frames and labels this; show the sample pitcher only.
-  if (!(await isSignedIn())) return <div style={{ margin: '0 auto' }}>{await sampleShape()}</div>
   const person = await getMlbPerson(Number(playerId))
   const name = person?.fullName ?? 'this player'
+  // Signed out: this tab needs an account; nothing is read or rendered.
+  if (!(await isSignedIn())) return <LockedTab name={name} />
   return (
     <div style={{ margin: '0 auto' }}>
       <ProGate

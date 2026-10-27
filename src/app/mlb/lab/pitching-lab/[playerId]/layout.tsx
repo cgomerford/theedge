@@ -1,14 +1,11 @@
 // src/app/mlb/lab/pitching-lab/[playerId]/layout.tsx
 //
 // SERVER layout for every /mlb/lab/pitching-lab/[playerId]/* page: 404s unknown ids, sets the title, wraps the lab shell.
-// The Overview tab is free; every other tab lives in the (pro) route group behind the page's one ProGate. The lab's
-// data API (/api/mlb/pitching-lab) only returns the overview fields to people without Pro.
+// Overview, Arsenal and Location Lab are free for everyone, signed in or not. Every other tab lives in the (pro) route group (Shape beside it):
+// signed-out visitors get a sign-in card there, and a free account opens one full look a day, per player. The data APIs enforce the same split.
 
 import LabShell from './LabShell'
 import FollowControl from '@/components/signup/FollowControl'
-import DemoFrame from '@/components/pro/DemoFrame'
-import { ProGateRow } from '@/components/pro/ProGateView'
-import { isSignedIn } from '@/lib/require-signup'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getMlbPerson } from '@/lib/mlb-person.server-fetch-allowed'
@@ -31,13 +28,5 @@ export default async function PitchingLabGate({ children, params }: { children: 
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
   const follow = <FollowControl kind="player" refId={playerId} name={person.fullName} />
-  if (!(await isSignedIn())) {
-    // Signed out: every tab is the REAL tab on a sample player (DemoFrame), labelled as an example, with the create-account row.
-    return (
-      <LabShell playerName={person.fullName} followSlot={follow}>
-        <DemoFrame lab="pitching" realName={person.fullName} footer={<ProGateRow tier="anon" source="pitching_lab" who={{ lab: 'pitching', name: person.fullName }} />}>{children}</DemoFrame>
-      </LabShell>
-    )
-  }
   return <LabShell playerName={person.fullName} followSlot={follow}>{children}</LabShell>
 }
