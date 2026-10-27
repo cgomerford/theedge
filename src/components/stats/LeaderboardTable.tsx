@@ -45,18 +45,20 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
   const [byTeam, setByTeam] = useState(false)
   const teamFill = (abbr: string) => MLB_TEAMS.find(t => t.abbrev === abbr)?.primary_color ?? color
   const [headUris, setHeadUris] = useState<Record<number, string>>({})
-  const [cmpYear, setCmpYear] = useState('')
-  const [cmp, setCmp] = useState<Record<number, Record<string, number | null>> | null>(null)
+  type Cmp = { year: string; custom?: string; rows: Record<number, Record<string, number | null>> | null }
+  const [cmps, setCmps] = useState<Cmp[]>([])
   const [cmpErr, setCmpErr] = useState('')
-  async function pickYear(y: string) {
-    setCmpYear(y); setCmp(null); setCmpErr('')
-    if (!y || !ctx || !group) return
+  const yearColor = (c: Cmp, i: number) => c.custom ?? shift(color, Math.min(0.8, 0.5 + 0.15 * i))
+  async function addYear(y: string) {
+    setCmpErr('')
+    if (!y || !ctx || !group || cmps.some(c => c.year === y)) return
+    setCmps(cs => [...cs, { year: y, rows: null }])
     try {
       const r = await fetch(`/api/stats/compare?group=${group}&season=${y}&level=${ctx.sportId}&type=${ctx.gameType}`)
       const j = await r.json()
       if (!r.ok) throw new Error(j.error ?? 'failed')
-      setCmp(j.rows)
-    } catch (e) { console.error('[LeaderboardTable] compare failed', e); setCmpErr(`No ${y} data loaded.`) }
+      setCmps(cs => cs.map(c => (c.year === y ? { ...c, rows: j.rows } : c)))
+    } catch (e) { console.error('[LeaderboardTable] compare failed', e); setCmps(cs => cs.filter(c => c.year !== y)); setCmpErr(`No ${y} data loaded.`) }
   }
   async function loadHeads(ids: number[]) {
     // Headshots go through the image proxy so the downloaded picture includes them (cross-origin images are otherwise left blank).
@@ -161,13 +163,14 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
         const colY = all.find(c => c.key === (yKey || (key === '__n' ? baseCols[0].key : key))) ?? baseCols[0]
         const colX = all.find(c => c.key === (xKey || baseCols[1]?.key)) ?? baseCols[1] ?? baseCols[0]
         const pool = sorted.filter(r => r.v[colY.key] != null).sort((a, b) => (colY.asc ? 1 : -1) * ((a.v[colY.key] as number) - (b.v[colY.key] as number)))
-        const data = pool.slice(0, topN).map(r => ({ id: r.id, fill: byTeam ? teamFill(r.team) : color, name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number, o: cmp?.[r.id]?.[colY.key] ?? null }))
-        const overlay = !!cmp && kind !== 'scatter'
+        const data = pool.slice(0, topN).map(r => ({ id: r.id, fill: byTeam ? teamFill(r.team) : color, name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number, ...Object.fromEntries(cmps.map(c => [`o${c.year}`, c.rows?.[r.id]?.[colY.key] ?? null])) } as Record<string, number | string | null> & { id: number; fill: string; name: string; v: number; x: number }))
+        const ready = cmps.filter(c => c.rows)
+        const overlay = ready.length > 0 && kind !== 'scatter'
         const swatches = ['#FF5722', '#6CABDD', '#1A1A1A', '#1D9E75', '#7C3AED', '#FDE047']
         const sc = kind === 'scatter' ? pool.slice(0, topN).filter(r => r.v[colX.key] != null).map(r => ({ name: r.name, fill: byTeam ? teamFill(r.team) : color, x: r.v[colX.key] as number, y: r.v[colY.key] as number })) : []
         const sel: React.CSSProperties = { height: 32, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit' }
         const lab: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }
-        const title = overlay ? `${colY.label}: top ${data.length}, ${ctx?.season} against ${cmpYear}` : kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
+        const title = overlay ? `${colY.label}: top ${data.length}, ${ctx?.season} against ${ready.map(c => c.year).join(', ')}` : kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
         const f = (v: unknown, c: Col) => fmt(Number(v), c)
         return (
           <div>
@@ -184,18 +187,25 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
               <label style={lab}><input type="checkbox" checked={byTeam} onChange={e => setByTeam(e.target.checked)} />Team colours</label>
               {kind === 'hbar' ? <label style={lab}><input type="checkbox" checked={heads} onChange={e => { setHeads(e.target.checked); if (e.target.checked) loadHeads(data.map(d => d.id)) }} />Headshots</label> : null}
               {ctx && group && seasons.length ? (
-                <label style={lab}>Overlay a year
-                  <select style={sel} value={cmpYear} onChange={e => pickYear(e.target.value)}>
-                    <option value="">None</option>
-                    {seasons.filter(y => y !== ctx.season).map(y => <option key={y} value={y}>{y}</option>)}
+                <label style={lab}>Overlay years
+                  <select style={sel} value="" onChange={e => addYear(e.target.value)}>
+                    <option value="">Choose a year</option>
+                    {seasons.filter(y => y !== ctx.season && !cmps.some(c => c.year === String(y))).map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </label>
               ) : null}
+              {cmps.map((c, i) => (
+                <span key={c.year} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #e7e2d8', background: '#fff', padding: '2px 6px', fontSize: 13, fontWeight: 800 }}>
+                  <input type="color" value={yearColor(c, i)} onChange={e => setCmps(cs => cs.map(x => (x.year === c.year ? { ...x, custom: e.target.value } : x)))} aria-label={`Colour for ${c.year}`} style={{ width: 24, height: 24, border: 0, padding: 0, background: 'none', cursor: 'pointer' }} />
+                  {c.year}{c.rows ? '' : ' …'}
+                  <button type="button" onClick={() => setCmps(cs => cs.filter(x => x.year !== c.year))} aria-label={`Remove ${c.year}`} style={{ border: 0, background: 'none', cursor: 'pointer', fontWeight: 800 }}>×</button>
+                </span>
+              ))}
               {cmpErr ? <span style={{ fontSize: 13, color: '#D4533B' }}>{cmpErr}</span> : null}
               <label style={lab}>Top<select style={sel} value={topN} onChange={e => setTopN(Number(e.target.value))}>{[10, 15, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
             </div>
             <div style={{ fontWeight: 800, fontSize: 16, margin: '4px 0' }}>{title}</div>
-            <div style={{ width: '100%', height: kind === 'hbar' ? Math.max(220, data.length * 30) : 380 }}>
+            <div style={{ width: '100%', height: kind === 'hbar' ? Math.max(220, data.length * (30 + (overlay ? ready.length * 18 : 0))) : 380 }}>
               <ResponsiveContainer>
                 {kind === 'hbar' ? (
                   <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
@@ -213,7 +223,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                       }} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}<LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
-                    {overlay ? <Bar dataKey="o" name={cmpYear} fill={shift(color)} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={shift(d.fill)} />)}<LabelList dataKey="o" position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar> : null}
+                    {overlay ? ready.map(c => <Bar key={c.year} dataKey={`o${c.year}`} name={c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey={`o${c.year}`} position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar>) : null}
                   </BarChart>
                 ) : kind === 'vbar' ? (
                   <BarChart data={data} margin={{ left: 0, right: 8, top: 22, bottom: 70 }}>
@@ -222,7 +232,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <YAxis tick={{ fontSize: 12 }} width={46} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
-                    {overlay ? <Bar dataKey="o" name={cmpYear} fill={shift(color)} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={shift(d.fill)} />)}</Bar> : null}
+                    {overlay ? ready.map(c => <Bar key={c.year} dataKey={`o${c.year}`} name={c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[3, 3, 0, 0]} isAnimationActive={false} />) : null}
                   </BarChart>
                 ) : kind === 'line' ? (
                   <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 70 }}>
@@ -232,7 +242,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <Tooltip formatter={(v: unknown) => f(v, colY)} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Line type="monotone" dataKey="v" name={String(ctx?.season ?? 'Now')} stroke={color} strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
-                    {overlay ? <Line type="monotone" dataKey="o" name={cmpYear} stroke={shift(color)} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: shift(color) }} isAnimationActive={false} connectNulls /> : null}
+                    {overlay ? ready.map(c => <Line key={c.year} type="monotone" dataKey={`o${c.year}`} name={c.year} stroke={yearColor(c, cmps.indexOf(c))} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: yearColor(c, cmps.indexOf(c)) }} isAnimationActive={false} connectNulls />) : null}
                   </LineChart>
                 ) : (
                   <ScatterChart margin={{ left: 0, right: 24, top: 12, bottom: 24 }}>
