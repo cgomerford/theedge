@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { MLB_TEAMS } from '@/lib/teams'
-import { resolveViewer, checkLookup, chargeLookup, anonCookie, ASK_LOOKUPS_PER_DAY } from '@/lib/ask-lookups'
+import { resolveViewer, checkLookup, chargeLookup, anonCookie, perDayFor } from '@/lib/ask-lookups'
 
 type Stat = Record<string, string | number | undefined>
 type Split = { season?: string; stat: Stat }
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const viewer = await resolveViewer(req)
   const key = createHash('sha256').update(`vsteam:${playerId}:${team.id}:${want}`).digest('hex')
   const noStore = { 'Cache-Control': 'private, no-store' }
-  const limited = () => NextResponse.json({ error: "You've used today's lookups.", limit: true, left: 0, perDay: ASK_LOOKUPS_PER_DAY }, { status: 429, headers: noStore })
+  const limited = () => NextResponse.json({ error: "You've used today's lookups.", limit: true, left: 0, perDay: perDayFor(viewer) }, { status: 429, headers: noStore })
   const check = viewer.kind === 'pro' ? null : await checkLookup(viewer, key)
   if (check && !check.allowed) return limited()
 
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       if (!ch.ok) return limited()
       left = ch.left
     }
-    const res = NextResponse.json({ ...body, lookupsLeft: viewer.kind === 'pro' ? null : left, perDay: viewer.kind === 'pro' || left == null ? null : ASK_LOOKUPS_PER_DAY }, { headers: viewer.kind === 'pro' ? { 'Cache-Control': 'private, max-age=300' } : noStore })
+    const res = NextResponse.json({ ...body, lookupsLeft: viewer.kind === 'pro' ? null : left, perDay: viewer.kind === 'pro' || left == null ? null : perDayFor(viewer) }, { headers: viewer.kind === 'pro' ? { 'Cache-Control': 'private, max-age=300' } : noStore })
     const c = data.total ? anonCookie(viewer) : null
     if (c) res.cookies.set(c.name, c.value, c.options)
     return res

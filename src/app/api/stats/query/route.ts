@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runQuery, stripForFree } from '@/lib/stats-query'
 import { isProViewer } from '@/lib/require-pro'
 import { runDeepQuery } from '@/lib/pa-query'
-import { resolveViewer, checkLookup, chargeLookup, questionKey, hasRows, anonCookie, ASK_LOOKUPS_PER_DAY } from '@/lib/ask-lookups'
+import { resolveViewer, checkLookup, chargeLookup, questionKey, hasRows, anonCookie, perDayFor } from '@/lib/ask-lookups'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
   GAME_TYPES, CURRENT_SEASON, isStandardMetric, defaultMetric, deepSupports, FIRST_SEASON, DEFAULT_QUERY, isValidSplit, familyFor, metricByKey,
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
   const key = questionKey(q)
   const check = viewer.kind === 'pro' ? null : await checkLookup(viewer, key)
   const noStore = { 'Cache-Control': 'private, no-store' }
-  const limited = () => NextResponse.json({ error: "You've used today's lookups.", limit: true, left: 0, perDay: ASK_LOOKUPS_PER_DAY }, { status: 429, headers: noStore })
+  const limited = () => NextResponse.json({ error: "You've used today's lookups.", limit: true, left: 0, perDay: perDayFor(viewer) }, { status: 429, headers: noStore })
   if (check && !check.allowed) return limited()
   try {
     const result = deep ? await runDeepQuery(q) : await (async () => { const full = await runQuery(q); return pro ? full : stripForFree(full) })()
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
       if (!ch.ok) return limited()
       left = ch.left
     }
-    const res = NextResponse.json({ ...result, lookupsLeft: left, perDay: left == null ? null : ASK_LOOKUPS_PER_DAY }, { headers: noStore })
+    const res = NextResponse.json({ ...result, lookupsLeft: left, perDay: left == null ? null : perDayFor(viewer) }, { headers: noStore })
     const c = rows ? anonCookie(viewer) : null
     if (c) res.cookies.set(c.name, c.value, c.options)
     return res

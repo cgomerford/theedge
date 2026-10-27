@@ -21,7 +21,8 @@ import { isProViewer } from '@/lib/require-pro'
 import type { QueryResult } from '@/lib/stats-query'
 import type { QueryState } from '@/lib/stats-query-catalog'
 
-export const ASK_LOOKUPS_PER_DAY = 5
+export const ASK_LOOKUPS_PER_DAY = 5              // signed-out visitors
+export const ASK_LOOKUPS_PER_DAY_SIGNED_IN = 10   // signed-in Free accounts (Pro is unlimited and never counted)
 export const ASK_REFINE_MINUTES = 15
 export const ASK_IP_BACKSTOP_PER_DAY = 15   // [George: confirm 15]
 export const ANON_COOKIE = 'x9_anon'
@@ -91,13 +92,15 @@ export function anonCookie(v: Viewer): { name: string; value: string; options: R
   return { name: ANON_COOKIE, value: signAnon(v.anonId, key), options: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 } }
 }
 
+/** Lookups a day for this viewer (null = unlimited). */
+export const perDayFor = (v: Viewer): number | null => (v.kind === 'pro' ? null : v.kind === 'subscriber' ? ASK_LOOKUPS_PER_DAY_SIGNED_IN : ASK_LOOKUPS_PER_DAY)
 const counted = (v: Viewer) => v.kind === 'subscriber' || (v.kind === 'anon' && !!v.anonId)
 const args = (v: Viewer, question: string) => ({
   p_kind: v.kind === 'subscriber' ? 'subscriber' : 'anon',
   p_subscriber: v.kind === 'subscriber' ? v.subscriberId : null,
   p_anon: v.kind === 'anon' ? v.anonId : null,
   p_ip_hash: v.kind === 'anon' ? v.ipHash : null,
-  p_question: question, p_cap: ASK_LOOKUPS_PER_DAY, p_ip_cap: ASK_IP_BACKSTOP_PER_DAY, p_refine_minutes: ASK_REFINE_MINUTES,
+  p_question: question, p_cap: perDayFor(v) ?? ASK_LOOKUPS_PER_DAY, p_ip_cap: ASK_IP_BACKSTOP_PER_DAY, p_refine_minutes: ASK_REFINE_MINUTES,
 })
 
 export type Check = { allowed: boolean; refine: boolean; left: number | null }
