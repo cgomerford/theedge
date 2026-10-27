@@ -603,6 +603,7 @@ export function parseQuery(text: string, current: QueryState): Parsed {
   // Results the finder can look for ("last time a grand slam"): only read as a result when asking about the last time,
   // because "home runs on 0-2 counts" is a stat, not a result filter.
   const asksLast = /last time|most recent(ly)?|\blatest\b|last happened|when (did|was|has|have)\b.*\blast\b|how long since|when was the last/.test(q)
+    || /\blast\s+(?:a\s+|an\s+|the\s+)?(?:grand slams?|home ?runs?|homers?|triples?|doubles?|singles?|strike ?outs?|walks?|double plays?|sac(?:rifice)? flys?)\b/.test(q)
   const evts: string[] = []
   if (asksLast) {
     if (/grand slam/.test(q) || /home ?runs?|homers?|\bhr\b/.test(q)) evts.push('home_run')

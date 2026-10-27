@@ -339,8 +339,8 @@ export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
                         <td style={td}>
                           {r.ev != null && (
                             <button type="button" onClick={() => onFindSimilar(r)} title="Find other hits like this one"
-                              style={{ fontFamily: SANS, fontWeight: 700, fontSize: 11.5, padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.orange}`, background: '#fff', color: C.orange, cursor: 'pointer' }}>
-                              Find hits like this
+                              style={{ fontFamily: SANS, fontWeight: 700, fontSize: 11.5, padding: '3px 8px', whiteSpace: 'nowrap', borderRadius: 4, border: `1px solid ${C.orange}`, background: '#fff', color: C.orange, cursor: 'pointer' }}>
+                              Similar hits
                             </button>
                           )}
                         </td>
