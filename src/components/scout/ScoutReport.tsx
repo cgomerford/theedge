@@ -24,6 +24,7 @@ import RunGameSection from './RunGameSection'
 import DefenseSection from './DefenseSection'
 import SplitsSection from './SplitsSection'
 import ParkSection from './ParkSection'
+import OnePager from './OnePager'
 import StarterDeskSection from './StarterDeskSection'
 import LineupDeskSection from './LineupDeskSection'
 import LeverageSection from './LeverageSection'
@@ -49,7 +50,8 @@ const SECTION_BODIES: Partial<Record<string, (ctx: ScoutContext) => React.ReactN
 // The report in five tabs, like the labs: what the sections are about decides the tab, not their number. The free sections (1 to 3) are in Overview
 // and Bullpen & late game, so the first tab and the first screen of the last are open to everyone. Starters and Lineups are the lab layout.
 const REPORT_TABS: { id: string; label: string; sections: string[] }[] = [
-  { id: 'overview', label: 'Overview', sections: ['club-status', 'form-vs-skill', 'manager-card'] },
+  { id: 'overview', label: 'Overview', sections: [] },   // the one-page overview (OnePager), not a section
+  { id: 'club', label: 'Club status & form', sections: ['club-status', 'form-vs-skill', 'manager-card'] },
   { id: 'starters', label: 'Starters', sections: ['pitcher-attack'] },
   { id: 'lineups', label: 'Lineups', sections: ['lineup-vs-sp', 'splits'] },
   { id: 'bullpen', label: 'Bullpen & late game', sections: ['bullpen', 'leverage', 'abs'] },
@@ -96,6 +98,8 @@ export default async function ScoutReport({ game, gameDate, tab }: { game: MLBGa
       <Suspense fallback={null}>
         <Tabs label="Scout report" defaultTab={REPORT_TABS[0].id} tabs={REPORT_TABS.map(t => ({ id: t.id, label: t.label }))} />
       </Suspense>
+
+      {active.id === 'overview' && <Suspense fallback={<Skeleton />}><OnePager ctx={ctx} /></Suspense>}
 
       {inTab.length > 1 && (
         <nav aria-label="Sections in this tab" className="flex gap-1.5 overflow-x-auto pb-1">
