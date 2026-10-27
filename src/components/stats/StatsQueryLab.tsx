@@ -402,8 +402,10 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
     // "Juan Soto vs Yankees": a player against a club is answered with his record against them, for everyone.
     setVs(mu?.who?.playerId && mu.who.team ? { playerId: mu.who.playerId, team: mu.who.team, role: mu.who.playerRole === 'pitch' ? 'pitch' : 'bat' } : null)
     if (mu?.who && !isPro) {
-      notes.push(`Showing ${mu.who.playerName ?? 'the player'}'s career record against the club`)
-      mu.who = undefined
+      // The record card is the whole answer here: no league table, no "how do you want to see this", and no second lookup.
+      setUnderstood([`Showing ${mu.who.playerName ?? 'the player'}'s career record against the club`])
+      setAskOpen(false)
+      return
     }
     if (mu?.who) {
       const stack = state.deep?.stack ?? (state.split ? [state.split] : [])
@@ -595,6 +597,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
       )}
 
       {vs ? <div style={{ marginBottom: 14 }}><VsTeamCard req={vs} onLookups={(left, perDay, lim) => { if (left != null) setLookups({ left, perDay: perDay ?? 5 }); setLimited(lim) }} /></div> : null}
+      {vs && !isPro ? <div style={{ marginBottom: 14 }}><button type="button" onClick={() => setVs(null)} style={{ background: 'none', border: 0, borderBottom: '3px solid #FF5722', padding: '2px 0', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>Back to the league numbers</button></div> : null}
       {askOpen && (
         <AskCard output={output} onOutput={setOutput} chosen={chosen.filter(isAvailable)} onChosen={setChosen} group={q.group} isPro={isPro}
           available={isAvailable} heard={[describe(q)]} onShow={() => { setAskOpen(false); setEpoch(e => e + 1) }}
@@ -604,7 +607,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
           } : undefined} />
       )}
 
-      <div style={{ display: askOpen ? 'none' : 'block' }}>
+      <div style={{ display: askOpen || (vs && !isPro) ? 'none' : 'block' }}>
       {/* The three things almost every question needs — always visible */}
       <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', alignItems: 'end' }}>
