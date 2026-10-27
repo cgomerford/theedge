@@ -29,11 +29,21 @@ export default function AboutPage() {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }]} />
       <SiteHeader variant="page" />
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 16px 80px' }}>
-        <h1 style={{ margin: '0 0 24px', fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>About x9Lab</h1>
-
-        <p style={p}>
-          I&apos;m George. I built x9Lab. I&apos;m a baseball fan from the UK, and I love the sport for its statistics as much as for the games.
-        </p>
+        <style dangerouslySetInnerHTML={{ __html: '.ab-bio{display:flex;gap:28px;align-items:center;margin:0 0 28px}.ab-photo{flex:0 0 240px;margin:0}@media (max-width:640px){.ab-bio{flex-direction:column;align-items:flex-start;gap:16px}.ab-photo{flex:none;width:100%;max-width:300px}}' }} />
+        <div className="ab-bio">
+          <figure className="ab-photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/about/george-citizens-bank-park.jpg" alt="George at Citizens Bank Park, home of the Phillies" width={800} height={1000}
+              style={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '4 / 5', objectFit: 'cover', borderRadius: 14, border: '1px solid #e7e2d8' }} />
+            <figcaption style={{ marginTop: 8, fontSize: 12.5, color: '#8a8275', lineHeight: 1.4 }}>Citizens Bank Park, where it started.</figcaption>
+          </figure>
+          <div>
+            <h1 style={{ margin: '0 0 12px', fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>About x9Lab</h1>
+            <p style={{ ...p, margin: 0 }}>
+              I&apos;m George. I built x9Lab. I&apos;m a baseball fan from the UK, and I love the sport for its statistics as much as for the games.
+            </p>
+          </div>
+        </div>
         <p style={p}>
           It started at a Phillies game. The scoreboard was full of numbers I had never seen on a screen at a ballpark: pitch speeds, spin, how a hitter does against each pitch. It made me want to understand all of it, so I went looking for where those numbers came from and found Baseball Savant. The data was all there, but I found it hard to use. Working out what a column meant, which page to open, and how a number should be read took more effort than watching the game did.
         </p>
