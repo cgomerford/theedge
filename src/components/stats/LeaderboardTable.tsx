@@ -137,7 +137,13 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
             <button type="button" onClick={download} disabled={busy} style={{ background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '5px 12px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{busy ? 'Preparing…' : 'Download image'}</button>
           </span>
         ) : (
-          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#8a8275' }}>Pro members can export these results as an image or a graph. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 12, alignItems: 'center', fontSize: 13, color: '#8a8275' }}>
+            <a href="/pricing" aria-label="Show as a graph, locked: Pro members only" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #a89e8c', borderRadius: 2, padding: '5px 12px', fontWeight: 800, color: '#57534E', textDecoration: 'none' }}>
+              <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><rect x="1" y="6" width="10" height="7" rx="1.5" fill="#57534E" /><path d="M3.5 6V4a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="#57534E" strokeWidth="1.6" /></svg>
+              Graphs and image download
+            </a>
+            <span>Pro members only, signed in or not. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
+          </span>
         )}
       </div>
       <div ref={area}>
