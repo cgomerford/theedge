@@ -17,18 +17,18 @@ import LabPlayerHeader from '@/components/labs/LabPlayerHeader'
 import { MLB_TEAMS } from '@/lib/teams'
 import { BattingLabProvider, useBattingLabData } from '@/lib/batting-lab-context'
 
-// Main row (the build guide's four, plus Overview). The rest of the lab stays one click away in the "More" row.
+// Same structure as the Pitching Lab: Overview, vs pitch type and Location Lab are open to everyone; the rest need an account.
 const MAIN = [
-  { seg: '',          label: 'Overview'        },
-  { seg: 'hot-zones', label: 'Hot zones'       },
-  { seg: 'spray',     label: 'Spray'           },
-  { seg: 'arsenal',   label: 'vs pitch type'   },
-  { seg: 'h2h',       label: 'Head to head'    },
+  { seg: '',            label: 'Overview'         },
+  { seg: 'arsenal',     label: 'vs pitch type'    },
+  { seg: 'location',    label: 'Location Lab'     },
+  { seg: 'hot-zones',   label: 'Hot Zone Overlay' },
+  { seg: 'sequencing',  label: 'Sequencing'       },
+  { seg: 'h2h',         label: 'H2H'              },
+  { seg: 'trends',      label: 'Trends'           },
 ]
 const MORE = [
-  { seg: 'location',   label: 'Location Lab' },
-  { seg: 'sequencing', label: 'Sequencing'   },
-  { seg: 'trends',     label: 'Trends'       },
+  { seg: 'spray',      label: 'Spray'        },
   { seg: 'swing',      label: 'Swing'        },
   { seg: 'contact',    label: 'Contact'      },
   { seg: 'outcomes',   label: 'Outcomes'     },
@@ -37,10 +37,6 @@ const MORE = [
   // Reaction Window archived (2026-09-14): route/component left on disk.
 ]
 const TABS = [...MAIN, ...MORE]
-
-function mlbHeadshot(id: number | string): string {
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`
-}
 
 function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; playerName: string; followSlot?: React.ReactNode }) {
   const { data, failed } = useBattingLabData()

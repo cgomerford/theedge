@@ -60,3 +60,5 @@ fetch	src/components/pitching-lab/MatchupLab.tsx
 fetch	src/app/api/mlb/team-roster/route.ts
 fetch	src/app/api/mlb/game-teams/route.ts
 fetch	src/components/pitching-lab/TrendLab.tsx
+fetch	src/lib/lab-log.ts
+fetch	src/components/batting-lab/BatterArsenal.tsx

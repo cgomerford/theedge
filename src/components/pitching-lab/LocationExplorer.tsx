@@ -17,6 +17,7 @@ import { ALL_ZONES, IN_ZONE, METRIC_DEFS, OUT_ZONE, aggregate, merge, metric, sm
 import { SmoothHeatmap } from './ArsenalExtras'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { buildPaths } from './PitchFlight'
+import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 
 export const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
 export const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
@@ -31,7 +32,10 @@ const COUNTS: [CountKey, string, (p: RawPitch) => boolean][] = [
   ['behind', 'Behind', p => p.balls != null && p.strikes != null && p.balls > p.strikes],
   ['two', 'Two strikes', p => p.strikes === 2],
 ]
-const HANDS: [Hand, string][] = [['all', 'All hitters'], ['L', 'vs left-handed'], ['R', 'vs right-handed']]
+const HANDS: Record<LabRole, [Hand, string][]> = {
+  pitcher: [['all', 'All hitters'], ['L', 'vs left-handed'], ['R', 'vs right-handed']],
+  batter: [['all', 'All pitchers'], ['L', 'vs left-handed pitchers'], ['R', 'vs right-handed pitchers']],
+}
 
 // Geometry in feet, batter's view. The nine inner cells are the strike zone; the outer box holds the four corners (11 to 14).
 export const IX = [-0.83, -0.277, 0.277, 0.83], IZ = [3.5, 2.833, 2.167, 1.5]
@@ -80,7 +84,13 @@ export function Pills<T extends string>({ items, value, onChange }: { items: [T,
   )
 }
 
-export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
+function majorityHandOf(log: { pitches: { stand: 'L' | 'R' | null }[] }): 'L' | 'R' | null {
+  let l = 0, r = 0
+  for (const p of log.pitches) { if (p.stand === 'L') l++; else if (p.stand === 'R') r++ }
+  return l === 0 && r === 0 ? null : l > r ? 'L' : 'R'
+}
+
+export default function LocationExplorer({ id, role = 'pitcher' }: { id: number; role?: LabRole }) {
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   const [pitch, setPitch] = useState('ALL')
   const [hand, setHand] = useState<Hand>('all')
@@ -92,10 +102,9 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
 
   useEffect(() => {
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}`)
-      .then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
+    fetchLabLog(role, id, season).then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
-  }, [pitcherId, season])
+  }, [role, id, season])
 
   const types = useMemo(() => {
     if (!log || log === 'error') return []
@@ -111,7 +120,7 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
   }, [log, pitch, hand, countFn])
   const agg = useMemo(() => aggregate(pitches), [pitches])
 
-  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
+  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(role === 'batter' ? onlyHand(log, majorityHandOf(log)) : log) : []), [log, role])
 
   if (log === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load this pitcher&apos;s pitches right now.</p>
   if (log === null) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading every pitch…</p>
@@ -170,7 +179,7 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
           <span style={{ fontSize: 15, color: '#5b5347', fontFamily: SANS }}>{total} pitches{pitch !== 'ALL' || hand !== 'all' || count !== 'all' ? ' in this view' : ' this season'}</span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
-          <Pills items={HANDS} value={hand} onChange={setHand} />
+          <Pills items={HANDS[role]} value={hand} onChange={setHand} />
           <Pills items={COUNTS.map(c => [c[0], c[1]] as [CountKey, string])} value={count} onChange={setCount} />
         </div>
 
@@ -194,7 +203,7 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
                 <rect x={px(IX[0])} y={pz(IZ[0])} width={(IX[3] - IX[0]) * SC} height={(IZ[0] - IZ[3]) * SC} fill="none" stroke="#1A1A1A" strokeWidth="2" pointerEvents="none" />
               </svg>
               <p style={note}>
-                {def.hint}. Shading compares each zone with this pitcher&apos;s own {def.label} for these pitches{def.dir === 'volume' ? ' (darker means more)' : def.dir === 'hitter' ? ': blue is better for him, red is better for the hitter' : ': blue is better for him'}.
+                {def.hint}. Shading compares each zone with this {role === 'batter' ? 'hitter' : 'pitcher'}&apos;s own {def.label} for these pitches{def.dir === 'volume' ? ' (darker means more)' : role === 'batter' ? (def.dir === 'hitter' ? ': red is where he does the most damage, blue where he does the least' : ': blue is where he misses the most, red the least') : def.dir === 'hitter' ? ': blue is better for him, red is better for the hitter' : ': blue is better for him'}.
                 {star} marks a zone with a small sample (under {cellMin} pitches, or under 10 at-bats, plate appearances or swings for rates). Click a zone for every number.
               </p>
             </div>
@@ -231,15 +240,15 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
                   })}
                 </tbody>
               </table>
-              <p style={note}>Swing rate on the corners is how often hitters chase. Pitches without a zone number are left out.</p>
+              <p style={note}>Swing rate on the corners is how often {role === 'batter' ? 'he chases' : 'hitters chase'}. Pitches without a zone number are left out.</p>
             </div>
 
             <div style={tile}>
-              <div style={kick}>Against each side</div>
+              <div style={kick}>{role === 'batter' ? 'Against each pitcher hand' : 'Against each side'}</div>
               <table className="loc-tbl" style={{ marginTop: 6 }}>
                 <thead><tr><th></th><th>Pitches</th><th>In zone</th><th>Whiff</th><th>xwOBA</th></tr></thead>
                 <tbody>
-                  {([['L', 'Left-handed'], ['R', 'Right-handed']] as [Hand, string][]).map(([h, label]) => {
+                  {([['L', role === 'batter' ? 'Left-handed pitchers' : 'Left-handed'], ['R', role === 'batter' ? 'Right-handed pitchers' : 'Right-handed']] as [Hand, string][]).map(([h, label]) => {
                     const s = sideAgg(h)
                     const zin = merge(IN_ZONE.map(z => s.byZone[z])), zout = merge(OUT_ZONE.map(z => s.byZone[z]))
                     const zt = zin.n + zout.n
@@ -255,7 +264,7 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
                   })}
                 </tbody>
               </table>
-              <p style={note}>Same pitch and count, split by the hitter&apos;s side. Click a row to filter the page to that side.</p>
+              <p style={note}>Same pitch and count, split by the {role === 'batter' ? 'pitcher&apos;s hand' : 'hitter&apos;s side'}. Click a row to filter the page to that side.</p>
             </div>
 
             <SmoothHeatmap pitches={pitches} title={name} counts={false} />

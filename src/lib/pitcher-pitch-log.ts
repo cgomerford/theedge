@@ -75,6 +75,10 @@ export type RawPitch = {
   // Results on a pitch that ended the plate appearance (null otherwise). woba: Savant's woba_value; xwoba: expected value from exit speed and angle on a ball in play; wobaDen: woba_denom (1 for a plate appearance that counts).
   woba: number | null; xwoba: number | null; wobaDen: number | null
   exitVelo: number | null
+  // Only on a batter's pitches seen through src/lib/lab-log.ts (the Batting Lab): launch angle, bat speed and swing length, null on a pitcher's log.
+  launchAngle?: number | null
+  batSpeed?: number | null
+  swingLength?: number | null
   // Savant's own movement against a spin-free path, feet, from the catcher's view: [pfx_x, pfx_z]. Null if missing.
   pfx: [number, number] | null
   effectiveSpeed: number | null // real Savant field — release speed adjusted for extension (and a small batter-perceived-distance factor), i.e. "how fast it actually plays" to the hitter, not just the radar-gun number

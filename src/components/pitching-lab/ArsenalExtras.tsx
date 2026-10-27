@@ -126,8 +126,8 @@ export function PitchSeasonLine({ log, type, name }: { log: PitcherPitchLog; typ
 
 type Period = 'start' | 'month'
 
-export function UsageTrend({ log, paths }: { log: PitcherPitchLog; paths: PitchPath[] }) {
-  const [period, setPeriod] = useState<Period>('start')
+export function UsageTrend({ log, paths, initial = 'start' }: { log: PitcherPitchLog; paths: PitchPath[]; initial?: Period }) {
+  const [period, setPeriod] = useState<Period>(initial)
   const types = paths.map(p => p.type)
   const data = useMemo(() => {
     const by = new Map<string, Map<string, number>>()

@@ -1,17 +1,11 @@
 // src/app/mlb/lab/batting-lab/[playerId]/layout.tsx
 //
-// SERVER layout: the SIGN-UP gate for every /mlb/lab/batting-lab/[playerId]/* page. The lab UI itself (LabShell.tsx —
-// the client layout with the header and tab bar) only renders for signed-up members; a signed-out visitor gets the
-// sign-up card and none of the lab's client code or data requests run.
-//
-// Pro is NOT decided here any more. The tabs that were Pro before the Nerve Centre restructure (Overview, Vs Arsenal,
-// Location Lab, Hot Zone Overlay, Sequencing, Trends, H2H) live in the (pro) route group, whose layout keeps the Pro
-// gate exactly as it was; Contact and the other Nerve Centre tabs sit outside it, open to any signed-up member. The lab's
-// Pro data APIs are gated separately (lib/require-pro.ts), so bypassing a page does not reach that data either.
+// SERVER layout for every /mlb/lab/batting-lab/[playerId]/* page. Overview, vs pitch type and Location Lab are open to everyone, signed in or
+// not. The rest need an account: the tabs in the (pro) group (hot zone overlay, sequencing, H2H, trends) spend a free account's one full look
+// a day on this player, and the tabs in the (member) group (spray, swing, contact, outcomes, platoon, approach) read stored tables and
+// are open to any signed-in member. Signed-out visitors get a sign-in card on those (their layouts), never the data. The data APIs enforce the
+// same split (lib/deep-look.ts), so bypassing a page does not reach it.
 
-import { isSignedIn } from '@/lib/require-signup'
-import DemoFrame from '@/components/pro/DemoFrame'
-import { ProGateRow } from '@/components/pro/ProGateView'
 import LabShell from './LabShell'
 import FollowControl from '@/components/signup/FollowControl'
 import type { Metadata } from 'next'
@@ -36,14 +30,5 @@ export default async function BattingLabGate({ children, params }: { children: R
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
   const follow = <FollowControl kind="player" refId={playerId} name={person.fullName} />
-  if (!(await isSignedIn())) {
-    // Signed out: every tab is the REAL tab running on a sample player (DemoFrame), labelled as an example, with the create-account row.
-    // The pages below swap the requested player for the sample (lib/lab-player.ts), so none of this player's data is loaded.
-    return (
-      <LabShell playerName={person.fullName} followSlot={follow}>
-        <DemoFrame lab="batting" realName={person.fullName} footer={<ProGateRow tier="anon" source="batting_lab" who={{ lab: 'batting', name: person.fullName }} />}>{children}</DemoFrame>
-      </LabShell>
-    )
-  }
   return <LabShell playerName={person.fullName} followSlot={follow}>{children}</LabShell>
 }

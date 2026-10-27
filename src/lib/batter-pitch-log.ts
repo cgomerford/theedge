@@ -49,6 +49,12 @@ export type RawBatterPitch = {
   onBase: { first: boolean; second: boolean; third: boolean }
   gamePk: number | null
   atBatNumber: number | null
+  releasePosX: number | null // release point, feet, catcher's view
+  releasePosZ: number | null
+  extension: number | null
+  armAngle: number | null
+  traj: number[] | null // Savant's flight fit [vx0, vy0, vz0, ax, ay, az, release_pos_y]; null if any piece is missing
+  topBot: 'T' | 'B' | null // top or bottom of the inning (the top: the away team is batting)
   spinRate: number | null
   pfxX: number | null // Savant's break against a spin-free path, feet, catcher's view
   pfxZ: number | null
@@ -109,7 +115,7 @@ function numOrNaN(s: string): number {
 
 export async function getBatterPitchLog(batterId: number, season = SEASON_FALLBACK): Promise<BatterPitchLog | null> {
   return withSavantCache(
-    `pitch-log:v3:${batterId}:${season}`, // v3: rows also carry spin, break and wOBA fields (Hot Zone Overlay)
+    `pitch-log:v4:${batterId}:${season}`, // v4: rows also carry release, extension, flight fit and inning half (Batting Lab views)
     21600,
     () => fetchBatterPitchLog(batterId, season),
   )
@@ -152,6 +158,8 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
   const iZone = idx('zone')
   const iBalls = idx('balls'), iStrikes = idx('strikes'), iInning = idx('inning')
   const iOn1b = idx('on_1b'), iOn2b = idx('on_2b'), iOn3b = idx('on_3b')
+  const iRelX = idx('release_pos_x'), iRelZ = idx('release_pos_z'), iExt = idx('release_extension'), iArm = idx('arm_angle'), iTopBot = idx('inning_topbot')
+  const iTraj = ['vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'release_pos_y'].map(idx)
   const iSpin = idx('release_spin_rate'), iPfxX = idx('pfx_x'), iPfxZ = idx('pfx_z')
   const iWv = idx('woba_value'), iXw = idx('estimated_woba_using_speedangle'), iWd = idx('woba_denom')
   const iGamePk = idx('game_pk'), iAtBat = idx('at_bat_number'), iPitchNum = idx('pitch_number')
@@ -218,6 +226,9 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
       gamePk: Number.isNaN(gamePk) ? null : gamePk,
       atBatNumber: Number.isNaN(atBatNumber) ? null : atBatNumber,
       pitchNumber: Number.isNaN(pitchNumber) ? null : pitchNumber,
+      releasePosX: opt(iRelX), releasePosZ: opt(iRelZ), extension: opt(iExt), armAngle: opt(iArm),
+      traj: iTraj.every(k => k !== -1) && iTraj.every(k => cells[k] !== '' && Number.isFinite(Number(cells[k]))) ? iTraj.map(k => Math.round(Number(cells[k]) * 1000) / 1000) : null,
+      topBot: iTopBot !== -1 ? (cells[iTopBot] === 'Top' ? 'T' : cells[iTopBot] === 'Bot' ? 'B' : null) : null,
       spinRate: opt(iSpin), pfxX: opt(iPfxX), pfxZ: opt(iPfxZ), woba: opt(iWv), xwoba: opt(iXw), wobaDen: opt(iWd),
     })
   }
