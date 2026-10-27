@@ -10,13 +10,13 @@
 // All three read the one per-pitch log the tab already loads (src/lib/pitcher-pitch-log.ts); nothing here is estimated.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
-import type { PitchPath, MoveRow } from './PitchFlight'
+import type { PitchPath } from './PitchFlight'
 
 const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, fontFamily: SANS }
 const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
@@ -24,62 +24,100 @@ const note: React.CSSProperties = { margin: '8px 0 0', fontSize: 12, color: C.mu
 
 // ─── Movement profile ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function MovementProfile({ log, paths, movement }: { log: PitcherPitchLog; paths: PitchPath[]; movement: MoveRow[] }) {
-  void movement
+/** Break map: a plain scatter on a soft grid. Each pitch hangs off a "no spin" mark by a tail, so the tail IS the movement. `focus` dims the others. */
+export function MovementProfile({ log, paths, focus, compact = false }: { log: PitcherPitchLog; paths: PitchPath[]; focus?: string; compact?: boolean }) {
   // Arm-side break is positive. Seen from behind the plate, a right-hander's arm side is on the left.
   const toX = (hb: number) => (log.throws === 'R' ? -hb : hb)
-  const rows = paths.map(p => ({ p, m: { avgHBreak: p.hb, avgVBreak: p.ivb } }))
-  if (rows.length === 0) return <div style={{ ...card, fontSize: 14, color: C.mute }}>No movement data on record yet.</div>
-  // One scale for both directions (an inch sideways is the same length as an inch up), fitted to the pitches with room for labels.
-  const pts = rows.map(({ p, m }) => ({ p, x: toX(m.avgHBreak), y: m.avgVBreak }))
-  const PAD = 7
-  const xMin = Math.min(0, ...pts.map(q => q.x)) - PAD, xMax = Math.max(0, ...pts.map(q => q.x)) + PAD + 10   // extra room on the right for names
-  const yMin = Math.min(0, ...pts.map(q => q.y)) - PAD, yMax = Math.max(0, ...pts.map(q => q.y)) + PAD
-  const VW = 520, VH = 400
-  const k = Math.min(VW / (xMax - xMin), VH / (yMax - yMin))
-  const ox = (VW - k * (xMax - xMin)) / 2 - k * xMin, oy = (VH - k * (yMax - yMin)) / 2 + k * yMax   // pixel position of (0, 0)
-  const X = (v: number) => ox + v * k, Y = (v: number) => oy - v * k
-  const maxR = Math.ceil(Math.max(Math.abs(xMin), xMax, Math.abs(yMin), yMax) / 6) * 6
-  const rings = Array.from({ length: maxR / 6 }, (_, i) => (i + 1) * 6)
-  // Names sit to the right of each dot; nudge them apart vertically so none overlap.
-  const labels = pts.map(q => ({ ...q, ly: Y(q.y) })).sort((a, b) => a.ly - b.ly)
-  for (let i = 1; i < labels.length; i++) if (Math.abs(labels[i].x - labels[i - 1].x) * k < 140 && labels[i].ly - labels[i - 1].ly < 15) labels[i].ly = labels[i - 1].ly + 15
+  const pts = paths.map(p => ({ p, x: toX(p.hb), y: p.ivb }))
+  if (pts.length === 0) return <div style={{ ...card, fontSize: 14, color: C.mute }}>No movement data on record yet.</div>
+  // Equal inches both ways, boxed to the pitches plus a margin, with the no-spin mark always inside.
+  const step = 6
+  const lo = (v: number) => Math.floor((v - 3) / step) * step, hi = (v: number) => Math.ceil((v + 3) / step) * step
+  const xMin = lo(Math.min(0, ...pts.map(q => q.x))), xMax = hi(Math.max(0, ...pts.map(q => q.x)))
+  const yMin = lo(Math.min(0, ...pts.map(q => q.y))), yMax = hi(Math.max(0, ...pts.map(q => q.y)))
+  const L = 34, R = 10, T = 10, B = 26
+  const VW = 320, k = (VW - L - R) / (xMax - xMin), VH = T + B + k * (yMax - yMin)
+  const X = (v: number) => L + (v - xMin) * k, Y = (v: number) => T + (yMax - v) * k
+  const xt: number[] = [], yt: number[] = []
+  for (let v = xMin; v <= xMax; v += step) xt.push(v)
+  for (let v = yMin; v <= yMax; v += step) yt.push(v)
+  // Names sit beside their dots; nudge the ones that would collide.
+  const lab = pts.map(q => ({ ...q, ly: Y(q.y) })).sort((a, b) => a.ly - b.ly)
+  for (let i = 1; i < lab.length; i++) if (Math.abs(lab[i].x - lab[i - 1].x) * k < 120 && lab[i].ly - lab[i - 1].ly < 14) lab[i].ly = lab[i - 1].ly + 14
   return (
-    <div style={card}>
+    <div style={{ ...card, minWidth: 0 }}>
       <SpinBallStyles />
-      <div style={kick}>Movement profile · batter&apos;s view</div>
-      <svg viewBox={`0 0 ${VW} ${VH}`} role="img" aria-label="Average break of each pitch" style={{ width: '100%', height: 'auto', display: 'block', marginTop: 6 }}>
-        <defs><clipPath id="mv-clip"><rect x="0" y="0" width={VW} height={VH} /></clipPath></defs>
-        <g clipPath="url(#mv-clip)">
-          {rings.map(v => <circle key={v} cx={X(0)} cy={Y(0)} r={v * k} fill="none" stroke={v % 12 === 0 ? C.line : C.soft} strokeDasharray={v % 12 === 0 ? undefined : '3 3'} />)}
-          <line x1="0" x2={VW} y1={Y(0)} y2={Y(0)} stroke={C.line} />
-          <line x1={X(0)} x2={X(0)} y1="0" y2={VH} stroke={C.line} />
-          {rings.filter(v => X(0) - v * k > 14).map(v => <text key={v} x={X(0) - v * k + 3} y={Y(0) + 12} fontSize="10" fill={C.faint} fontFamily={SANS}>{v}&quot;</text>)}
-        </g>
-        <text x="8" y={VH - 8} fontSize="11" fill={C.mute} fontFamily={SANS}>← toward third base</text>
-        <text x={VW - 8} y={VH - 8} fontSize="11" fill={C.mute} textAnchor="end" fontFamily={SANS}>toward first base →</text>
-        <text x="8" y="14" fontSize="11" fill={C.mute} fontFamily={SANS}>↑ rises</text>
-        <text x="8" y="30" fontSize="11" fill={C.mute} fontFamily={SANS}>↓ drops</text>
+      <div style={kick}>Movement · batter&apos;s view</div>
+      <svg viewBox={`0 0 ${VW} ${VH}`} role="img" aria-label="Average break of each pitch against a spin-free path" style={{ width: '100%', height: 'auto', display: 'block', marginTop: 6 }}>
+        <rect x={L} y={T} width={VW - L - R} height={VH - T - B} fill="#fcfbf8" stroke={C.line} />
+        {xt.map(v => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={T} y2={VH - B} stroke={v === 0 ? C.mute : C.soft} strokeWidth={v === 0 ? 1.2 : 1} /><text x={X(v)} y={VH - 10} textAnchor="middle" fontSize="10" fill={C.faint} fontFamily={SANS}>{v}</text></g>)}
+        {yt.map(v => <g key={`y${v}`}><line x1={L} x2={VW - R} y1={Y(v)} y2={Y(v)} stroke={v === 0 ? C.mute : C.soft} strokeWidth={v === 0 ? 1.2 : 1} /><text x={L - 5} y={Y(v) + 3} textAnchor="end" fontSize="10" fill={C.faint} fontFamily={SANS}>{v}</text></g>)}
+        <text x={VW - R - 4} y={VH - B - 5} textAnchor="end" fontSize="10" fill={C.mute} fontFamily={SANS}>toward first base →</text>
+        <text x={L + 4} y={VH - B - 5} fontSize="10" fill={C.mute} fontFamily={SANS}>← third base</text>
+        <text x={L + 5} y={T + 12} fontSize="10" fill={C.mute} fontFamily={SANS}>↑ rises · ↓ drops (inches)</text>
         {pts.map(({ p, x, y }) => {
-          const r = 6 + Math.sqrt(p.share) * 12
-          const lab = labels.find(l => l.p.type === p.type)!
+          const dim = focus != null && focus !== p.type
+          const r = (compact ? 5 : 6) + Math.sqrt(p.share) * (compact ? 8 : 11)
+          const l = lab.find(q => q.p.type === p.type)!
           return (
-            <g key={p.type}>
-              <circle cx={X(x)} cy={Y(y)} r={r} fill={pitchColor(p.type)} fillOpacity="0.85" stroke="#fff" strokeWidth="2"><title>{`${p.name}: ${y >= 0 ? '+' : ''}${y.toFixed(1)}" rise, ${p.hb >= 0 ? '+' : ''}${p.hb.toFixed(1)}" arm-side (n = ${p.n})`}</title></circle>
-              <text x={X(x) + r + 6} y={lab.ly + 4} fontSize="12" fontWeight="800" fill={C.ink} fontFamily={SANS} paintOrder="stroke" stroke="#fff" strokeWidth="3">{p.name}</text>
+            <g key={p.type} opacity={dim ? 0.3 : 1}>
+              <line x1={X(0)} y1={Y(0)} x2={X(x)} y2={Y(y)} stroke={pitchColor(p.type)} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.5" />
+              <circle cx={X(x)} cy={Y(y)} r={r} fill={pitchColor(p.type)} stroke="#fff" strokeWidth="2"><title>{`${p.name}: ${y >= 0 ? '+' : ''}${y.toFixed(1)}" rise, ${p.hb >= 0 ? '+' : ''}${p.hb.toFixed(1)}" arm-side (n = ${p.n})`}</title></circle>
+              {(!dim || focus == null) && <text x={X(x) + r + 5} y={l.ly + 4} fontSize="11" fontWeight="800" fill={C.ink} fontFamily={SANS} paintOrder="stroke" stroke="#fff" strokeWidth="3">{p.name}</text>}
             </g>
           )
         })}
+        <circle cx={X(0)} cy={Y(0)} r="5" fill="#fff" stroke={C.ink} strokeWidth="1.5"><title>A pitch thrown with no spin</title></circle>
+        <text x={X(0) + 8} y={Y(0) - 7} fontSize="10" fill={C.mute} fontFamily={SANS}>no spin</text>
       </svg>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8, marginTop: 8 }}>
-        {rows.map(({ p, m }) => (
-          <div key={p.type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            <SpinBall code={p.type} size={26} spin={{ rpm: p.spin, ivb: m.avgVBreak, hb: m.avgHBreak }} />
-            <span style={{ minWidth: 0 }}><b>{p.name}</b><br /><span style={{ color: C.mute, fontVariantNumeric: 'tabular-nums' }}>{p.velo != null ? `${p.velo.toFixed(1)} mph` : '—'}{p.spin != null ? ` · ${Math.round(p.spin)} rpm` : ''}</span></span>
-          </div>
-        ))}
+      {!compact && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8, marginTop: 8 }}>
+          {pts.map(({ p }) => (
+            <div key={p.type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <SpinBall code={p.type} size={26} spin={{ rpm: p.spin, ivb: p.ivb, hb: p.hb }} />
+              <span style={{ minWidth: 0 }}><b>{p.name}</b><br /><span style={{ color: C.mute, fontVariantNumeric: 'tabular-nums' }}>{p.velo != null ? `${p.velo.toFixed(1)} mph` : '—'}{p.spin != null ? ` · ${Math.round(p.spin)} rpm` : ''}</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+      <p style={note}>Average break in inches against a pitch with no spin, from behind the plate. The tail runs from the no-spin mark to where the pitch ends up; bigger dots are used more.</p>
+    </div>
+  )
+}
+
+/** One pitch, game by game: how much of that game's pitches it was, with the velocity in the hover. */
+export function PitchSeasonLine({ log, type, name }: { log: PitcherPitchLog; type: string; name: string }) {
+  const data = useMemo(() => {
+    const by = new Map<string, { n: number; hit: number; v: number[] }>()
+    for (const p of log.pitches) {
+      const g = by.get(p.date) ?? { n: 0, hit: 0, v: [] }
+      g.n++
+      if (p.pitchType === type) { g.hit++; if (p.velo != null) g.v.push(p.velo) }
+      by.set(p.date, g)
+    }
+    return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, g]) => ({
+      date, label: date.slice(5).replace('-', '/'), n: g.n, thrown: g.hit,
+      share: Math.round((g.hit / g.n) * 1000) / 10, velo: g.v.length ? Math.round((g.v.reduce((s, v) => s + v, 0) / g.v.length) * 10) / 10 : null,
+    }))
+  }, [log, type])
+  return (
+    <div style={{ ...card, minWidth: 0 }}>
+      <div style={kick}>{name} · game by game</div>
+      <div style={{ width: '100%', height: 220, marginTop: 8 }}>
+        <ResponsiveContainer>
+          <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.soft} />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.faint }} interval="preserveStartEnd" minTickGap={18} />
+            <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10, fill: C.faint }} width={38} domain={[0, 'auto']} />
+            <Tooltip
+              formatter={(v: unknown) => [`${v}%`, 'Share of pitches']}
+              labelFormatter={(_, pl) => { const r = pl?.[0]?.payload as { date: string; n: number; thrown: number; velo: number | null } | undefined; return r ? `${r.date} · ${r.thrown} of ${r.n} pitches${r.velo != null ? ` · ${r.velo} mph` : ''}` : '' }}
+            />
+            <Line type="monotone" dataKey="share" stroke={pitchColor(type)} strokeWidth={2.5} dot={{ r: 2.5 }} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
-      <p style={note}>Average break in inches, seen from behind the plate. The small ball turns the way that pitch spins, slowed about 40 times; bigger dots are used more.</p>
+      <p style={note}>Share of each game&apos;s pitches. Hover a point for the game, the count and the average velocity.</p>
     </div>
   )
 }
@@ -215,7 +253,7 @@ export function SmoothHeatmap({ pitches, title }: { pitches: RawPitch[]; title: 
         ))}
       </div>
       {use.length === 0 ? <p style={{ fontSize: 14, color: C.mute }}>No pitches in that count.</p> : (
-        <div style={{ position: 'relative', width: '100%', maxWidth: 440, margin: '0 auto', aspectRatio: `${VW} / ${VH}`, background: '#fff', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.soft}` }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: 270, margin: '0 auto', aspectRatio: `${VW} / ${VH}`, background: '#fff', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.soft}` }}>
           <canvas ref={ref} width={GW} height={GH} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', imageRendering: 'auto' }} />
           <svg viewBox={`0 0 ${VW} ${VH}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden="true">
             <rect x={sx(-0.83)} y={sz(3.5)} width={sx(0.83) - sx(-0.83)} height={sz(1.5) - sz(3.5)} fill="none" stroke="#1A1A1A" strokeOpacity="0.7" strokeWidth="2" />
@@ -227,7 +265,7 @@ export function SmoothHeatmap({ pitches, title }: { pitches: RawPitch[]; title: 
         Smoothness
         <input type="range" min="0.12" max="0.5" step="0.02" value={bw} onChange={e => setBw(Number(e.target.value))} style={{ flex: 1, maxWidth: 220, accentColor: C.orange }} aria-label="Smoothness of the heatmap" />
       </label>
-      <p style={note}>{use.length} pitches. Seen from behind the plate; the box is the average strike zone. Red is where the most pitches cross, blue where a few do. Each pitch is a soft blob and the blobs are added up, so a wider setting shows the broad area and a narrower one the tight clusters.</p>
+      <p style={note}>{use.length} pitches, seen from behind the plate; the box is the average strike zone. Red is where the most cross. A wider smoothness shows the broad area, a narrower one the tight clusters.</p>
     </div>
   )
 }

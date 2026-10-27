@@ -32,9 +32,10 @@ import PitchUsageDonut from '@/components/PitchUsageDonut'
 import PitchArsenalSummary from '@/components/PitchArsenalSummary'
 import ZoneGrid, { METRICS, ZoneColorLegend } from '@/components/pitching-lab/ZoneGrid'
 import PitchGradeRadar from '@/components/pitching-lab/PitchGradeRadar'
+import Link from 'next/link'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
-import { FlightSection, PitchCards, buildPaths } from '@/components/pitching-lab/PitchFlight'
-import { MovementProfile, SmoothHeatmap, UsageTrend } from '@/components/pitching-lab/ArsenalExtras'
+import { FlightSection, PitchCards, buildPaths, type PitchPath } from '@/components/pitching-lab/PitchFlight'
+import { MovementProfile, PitchSeasonLine, SmoothHeatmap, UsageTrend } from '@/components/pitching-lab/ArsenalExtras'
 import type { PitcherPitchLog } from '@/lib/pitcher-pitch-log'
 import ReleaseChart from '@/components/pitching-lab/ReleaseChart'
 import EdgePlusCard from '@/components/pitching-lab/EdgePlusCard'
@@ -66,7 +67,11 @@ function StatBlock({ label, value }: { label: string; value: string }) {
   )
 }
 
-function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pitcherId: number; teamColor: string }) {
+const tile: React.CSSProperties = { background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 14, minWidth: 0 }
+const tileKick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#FF5722', textTransform: 'uppercase' }
+
+/** The nine tiles for one pitch, in a 3 x 3 grid so everything about it is on one screen. */
+function PitchTiles({ row, path, log, pitcherId, teamColor, slow, setSlow }: { row: MergedArsenalRow; path: PitchPath | undefined; log: PitcherPitchLog | null; pitcherId: number; teamColor: string; slow: number; setSlow: (n: number) => void }) {
   const { data } = usePitchingLabData()
   const [split, setSplit] = useState<Split>('all')
   const [metric, setMetric] = useState<PitcherZoneMetric>('usage_pct')
@@ -83,54 +88,44 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
 
   const availableSplits = (['all', 'vs_lhb', 'vs_rhb'] as Split[]).filter(s => data?.arsenal[s]?.arsenal[row.pitchType])
   const zones = data?.arsenal[split]?.arsenal[row.pitchType]?.zones ?? null
+  const hb = path ? path.hb : row.movement?.avgHBreak ?? null
+  const ivb = path ? path.ivb : row.movement?.avgVBreak ?? null
+  const nums: [string, string][] = [
+    ['Pitches', String(row.pitches)], ['Usage', `${row.usage.toFixed(1)}%`], ['Velo', row.movement?.avgVelocity != null ? `${row.movement.avgVelocity.toFixed(1)} mph` : '—'],
+    ['Arm-side', fmtIn(hb)], ['Rise', fmtIn(ivb)], ['Spin', path?.spin != null ? `${Math.round(path.spin)} rpm` : '—'],
+    ['Whiff', fmtPct(row.whiffPct)], ['Put-away', fmtPct(row.putAway)], ['K', fmtPct(row.kPct)],
+    ['BA', fmtRate(row.ba)], ['SLG', fmtRate(row.slg)], ['wOBA', fmtRate(row.woba)],
+    ['xwOBA', fmtRate(row.estWoba)], ['Hard-hit', fmtPct(row.hardHitPct)], ['Runs/100', fmtRv(row.runValuePer100)],
+  ]
 
   return (
-    <div className="space-y-5">
-      <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-4">{row.pitchName} — full stat line</p>
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-4">
-          <StatBlock label="Pitches" value={String(row.pitches)} />
-          <StatBlock label="Usage%" value={`${row.usage.toFixed(1)}%`} />
-          <StatBlock label="Velo" value={row.movement?.avgVelocity != null ? `${row.movement.avgVelocity.toFixed(1)} mph` : '—'} />
-          <StatBlock label="HB" value={fmtIn(row.movement?.avgHBreak ?? null)} />
-          <StatBlock label="IVB" value={fmtIn(row.movement?.avgVBreak ?? null)} />
-          <StatBlock label="Whiff%" value={fmtPct(row.whiffPct)} />
-          <StatBlock label="Put-Away%" value={fmtPct(row.putAway)} />
-          <StatBlock label="K%" value={fmtPct(row.kPct)} />
-          <StatBlock label="BA" value={fmtRate(row.ba)} />
-          <StatBlock label="SLG" value={fmtRate(row.slg)} />
-          <StatBlock label="wOBA" value={fmtRate(row.woba)} />
-          <StatBlock label="xwOBA" value={fmtRate(row.estWoba)} />
-          <StatBlock label="Hard-Hit%" value={fmtPct(row.hardHitPct)} />
-          <StatBlock label="RV/100" value={fmtRv(row.runValuePer100)} />
-        </div>
-      </div>
+    <>
+      <div className="ars-g3">
+        {log ? <FlightSection log={log} paths={path ? [path] : []} slow={slow} setSlow={setSlow} title={row.pitchName} /> : <div style={tile}>Loading each pitch…</div>}
+        {log ? <SmoothHeatmap pitches={log.pitches.filter(p => p.pitchType === row.pitchType)} title={row.pitchName} /> : <div style={tile} />}
 
-      <div className="grid md:grid-cols-2 gap-5">
-        <div className="bg-white border border-stone-200 rounded-xl p-5">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold">{row.pitchName} — hot zone</p>
+        <div style={tile}>
+          <div style={tileKick}>{row.pitchName} · the numbers</div>
+          <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px 8px', margin: '12px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+            {nums.map(([k, v]) => <div key={k}><dt style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: '#a89e8c', textTransform: 'uppercase' }}>{k}</dt><dd style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>{v}</dd></div>)}
+          </dl>
+          <p style={{ margin: '12px 0 0', fontSize: 11, color: '#a89e8c', lineHeight: 1.5 }}>Runs per 100 pitches: a negative number is good for the pitcher. Break is in inches, arm-side positive.</p>
+        </div>
+
+        <div style={tile}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={tileKick}>{row.pitchName} · hot zone</div>
             {availableSplits.length > 1 && (
-              <div className="flex gap-1 bg-stone-100 rounded-lg p-0.5">
+              <div className="flex gap-1">
                 {availableSplits.map(s => (
-                  <button key={s} onClick={() => setSplit(s)} className={`uppercase tracking-wider rounded-md px-2 py-1 text-[9px] transition ${split === s ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}>
-                    {SPLIT_LABELS[s]}
-                  </button>
+                  <button key={s} onClick={() => setSplit(s)} style={{ fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 9px', cursor: 'pointer', border: `1px solid ${split === s ? '#FF5722' : '#e7e2d8'}`, background: split === s ? '#fff1ea' : '#fff', color: split === s ? '#FF5722' : '#1A1A1A' }}>{SPLIT_LABELS[s]}</button>
                 ))}
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5 mb-4 justify-center">
+          <div className="flex flex-wrap gap-1.5 my-3 justify-center">
             {METRICS.map(m => (
-              <button
-                key={m.key}
-                onClick={() => setMetric(m.key)}
-                className={`uppercase tracking-wider rounded border px-2 py-1 text-[9px] transition ${
-                  metric === m.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-400 hover:border-stone-300'
-                }`}
-              >
-                {m.label}
-              </button>
+              <button key={m.key} onClick={() => setMetric(m.key)} style={{ fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 9px', cursor: 'pointer', border: `1px solid ${metric === m.key ? '#FF5722' : '#e7e2d8'}`, background: metric === m.key ? '#fff1ea' : '#fff', color: metric === m.key ? '#FF5722' : '#1A1A1A' }}>{m.label}</button>
             ))}
           </div>
           {zones ? (
@@ -138,20 +133,32 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
               <ZoneGrid zones={zones} metric={metric} view="catcher" />
               <div className="mt-3"><ZoneColorLegend metric={metric} /></div>
             </>
-          ) : (
-            <p className="text-center text-[12px] italic text-stone-400 py-10">No zone data for this pitch yet.</p>
-          )}
+          ) : <p className="text-center text-[12px] text-stone-400 py-10">No zone data for this pitch yet.</p>}
         </div>
 
-        {grade ? (
-          <PitchGradeRadar stats={grade.stats} color={teamColor} poolSize={grade.poolSize} />
-        ) : (
-          <div className="bg-white border border-stone-200 rounded-xl p-5 flex items-center justify-center h-64 text-[12px] text-stone-400">Grading this pitch…</div>
-        )}
+        {grade ? <PitchGradeRadar stats={grade.stats} color={teamColor} poolSize={grade.poolSize} /> : <div style={{ ...tile, display: 'grid', placeItems: 'center', color: '#a89e8c', fontSize: 12 }}>Grading this pitch…</div>}
+
+        {log && path ? <MovementProfile log={log} paths={buildPaths(log)} focus={row.pitchType} compact /> : <div style={tile} />}
+        {log ? <PitchSeasonLine log={log} type={row.pitchType} name={row.pitchName} /> : <div style={tile} />}
+
+        <div style={{ ...tile, background: '#fcfbf8' }}>
+          <div style={tileKick}>See the shape</div>
+          <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.5, color: '#3a352c' }}>
+            The Shape tab draws {row.pitchName} in 3D: where it is released and how that has moved month by month, and how far it breaks compared with a pitch thrown with no spin, with the pitch count behind each month.
+          </p>
+          <p style={{ margin: '10px 0 0', fontSize: 13, color: '#8a8275', lineHeight: 1.5 }}>For a deeper look at where it is thrown, open Location Lab.</p>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
+            <Link href={`/mlb/lab/pitching-lab/${pitcherId}/shape`} style={{ fontWeight: 800, fontSize: 14, color: '#FF5722', textDecoration: 'none' }}>Open Shape →</Link>
+            <Link href={`/mlb/lab/pitching-lab/${pitcherId}/location`} style={{ fontWeight: 800, fontSize: 14, color: '#FF5722', textDecoration: 'none' }}>Location Lab →</Link>
+          </div>
+        </div>
       </div>
 
-      <EdgePlusCard pitcherId={pitcherId} pitchType={row.pitchType} pitchName={row.pitchName} stats={grade?.stats ?? []} />
-    </div>
+      <details>
+        <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 14, color: '#FF5722', padding: '4px 0' }}>Stuff grade for {row.pitchName}</summary>
+        <div style={{ marginTop: 10 }}><EdgePlusCard pitcherId={pitcherId} pitchType={row.pitchType} pitchName={row.pitchName} stats={grade?.stats ?? []} /></div>
+      </details>
+    </>
   )
 }
 
@@ -206,7 +213,7 @@ export default function ArsenalPage() {
 
   return (
     <div className="ars-grid">
-      <style>{`.ars-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}.ars-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:6px}.ars-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A}.ars-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.ars-btn.on{border-color:#FF5722;background:#fff1ea}@media (max-width:860px){.ars-grid{grid-template-columns:minmax(0,1fr)}.ars-side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.ars-btn{width:auto;white-space:nowrap}}`}</style>
+      <style>{`.ars-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}.ars-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:6px}.ars-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A}.ars-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.ars-btn.on{border-color:#FF5722;background:#fff1ea}.ars-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}.ars-span2{grid-column:span 2}@media (max-width:1180px){.ars-g3{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.ars-g3{grid-template-columns:minmax(0,1fr)}.ars-span2{grid-column:auto}}@media (max-width:860px){.ars-grid{grid-template-columns:minmax(0,1fr)}.ars-side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.ars-btn{width:auto;white-space:nowrap}}`}</style>
       <SpinBallStyles />
       <nav className="ars-side" aria-label="Pitch types">
         <button type="button" className={`ars-btn${selectedPitch === 'ALL' ? ' on' : ''}`} onClick={() => setSelectedPitch('ALL')}>
@@ -228,23 +235,20 @@ export default function ArsenalPage() {
               <SpinBall code={selectedRow.pitchType} size={52} spin={{ rpm: selPath[0]?.spin ?? null, ivb: selPath[0]?.ivb ?? null, hb: selPath[0]?.hb ?? null }} />
               <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{selectedRow.pitchName}</h2>
             </div>
-            {goodLog ? <FlightSection log={goodLog} paths={selPath} slow={slow} setSlow={setSlow} title={selectedRow.pitchName} /> : <p className="text-[14px] text-stone-400">{logWait}</p>}
-            {goodLog && <SmoothHeatmap pitches={goodLog.pitches.filter(p => p.pitchType === selectedRow.pitchType)} title={selectedRow.pitchName} />}
-            {/* Keyed by pitch type so switching pitches remounts fresh state (grade fetch) instead of needing an imperative reset in an effect. */}
-            <PitchDetail key={selectedRow.pitchType} row={selectedRow} pitcherId={data.id} teamColor={data.color} />
+            <PitchTiles key={selectedRow.pitchType} row={selectedRow} path={selPath[0]} log={goodLog} pitcherId={data.id} teamColor={data.color} slow={slow} setSlow={setSlow} />
           </>
         ) : (
           <>
             {liveRows && liveRows.length > 0 && <PitchArsenalSummary rows={liveRows} pitcherName={data.name} />}
             {goodLog && paths.length > 0 ? (
               <>
-                <div className="grid md:grid-cols-2 gap-5">
-                  <MovementProfile log={goodLog} paths={paths} movement={data.movementRows} />
-                  <UsageTrend log={goodLog} paths={paths} />
+                <div className="ars-g3">
+                  <MovementProfile log={goodLog} paths={paths} />
+                  <div className="ars-span2" style={{ minWidth: 0 }}><UsageTrend log={goodLog} paths={paths} /></div>
+                  <FlightSection log={goodLog} paths={paths} slow={slow} setSlow={setSlow} title="All pitches together" />
+                  <SmoothHeatmap pitches={goodLog.pitches} title="All pitches" />
                 </div>
-                <FlightSection log={goodLog} paths={paths} slow={slow} setSlow={setSlow} title="All pitches together" />
                 <PitchCards paths={paths} movement={data.movementRows} slow={slow} onPick={setSelectedPitch} />
-                <SmoothHeatmap pitches={goodLog.pitches} title="All pitches" />
               </>
             ) : <p className="text-[14px] text-stone-400">{logWait}</p>}
             <VeloBandChart pitcherId={data.id} />

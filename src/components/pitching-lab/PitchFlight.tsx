@@ -29,7 +29,7 @@ export type PitchPath = {
   pts: Pt[]; T: number
   release: Pt; plate: Pt
   velo: number | null; spin: number | null; ext: number | null
-  // Savant's own break in inches against a spin-free path (arm-side positive, rise positive).
+  // Break in inches against a spin-free path (arm-side positive, rise positive): Savant's own pfx when the row has it, else worked out from the flight fit.
   hb: number; ivb: number
 }
 
@@ -76,7 +76,7 @@ export function buildPaths(log: PitcherPitchLog): PitchPath[] {
     out.push({
       type, name: log.pitchNames[type] ?? type, n: ps.length, share: ps.length / total, pts, T,
       release: pts[0], plate: pts[60],
-      hb: pfxX == null ? 0 : (log.throws === 'R' ? -1 : 1) * pfxX * 12, ivb: pfxZ == null ? 0 : pfxZ * 12,
+      hb: (log.throws === 'R' ? -1 : 1) * (pfxX != null ? pfxX * 12 : 6 * ax * T50 * T50), ivb: pfxZ != null ? pfxZ * 12 : 6 * (az + 32.174) * T50 * T50,
       velo: mean(ps.filter(p => p.velo != null).map(p => p.velo as number)),
       spin: mean(ps.filter(p => p.spinRate != null).map(p => p.spinRate as number)),
       ext: mean(ps.filter(p => p.extension != null).map(p => p.extension as number)),
@@ -239,14 +239,14 @@ export function SpeedToggle({ slow, setSlow }: { slow: number; setSlow: (n: numb
   )
 }
 
-/** The flight animation beside the release-point chart, for whichever pitches are in `paths`. */
+/** Two tiles for a grid parent: the flight animation, then the release-point chart, for whichever pitches are in `paths`. */
 export function FlightSection({ log, paths, slow, setSlow, title }: { log: PitcherPitchLog; paths: PitchPath[]; slow: number; setSlow: (n: number) => void; title: string }) {
   const hidden = useMemo(() => new Set(log.pitches.map(p => p.pitchType).filter(t => !paths.some(x => x.type === t))), [log, paths])
   const hand = log.throws === 'L' ? 'left-hander' : log.throws === 'R' ? 'right-hander' : null
-  if (paths.length === 0) return <div style={{ ...card, fontFamily: SANS, fontSize: 14, color: C.mute }}>No pitch flight data for this pitch yet.</div>
+  if (paths.length === 0) return <div style={{ ...card, fontFamily: SANS, fontSize: 14, color: C.mute, gridColumn: '1 / -1' }}>No pitch flight data for this pitch yet.</div>
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16, fontFamily: SANS }}>
-      <div style={card}>
+    <>
+      <div style={{ ...card, minWidth: 0 }}>
         <div style={kick}>{title} · batter&apos;s view</div>
         <FlightPlayer paths={paths} slow={slow} />
         <SpeedToggle slow={slow} setSlow={setSlow} />
@@ -254,14 +254,14 @@ export function FlightSection({ log, paths, slow, setSlow, title }: { log: Pitch
           The average flight path Statcast fits for each pitch, from the mean release point to the front of the plate, in perspective. Slow is six times slower than real time.
         </p>
       </div>
-      <div style={card}>
+      <div style={{ ...card, minWidth: 0 }}>
         <div style={kick}>Release points · batter&apos;s view</div>
         <ReleaseView log={log} hidden={hidden} />
         <p style={{ margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.45 }}>
           Seen from behind the plate{hand ? `, so a ${hand} lets go on the ${log.throws === 'L' ? 'right' : 'left'}` : ''}. Each dot is one pitch; the large dot is that pitch&apos;s average (hover for the count). Overlapping clusters mean the pitches look alike out of the hand.
         </p>
       </div>
-    </div>
+    </>
   )
 }
 
