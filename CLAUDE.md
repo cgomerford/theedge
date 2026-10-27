@@ -1,4 +1,4 @@
-# CLAUDE.md — The Edge (edgereportdaily.com)
+# CLAUDE.md — The Edge (xlab9.com; was edgereportdaily.com)
 
 @AGENTS.md
 @DESIGN_SYSTEM.md

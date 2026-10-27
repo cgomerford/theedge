@@ -220,7 +220,7 @@ MLB_TEAMS = {
 }
 
 team_oaa: dict[int, int] = {}
-PROXY_BASE = os.environ.get('NEXT_PUBLIC_APP_URL', 'https://edgereportdaily.com')
+PROXY_BASE = os.environ.get('NEXT_PUBLIC_APP_URL', 'https://xlab9.com')
 
 for team_id in MLB_TEAMS:
     try:
