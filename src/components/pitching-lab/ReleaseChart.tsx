@@ -99,7 +99,7 @@ export default function ReleaseChart({ pitcherId, hideScatter = false }: { pitch
             <XAxis dataKey="date" tick={AXIS_TICK} />
             <YAxis tick={AXIS_TICK} domain={['auto', 'auto']} width={40} unit="°" />
             <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}°` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
-            <Line {...NO_ANIM} type="monotone" dataKey="armAngle" name="Arm angle" stroke="#7C3AED" strokeWidth={2} dot={{ r: 2.5 }} connectNulls />
+            <Line {...NO_ANIM} type="linear" dataKey="armAngle" name="Arm angle" stroke="#7C3AED" strokeWidth={2} dot={{ r: 2.5 }} connectNulls />
           </LineChart>
         </ResponsiveContainer>
       </div>

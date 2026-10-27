@@ -2,7 +2,7 @@
 
 // src/components/pitching-lab/VeloBandChart.tsx
 //
-// Velo per pitch over the last 8 starts — a fade shows up per pitch type
+// Velo per pitch over the last 8 games — a fade shows up per pitch type
 // here, not just blended into one overall number. Moved onto the Arsenal
 // tab (below the pitch-mix donut) since that's where usage/mix context
 // already lives; same real per-pitch log as everywhere else in this app.
@@ -98,8 +98,8 @@ export default function VeloBandChart({ pitcherId }: { pitcherId: number }) {
 
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Velo band by pitch — last 8 starts</p>
-      <p className="text-[10px] font-mono text-stone-400 mb-3">Top 5 pitches by usage, average velo per start — faint dashed line is each pitch&apos;s real linear trend across these starts.</p>
+      <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Velo band by pitch — last 8 games</p>
+      <p className="text-[10px] text-stone-400 mb-3">Top 5 pitches by usage, average velo per game — faint dashed line is each pitch&apos;s real linear trend across these games.</p>
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={veloByStartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f4f1ea" />
@@ -108,7 +108,7 @@ export default function VeloBandChart({ pitcherId }: { pitcherId: number }) {
           <Tooltip formatter={(v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)} mph` : '—')} labelFormatter={(_, p) => p?.[0]?.payload?.fullDate ?? ''} />
           <Legend wrapperStyle={{ fontSize: 9, fontFamily: 'var(--font-redhat), sans-serif' }} />
           {topPitches.map(pt => (
-            <Line {...NO_ANIM} key={pt} type="monotone" dataKey={pt} name={log.pitchNames[pt] ?? pt} stroke={pitchColor(pt)} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+            <Line {...NO_ANIM} key={pt} type="linear" dataKey={pt} name={log.pitchNames[pt] ?? pt} stroke={pitchColor(pt)} strokeWidth={2} dot={{ r: 3 }} connectNulls />
           ))}
           {topPitches.map(pt => (
             <Line

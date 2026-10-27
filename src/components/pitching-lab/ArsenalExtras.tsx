@@ -10,7 +10,7 @@
 // All three read the one per-pitch log the tab already loads (src/lib/pitcher-pitch-log.ts); nothing here is estimated.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
@@ -113,7 +113,7 @@ export function PitchSeasonLine({ log, type, name }: { log: PitcherPitchLog; typ
               formatter={(v: unknown) => [`${v}%`, 'Share of pitches']}
               labelFormatter={(_, pl) => { const r = pl?.[0]?.payload as { date: string; n: number; thrown: number; velo: number | null } | undefined; return r ? `${r.date} · ${r.thrown} of ${r.n} pitches${r.velo != null ? ` · ${r.velo} mph` : ''}` : '' }}
             />
-            <Line type="monotone" dataKey="share" stroke={pitchColor(type)} strokeWidth={2.5} dot={{ r: 2.5 }} isAnimationActive={false} />
+            <Line type="linear" dataKey="share" stroke={pitchColor(type)} strokeWidth={2.5} dot={{ r: 2.5 }} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -157,22 +157,22 @@ export function UsageTrend({ log, paths }: { log: PitcherPitchLog; paths: PitchP
       </div>
       <div style={{ width: '100%', height: 400, marginTop: 8 }}>
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }} stackOffset="expand">
+          <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={C.soft} />
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: C.faint }} interval="preserveStartEnd" minTickGap={16} />
-            <YAxis tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tick={{ fontSize: 10, fill: C.faint }} width={38} />
+            <YAxis tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 10, fill: C.faint }} width={38} domain={[0, 'auto']} />
             <Tooltip
               formatter={(v: unknown, k: unknown) => [`${typeof v === 'number' ? v.toFixed(1) : v}%`, names[String(k)] ?? String(k)]}
               labelFormatter={(_, pl) => { const r = pl?.[0]?.payload as { key?: string; n?: number } | undefined; return r ? `${r.key} · ${r.n} pitches${(r.n ?? 0) < MIN_SAMPLE.arsenalPitchesPerType ? ' (small sample)' : ''}` : '' }}
             />
-            {types.map(t => <Area key={t} type="monotone" dataKey={t} stackId="u" stroke={pitchColor(t)} fill={pitchColor(t)} fillOpacity={0.85} isAnimationActive={false} />)}
-          </AreaChart>
+            {types.map(t => <Line key={t} type="linear" dataKey={t} stroke={pitchColor(t)} strokeWidth={2.5} dot={{ r: 2.5 }} isAnimationActive={false} />)}
+          </LineChart>
         </ResponsiveContainer>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6, fontSize: 12 }}>
         {paths.map(p => <span key={p.type} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 999, background: pitchColor(p.type) }} />{p.name}</span>)}
       </div>
-      <p style={note}>Each slice is that pitch&apos;s share of the pitches thrown that {period === 'start' ? 'game' : 'month'}; hover for the pitch count. A game with few pitches moves a lot, so read the shape, not one point.</p>
+      <p style={note}>Each line is that pitch&apos;s share of the pitches thrown that {period === 'start' ? 'game' : 'month'}; hover for the pitch count. A game with few pitches moves a lot, so read the shape, not one point.</p>
     </div>
   )
 }

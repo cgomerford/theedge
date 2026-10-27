@@ -33,6 +33,8 @@ import PitchArsenalSummary from '@/components/PitchArsenalSummary'
 import ZoneGrid, { METRICS, ZoneColorLegend } from '@/components/pitching-lab/ZoneGrid'
 import PitchGradeRadar from '@/components/pitching-lab/PitchGradeRadar'
 import Link from 'next/link'
+import { ordinal } from '@/lib/ordinal'
+import { MIN_SAMPLE } from '@/lib/min-sample'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { FlightSection, PitchCards, buildPaths, type PitchPath } from '@/components/pitching-lab/PitchFlight'
 import { MovementProfile, PitchSeasonLine, SmoothHeatmap, UsageTrend } from '@/components/pitching-lab/ArsenalExtras'
@@ -98,8 +100,26 @@ function PitchTiles({ row, path, log, pitcherId, teamColor, slow, setSlow }: { r
     ['xwOBA', fmtRate(row.estWoba)], ['Hard-hit', fmtPct(row.hardHitPct)], ['Runs/100', fmtRv(row.runValuePer100)],
   ]
 
+  const ranked = (grade?.stats ?? []).filter(x => x.percentile != null).sort((x, y) => (y.percentile as number) - (x.percentile as number))
+  const best = ranked[0], worst = ranked.length > 1 ? ranked[ranked.length - 1] : null
+  const pitchWord = row.pitchName.toLowerCase()
+  const overall = ranked.length ? Math.round(ranked.reduce((t, x) => t + (x.percentile as number), 0) / ranked.length) : 0
+
   return (
     <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <SpinBall code={row.pitchType} size={52} spin={{ rpm: path?.spin ?? null, ivb, hb }} />
+        <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{row.pitchName}</h2>
+        <span style={{ fontSize: 15, color: '#5b5347', lineHeight: 1.4 }}>
+          {grade === null ? 'Ranking against the league…' : !best ? 'Not enough league data to rank this pitch.' : (
+            <>
+              <b title={`The average of the ${ranked.length} measures on the grade radar, each ranked against every ${pitchWord} in the league`} style={{ color: '#1A1A1A' }}>{ordinal(overall)} percentile</b> overall among {grade.poolSize} {pitchWord}s in the league
+              {row.pitches < MIN_SAMPLE.arsenalPitchesPerType && <span title={`n = ${row.pitches}`} style={{ color: '#D4533B', fontWeight: 800 }}> *</span>}
+              <span style={{ color: '#8a8275' }}> · best {best.label} {ordinal(Math.round(best.percentile as number))}{worst ? `, lowest ${worst.label} ${ordinal(Math.round(worst.percentile as number))}` : ''}</span>
+            </>
+          )}
+        </span>
+      </div>
       <div className="ars-g3">
         {log ? <FlightSection log={log} paths={path ? [path] : []} slow={slow} setSlow={setSlow} title={row.pitchName} /> : <div style={tile}>Loading each pitch…</div>}
         {log ? <SmoothHeatmap pitches={log.pitches.filter(p => p.pitchType === row.pitchType)} title={row.pitchName} /> : <div style={tile} />}
@@ -231,10 +251,6 @@ export default function ArsenalPage() {
       <div className="space-y-6" style={{ minWidth: 0 }}>
         {selectedRow ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <SpinBall code={selectedRow.pitchType} size={52} spin={{ rpm: selPath[0]?.spin ?? null, ivb: selPath[0]?.ivb ?? null, hb: selPath[0]?.hb ?? null }} />
-              <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{selectedRow.pitchName}</h2>
-            </div>
             <PitchTiles key={selectedRow.pitchType} row={selectedRow} path={selPath[0]} log={goodLog} pitcherId={data.id} teamColor={data.color} slow={slow} setSlow={setSlow} />
           </>
         ) : (
