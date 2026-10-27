@@ -47,15 +47,19 @@ const SECTION_BODIES: Partial<Record<string, (ctx: ScoutContext) => React.ReactN
   'manager-card': (ctx) => <ManagerCardSection ctx={ctx} />,
 }
 
-// The report in five tabs, like the labs: what the sections are about decides the tab, not their number. The free sections (1 to 3) are in Overview
-// and Bullpen & late game, so the first tab and the first screen of the last are open to everyone. Starters and Lineups are the lab layout.
+// The report in ten tabs, like the labs: one subject per tab (the overview, starters, lineups, bullpen, leverage, ABS, fielding, base running,
+// tendencies, then club status, form and park). The free sections (club status, form, bullpen) stay free; Starters and Lineups are the lab layout.
 const REPORT_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: 'overview', label: 'Overview', sections: [] },   // the one-page overview (OnePager), not a section
-  { id: 'club', label: 'Club status & form', sections: ['club-status', 'form-vs-skill', 'manager-card'] },
   { id: 'starters', label: 'Starters', sections: ['pitcher-attack'] },
-  { id: 'lineups', label: 'Lineups', sections: ['lineup-vs-sp', 'splits'] },
-  { id: 'bullpen', label: 'Bullpen & late game', sections: ['bullpen', 'leverage', 'abs'] },
-  { id: 'field', label: 'Run game, defense & park', sections: ['run-game', 'defense', 'park'] },
+  { id: 'lineups', label: 'Lineups', sections: ['lineup-vs-sp'] },
+  { id: 'bullpen', label: 'Bullpen', sections: ['bullpen'] },
+  { id: 'leverage', label: 'Leverage', sections: ['leverage'] },
+  { id: 'abs', label: 'ABS', sections: ['abs'] },
+  { id: 'fielding', label: 'Fielding', sections: ['defense'] },
+  { id: 'baserunning', label: 'Base running', sections: ['run-game'] },
+  { id: 'tendencies', label: 'Tendencies', sections: ['splits', 'manager-card'] },
+  { id: 'club', label: 'Club, form & park', sections: ['club-status', 'form-vs-skill', 'park'] },
 ]
 
 function toClub(side: MLBGame['teams']['away']): ScoutClub {

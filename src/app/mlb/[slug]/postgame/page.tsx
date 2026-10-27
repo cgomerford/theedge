@@ -34,13 +34,16 @@ export const maxDuration = 30
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string; tab?: string }> }
 
-// The report in six tabs, like the labs: Pitchers and Hitters are the lab layout; the older sections sit where they belong around them.
+// The report in tabs, like the labs and the Scout Report: one subject per tab. Pitchers and Hitters are the lab layout.
 const POST_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: 'recap', label: 'Recap', sections: [] },
   { id: 'pitchers', label: 'Pitchers', sections: ['pitch-desk', 'starters', 'pitcher-check', 'seq-audit', 'count-audit'] },
   { id: 'hitters', label: 'Hitters', sections: ['hit-desk', 'contact', 'hitter-check', 'key-players'] },
-  { id: 'late', label: 'Late game & bullpen', sections: ['swing', 'leverage-line', 'bullpen', 'abs'] },
-  { id: 'box', label: 'Box, umpires & defense', sections: ['final', 'performers', 'box', 'scorecard', 'umpires', 'defense', 'team-charts'] },
+  { id: 'bullpen', label: 'Bullpen', sections: ['bullpen'] },
+  { id: 'leverage', label: 'Leverage', sections: ['swing', 'leverage-line'] },
+  { id: 'abs', label: 'ABS & umpires', sections: ['abs', 'umpires'] },
+  { id: 'fielding', label: 'Fielding & base running', sections: ['defense'] },
+  { id: 'box', label: 'Box & scorecard', sections: ['final', 'performers', 'box', 'scorecard', 'team-charts'] },
   { id: 'next', label: 'Next up', sections: ['next', 'tomorrow'] },
 ]
 

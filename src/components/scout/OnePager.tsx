@@ -62,7 +62,7 @@ function ClubPage({ d }: { d: ClubOnePager }) {
         {d.strengths.length ? d.strengths.map(i => <RankRow key={i.label + i.group} it={i} good />) : <p style={{ margin: '4px 0 0', fontSize: 13, color: C.mute }}>Nothing in the top third of the league.</p>}
         <div style={{ marginTop: 12, fontSize: 12, fontWeight: 800, color: '#D4533B' }}>Where it struggles</div>
         {d.weaknesses.length ? d.weaknesses.map(i => <RankRow key={i.label + i.group} it={i} good={false} />) : <p style={{ margin: '4px 0 0', fontSize: 13, color: C.mute }}>Nothing in the bottom third of the league.</p>}
-        <div style={{ marginTop: 10 }}><Link href="?tab=field" style={more}>Run game, defense and park, in detail →</Link></div>
+        <div style={{ marginTop: 10 }}><Link href="?tab=fielding" style={more}>Fielding and base running, in detail →</Link></div>
       </div>
 
       <div style={card}>
