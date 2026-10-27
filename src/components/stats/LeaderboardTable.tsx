@@ -3,7 +3,9 @@
 // A sortable leaderboard table: rank, player (headshot, name, team chip), n, then the stat columns. Pinned player column; client-side sort.
 // "Qualified only" (when the board has a qualification rule) filters the same rows without a reload.
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { toPng } from 'html-to-image'
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { Headshot } from '@/components/home/Logo'
 import TeamChip from '@/components/ui/TeamChip'
 
@@ -17,9 +19,22 @@ const fmt = (v: number | null, c: Col) => {
   return sign + body + (c.pct ? '%' : '')
 }
 
-export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText }: {
-  rows: Row[]; cols: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null
+export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, isPro = false, exportName = 'x9lab-stats' }: {
+  rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; isPro?: boolean; exportName?: string
 }) {
+  const [extra, setExtra] = useState<string[]>([])
+  const cols = useMemo(() => [...baseCols, ...extra.map(k => moreCols.find(c => c.key === k)).filter((c): c is Col => !!c)], [baseCols, moreCols, extra])
+  const [view, setView] = useState<'table' | 'chart'>('table')
+  const area = useRef<HTMLDivElement>(null)
+  const [busy, setBusy] = useState(false)
+  async function download() {
+    if (!area.current) return
+    setBusy(true)
+    try {
+      const url = await toPng(area.current, { backgroundColor: '#FAF8F3', pixelRatio: 2, cacheBust: true, filter: n => !(n instanceof HTMLElement && n.dataset.noexport) })
+      const a = document.createElement('a'); a.href = url; a.download = `${exportName}.png`; a.click()
+    } catch (e) { console.error('[LeaderboardTable] export failed', e) } finally { setBusy(false) }
+  }
   const [key, setKey] = useState(sortKey)
   const [asc, setAsc] = useState(sortAsc)
   const [qual, setQual] = useState(true)
@@ -69,6 +84,50 @@ export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sort
         {minText ? <span style={{ fontSize: 13, color: '#8a8275' }}>{minText}</span> : null}
         <span style={{ fontSize: 13, color: '#8a8275', marginLeft: 'auto' }}>{sorted.length.toLocaleString('en-US')} players</span>
       </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px', margin: '0 0 10px' }}>
+        {moreCols.length ? (
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 800 }}>
+            Add a column
+            <select value="" onChange={e => { if (e.target.value) setExtra(x => [...x, e.target.value]) }} style={{ height: 34, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit', fontWeight: 400 }}>
+              <option value="">Choose a stat</option>
+              {moreCols.filter(c => !extra.includes(c.key)).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          </label>
+        ) : null}
+        {extra.map(k => { const c = moreCols.find(x => x.key === k); return c ? <button key={k} type="button" onClick={() => setExtra(x => x.filter(y => y !== k))} aria-label={`Remove ${c.label}`} style={{ border: '1px solid #e7e2d8', background: '#fff', borderRadius: 2, padding: '4px 8px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{c.label} ×</button> : null })}
+        {isPro ? (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 14, alignItems: 'center' }}>
+            <button type="button" onClick={() => setView(v => (v === 'table' ? 'chart' : 'table'))} style={{ background: 'none', border: 0, borderBottom: '3px solid #FF5722', padding: '2px 0', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{view === 'table' ? 'Show as bar chart' : 'Show as table'}</button>
+            <button type="button" onClick={download} disabled={busy} style={{ background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '5px 12px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{busy ? 'Preparing…' : 'Download image'}</button>
+          </span>
+        ) : (
+          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#8a8275' }}>Pro members can export these results as an image or a bar chart. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
+        )}
+      </div>
+      <div ref={area}>
+      {view === 'chart' && isPro ? (() => {
+        const col = key === '__n' ? null : cols.find(c => c.key === key) ?? cols[0]
+        const data = sorted.slice(0, 15).map(r => ({ name: r.name, v: col ? r.v[col.key] : r.n })).filter(d => d.v != null)
+        const label = col ? col.label : nLabel
+        return (
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 16, margin: '4px 0' }}>{label}: top {data.length}</div>
+            <div style={{ width: '100%', height: Math.max(220, data.length * 30) }}>
+              <ResponsiveContainer>
+                <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
+                  <CartesianGrid horizontal={false} stroke="#e7e2d8" />
+                  <XAxis type="number" hide domain={[0, 'dataMax']} />
+                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 13, fill: '#1A1A1A' }} axisLine={false} tickLine={false} />
+                  <Bar dataKey="v" fill="#FF5722" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+                    <LabelList dataKey="v" position="right" formatter={(v: unknown) => (col ? fmt(Number(v), col) : String(v))} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ fontSize: 12, color: '#8a8275' }}>x9Lab · {exportName}{canFilter && qual ? ' · qualified only' : ''}</div>
+          </div>
+        )
+      })() : (
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>
           <thead><tr style={{ borderBottom: '1px solid #1A1A1A' }}>
@@ -91,7 +150,9 @@ export default function LeaderboardTable({ rows, cols, nLabel, nDigits = 0, sort
           ))}</tbody>
         </table>
       </div>
-      {shown < sorted.length ? <button type="button" onClick={() => setShown(s => s + 50)} style={{ margin: '14px 0', background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '8px 16px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>Show 50 more</button> : null}
+      )}
+      </div>
+      {shown < sorted.length && view === 'table' ? <button type="button" data-noexport="1" onClick={() => setShown(s => s + 50)} style={{ margin: '14px 0', background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '8px 16px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>Show 50 more</button> : null}
     </div>
   )
 }

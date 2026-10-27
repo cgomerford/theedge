@@ -7,7 +7,7 @@ import { MLB_TEAMS } from '@/lib/teams'
 
 export type BoardRow = { id: number; name: string; team: string; teamId: number | null; n: number; qualified: boolean; v: Record<string, number | null> }
 export type BoardCol = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; tip?: string; signed?: boolean }
-export type Board = { rows: BoardRow[]; cols: BoardCol[]; n: { key: string; label: string }; sortKey: string; sortAsc: boolean; minText: string | null; through: string }
+export type Board = { rows: BoardRow[]; cols: BoardCol[]; moreCols?: BoardCol[]; n: { key: string; label: string }; sortKey: string; sortAsc: boolean; minText: string | null; through: string }
 
 const abbr = (teamId: number | null | undefined) => MLB_TEAMS.find(t => t.id === teamId)?.abbrev ?? ''
 
@@ -41,19 +41,6 @@ export const STATCAST_PIT_COLS: BoardCol[] = [
 
 const num = (v: unknown) => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null)
 
-export async function getBattingBoard(season: number): Promise<Board> {
-  const [rows, games] = await Promise.all([
-    mlb<{ stats?: { splits: { player: { id: number; fullName: string }; team?: { id: number }; stat: Record<string, string | number> }[] }[] }>(`/stats?stats=season&group=hitting&sportId=1&season=${season}&limit=1000&playerPool=ALL`, 600),
-    teamGames(season),
-  ])
-  const out: BoardRow[] = (rows?.stats?.[0]?.splits ?? []).map(s => {
-    const pa = Number(s.stat.plateAppearances ?? 0), tg = games.get(s.team?.id ?? 0) ?? leagueGames(games)
-    return { id: s.player.id, name: s.player.fullName, team: abbr(s.team?.id), teamId: s.team?.id ?? null, n: pa, qualified: pa >= 3.1 * tg,
-      v: { avg: num(s.stat.avg), obp: num(s.stat.obp), slg: num(s.stat.slg), ops: num(s.stat.ops), hr: num(s.stat.homeRuns), rbi: num(s.stat.rbi), sb: num(s.stat.stolenBases), bb: num(s.stat.baseOnBalls), k: num(s.stat.strikeOuts) } }
-  }).filter(r => r.n > 0)
-  return { rows: out, cols: BATTING_COLS, n: { key: 'pa', label: 'PA' }, sortKey: 'ops', sortAsc: false, minText: `Qualified: ${(3.1 * leagueGames(games)).toFixed(0)} plate appearances (3.1 per team game).`, through: today() }
-}
-
 async function pitcherRows(season: number): Promise<Record<string, unknown>[]> {
   const supa = createAdminClient(), all: Record<string, unknown>[] = []
   for (let from = 0; ; from += 1000) {   // PostgREST caps a request at 1,000 rows: page through
@@ -63,16 +50,6 @@ async function pitcherRows(season: number): Promise<Record<string, unknown>[]> {
     if (!data || data.length < 1000) break
   }
   return all
-}
-
-export async function getPitchingBoard(season: number): Promise<Board> {
-  const [rows, games] = await Promise.all([pitcherRows(season), teamGames(season)])
-  const out: BoardRow[] = rows.filter(r => Number(r.innings_pitched ?? 0) > 0).map(r => {
-    const ip = Number(r.innings_pitched), tid = Number(r.team_id), tg = games.get(tid) ?? leagueGames(games)
-    return { id: Number(r.player_id), name: String(r.player_name), team: abbr(tid), teamId: tid || null, n: ip, qualified: ip >= tg,
-      v: { era: num(r.era), whip: num(r.whip), k9: num(r.k_per_9), bb9: num(r.bb_per_9), fip: num(r.fip), w: num(r.wins), l: num(r.losses), sv: num(r.saves) } }
-  })
-  return { rows: out, cols: PITCHING_COLS, n: { key: 'ip', label: 'IP' }, sortKey: 'era', sortAsc: true, minText: `Qualified: ${leagueGames(games)} innings pitched (1.0 per team game).`, through: today() }
 }
 
 export async function getStatcastBatters(season: number): Promise<Board> {
@@ -122,4 +99,75 @@ export async function getAdvancedPitchers(season: number): Promise<Board> {
       v: { kbb: k != null && bb != null ? k - bb : null, kp: k, bbp: bb, kbbr: num(r.k_bb_ratio), babip: num(r.babip), lob: lob != null ? lob * 100 : null, gb: num(r.gb_rate), fip: num(r.fip), xera: num(r.xera) } }
   })
   return { rows: out, cols: ADV_PIT_COLS, n: { key: 'ip', label: 'IP' }, sortKey: 'kbb', sortAsc: false, minText: `Qualified: ${leagueGames(games)} innings pitched (1.0 per team game).`, through: today() }
+}
+
+// ── Batting and Pitching boards for any season, level and game type ─────────────────────────────────────────────────────────────
+export type StatsCtx = { season: number; sportId: number; gameType: 'R' | 'P' | 'S' | 'A' }
+export const LEVELS: { id: number; label: string }[] = [
+  { id: 1, label: 'MLB' }, { id: 11, label: 'Triple-A' }, { id: 12, label: 'Double-A' }, { id: 13, label: 'High-A' }, { id: 14, label: 'Single-A' }, { id: 16, label: 'Rookie' },
+]
+export const GAME_TYPES: { id: StatsCtx['gameType']; label: string }[] = [
+  { id: 'R', label: 'Regular season' }, { id: 'P', label: 'Postseason' }, { id: 'S', label: 'Spring training' }, { id: 'A', label: 'All-Star game' },
+]
+export const ctxLabel = (c: StatsCtx) => `${c.season} ${LEVELS.find(l => l.id === c.sportId)?.label ?? ''} ${GAME_TYPES.find(g => g.id === c.gameType)?.label.toLowerCase() ?? ''}`
+
+type PoolSplit = { player: { id: number; fullName: string }; team?: { id: number; name?: string }; stat: Record<string, string | number> }
+async function fetchPool(group: 'hitting' | 'pitching', c: StatsCtx): Promise<PoolSplit[]> {
+  const out: PoolSplit[] = []
+  for (let offset = 0; offset < 6000; offset += 1000) {   // the API returns at most 1,000 rows a request: page through
+    const r = await mlb<{ stats?: { splits: PoolSplit[] }[] }>(`/stats?stats=season&group=${group}&sportId=${c.sportId}&season=${c.season}&gameType=${c.gameType}&playerPool=ALL&limit=1000&offset=${offset}`, c.season === new Date().getFullYear() ? 600 : 86400)
+    const sp = r?.stats?.[0]?.splits ?? []
+    out.push(...sp)
+    if (sp.length < 1000) break
+  }
+  return out
+}
+async function teamGamesFor(c: StatsCtx): Promise<Map<number, number>> {
+  const r = await mlb<{ stats?: { splits: { team: { id: number }; stat: { gamesPlayed?: number } }[] }[] }>(`/teams/stats?stats=season&group=hitting&season=${c.season}&sportId=${c.sportId}&gameType=${c.gameType}`, 3600)
+  const m = new Map<number, number>()
+  for (const s of r?.stats?.[0]?.splits ?? []) m.set(s.team.id, Number(s.stat.gamesPlayed ?? 0))
+  return m
+}
+const chipOf = (teamId: number | undefined, name: string | undefined) => abbr(teamId) || (name ? name.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase() : '')
+
+const BAT_MORE: BoardCol[] = [
+  { key: 'g', label: 'G', digits: 0 }, { key: 'ab', label: 'AB', digits: 0 }, { key: 'h', label: 'H', digits: 0 }, { key: 'd', label: '2B', digits: 0 }, { key: 't', label: '3B', digits: 0 },
+  { key: 'r', label: 'R', digits: 0 }, { key: 'tb', label: 'TB', digits: 0 }, { key: 'ibb', label: 'IBB', digits: 0 }, { key: 'hbp', label: 'HBP', digits: 0 }, { key: 'sf', label: 'SF', digits: 0 },
+  { key: 'gidp', label: 'GIDP', digits: 0, asc: true }, { key: 'cs', label: 'CS', digits: 0, asc: true }, { key: 'iso', label: 'ISO', digits: 3 }, { key: 'babip', label: 'BABIP', digits: 3 },
+  { key: 'bbp', label: 'BB%', digits: 1, pct: true }, { key: 'kp', label: 'K%', digits: 1, pct: true, asc: true }, { key: 'ppa', label: 'Pitches per PA', digits: 2 },
+]
+const PIT_MORE: BoardCol[] = [
+  { key: 'g', label: 'G', digits: 0 }, { key: 'gs', label: 'GS', digits: 0 }, { key: 'cg', label: 'CG', digits: 0 }, { key: 'sho', label: 'SHO', digits: 0 }, { key: 'h', label: 'H', digits: 0, asc: true },
+  { key: 'r', label: 'R', digits: 0, asc: true }, { key: 'er', label: 'ER', digits: 0, asc: true }, { key: 'hr', label: 'HR', digits: 0, asc: true }, { key: 'bb', label: 'BB', digits: 0, asc: true }, { key: 'k', label: 'K', digits: 0 },
+  { key: 'hbp', label: 'HBP', digits: 0, asc: true }, { key: 'wp', label: 'WP', digits: 0, asc: true }, { key: 'hr9', label: 'HR/9', digits: 2, asc: true }, { key: 'h9', label: 'H/9', digits: 2, asc: true },
+  { key: 'kp', label: 'K%', digits: 1, pct: true }, { key: 'bbp', label: 'BB%', digits: 1, pct: true, asc: true }, { key: 'kbb', label: 'K-BB%', digits: 1, pct: true }, { key: 'kbbr', label: 'K/BB', digits: 2 },
+  { key: 'baa', label: 'AVG against', digits: 3, asc: true }, { key: 'gbao', label: 'GO/AO', digits: 2 }, { key: 'hld', label: 'HLD', digits: 0 }, { key: 'bs', label: 'BS', digits: 0, asc: true }, { key: 'ppi', label: 'Pitches per IP', digits: 1 },
+]
+
+export async function getBattingBoardFor(c: StatsCtx): Promise<Board> {
+  const [pool, games] = await Promise.all([fetchPool('hitting', c), teamGamesFor(c)])
+  const tgMax = leagueGames(games)
+  const rows: BoardRow[] = pool.map(s => {
+    const st = s.stat, pa = Number(st.plateAppearances ?? 0), ab = Number(st.atBats ?? 0), tg = games.get(s.team?.id ?? 0) ?? tgMax
+    const bb = Number(st.baseOnBalls ?? 0), k = Number(st.strikeOuts ?? 0), slg = num(st.slg), avg = num(st.avg)
+    return { id: s.player.id, name: s.player.fullName, team: chipOf(s.team?.id, s.team?.name), teamId: s.team?.id ?? null, n: pa, qualified: pa >= 3.1 * tg,
+      v: { avg, obp: num(st.obp), slg, ops: num(st.ops), hr: num(st.homeRuns), rbi: num(st.rbi), sb: num(st.stolenBases), bb, k,
+        g: num(st.gamesPlayed), ab, h: num(st.hits), d: num(st.doubles), t: num(st.triples), r: num(st.runs), tb: num(st.totalBases), ibb: num(st.intentionalWalks), hbp: num(st.hitByPitch), sf: num(st.sacFlies), gidp: num(st.groundIntoDoublePlay), cs: num(st.caughtStealing),
+        iso: slg != null && avg != null ? slg - avg : null, babip: num(st.babip), bbp: pa ? (bb / pa) * 100 : null, kp: pa ? (k / pa) * 100 : null, ppa: pa ? Number(st.numberOfPitches ?? 0) / pa : null } }
+  }).filter(r => r.n > 0)
+  return { rows, cols: BATTING_COLS, moreCols: BAT_MORE, n: { key: 'pa', label: 'PA' }, sortKey: 'ops', sortAsc: false, minText: `Qualified: ${Math.round(3.1 * tgMax)} plate appearances (3.1 per team game, ${tgMax} games).`, through: today() }
+}
+
+export async function getPitchingBoardFor(c: StatsCtx): Promise<Board> {
+  const [pool, games] = await Promise.all([fetchPool('pitching', c), teamGamesFor(c)])
+  const tgMax = leagueGames(games)
+  const rows: BoardRow[] = pool.map(s => {
+    const st = s.stat, ip = Number(String(st.inningsPitched ?? '0').split('.')[0]) + Number(String(st.inningsPitched ?? '0').split('.')[1] ?? 0) / 3, bf = Number(st.battersFaced ?? 0), tg = games.get(s.team?.id ?? 0) ?? tgMax
+    const k = Number(st.strikeOuts ?? 0), bb = Number(st.baseOnBalls ?? 0)
+    return { id: s.player.id, name: s.player.fullName, team: chipOf(s.team?.id, s.team?.name), teamId: s.team?.id ?? null, n: Number(ip.toFixed(1)), qualified: ip >= tg,
+      v: { era: num(st.era), whip: num(st.whip), k9: num(st.strikeoutsPer9Inn), bb9: num(st.walksPer9Inn), w: num(st.wins), l: num(st.losses), sv: num(st.saves),
+        g: num(st.gamesPitched), gs: num(st.gamesStarted), cg: num(st.completeGames), sho: num(st.shutouts), h: num(st.hits), r: num(st.runs), er: num(st.earnedRuns), hr: num(st.homeRuns), bb, k, hbp: num(st.hitBatsmen), wp: num(st.wildPitches),
+        hr9: num(st.homeRunsPer9), h9: num(st.hitsPer9Inn), kp: bf ? (k / bf) * 100 : null, bbp: bf ? (bb / bf) * 100 : null, kbb: bf ? ((k - bb) / bf) * 100 : null, kbbr: num(st.strikeoutWalkRatio), baa: num(st.avg), gbao: num(st.groundOutsToAirouts), hld: num(st.holds), bs: num(st.blownSaves), ppi: num(st.pitchesPerInning) } }
+  }).filter(r => r.n > 0)
+  return { rows, cols: PITCHING_COLS.filter(c2 => c2.key !== 'fip'), moreCols: PIT_MORE, n: { key: 'ip', label: 'IP' }, sortKey: 'era', sortAsc: true, minText: `Qualified: ${tgMax} innings pitched (1.0 per team game, ${tgMax} games).`, through: today() }
 }
