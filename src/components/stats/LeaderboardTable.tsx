@@ -21,6 +21,15 @@ const fmt = (v: number | null, c: Col) => {
   return sign + body + (c.pct ? '%' : '')
 }
 
+/** A lighter, softer version of a colour (mixed with white) for the overlaid year, so it always reads as the same hue. */
+function shift(hex: string, amt = 0.55): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return '#bdb6a6'
+  const n = parseInt(m[1], 16)
+  const mix = (c: number) => Math.round(c + (255 - c) * amt)
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => mix(c).toString(16).padStart(2, '0')).join('')}`
+}
+
 export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, isPro = false, exportName = 'x9lab-stats', group, ctx, seasons = [] }: {
   rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; isPro?: boolean; exportName?: string; group?: 'batting' | 'pitching'; ctx?: { season: number; sportId: number; gameType: string }; seasons?: number[]
 }) {
@@ -204,7 +213,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                       }} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}<LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
-                    {overlay ? <Bar dataKey="o" name={cmpYear} fill="#bdb6a6" radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="o" position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar> : null}
+                    {overlay ? <Bar dataKey="o" name={cmpYear} fill={shift(color)} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={shift(d.fill)} />)}<LabelList dataKey="o" position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar> : null}
                   </BarChart>
                 ) : kind === 'vbar' ? (
                   <BarChart data={data} margin={{ left: 0, right: 8, top: 22, bottom: 70 }}>
@@ -213,7 +222,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <YAxis tick={{ fontSize: 12 }} width={46} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
-                    {overlay ? <Bar dataKey="o" name={cmpYear} fill="#bdb6a6" radius={[3, 3, 0, 0]} isAnimationActive={false} /> : null}
+                    {overlay ? <Bar dataKey="o" name={cmpYear} fill={shift(color)} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={shift(d.fill)} />)}</Bar> : null}
                   </BarChart>
                 ) : kind === 'line' ? (
                   <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 70 }}>
@@ -223,7 +232,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <Tooltip formatter={(v: unknown) => f(v, colY)} />
                     {overlay ? <Legend verticalAlign="top" /> : null}
                     <Line type="monotone" dataKey="v" name={String(ctx?.season ?? 'Now')} stroke={color} strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
-                    {overlay ? <Line type="monotone" dataKey="o" name={cmpYear} stroke="#bdb6a6" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: '#8a8275' }} isAnimationActive={false} connectNulls /> : null}
+                    {overlay ? <Line type="monotone" dataKey="o" name={cmpYear} stroke={shift(color)} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: shift(color) }} isAnimationActive={false} connectNulls /> : null}
                   </LineChart>
                 ) : (
                   <ScatterChart margin={{ left: 0, right: 24, top: 12, bottom: 24 }}>
