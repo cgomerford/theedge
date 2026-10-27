@@ -55,3 +55,4 @@ fetch	src/components/pitching-lab/VeloBandChart.tsx
 fetch	src/components/pitching-lab/LocationExplorer.tsx
 fetch	src/components/pitching-lab/OverlayExplorer.tsx
 fetch	src/lib/batter-pitch-log.ts
+fetch	src/components/pitching-lab/SequenceLab.tsx
