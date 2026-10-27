@@ -58,3 +58,4 @@ fetch	src/lib/batter-pitch-log.ts
 fetch	src/components/pitching-lab/SequenceLab.tsx
 fetch	src/components/pitching-lab/MatchupLab.tsx
 fetch	src/app/api/mlb/team-roster/route.ts
+fetch	src/app/api/mlb/game-teams/route.ts

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherPitchLog } from '@/lib/pitcher-pitch-log'
 import { requireDeepLook } from '@/lib/deep-look'
+import { aggToArr, aggregate } from '@/lib/zone-stats'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,30 @@ export async function GET(req: NextRequest) {
       by.set(p.batterId, e)
     }
     return NextResponse.json({ pitcherId: log.pitcherId, throws: log.throws, faced: [...by.entries()].map(([id, e]) => ({ id, name: log.batterNames[id] ?? `#${id}`, ...e })).sort((a, b) => b.pa - a.pa) })
+  }
+  // summary=matchups: one compact row per game, side of the inning and hitter (counts only, no pitches), for team and ballpark summaries.
+  if (searchParams.get('summary') === 'matchups') {
+    const by = new Map<string, { g: number; d: string; tb: 'T' | 'B' | null; b: number; ps: typeof log.pitches }>()
+    for (const p of log.pitches) {
+      if (p.batterId == null || p.gamePk == null) continue
+      const k = `${p.gamePk}|${p.topBot}|${p.batterId}`
+      if (!by.has(k)) by.set(k, { g: p.gamePk, d: p.date, tb: p.topBot, b: p.batterId, ps: [] })
+      by.get(k)!.ps.push(p)
+    }
+    const rows = [...by.values()].map(r => {
+      let k = 0, bb = 0, hr = 0
+      for (const p of r.ps) {
+        if (p.wobaDen == null || p.wobaDen <= 0) continue
+        const ev = p.result ?? ''
+        if (ev.startsWith('strikeout')) k++
+        else if (ev === 'walk' || ev === 'intent_walk') bb++
+        else if (ev === 'home_run') hr++
+      }
+      return { g: r.g, d: r.d, tb: r.tb, b: r.b, a: aggToArr(aggregate(r.ps).all), k, bb, hr }
+    })
+    const names: Record<number, string> = {}
+    for (const r of rows) names[r.b] = log.batterNames[r.b] ?? `#${r.b}`
+    return NextResponse.json({ throws: log.throws, rows, names })
   }
   // batterId=: only the pitches to that hitter.
   const batterId = Number(searchParams.get('batterId'))

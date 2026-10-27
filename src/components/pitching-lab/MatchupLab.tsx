@@ -8,8 +8,9 @@
 // Pick an opponent on the left, then a hitter from that club's 40-man roster (hitters this pitcher has faced come first, with the plate
 // appearances), or search any player, or take one of the hitters he has faced most.
 //
-// Data: /api/mlb/pitch-log?range=career&summary=faced (who he has faced), ...&batterId= (the pitches to one hitter), /api/mlb/team-roster,
-// /api/lab/search. Counting uses src/lib/zone-stats.ts. Nothing is estimated; a hitter he has not faced says so.
+// Data: /api/mlb/pitch-log?summary=matchups (one compact row per game and hitter, for team, ballpark and who-he-has-faced), ...&batterId= (the
+// pitches to one hitter), /api/mlb/game-teams (club and ballpark of each game), /api/mlb/team-roster, /api/lab/search. A season / career switch
+// sets the range for all of them. Counting uses src/lib/zone-stats.ts. Nothing is estimated; a hitter he has not faced says so.
 
 import { useEffect, useMemo, useState } from 'react'
 import { Headshot, TeamMark } from '@/components/home/Logo'
@@ -19,18 +20,35 @@ import { pitchColor } from '@/lib/mlb'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { MLB_TEAMS } from '@/lib/teams'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
-import { aggregate, metric } from '@/lib/zone-stats'
+import { aggregate, arrToAgg, merge, metric, type Agg } from '@/lib/zone-stats'
 import { SmoothHeatmap } from './ArsenalExtras'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
 type Person = { id: number; name: string }
-type Faced = { id: number; name: string; pitches: number; pa: number }
+type Row = { g: number; d: string; tb: 'T' | 'B' | null; b: number; a: number[]; k: number; bb: number; hr: number }
+type GameInfo = { away: number; home: number; venueId: number | null; venue: string }
+type Tot = { agg: Agg; k: number; bb: number; hr: number; games: Set<number> }
+const newTot = (): Tot => ({ agg: merge([]), k: 0, bb: 0, hr: 0, games: new Set() })
+function addRow(t: Tot, r: Row) { t.agg = merge([t.agg, arrToAgg(r.a)]); t.k += r.k; t.bb += r.bb; t.hr += r.hr; t.games.add(r.g) }
+type Scope = 'season' | 'career'
 type RosterRow = { id: number; name: string; pos: string }
 type PA = { key: string; date: string; inning: number | null; runners: string; pitches: RawPitch[]; event: string | null; kind: 'hit' | 'hr' | 'k' | 'bb' | 'out' | 'open'; text: string }
 
 const f3 = (v: number | null) => (v == null ? '—' : v.toFixed(3).replace(/^0\./, '.'))
 const pc = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(0)}%`)
 const label = (e: string) => e.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
+
+const avgOf = (a: Agg) => (a.ab > 0 ? a.hits / a.ab : null)
+const slgOf = (a: Agg) => (a.ab > 0 ? a.bases / a.ab : null)
+function TotRow({ t }: { t: Tot }) {
+  const a = t.agg
+  const pa = a.den
+  return <>
+    <td>{t.games.size}</td><td>{pa}</td><td>{a.ab}</td><td>{a.hits}</td><td>{t.hr}</td><td>{t.bb}</td><td>{t.k}</td>
+    <td>{f3(avgOf(a))}</td><td>{f3(slgOf(a))}</td><td>{f3(metric(a, 'xwoba', 0).v)}</td>
+  </>
+}
+const TOT_HEAD = <><th>Games</th><th>PA</th><th>AB</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>AVG</th><th>SLG</th><th>xwOBA</th></>
 
 function resCode(d: string | null): string {
   switch (d) {
@@ -75,7 +93,11 @@ function buildPAs(pitches: RawPitch[]): PA[] {
 
 export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: number; pitcherName: string }) {
   const season = new Date().getFullYear()
-  const [faced, setFaced] = useState<Faced[] | null>(null)
+  const [scope, setScope] = useState<Scope>('career')
+  const [rows, setRows] = useState<Row[] | null>(null)
+  const [names, setNames] = useState<Record<number, string>>({})
+  const [games, setGames] = useState<Record<number, GameInfo>>({})
+  const [park, setPark] = useState('any')
   const [teamId, setTeamId] = useState<number | null>(null)
   const [roster, setRoster] = useState<RosterRow[] | null>(null)
   const [batter, setBatter] = useState<Person | null>(null)
@@ -89,9 +111,15 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
 
   useEffect(() => {
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=career&summary=faced`).then(r => r.json()).then(j => { if (!off) setFaced(j.error ? [] : (j.faced as Faced[])) }).catch(() => { if (!off) setFaced([]) })
+    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&summary=matchups`).then(r => r.json()).then(j => {
+      if (off) return
+      if (j.error) { setRows([]); return }
+      setRows(j.rows as Row[]); setNames(j.names as Record<number, string>)
+      const ids = [...new Set((j.rows as Row[]).map(r => r.g))]
+      if (ids.length) fetch(`/api/mlb/game-teams?gamePks=${ids.slice(0, 400).join(',')}`).then(x => x.json()).then(g => { if (!off && g.games) setGames(prev => ({ ...prev, ...g.games })) }).catch(() => {})
+    }).catch(() => { if (!off) setRows([]) })
     return () => { off = true }
-  }, [pitcherId, season])
+  }, [pitcherId, season, scope])
 
   useEffect(() => {
     if (teamId == null) return
@@ -112,14 +140,36 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
   useEffect(() => {
     if (!batter) return
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=career&batterId=${batter.id}`).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
+    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&batterId=${batter.id}`).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
     return () => { off = true }
-  }, [pitcherId, season, batter])
+  }, [pitcherId, season, batter, scope])
 
-  const facedMap = useMemo(() => new Map((faced ?? []).map(f => [f.id, f])), [faced])
+  const batterTeam = (r: Row): number | null => { const g = games[r.g]; return g ? (r.tb === 'T' ? g.away : r.tb === 'B' ? g.home : null) : null }
+  const facedMap = useMemo(() => {
+    const m = new Map<number, { id: number; name: string; pa: number }>()
+    for (const r of rows ?? []) { const e = m.get(r.b) ?? { id: r.b, name: names[r.b] ?? `#${r.b}`, pa: 0 }; e.pa += arrToAgg(r.a).den; m.set(r.b, e) }
+    return m
+  }, [rows, names])
+  const faced = useMemo(() => [...facedMap.values()].sort((a, b) => b.pa - a.pa), [facedMap])
+  const byTeam = useMemo(() => {
+    const m = new Map<number, Tot>()
+    for (const r of rows ?? []) { const t = batterTeam(r); if (t == null) continue; if (!m.has(t)) m.set(t, newTot()); addRow(m.get(t)!, r) }
+    return m
+  }, [rows, games]) // eslint-disable-line react-hooks/exhaustive-deps
+  const byPark = useMemo(() => {
+    const m = new Map<string, Tot & { name: string }>()
+    for (const r of rows ?? []) { const g = games[r.g]; if (!g) continue; const k = String(g.venueId ?? g.venue); if (!m.has(k)) m.set(k, { ...newTot(), name: g.venue }); addRow(m.get(k)!, r) }
+    return [...m.entries()].sort((a, b) => b[1].agg.den - a[1].agg.den)
+  }, [rows, games])
+  const teamHitters = useMemo(() => {
+    const m = new Map<number, Tot>()
+    if (teamId == null) return []
+    for (const r of rows ?? []) if (batterTeam(r) === teamId) { if (!m.has(r.b)) m.set(r.b, newTot()); addRow(m.get(r.b)!, r) }
+    return [...m.entries()].sort((a, b) => b[1].agg.den - a[1].agg.den)
+  }, [rows, games, teamId]) // eslint-disable-line react-hooks/exhaustive-deps
   const pas = useMemo(() => (log && log !== 'error' ? buildPAs(log.pitches) : []), [log])
   const years = useMemo(() => [...new Set(pas.map(p => p.date.slice(0, 4)))].sort().reverse(), [pas])
-  const shown = useMemo(() => pas.filter(p => (yr === 'all' || p.date.startsWith(yr)) && (runners === 'any' || (runners === 'empty') === (p.runners === 'Bases empty')) && (kind === 'all' || p.kind === kind)), [pas, yr, runners, kind])
+  const shown = useMemo(() => pas.filter(p => (yr === 'all' || p.date.startsWith(yr)) && (park === 'any' || String(games[Number(p.key.split('-')[0])]?.venueId) === park) && (runners === 'any' || (runners === 'empty') === (p.runners === 'Bases empty')) && (kind === 'all' || p.kind === kind)), [pas, yr, runners, kind, park, games])
   const shownPitches = useMemo(() => shown.flatMap(p => p.pitches), [shown])
   const agg = useMemo(() => aggregate(shownPitches), [shownPitches])
   const typeRows = useMemo(() => {
@@ -133,7 +183,7 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
 
   const team = MLB_TEAMS.find(t => t.id === teamId) ?? null
   const rosterSorted = useMemo(() => (roster ?? []).slice().sort((a, b) => (facedMap.get(b.id)?.pa ?? 0) - (facedMap.get(a.id)?.pa ?? 0) || a.name.localeCompare(b.name)), [roster, facedMap])
-  const choose = (p: Person) => { setBatter(p); setLog(null); setYr('all'); setRunners('any'); setKind('all'); setOpen(null); setQuery(''); setResults([]) }
+  const choose = (p: Person) => { setBatter(p); setLog(null); setYr('all'); setPark('any'); setRunners('any'); setKind('all'); setOpen(null); setQuery(''); setResults([]) }
   const last = (n: string) => n.split(' ').slice(-1)[0]
 
   let K = 0, BB = 0, HR = 0
@@ -149,12 +199,19 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
         <div style={{ ...kick, margin: '0 2px 2px' }}>Opponent</div>
         {MLB_TEAMS.map(t => (
           <button key={t.id} type="button" className={`h2-btn${teamId === t.id ? ' on' : ''}`} onClick={() => { setTeamId(t.id); setRoster(null) }}>
-            <TeamMark id={t.id} abbr={t.abbrev} size={22} /><span style={{ fontWeight: 600, color: C.mute, fontSize: 12 }}>{t.short}</span>
+            <TeamMark id={t.id} abbr={t.abbrev} size={22} />
+            <span style={{ fontWeight: 600, color: C.mute, fontSize: 11, lineHeight: 1.25, marginLeft: 'auto', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              {(() => { const x = byTeam.get(t.id); return x ? <>{x.agg.den} PA<br />{f3(avgOf(x.agg))} AVG</> : rows === null ? '' : 'no PA' })()}
+            </span>
           </button>
         ))}
       </nav>
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, fontFamily: SANS }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <Pills items={[['season', `This season (${season})`], ['career', 'Career (2015 on)']] as [Scope, string][]} value={scope} onChange={v => { setScope(v); setRows(null); setLog(null) }} />
+          <span style={{ fontSize: 12, color: C.mute }}>Applies to every number on this tab. Regular season, Statcast data.</span>
+        </div>
         <div style={{ ...tile, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={kick}>{pitcherName} against…</div>
           {batter && (
@@ -203,11 +260,66 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
           )}
         </div>
 
+
+        {!batter && (
+          <div className="h2-tiles">
+            {team && (() => {
+              const t = byTeam.get(team.id)
+              return (
+                <div className="h2-span3" style={{ ...tile, overflowX: 'auto' }}>
+                  <div style={kick}>{pitcherName} vs {team.name} · {scope === 'season' ? `${season}` : 'career'}</div>
+                  {rows === null ? <p style={note}>Loading…</p> : !t ? <p style={note}>No plate appearances against {team.short} {scope === 'season' ? 'this season' : 'in the Statcast data'}.</p> : (
+                    <>
+                      <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(86px,1fr))', gap: '12px 10px', margin: '12px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                        {([
+                          ['Games', String(t.games.size)], ['PA', String(t.agg.den)], ['H', String(t.agg.hits)], ['HR', String(t.hr)], ['BB', String(t.bb)], ['K', String(t.k)],
+                          ['AVG', f3(avgOf(t.agg))], ['SLG', f3(slgOf(t.agg))], ['xwOBA', f3(metric(t.agg, 'xwoba', 0).v)],
+                          ['K rate', t.agg.den ? pc(t.k / t.agg.den) : '—'], ['BB rate', t.agg.den ? pc(t.bb / t.agg.den) : '—'], ['Whiff', pc(metric(t.agg, 'whiff', 0).v)],
+                        ] as [string, string][]).map(([k, v]) => <div key={k}><dt style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }}>{k}</dt><dd style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{v}</dd></div>)}
+                      </dl>
+                      <p style={note}>{t.agg.den < MIN_SAMPLE.h2hPA ? <>{star} Under {MIN_SAMPLE.h2hPA} plate appearances: a small sample. </> : ''}Hitters are counted for the club they were playing for in each game, so a player who has since moved is under his old team. Choose a hitter below, or from the roster above.</p>
+                      <table className="h2-tbl" style={{ marginTop: 8, minWidth: 620 }}>
+                        <thead><tr><th>Hitter</th><th>PA</th><th>AB</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>AVG</th><th>SLG</th><th>xwOBA</th></tr></thead>
+                        <tbody>
+                          {teamHitters.map(([id, x]) => (
+                            <tr key={id} style={{ cursor: 'pointer' }} onClick={() => choose({ id, name: names[id] ?? `#${id}` })}>
+                              <td style={{ fontWeight: 800 }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Headshot id={id} name={names[id] ?? ''} size={24} />{names[id] ?? `#${id}`}</span></td>
+                              <td>{x.agg.den}{x.agg.den < MIN_SAMPLE.h2hPA && star}</td><td>{x.agg.ab}</td><td>{x.agg.hits}</td><td>{x.hr}</td><td>{x.bb}</td><td>{x.k}</td>
+                              <td>{f3(avgOf(x.agg))}</td><td>{f3(slgOf(x.agg))}</td><td>{f3(metric(x.agg, 'xwoba', 0).v)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="h2-span3" style={{ ...tile, overflowX: 'auto' }}>
+              <div style={kick}>By ballpark · {scope === 'season' ? `${season}` : 'career'}</div>
+              {rows === null ? <p style={note}>Loading…</p> : byPark.length === 0 ? <p style={note}>No games found.</p> : (
+                <table className="h2-tbl" style={{ marginTop: 6, minWidth: 620 }}>
+                  <thead><tr><th>Ballpark</th>{TOT_HEAD}</tr></thead>
+                  <tbody>
+                    {byPark.map(([k, x]) => <tr key={k}><td style={{ fontWeight: 800 }}>{x.name || 'Unknown'}</td><TotRow t={x} /></tr>)}
+                  </tbody>
+                </table>
+              )}
+              <p style={note}>Where the game was played, whichever club was at home. Ballpark names come from the MLB schedule; a park that has been renamed shows its name for that game.</p>
+            </div>
+          </div>
+        )}
+
         {batter && log && log !== 'error' && pas.length > 0 && (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
               <Pills items={[['all', 'All seasons'], ...years.map(y => [y, y] as [string, string])]} value={yr} onChange={setYr} />
               <Pills items={[['any', 'Any runners'], ['on', 'Runners on'], ['empty', 'Bases empty']] as ['any' | 'on' | 'empty', string][]} value={runners} onChange={setRunners} />
+              <select value={park} onChange={e => setPark(e.target.value)} aria-label="Ballpark" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '4px 10px', border: `1px solid ${park === 'any' ? C.line : C.orange}`, background: '#fff', color: C.ink }}>
+                <option value="any">Any ballpark</option>
+                {[...new Map(pas.map(p => games[Number(p.key.split('-')[0])]).filter(Boolean).map(g => [String(g.venueId), g.venue])).entries()].map(([id, nm]) => <option key={id} value={id}>{nm}</option>)}
+              </select>
               <Pills items={[['all', 'Any result'], ['hit', 'Hits'], ['hr', 'Home runs'], ['out', 'Outs'], ['k', 'Strikeouts'], ['bb', 'Walks']] as [PA['kind'] | 'all', string][]} value={kind} onChange={setKind} />
             </div>
 
@@ -253,6 +365,7 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
                           <span style={{ width: 92, fontWeight: 800, fontSize: 13 }}>{p.date}</span>
                           <span style={{ width: 70, fontSize: 12, color: C.mute }}>{p.inning != null ? `Inning ${p.inning}` : ''}</span>
                           <span style={{ width: 90, fontSize: 12, color: C.mute }}>{p.runners}</span>
+                          <span style={{ width: 150, fontSize: 12, color: C.mute }}>{games[Number(p.key.split('-')[0])]?.venue ?? ''}</span>
                           <span style={{ display: 'inline-flex', gap: 4 }}>
                             {p.pitches.map((x, q) => <span key={q} title={`${log.pitchNames[x.pitchType] ?? x.pitchType} ${x.velo != null ? x.velo.toFixed(1) + ' mph' : ''} · ${x.balls}-${x.strikes} · ${resWord[resCode(x.description)] ?? x.description ?? ''}`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 999, background: pitchColor(x.pitchType), color: '#fff', fontSize: 9, fontWeight: 800 }}>{resCode(x.description)}</span>)}
                           </span>

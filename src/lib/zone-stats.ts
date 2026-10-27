@@ -105,3 +105,8 @@ export function smallFor(key: MetricKey, chances: number, cellMin: number): bool
   if (key === 'whiff') return chances < 10
   return chances < cellMin
 }
+
+/** Agg as a plain number array (for sending many of them compactly), and back. */
+export const AGG_KEYS = Object.keys(emptyAgg()) as (keyof Agg)[]
+export const aggToArr = (a: Agg): number[] => AGG_KEYS.map(k => a[k])
+export function arrToAgg(arr: number[]): Agg { const a = emptyAgg(); AGG_KEYS.forEach((k, i) => { a[k] = arr[i] ?? 0 }); return a }
