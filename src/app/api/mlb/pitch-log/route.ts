@@ -17,6 +17,23 @@ export async function GET(req: NextRequest) {
 
   const log = await getPitcherPitchLog(playerId, season, range)
   if (!log) return NextResponse.json({ error: 'no data' }, { status: 404 })
+  // summary=faced: every hitter this pitcher has faced in the range, with pitches and plate appearances, and no pitch rows (small).
+  if (searchParams.get('summary') === 'faced') {
+    const by = new Map<number, { pitches: number; pa: number }>()
+    for (const p of log.pitches) {
+      if (p.batterId == null) continue
+      const e = by.get(p.batterId) ?? { pitches: 0, pa: 0 }
+      e.pitches++
+      if (p.wobaDen != null && p.wobaDen > 0) e.pa++
+      by.set(p.batterId, e)
+    }
+    return NextResponse.json({ pitcherId: log.pitcherId, throws: log.throws, faced: [...by.entries()].map(([id, e]) => ({ id, name: log.batterNames[id] ?? `#${id}`, ...e })).sort((a, b) => b.pa - a.pa) })
+  }
+  // batterId=: only the pitches to that hitter.
+  const batterId = Number(searchParams.get('batterId'))
+  if (batterId) {
+    return NextResponse.json({ ...log, pitches: log.pitches.filter(p => p.batterId === batterId), batterNames: { [batterId]: log.batterNames[batterId] ?? `#${batterId}` } })
+  }
   if (pitchType && pitchType !== 'ALL') {
     return NextResponse.json({ ...log, pitches: log.pitches.filter(p => p.pitchType === pitchType) })
   }
