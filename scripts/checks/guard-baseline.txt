@@ -50,3 +50,4 @@ logos	src/components/stats/VsTeamCard.tsx
 fetch	src/components/pitching-lab/PitchFlight.tsx
 fetch	src/app/mlb/lab/pitching-lab/[playerId]/(pro)/arsenal/page.tsx
 fetch	src/components/pitching-lab/ReleaseChart.tsx
+fetch	src/lib/pitcher-pitch-log.ts
