@@ -7,6 +7,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import Tabs from '@/components/ui/Tabs'
 import LeaderboardTable from '@/components/stats/LeaderboardTable'
 import { isProViewer } from '@/lib/require-pro'
+import { isSignedIn } from '@/lib/require-signup'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import StatsFilters from '@/components/stats/StatsFilters'
@@ -20,8 +21,8 @@ export const metadata = pageMeta({
 
 const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }, { id: 'advanced', label: 'Advanced' }]
 
-function Board({ b, qualifiable, isPro, name, group, ctx }: { b: Board; qualifiable: boolean; isPro: boolean; name: string; group?: 'batting' | 'pitching'; ctx?: StatsCtx }) {
-  return <LeaderboardTable group={group} ctx={ctx} seasons={Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => new Date().getFullYear() - i)} isPro={isPro} exportName={name} moreCols={b.moreCols} rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
+function Board({ b, qualifiable, signedIn, name, group, ctx }: { b: Board; qualifiable: boolean; signedIn: boolean; name: string; group?: 'batting' | 'pitching'; ctx?: StatsCtx }) {
+  return <LeaderboardTable group={group} ctx={ctx} seasons={Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => new Date().getFullYear() - i)} signedIn={signedIn} exportName={name} moreCols={b.moreCols} rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
 }
 
 export default async function MLBStatsPage({ searchParams }: { searchParams: Promise<{ tab?: string; season?: string; level?: string; type?: string }> }) {
@@ -36,18 +37,19 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
   const mlbRegular = sportId === 1 && gameType === 'R'
   const name = `x9lab-${tab}-${season}-${sportId === 1 ? 'mlb' : 'milb' + sportId}-${gameType}`
   const isPro = await isProViewer()
+  const signedIn = await isSignedIn()
 
   let body: React.ReactNode = null
   const only = (what: string) => <p style={{ fontSize: 15, color: '#57534E', margin: '14px 0' }}>{what} is MLB regular-season data only. Switch Level to MLB and Games to Regular season to see it. Selected: {ctxLabel(ctx)}.</p>
-  if (tab === 'batting') { const b = await getBattingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} group="batting" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No batting stats for {ctxLabel(ctx)}.</p> }
-  else if (tab === 'pitching') { const b = await getPitchingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} group="pitching" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No pitching stats for {ctxLabel(ctx)}.</p> }
+  if (tab === 'batting') { const b = await getBattingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable signedIn={signedIn} name={name} group="batting" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No batting stats for {ctxLabel(ctx)}.</p> }
+  else if (tab === 'pitching') { const b = await getPitchingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable signedIn={signedIn} name={name} group="pitching" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No pitching stats for {ctxLabel(ctx)}.</p> }
   else if ((tab === 'statcast' || tab === 'advanced') && !mlbRegular) body = only(tab === 'statcast' ? 'Statcast' : 'Advanced stats')
   else if (tab === 'statcast') {
     const [bat, pit] = await Promise.all([getStatcastBatters(season), getStatcastPitchers(season)])
     body = (
       <>
-        <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable={false} isPro={isPro} name={`${name}-batters`} />
-        <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable={false} isPro={isPro} name={`${name}-pitchers`} />
+        <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable={false} signedIn={signedIn} name={`${name}-batters`} />
+        <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable={false} signedIn={signedIn} name={`${name}-pitchers`} />
         <p style={{ fontSize: 12, color: '#8a8275' }}>Baseball Savant expected stats and batted-ball data, {season} regular season, through the latest game stored.</p>
       </>
     )
@@ -57,8 +59,8 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
     const [bat, pit] = await Promise.all([getAdvancedBatters(season), getAdvancedPitchers(season)])
     body = (
       <>
-        <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable isPro={isPro} name={`${name}-batters`} />
-        <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable isPro={isPro} name={`${name}-pitchers`} />
+        <h2 style={{ margin: '8px 0 0', fontSize: 22, fontWeight: 800 }}>Batters</h2><Board b={bat} qualifiable signedIn={signedIn} name={`${name}-batters`} />
+        <h2 style={{ margin: '32px 0 0', fontSize: 22, fontWeight: 800 }}>Pitchers</h2><Board b={pit} qualifiable signedIn={signedIn} name={`${name}-pitchers`} />
         <p style={{ fontSize: 12, color: '#8a8275' }}>Rates are worked out from the season totals above. Hover a number for its percentile among the players in the table.</p>
       </>
     )

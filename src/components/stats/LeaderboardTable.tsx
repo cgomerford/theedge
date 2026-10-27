@@ -30,8 +30,8 @@ function shift(hex: string, amt = 0.55): string {
   return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => mix(c).toString(16).padStart(2, '0')).join('')}`
 }
 
-export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, isPro = false, exportName = 'x9lab-stats', group, ctx, seasons = [] }: {
-  rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; isPro?: boolean; exportName?: string; group?: 'batting' | 'pitching'; ctx?: { season: number; sportId: number; gameType: string }; seasons?: number[]
+export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, signedIn = false, exportName = 'x9lab-stats', group, ctx, seasons = [] }: {
+  rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; signedIn?: boolean; exportName?: string; group?: 'batting' | 'pitching'; ctx?: { season: number; sportId: number; gameType: string }; seasons?: number[]
 }) {
   const [extra, setExtra] = useState<string[]>([])
   const cols = useMemo(() => [...baseCols, ...extra.map(k => moreCols.find(c => c.key === k)).filter((c): c is Col => !!c)], [baseCols, moreCols, extra])
@@ -40,6 +40,8 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
   const [yKey, setYKey] = useState<string>('')
   const [xKey, setXKey] = useState<string>('')
   const [topN, setTopN] = useState(15)
+  const [y2Key, setY2Key] = useState('')
+  const [color2, setColor2] = useState('#6CABDD')
   const [color, setColor] = useState('#FF5722')
   const [heads, setHeads] = useState(false)
   const [byTeam, setByTeam] = useState(false)
@@ -142,41 +144,49 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
           </label>
         ) : null}
         {extra.map(k => { const c = moreCols.find(x => x.key === k); return c ? <button key={k} type="button" onClick={() => setExtra(x => x.filter(y => y !== k))} aria-label={`Remove ${c.label}`} style={{ border: '1px solid #e7e2d8', background: '#fff', borderRadius: 2, padding: '4px 8px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{c.label} ×</button> : null })}
-        {isPro ? (
+        {signedIn ? (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 14, alignItems: 'center' }}>
             <button type="button" onClick={() => setView(v => (v === 'table' ? 'chart' : 'table'))} style={{ background: 'none', border: 0, borderBottom: '3px solid #FF5722', padding: '2px 0', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{view === 'table' ? 'Show as a graph' : 'Show as table'}</button>
             <button type="button" onClick={download} disabled={busy} style={{ background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '5px 12px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{busy ? 'Preparing…' : 'Download image'}</button>
           </span>
         ) : (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 12, alignItems: 'center', fontSize: 13, color: '#8a8275' }}>
-            <a href="/pricing" aria-label="Show as a graph, locked: Pro members only" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #a89e8c', borderRadius: 2, padding: '5px 12px', fontWeight: 800, color: '#57534E', textDecoration: 'none' }}>
+            <a href="/signup" aria-label="Show as a graph, locked: sign in to use it" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px dashed #a89e8c', borderRadius: 2, padding: '5px 12px', fontWeight: 800, color: '#57534E', textDecoration: 'none' }}>
               <svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><rect x="1" y="6" width="10" height="7" rx="1.5" fill="#57534E" /><path d="M3.5 6V4a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="#57534E" strokeWidth="1.6" /></svg>
               Graphs and image download
             </a>
-            <span>Pro members only, signed in or not. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
+            <span>Free with an account. <a href="/signup" style={{ color: '#FF5722', fontWeight: 800 }}>Sign up</a> or <a href="/login" style={{ color: '#FF5722', fontWeight: 800 }}>sign in</a></span>
           </span>
         )}
       </div>
       <div ref={area}>
-      {view === 'chart' && isPro ? (() => {
+      {view === 'chart' && signedIn ? (() => {
         const all = [...baseCols, ...moreCols]
         const colY = all.find(c => c.key === (yKey || (key === '__n' ? baseCols[0].key : key))) ?? baseCols[0]
         const colX = all.find(c => c.key === (xKey || baseCols[1]?.key)) ?? baseCols[1] ?? baseCols[0]
         const pool = sorted.filter(r => r.v[colY.key] != null).sort((a, b) => (colY.asc ? 1 : -1) * ((a.v[colY.key] as number) - (b.v[colY.key] as number)))
-        const data = pool.slice(0, topN).map(r => ({ id: r.id, fill: byTeam ? teamFill(r.team) : color, name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number, ...Object.fromEntries(cmps.map(c => [`o${c.year}`, c.rows?.[r.id]?.[colY.key] ?? null])) } as Record<string, number | string | null> & { id: number; fill: string; name: string; v: number; x: number }))
+        const data = pool.slice(0, topN).map(r => ({ id: r.id, fill: byTeam ? teamFill(r.team) : color, name: r.name, v: r.v[colY.key] as number, p: (y2Key ? r.v[y2Key] : null) as number | null, x: r.v[colX.key] as number, ...Object.fromEntries(cmps.map(c => [`o${c.year}`, c.rows?.[r.id]?.[colY.key] ?? null])) } as Record<string, number | string | null> & { id: number; fill: string; name: string; v: number; p: number | null; x: number }))
+        const col2 = kind !== 'scatter' && y2Key && y2Key !== colY.key ? all.find(c => c.key === y2Key) ?? null : null
+        const mainName = col2 ? `${colY.label} ${ctx?.season ?? ''}`.trim() : String(ctx?.season ?? 'Now')
         const ready = cmps.filter(c => c.rows)
         const overlay = ready.length > 0 && kind !== 'scatter'
         const swatches = ['#FF5722', '#6CABDD', '#1A1A1A', '#1D9E75', '#7C3AED', '#FDE047']
         const sc = kind === 'scatter' ? pool.slice(0, topN).filter(r => r.v[colX.key] != null).map(r => ({ name: r.name, fill: byTeam ? teamFill(r.team) : color, x: r.v[colX.key] as number, y: r.v[colY.key] as number })) : []
         const sel: React.CSSProperties = { height: 32, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit' }
         const lab: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }
-        const title = overlay ? `${colY.label}: top ${data.length}, ${ctx?.season} against ${ready.map(c => c.year).join(', ')}` : kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
+        const title = col2 ? `${colY.label} and ${col2.label}: top ${data.length} by ${colY.label}${overlay ? `, ${ctx?.season} against ${ready.map(c => c.year).join(', ')}` : ''}` : overlay ? `${colY.label}: top ${data.length}, ${ctx?.season} against ${ready.map(c => c.year).join(', ')}` : kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
         const f = (v: unknown, c: Col) => fmt(Number(v), c)
         return (
           <div>
             <div data-noexport="1" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', margin: '0 0 8px' }}>
               <label style={lab}>Chart<select style={sel} value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="hbar">Horizontal bars</option><option value="vbar">Vertical bars</option><option value="line">Line</option><option value="scatter">Scatter (two stats)</option></select></label>
               <label style={lab}>{kind === 'scatter' ? 'Up' : 'Stat'}<select style={sel} value={colY.key} onChange={e => setYKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
+              {kind !== 'scatter' ? (
+                <label style={lab}>Compare with
+                  <select style={sel} value={y2Key} onChange={e => setY2Key(e.target.value)}><option value="">No second stat</option>{all.filter(c => c.key !== colY.key).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select>
+                  {col2 ? <input type="color" value={color2} onChange={e => setColor2(e.target.value)} aria-label="Colour for the second stat" style={{ width: 28, height: 28, border: 0, padding: 0, background: 'none', cursor: 'pointer' }} /> : null}
+                </label>
+              ) : null}
               {kind === 'scatter' ? <label style={lab}>Across<select style={sel} value={colX.key} onChange={e => setXKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label> : null}
               <label style={lab}>Colour
                 <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
@@ -210,7 +220,8 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                 {kind === 'hbar' ? (
                   <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
                     <CartesianGrid horizontal={false} stroke="#e7e2d8" />
-                    <XAxis type="number" hide domain={[0, 'dataMax']} />
+                    <XAxis xAxisId="a" type="number" hide domain={[0, 'dataMax']} />
+                    {col2 ? <XAxis xAxisId="b" type="number" hide domain={[0, 'dataMax']} /> : null}
                     <YAxis type="category" dataKey="name" width={heads ? 190 : 150} axisLine={false} tickLine={false}
                       tick={(p: { x?: number | string; y?: number | string; payload?: { value?: string | number; index?: number } }) => {
                         const d = data[p.payload?.index ?? -1]
@@ -221,28 +232,33 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                           </g>
                         )
                       }} />
-                    {overlay ? <Legend verticalAlign="top" /> : null}
-                    <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}<LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
-                    {overlay ? ready.map(c => <Bar key={c.year} dataKey={`o${c.year}`} name={c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey={`o${c.year}`} position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar>) : null}
+                    {overlay || col2 ? <Legend verticalAlign="top" /> : null}
+                    <Bar xAxisId="a" dataKey="v" name={mainName} fill={color} radius={[0, 3, 3, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}<LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
+                    {overlay ? ready.map(c => <Bar xAxisId="a" key={c.year} dataKey={`o${c.year}`} name={col2 ? `${colY.label} ${c.year}` : c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey={`o${c.year}`} position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar>) : null}
+                    {col2 ? <Bar xAxisId="b" dataKey="p" name={col2.label} fill={color2} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="p" position="right" formatter={(v: unknown) => (v == null ? '' : f(v, col2))} style={{ fontSize: 12, fontWeight: 800, fill: color2 }} /></Bar> : null}
                   </BarChart>
                 ) : kind === 'vbar' ? (
                   <BarChart data={data} margin={{ left: 0, right: 8, top: 22, bottom: 70 }}>
                     <CartesianGrid vertical={false} stroke="#e7e2d8" />
                     <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
-                    <YAxis tick={{ fontSize: 12 }} width={46} />
-                    {overlay ? <Legend verticalAlign="top" /> : null}
-                    <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
-                    {overlay ? ready.map(c => <Bar key={c.year} dataKey={`o${c.year}`} name={c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[3, 3, 0, 0]} isAnimationActive={false} />) : null}
+                    <YAxis yAxisId="a" tick={{ fontSize: 12 }} width={46} />
+                    {col2 ? <YAxis yAxisId="b" orientation="right" tick={{ fontSize: 12, fill: color2 }} width={46} /> : null}
+                    {overlay || col2 ? <Legend verticalAlign="top" /> : null}
+                    <Bar yAxisId="a" dataKey="v" name={mainName} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.map(d => <Cell key={d.id} fill={d.fill} />)}{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
+                    {overlay ? ready.map(c => <Bar yAxisId="a" key={c.year} dataKey={`o${c.year}`} name={col2 ? `${colY.label} ${c.year}` : c.year} fill={yearColor(c, cmps.indexOf(c))} radius={[3, 3, 0, 0]} isAnimationActive={false} />) : null}
+                    {col2 ? <Bar yAxisId="b" dataKey="p" name={col2.label} fill={color2} radius={[3, 3, 0, 0]} isAnimationActive={false} /> : null}
                   </BarChart>
                 ) : kind === 'line' ? (
                   <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 70 }}>
                     <CartesianGrid stroke="#e7e2d8" />
                     <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
-                    <YAxis tick={{ fontSize: 12 }} width={46} domain={['auto', 'auto']} />
-                    <Tooltip formatter={(v: unknown) => f(v, colY)} />
-                    {overlay ? <Legend verticalAlign="top" /> : null}
-                    <Line type="monotone" dataKey="v" name={String(ctx?.season ?? 'Now')} stroke={color} strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
-                    {overlay ? ready.map(c => <Line key={c.year} type="monotone" dataKey={`o${c.year}`} name={c.year} stroke={yearColor(c, cmps.indexOf(c))} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: yearColor(c, cmps.indexOf(c)) }} isAnimationActive={false} connectNulls />) : null}
+                    <YAxis yAxisId="a" tick={{ fontSize: 12 }} width={46} domain={['auto', 'auto']} />
+                    {col2 ? <YAxis yAxisId="b" orientation="right" tick={{ fontSize: 12, fill: color2 }} width={46} domain={['auto', 'auto']} /> : null}
+                    <Tooltip />
+                    {overlay || col2 ? <Legend verticalAlign="top" /> : null}
+                    <Line yAxisId="a" type="monotone" dataKey="v" name={mainName} stroke={color} strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
+                    {overlay ? ready.map(c => <Line yAxisId="a" key={c.year} type="monotone" dataKey={`o${c.year}`} name={col2 ? `${colY.label} ${c.year}` : c.year} stroke={yearColor(c, cmps.indexOf(c))} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: yearColor(c, cmps.indexOf(c)) }} isAnimationActive={false} connectNulls />) : null}
+                    {col2 ? <Line yAxisId="b" type="monotone" dataKey="p" name={col2.label} stroke={color2} strokeWidth={2} dot={{ r: 3, fill: color2 }} isAnimationActive={false} connectNulls /> : null}
                   </LineChart>
                 ) : (
                   <ScatterChart margin={{ left: 0, right: 24, top: 12, bottom: 24 }}>

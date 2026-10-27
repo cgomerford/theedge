@@ -1,14 +1,13 @@
 // src/app/api/stats/compare/route.ts
 //
-// Pro-only. Returns every player's values for one season/level/game type so the Stats graph can overlay another year.
+// Signed-in only. Returns every player's values for one season/level/game type so the Stats graph can overlay another year.
 // Reads the same MLB stats feed as the Stats page boards; nothing is written.
 import { NextResponse } from 'next/server'
-import { requirePro } from '@/lib/require-pro'
+import { isSignedIn } from '@/lib/require-signup'
 import { getBattingBoardFor, getPitchingBoardFor, LEVELS, GAME_TYPES, type StatsCtx } from '@/lib/stats-leaderboards'
 
 export async function GET(req: Request) {
-  const denied = await requirePro()
-  if (denied) return denied
+  if (!(await isSignedIn())) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
   const q = new URL(req.url).searchParams
   const season = Number(q.get('season'))
   const sportId = Number(q.get('level'))
