@@ -283,6 +283,8 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
   const [chartPick, setChartPick] = useState<ChartType | null>(null)
   const [xKey, setXKey] = useState<string>('slg')
   const exportRef = useRef<HTMLDivElement>(null)
+  // 'ask' = the question came from the text box or an example (it uses a lookup); 'search' = the dropdowns (unlimited, never counted).
+  const srcRef = useRef<'ask' | 'search'>('search')
 
   // Club logos, fetched once through the allow-listed image proxy as data URIs (cross-origin images would
   // otherwise come out blank in the PNG export). Only needed while breaking numbers down by club.
@@ -338,7 +340,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
     const t = setTimeout(async () => {
       setLoading(true); setErr(null)
       try {
-        const res = await fetch(`/api/stats/query?${param(q).toString()}`, { signal: ctrl.signal })
+        const res = await fetch(`/api/stats/query?${param(q).toString()}${srcRef.current === 'ask' ? '&src=ask' : ''}`, { signal: ctrl.signal })
         const json = await res.json()
         // Today's lookups are used up: keep the last result on screen and show the card.
         if (res.status === 429 && json?.limit) { setLimited(true); setLookups(l => ({ left: 0, perDay: typeof json.perDay === 'number' ? json.perDay : l?.perDay ?? 5 })); setDeepProgress(null); return }
@@ -378,6 +380,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
   }, [chosen, q.group, q.metric])
 
   const patch = useCallback((p: Partial<QueryState>) => {
+    srcRef.current = 'search'
     if (p.view && p.view !== 'breakdown') setChartPick(null)
     if (p.view || p.family) setChartPick(null)
     setQ(prev => {
@@ -397,6 +400,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
   }, [clampMetric])
 
   const runSearch = async (s: string) => {
+    srcRef.current = 'ask'
     // "Bryce Harper vs San Diego": a player and a club are read out first; the rest of the text goes to the normal parser.
     const mu = await resolveMatchup(s)
     const { state, understood: u, metrics } = parseQuery(mu ? mu.rest : s, q)
@@ -418,11 +422,6 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
       notes.push(...describeDeep({ stack: [], who: mu.who }))
     }
     const grp = state.group ?? q.group
-    if (state.deep && !isPro && state.view !== 'recent') {
-      notes.push('Stacking filters is not available on your account — applied the first one only')
-      state.split = state.deep.stack[0] ?? ''
-      state.deep = null
-    }
     let picked = metrics.filter(k => metricByKey(k)?.group === grp)
     const proOnly = picked.filter(k => !isPro && !isStandardMetric(k))
     if (proOnly.length) notes.push(`${proOnly.map(k => metricByKey(k)?.label).join(', ')}: Pro metric — not included`)
@@ -523,7 +522,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
           </div>
         </div>
         <div style={{ fontFamily: SANS, fontSize: 13.5, color: '#5b5347', marginBottom: 12 }}>
-          Ask it the way you’d say it — a player, a club, a situation, a year. We’ll turn it into filters you can adjust below.
+          Ask it the way you’d say it — a player, a club, a situation, a year (“2 out home runs in the 5th inning”). It sets the filters below for you, and each question uses one lookup.
         </div>
         {!isPro ? (
           <div style={{ minHeight: 20, marginBottom: 8, fontFamily: SANS, fontSize: 13, color: '#8a8275', fontVariantNumeric: 'tabular-nums' }}>
@@ -610,6 +609,9 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
       <div style={{ display: askOpen || (vs && !isPro) ? 'none' : 'block' }}>
       {/* The three things almost every question needs — always visible */}
       <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+        <div style={{ fontFamily: SANS, fontSize: 13, color: '#5b5347', marginBottom: 10 }}>
+          <b style={{ color: C.ink }}>Search with the dropdowns.</b> Every situation, season and view is here, unlimited and open to everyone. Asking in words (above) just fills these in for you.
+        </div>
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', alignItems: 'end' }}>
           <Field label="Side of the ball" hint="Batting looks at hitters, Pitching at pitchers, Fielding at defense (errors, putouts, fielding %).">
             <Seg<Group> value={q.group} onChange={v => patch({ group: v })} options={GROUPS} />

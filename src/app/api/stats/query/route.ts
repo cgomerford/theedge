@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runQuery, stripForFree } from '@/lib/stats-query'
 import { isProViewer } from '@/lib/require-pro'
 import { runDeepQuery } from '@/lib/pa-query'
-import { resolveViewer, checkLookup, chargeLookup, questionKey, hasRows, anonCookie, perDayFor } from '@/lib/ask-lookups'
+import { resolveViewer, checkLookup, chargeLookup, questionKey, hasRows, anonCookie, perDayFor, type Viewer } from '@/lib/ask-lookups'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
   GAME_TYPES, CURRENT_SEASON, isStandardMetric, defaultMetric, deepSupports, FIRST_SEASON, DEFAULT_QUERY, isValidSplit, familyFor, metricByKey,
@@ -96,9 +96,8 @@ export async function GET(req: NextRequest) {
   // "When did this last happen" always runs on plate appearances: a single quick-mode situation becomes a one-chip stack.
   const deepParam = sp.get('deep') ?? (view === 'recent' ? JSON.stringify({ stack: split ? [split] : [] }) : null)
   if (deepParam) {
-    // The "last time it happened" finder is open to everyone (within the daily lookups): every field is validated below and the finder is capped to the newest stretch of games.
-    const finderOnly = view === 'recent'
-    if (!pro && !finderOnly) return NextResponse.json({ error: 'Stacked filters are a Pro feature.' }, { status: 403 })
+    // Stacked situations ("2 outs in the 5th", "last grand slam") are open to everyone: asking in words uses a lookup, the dropdown search is unlimited.
+    // Every field is validated below, and the result is the same plate-appearance engine for every viewer.
     if (group === 'fielding') return NextResponse.json({ error: 'Stacked filters are not available for fielding.' }, { status: 400 })
     try {
       const d = JSON.parse(deepParam) as Record<string, unknown>
@@ -127,7 +126,9 @@ export async function GET(req: NextRequest) {
 
   const q: QueryState = { group, gameType, from, to, split: deep ? '' : split, family, metric, view, minSample, years: years.length ? years : DEFAULT_QUERY.years, teams, deep }
   // Lookup allowance (Free and signed-out). Pro is never counted; any database problem lets the request run uncounted.
-  const viewer = await resolveViewer(req)
+  // Only questions asked in words (src=ask) use a lookup. The dropdown search (filters, seasons, views) is unlimited and open to everyone,
+  // so it is handled like a viewer that is never counted: no cookie, no hash, no database call.
+  const viewer: Viewer = sp.get('src') === 'ask' ? await resolveViewer(req) : { kind: 'pro' }
   const key = questionKey(q)
   const check = viewer.kind === 'pro' ? null : await checkLookup(viewer, key)
   const noStore = { 'Cache-Control': 'private, no-store' }
