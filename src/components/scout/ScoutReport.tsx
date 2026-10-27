@@ -93,7 +93,8 @@ export default async function ScoutReport({ game, gameDate, tab }: { game: MLBGa
   const tier = state === 'look_left' || state === 'used' ? 'member' : 'anon'
   let rowShown = false
   const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro: true,
-    venueId: (game.venue as { id?: number }).id ?? null, venueName: game.venue.name, dayNight: game.dayNight ?? null }
+    venueId: (game.venue as { id?: number }).id ?? null, venueName: game.venue.name, dayNight: game.dayNight ?? null,
+    postseason: !!game.seriesDescription && game.seriesDescription !== 'Regular Season' }
   const active = REPORT_TABS.find(t => t.id === tab) ?? REPORT_TABS[0]
   const inTab = active.sections.map(id => SCOUT_SECTIONS.find(m => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m && !!SECTION_BODIES[m.id])
 

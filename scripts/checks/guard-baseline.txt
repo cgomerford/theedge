@@ -65,3 +65,5 @@ fetch	src/components/batting-lab/BatterArsenal.tsx
 fetch	src/components/scout/lab/StarterDesk.tsx
 fetch	src/components/postgame/report/lab/PitchDesk.tsx
 fetch	src/components/postgame/report/lab/HitDesk.tsx
+fetch	src/lib/scout/recent-work.ts
+fetch	src/lib/scout/bullpen-desk.ts

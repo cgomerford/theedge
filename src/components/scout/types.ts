@@ -17,4 +17,6 @@ export type ScoutContext = {
   venueId: number | null
   venueName: string
   dayNight: 'day' | 'night' | null
+  /** a postseason game: workload then reads the box scores of recent games of every kind (lib/scout/recent-work.ts) */
+  postseason?: boolean
 }

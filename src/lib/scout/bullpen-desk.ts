@@ -20,6 +20,7 @@ import { getProjectedLineup } from '@/lib/lineups'
 import { getLast7DaysPitcherWorkloadFromDB } from '@/lib/pitcher-workload'
 import { getBullpenReportFromDB } from '@/lib/bullpen-usage'
 import { workloadFlag } from './workload'
+import { getRecentWork, type RecentWork } from './recent-work'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -48,6 +49,8 @@ export type BullpenArm = {
   flag: ArmFlag
   flagReason: string
   innings: Record<number, number> // inning (9 = 9th+) → season appearances
+  /** postseason games only, this season so far (a postseason game); null in the regular season */
+  post: { apps: number; pitches: number; ip: string; era: number | null } | null
 }
 
 export type BenchBat = {
@@ -62,6 +65,8 @@ export type BullpenDesk = {
   teamId: number
   dates: string[]
   arms: BullpenArm[]
+  /** what the 7-day workload covers: the regular season, the postseason, or both together (early in a postseason, the window reaches back into the regular season) */
+  scope: { kind: 'regular' | 'postseason' | 'combined'; postGames: number; windowRegular: number; windowPostseason: number }
 }
 
 const ROLE_LABEL: Record<string, ArmRole> = { Closer: 'Closer', Setup: 'High-leverage' }
@@ -73,7 +78,7 @@ function shiftDays(date: string, days: number): string {
 }
 
 type PersonStats = { hand: 'L' | 'R' | null; l7: BullpenArm['l7'] }
-async function fetchPitcherPeople(ids: number[], from: string, to: string, season: string): Promise<Map<number, PersonStats>> {
+async function fetchPersonStats(ids: number[], from: string, to: string, season: string): Promise<Map<number, PersonStats>> {
   const out = new Map<number, PersonStats>()
   if (ids.length === 0) return out
   try {
@@ -95,21 +100,45 @@ async function fetchPitcherPeople(ids: number[], from: string, to: string, seaso
   return out
 }
 
-export async function getBullpenDesk(teamId: number, gameDate: string): Promise<BullpenDesk> {
+const ipText = (outs: number) => `${Math.floor(outs / 3)}.${outs % 3}`
+const eraOf = (er: number, outs: number) => (outs > 0 ? (er * 27) / outs : null)
+
+/** The 7-day workload and last-7 results from box scores (a postseason game: the nightly table only holds regular-season games). */
+function fromWork(w: RecentWork): { workload: { dates: string[]; pitchers: { playerId: number; byDate: Record<string, number> }[] }; people: Map<number, PersonStats> } {
+  const pitchers = [...w.players.entries()].map(([playerId, p]) => ({ playerId, byDate: p.byDate }))
+  const people = new Map<number, PersonStats>()
+  for (const [id, p] of w.players) people.set(id, { hand: null, l7: p.bf > 0 ? { ip: ipText(p.outs), era: eraOf(p.er, p.outs), bf: p.bf } : null })
+  return { workload: { dates: w.dates, pitchers }, people }
+}
+
+export async function getBullpenDesk(teamId: number, gameDate: string, postseason = false): Promise<BullpenDesk> {
   const supa = createAdminClient()
   const yesterday = shiftDays(gameDate, -1)
   const season = Number(gameDate.slice(0, 4))
 
-  const [avail, activeIds, workload, report] = await Promise.all([
+  const [avail, activeIds, dbWorkload, report, recent] = await Promise.all([
     supa.from('bullpen_availability').select('player_id, player_name, role, era').eq('game_date', gameDate).eq('team_id', teamId),
     getActiveRosterIds(teamId),
-    getLast7DaysPitcherWorkloadFromDB(teamId, undefined, yesterday),
+    postseason ? Promise.resolve(null) : getLast7DaysPitcherWorkloadFromDB(teamId, undefined, yesterday),
     getBullpenReportFromDB(teamId, season),
+    postseason ? getRecentWork(teamId, gameDate) : Promise.resolve(null),
   ])
 
-  const rows = (avail.data ?? []).filter((r) => activeIds.size === 0 || activeIds.has(Number(r.player_id)))
+  let rows = (avail.data ?? []).filter((r) => activeIds.size === 0 || activeIds.has(Number(r.player_id)))
+  // A postseason game with no availability rows yet: the relievers are whoever has pitched in the window or the postseason and has not started.
+  if (rows.length === 0 && recent) {
+    rows = [...recent.players.entries()].filter(([id, p]) => !p.started && (activeIds.size === 0 || activeIds.has(id)))
+      .map(([id, p]) => ({ player_id: id, player_name: p.name, role: 'Middle Relief', era: null })) as typeof rows
+  }
   const ids = rows.map((r) => Number(r.player_id))
-  const people = await fetchPitcherPeople(ids, shiftDays(gameDate, -7), yesterday, String(season))
+  const live = recent ? fromWork(recent) : null
+  const workload = live?.workload ?? dbWorkload!
+  const people = live ? live.people : await fetchPersonStats(ids, shiftDays(gameDate, -7), yesterday, String(season))
+  if (live) {
+    // throwing hand is not in a box score: one cheap people call for the arms on the page
+    const hands = await fetchPersonStats(ids, shiftDays(gameDate, -7), yesterday, String(season))
+    for (const [id, st] of live.people) st.hand = hands.get(id)?.hand ?? null
+  }
 
   const workByPlayer = new Map(workload.pitchers.map((p) => [p.playerId, p]))
   const profileById = new Map(report.relievers.map((r) => [r.playerId, r]))
@@ -140,12 +169,15 @@ export async function getBullpenDesk(teamId: number, gameDate: string): Promise<
     return {
       id, name: r.player_name, role: ROLE_LABEL[r.role] ?? 'Bridge', hand: person?.hand ?? null,
       byDate, p3: load.p3, p7: load.p7, apps7: load.apps7, seasonEra, l7, flag, flagReason, innings,
+      post: recent?.players.get(id) ? (() => { const q = recent.players.get(id)!; return { apps: q.postApps, pitches: q.postPitches, ip: ipText(q.postOuts), era: eraOf(q.postEr, q.postOuts) } })() : null,
     }
   })
 
   const order: Record<ArmRole, number> = { Closer: 0, 'High-leverage': 1, Bridge: 2 }
   arms.sort((a, b) => order[a.role] - order[b.role] || b.p7 - a.p7)
-  return { teamId, dates: workload.dates, arms }
+  const wk = recent?.windowKinds ?? { regular: 0, postseason: 0 }
+  const kind: BullpenDesk['scope']['kind'] = !recent ? 'regular' : wk.regular > 0 && wk.postseason > 0 ? 'combined' : wk.postseason > 0 ? 'postseason' : 'regular'
+  return { teamId, dates: workload.dates, arms, scope: { kind, postGames: recent?.postGames ?? 0, windowRegular: wk.regular, windowPostseason: wk.postseason } }
 }
 
 // Opponent bench bats: active hitters NOT in the (confirmed or projected)

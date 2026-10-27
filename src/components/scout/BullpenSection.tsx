@@ -25,7 +25,7 @@ const INNING_COLS = [5, 6, 7, 8, 9]
 
 const FLAG_STYLE: Record<ArmFlag, { symbol: string; label: string; cls: string } | null> = {
   overworked: { symbol: '▲', label: 'Overworked', cls: 'bg-amber-50 text-amber-800 border-amber-300' },
-  sharp: { symbol: '●', label: 'Sharp', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  sharp: { symbol: '●', label: 'Effective', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   shaky: { symbol: '▼', label: 'Shaky', cls: 'bg-rose-50 text-rose-800 border-rose-200' },
   rested: { symbol: '○', label: 'Rested', cls: 'bg-stone-50 text-stone-600 border-stone-200' },
   steady: null,
@@ -73,9 +73,10 @@ function WorkloadChart({ desk }: { desk: BullpenDesk }) {
       <ul>
         {desk.arms.map((a) => (
           <li key={a.id} className="grid grid-cols-[minmax(0,1fr)_84px_2rem_2rem_5.5rem] items-center gap-x-2 py-1.5 border-b border-stone-100 last:border-0">
-            <span className="min-w-0 text-[11.5px] font-sans text-stone-800 truncate">
+            <span className="min-w-0 text-[11.5px] font-sans text-stone-800 truncate" title={a.post ? `Postseason so far: ${a.post.apps} appearances, ${a.post.pitches} pitches, ${a.post.ip} IP${a.post.era != null ? `, ${a.post.era.toFixed(2)} ERA` : ''}` : undefined}>
               <span className="font-semibold">{a.name}</span>
               <span className="ml-1.5 font-mono text-[9px] text-stone-400">{a.hand ?? ''}{a.hand ? 'HP' : ''}</span>
+              {a.post && a.post.apps > 0 && <span className="ml-1.5 text-[9px] text-stone-400">post {a.post.apps} app · {a.post.pitches} p</span>}
             </span>
             <DayBars arm={a} dates={desk.dates} />
             <span className="text-right text-[11px] font-mono text-stone-700">{a.p3}</span>
@@ -133,7 +134,7 @@ function LeftArmBlock({ club, opp, desk, bench }: { club: ScoutClub; opp: ScoutC
   const lefties = (desk?.arms ?? []).filter((a) => a.hand === 'L')
   return (
     <div>
-      <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">{club.abbr} left arms vs {opp.abbr} bench bats</p>
+      <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">{club.abbr} left arms vs {opp.abbr} reserve bats</p>
       {lefties.length === 0 ? (
         <p className="text-[11.5px] font-sans italic text-stone-400">{club.abbr} has no left-handed reliever in the bullpen log.</p>
       ) : (
@@ -146,12 +147,12 @@ function LeftArmBlock({ club, opp, desk, bench }: { club: ScoutClub; opp: ScoutC
         </ul>
       )}
       {bench.length === 0 ? (
-        <p className="text-[11.5px] font-sans italic text-stone-400">{opp.abbr} bench isn&apos;t available until a lineup is posted.</p>
+        <p className="text-[11.5px] font-sans italic text-stone-400">{opp.abbr} reserves aren&apos;t available until a lineup is posted.</p>
       ) : (
         <table className="w-full text-[11px]">
           <thead>
             <tr className="text-[9px] font-mono uppercase tracking-wider text-stone-400 text-right border-b border-stone-200">
-              <th className="text-left font-semibold py-1">{opp.abbr} bench bat</th><th className="font-semibold">Bats</th><th className="font-semibold">OPS vs LHP</th><th className="font-semibold">PA</th>
+              <th className="text-left font-semibold py-1">{opp.abbr} reserve bat</th><th className="font-semibold">Bats</th><th className="font-semibold">OPS vs LHP</th><th className="font-semibold">PA</th>
             </tr>
           </thead>
           <tbody>
@@ -192,6 +193,14 @@ export function AvailabilityColumn({ club, side, desk }: { club: ScoutClub; side
       {idle && <p className="text-[11.5px] font-sans italic text-stone-500 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">No bullpen work in the last 7 days — every arm is fully rested.</p>}
       <div>
         <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">Workload · last 7 days</p>
+        {desk.scope.kind !== 'regular' && (
+          <p className="text-[11px] font-sans text-stone-500 mb-2 leading-snug">
+            {desk.scope.kind === 'combined'
+              ? `Early in the postseason (${desk.scope.postGames} game${desk.scope.postGames === 1 ? '' : 's'} played), so these seven days count the regular season (${desk.scope.windowRegular} game${desk.scope.windowRegular === 1 ? '' : 's'}) and the postseason (${desk.scope.windowPostseason}) together.`
+              : `Postseason games only (${desk.scope.windowPostseason} in the last seven days; ${desk.scope.postGames} played this postseason).`}
+            {' '}Read from the box scores. Each arm's postseason total is beside his name.
+          </p>
+        )}
         <WorkloadChart desk={desk} />
       </div>
       <div>
@@ -204,17 +213,17 @@ export function AvailabilityColumn({ club, side, desk }: { club: ScoutClub; side
 
 function Cols({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-2 lg:divide-x lg:divide-stone-100">
+    <div className="grid gap-6 md:grid-cols-2 md:divide-x md:divide-stone-100">
       <div>{left}</div>
-      <div className="lg:pl-6">{right}</div>
+      <div className="md:pl-6">{right}</div>
     </div>
   )
 }
 
 export default async function BullpenSection({ ctx }: { ctx: ScoutContext }) {
   const [awayDesk, homeDesk, awayBench, homeBench] = await Promise.all([
-    getBullpenDesk(ctx.away.id, ctx.gameDate).catch(() => null),
-    getBullpenDesk(ctx.home.id, ctx.gameDate).catch(() => null),
+    getBullpenDesk(ctx.away.id, ctx.gameDate, ctx.postseason).catch(() => null),
+    getBullpenDesk(ctx.home.id, ctx.gameDate, ctx.postseason).catch(() => null),
     getBenchBatsVsLefties(ctx.away.id, ctx.gameDate, ctx.gamePk),  // away bench faces HOME left arms
     getBenchBatsVsLefties(ctx.home.id, ctx.gameDate, ctx.gamePk),  // home bench faces AWAY left arms
   ])
@@ -238,7 +247,7 @@ export default async function BullpenSection({ ctx }: { ctx: ScoutContext }) {
             { name: ctx.away.name, abbr: ctx.away.abbr, side: 'Away', logo: teamLogoUrl(ctx.away.id) },
             { name: ctx.home.name, abbr: ctx.home.abbr, side: 'Home', logo: teamLogoUrl(ctx.home.id) },
           ]}
-          tiles={PEN_TILES} defaultStat="kbbPct" defaultWindow={7} sampleUnit="batters faced" gameUnit="games" isPro={ctx.isPro} flagPrompt="Pick a starting pitcher…"
+          tiles={PEN_TILES} defaultStat="kbbPct" defaultWindow={7} sampleUnit="batters faced" gameUnit="games" isPro={ctx.isPro} flagPrompt="Choose a starting pitcher…"
         />
       ),
     },
@@ -251,7 +260,7 @@ export default async function BullpenSection({ ctx }: { ctx: ScoutContext }) {
       content: <Cols left={<UsagePanel club={ctx.away} side="away" trends={awayTrends} desk={awayDesk} />} right={<UsagePanel club={ctx.home} side="home" trends={homeTrends} desk={homeDesk} />} />,
     },
     {
-      id: 'matchups', label: 'Left arms vs bench',
+      id: 'matchups', label: 'Left arms vs reserves',
       content: <Cols
         left={<div><ClubHeader club={ctx.away} side="away" /><LeftArmBlock club={ctx.away} opp={ctx.home} desk={awayDesk} bench={homeBench} /></div>}
         right={<div><ClubHeader club={ctx.home} side="home" /><LeftArmBlock club={ctx.home} opp={ctx.away} desk={homeDesk} bench={awayBench} /></div>} />,
@@ -263,8 +272,8 @@ export default async function BullpenSection({ ctx }: { ctx: ScoutContext }) {
       <Tabs tabs={tabs} />
       <div className="text-[10px] font-mono text-stone-400 leading-relaxed space-y-0.5">
         <p><span className="text-amber-700">▲ Overworked</span> = {WORKLOAD_RULES.yesterdayPitches}+ pitches yesterday, {WORKLOAD_RULES.last3Pitches}+ over 3 days, back-to-back days with {WORKLOAD_RULES.backToBackPlusLast3}+ in 3, or {WORKLOAD_RULES.appearsInLast4} of the last 4 days.</p>
-        <p><span className="text-emerald-700">● Sharp</span> / <span className="text-rose-700">▼ Shaky</span> = L7 ERA ≤ {FLAG_RULES.sharpEra.toFixed(2)} / ≥ {FLAG_RULES.shakyEra.toFixed(2)}, only once the arm has faced {FLAG_RULES.minBf}+ batters in the window (IP and BF shown on hover). <span>○ Rested</span> = no pitches in the last 3 days.</p>
-        <p>Trends, rest splits and usage cover the bullpen as it stands today — relief outings for the club by the arms currently on its bullpen list. Splits under a small sample are shown faded, never read into. * Bench bat with fewer than {FLAG_RULES.minBenchPa} PA vs LHP is not graded; ▲ threat = {FLAG_RULES.threatOps.toFixed(3).replace(/^0/, '')}+ OPS vs LHP on {FLAG_RULES.minBenchPa}+ PA.</p>
+        <p><span className="text-emerald-700">● Effective</span> / <span className="text-rose-700">▼ Shaky</span> = L7 ERA ≤ {FLAG_RULES.sharpEra.toFixed(2)} / ≥ {FLAG_RULES.shakyEra.toFixed(2)}, only once the arm has faced {FLAG_RULES.minBf}+ batters in the window (IP and BF shown on hover). <span>○ Rested</span> = no pitches in the last 3 days.</p>
+        <p>Trends, rest splits and usage describe the bullpen as it stands today — relief outings for the club by the arms currently on its bullpen list. Splits under a small sample are shown faded, never read into. * A reserve bat with fewer than {FLAG_RULES.minBenchPa} PA vs LHP is not graded; ▲ threat = {FLAG_RULES.threatOps.toFixed(3).replace(/^0/, '')}+ OPS vs LHP on {FLAG_RULES.minBenchPa}+ PA.</p>
       </div>
     </div>
   )

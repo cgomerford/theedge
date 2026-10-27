@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { getSeasonGamePks } from '../src/lib/bullpen-usage'
 import { getGameFeed } from '../src/lib/game-feed'
 import { LEAGUE_BY_TEAM_ID } from '../src/lib/lab'
 
@@ -20,17 +19,23 @@ function recentDates(days: number): string[] {
   return dates
 }
 
+async function recentFinalGamePks(teamId: number): Promise<number[]> {
+  const dates = recentDates(11)
+  const from = dates[dates.length - 1], to = dates[0]
+  const res = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${from}&endDate=${to}`)
+  if (!res.ok) { console.error(`[compute-pitcher-workload] schedule HTTP ${res.status} for team ${teamId}`); return [] }
+  const j = await res.json()
+  return (j.dates ?? []).flatMap((d: any) => (d.games ?? []).filter((g: any) => g.status?.abstractGameState === 'Final').map((g: any) => g.gamePk as number))
+}
+
 async function main() {
   const lookbackDates = new Set(recentDates(10))
 
   for (const teamId of TEAM_IDS) {
-    const allGamePks = await getSeasonGamePks(teamId, SEASON)
-    // getSeasonGamePks doesn't return officialDate, so we still need the
-    // per-game feed to know each game's date — same cost bullpen-usage.ts
-    // already pays, just over a much smaller recent slice conceptually.
-    // Practical filter: only process the most recent games, not the full
-    // season list, to keep this script fast to run nightly.
-    const gamePks = allGamePks.slice(-15) // last 15 games is a safe superset of any 10-day window
+    // Every finished game of the last ~10 days, whatever its type. This used to read the regular season only (getSeasonGamePks asks for gameType=R),
+    // so postseason games never reached the table and a postseason bullpen looked fully rested. The schedule call below has no gameType, so it
+    // returns regular-season and postseason games alike.
+    const gamePks = await recentFinalGamePks(teamId)
 
     const feeds = await Promise.all(gamePks.map(gamePk => getGameFeed(gamePk)))
 
