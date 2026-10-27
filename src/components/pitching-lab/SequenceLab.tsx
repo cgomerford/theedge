@@ -19,7 +19,7 @@ import { pitchColor } from '@/lib/mlb'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { SmoothHeatmap } from './ArsenalExtras'
-import { buildPaths } from './PitchFlight'
+import { Scene, TransparentScene, buildPaths, type PitchPath } from './PitchFlight'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
 type Cat = 'ball' | 'called' | 'swing' | 'foul' | 'play' | 'hbp'
@@ -42,7 +42,7 @@ const COUNTS = ['0-0', '1-0', '0-1', '1-1', '2-0', '0-2', '2-1', '1-2', '3-0', '
 const MAX_CHAIN = 3
 
 type Where = 'any' | 'in' | 'out'
-type Opts = { hist: string[]; res: Cat | 'any'; where: Where; count: string; side: 'any' | 'L' | 'R' }
+type Opts = { hist: string[]; stepRes: (Cat | 'any')[]; where: Where; count: string; side: 'any' | 'L' | 'R' }
 type Hit = { ab: RawPitch[]; j: number }
 
 const isIn = (z: string | null) => z != null && Number(z) >= 1 && Number(z) <= 9
@@ -56,11 +56,13 @@ function collect(abs: RawPitch[][], o: Opts): Hit[] {
       if (o.count !== 'any' && `${nx.balls}-${nx.strikes}` !== o.count) continue
       if (o.side !== 'any' && nx.stand !== o.side) continue
       let ok = true
-      for (let q = 0; q < h; q++) if (ab[j - h + q].pitchType !== o.hist[q]) { ok = false; break }
+      for (let q = 0; q < h; q++) {
+        const pq = ab[j - h + q]
+        if (pq.pitchType !== o.hist[q] || (o.stepRes[q] && o.stepRes[q] !== 'any' && cat(pq.description) !== o.stepRes[q])) { ok = false; break }
+      }
       if (!ok) continue
       if (h > 0) {
         const prev = ab[j - 1]
-        if (o.res !== 'any' && cat(prev.description) !== o.res) continue
         if (o.where !== 'any' && isIn(prev.zone) !== (o.where === 'in')) continue
       }
       out.push({ ab, j })
@@ -75,13 +77,113 @@ function tally(hits: Hit[]): Map<string, number> {
   return m
 }
 
+// ─── The at-bat, pitch by pitch ─────────────────────────────────────────────────────────────────────────────────────────
+// A short replay of the chain as it is chosen: each pitch is drawn from behind the plate along the average flight path for that pitch type
+// (see PitchFlight.tsx), with the count it was thrown in and how it turned out, then the count moves on. The count and result of each pitch
+// are the most common ones among the matching at-bats unless a result was chosen. It is an illustration of the chosen sequence, not a recording.
+
+type Step = { type: string; name: string; path: PitchPath | null; count: string; cat: Cat | null }
+const SLOW = 3, HOLD = 900
+
+function nextCount(count: string, c: Cat | null): string | null {
+  const [b, s] = count.split('-').map(Number)
+  if (!Number.isFinite(b) || !Number.isFinite(s) || c == null) return null
+  if (c === 'ball') return b + 1 >= 4 ? null : `${b + 1}-${s}`
+  if (c === 'called' || c === 'swing') return s + 1 >= 3 ? null : `${b}-${s + 1}`
+  if (c === 'foul') return `${b}-${s < 2 ? s + 1 : s}`
+  return null
+}
+const endText = (count: string, c: Cat | null) => {
+  const [b, s] = count.split('-').map(Number)
+  if (c === 'ball' && b + 1 >= 4) return 'Walk'
+  if ((c === 'called' || c === 'swing') && s + 1 >= 3) return 'Strikeout'
+  if (c === 'play') return 'Ball in play'
+  if (c === 'hbp') return 'Hit by pitch'
+  return null
+}
+
+function SequenceStage({ steps }: { steps: Step[] }) {
+  const sig = steps.map(x => `${x.type}${x.count}${x.cat}`).join('|')
+  const [i, setI] = useState(0)
+  const [p, setP] = useState(1)
+  const [run, setRun] = useState(0)
+
+  useEffect(() => {
+    if (steps.length === 0) return
+    const per = steps.map(x => (x.path ? x.path.T * 1000 * SLOW : 1200) + HOLD)
+    const total = per.reduce((a, b) => a + b, 0)
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const t = now - t0
+      if (t >= total) { setI(steps.length - 1); setP(1); return }
+      let k = 0, acc = 0
+      while (k < per.length - 1 && t >= acc + per[k]) { acc += per[k]; k++ }
+      const fly = steps[k].path ? steps[k].path!.T * 1000 * SLOW : 1200
+      setI(k); setP(Math.min(1, (t - acc) / fly))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [sig, run]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (steps.length === 0) {
+    return (
+      <div style={tile}>
+        <div style={kick}>The at-bat, pitch by pitch</div>
+        <div style={{ position: 'relative', marginTop: 8 }}>
+          <Scene paths={[]} p={0} showPlate />
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 24, fontSize: 14, color: C.mute, background: 'rgba(250,248,243,.7)', borderRadius: 10 }}>Choose a pitch on the left and its path is drawn here, with the count and how it turned out.</div>
+        </div>
+      </div>
+    )
+  }
+  const cur = steps[Math.min(i, steps.length - 1)]
+  const landed = p >= 1
+  const after = nextCount(cur.count, cur.cat)
+  const over = endText(cur.count, cur.cat)
+  const last = i >= steps.length - 1 && landed
+  return (
+    <div style={tile}>
+      <div style={kick}>The at-bat, pitch by pitch</div>
+      <div style={{ position: 'relative', marginTop: 8 }}>
+        <Scene paths={[]} p={0} showPlate />
+        {steps.slice(0, i).map((x, q) => x.path && <div key={q} style={{ position: 'absolute', inset: 0, opacity: 0.28 }}><TransparentScene pa={x.path} p={1} /></div>)}
+        {cur.path && <div style={{ position: 'absolute', inset: 0 }}><TransparentScene pa={cur.path} p={p} /></div>}
+        <div style={{ position: 'absolute', top: 8, left: 10, fontFamily: SANS }}>
+          <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{cur.count}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.1em', color: C.mute }}>COUNT</div>
+        </div>
+        {landed && cur.cat && <div style={{ position: 'absolute', right: 10, top: 10, background: CAT_COLOR[cur.cat], color: cur.cat === 'foul' ? '#1A1A1A' : '#fff', fontWeight: 800, fontSize: 13, borderRadius: 999, padding: '4px 12px' }}>{CAT_LABEL[cur.cat]}</div>}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ width: 11, height: 11, borderRadius: 999, background: pitchColor(cur.type) }} />
+        Pitch {Math.min(i, steps.length - 1) + 1}: {cur.name} <span style={{ color: C.mute, fontWeight: 600 }}>· {cur.count}{cur.cat ? ` · ${CAT_LABEL[cur.cat].toLowerCase()}` : ''}</span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+        {steps.map((x, q) => (
+          <span key={q} style={{ fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 9px', border: `1px solid ${q === i ? pitchColor(x.type) : C.line}`, background: q <= i ? '#fff' : C.soft, color: q <= i ? C.ink : C.faint }}>{q + 1}. {x.name} {x.count}{x.cat ? ` ${CAT_LABEL[x.cat].toLowerCase()}` : ''}</span>
+        ))}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 13, color: '#5b5347', minHeight: 20 }}>
+        {last ? (over ? <b>{over}.</b> : after ? <>The count is now <b>{after}</b>. What he threw next is shown on the right.</> : null) : ''}
+      </div>
+      <button type="button" onClick={() => setRun(r => r + 1)} style={{ marginTop: 4, fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Replay</button>
+      <p style={note}>An illustration of the chosen sequence: each pitch follows the average path for its type, and the count and result are the most common among the matching at-bats unless you chose one.</p>
+    </div>
+  )
+}
+
 const pc = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`
 
 export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
   const season = new Date().getFullYear()
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   const [hist, setHist] = useState<string[]>([])
-  const [res, setRes] = useState<Cat | 'any'>('any')
+  const [stepRes, setStepRes] = useState<(Cat | 'any')[]>([])
+  const res: Cat | 'any' = stepRes[hist.length - 1] ?? 'any'
+  const setRes = (v: Cat | 'any') => setStepRes(r => r.map((x, i) => (i === hist.length - 1 ? v : x)))
+  const setChain = (types: string[]) => { setHist(types); setStepRes(r => types.map((_, i) => r[i] ?? 'any')) }
   const [where, setWhere] = useState<Where>('any')
   const [count, setCount] = useState('any')
   const [side, setSide] = useState<'any' | 'L' | 'R'>('any')
@@ -112,8 +214,8 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
     return [...by.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => ({ t, n, name: log.pitchNames[t] ?? t }))
   }, [log])
 
-  const opts: Opts = { hist, res, where, count, side }
-  const hits = useMemo(() => collect(abs, opts), [abs, hist, res, where, count, side]) // eslint-disable-line react-hooks/exhaustive-deps
+  const opts: Opts = { hist, stepRes: hist.map((_, i) => stepRes[i] ?? 'any'), where, count, side }
+  const hits = useMemo(() => collect(abs, opts), [abs, hist, stepRes, where, count, side]) // eslint-disable-line react-hooks/exhaustive-deps
   const nextCounts = useMemo(() => tally(hits), [hits])
   const topTypes = useMemo(() => [...nextCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t), [nextCounts])
 
@@ -144,12 +246,25 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
 
   // Tables: how the previous result and the count change the next pitch. Each ignores its own filter.
   const cols = topTypes.slice(0, 6)
-  const byResult = PREV_RESULTS.map(([c, label]) => { const hs = collect(abs, { ...opts, res: c }); return { c, label, n: hs.length, t: tally(hs) } })
+  const byResult = PREV_RESULTS.map(([c, label]) => { const hs = collect(abs, { ...opts, stepRes: [...opts.stepRes.slice(0, -1), c] }); return { c, label, n: hs.length, t: tally(hs) } })
   const byCount = COUNTS.map(ct => { const hs = collect(abs, { ...opts, count: ct }); return { ct, n: hs.length, t: tally(hs) } })
   const shade = (v: number) => `rgba(255,87,34,${(0.08 + Math.min(1, v) * 0.7).toFixed(2)})`
 
   const examples = [...hits].sort((a, b) => (a.ab[a.j].date < b.ab[b.j].date ? 1 : -1)).slice(0, 8)
   const small = total < MIN_SAMPLE.arsenalPitchesPerType
+  const modal = <T,>(m: Map<T, number>): T | null => { let b: T | null = null, bn = 0; for (const [k, n] of m) if (n > bn) { b = k; bn = n } return b }
+  const stageSteps: Step[] = hist.map((t, q) => {
+    const cs = new Map<string, number>(), rs = new Map<Cat, number>()
+    for (const h of hits) {
+      const pq = h.ab[h.j - hist.length + q]
+      const ck = `${pq.balls}-${pq.strikes}`
+      cs.set(ck, (cs.get(ck) ?? 0) + 1)
+      const c = cat(pq.description)
+      if (c) rs.set(c, (rs.get(c) ?? 0) + 1)
+    }
+    const chosen = stepRes[q] && stepRes[q] !== 'any' ? (stepRes[q] as Cat) : modal(rs)
+    return { type: t, name: nm(t), path: flights.find(f => f.type === t) ?? null, count: modal(cs) ?? '0-0', cat: chosen }
+  })
 
   return (
     <div className="sq-grid">
@@ -158,14 +273,14 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
 
       <nav className="sq-side" aria-label="The pitch just thrown">
         <div style={{ ...kick, margin: '0 2px 2px' }}>Pitch just thrown</div>
-        <button type="button" className={`sq-btn${hist.length === 0 ? ' on' : ''}`} onClick={() => { setHist([]); setFocus('ALL'); setRes('any'); setWhere('any') }}>
+        <button type="button" className={`sq-btn${hist.length === 0 ? ' on' : ''}`} onClick={() => { setChain([]); setStepRes([]); setFocus('ALL'); setWhere('any') }}>
           <span style={{ width: 14, height: 14, borderRadius: 999, background: '#1A1A1A', flexShrink: 0 }} />
           <span>Any pitch<small>{log.pitches.length} pitches</small></span>
         </button>
         {types.map(t => {
           const f = flights.find(x => x.type === t.t)
           return (
-            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setFocus('ALL'); if (count === '0-0') setCount('any') }}>
+            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setStepRes(['any']); setFocus('ALL'); if (count === '0-0') setCount('any') }}>
               <SpinBall code={t.t} size={30} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />
               <span>{t.name}<small>{((t.n / log.pitches.length) * 100).toFixed(0)}% · {t.n} pitches</small></span>
             </button>
@@ -179,7 +294,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
           {hist.map((t, i) => (
             <span key={`${t}${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               {i > 0 && <span style={{ color: C.faint }}>→</span>}
-              <button type="button" onClick={() => setHist(hist.slice(0, i))} title="Remove this pitch and the ones after it" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SANS, fontSize: 14, fontWeight: 800, borderRadius: 999, padding: '4px 10px', border: `1px solid ${pitchColor(t)}`, background: '#fff', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setChain(hist.slice(0, i))} title="Remove this pitch and the ones after it" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SANS, fontSize: 14, fontWeight: 800, borderRadius: 999, padding: '4px 10px', border: `1px solid ${pitchColor(t)}`, background: '#fff', cursor: 'pointer' }}>
                 <span style={{ width: 10, height: 10, borderRadius: 999, background: pitchColor(t) }} />{nm(t)} <span style={{ color: C.faint }}>×</span>
               </button>
             </span>
@@ -205,17 +320,18 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
                 ? <>Nothing in the log matches {hist.length ? hist.map(nm).join(' → ') : 'this'} with {on.join(', ')}. </>
                 : <>Nothing follows {hist.map(nm).join(' → ')} in the log. </>
             })()}
-            <button type="button" onClick={() => { setRes('any'); setWhere('any'); setCount('any'); setSide('any') }} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Clear the filters</button>
+            <button type="button" onClick={() => { setStepRes(hist.map(() => 'any')); setWhere('any'); setCount('any'); setSide('any') }} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Clear the filters</button>
           </div>
         ) : (
           <div className="sq-tiles">
+            <SequenceStage steps={stageSteps} />
             <div className="sq-span2" style={tile}>
               <div style={kick}>{hist.length === 0 ? 'What he threw' : `What he threw next, after ${hist.map(nm).join(' → ')}`}</div>
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {topTypes.map(t => {
                   const n = nextCounts.get(t) ?? 0, f = flights.find(x => x.type === t)
                   return (
-                    <button key={t} type="button" className="sq-bar" disabled={hist.length >= MAX_CHAIN} onClick={() => { setHist([...hist, t]); setFocus('ALL'); if (count === '0-0') setCount('any') }} title={hist.length >= MAX_CHAIN ? 'Remove a pitch from the chain to go further' : `See what came after ${nm(t)}`} style={hist.length >= MAX_CHAIN ? { cursor: 'default' } : undefined}>
+                    <button key={t} type="button" className="sq-bar" disabled={hist.length >= MAX_CHAIN} onClick={() => { setChain([...hist, t]); setFocus('ALL'); if (count === '0-0') setCount('any') }} title={hist.length >= MAX_CHAIN ? 'Remove a pitch from the chain to go further' : `See what came after ${nm(t)}`} style={hist.length >= MAX_CHAIN ? { cursor: 'default' } : undefined}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 14 }}><SpinBall code={t} size={24} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />{nm(t)}</span>
                       <span style={{ height: 16, background: C.soft, borderRadius: 8, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${(n / total) * 100}%`, background: pitchColor(t), borderRadius: 8 }} /></span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14, textAlign: 'right' }}><b>{pc(n / total)}</b> <span style={{ color: C.faint }}>({n})</span></span>

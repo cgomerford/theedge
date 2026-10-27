@@ -90,7 +90,7 @@ const proj = (p: Pt) => {
   return { sx: CX + (F * p.x) / d, sy: CY - (F * (p.z - CAM_Z)) / d, r: (F * 0.12) / d }
 }
 
-function Scene({ paths, p, showPlate }: { paths: PitchPath[]; p: number; showPlate: boolean }) {
+export function Scene({ paths, p, showPlate }: { paths: PitchPath[]; p: number; showPlate: boolean }) {
   const zl = proj({ x: -0.83, y: PLATE_Y, z: 3.5 }), zr = proj({ x: 0.83, y: PLATE_Y, z: 1.5 })
   const pl = proj({ x: -0.708, y: PLATE_Y, z: 0 }), pr = proj({ x: 0.708, y: PLATE_Y, z: 0 })
   const mound = proj({ x: 0, y: 60.5 - 1.4, z: 0.8 })
@@ -179,7 +179,7 @@ function MultiScene({ scoped, showPlate }: { scoped: { pa: PitchPath; p: number 
   )
 }
 
-function TransparentScene({ pa, p }: { pa: PitchPath; p: number }) {
+export function TransparentScene({ pa, p }: { pa: PitchPath; p: number }) {
   const k = Math.min(60, Math.max(0, Math.round(p * 60)))
   const trail = pa.pts.slice(0, k + 1).map(q => { const s = proj(q); return `${s.sx.toFixed(1)},${s.sy.toFixed(1)}` }).join(' ')
   const ball = proj(pa.pts[k])
