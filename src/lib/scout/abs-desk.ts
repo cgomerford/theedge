@@ -24,8 +24,8 @@ import { buildSituations, type SitRow, type Situations } from './situations'
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const PAGE = 1000
 const ROWS_TTL_MS = 10 * 60 * 1000
-export const MIN_ABS_N = 5           // fewer challenges than this → shown faded
-export const MIN_RANK_CHALLENGES = 20
+import { MIN_ABS_N, MIN_RANK_CHALLENGES } from './abs-consts'
+export { MIN_ABS_N, MIN_RANK_CHALLENGES }
 const RECENT_GAMES = 15
 const BASE_COLS = 'game_pk, game_date, inning, challenging_team_id, challenge_side, challenger_player_id, challenger_player_name, is_overturned'
 const SITUATION_COLS = 'balls, strikes, outs, base_state, bat_diff'
@@ -248,7 +248,7 @@ function buildProfile(abbr: string, s: Bucket, recent: Bucket, lg: Bucket, rank:
   lines.push(`${abbr} challenges ${rate.toFixed(2)} times a game (${s.all.n} in ${s.games} games; league ${lgRate.toFixed(2)}) — ${rank.rate}${ord(rank.rate)} most of ${rank.of}.`)
   if (ov != null) lines.push(`${Math.round(ov * 100)}% are overturned${lgOv != null ? ` (league ${Math.round(lgOv * 100)}%)` : ''}${rank.overturn ? ` — ${rank.overturn}${ord(rank.overturn)} best of ${rank.of}` : ''}.`)
   const bShare = pct(s.batter.n, s.all.n), lgB = pct(lg.batter.n, lg.all.n)
-  if (bShare != null) lines.push(`Batters start ${bShare}% of the club's challenges and the catcher/pitcher ${100 - bShare}% (league ${lgB}/${lgB != null ? 100 - lgB : '—'}). Batters succeed ${pct(s.batter.ov, s.batter.n) ?? '—'}% (n=${s.batter.n}), catchers ${pct(s.catcher.ov, s.catcher.n) ?? '—'}% (n=${s.catcher.n}).`)
+  if (bShare != null) lines.push(`Batters begin ${bShare}% of the club's challenges and the catcher/pitcher ${100 - bShare}% (league ${lgB}/${lgB != null ? 100 - lgB : '—'}). Batters succeed ${pct(s.batter.ov, s.batter.n) ?? '—'}% (n=${s.batter.n}), catchers ${pct(s.catcher.ov, s.catcher.n) ?? '—'}% (n=${s.catcher.n}).`)
   const late = pct(s.late.n, s.all.n), lgLate = pct(lg.late.n, lg.all.n)
   if (late != null) lines.push(`${late}% of challenges come in the 7th or later (league ${lgLate}%); ${pct(s.late.ov, s.late.n) ?? '—'}% of those are overturned (n=${s.late.n}).`)
   if (recent.all.n > 0 && recent.games > 0) lines.push(`Last ${recent.games} games: ${(recent.all.n / recent.games).toFixed(2)} a game, ${pct(recent.all.ov, recent.all.n)}% overturned (n=${recent.all.n}).`)

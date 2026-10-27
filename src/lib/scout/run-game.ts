@@ -86,7 +86,7 @@ async function getPopRows(season: string): Promise<PopRow[]> {
   })
 }
 
-async function getSprintMap(season: string): Promise<Record<string, number>> {
+export async function getSprintMap(season: string): Promise<Record<string, number>> {
   return withSavantCache<Record<string, number>>(`scout-sprint:${season}`, 12 * 3600, async () => {
     try {
       const res = await fetch(`${SAVANT}/leaderboard/sprint_speed?year=${season}&position=&team=&csv=true`, { cache: 'no-store', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) })

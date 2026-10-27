@@ -120,6 +120,7 @@ export default function HowItWorksPage() {
             ))}
           </ul>
           <p style={{ margin: '14px 0 0', fontSize: 14, color: '#8a8275' }}>Batters with fewer than 30 plate appearances in a window always show "Small sample".</p>
+          <p style={{ margin: '10px 0 0', fontSize: 14, color: '#8a8275' }}>On the Scout Report a red asterisk means the same thing, and the minimums each tab uses (splits, ABS challenges, steals, alignment, late innings) are listed in the appendix at the bottom of the report.</p>
         </section>
       </div>
     </main>

@@ -16,35 +16,34 @@ import { getDeepLookState } from '@/lib/deep-look'
 import { ProGateRow, FREE_LOOK_NOTE } from '@/components/pro/ProGateView'
 import type { MLBGame } from '@/lib/mlb'
 import ScoutSection from './ScoutSection'
-import ClubStatusSection from './ClubStatusSection'
+import ClubDeskSection from './ClubDeskSection'
 import FormTrendsSection from './FormTrendsSection'
 import BullpenDeskSection from './BullpenDeskSection'
-import ABSSection from './ABSSection'
-import RunGameSection from './RunGameSection'
-import DefenseSection from './DefenseSection'
-import SplitsSection from './SplitsSection'
+import ABSDeskSection from './ABSDeskSection'
+import RunLabSection from './RunLabSection'
+import DefenseDeskSection from './DefenseDeskSection'
 import ParkSection from './ParkSection'
 import OnePager from './OnePager'
 import StarterDeskSection from './StarterDeskSection'
 import LineupDeskSection from './LineupDeskSection'
-import LeverageSection from './LeverageSection'
-import ManagerCardSection from './ManagerCardSection'
+import LeverageDeskSection from './LeverageDeskSection'
+import ScoutAppendix from './ScoutAppendix'
+import TendenciesDeskSection from './TendenciesDeskSection'
 import { SCOUT_SECTIONS } from './sections'
 import type { ScoutClub, ScoutContext } from './types'
 
 const SECTION_BODIES: Partial<Record<string, (ctx: ScoutContext) => React.ReactNode>> = {
-  'club-status': (ctx) => <ClubStatusSection ctx={ctx} />,
+  'club-status': (ctx) => <ClubDeskSection ctx={ctx} />,
   'form-vs-skill': (ctx) => <FormTrendsSection ctx={ctx} />,
   bullpen: (ctx) => <BullpenDeskSection ctx={ctx} />,
-  abs: (ctx) => <ABSSection ctx={ctx} />,
-  'run-game': (ctx) => <RunGameSection ctx={ctx} />,
-  defense: (ctx) => <DefenseSection ctx={ctx} />,
-  splits: (ctx) => <SplitsSection ctx={ctx} />,
+  abs: (ctx) => <ABSDeskSection ctx={ctx} />,
+  'run-game': (ctx) => <RunLabSection ctx={ctx} />,
+  defense: (ctx) => <DefenseDeskSection ctx={ctx} />,
   park: (ctx) => <ParkSection ctx={ctx} />,
   'pitcher-attack': (ctx) => <StarterDeskSection ctx={ctx} />,
   'lineup-vs-sp': (ctx) => <LineupDeskSection ctx={ctx} />,
-  leverage: (ctx) => <LeverageSection ctx={ctx} />,
-  'manager-card': (ctx) => <ManagerCardSection ctx={ctx} />,
+  leverage: (ctx) => <LeverageDeskSection ctx={ctx} />,
+  'manager-card': (ctx) => <TendenciesDeskSection ctx={ctx} />,
 }
 
 // The report in ten tabs, like the labs: one subject per tab (the overview, starters, lineups, bullpen, leverage, ABS, fielding, base running,
@@ -58,8 +57,8 @@ const REPORT_TABS: { id: string; label: string; sections: string[] }[] = [
   { id: 'abs', label: 'ABS', sections: ['abs'] },
   { id: 'fielding', label: 'Fielding', sections: ['defense'] },
   { id: 'baserunning', label: 'Base running', sections: ['run-game'] },
-  { id: 'tendencies', label: 'Tendencies', sections: ['splits', 'manager-card'] },
-  { id: 'club', label: 'Club, form & park', sections: ['club-status', 'form-vs-skill', 'park'] },
+  { id: 'tendencies', label: 'Tendencies', sections: ['manager-card'] },
+  { id: 'club', label: 'Club, form & park', sections: ['club-status'] },
 ]
 
 function toClub(side: MLBGame['teams']['away']): ScoutClub {
@@ -92,7 +91,7 @@ export default async function ScoutReport({ game, gameDate, tab }: { game: MLBGa
   const proOpen = state === 'pro' || state === 'this_look'
   const tier = state === 'look_left' || state === 'used' ? 'member' : 'anon'
   let rowShown = false
-  const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro: true,
+  const ctx: ScoutContext = { gameDate, gamePk: game.gamePk, away: toClub(game.teams.away), home: toClub(game.teams.home), isPro: proOpen,
     venueId: (game.venue as { id?: number }).id ?? null, venueName: game.venue.name, dayNight: game.dayNight ?? null,
     postseason: !!game.seriesDescription && game.seriesDescription !== 'Regular Season' }
   const active = REPORT_TABS.find(t => t.id === tab) ?? REPORT_TABS[0]
@@ -134,6 +133,8 @@ export default async function ScoutReport({ game, gameDate, tab }: { game: MLBGa
           </ScoutSection>
         )
       })}
+
+      <ScoutAppendix />
 
       <p className="text-[10px] text-stone-400 text-center pt-1">Scout Report is information, not advice.</p>
     </div>

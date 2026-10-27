@@ -70,3 +70,7 @@ fetch	src/lib/scout/bullpen-desk.ts
 fetch	src/app/api/scout/bullpen-h2h/route.ts
 fetch	src/components/scout/lab/BullpenLab.tsx
 fetch	src/lib/scout/bullpen-trends.ts
+fetch	src/lib/scout/abs-lab.ts
+fetch	src/lib/scout/abs-desk.ts
+fetch	src/lib/scout/run-lab.ts
+fetch	src/lib/scout/run-game.ts
