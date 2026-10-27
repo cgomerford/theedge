@@ -10,7 +10,7 @@ const SIZE = 22
 
 export type SpinInfo = { rpm: number | null; ivb: number | null; hb: number | null }
 
-export default function SpinBall({ code, spin }: { code: string; spin?: SpinInfo | null }) {
+export default function SpinBall({ code, spin, size = SIZE }: { code: string; spin?: SpinInfo | null; size?: number }) {
   const color = pitchColor(code)
   const has = !!spin && spin.rpm != null && spin.ivb != null && spin.hb != null
   const angle = has ? (Math.atan2(-spin!.ivb!, spin!.hb!) * 180) / Math.PI : 0
@@ -18,7 +18,7 @@ export default function SpinBall({ code, spin }: { code: string; spin?: SpinInfo
   const id = `sb-${code}`
   const cx = SIZE / 2
   return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ flex: '0 0 auto', display: 'inline-block' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ flex: '0 0 auto', display: 'inline-block' }}>
       <defs><clipPath id={id}><circle cx={cx} cy={cx} r={cx - 1.5} /></clipPath></defs>
       <circle cx={cx} cy={cx} r={cx - 1} fill="#fff" stroke={color} strokeWidth={2} />
       <g clipPath={`url(#${id})`}>

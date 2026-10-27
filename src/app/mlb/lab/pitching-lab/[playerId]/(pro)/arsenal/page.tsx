@@ -28,12 +28,14 @@
 // pitcher's same pitch type league-wide).
 
 import { useEffect, useMemo, useState } from 'react'
-import PitchMovementChart from '@/components/PitchMovementChart'
 import PitchUsageDonut from '@/components/PitchUsageDonut'
 import PitchArsenalSummary from '@/components/PitchArsenalSummary'
 import ZoneGrid, { METRICS, ZoneColorLegend } from '@/components/pitching-lab/ZoneGrid'
 import PitchGradeRadar from '@/components/pitching-lab/PitchGradeRadar'
-import PitchFlight from '@/components/pitching-lab/PitchFlight'
+import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
+import { FlightSection, PitchCards, buildPaths } from '@/components/pitching-lab/PitchFlight'
+import { MovementProfile, SmoothHeatmap, UsageTrend } from '@/components/pitching-lab/ArsenalExtras'
+import type { PitcherPitchLog } from '@/lib/pitcher-pitch-log'
 import ReleaseChart from '@/components/pitching-lab/ReleaseChart'
 import EdgePlusCard from '@/components/pitching-lab/EdgePlusCard'
 import VeloBandChart from '@/components/pitching-lab/VeloBandChart'
@@ -157,6 +159,8 @@ export default function ArsenalPage() {
   const { data, failed } = usePitchingLabData()
   const [liveRows, setLiveRows] = useState<ArsenalRow[] | null>(null)
   const [selectedPitch, setSelectedPitch] = useState<string>('ALL')
+  const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
+  const [slow, setSlow] = useState(6)
 
   const playerId = data?.id ?? null
 
@@ -170,7 +174,22 @@ export default function ArsenalPage() {
     return () => { cancelled = true }
   }, [playerId])
 
-  const movementByType = useMemo(() => new Map((data?.movementRows ?? []).map(r => [r.pitchType, r])), [data])
+  useEffect(() => {
+    if (!playerId) return
+    let cancelled = false
+    fetch(`/api/mlb/pitch-log?playerId=${playerId}&season=${SEASON}`)
+      .then(r => r.json())
+      .then(json => { if (!cancelled) setLog(json.error ? 'error' : json) })
+      .catch(() => { if (!cancelled) setLog('error') })
+    return () => { cancelled = true }
+  }, [playerId])
+
+  const paths = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
+  // Break comes from Savant's own per-pitch numbers when the log has them (the saved arsenal table has held a wrong curveball rise), else the saved row.
+  const movementByType = useMemo(() => new Map((data?.movementRows ?? []).map(r => {
+    const p = paths.find(x => x.type === r.pitchType)
+    return [r.pitchType, p ? { ...r, avgHBreak: p.hb, avgVBreak: p.ivb } : r] as const
+  })), [data, paths])
   const merged: MergedArsenalRow[] = useMemo(
     () => (liveRows ?? []).map(r => ({ ...r, movement: movementByType.get(r.pitchType) ?? null })),
     [liveRows, movementByType],
@@ -181,65 +200,59 @@ export default function ArsenalPage() {
 
   const selectedRow = selectedPitch !== 'ALL' ? merged.find(r => r.pitchType === selectedPitch) ?? null : null
 
+  const goodLog = log && log !== 'error' ? log : null
+  const selPath = selectedRow ? paths.filter(p => p.type === selectedRow.pitchType) : []
+  const logWait = log === null ? 'Loading each pitch…' : 'No pitch flight data for this pitcher yet.'
+
   return (
-    <div className="space-y-6">
-      {merged.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setSelectedPitch('ALL')}
-            className={`uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
-              selectedPitch === 'ALL' ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
-            }`}
-          >
-            All pitches
+    <div className="ars-grid">
+      <style>{`.ars-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}.ars-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:6px}.ars-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A}.ars-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.ars-btn.on{border-color:#FF5722;background:#fff1ea}@media (max-width:860px){.ars-grid{grid-template-columns:minmax(0,1fr)}.ars-side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.ars-btn{width:auto;white-space:nowrap}}`}</style>
+      <SpinBallStyles />
+      <nav className="ars-side" aria-label="Pitch types">
+        <button type="button" className={`ars-btn${selectedPitch === 'ALL' ? ' on' : ''}`} onClick={() => setSelectedPitch('ALL')}>
+          <span style={{ width: 30, height: 30, borderRadius: 999, background: '#1A1A1A', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, flexShrink: 0 }}>All</span>
+          <span>All pitches<small>{merged.length} types</small></span>
+        </button>
+        {merged.map(r => (
+          <button key={r.pitchType} type="button" className={`ars-btn${selectedPitch === r.pitchType ? ' on' : ''}`} onClick={() => setSelectedPitch(r.pitchType)}>
+            <SpinBall code={r.pitchType} size={30} spin={{ rpm: paths.find(x => x.type === r.pitchType)?.spin ?? null, ivb: paths.find(x => x.type === r.pitchType)?.ivb ?? null, hb: paths.find(x => x.type === r.pitchType)?.hb ?? null }} />
+            <span>{r.pitchName}<small>{r.usage.toFixed(0)}% · {r.movement?.avgVelocity != null ? `${r.movement.avgVelocity.toFixed(1)} mph` : '—'}</small></span>
           </button>
-          {merged.map(r => (
-            <button
-              key={r.pitchType}
-              onClick={() => setSelectedPitch(r.pitchType)}
-              className={`uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
-                selectedPitch === r.pitchType ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
-              }`}
-            >
-              {r.pitchName} · {r.usage.toFixed(0)}%
-            </button>
-          ))}
-        </div>
-      )}
+        ))}
+      </nav>
 
-      {selectedRow ? (
-        // Keyed by pitch type so switching pitches remounts fresh state
-        // (grade fetch) instead of needing an imperative reset in an effect.
-        <PitchDetail key={selectedRow.pitchType} row={selectedRow} pitcherId={data.id} teamColor={data.color} />
-      ) : (
-        <>
-          <PitchFlight pitcherId={data.id} movement={data.movementRows} />
-          {liveRows && liveRows.length > 0 && <PitchArsenalSummary rows={liveRows} pitcherName={data.name} />}
-
-          <div className="grid md:grid-cols-2 gap-5">
-            {data.movementRows.length > 0 ? (
-              <PitchMovementChart rows={data.movementRows} />
-            ) : (
-              <div className="bg-white border border-stone-200 rounded-xl p-5 text-center text-[12px] text-stone-400 flex items-center justify-center">No movement data on record yet.</div>
-            )}
-            <div className="space-y-5">
-              {liveRows && liveRows.length > 0 ? (
-                <PitchUsageDonut rows={liveRows} />
-              ) : (
-                <div className="bg-white border border-stone-200 rounded-xl p-5 text-center text-[12px] text-stone-400 flex items-center justify-center">
-                  {liveRows === null ? 'Loading pitch mix…' : 'No arsenal data on record yet.'}
-                </div>
-              )}
-              <VeloBandChart pitcherId={data.id} />
+      <div className="space-y-6" style={{ minWidth: 0 }}>
+        {selectedRow ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <SpinBall code={selectedRow.pitchType} size={52} spin={{ rpm: selPath[0]?.spin ?? null, ivb: selPath[0]?.ivb ?? null, hb: selPath[0]?.hb ?? null }} />
+              <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{selectedRow.pitchName}</h2>
             </div>
-          </div>
-
-          <ReleaseChart pitcherId={data.id} />
-
+            {goodLog ? <FlightSection log={goodLog} paths={selPath} slow={slow} setSlow={setSlow} title={selectedRow.pitchName} /> : <p className="text-[14px] text-stone-400">{logWait}</p>}
+            {goodLog && <SmoothHeatmap pitches={goodLog.pitches.filter(p => p.pitchType === selectedRow.pitchType)} title={selectedRow.pitchName} />}
+            {/* Keyed by pitch type so switching pitches remounts fresh state (grade fetch) instead of needing an imperative reset in an effect. */}
+            <PitchDetail key={selectedRow.pitchType} row={selectedRow} pitcherId={data.id} teamColor={data.color} />
+          </>
+        ) : (
+          <>
+            {liveRows && liveRows.length > 0 && <PitchArsenalSummary rows={liveRows} pitcherName={data.name} />}
+            {goodLog && paths.length > 0 ? (
+              <>
+                <div className="grid md:grid-cols-2 gap-5">
+                  <MovementProfile log={goodLog} paths={paths} movement={data.movementRows} />
+                  <UsageTrend log={goodLog} paths={paths} />
+                </div>
+                <FlightSection log={goodLog} paths={paths} slow={slow} setSlow={setSlow} title="All pitches together" />
+                <PitchCards paths={paths} movement={data.movementRows} slow={slow} onPick={setSelectedPitch} />
+                <SmoothHeatmap pitches={goodLog.pitches} title="All pitches" />
+              </>
+            ) : <p className="text-[14px] text-stone-400">{logWait}</p>}
+            <VeloBandChart pitcherId={data.id} />
+            <ReleaseChart pitcherId={data.id} hideScatter />
           {merged.length > 0 && (
             <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
               <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold px-5 pt-5">Full arsenal breakdown</p>
-              <p className="text-[10px] text-stone-400 px-5 mt-1">Click a pitch above (or a row below) for its hot zone, full stat line, and grade.</p>
+              <p className="text-[10px] text-stone-400 px-5 mt-1">Click a pitch on the left (or a row below) for its hot zone, full stat line, and grade.</p>
               <div className="overflow-x-auto mt-3">
                 <table className="w-full text-[11px] min-w-[900px]">
                   <thead>
@@ -286,12 +299,13 @@ export default function ArsenalPage() {
               </div>
               <p className="text-[9px] text-stone-400 px-4 py-3">
                 HB/IVB = horizontal/induced-vertical break (arm-side +, glove-side −). Velo/HB/IVB from pitch_arsenals; everything else from a live pitch-arsenal pull.
-                Run value sign convention: negative = good for the pitcher. Release point, spin rate/axis, extension, and approach angle aren&apos;t in this app&apos;s data pipeline — omitted rather than estimated.
+                Runs saved: a negative number = good for the pitcher. Release point, spin and extension are on the pitch cards above.
               </p>
             </div>
           )}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

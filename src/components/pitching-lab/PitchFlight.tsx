@@ -11,6 +11,7 @@
 // mound, z is height. Time is solved from y(t) = plate front (17 in), and position follows p0 + v0*t + a*t^2/2.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
 import { MIN_SAMPLE } from '@/lib/min-sample'
@@ -28,6 +29,8 @@ export type PitchPath = {
   pts: Pt[]; T: number
   release: Pt; plate: Pt
   velo: number | null; spin: number | null; ext: number | null
+  // Savant's own break in inches against a spin-free path (arm-side positive, rise positive).
+  hb: number; ivb: number
 }
 
 const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : null)
@@ -49,18 +52,31 @@ export function buildPaths(log: PitcherPitchLog): PitchPath[] {
     const rx = mean(ps.filter(p => p.releasePosX != null).map(p => p.releasePosX as number))
     const rz = mean(ps.filter(p => p.releasePosZ != null).map(p => p.releasePosZ as number))
     if (rx == null || rz == null) continue
-    // Time to the front of the plate: the smaller positive root of ry + vy0 t + ay t^2 / 2 = PLATE_Y.
-    const A = ay / 2, B = vy0, Cc = ry - PLATE_Y
+    // Statcast's fit is anchored at y = 50 ft (s = 0). The release point is a little earlier (s = -tau); the plate front is at s = T.
+    const g1 = ry - 50
+    const qa = ay / 2
+    if (!(qa !== 0)) continue
+    // release: ry = 50 - vy0*tau + ay*tau^2/2 with tau > 0
+    const dr = vy0 * vy0 + 4 * qa * g1
+    if (dr < 0) continue
+    const tau = Math.max(0, (vy0 + Math.sqrt(dr)) / (2 * qa))
+    const rel = (c0: number, v0: number, a0: number) => c0 + v0 * tau - (a0 * tau * tau) / 2   // position at s = 0 from the release value
+    const x50 = rel(rx, vx0, ax), z50 = rel(rz, vz0, az)
+    const A = ay / 2, B = vy0, Cc = 50 - PLATE_Y
     const disc = B * B - 4 * A * Cc
-    if (!(disc > 0) || A === 0) continue
+    if (!(disc > 0)) continue
     const roots = [(-B + Math.sqrt(disc)) / (2 * A), (-B - Math.sqrt(disc)) / (2 * A)].filter(t => t > 0)
     if (roots.length === 0) continue
-    const T = Math.min(...roots)
-    const at = (t: number): Pt => ({ x: rx + vx0 * t + (ax * t * t) / 2, y: ry + vy0 * t + (ay * t * t) / 2, z: rz + vz0 * t + (az * t * t) / 2 })
+    const T50 = Math.min(...roots)
+    const T = tau + T50
+    const at = (u: number): Pt => { const s0 = u - tau; return { x: x50 + vx0 * s0 + (ax * s0 * s0) / 2, y: 50 + vy0 * s0 + (ay * s0 * s0) / 2, z: z50 + vz0 * s0 + (az * s0 * s0) / 2 } }
     const pts = Array.from({ length: 61 }, (_, i) => at((T * i) / 60))
+    const pf = ps.filter(p => p.pfx).map(p => p.pfx as [number, number])
+    const pfxX = mean(pf.map(v => v[0])), pfxZ = mean(pf.map(v => v[1]))
     out.push({
       type, name: log.pitchNames[type] ?? type, n: ps.length, share: ps.length / total, pts, T,
       release: pts[0], plate: pts[60],
+      hb: pfxX == null ? 0 : (log.throws === 'R' ? -1 : 1) * pfxX * 12, ivb: pfxZ == null ? 0 : pfxZ * 12,
       velo: mean(ps.filter(p => p.velo != null).map(p => p.velo as number)),
       spin: mean(ps.filter(p => p.spinRate != null).map(p => p.spinRate as number)),
       ext: mean(ps.filter(p => p.extension != null).map(p => p.extension as number)),
@@ -207,89 +223,80 @@ export function ReleaseView({ log, hidden }: { log: PitcherPitchLog; hidden: Set
 const x0Line = (x: number, S: number) => <line x1={x} x2={x} y1="10" y2={S - 22} stroke={C.mute} strokeDasharray="3 3" />
 
 const num = (v: number | null, d = 1) => (v == null ? '—' : v.toFixed(d))
+export type MoveRow = { pitchType: string; avgHBreak: number | null; avgVBreak: number | null }
 
-export default function PitchFlight({ pitcherId, movement }: { pitcherId: number; movement: { pitchType: string; avgHBreak: number | null; avgVBreak: number | null }[] }) {
-  const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
-  const [slow, setSlow] = useState(6)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const season = new Date().getFullYear()
+const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }
+const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
 
-  useEffect(() => {
-    let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}`)
-      .then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
-    return () => { off = true }
-  }, [pitcherId, season])
-
-  const paths = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
-  if (log === null) return <div style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading each pitch…</div>
-  if (log === 'error' || paths.length === 0) return <div style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>No pitch flight data for this pitcher yet.</div>
-
-  const mv = new Map(movement.map(m => [m.pitchType, m]))
-  const shown = paths.filter(p => !hidden.has(p.type))
-  const toggle = (t: string) => setHidden(h => { const n = new Set(h); if (n.has(t)) n.delete(t); else n.add(t); return n })
-  const hand = log.throws === 'L' ? 'left-hander' : log.throws === 'R' ? 'right-hander' : null
-
+export function SpeedToggle({ slow, setSlow }: { slow: number; setSlow: (n: number) => void }) {
   return (
-    <section style={{ fontFamily: SANS }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16 }}>
-        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange }}>ALL PITCHES TOGETHER · BATTER&apos;S VIEW</div>
-          {shown.length > 0 ? <FlightPlayer paths={shown} slow={slow} /> : <p style={{ fontSize: 14, color: C.mute }}>Choose a pitch below.</p>}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.mute }}>
-            Speed
-            {[{ l: 'Slow', v: 6 }, { l: 'Real time', v: 1 }].map(o => (
-              <button key={o.l} type="button" onClick={() => setSlow(o.v)} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '3px 10px', cursor: 'pointer', border: `1px solid ${slow === o.v ? C.orange : C.line}`, background: slow === o.v ? '#fff1ea' : '#fff', color: slow === o.v ? C.orange : C.ink }}>{o.l}</button>
-            ))}
-          </div>
-        </div>
+    <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.mute }}>
+      Speed
+      {[{ l: 'Slow', v: 6 }, { l: 'Real time', v: 1 }].map(o => (
+        <button key={o.l} type="button" onClick={() => setSlow(o.v)} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '3px 10px', cursor: 'pointer', border: `1px solid ${slow === o.v ? C.orange : C.line}`, background: slow === o.v ? '#fff1ea' : '#fff', color: slow === o.v ? C.orange : C.ink }}>{o.l}</button>
+      ))}
+    </div>
+  )
+}
 
-        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange }}>RELEASE POINTS · BATTER&apos;S VIEW</div>
-          <ReleaseView log={log} hidden={hidden} />
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.45 }}>
-            Seen from behind the plate{hand ? `, so a ${hand} lets go on the ${log.throws === 'L' ? 'right' : 'left'}` : ''}. Each dot is one pitch; the large dot is that pitch&apos;s average. Hover it for the count. Tight clusters that overlap mean the pitches look alike out of the hand.
-          </p>
-        </div>
+/** The flight animation beside the release-point chart, for whichever pitches are in `paths`. */
+export function FlightSection({ log, paths, slow, setSlow, title }: { log: PitcherPitchLog; paths: PitchPath[]; slow: number; setSlow: (n: number) => void; title: string }) {
+  const hidden = useMemo(() => new Set(log.pitches.map(p => p.pitchType).filter(t => !paths.some(x => x.type === t))), [log, paths])
+  const hand = log.throws === 'L' ? 'left-hander' : log.throws === 'R' ? 'right-hander' : null
+  if (paths.length === 0) return <div style={{ ...card, fontFamily: SANS, fontSize: 14, color: C.mute }}>No pitch flight data for this pitch yet.</div>
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 16, fontFamily: SANS }}>
+      <div style={card}>
+        <div style={kick}>{title} · batter&apos;s view</div>
+        <FlightPlayer paths={paths} slow={slow} />
+        <SpeedToggle slow={slow} setSlow={setSlow} />
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+          The average flight path Statcast fits for each pitch, from the mean release point to the front of the plate, in perspective. Slow is six times slower than real time.
+        </p>
       </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '12px 0' }}>
-        {paths.map(p => (
-          <button key={p.type} type="button" onClick={() => toggle(p.type)} aria-pressed={!hidden.has(p.type)} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '4px 10px', cursor: 'pointer', border: `1px solid ${C.line}`, background: hidden.has(p.type) ? '#fff' : '#f6f2ea', color: hidden.has(p.type) ? C.faint : C.ink, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 999, background: pitchColor(p.type), opacity: hidden.has(p.type) ? 0.35 : 1 }} />{p.name}
-          </button>
-        ))}
+      <div style={card}>
+        <div style={kick}>Release points · batter&apos;s view</div>
+        <ReleaseView log={log} hidden={hidden} />
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.45 }}>
+          Seen from behind the plate{hand ? `, so a ${hand} lets go on the ${log.throws === 'L' ? 'right' : 'left'}` : ''}. Each dot is one pitch; the large dot is that pitch&apos;s average (hover for the count). Overlapping clusters mean the pitches look alike out of the hand.
+        </p>
       </div>
+    </div>
+  )
+}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14 }}>
-        {paths.map(p => {
-          const m = mv.get(p.type)
-          const small = p.n < MIN_SAMPLE.arsenalPitchesPerType
-          return (
-            <div key={p.type} style={{ background: '#fff', border: `1px solid ${C.line}`, borderTop: `4px solid ${pitchColor(p.type)}`, borderRadius: 14, padding: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+/** One small animated card per pitch; clicking one opens that pitch. */
+export function PitchCards({ paths, movement, slow, onPick }: { paths: PitchPath[]; movement: MoveRow[]; slow: number; onPick: (type: string) => void }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 14, fontFamily: SANS }}>
+      <SpinBallStyles />
+      {paths.map(p => {
+        const small = p.n < MIN_SAMPLE.arsenalPitchesPerType
+        return (
+          <div key={p.type} style={{ ...card, padding: 12, borderTop: `4px solid ${pitchColor(p.type)}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <SpinBall code={p.type} size={30} spin={{ rpm: p.spin, ivb: p.ivb, hb: p.hb }} />
                 <b style={{ fontSize: 17, fontWeight: 800 }}>{p.name}</b>
-                <span title={`${p.n} pitches`} style={{ fontSize: 13, color: C.mute }}>{(p.share * 100).toFixed(0)}% of pitches{small && <span style={{ color: '#D4533B', fontWeight: 800 }}> *</span>}</span>
-              </div>
-              <FlightPlayer paths={[p]} slow={slow} />
-              <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px 8px', margin: '8px 0 0', fontVariantNumeric: 'tabular-nums' }}>
-                {[
-                  ['Velo', p.velo != null ? `${num(p.velo)} mph` : '—'],
-                  ['Spin', p.spin != null ? `${Math.round(p.spin)} rpm` : '—'],
-                  ['Extension', p.ext != null ? `${num(p.ext)} ft` : '—'],
-                  ['Release', `${num(p.release.z)} ft high`],
-                  ['Arm-side', m?.avgHBreak != null ? `${m.avgHBreak > 0 ? '+' : ''}${num(m.avgHBreak)}"` : '—'],
-                  ['Rise', m?.avgVBreak != null ? `${m.avgVBreak > 0 ? '+' : ''}${num(m.avgVBreak)}"` : '—'],
-                ].map(([k, v]) => <div key={k}><dt style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }}>{k}</dt><dd style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>{v}</dd></div>)}
-              </dl>
-              {small && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#D4533B' }}>* Small sample (n = {p.n}).</p>}
+              </span>
+              <span title={`${p.n} pitches`} style={{ fontSize: 13, color: C.mute }}>{(p.share * 100).toFixed(0)}%{small && <span style={{ color: '#D4533B', fontWeight: 800 }}> *</span>}</span>
             </div>
-          )
-        })}
-      </div>
-      <p style={{ margin: '10px 0 0', fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
-        Each animation follows the average flight path Statcast fits for that pitch type this season, from the mean release point to the front of the plate, with the ball and zone drawn in perspective. Slow is six times slower than real time. Release point, extension and spin are Statcast measurements; arm-side and rise are in inches.
-      </p>
-    </section>
+            <FlightPlayer paths={[p]} slow={slow} />
+            <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px 8px', margin: '8px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+              {[
+                ['Velo', p.velo != null ? `${num(p.velo)} mph` : '—'],
+                ['Spin', p.spin != null ? `${Math.round(p.spin)} rpm` : '—'],
+                ['Extension', p.ext != null ? `${num(p.ext)} ft` : '—'],
+                ['Release', `${num(p.release.z)} ft high`],
+                ['Arm-side', `${p.hb > 0 ? '+' : ''}${num(p.hb)}"`],
+                ['Rise', `${p.ivb > 0 ? '+' : ''}${num(p.ivb)}"`],
+              ].map(([k, v]) => <div key={k}><dt style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }}>{k}</dt><dd style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>{v}</dd></div>)}
+            </dl>
+            {small && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#D4533B' }}>* Small sample (n = {p.n}).</p>}
+            <button type="button" onClick={() => onPick(p.type)} style={{ marginTop: 8, fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Open {p.name} →</button>
+          </div>
+        )
+      })}
+    </div>
   )
 }

@@ -22,11 +22,11 @@ async function sampleShape() {
 export default async function ShapeTab({ params }: { params: Promise<{ playerId: string }> }) {
   const { playerId } = await params
   // Signed out: the layout frames and labels this; show the sample pitcher only.
-  if (!(await isSignedIn())) return <div style={{ maxWidth: 1100, margin: '0 auto' }}>{await sampleShape()}</div>
+  if (!(await isSignedIn())) return <div style={{ margin: '0 auto' }}>{await sampleShape()}</div>
   const person = await getMlbPerson(Number(playerId))
   const name = person?.fullName ?? 'this player'
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ margin: '0 auto' }}>
       <ProGate
         feature="pitch_shape" entityId={playerId} source="pitch_shape" claim who={{ lab: 'pitching', name }}
         shell={async () => <DemoFrame lab="pitching" realName={name}>{await sampleShape()}</DemoFrame>}

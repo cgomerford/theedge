@@ -70,6 +70,8 @@ export type RawPitch = {
   // Statcast's fitted flight path, in feet and seconds measured from release_pos_y (about 50 ft from the plate, catcher's view, +y toward the pitcher):
   // [vx0, vy0, vz0, ax, ay, az, release_pos_y]. Position at time t is p0 + v0*t + a*t^2/2. Null if any piece is missing.
   traj: number[] | null
+  // Savant's own movement against a spin-free path, feet, from the catcher's view: [pfx_x, pfx_z]. Null if missing.
+  pfx: [number, number] | null
   effectiveSpeed: number | null // real Savant field — release speed adjusted for extension (and a small batter-perceived-distance factor), i.e. "how fast it actually plays" to the hitter, not just the radar-gun number
 }
 
@@ -175,6 +177,7 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
   const iSpin = idx('release_spin_rate'), iExt = idx('release_extension')
   const iTraj = ['vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'release_pos_y'].map(idx)
   const iThrows = idx('p_throws')
+  const iPfxX = idx('pfx_x'), iPfxZ = idx('pfx_z')
   let throws: 'L' | 'R' | null = null
   if (iDate === -1 || iPitchType === -1 || iPlateX === -1 || iPlateZ === -1) return null
 
@@ -213,6 +216,9 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
 
     const trajRaw = iTraj.every(k => k !== -1) ? iTraj.map(k => cells[k]) : null
     const traj = trajRaw && trajRaw.every(c => c !== '' && Number.isFinite(Number(c))) ? trajRaw.map(c => Math.round(Number(c) * 1000) / 1000) : null
+    const pfxX = iPfxX !== -1 && cells[iPfxX] !== '' ? Number(cells[iPfxX]) : NaN
+    const pfxZ = iPfxZ !== -1 && cells[iPfxZ] !== '' ? Number(cells[iPfxZ]) : NaN
+    const pfx: [number, number] | null = Number.isFinite(pfxX) && Number.isFinite(pfxZ) ? [pfxX, pfxZ] : null
     if (!throws && iThrows !== -1 && (cells[iThrows] === 'L' || cells[iThrows] === 'R')) throws = cells[iThrows] as 'L' | 'R'
 
     pitches.push({
@@ -239,7 +245,7 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
       armAngle: Number.isNaN(armAngle) ? null : armAngle,
       spinRate: Number.isNaN(spinRate) ? null : spinRate,
       extension: Number.isNaN(extension) ? null : extension,
-      traj,
+      traj, pfx,
       effectiveSpeed: Number.isNaN(effectiveSpeed) ? null : effectiveSpeed,
     })
   }

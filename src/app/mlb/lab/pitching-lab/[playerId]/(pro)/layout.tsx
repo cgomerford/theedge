@@ -17,7 +17,7 @@ export default async function ProPitchingTabs({ children, params }: { children: 
   // Signed out: the parent layout already shows the sample demo for every tab.
   if (!(await isSignedIn())) return <>{children}</>
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ margin: '0 auto' }}>
       <ProGate feature="pitching_lab" entityId={playerId} source="pitching_lab" claim shell={<DemoFrame lab="pitching" realName={name}>{children}</DemoFrame>} who={{ lab: 'pitching', name }} full={async () => children} />
     </div>
   )

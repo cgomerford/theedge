@@ -8,7 +8,7 @@
 //   - Release point scatter (release_pos_x vs release_pos_z), colored by
 //     pitch type — do all his pitches come from the same release point
 //     (tunneling) or does one pitch "leak"?
-//   - Arm angle by start, over the season — a real drift here is a
+//   - Arm angle by game, over the season — a real drift here is a
 //     mechanical/fatigue signal; a flat line means his slot hasn't moved.
 
 import { useEffect, useMemo, useState } from 'react'
@@ -25,7 +25,7 @@ function shortDate(d: string): string {
   return parts.length === 3 ? `${parts[1]}/${parts[2]}` : d
 }
 
-export default function ReleaseChart({ pitcherId }: { pitcherId: number }) {
+export default function ReleaseChart({ pitcherId, hideScatter = false }: { pitcherId: number; hideScatter?: boolean }) {
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
 
   useEffect(() => {
@@ -71,10 +71,10 @@ export default function ReleaseChart({ pitcherId }: { pitcherId: number }) {
   if (byPitchType.length === 0 && armAngleByStart.length === 0) return null
 
   return (
-    <div className="grid lg:grid-cols-2 gap-5">
-      <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Release point</p>
-        <p className="text-[10px] font-mono text-stone-400 mb-3">Horizontal × vertical release, real per-pitch — same release point across pitches = better tunneling.</p>
+    <div className={hideScatter ? '' : 'grid md:grid-cols-2 gap-5'}>
+      {!hideScatter && <div className="bg-white border border-stone-200 rounded-xl p-5">
+        <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Release point</p>
+        <p className="text-[10px] text-stone-400 mb-3">Horizontal × vertical release, real per-pitch — same release point across pitches = better tunneling.</p>
         <ResponsiveContainer width="100%" height={260}>
           <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f4f1ea" />
@@ -88,11 +88,11 @@ export default function ReleaseChart({ pitcherId }: { pitcherId: number }) {
             ))}
           </ScatterChart>
         </ResponsiveContainer>
-      </div>
+      </div>}
 
       <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Arm angle by start</p>
-        <p className="text-[10px] font-mono text-stone-400 mb-3">Real, degrees — a real drift here is a mechanical or fatigue signal, not noise.</p>
+        <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-1">Arm angle by game</p>
+        <p className="text-[10px] text-stone-400 mb-3">Real, degrees — a real drift here is a mechanical or fatigue signal, not noise.</p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={armAngleByStart} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f4f1ea" />
