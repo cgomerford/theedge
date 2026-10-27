@@ -204,7 +204,7 @@ const COUNTS: [CountKey, string, (p: RawPitch) => boolean][] = [
   ['two', 'Two strikes', p => p.strikes === 2],
 ]
 
-export function SmoothHeatmap({ pitches, title }: { pitches: RawPitch[]; title: string }) {
+export function SmoothHeatmap({ pitches, title, counts = true }: { pitches: RawPitch[]; title: string; counts?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [count, setCount] = useState<CountKey>('all')
   const [bw, setBw] = useState(0.26)   // blob width in feet (standard deviation)
@@ -247,11 +247,11 @@ export function SmoothHeatmap({ pitches, title }: { pitches: RawPitch[]; title: 
   return (
     <div style={card}>
       <div style={kick}>{title} · location · batter&apos;s view</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '8px 0' }}>
+      {counts && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '8px 0' }}>
         {COUNTS.map(([k, l]) => (
           <button key={k} type="button" onClick={() => setCount(k)} style={{ fontFamily: SANS, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: '3px 10px', cursor: 'pointer', border: `1px solid ${count === k ? C.orange : C.line}`, background: count === k ? '#fff1ea' : '#fff', color: count === k ? C.orange : C.ink }}>{l}</button>
         ))}
-      </div>
+      </div>}
       {use.length === 0 ? <p style={{ fontSize: 14, color: C.mute }}>No pitches in that count.</p> : (
         <div style={{ position: 'relative', width: '100%', maxWidth: 270, margin: '0 auto', aspectRatio: `${VW} / ${VH}`, background: '#fff', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.soft}` }}>
           <canvas ref={ref} width={GW} height={GH} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', imageRendering: 'auto' }} />

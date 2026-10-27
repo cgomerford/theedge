@@ -70,6 +70,10 @@ export type RawPitch = {
   // Statcast's fitted flight path, in feet and seconds measured from release_pos_y (about 50 ft from the plate, catcher's view, +y toward the pitcher):
   // [vx0, vy0, vz0, ax, ay, az, release_pos_y]. Position at time t is p0 + v0*t + a*t^2/2. Null if any piece is missing.
   traj: number[] | null
+  stand: 'L' | 'R' | null // the batter's side
+  // Results on a pitch that ended the plate appearance (null otherwise). woba: Savant's woba_value; xwoba: expected value from exit speed and angle on a ball in play; wobaDen: woba_denom (1 for a plate appearance that counts).
+  woba: number | null; xwoba: number | null; wobaDen: number | null
+  exitVelo: number | null
   // Savant's own movement against a spin-free path, feet, from the catcher's view: [pfx_x, pfx_z]. Null if missing.
   pfx: [number, number] | null
   effectiveSpeed: number | null // real Savant field — release speed adjusted for extension (and a small batter-perceived-distance factor), i.e. "how fast it actually plays" to the hitter, not just the radar-gun number
@@ -178,6 +182,8 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
   const iTraj = ['vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'release_pos_y'].map(idx)
   const iThrows = idx('p_throws')
   const iPfxX = idx('pfx_x'), iPfxZ = idx('pfx_z')
+  const iStand = idx('stand'), iWv = idx('woba_value'), iXw = idx('estimated_woba_using_speedangle'), iWd = idx('woba_denom'), iEv = idx('launch_speed')
+  const cellNum = (i: number, cells: string[]) => (i !== -1 && cells[i] !== '' && cells[i] !== 'null' && Number.isFinite(Number(cells[i])) ? Number(cells[i]) : null)
   let throws: 'L' | 'R' | null = null
   if (iDate === -1 || iPitchType === -1 || iPlateX === -1 || iPlateZ === -1) return null
 
@@ -246,6 +252,8 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
       spinRate: Number.isNaN(spinRate) ? null : spinRate,
       extension: Number.isNaN(extension) ? null : extension,
       traj, pfx,
+      stand: iStand !== -1 && (cells[iStand] === 'L' || cells[iStand] === 'R') ? (cells[iStand] as 'L' | 'R') : null,
+      woba: cellNum(iWv, cells), xwoba: cellNum(iXw, cells), wobaDen: cellNum(iWd, cells), exitVelo: cellNum(iEv, cells),
       effectiveSpeed: Number.isNaN(effectiveSpeed) ? null : effectiveSpeed,
     })
   }
