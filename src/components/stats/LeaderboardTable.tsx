@@ -5,7 +5,7 @@
 import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import { Headshot } from '@/components/home/Logo'
 import TeamChip from '@/components/ui/TeamChip'
 
@@ -25,6 +25,10 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
   const [extra, setExtra] = useState<string[]>([])
   const cols = useMemo(() => [...baseCols, ...extra.map(k => moreCols.find(c => c.key === k)).filter((c): c is Col => !!c)], [baseCols, moreCols, extra])
   const [view, setView] = useState<'table' | 'chart'>('table')
+  const [kind, setKind] = useState<'hbar' | 'vbar' | 'line' | 'scatter'>('hbar')
+  const [yKey, setYKey] = useState<string>('')
+  const [xKey, setXKey] = useState<string>('')
+  const [topN, setTopN] = useState(15)
   const area = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
   async function download() {
@@ -97,31 +101,68 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
         {extra.map(k => { const c = moreCols.find(x => x.key === k); return c ? <button key={k} type="button" onClick={() => setExtra(x => x.filter(y => y !== k))} aria-label={`Remove ${c.label}`} style={{ border: '1px solid #e7e2d8', background: '#fff', borderRadius: 2, padding: '4px 8px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>{c.label} ×</button> : null })}
         {isPro ? (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 14, alignItems: 'center' }}>
-            <button type="button" onClick={() => setView(v => (v === 'table' ? 'chart' : 'table'))} style={{ background: 'none', border: 0, borderBottom: '3px solid #FF5722', padding: '2px 0', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{view === 'table' ? 'Show as bar chart' : 'Show as table'}</button>
+            <button type="button" onClick={() => setView(v => (v === 'table' ? 'chart' : 'table'))} style={{ background: 'none', border: 0, borderBottom: '3px solid #FF5722', padding: '2px 0', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{view === 'table' ? 'Show as a graph' : 'Show as table'}</button>
             <button type="button" onClick={download} disabled={busy} style={{ background: 'none', border: '1px solid #1A1A1A', borderRadius: 2, padding: '5px 12px', fontWeight: 800, cursor: 'pointer', font: 'inherit' }}>{busy ? 'Preparing…' : 'Download image'}</button>
           </span>
         ) : (
-          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#8a8275' }}>Pro members can export these results as an image or a bar chart. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
+          <span style={{ marginLeft: 'auto', fontSize: 13, color: '#8a8275' }}>Pro members can export these results as an image or a graph. <a href="/pricing" style={{ color: '#FF5722', fontWeight: 800 }}>See Pro</a></span>
         )}
       </div>
       <div ref={area}>
       {view === 'chart' && isPro ? (() => {
-        const col = key === '__n' ? null : cols.find(c => c.key === key) ?? cols[0]
-        const data = sorted.slice(0, 15).map(r => ({ name: r.name, v: col ? r.v[col.key] : r.n })).filter(d => d.v != null)
-        const label = col ? col.label : nLabel
+        const all = [...baseCols, ...moreCols]
+        const colY = all.find(c => c.key === (yKey || (key === '__n' ? baseCols[0].key : key))) ?? baseCols[0]
+        const colX = all.find(c => c.key === (xKey || baseCols[1]?.key)) ?? baseCols[1] ?? baseCols[0]
+        const pool = sorted.filter(r => r.v[colY.key] != null).sort((a, b) => (colY.asc ? 1 : -1) * ((a.v[colY.key] as number) - (b.v[colY.key] as number)))
+        const data = pool.slice(0, topN).map(r => ({ name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number }))
+        const sc = kind === 'scatter' ? pool.slice(0, topN).filter(r => r.v[colX.key] != null).map(r => ({ name: r.name, x: r.v[colX.key] as number, y: r.v[colY.key] as number })) : []
+        const sel: React.CSSProperties = { height: 32, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit' }
+        const lab: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }
+        const title = kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
+        const f = (v: unknown, c: Col) => fmt(Number(v), c)
         return (
           <div>
-            <div style={{ fontWeight: 800, fontSize: 16, margin: '4px 0' }}>{label}: top {data.length}</div>
-            <div style={{ width: '100%', height: Math.max(220, data.length * 30) }}>
+            <div data-noexport="1" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', margin: '0 0 8px' }}>
+              <label style={lab}>Chart<select style={sel} value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="hbar">Horizontal bars</option><option value="vbar">Vertical bars</option><option value="line">Line</option><option value="scatter">Scatter (two stats)</option></select></label>
+              <label style={lab}>{kind === 'scatter' ? 'Up' : 'Stat'}<select style={sel} value={colY.key} onChange={e => setYKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
+              {kind === 'scatter' ? <label style={lab}>Across<select style={sel} value={colX.key} onChange={e => setXKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label> : null}
+              <label style={lab}>Top<select style={sel} value={topN} onChange={e => setTopN(Number(e.target.value))}>{[10, 15, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 16, margin: '4px 0' }}>{title}</div>
+            <div style={{ width: '100%', height: kind === 'hbar' ? Math.max(220, data.length * 30) : 380 }}>
               <ResponsiveContainer>
-                <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
-                  <CartesianGrid horizontal={false} stroke="#e7e2d8" />
-                  <XAxis type="number" hide domain={[0, 'dataMax']} />
-                  <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 13, fill: '#1A1A1A' }} axisLine={false} tickLine={false} />
-                  <Bar dataKey="v" fill="#FF5722" radius={[0, 3, 3, 0]} isAnimationActive={false}>
-                    <LabelList dataKey="v" position="right" formatter={(v: unknown) => (col ? fmt(Number(v), col) : String(v))} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} />
-                  </Bar>
-                </BarChart>
+                {kind === 'hbar' ? (
+                  <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
+                    <CartesianGrid horizontal={false} stroke="#e7e2d8" />
+                    <XAxis type="number" hide domain={[0, 'dataMax']} />
+                    <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 13, fill: '#1A1A1A' }} axisLine={false} tickLine={false} />
+                    <Bar dataKey="v" fill="#FF5722" radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
+                  </BarChart>
+                ) : kind === 'vbar' ? (
+                  <BarChart data={data} margin={{ left: 0, right: 8, top: 22, bottom: 70 }}>
+                    <CartesianGrid vertical={false} stroke="#e7e2d8" />
+                    <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
+                    <YAxis tick={{ fontSize: 12 }} width={46} />
+                    <Bar dataKey="v" fill="#FF5722" radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
+                  </BarChart>
+                ) : kind === 'line' ? (
+                  <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 70 }}>
+                    <CartesianGrid stroke="#e7e2d8" />
+                    <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
+                    <YAxis tick={{ fontSize: 12 }} width={46} domain={['auto', 'auto']} />
+                    <Tooltip formatter={(v: unknown) => f(v, colY)} />
+                    <Line type="monotone" dataKey="v" stroke="#FF5722" strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
+                  </LineChart>
+                ) : (
+                  <ScatterChart margin={{ left: 0, right: 24, top: 12, bottom: 24 }}>
+                    <CartesianGrid stroke="#e7e2d8" />
+                    <XAxis type="number" dataKey="x" name={colX.label} domain={['auto', 'auto']} tick={{ fontSize: 12 }} label={{ value: colX.label, position: 'insideBottom', offset: -12, fontSize: 12 }} />
+                    <YAxis type="number" dataKey="y" name={colY.label} domain={['auto', 'auto']} tick={{ fontSize: 12 }} width={46} />
+                    <ZAxis range={[60, 60]} />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => payload && payload[0] ? <div style={{ background: '#1A1A1A', color: '#fff', padding: '6px 10px', fontSize: 12, borderRadius: 4 }}><b>{(payload[0].payload as { name: string }).name}</b><br />{colX.label} {f((payload[0].payload as { x: number }).x, colX)} · {colY.label} {f((payload[0].payload as { y: number }).y, colY)}</div> : null} />
+                    <Scatter data={sc} fill="#FF5722" isAnimationActive={false} />
+                  </ScatterChart>
+                )}
               </ResponsiveContainer>
             </div>
             <div style={{ fontSize: 12, color: '#8a8275' }}>x9Lab · {exportName}{canFilter && qual ? ' · qualified only' : ''}</div>
