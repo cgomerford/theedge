@@ -39,7 +39,7 @@ function cat(d: string | null): Cat | null {
 }
 const PREV_RESULTS: [Cat, string][] = [['ball', 'Ball'], ['called', 'Called strike'], ['swing', 'Swinging strike'], ['foul', 'Foul']]
 const COUNTS = ['0-0', '1-0', '0-1', '1-1', '2-0', '0-2', '2-1', '1-2', '3-0', '3-1', '2-2', '3-2']
-const MAX_CHAIN = 3
+const MAX_CHAIN = 4   // longest chain shown; past this, moving forward drops the oldest pitch
 
 type Where = 'any' | 'in' | 'out'
 type Opts = { hist: string[]; stepRes: (Cat | 'any')[]; where: Where; count: string; side: 'any' | 'L' | 'R' }
@@ -183,6 +183,14 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
   const [stepRes, setStepRes] = useState<(Cat | 'any')[]>([])
   const res: Cat | 'any' = stepRes[hist.length - 1] ?? 'any'
   const setRes = (v: Cat | 'any') => setStepRes(r => r.map((x, i) => (i === hist.length - 1 ? v : x)))
+  const advance = (t: string) => {
+    const full = hist.length >= MAX_CHAIN
+    const nextHist = full ? [...hist.slice(1), t] : [...hist, t]
+    setHist(nextHist)
+    setStepRes(r => nextHist.map((_, i) => (full ? r[i + 1] : r[i]) ?? 'any'))
+    setFocus('ALL')
+    if (count === '0-0') setCount('any')
+  }
   const setChain = (types: string[]) => { setHist(types); setStepRes(r => types.map((_, i) => r[i] ?? 'any')) }
   const [where, setWhere] = useState<Where>('any')
   const [count, setCount] = useState('any')
@@ -340,7 +348,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
                 {topTypes.map(t => {
                   const n = nextCounts.get(t) ?? 0, f = flights.find(x => x.type === t)
                   return (
-                    <button key={t} type="button" className="sq-bar" disabled={hist.length >= MAX_CHAIN} onClick={() => { setChain([...hist, t]); setFocus('ALL'); if (count === '0-0') setCount('any') }} title={hist.length >= MAX_CHAIN ? 'Remove a pitch from the chain to go further' : `See what came after ${nm(t)}`} style={hist.length >= MAX_CHAIN ? { cursor: 'default' } : undefined}>
+                    <button key={t} type="button" className="sq-bar" onClick={() => advance(t)} title={hist.length >= MAX_CHAIN ? `See what came after ${nm(t)} (drops the oldest pitch from the chain)` : `See what came after ${nm(t)}`}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 14 }}><SpinBall code={t} size={24} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />{nm(t)}</span>
                       <span style={{ height: 16, background: C.soft, borderRadius: 8, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${(n / total) * 100}%`, background: pitchColor(t), borderRadius: 8 }} /></span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14, textAlign: 'right' }}><b>{pc(n / total)}</b> <span style={{ color: C.faint }}>({n})</span></span>
@@ -348,7 +356,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
                   )
                 })}
               </div>
-              <p style={note}>Share of the pitches that followed. {hist.length < MAX_CHAIN ? 'Click a pitch to move forward one pitch and see what came after it.' : 'The chain is at three pitches; click one in the title to step back.'} This describes what has happened after pitches like these, not what will happen.</p>
+              <p style={note}>Share of the pitches that followed. Click a pitch to move forward one pitch and see what came after it{hist.length >= MAX_CHAIN ? ` (the chain keeps the last ${MAX_CHAIN} pitches)` : ''}. This describes what has happened after pitches like these, not what will happen.</p>
             </div>
 
             <div style={tile}>
