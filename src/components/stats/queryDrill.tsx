@@ -256,6 +256,24 @@ export function GameDetailRow({ gamePk, playerId, group, span, atBat }: { gamePk
 }
 
 
+type SortCol = { key: string; label: string; left?: boolean; val: (r: RecentHit, ref?: { ev: number; la: number | null; dist: number | null }) => string | number | null }
+const COLS: SortCol[] = [
+  { key: 'date', label: 'Date', left: true, val: r => `${r.date}-${String(r.atBat).padStart(3, '0')}` },
+  { key: 'game', label: 'Game', left: true, val: r => `${r.awayTeam} @ ${r.homeTeam}` },
+  { key: 'inn', label: 'Inn', val: r => r.inning * 2 + (r.half === 'Bot' ? 1 : 0) },
+  { key: 'outs', label: 'Outs', val: r => r.outs },
+  { key: 'base', label: 'On base', left: true, val: r => r.baseState },
+  { key: 'score', label: 'Score', left: true, val: r => r.scoreDiff },
+  { key: 'batter', label: 'Batter', left: true, val: r => r.batter },
+  { key: 'pitcher', label: 'Pitcher', left: true, val: r => r.pitcher },
+  { key: 'p', label: 'P', val: r => r.pitches },
+  { key: 'result', label: 'Result', left: true, val: r => r.event },
+  { key: 'ev', label: 'Exit velo', val: r => r.ev },
+  { key: 'la', label: 'Angle', val: r => r.la },
+  { key: 'dist', label: 'Dist', val: r => r.dist },
+  { key: 'off', label: 'Off by', val: (r, ref) => (ref && r.ev != null ? Math.abs(r.ev - ref.ev) : null) },
+]
+
 export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
   rows: RecentHit[]; total?: number; deep: boolean
   /** shown on rows with a measured batted ball: "Find hits like this" */
@@ -264,6 +282,7 @@ export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
   hitRef?: { ev: number; la: number | null; dist: number | null }
 }) {
   const [open, setOpen] = useState<string[]>([])
+  const [sort, setSort] = useState<{ key: string; asc: boolean } | null>(null)
   if (!rows.length) {
     return <Empty>This situation hasn&apos;t come up in the selected seasons. Widen the season range in Scope to look further back.</Empty>
   }
@@ -272,6 +291,20 @@ export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
   const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
   const nice = (d: string) => { const [y, m, dd] = d.split('-'); return `${Number(m)}/${Number(dd)}/${y.slice(2)}` }
   const span = 12 + (hitRef ? 1 : 0) + (onFindSimilar ? 1 : 0)
+  // Click a column to sort by it (click again to flip, a third time to go back to newest first). Missing numbers always sort last.
+  const view = (() => {
+    if (!sort) return rows
+    const col = COLS.find(c => c.key === sort.key)
+    if (!col) return rows
+    const dir = sort.asc ? 1 : -1
+    return [...rows].sort((x, y) => {
+      const a = col.val(x, hitRef), b = col.val(y, hitRef)
+      if (a == null && b == null) return 0
+      if (a == null) return 1
+      if (b == null) return -1
+      return (typeof a === 'string' && typeof b === 'string' ? a.localeCompare(b) : Number(a) - Number(b)) * dir
+    })
+  })()
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -286,24 +319,18 @@ export function RecentList({ rows, total, deep, onFindSimilar, hitRef }: {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={{ ...th, textAlign: 'left' }}>Date</th>
-                <th style={{ ...th, textAlign: 'left' }}>Game</th>
-                <th style={th}>Inn</th><th style={th}>Outs</th>
-                <th style={{ ...th, textAlign: 'left' }}>On base</th>
-                <th style={{ ...th, textAlign: 'left' }}>Score</th>
-                <th style={{ ...th, textAlign: 'left' }}>Batter</th>
-                <th style={{ ...th, textAlign: 'left' }}>Pitcher</th>
-                <th style={th}>P</th>
-                <th style={{ ...th, textAlign: 'left' }}>Result</th>
-                <th style={th}>Exit velo</th>
-                <th style={th}>Angle</th>
-                <th style={th}>Dist</th>
-                {hitRef && <th style={th} title="How far each hit is from the one you are matching">Off by</th>}
+                {COLS.filter(c => c.key !== 'off' || hitRef).map(c => (
+                  <th key={c.key} style={{ ...th, textAlign: c.left ? 'left' : 'right', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    aria-sort={sort?.key === c.key ? (sort.asc ? 'ascending' : 'descending') : 'none'} title={c.key === 'off' ? 'How far each hit is from the one you are matching. Click to sort.' : 'Click to sort'}
+                    onClick={() => setSort(sort?.key !== c.key ? { key: c.key, asc: !!c.left } : sort.asc === !!c.left ? { key: c.key, asc: !c.left } : null)}>
+                    {c.label}{sort?.key === c.key ? (sort.asc ? ' ▲' : ' ▼') : ''}
+                  </th>
+                ))}
                 {onFindSimilar && <th style={th} />}
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => {
+              {view.map(r => {
                 const k = `${r.gamePk}-${r.atBat}`
                 const isOpen = open.includes(k)
                 return (
