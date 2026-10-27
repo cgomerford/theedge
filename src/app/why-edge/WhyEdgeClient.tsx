@@ -36,7 +36,7 @@ const GAPS = [
   { them: 'Instant answer, no model',            us: '8-factor rule-based model — public weights, no black box'       },
   { them: 'No history, no accountability',        us: 'Every read archived — factor lean vs actual result, always'    },
   { them: '"Both teams have been competitive"',   us: '"Taillon 1.98 ERA L4 · Cardinals pen used 8.2 IP yesterday"'   },
-  { them: 'One paragraph and done',               us: 'Daily email + Dugout dashboard + team follows'                 },
+  { them: 'One paragraph and done',               us: 'Your own page with followed players and teams'                 },
   { them: 'No fantasy utility',                   us: 'Pro: Bullpen Status, Start/Sit, Hot Zones, GM briefing'        },
   { them: 'Same answer for everyone',             us: 'Personalised to your teams, your sport, your level'            },
 ]

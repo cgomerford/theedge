@@ -293,7 +293,7 @@ export default function NflHome({
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 20, color: '#1A1A1A' }}>Snap &amp; opportunity context</span>
                 </div>
                 <p style={{ fontFamily: FONT, fontSize: 13, color: '#5b5347', margin: '8px 0 12px', lineHeight: 1.5, maxWidth: 680 }}>Who is actually on the field and who is getting the ball: snap share and target share by player, week over week. Context only, so you can make your own calls.</p>
-                <Link href="/pricing" style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', padding: '9px 14px', borderRadius: 6, textDecoration: 'none' }}>Unlock with Pro →</Link>
+                <Link href="/pricing" style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', background: '#1A1A1A', color: '#FAF8F3', padding: '9px 14px', borderRadius: 6, textDecoration: 'none' }}>See Pro</Link>
               </div>
             </div>
 
