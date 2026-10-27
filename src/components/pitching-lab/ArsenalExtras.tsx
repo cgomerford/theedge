@@ -33,7 +33,7 @@ export function MovementProfile({ log, paths, focus, compact = false }: { log: P
   // Equal inches both ways, boxed to the pitches plus a margin, with the no-spin mark always inside.
   const step = 6
   const lo = (v: number) => Math.floor((v - 3) / step) * step, hi = (v: number) => Math.ceil((v + 3) / step) * step
-  const xMin = lo(Math.min(0, ...pts.map(q => q.x))), xMax = hi(Math.max(0, ...pts.map(q => q.x)))
+  const xMin = lo(Math.min(0, ...pts.map(q => q.x))), xMax = hi(Math.max(0, ...pts.map(q => q.x))) + 6   // room on the right for a pitch name
   const yMin = lo(Math.min(0, ...pts.map(q => q.y))), yMax = hi(Math.max(0, ...pts.map(q => q.y)))
   const L = 34, R = 10, T = 10, B = 26
   const VW = 320, k = (VW - L - R) / (xMax - xMin), VH = T + B + k * (yMax - yMin)

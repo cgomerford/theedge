@@ -31,7 +31,7 @@ import { SITE_URL } from '@/lib/site'
 export const revalidate = 60
 export const maxDuration = 15
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string; tab?: string }> }
 
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
@@ -72,7 +72,7 @@ function ScoutStrip({ game, slug, isFinal, awayAbbr, homeAbbr, gameDate }: { gam
 
 export default async function ScoutReportPage({ params, searchParams }: Props) {
   const { slug } = await params
-  const { pro } = await searchParams
+  const { pro, tab } = await searchParams
   const supa = createAdminClient()
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
@@ -114,7 +114,7 @@ export default async function ScoutReportPage({ params, searchParams }: Props) {
         </div>
 
         <div className="px-4 py-6" style={centered}>
-          <ScoutReport game={game} gameDate={dateMatch[1]} />
+          <ScoutReport game={game} gameDate={dateMatch[1]} tab={tab} />
           <SignupAsk source="scout_report_end" />
         </div>
       </div>

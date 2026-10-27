@@ -99,7 +99,7 @@ function topShare(byZone: Record<string, Agg>, n: number): [string, number][] {
   return tot === 0 ? [] : ALL_ZONES.map(z => [z, byZone[z].n / tot] as [string, number]).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).slice(0, n)
 }
 
-export default function OverlayExplorer({ id, role = 'pitcher', fixedName = '' }: { id: number; role?: LabRole; fixedName?: string }) {
+export default function OverlayExplorer({ id, role = 'pitcher', fixedName = '', lineup, lineupLabel }: { id: number; role?: LabRole; fixedName?: string; lineup?: { id: number; name: string; order: number }[]; lineupLabel?: string }) {
   const season = new Date().getFullYear()
   const [logState, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   // Pitcher lab: the pitcher is fixed and a hitter is chosen. Batting lab: the hitter is fixed and a pitcher is chosen.
@@ -298,7 +298,14 @@ export default function OverlayExplorer({ id, role = 'pitcher', fixedName = '' }
                 ) : <div style={{ fontSize: 13, color: C.mute }}>{bLog === null ? 'Loading his pitchers…' : 'Search any pitcher.'}</div>
               })() : (
               <div style={{ fontSize: 13, color: C.mute }}>
-                {next?.nextStart && next.lineup.length > 0 ? (
+                {lineup && lineup.length > 0 ? (
+                  <>
+                    <div style={{ marginBottom: 6 }}>{lineupLabel ?? 'Lineup'}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {lineup.map(b => <button key={b.id} type="button" onClick={() => { setBatter({ id: b.id, fullName: b.name }); setBLog(null) }} style={{ fontFamily: SANS, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '4px 12px', border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer' }}>{b.order}. {b.name}</button>)}
+                    </div>
+                  </>
+                ) : next?.nextStart && next.lineup.length > 0 ? (
                   <>
                     <div style={{ marginBottom: 6 }}>Next game: {next.nextStart.isHome ? 'vs' : 'at'} {next.nextStart.opponentName}, {next.nextStart.date} ({next.lineupSource} lineup)</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
