@@ -111,20 +111,45 @@ function fromWork(w: RecentWork): { workload: { dates: string[]; pitchers: { pla
   return { workload: { dates: w.dates, pitchers }, people }
 }
 
-export async function getBullpenDesk(teamId: number, gameDate: string, postseason = false): Promise<BullpenDesk> {
+type ActivePitcher = { id: number; name: string; gs: number; g: number; era: number | null }
+/** Every pitcher on the club's active roster with his season starts and appearances (to tell a starter from a reliever). */
+async function getActivePitchers(teamId: number, season: number): Promise<ActivePitcher[]> {
+  try {
+    const r = await fetch(`${MLB}/teams/${teamId}/roster?rosterType=active&hydrate=person(stats(group=%5Bpitching%5D,type=%5Bseason%5D,season=${season}))`, { next: { revalidate: 600 }, signal: AbortSignal.timeout(8000) })
+    if (!r.ok) return []
+    const j = await r.json()
+    return (j.roster ?? []).filter((x: { position?: { type?: string } }) => x.position?.type === 'Pitcher').map((x: { person: { id: number; fullName: string; stats?: { type?: { displayName?: string }; splits?: { stat?: { gamesStarted?: number; gamesPlayed?: number; era?: string } }[] }[] } }) => {
+      const st = x.person.stats?.find(s => s.type?.displayName === 'season')?.splits?.[0]?.stat
+      const era = st?.era != null ? Number(st.era) : null
+      return { id: x.person.id, name: x.person.fullName, gs: Number(st?.gamesStarted ?? 0), g: Number(st?.gamesPlayed ?? 0), era: Number.isFinite(era as number) ? era : null }
+    })
+  } catch (e) { console.error('[bullpenDesk] active pitchers failed:', (e as Error).message); return [] }
+}
+
+/** `excludeIds`: pitchers who are not in the pen tonight (the probable starter). Everyone else on the active roster who is not a starter is listed. */
+export async function getBullpenDesk(teamId: number, gameDate: string, postseason = false, excludeIds: number[] = []): Promise<BullpenDesk> {
   const supa = createAdminClient()
   const yesterday = shiftDays(gameDate, -1)
   const season = Number(gameDate.slice(0, 4))
 
-  const [avail, activeIds, dbWorkload, report, recent] = await Promise.all([
+  const [avail, activeIds, dbWorkload, report, recent, activePitchers] = await Promise.all([
     supa.from('bullpen_availability').select('player_id, player_name, role, era').eq('game_date', gameDate).eq('team_id', teamId),
     getActiveRosterIds(teamId),
     postseason ? Promise.resolve(null) : getLast7DaysPitcherWorkloadFromDB(teamId, undefined, yesterday),
     getBullpenReportFromDB(teamId, season),
     postseason ? getRecentWork(teamId, gameDate) : Promise.resolve(null),
+    getActivePitchers(teamId, season),
   ])
 
   let rows = (avail.data ?? []).filter((r) => activeIds.size === 0 || activeIds.has(Number(r.player_id)))
+  // The availability table lists the arms with a role; add every other reliever on the active roster (a starter is one who has started more than half of his games).
+  const listed = new Set(rows.map((r) => Number(r.player_id)))
+  for (const p of activePitchers) {
+    if (listed.has(p.id) || excludeIds.includes(p.id) || (p.g > 0 && p.gs / p.g > 0.5)) continue
+    rows.push({ player_id: p.id, player_name: p.name, role: 'Middle Relief', era: p.era } as (typeof rows)[number])
+    listed.add(p.id)
+  }
+  rows = rows.filter((r) => !excludeIds.includes(Number(r.player_id)))
   // A postseason game with no availability rows yet: the relievers are whoever has pitched in the window or the postseason and has not started.
   if (rows.length === 0 && recent) {
     rows = [...recent.players.entries()].filter(([id, p]) => !p.started && (activeIds.size === 0 || activeIds.has(id)))

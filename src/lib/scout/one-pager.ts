@@ -46,7 +46,7 @@ export async function getClubOnePager(club: ScoutClub, ctx: ScoutContext): Promi
   const [profile, lineup, desk] = await Promise.all([
     safe('profile', getTeamProfile(club.id, season, ctx.gameDate)),
     safe('lineup', getProjectedLineup(club.id, ctx.gameDate, ctx.gamePk)),
-    safe('bullpen', getBullpenDesk(club.id, ctx.gameDate, ctx.postseason)),
+    safe('bullpen', getBullpenDesk(club.id, ctx.gameDate, ctx.postseason, club.probableId != null ? [club.probableId] : [])),
   ])
   const all = profile ? items(profile) : []
   const third = (it: RankItem) => Math.ceil(it.of / 3)

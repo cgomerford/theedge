@@ -9,7 +9,7 @@ import type { ScoutClub, ScoutContext } from './types'
 
 async function load(club: ScoutClub, opp: ScoutClub, ctx: ScoutContext): Promise<ClubPen> {
   const [desk, lineup] = await Promise.all([
-    getBullpenDesk(club.id, ctx.gameDate, ctx.postseason).catch(() => null),
+    getBullpenDesk(club.id, ctx.gameDate, ctx.postseason, club.probableId != null ? [club.probableId] : []).catch(() => null),
     getProjectedLineup(opp.id, ctx.gameDate, ctx.gamePk).catch(() => null),
   ])
   const trends = desk ? await getBullpenTrends(club.id, club.abbr, club.name, desk.arms.map(a => a.id), ctx.gameDate).catch(() => null) : null
