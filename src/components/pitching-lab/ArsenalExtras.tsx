@@ -30,28 +30,43 @@ export function MovementProfile({ log, paths, movement }: { log: PitcherPitchLog
   const toX = (hb: number) => (log.throws === 'R' ? -hb : hb)
   const rows = paths.map(p => ({ p, m: { avgHBreak: p.hb, avgVBreak: p.ivb } }))
   if (rows.length === 0) return <div style={{ ...card, fontSize: 14, color: C.mute }}>No movement data on record yet.</div>
-  const S = 360, R = 150
-  const ext = Math.max(24, ...rows.map(r => Math.max(Math.abs(r.m.avgHBreak), Math.abs(r.m.avgVBreak)))) + 3
-  const px = (v: number) => S / 2 + (v / ext) * R
-  const rings = [6, 12, 18, 24].filter(v => v < ext)
+  // One scale for both directions (an inch sideways is the same length as an inch up), fitted to the pitches with room for labels.
+  const pts = rows.map(({ p, m }) => ({ p, x: toX(m.avgHBreak), y: m.avgVBreak }))
+  const PAD = 7
+  const xMin = Math.min(0, ...pts.map(q => q.x)) - PAD, xMax = Math.max(0, ...pts.map(q => q.x)) + PAD + 10   // extra room on the right for names
+  const yMin = Math.min(0, ...pts.map(q => q.y)) - PAD, yMax = Math.max(0, ...pts.map(q => q.y)) + PAD
+  const VW = 520, VH = 400
+  const k = Math.min(VW / (xMax - xMin), VH / (yMax - yMin))
+  const ox = (VW - k * (xMax - xMin)) / 2 - k * xMin, oy = (VH - k * (yMax - yMin)) / 2 + k * yMax   // pixel position of (0, 0)
+  const X = (v: number) => ox + v * k, Y = (v: number) => oy - v * k
+  const maxR = Math.ceil(Math.max(Math.abs(xMin), xMax, Math.abs(yMin), yMax) / 6) * 6
+  const rings = Array.from({ length: maxR / 6 }, (_, i) => (i + 1) * 6)
+  // Names sit to the right of each dot; nudge them apart vertically so none overlap.
+  const labels = pts.map(q => ({ ...q, ly: Y(q.y) })).sort((a, b) => a.ly - b.ly)
+  for (let i = 1; i < labels.length; i++) if (Math.abs(labels[i].x - labels[i - 1].x) * k < 140 && labels[i].ly - labels[i - 1].ly < 15) labels[i].ly = labels[i - 1].ly + 15
   return (
     <div style={card}>
       <SpinBallStyles />
       <div style={kick}>Movement profile · batter&apos;s view</div>
-      <svg viewBox={`0 0 ${S} ${S}`} role="img" aria-label="Average break of each pitch" style={{ width: '100%', maxWidth: 460, height: 'auto', display: 'block', margin: '6px auto 0' }}>
-        {rings.map(v => <g key={v}><circle cx={S / 2} cy={S / 2} r={(v / ext) * R} fill="none" stroke={C.soft} /><text x={S / 2 + 3} y={S / 2 - (v / ext) * R - 2} fontSize="9" fill={C.faint} fontFamily={SANS}>{v}&quot;</text></g>)}
-        <line x1="8" x2={S - 8} y1={S / 2} y2={S / 2} stroke={C.line} />
-        <line x1={S / 2} x2={S / 2} y1="8" y2={S - 8} stroke={C.line} />
-        <text x="10" y={S / 2 - 6} fontSize="10" fill={C.mute} fontFamily={SANS}>← third base</text>
-        <text x={S - 10} y={S / 2 - 6} fontSize="10" fill={C.mute} textAnchor="end" fontFamily={SANS}>first base →</text>
-        <text x={S / 2 + 6} y="18" fontSize="10" fill={C.mute} fontFamily={SANS}>rises</text>
-        <text x={S / 2 + 6} y={S - 10} fontSize="10" fill={C.mute} fontFamily={SANS}>drops</text>
-        {rows.map(({ p, m }) => {
-          const x = px(toX(m.avgHBreak)), y = S / 2 - ((m.avgVBreak / ext) * R)
+      <svg viewBox={`0 0 ${VW} ${VH}`} role="img" aria-label="Average break of each pitch" style={{ width: '100%', height: 'auto', display: 'block', marginTop: 6 }}>
+        <defs><clipPath id="mv-clip"><rect x="0" y="0" width={VW} height={VH} /></clipPath></defs>
+        <g clipPath="url(#mv-clip)">
+          {rings.map(v => <circle key={v} cx={X(0)} cy={Y(0)} r={v * k} fill="none" stroke={v % 12 === 0 ? C.line : C.soft} strokeDasharray={v % 12 === 0 ? undefined : '3 3'} />)}
+          <line x1="0" x2={VW} y1={Y(0)} y2={Y(0)} stroke={C.line} />
+          <line x1={X(0)} x2={X(0)} y1="0" y2={VH} stroke={C.line} />
+          {rings.filter(v => X(0) - v * k > 14).map(v => <text key={v} x={X(0) - v * k + 3} y={Y(0) + 12} fontSize="10" fill={C.faint} fontFamily={SANS}>{v}&quot;</text>)}
+        </g>
+        <text x="8" y={VH - 8} fontSize="11" fill={C.mute} fontFamily={SANS}>← toward third base</text>
+        <text x={VW - 8} y={VH - 8} fontSize="11" fill={C.mute} textAnchor="end" fontFamily={SANS}>toward first base →</text>
+        <text x="8" y="14" fontSize="11" fill={C.mute} fontFamily={SANS}>↑ rises</text>
+        <text x="8" y="30" fontSize="11" fill={C.mute} fontFamily={SANS}>↓ drops</text>
+        {pts.map(({ p, x, y }) => {
+          const r = 6 + Math.sqrt(p.share) * 12
+          const lab = labels.find(l => l.p.type === p.type)!
           return (
             <g key={p.type}>
-              <circle cx={x} cy={y} r={6 + Math.sqrt(p.share) * 14} fill={pitchColor(p.type)} fillOpacity="0.8" stroke="#fff" strokeWidth="2"><title>{`${p.name}: ${m.avgHBreak > 0 ? '+' : ''}${m.avgHBreak.toFixed(1)}" arm-side, ${m.avgVBreak > 0 ? '+' : ''}${m.avgVBreak.toFixed(1)}" rise (n = ${p.n})`}</title></circle>
-              <text x={x + 10 + Math.sqrt(p.share) * 14} y={y + 4} fontSize="11" fontWeight="800" fill={C.ink} fontFamily={SANS}>{p.name}</text>
+              <circle cx={X(x)} cy={Y(y)} r={r} fill={pitchColor(p.type)} fillOpacity="0.85" stroke="#fff" strokeWidth="2"><title>{`${p.name}: ${y >= 0 ? '+' : ''}${y.toFixed(1)}" rise, ${p.hb >= 0 ? '+' : ''}${p.hb.toFixed(1)}" arm-side (n = ${p.n})`}</title></circle>
+              <text x={X(x) + r + 6} y={lab.ly + 4} fontSize="12" fontWeight="800" fill={C.ink} fontFamily={SANS} paintOrder="stroke" stroke="#fff" strokeWidth="3">{p.name}</text>
             </g>
           )
         })}
@@ -102,7 +117,7 @@ export function UsageTrend({ log, paths }: { log: PitcherPitchLog; paths: PitchP
           ))}
         </div>
       </div>
-      <div style={{ width: '100%', height: 280, marginTop: 8 }}>
+      <div style={{ width: '100%', height: 400, marginTop: 8 }}>
         <ResponsiveContainer>
           <AreaChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }} stackOffset="expand">
             <CartesianGrid strokeDasharray="3 3" stroke={C.soft} />
