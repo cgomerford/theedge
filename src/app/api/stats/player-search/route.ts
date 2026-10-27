@@ -1,15 +1,13 @@
 // src/app/api/stats/player-search/route.ts
 //
 // GET /api/stats/player-search?q=guerrero — type-ahead for the "player" filter. MLB Stats API people search
-// (free, no auth). Pro-only, like the searches it feeds. The text is URL-encoded and length-limited.
+// (free, no auth). Open to everyone: it returns only public names, ids and clubs, and the ask lab needs it to read "Juan Soto vs Yankees". The text is URL-encoded and length-limited.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { isProViewer } from '@/lib/require-pro'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 import { MLB_TEAMS } from '@/lib/teams'
 
 export async function GET(req: NextRequest) {
-  if (!(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   const q = (new URL(req.url).searchParams.get('q') ?? '').trim().slice(0, 40)
   if (q.length < 2) return NextResponse.json({ players: [] })
   try {

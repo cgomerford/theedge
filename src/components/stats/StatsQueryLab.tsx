@@ -42,6 +42,7 @@ import {
 import { AskCard, DeepPanel, OUTPUTS, OutputBar, type Output } from '@/components/stats/queryOutput'
 import { resolveMatchup } from '@/components/stats/queryWho'
 import HelpBar from '@/components/stats/queryHelp'
+import VsTeamCard, { type VsReq } from '@/components/stats/VsTeamCard'
 import { HitMatchPanel, type HitSearch } from '@/components/stats/queryHit'
 import { Avatar, ExpandBtn, GameDetailRow, NoteRow, RecentList, drillUrl, subCell, subHead, useDrill, type DrillQs } from '@/components/stats/queryDrill'
 import { ProLockBar } from '@/components/stats/queryUi'
@@ -249,6 +250,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
   // Daily lookup allowance: the server counts, this only shows what it sends back (null = Pro, or counting unavailable).
   const [lookups, setLookups] = useState<{ left: number; perDay: number } | null>(null)
   const [limited, setLimited] = useState(false)
+  const [vs, setVs] = useState<VsReq | null>(null)
   useEffect(() => {
     if (isPro) return
     let live = true
@@ -397,6 +399,12 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
     const mu = await resolveMatchup(s)
     const { state, understood: u, metrics } = parseQuery(mu ? mu.rest : s, q)
     const notes = [...(mu?.notes ?? []), ...u]
+    // "Juan Soto vs Yankees": a player against a club is answered with his record against them, for everyone.
+    setVs(mu?.who?.playerId && mu.who.team ? { playerId: mu.who.playerId, team: mu.who.team, role: mu.who.playerRole === 'pitch' ? 'pitch' : 'bat' } : null)
+    if (mu?.who && !isPro) {
+      notes.push(`Showing ${mu.who.playerName ?? 'the player'}'s career record against the club`)
+      mu.who = undefined
+    }
     if (mu?.who) {
       const stack = state.deep?.stack ?? (state.split ? [state.split] : [])
       state.deep = { ...(state.deep ?? { stack }), stack, who: mu.who }
@@ -404,8 +412,6 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
       if (!state.view || state.view === 'summary') state.view = 'summary'
       if (state.from == null) { state.from = CURRENT_SEASON; state.to = CURRENT_SEASON }
       notes.push(...describeDeep({ stack: [], who: mu.who }))
-    } else if (!isPro && extractMatchup(s)?.team) {
-      notes.push('Player-vs-club searches are not available on your account')
     }
     const grp = state.group ?? q.group
     if (state.deep && !isPro) {
@@ -588,6 +594,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
         </div>
       )}
 
+      {vs ? <div style={{ marginBottom: 14 }}><VsTeamCard req={vs} onLookups={(left, perDay, lim) => { if (left != null) setLookups({ left, perDay: perDay ?? 5 }); setLimited(lim) }} /></div> : null}
       {askOpen && (
         <AskCard output={output} onOutput={setOutput} chosen={chosen.filter(isAvailable)} onChosen={setChosen} group={q.group} isPro={isPro}
           available={isAvailable} heard={[describe(q)]} onShow={() => { setAskOpen(false); setEpoch(e => e + 1) }}
