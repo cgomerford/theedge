@@ -3,12 +3,29 @@
 // Team page, rebuilt to the build guide's layout: header with record / run differential / division place, three plain sentences, leaders,
 // next game, roster link, park, team defence (pending) and the staff's pitch mix. Server-rendered with NO session read: the Follow button is a
 // client island. The earlier club-profile view (components/team/TeamPage.tsx and its helpers) is left on disk.
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
+import Tabs from '@/components/ui/Tabs'
 import FollowIsland from '@/components/signup/FollowIsland'
+import TeamArticles from '@/components/TeamArticles'
+import SeasonSection from '@/components/team/SeasonSection'
+import IdentitySection from '@/components/team/IdentitySection'
+import StaffSection from '@/components/team/StaffSection'
+import OffenseSection from '@/components/team/OffenseSection'
+import DefenseRunningSection from '@/components/team/DefenseRunningSection'
+import RosterSection from '@/components/team/RosterSection'
+import { ScheduleSection, NewsSection } from '@/components/team/ScheduleNewsSection'
+import { TEAM_CSS } from '@/components/team/TeamPage'
+import { getTeamProfile } from '@/lib/team-profile'
+import { getMLBTeamNextGame, getMLBTeamNews } from '@/lib/mlb-homepage'
+import { getTeamComposition } from '@/lib/team-composition'
+import { getTeamTransactions } from '@/lib/team-transactions'
+import { getTeamUpcomingSchedule } from '@/lib/team-schedule'
+import { getAffiliateStandouts } from '@/lib/team-minors'
 import PendingBlock from '@/components/data/PendingBlock'
 import { Headshot, TeamMark } from '@/components/home/Logo'
 import { findTeamBySlug, teamIdBySlug } from '@/lib/teams'
@@ -21,7 +38,12 @@ import { SportsTeamSchema, BreadcrumbSchema } from '@/components/StructuredData'
 
 export const revalidate = 300
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }
+
+const TABS = [
+  { id: 'overview', label: 'Overview' }, { id: 'season', label: 'Season' }, { id: 'identity', label: 'Identity' }, { id: 'pitching', label: 'Pitching' },
+  { id: 'offense', label: 'Offense' }, { id: 'defense', label: 'Defense & running' }, { id: 'roster', label: 'Roster' }, { id: 'schedule', label: "What's next" }, { id: 'news', label: 'News' },
+]
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
@@ -39,8 +61,37 @@ const H = ({ children, sub }: { children: React.ReactNode; sub?: string }) => (
 const ord = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return `${n}${s[(v - 20) % 10] || s[v] || s[0]}` }
 const ops3 = (v: number) => v.toFixed(3).replace(/^0/, '')
 
-export default async function TeamRoute({ params }: Props) {
+// The other tabs reuse the club-profile sections (data from getTeamProfile and friends); only the active tab's data is fetched.
+async function TeamTab({ tab, team, mlbId, slug, season }: { tab: string; team: NonNullable<ReturnType<typeof findTeamBySlug>>; mlbId: number; slug: string; season: number }) {
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  // No session on this page: Pro-only expand panels render nothing, and the pitch-quality gate shows the signed-out row.
+  const isPro = false
+  if (tab === 'schedule') {
+    const [nextGame, schedule] = await Promise.all([getMLBTeamNextGame(mlbId), getTeamUpcomingSchedule(mlbId)])
+    return <ScheduleSection nextGame={nextGame} schedule={schedule} />
+  }
+  if (tab === 'news') {
+    const news = await getMLBTeamNews(slug, team.name)
+    return <NewsSection team={team} news={news} articlesSlot={<TeamArticles teamCode={team.abbrev} />} />
+  }
+  const profile = await getTeamProfile(mlbId, season, todayET)
+  if (!profile) return <PendingBlock label="Team profile (the league tables did not load)" />
+  if (tab === 'season') return <SeasonSection team={team} profile={profile} isPro={isPro} />
+  if (tab === 'identity') return <IdentitySection team={team} profile={profile} isPro={isPro} />
+  if (tab === 'pitching') return <StaffSection team={team} profile={profile} season={season} isPro={isPro} viewerTier="anon" />
+  if (tab === 'offense') return <OffenseSection team={team} profile={profile} isPro={isPro} season={season} />
+  if (tab === 'defense') return <DefenseRunningSection team={team} profile={profile} todayET={todayET} isPro={isPro} />
+  if (tab === 'roster') {
+    const [composition, transactions, minors] = await Promise.all([getTeamComposition(mlbId), getTeamTransactions(mlbId, 30), getAffiliateStandouts(mlbId, season)])
+    return <RosterSection team={team} profile={profile} isPro={isPro} composition={composition} ilList={transactions.filter(t => t.category === 'IL')} moves={transactions.filter(t => t.category !== 'IL')} minors={minors} />
+  }
+  return null
+}
+
+export default async function TeamRoute({ params, searchParams }: Props) {
   const { slug } = await params
+  const { tab: asked } = await searchParams
+  const tab = TABS.some(t => t.id === asked) ? (asked as string) : 'overview'
   const team = findTeamBySlug(slug)
   if (!team) notFound()
   const mlbId = teamIdBySlug(slug)
@@ -48,7 +99,8 @@ export default async function TeamRoute({ params }: Props) {
   const season = new Date().getFullYear()
 
   const venueId = (await mlb<{ teams?: { venue?: { id?: number } }[] }>(`/teams/${mlbId}`, 86400))?.teams?.[0]?.venue?.id ?? null
-  const b = await getTeamBits(mlbId, season, venueId)
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  const [b, profile] = await Promise.all([getTeamBits(mlbId, season, venueId), getTeamProfile(mlbId, season, todayET)])
   const r = b.record
   const diff = r ? `${r.diff > 0 ? '+' : r.diff < 0 ? '−' : ''}${Math.abs(r.diff)}` : ''
   const divText = r ? `${ord(r.divRank)} in the ${r.division}` : ''
@@ -83,6 +135,13 @@ export default async function TeamRoute({ params }: Props) {
           </div>
         ) : <div style={{ marginTop: 14 }}><PendingBlock label="Record" /></div>}
 
+        <div style={{ marginTop: 14 }}>
+          <Suspense fallback={null}><Tabs label="Team sections" defaultTab="overview" tabs={TABS} /></Suspense>
+        </div>
+        <div className="tp-root" style={{ marginTop: 8 }}>
+          <style dangerouslySetInnerHTML={{ __html: TEAM_CSS }} />
+          {tab === 'overview' ? (
+            <>
         {sentences.length > 0 ? (
           <>
             <H>Three things to know</H>
@@ -140,8 +199,13 @@ export default async function TeamRoute({ params }: Props) {
           <div style={{ fontSize: 15, ...num }}><b>x9Lab park index {b.park.index}</b> <span style={{ color: MUTE }}>({b.park.homeGames} home and {b.park.roadGames} road games, {b.park.seasons}; 100 is average)</span></div>
         ) : <PendingBlock label="Park index" />}
 
-        <H>Team defence</H>
-        <PendingBlock label="Team defence" />
+        <H sub="Outs above average, ranked among the 30 clubs">Team defence</H>
+        {profile ? (() => {
+          const d = profile.ranks.defense.find(m => m.key === 'oaa')
+          return d ? (
+            <div style={{ fontSize: 15, ...num }}><b style={{ fontSize: 22 }}>{d.display}</b> outs above average, <b>{ord(d.rank ?? 0)}</b> of {d.of}. {profile.oaa.map(o => `${o.label} ${o.team != null ? (o.team > 0 ? '+' : '') + o.team : 'pending'}`).join(' · ')}.{profile.precomputedAsOf ? <span style={{ color: MUTE }}> Through {profile.precomputedAsOf.slice(0, 10)}.</span> : null}</div>
+          ) : <PendingBlock label="Team defence" />
+        })() : <PendingBlock label="Team defence" />}
 
         <H sub={`Staff usage by pitch, weighted by pitches thrown, ${season} regular season`}>Pitch mix</H>
         {b.mix.length === 0 ? <PendingBlock label="Pitch mix" /> : (
@@ -158,6 +222,9 @@ export default async function TeamRoute({ params }: Props) {
             <div style={{ fontSize: 12, color: MUTE, marginTop: 4 }}>{Math.round(b.mixPitches).toLocaleString('en-US')} pitches in the stored staff data.</div>
           </>
         )}
+            </>
+          ) : <TeamTab tab={tab} team={team} mlbId={mlbId} slug={slug} season={season} />}
+        </div>
       </div>
     </main>
   )

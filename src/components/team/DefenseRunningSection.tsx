@@ -64,11 +64,21 @@ export default function DefenseRunningSection({ team, profile: p, todayET, isPro
       sub="Run prevention with the glove, pressure on the bases, and how the club uses its ABS challenges."
     >
       <div className="tp-grid-2">
-        <Card title="Defense">
-          <PendingBlock label="Team defence (outs above average)" />
+        <Card title="Defense" note="rank among 30">
+          {p.ranks.defense.length ? <RankBars metrics={p.ranks.defense} /> : <PendingBlock label="Team defence (outs above average)" />}
+          <Foot>Outs above average is Baseball Savant&apos;s public fielding measure{p.precomputedAsOf ? `, through ${p.precomputedAsOf.slice(0, 10)}` : ''}. Higher is better.</Foot>
         </Card>
         <Card title="Outs above average by area">
-          <PendingBlock label="Outs above average by area" />
+          {p.oaa.some(o => o.team != null) ? (
+            <div>
+              {p.oaa.map(o => (
+                <div key={o.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: '1px solid #e7e2d8', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ fontWeight: 700 }}>{o.label}</span>
+                  <span><b>{o.team == null ? 'pending' : `${o.team > 0 ? '+' : ''}${Math.round(o.team)}`}</b> <span style={{ color: '#8a8275', fontSize: 12 }}>league average {o.league == null ? '' : `${o.league > 0 ? '+' : ''}${o.league.toFixed(1)}`}</span></span>
+                </div>
+              ))}
+            </div>
+          ) : <PendingBlock label="Outs above average by area" />}
         </Card>
       </div>
 

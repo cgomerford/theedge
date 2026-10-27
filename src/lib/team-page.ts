@@ -24,13 +24,12 @@ type Sched = { dates?: { games: { gamePk: number; gameDate: string; officialDate
 export async function getTeamBits(teamId: number, season: number, venueId: number | null): Promise<TeamBits> {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   const end = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10)
-  const [stand, hit, pit, sched, park, arsenal] = await Promise.all([
+  const [stand, hit, pit, sched, park] = await Promise.all([
     mlb<Standings>(`/standings?leagueId=103,104&season=${season}&standingsTypes=regularSeason&hydrate=division`),
     mlb<Players>(`/stats?stats=season&group=hitting&sportId=1&season=${season}&teamId=${teamId}&playerPool=ALL&limit=60`),
     mlb<Players>(`/stats?stats=season&group=pitching&sportId=1&season=${season}&teamId=${teamId}&playerPool=ALL&limit=60`),
     mlb<Sched>(`/schedule?sportId=1&teamId=${teamId}&startDate=${today}&endDate=${end}&hydrate=probablePitcher,team,venue`),
     getParkIndex(venueId),
-    createAdminClient().from('pitcher_zone_arsenal').select('total_pitches, arsenal').eq('team_id', teamId).eq('season', season).eq('split', 'all').range(0, 999),
   ])
   let record: TeamBits['record'] = null
   for (const d of stand?.records ?? []) for (const t of d.teamRecords) if (t.team.id === teamId) {
@@ -49,7 +48,9 @@ export async function getTeamBits(teamId: number, season: number, venueId: numbe
     away: { name: g.teams.away.probablePitcher?.fullName ?? null }, homeP: { name: g.teams.home.probablePitcher?.fullName ?? null }, awayTeam: g.teams.away.team.name, homeTeam: g.teams.home.team.name,
   } : null
 
-  // Staff pitch mix: each pitcher's usage weighted by his pitches.
+  // Staff pitch mix: each pitcher's usage weighted by his pitches. The arsenal table's team_id is empty, so the club's pitchers come from its roster stats.
+  const ids = (pit?.stats?.[0]?.splits ?? []).map(s => s.player.id)
+  const arsenal = ids.length ? await createAdminClient().from('pitcher_zone_arsenal').select('total_pitches, arsenal').in('player_id', ids).eq('season', season).eq('split', 'all') : { data: [] as unknown[] }
   const tot = new Map<string, number>(); let all = 0
   for (const row of (arsenal.data ?? []) as { total_pitches: number | string; arsenal: Record<string, { usage_pct: number | null }> }[]) {
     const n = Number(row.total_pitches ?? 0)

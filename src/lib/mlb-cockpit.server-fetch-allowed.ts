@@ -4,7 +4,7 @@ export const REVALIDATE_SECONDS = 300
 
 export async function mlb<T>(path: string, revalidate: number = REVALIDATE_SECONDS): Promise<T | null> {
   try {
-    const res = await fetch(`${API}${path}`, { signal: AbortSignal.timeout(6000), next: { revalidate } })
+    const res = await fetch(`${API}${path}`, { signal: AbortSignal.timeout(12000), next: { revalidate } })
     return res.ok ? ((await res.json()) as T) : null
   } catch (e) {
     console.error('[game-cockpit] fetch failed:', path, e instanceof Error ? e.message : e)
