@@ -8,7 +8,7 @@
 //   1. The hitter's numbers are taken only against pitches that LOOK like this pitcher's. For each pitch type we measure the pitcher's
 //      spread of speed, spin, rise and arm-side break (mean and standard deviation, this season), then keep the hitter's pitches of the
 //      same type, from pitchers who throw with the same hand, whose speed, spin, rise and arm-side break all sit within a chosen number of
-//      standard deviations of the pitcher's average. Tighter or wider is a switch. Two seasons of the hitter are read.
+//      standard deviations of the pitcher's average. Tighter or wider is a switch, and so is how many seasons are read (default two, up to five) for the pitcher and the hitter alike.
 //   2. Everything is a count of real pitches. Nothing is projected: it says where he has thrown and where the hitter has struggled
 //      against pitches like these, and where the two meet. Small samples carry a red star, the count is always shown.
 //
@@ -105,6 +105,7 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
   const [count, setCount] = useState<CountKey>('all')
   const [measure, setMeasure] = useState<Measure>('whiff')
   const [tight, setTight] = useState('1.5')
+  const [years, setYears] = useState(2)
   const [matchOn, setMatchOn] = useState<'match' | 'type'>('match')
   const [batter, setBatter] = useState<Person | null>(null)
   const [bLog, setBLog] = useState<RawBatterPitch[] | null | 'error' | 'locked'>(null)
@@ -113,12 +114,25 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
   const [next, setNext] = useState<{ nextStart: { opponentName: string; date: string; isHome: boolean } | null; lineup: { id: number; name: string; order: number }[]; lineupSource: string } | null>(null)
   const gen = useRef(0)
 
+  // How many seasons to read, for the pitcher and the hitter alike. Wider means more pitches to match against and a steadier picture.
+  const seasonList = useMemo(() => Array.from({ length: years }, (_, i) => season - i), [years, season])
+
   useEffect(() => {
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}`).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
+    Promise.all(seasonList.map(y => fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${y}`).then(r => r.json()).then(j => (j.error ? null : (j as PitcherPitchLog))).catch(() => null))).then(all => {
+      if (off) return
+      const got = all.filter((x): x is PitcherPitchLog => !!x)
+      if (got.length === 0) { setLog('error'); return }
+      setLog({ ...got[0], pitches: got.flatMap(g => g.pitches), pitchNames: Object.assign({}, ...got.map(g => g.pitchNames)), batterNames: Object.assign({}, ...got.map(g => g.batterNames)) })
+    })
+    return () => { off = true }
+  }, [pitcherId, seasonList])
+
+  useEffect(() => {
+    let off = false
     fetch(`/api/mlb/next-start?playerId=${pitcherId}`).then(r => r.json()).then(j => { if (!off && !j.error) setNext(j) }).catch(() => {})
     return () => { off = true }
-  }, [pitcherId, season])
+  }, [pitcherId])
 
   useEffect(() => {
     const q = query.trim()
@@ -134,14 +148,14 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
     if (!batter) return
     let off = false
     const one = (y: number) => fetch(`/api/mlb/batter-pitch-log?batterId=${batter.id}&season=${y}`).then(async r => (r.status === 401 || r.status === 402 || r.status === 403 ? 'locked' as const : r.ok ? ((await r.json()) as BatterPitchLog) : null)).catch(() => null)
-    Promise.all([one(season), one(season - 1)]).then(([a, b]) => {
+    Promise.all(seasonList.map(one)).then(all => {
       if (off) return
-      if (a === 'locked' || b === 'locked') { setBLog('locked'); return }
-      const logs = [a, b].filter((x): x is BatterPitchLog => !!x)
+      if (all.some(a => a === 'locked')) { setBLog('locked'); return }
+      const logs = all.filter((x): x is BatterPitchLog => !!x && x !== 'locked')
       setBLog(logs.length ? logs.flatMap(l => l.pitches) : 'error')
     })
     return () => { off = true }
-  }, [batter, season])
+  }, [batter, seasonList])
 
   const throws = log && log !== 'error' ? log.throws : null
   const types = useMemo(() => {
@@ -243,7 +257,7 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
               <Headshot id={batter.id} name={batter.fullName} size={48} />
               <div>
                 <b style={{ fontSize: 22, fontWeight: 800 }}>{batter.fullName}</b>
-                <div style={{ fontSize: 13, color: C.mute }}>{stand ? `Bats ${stand === 'L' ? 'left' : 'right'} against ${throws === 'L' ? 'left' : 'right'}-handers` : bLog === null ? 'Loading the pitches…' : ''}{bList ? ` · ${bList.length} pitches seen, ${season - 1}–${season}` : ''}</div>
+                <div style={{ fontSize: 13, color: C.mute }}>{stand ? `Bats ${stand === 'L' ? 'left' : 'right'} against ${throws === 'L' ? 'left' : 'right'}-handers` : bLog === null ? 'Loading the pitches…' : ''}{bList ? ` · ${bList.length} pitches seen, ${years === 1 ? season : `${season - years + 1}–${season}`}` : ''}</div>
               </div>
               <button type="button" onClick={() => { setBatter(null); setBLog(null); setQuery('') }} style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer' }}>Change hitter</button>
             </div>
@@ -276,12 +290,11 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
           <Pills items={COUNTS.map(c => [c[0], c[1]] as [CountKey, string])} value={count} onChange={setCount} />
           {batter && <Pills items={MEASURES} value={measure} onChange={setMeasure} />}
         </div>
-        {batter && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
-            <Pills items={[['match', 'Pitches like these'], ['type', 'Every pitch of that type']] as ['match' | 'type', string][]} value={matchOn} onChange={setMatchOn} />
-            {matchOn === 'match' && <Pills items={TIGHT.map(([v, l]) => [v, l] as [string, string])} value={tight} onChange={setTight} />}
-          </div>
-        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
+          <Pills items={[['1', 'This season'], ['2', 'Last 2 seasons'], ['3', 'Last 3'], ['5', 'Last 5']] as [string, string][]} value={String(years)} onChange={v => setYears(Number(v))} />
+          {batter && <Pills items={[['match', 'Pitches like these'], ['type', 'Every pitch of that type']] as ['match' | 'type', string][]} value={matchOn} onChange={setMatchOn} />}
+          {batter && matchOn === 'match' && <Pills items={TIGHT.map(([v, l]) => [v, l] as [string, string])} value={tight} onChange={setTight} />}
+        </div>
 
         <div className="ov-tiles">
           <div className="ov-span2" style={tile}>
@@ -349,7 +362,7 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
                 ))}
               </tbody>
             </table>
-            <p style={note}>Each pitch shows the average and one standard deviation of this season&apos;s speed (mph), spin (rpm), rise and arm-side break (inches). {batter ? `A pitch the hitter faced counts as a match when it is the same type, from a pitcher who throws with the same hand, and all four numbers fall within ${tight} standard deviation${tight === '1' ? '' : 's'} of these (a standard deviation is never counted as less than 1.5 mph, 150 rpm, or 2.5 inches). The result columns use ${matchOn === 'match' ? 'those matches' : 'every pitch of the type'}.` : ''}</p>
+            <p style={note}>Each pitch shows the average and one standard deviation, over the seasons chosen above, of speed (mph), spin (rpm), rise and arm-side break (inches). {batter ? `A pitch the hitter faced counts as a match when it is the same type, from a pitcher who throws with the same hand, and all four numbers fall within ${tight} standard deviation${tight === '1' ? '' : 's'} of these (a standard deviation is never counted as less than 1.5 mph, 150 rpm, or 2.5 inches). The result columns use ${matchOn === 'match' ? 'those matches' : 'every pitch of the type'}.` : ''}</p>
           </div>
 
           <SmoothHeatmap pitches={P} title={`${name} · ${stand ? (stand === 'L' ? 'to lefties' : 'to righties') : 'all hitters'}`} counts={false} />
