@@ -33,6 +33,7 @@ import PitchUsageDonut from '@/components/PitchUsageDonut'
 import PitchArsenalSummary from '@/components/PitchArsenalSummary'
 import ZoneGrid, { METRICS, ZoneColorLegend } from '@/components/pitching-lab/ZoneGrid'
 import PitchGradeRadar from '@/components/pitching-lab/PitchGradeRadar'
+import PitchFlight from '@/components/pitching-lab/PitchFlight'
 import ReleaseChart from '@/components/pitching-lab/ReleaseChart'
 import EdgePlusCard from '@/components/pitching-lab/EdgePlusCard'
 import VeloBandChart from '@/components/pitching-lab/VeloBandChart'
@@ -57,8 +58,8 @@ const SPLIT_LABELS: Record<Split, string> = { all: 'All', vs_lhb: 'vs LHB', vs_r
 function StatBlock({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[9px] font-mono uppercase tracking-widest text-stone-400">{label}</div>
-      <div className="text-[15px] font-mono font-bold text-stone-900">{value}</div>
+      <div className="text-[9px] uppercase tracking-widest text-stone-400">{label}</div>
+      <div className="text-[15px] font-bold text-stone-900">{value}</div>
     </div>
   )
 }
@@ -84,8 +85,8 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
   return (
     <div className="space-y-5">
       <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-4">{row.pitchName} — full stat line</p>
-        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-4">
+        <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold mb-4">{row.pitchName} — full stat line</p>
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-4">
           <StatBlock label="Pitches" value={String(row.pitches)} />
           <StatBlock label="Usage%" value={`${row.usage.toFixed(1)}%`} />
           <StatBlock label="Velo" value={row.movement?.avgVelocity != null ? `${row.movement.avgVelocity.toFixed(1)} mph` : '—'} />
@@ -103,14 +104,14 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid md:grid-cols-2 gap-5">
         <div className="bg-white border border-stone-200 rounded-xl p-5">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold">{row.pitchName} — hot zone</p>
+            <p className="text-[10px] uppercase tracking-widest text-orange-600 font-bold">{row.pitchName} — hot zone</p>
             {availableSplits.length > 1 && (
               <div className="flex gap-1 bg-stone-100 rounded-lg p-0.5">
                 {availableSplits.map(s => (
-                  <button key={s} onClick={() => setSplit(s)} className={`font-mono uppercase tracking-wider rounded-md px-2 py-1 text-[9px] transition ${split === s ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}>
+                  <button key={s} onClick={() => setSplit(s)} className={`uppercase tracking-wider rounded-md px-2 py-1 text-[9px] transition ${split === s ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}>
                     {SPLIT_LABELS[s]}
                   </button>
                 ))}
@@ -122,7 +123,7 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
-                className={`font-mono uppercase tracking-wider rounded border px-2 py-1 text-[9px] transition ${
+                className={`uppercase tracking-wider rounded border px-2 py-1 text-[9px] transition ${
                   metric === m.key ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-400 hover:border-stone-300'
                 }`}
               >
@@ -136,7 +137,7 @@ function PitchDetail({ row, pitcherId, teamColor }: { row: MergedArsenalRow; pit
               <div className="mt-3"><ZoneColorLegend metric={metric} /></div>
             </>
           ) : (
-            <p className="text-center text-[12px] font-serif italic text-stone-400 py-10">No zone data for this pitch yet.</p>
+            <p className="text-center text-[12px] italic text-stone-400 py-10">No zone data for this pitch yet.</p>
           )}
         </div>
 
@@ -186,7 +187,7 @@ export default function ArsenalPage() {
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSelectedPitch('ALL')}
-            className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
+            className={`uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
               selectedPitch === 'ALL' ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
             }`}
           >
@@ -196,7 +197,7 @@ export default function ArsenalPage() {
             <button
               key={r.pitchType}
               onClick={() => setSelectedPitch(r.pitchType)}
-              className={`font-mono uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
+              className={`uppercase tracking-wider rounded-sm border px-3 py-1.5 text-[10px] transition ${
                 selectedPitch === r.pitchType ? 'border-[#FF5722] text-[#FF5722] bg-orange-50' : 'border-stone-200 text-stone-500 hover:border-stone-300'
               }`}
             >
@@ -212,6 +213,7 @@ export default function ArsenalPage() {
         <PitchDetail key={selectedRow.pitchType} row={selectedRow} pitcherId={data.id} teamColor={data.color} />
       ) : (
         <>
+          <PitchFlight pitcherId={data.id} movement={data.movementRows} />
           {liveRows && liveRows.length > 0 && <PitchArsenalSummary rows={liveRows} pitcherName={data.name} />}
 
           <div className="grid md:grid-cols-2 gap-5">
@@ -236,10 +238,10 @@ export default function ArsenalPage() {
 
           {merged.length > 0 && (
             <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-              <p className="text-[9px] font-mono uppercase tracking-widest text-orange-600 font-bold px-5 pt-5">Full arsenal breakdown</p>
-              <p className="text-[10px] font-mono text-stone-400 px-5 mt-1">Click a pitch above (or a row below) for its hot zone, full stat line, and grade.</p>
+              <p className="text-[9px] uppercase tracking-widest text-orange-600 font-bold px-5 pt-5">Full arsenal breakdown</p>
+              <p className="text-[10px] text-stone-400 px-5 mt-1">Click a pitch above (or a row below) for its hot zone, full stat line, and grade.</p>
               <div className="overflow-x-auto mt-3">
-                <table className="w-full text-[11px] font-mono min-w-[900px]">
+                <table className="w-full text-[11px] min-w-[900px]">
                   <thead>
                     <tr className="text-stone-400 uppercase text-[9px] tracking-wider">
                       <th className="text-left px-4 py-2">Pitch</th>
@@ -282,7 +284,7 @@ export default function ArsenalPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[9px] font-mono text-stone-400 px-4 py-3">
+              <p className="text-[9px] text-stone-400 px-4 py-3">
                 HB/IVB = horizontal/induced-vertical break (arm-side +, glove-side −). Velo/HB/IVB from pitch_arsenals; everything else from a live pitch-arsenal pull.
                 Run value sign convention: negative = good for the pitcher. Release point, spin rate/axis, extension, and approach angle aren&apos;t in this app&apos;s data pipeline — omitted rather than estimated.
               </p>

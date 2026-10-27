@@ -67,11 +67,15 @@ export type RawPitch = {
   armAngle: number | null
   spinRate: number | null
   extension: number | null
+  // Statcast's fitted flight path, in feet and seconds measured from release_pos_y (about 50 ft from the plate, catcher's view, +y toward the pitcher):
+  // [vx0, vy0, vz0, ax, ay, az, release_pos_y]. Position at time t is p0 + v0*t + a*t^2/2. Null if any piece is missing.
+  traj: number[] | null
   effectiveSpeed: number | null // real Savant field — release speed adjusted for extension (and a small batter-perceived-distance factor), i.e. "how fast it actually plays" to the hitter, not just the radar-gun number
 }
 
 export type PitcherPitchLog = {
   pitcherId: number
+  throws: 'L' | 'R' | null
   season: number
   pitches: RawPitch[]
   pitchNames: Record<string, string>
@@ -169,6 +173,9 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
   const iGamePk = idx('game_pk'), iAtBat = idx('at_bat_number'), iPitchNum = idx('pitch_number')
   const iRelX = idx('release_pos_x'), iRelZ = idx('release_pos_z'), iArm = idx('arm_angle')
   const iSpin = idx('release_spin_rate'), iExt = idx('release_extension')
+  const iTraj = ['vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'release_pos_y'].map(idx)
+  const iThrows = idx('p_throws')
+  let throws: 'L' | 'R' | null = null
   if (iDate === -1 || iPitchType === -1 || iPlateX === -1 || iPlateZ === -1) return null
 
   const pitches: RawPitch[] = []
@@ -204,6 +211,10 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
     const extension = iExt !== -1 ? Number(cells[iExt]) : NaN
     const effectiveSpeed = iEffSpeed !== -1 ? Number(cells[iEffSpeed]) : NaN
 
+    const trajRaw = iTraj.every(k => k !== -1) ? iTraj.map(k => cells[k]) : null
+    const traj = trajRaw && trajRaw.every(c => c !== '' && Number.isFinite(Number(c))) ? trajRaw.map(c => Math.round(Number(c) * 1000) / 1000) : null
+    if (!throws && iThrows !== -1 && (cells[iThrows] === 'L' || cells[iThrows] === 'R')) throws = cells[iThrows] as 'L' | 'R'
+
     pitches.push({
       date, pitchType, plateX, plateZ,
       zone: Number.isNaN(zoneRaw) ? null : String(Math.trunc(zoneRaw)),
@@ -228,11 +239,12 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
       armAngle: Number.isNaN(armAngle) ? null : armAngle,
       spinRate: Number.isNaN(spinRate) ? null : spinRate,
       extension: Number.isNaN(extension) ? null : extension,
+      traj,
       effectiveSpeed: Number.isNaN(effectiveSpeed) ? null : effectiveSpeed,
     })
   }
 
   if (pitches.length === 0) return null
   const { names: batterNames, active: batterActive } = await resolveBatters([...batterIds])
-  return { pitcherId, season, pitches, pitchNames, batterNames, batterActive }
+  return { pitcherId, season, pitches, pitchNames, batterNames, batterActive, throws }
 }
