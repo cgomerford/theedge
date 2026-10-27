@@ -1,57 +1,71 @@
 export const metadata = pageMeta({
   title: 'About',
   description:
-    'Why x9Lab exists, who builds it, and how public baseball data becomes plain-number game previews for fans who want more than a box score gives.',
+    'Why x9Lab exists and who builds it: a baseball fan from the UK with a data science background, putting front-office-style tools in front of fans. Built on public game data.',
   path: '/about',
 })
 
-import XMark from '@/components/XMark'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { CONTACT_EMAIL } from '@/lib/site'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import PendingBlock from '@/components/data/PendingBlock'
+
+const row: React.CSSProperties = { padding: '16px 0', borderTop: '1px solid #e7e2d8' }
+const h2: React.CSSProperties = { margin: '40px 0 4px', fontSize: 13, fontWeight: 800, letterSpacing: '.12em', color: '#FF5722', textTransform: 'uppercase' }
+const p: React.CSSProperties = { margin: '0 0 16px', fontSize: 17, lineHeight: 1.65, color: '#3a352c' }
+
+const PRINCIPLES: { name: string; body: string }[] = [
+  { name: 'Show the sample', body: 'Every number carries the count behind it, and a number from too few pitches is marked as a small sample instead of being shown as if it meant something.' },
+  { name: 'Compare to something', body: "A .320 average only means something against the league. Stats are shown against league averages and as percentile ranks, and zone maps are shaded against the league baseline." },
+  { name: 'Keep the context', body: 'A park changes what a fly ball is worth, and a count changes what a pitcher throws. Where context matters, it is on the page next to the number.' },
+  { name: 'Describe, do not forecast', body: 'The pages say what players and pitchers have done and how often. They do not claim to know what happens next.' },
+  { name: 'Say what is missing', body: 'Where the data is not there, the page says so. Nothing is filled in to make a page look complete.' },
+]
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-[#FAF8F3] text-stone-900">
+    <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }]} />
       <SiteHeader variant="page" />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <Link href="/" className="text-[10px] font-mono uppercase tracking-widest text-[#FF5722] hover:underline">
-          ← Back to home
-        </Link>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 16px 80px' }}>
+        <h1 style={{ margin: '0 0 24px', fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>About x9Lab</h1>
 
-        <div className="text-[10px] font-mono uppercase tracking-widest text-stone-400 mt-8 mb-2"><XMark /> About</div>
-        <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight mb-12">
-          About x9Lab<span className="text-[#FF5722]">.</span>
-        </h1>
+        <p style={p}>
+          I&apos;m George. I built x9Lab. I&apos;m a baseball fan from the UK, and I love the sport for its statistics as much as for the games.
+        </p>
+        <p style={p}>
+          It started at a Phillies game. The scoreboard was full of numbers I had never seen on a screen at a ballpark: pitch speeds, spin, how a hitter does against each pitch. It made me want to understand all of it, so I went looking for where those numbers came from and found Baseball Savant. The data was all there, but I found it hard to use. Working out what a column meant, which page to open, and how a number should be read took more effort than watching the game did.
+        </p>
+        <p style={p}>
+          So I decided to build the thing I was looking for: the same public data, laid out so a fan can read it, with the depth still there for anyone who wants to keep digging.
+        </p>
 
-        <div className="space-y-6 text-lg leading-relaxed text-stone-700 font-serif">
-          <p>
-            Sports media in 2026 is split into two camps. On one side, the data tools — other stat sites — built for experts, full of insight, but offering no story and no daily ritual.
-          </p>
-          <p>
-            On the other side, mainstream sports media — the takes, the highlights, the box scores. Easy to consume, but rarely teaches you anything you didn&apos;t already know.
-          </p>
-          <p>
-            x9Lab sits in the middle. We take the data the experts use, find the one or two stats that will actually matter in tonight&apos;s game, and tell you the story before first pitch. Five minutes. Free. Every day.
-          </p>
-          <p>
-            We&apos;re built for fans who want to watch smarter, journalists who want angles their colleagues missed, and anyone who&apos;s ever wondered why the same pitcher dominates one lineup and gets shelled by another.
-          </p>
-          <p>
-            We&apos;re information, not advice. We don&apos;t tell you who to bet on. We tell you what the data says — and you decide what it means.
-          </p>
+        <h2 style={h2}>Why now</h2>
+        <p style={p}>
+          Teams now employ whole analytics departments, and the tools they use to prepare for a game are far ahead of what fans can see. I work with data for a living [George: confirm how you describe your data science background], and I wanted to use that to build the kind of tools a front office might use, with the same discipline behind them, and put them in front of fans.
+        </p>
+
+        <h2 style={h2}>What that means in practice</h2>
+        <div>
+          {PRINCIPLES.map(r => (
+            <div key={r.name} style={row}>
+              <div style={{ fontSize: 17, fontWeight: 800 }}>{r.name}</div>
+              <div style={{ fontSize: 15, color: '#3a352c', marginTop: 2, lineHeight: 1.55 }}>{r.body}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-12">
-          <PendingBlock label="About bio [George: wording]" />
-        </div>
+        <h2 style={h2}>Who it is for</h2>
+        <p style={p}>
+          Fans who want to watch with more to look at, people who play fantasy, writers who want an angle their colleagues missed, and anyone who has wondered why the same pitcher dominates one lineup and struggles against another. It is information, not advice, and it is independent of MLB and its clubs.
+        </p>
+        <p style={{ ...p, marginBottom: 0 }}>
+          To see how it is built, read <Link href="/how-it-works" style={{ color: '#FF5722', fontWeight: 800 }}>How it works</Link> and <Link href="/why-edge" style={{ color: '#FF5722', fontWeight: 800 }}>Why x9Lab</Link>.
+        </p>
 
-        <div className="mt-16 pt-8 border-t border-stone-200 text-sm text-stone-500 font-mono">
-          <p>Have a question, a story tip, or want to partner? <a href={`mailto:${CONTACT_EMAIL}`} className="text-[#FF5722] hover:underline">{CONTACT_EMAIL}</a></p>
+        <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid #e7e2d8', fontSize: 14, color: '#8a8275' }}>
+          Have a question, a correction or an idea? <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#FF5722', fontWeight: 800 }}>{CONTACT_EMAIL}</a>
         </div>
       </div>
     </main>
