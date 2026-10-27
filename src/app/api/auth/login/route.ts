@@ -83,13 +83,14 @@ export async function POST(req: NextRequest) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = loginLinkEmail(parsed.data.email, token)
-      await resend.emails.send({
+      const { error: sendError } = await resend.emails.send({
         from: `x9Lab <${CONTACT_EMAIL}>`,
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,
         text: content.text,
       })
+      if (sendError) console.error('[Login email] Resend rejected the send:', sendError.name, sendError.message)
     } catch (e) {
       console.error('Login email failed:', e)
     }

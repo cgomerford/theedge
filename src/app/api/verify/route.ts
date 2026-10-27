@@ -43,13 +43,14 @@ export async function GET(req: NextRequest) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = welcomeEmail(sub.email, sub.preferences_token)
-      await resend.emails.send({
+      const { error: sendError } = await resend.emails.send({
         from: `x9Lab <${CONTACT_EMAIL}>`,
         to: sub.email,
         subject: content.subject,
         html: content.html,
         text: content.text,
       })
+      if (sendError) console.error('[Verify email] Resend rejected the send:', sendError.name, sendError.message)
     } catch (e) {
       console.error('Welcome email failed:', e)
     }

@@ -141,13 +141,14 @@ let fanType: string = 'casual'
       const resend = new Resend(process.env.RESEND_API_KEY)
       const content = verificationEmail(parsed.data.email, verificationToken)
 
-      await resend.emails.send({
+      const { error: sendError } = await resend.emails.send({
         from: `x9Lab <${CONTACT_EMAIL}>`,
         to: parsed.data.email,
         subject: content.subject,
         html: content.html,
         text: content.text,
       })
+      if (sendError) console.error('[Subscribe email] Resend rejected the send:', sendError.name, sendError.message)
     } catch (emailError) {
       console.error('Verification email failed:', emailError)
     }
