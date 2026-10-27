@@ -23,7 +23,8 @@ export async function GET(req: Request) {
     // Lookups left today for the ask lab: null for Pro and when counting is unavailable. Read-only: no cookie, no charge.
     const viewer = await resolveViewer(req)
     const lookupsLeft = await getLookupsLeft(viewer).catch(() => null)
-    const perDay = lookupsLeft == null ? null : perDayFor(viewer)
+    // The allowance is shown even when counting is unavailable (then only lookupsLeft is null); null perDay = Pro, unlimited.
+    const perDay = perDayFor(viewer)
 
     if (!subscriber) {
       return NextResponse.json({ authenticated: false, is_pro: false, lookupsLeft, perDay })

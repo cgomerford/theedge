@@ -30,7 +30,7 @@ const READING: Row[] = [
   { name: 'Percentile bars', body: 'A bar shows where a number ranks among MLB players, with the 100th percentile at the far right. The number is bold and coloured from green (high) to red (low). On a stat where lower is better, such as walk rate for a pitcher, it is flipped so green is still good.' },
   { name: 'Pitch colours', body: 'Every pitch type has one colour across the site, and always a text label beside it, never colour alone. The spinning ball beside a pitch shows its spin: how fast, and which way it turns.' },
   { name: 'Pitch mix and count plan', body: 'Pitch mix is the share of a pitcher\'s pitches by type. The count plan shows what he throws in each count, as a bar with the share labelled on each pitch.' },
-  { name: 'Park index and hits by park', body: 'The park index compares how a ballpark plays against the others. The hits table ranks each park by hits per game and shows where the hits go: left, centre and right. [George: park index method]' },
+  { name: 'Park index and hits by park', body: 'The park index compares how a ballpark plays against the others. The hits table ranks each park by hits per game and shows where the hits go: left, centre and right. The index is the runs per game (both teams) in home games at that park, divided by the runs per game the same home teams score and allow away from it, over the last three seasons, times 100. 100 is neutral; 110 means 10% more runs at that park than the same teams see on the road.' },
   { name: 'Bullpen usage', body: "Counted from the box scores: for each reliever, how many pitches on each of the last few days, so you can see who has been used and who is rested. A reliever is any pitcher who entered after the starter." },
 ]
 

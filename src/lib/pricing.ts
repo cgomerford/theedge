@@ -1,3 +1,4 @@
+import { FREE_LIMITS } from '@/lib/follows/config'
 // The ONE place prices live in code. Stripe holds the real prices (the price ids come from the STRIPE_PRICE_* env vars read
 // in src/lib/stripe.ts and used by /api/stripe/checkout); these numbers are only what we print. Keep them in step with Stripe.
 //
@@ -25,7 +26,7 @@ export function foundingThenMonthly(): string {
 }
 
 /** What a free account can follow. The one place the limits live. */
-export const FREE_FOLLOW_LIMITS = { players: 10, teams: 3 } as const
+export const FREE_FOLLOW_LIMITS = { players: FREE_LIMITS.player, teams: FREE_LIMITS.team } as const
 
 /** When true, signed-out visitors see the prices on /pricing (and only there). When false they see "Create account to see Pro pricing". */
 export const SHOW_PRICE_SIGNED_OUT_ON_PRICING = true

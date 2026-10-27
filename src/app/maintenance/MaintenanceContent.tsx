@@ -94,7 +94,7 @@ export default function MaintenanceContent() {
           marginBottom: '32px',
         }}
       >
-        [George: wording] This page is being updated.
+        x9Lab is being updated. Please check back in a few minutes.
       </p>
 
 

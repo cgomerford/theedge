@@ -4,9 +4,9 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import type { AuthSubscriber } from '@/lib/auth'
-import { FREE_FOLLOW_LIMITS } from '@/lib/pricing'
+import { FREE_LIMITS } from '@/lib/follows/config'
 
-export const FOLLOW_LIMITS = { player: FREE_FOLLOW_LIMITS.players, team: FREE_FOLLOW_LIMITS.teams } as const
+export const FOLLOW_LIMITS = FREE_LIMITS
 export type FollowKind = 'player' | 'team'
 
 export type PlayerFollow = { player_id: number; player_name: string }

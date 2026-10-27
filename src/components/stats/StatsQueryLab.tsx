@@ -250,13 +250,13 @@ function scatterOf(items: { name: string; totals: Totals | null; league: Totals 
 
 export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; isSignedIn: boolean }) {
   // Daily lookup allowance: the server counts, this only shows what it sends back (null = Pro, or counting unavailable).
-  const [lookups, setLookups] = useState<{ left: number; perDay: number } | null>(null)
+  const [lookups, setLookups] = useState<{ left: number | null; perDay: number } | null>(null)
   const [limited, setLimited] = useState(false)
   const [vs, setVs] = useState<VsReq | null>(null)
   useEffect(() => {
     if (isPro) return
     let live = true
-    fetch('/api/auth/status').then(r => r.json()).then(j => { if (live && typeof j.lookupsLeft === 'number' && typeof j.perDay === 'number') setLookups({ left: j.lookupsLeft, perDay: j.perDay }) }).catch(() => { /* the counter just stays hidden */ })
+    fetch('/api/auth/status').then(r => r.json()).then(j => { if (live && typeof j.perDay === 'number') setLookups({ left: typeof j.lookupsLeft === 'number' ? j.lookupsLeft : null, perDay: j.perDay }) }).catch(() => { /* the counter just stays hidden */ })
     return () => { live = false }
   }, [isPro])
   const [q, setQ] = useState<QueryState>(DEFAULT_QUERY)
@@ -524,22 +524,19 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
         <div style={{ fontFamily: SANS, fontSize: 13.5, color: '#5b5347', marginBottom: 12 }}>
           Ask it the way you’d say it — a player, a club, a situation, a year (“2 out home runs in the 5th inning”). It sets the filters below for you, and each question uses one lookup.
         </div>
-        {!isPro ? (
-          <div style={{ minHeight: 20, marginBottom: 8, fontFamily: SANS, fontSize: 13, color: '#8a8275', fontVariantNumeric: 'tabular-nums' }}>
-            {lookups ? `${lookups.left} of ${lookups.perDay} left today` : ''}
-          </div>
-        ) : null}
+        <div style={{ minHeight: 20, marginBottom: 8, fontFamily: SANS, fontSize: 13, color: '#8a8275', fontVariantNumeric: 'tabular-nums' }}>
+          {isPro ? 'Pro: unlimited lookups'
+            : lookups ? (lookups.left != null ? `${lookups.left} of ${lookups.perDay} left today` : `${lookups.perDay} lookups a day${isSignedIn ? '' : ' without an account · 10 with a free account · Pro is unlimited'}`) : ''}
+        </div>
         {!isPro && (limited || lookups?.left === 0) ? (
           <div style={{ border: '1px solid #e7e2d8', borderRadius: 14, background: '#fff', padding: '14px 18px', marginBottom: 14, fontFamily: SANS, fontSize: 14, color: '#1A1A1A' }}>
             {isSignedIn ? (
               <>
-                {/* [George: confirm wording] */}
                 <div style={{ marginBottom: 10 }}>You&apos;ve used today&apos;s {lookups?.perDay ?? 5} lookups. More at midnight UK time.</div>
                 <Link href="/pricing" style={{ display: 'inline-block', background: '#1A1A1A', color: '#fff', padding: '8px 14px', fontWeight: 800, textDecoration: 'none' }}>See Pro</Link>
               </>
             ) : (
               <>
-                {/* [George: confirm wording] */}
                 <div style={{ marginBottom: 10 }}>You&apos;ve used today&apos;s {lookups?.perDay ?? 5} lookups. Create a free account to save your follows and dashboards.</div>
                 <Link href="/signup?return_to=/mlb/ask" style={{ display: 'inline-block', background: '#FF5722', color: '#fff', padding: '8px 14px', fontWeight: 800, textDecoration: 'none' }}>Create account</Link>
                 <Link href="/pricing" style={{ marginLeft: 14, color: '#5b5347', fontWeight: 700 }}>See Pro</Link>
@@ -683,7 +680,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
               </div>
             </div>
             <Disclosure step="1 ·" title="Who" defaultOpen summary={deepNow.who ? describeDeep({ stack: [], who: deepNow.who }).join(' · ') : 'Any player, any club'}
-              hint="Pick a player, a club, or both — for example a hitter against one club's pitching.">
+              hint="Choose a player, a club, or both — for example a hitter against one club's pitching.">
               <DeepPanel parts={['who']} deep={deepNow} onChange={d => patch({ deep: d })} group={q.group} families={[]} isPro={isPro} />
               <div style={{ marginTop: 12 }}><DeepPanel parts={['stack']} deep={deepNow} onChange={d => patch({ deep: d })} group={q.group} families={famsOf('hand')} isPro={isPro} /></div>
             </Disclosure>

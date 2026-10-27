@@ -41,7 +41,7 @@ const OPENS: { name: string; shows: string; why: string }[] = [
   { name: 'Arsenal and Shape', shows: 'Every pitch a starter throws, how much it moves and how hard, against league average.', why: 'Why a 93 mph fastball can play like 97.' },
   { name: 'Sequencing', shows: 'What he throws in each count, and what follows what.', why: "Watch a 1-2 count and know what's coming." },
   { name: 'Location and Overlay', shows: 'Where his pitches finish, by batter hand and count.', why: 'The plan, drawn on the zone.' },
-  { name: 'Trends', shows: 'Velocity and usage, start by start.', why: "Spot the arm that's fading, or the new pitch he's leaning on." },
+  { name: 'Trends', shows: 'Velocity and usage, game by game.', why: "Spot the arm that's fading, or the new pitch he's using more." },
   { name: 'Career head-to-head', shows: 'Every plate appearance between a hitter and a pitcher, with the sample size on it.', why: 'The history, with honest sample sizes.' },
 ]
 
@@ -51,7 +51,7 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'What happens in the off-season?', a: 'The labs, player pages and your own page run on the full 2026 season, so you can look back at any player or pitcher. Game-day pages return in spring.' },
   { q: 'Where does the data come from?', a: 'Built on public game data. Independent, not affiliated with MLB.' },
   { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
-  { q: 'Can I get a refund?', a: '[George: refund policy]' },
+  { q: 'Can I get a refund?', a: `If something is not right with your subscription, email cgomerford@gmail.com and we will look at it. You can cancel at any time from your page, and Pro stays open until the end of the period you have paid for.` },
   { q: 'Do I need an account to buy?', a: 'Yes. Create a free account first, then upgrade from inside it, so Pro is attached to you.' },
   { q: "What's free forever?", a: 'The scout report summary and recap, following players and teams, the free Batting Lab tabs, live games, the stats leaderboards and dropdown search, ten Ask the stats questions a day, the stats graphs and one full deep look a day.' },
   { q: 'How do the Ask the stats lookups work?', a: 'Each new question you type uses one lookup: 10 a day with an account, 5 without one, unlimited on Pro. Changing seasons or filters on the same question within 15 minutes is free, and so is the dropdown search. The count resets at midnight UK time.' },
@@ -76,7 +76,7 @@ export default async function PricingPage() {
         <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 20px', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '16px 0', marginBottom: 36 }}>
           {tier === 'anon' ? (
             <>
-              <span style={{ fontSize: 20, fontWeight: 800, flex: '1 1 240px' }}>Start free. No card.</span>
+              <span style={{ fontSize: 20, fontWeight: 800, flex: '1 1 240px' }}>Begin free. No card.</span>
               <CreateAccountButton source="pricing_free" label="Create account" accent />
             </>
           ) : (

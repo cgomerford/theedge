@@ -24,7 +24,7 @@ import type { QueryState } from '@/lib/stats-query-catalog'
 export const ASK_LOOKUPS_PER_DAY = 5              // signed-out visitors
 export const ASK_LOOKUPS_PER_DAY_SIGNED_IN = 10   // signed-in Free accounts (Pro is unlimited and never counted)
 export const ASK_REFINE_MINUTES = 15
-export const ASK_IP_BACKSTOP_PER_DAY = 15   // [George: confirm 15]
+export const ASK_IP_BACKSTOP_PER_DAY = 15
 export const ANON_COOKIE = 'x9_anon'
 
 export type Viewer =

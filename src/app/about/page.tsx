@@ -53,7 +53,7 @@ export default function AboutPage() {
 
         <h2 style={h2}>Why now</h2>
         <p style={p}>
-          Teams now employ whole analytics departments, and the tools they use to prepare for a game are far ahead of what fans can see. I work with data for a living [George: confirm how you describe your data science background], and I wanted to use that to build the kind of tools a front office might use, with the same discipline behind them, and put them in front of fans.
+          Teams now employ whole analytics departments, and the tools they use to prepare for a game are far ahead of what fans can see. I work with data for a living, and I wanted to use that to build the kind of tools a front office might use, with the same discipline behind them, and put them in front of fans.
         </p>
 
         <h2 style={h2}>What that means in practice</h2>

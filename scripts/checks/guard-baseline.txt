@@ -74,3 +74,5 @@ fetch	src/lib/scout/abs-lab.ts
 fetch	src/lib/scout/abs-desk.ts
 fetch	src/lib/scout/run-lab.ts
 fetch	src/lib/scout/run-game.ts
+fetch	src/components/pro/UnfollowButton.tsx
+logos	src/components/stats/StatsQueryLab.tsx

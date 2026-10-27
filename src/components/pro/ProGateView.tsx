@@ -12,7 +12,7 @@ import LabAnonLine from './LabAnonLine'
 //   tier 'member' -> the shell (real labels, no numbers), then either "open your free deep look" (openable) or "look used" + upgrade.
 //   tier 'anon'   -> the shell, then the signed-out line and "Create account". No price. (`noButton`: signed-in but the look table is unavailable.)
 
-// Wording below is placeholder copy from the brief: [George: look-left line / open-look line / look-used line / upgrade button / signed-out line / signup button]
+// Wording for the look-left, open-look, look-used, upgrade, signed-out and signup lines.
 export const FREE_LOOK_NOTE = 'Your free deep look for today. Pro opens every one.'
 export const OPEN_LINE = 'Open your free deep look for today'
 export const USED_LINE = 'Your free deep look today is used.'
