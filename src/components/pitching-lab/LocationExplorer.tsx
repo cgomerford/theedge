@@ -18,9 +18,9 @@ import { SmoothHeatmap } from './ArsenalExtras'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { buildPaths } from './PitchFlight'
 
-const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
-const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
-const note: React.CSSProperties = { margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.5 }
+export const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
+export const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
+export const note: React.CSSProperties = { margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.5 }
 
 type Hand = 'all' | 'L' | 'R'
 type CountKey = 'all' | 'first' | 'ahead' | 'behind' | 'two'
@@ -34,28 +34,28 @@ const COUNTS: [CountKey, string, (p: RawPitch) => boolean][] = [
 const HANDS: [Hand, string][] = [['all', 'All hitters'], ['L', 'vs left-handed'], ['R', 'vs right-handed']]
 
 // Geometry in feet, batter's view. The nine inner cells are the strike zone; the outer box holds the four corners (11 to 14).
-const IX = [-0.83, -0.277, 0.277, 0.83], IZ = [3.5, 2.833, 2.167, 1.5]
-const OX0 = -1.5, OX1 = 1.5, OZ0 = 0.7, OZ1 = 4.3
-const VW = 420, SC = VW / (OX1 - OX0), VH = SC * (OZ1 - OZ0)
-const px = (x: number) => (x - OX0) * SC, pz = (z: number) => (OZ1 - z) * SC
+export const IX = [-0.83, -0.277, 0.277, 0.83], IZ = [3.5, 2.833, 2.167, 1.5]
+export const OX0 = -1.5, OX1 = 1.5, OZ0 = 0.7, OZ1 = 4.3
+export const VW = 420, SC = VW / (OX1 - OX0), VH = SC * (OZ1 - OZ0)
+export const px = (x: number) => (x - OX0) * SC, pz = (z: number) => (OZ1 - z) * SC
 
-function cellRect(z: string): { x0: number; x1: number; z0: number; z1: number } {
+export function cellRect(z: string): { x0: number; x1: number; z0: number; z1: number } {
   const n = Number(z)
   if (n >= 1 && n <= 9) { const r = Math.floor((n - 1) / 3), c = (n - 1) % 3; return { x0: IX[c], x1: IX[c + 1], z0: IZ[r + 1], z1: IZ[r] } }
   const left = n === 11 || n === 13, top = n === 11 || n === 12
   return { x0: left ? OX0 : 0, x1: left ? 0 : OX1, z0: top ? 2.5 : OZ0, z1: top ? OZ1 : 2.5 }
 }
-function labelAt(z: string): { x: number; y: number } {
+export function labelAt(z: string): { x: number; y: number } {
   const n = Number(z)
   if (n >= 1 && n <= 9) { const r = cellRect(z); return { x: px((r.x0 + r.x1) / 2), y: pz((r.z0 + r.z1) / 2) } }
   return { x: px(n === 11 || n === 13 ? -1.17 : 1.17), y: pz(n === 11 || n === 12 ? 3.9 : 1.1) }
 }
 
-function mix(a: [number, number, number], b: [number, number, number], t: number): string {
+export function mix(a: [number, number, number], b: [number, number, number], t: number): string {
   const k = Math.max(0, Math.min(1, t))
   return `rgb(${Math.round(a[0] + (b[0] - a[0]) * k)},${Math.round(a[1] + (b[1] - a[1]) * k)},${Math.round(a[2] + (b[2] - a[2]) * k)})`
 }
-const NEUTRAL: [number, number, number] = [244, 241, 234], BLUE: [number, number, number] = [108, 171, 221], RED: [number, number, number] = [212, 83, 59], ORANGE: [number, number, number] = [255, 138, 92]
+export const NEUTRAL: [number, number, number] = [244, 241, 234], BLUE: [number, number, number] = [108, 171, 221], RED: [number, number, number] = [212, 83, 59], ORANGE: [number, number, number] = [255, 138, 92]
 
 function fill(key: MetricKey, v: number | null, overall: number | null, max: number): string {
   if (v == null) return '#faf8f3'
@@ -67,10 +67,10 @@ function fill(key: MetricKey, v: number | null, overall: number | null, max: num
   return hitterGood >= 0 ? mix(NEUTRAL, RED, hitterGood) : mix(NEUTRAL, BLUE, -hitterGood)
 }
 
-const star = <span style={{ color: '#D4533B', fontWeight: 800 }}>*</span>
-const zoneName = (z: string) => (z === 'all' ? 'All zones' : Number(z) <= 9 ? `Zone ${z}${z === '5' ? ' (middle)' : ''}` : `Corner ${z}`)
+export const star = <span style={{ color: '#D4533B', fontWeight: 800 }}>*</span>
+export const zoneName = (z: string) => (z === 'all' ? 'All zones' : Number(z) <= 9 ? `Zone ${z}${z === '5' ? ' (middle)' : ''}` : `Corner ${z}`)
 
-function Pills<T extends string>({ items, value, onChange }: { items: [T, string][]; value: T; onChange: (v: T) => void }) {
+export function Pills<T extends string>({ items, value, onChange }: { items: [T, string][]; value: T; onChange: (v: T) => void }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {items.map(([k, l]) => (

@@ -1,27 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import HotZoneOverlay from '@/components/pitching-lab/HotZoneOverlay'
+// src/app/mlb/lab/pitching-lab/[playerId]/overlay/page.tsx
+//
+// Pitching Lab → Hot Zone Overlay: this pitcher set against a chosen hitter (or the next game's lineup), count by count, with the hitter's
+// numbers taken against pitches that look like the pitcher's. All of it is built in OverlayExplorer. (The older HotZoneOverlay.tsx is no longer used here.)
+
+import OverlayExplorer from '@/components/pitching-lab/OverlayExplorer'
 import { usePitchingLabData } from '@/lib/pitching-lab-context'
 
 export default function OverlayPage() {
   const { data, failed } = usePitchingLabData()
-  const [pitchHand, setPitchHand] = useState<'L' | 'R' | null>(null)
-
-  const playerId = data?.id ?? null
-
-  useEffect(() => {
-    if (!playerId) return
-    let cancelled = false
-    fetch(`/api/mlb/pitcher-bio?playerId=${playerId}`)
-      .then(r => r.json())
-      .then(json => { if (!cancelled && !json.error) setPitchHand(json.identity?.pitchHand ?? null) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [playerId])
 
   if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this pitcher&apos;s data right now.</div>
-  if (data === null || playerId === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
+  if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
 
-  return <HotZoneOverlay pitcherId={playerId} pitcherThrows={pitchHand} />
+  return <OverlayExplorer pitcherId={data.id} />
 }

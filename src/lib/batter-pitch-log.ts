@@ -49,6 +49,10 @@ export type RawBatterPitch = {
   onBase: { first: boolean; second: boolean; third: boolean }
   gamePk: number | null
   atBatNumber: number | null
+  spinRate: number | null
+  pfxX: number | null // Savant's break against a spin-free path, feet, catcher's view
+  pfxZ: number | null
+  woba: number | null; xwoba: number | null; wobaDen: number | null // results on the pitch that ended the plate appearance
   pitchNumber: number | null // order within the at-bat — needed to reconstruct true pitch sequence, same as pitcher-pitch-log.ts
 }
 
@@ -105,7 +109,7 @@ function numOrNaN(s: string): number {
 
 export async function getBatterPitchLog(batterId: number, season = SEASON_FALLBACK): Promise<BatterPitchLog | null> {
   return withSavantCache(
-    `pitch-log:v2:${batterId}:${season}`, // v2: rows carry stand/szTop/szBot (Swing Lab)
+    `pitch-log:v3:${batterId}:${season}`, // v3: rows also carry spin, break and wOBA fields (Hot Zone Overlay)
     21600,
     () => fetchBatterPitchLog(batterId, season),
   )
@@ -148,6 +152,8 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
   const iZone = idx('zone')
   const iBalls = idx('balls'), iStrikes = idx('strikes'), iInning = idx('inning')
   const iOn1b = idx('on_1b'), iOn2b = idx('on_2b'), iOn3b = idx('on_3b')
+  const iSpin = idx('release_spin_rate'), iPfxX = idx('pfx_x'), iPfxZ = idx('pfx_z')
+  const iWv = idx('woba_value'), iXw = idx('estimated_woba_using_speedangle'), iWd = idx('woba_denom')
   const iGamePk = idx('game_pk'), iAtBat = idx('at_bat_number'), iPitchNum = idx('pitch_number')
   if (iDate === -1 || iPitchType === -1 || iPlateX === -1 || iPlateZ === -1) return null
 
@@ -184,6 +190,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
     const atBatNumber = iAtBat !== -1 ? numOrNaN(cells[iAtBat]) : NaN
     const pitchNumber = iPitchNum !== -1 ? numOrNaN(cells[iPitchNum]) : NaN
     if (!Number.isNaN(pitcherId)) pitcherIds.add(pitcherId)
+    const opt = (i: number) => { const v = i !== -1 ? numOrNaN(cells[i]) : NaN; return Number.isNaN(v) ? null : v }
 
     pitches.push({
       date, pitchType, releaseSpeed: Number.isNaN(releaseSpeed) ? null : releaseSpeed, plateX, plateZ,
@@ -211,6 +218,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
       gamePk: Number.isNaN(gamePk) ? null : gamePk,
       atBatNumber: Number.isNaN(atBatNumber) ? null : atBatNumber,
       pitchNumber: Number.isNaN(pitchNumber) ? null : pitchNumber,
+      spinRate: opt(iSpin), pfxX: opt(iPfxX), pfxZ: opt(iPfxZ), woba: opt(iWv), xwoba: opt(iXw), wobaDen: opt(iWd),
     })
   }
 

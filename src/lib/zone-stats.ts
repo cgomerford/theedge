@@ -3,7 +3,8 @@
 // Zone-by-zone results for one pitcher from his per-pitch log (src/lib/pitcher-pitch-log.ts). Pure functions, safe to import in the browser.
 // A pitch is placed by Savant's own zone number (1-9 are the strike zone seen from behind the plate, 11-14 the four corners around it).
 // Everything is a count or a ratio of counts: nothing is estimated except xwOBA, which is Savant's expected value for a ball in play.
-import type { RawPitch } from '@/lib/pitcher-pitch-log'
+/** The few fields zone maths reads, so a pitcher's pitch and a batter's pitch both fit. */
+export type ZonePitch = { zone: string | null; description: string | null; result: string | null; isHit: boolean; exitVelo: number | null; woba: number | null; xwoba: number | null; wobaDen: number | null }
 
 export const IN_ZONE = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const
 export const OUT_ZONE = ['11', '12', '13', '14'] as const
@@ -28,7 +29,7 @@ export type Agg = {
 
 export const emptyAgg = (): Agg => ({ n: 0, swings: 0, whiffs: 0, takes: 0, called: 0, ab: 0, hits: 0, bases: 0, woba: 0, xwoba: 0, den: 0, bbe: 0, hard: 0 })
 
-export function add(a: Agg, p: RawPitch): void {
+export function add(a: Agg, p: ZonePitch): void {
   a.n++
   const d = p.description ?? ''
   if (SWING.has(d)) { a.swings++; if (WHIFF.has(d)) a.whiffs++ } else a.takes++
@@ -45,7 +46,7 @@ export function add(a: Agg, p: RawPitch): void {
   if (AB_EVENTS.has(ev)) { a.ab++; if (p.isHit) a.hits++; a.bases += BASES[ev] ?? 0 }
 }
 
-export function aggregate(pitches: RawPitch[]): { all: Agg; byZone: Record<string, Agg> } {
+export function aggregate(pitches: ZonePitch[]): { all: Agg; byZone: Record<string, Agg> } {
   const all = emptyAgg()
   const byZone: Record<string, Agg> = {}
   for (const z of ALL_ZONES) byZone[z] = emptyAgg()

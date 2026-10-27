@@ -195,8 +195,9 @@ function ramp(t: number): [number, number, number, number] {
   return [e[1], e[2], e[3], e[4] * 255]
 }
 
+export type HeatPitch = { plateX: number; plateZ: number; balls: number | null; strikes: number | null }
 type CountKey = 'all' | 'first' | 'ahead' | 'behind' | 'two'
-const COUNTS: [CountKey, string, (p: RawPitch) => boolean][] = [
+const COUNTS: [CountKey, string, (p: HeatPitch) => boolean][] = [
   ['all', 'Any count', () => true],
   ['first', 'First pitch', p => p.balls === 0 && p.strikes === 0],
   ['ahead', 'Ahead in the count', p => p.balls != null && p.strikes != null && p.strikes > p.balls],
@@ -204,7 +205,7 @@ const COUNTS: [CountKey, string, (p: RawPitch) => boolean][] = [
   ['two', 'Two strikes', p => p.strikes === 2],
 ]
 
-export function SmoothHeatmap({ pitches, title, counts = true }: { pitches: RawPitch[]; title: string; counts?: boolean }) {
+export function SmoothHeatmap({ pitches, title, counts = true }: { pitches: HeatPitch[]; title: string; counts?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const [count, setCount] = useState<CountKey>('all')
   const [bw, setBw] = useState(0.26)   // blob width in feet (standard deviation)
