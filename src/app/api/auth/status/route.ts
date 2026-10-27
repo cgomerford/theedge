@@ -5,6 +5,7 @@
 // (the header's account label until a display name exists); no other personal data.
 import { NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
+import { resolveViewer, getLookupsLeft, ASK_LOOKUPS_PER_DAY } from '@/lib/ask-lookups'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,12 +17,15 @@ function initialsFromEmail(email: string): string {
   return (letters || '?').toUpperCase()
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const subscriber = await getCurrentSubscriber()
+    // Lookups left today for the ask lab: null for Pro and when counting is unavailable. Read-only: no cookie, no charge.
+    const lookupsLeft = await getLookupsLeft(await resolveViewer(req)).catch(() => null)
+    const perDay = lookupsLeft == null ? null : ASK_LOOKUPS_PER_DAY
 
     if (!subscriber) {
-      return NextResponse.json({ authenticated: false, is_pro: false })
+      return NextResponse.json({ authenticated: false, is_pro: false, lookupsLeft, perDay })
     }
 
     return NextResponse.json({
@@ -29,6 +33,7 @@ export async function GET() {
       is_pro: subscriber.is_pro ?? false,
       initials: initialsFromEmail(subscriber.email),
       label: (subscriber.email.split('@')[0] ?? '').slice(0, 40),
+      lookupsLeft, perDay,
     })
   } catch {
     return NextResponse.json({ authenticated: false, is_pro: false })

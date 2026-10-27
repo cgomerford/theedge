@@ -44,3 +44,4 @@ fetch	src/lib/mlb-home-dashboard.ts
 fetch	src/components/header/useAccount.ts
 fetch	src/components/stats/LeaderboardTable.tsx
 fetch	src/components/signup/FollowIsland.tsx
+fetch	src/components/stats/StatsQueryLab.tsx

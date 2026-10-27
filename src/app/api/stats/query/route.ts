@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { runQuery, stripForFree } from '@/lib/stats-query'
 import { isProViewer } from '@/lib/require-pro'
 import { runDeepQuery } from '@/lib/pa-query'
+import { resolveViewer, checkLookup, chargeLookup, questionKey, hasRows, anonCookie, ASK_LOOKUPS_PER_DAY } from '@/lib/ask-lookups'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
   GAME_TYPES, CURRENT_SEASON, isStandardMetric, defaultMetric, deepSupports, FIRST_SEASON, DEFAULT_QUERY, isValidSplit, familyFor, metricByKey,
@@ -94,7 +95,7 @@ export async function GET(req: NextRequest) {
   // "When did this last happen" always runs on plate appearances: a single quick-mode situation becomes a one-chip stack.
   const deepParam = sp.get('deep') ?? (view === 'recent' ? JSON.stringify({ stack: split ? [split] : [] }) : null)
   if (deepParam) {
-    if (!pro) return NextResponse.json({ error: 'Stacked filters are a Pro feature.', upgrade: '/pricing' }, { status: 403 })
+    if (!pro) return NextResponse.json({ error: 'Stacked filters are a Pro feature.' }, { status: 403 })
     if (group === 'fielding') return NextResponse.json({ error: 'Stacked filters are not available for fielding.' }, { status: 400 })
     try {
       const d = JSON.parse(deepParam) as Record<string, unknown>
@@ -122,15 +123,28 @@ export async function GET(req: NextRequest) {
   const teams = pro && sp.get('teams') === '1'
 
   const q: QueryState = { group, gameType, from, to, split: deep ? '' : split, family, metric, view, minSample, years: years.length ? years : DEFAULT_QUERY.years, teams, deep }
+  // Lookup allowance (Free and signed-out). Pro is never counted; any database problem lets the request run uncounted.
+  const viewer = await resolveViewer(req)
+  const key = questionKey(q)
+  const check = viewer.kind === 'pro' ? null : await checkLookup(viewer, key)
+  const noStore = { 'Cache-Control': 'private, no-store' }
+  const limited = () => NextResponse.json({ error: "You've used today's lookups.", limit: true, left: 0, perDay: ASK_LOOKUPS_PER_DAY }, { status: 429, headers: noStore })
+  if (check && !check.allowed) return limited()
   try {
-    if (deep) {
-      const result = await runDeepQuery(q)
-      return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=300' } })
-    }
-    const full = await runQuery(q)
-    const result = pro ? full : stripForFree(full)
+    const result = deep ? await runDeepQuery(q) : await (async () => { const full = await runQuery(q); return pro ? full : stripForFree(full) })()
     // private: the body differs for Pro vs free viewers, so a shared cache must not store it.
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=300' } })
+    if (viewer.kind === 'pro') return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=300' } })
+    let left = check?.left ?? null
+    const rows = hasRows(result)
+    if (rows) {
+      const ch = await chargeLookup(viewer, key)
+      if (!ch.ok) return limited()
+      left = ch.left
+    }
+    const res = NextResponse.json({ ...result, lookupsLeft: left, perDay: left == null ? null : ASK_LOOKUPS_PER_DAY }, { headers: noStore })
+    const c = rows ? anonCookie(viewer) : null
+    if (c) res.cookies.set(c.name, c.value, c.options)
+    return res
   } catch (e) {
     console.error('[stats/query] failed:', (e as Error).message)
     // Stacked filters pull Baseball Savant, so say which source failed.

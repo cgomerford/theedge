@@ -50,7 +50,7 @@ export default function StatsHub({ isPro, isSignedIn }: { isPro: boolean; isSign
       </div>
       {/* Both stay mounted so switching tabs doesn't refetch or lose filters. */}
       <div style={{ display: tab === 'ask' ? 'block' : 'none', maxWidth: STATS_MAX_WIDTH, margin: '0 auto', padding: '16px 24px 60px' }}>
-        <StatsQueryLab isPro={isPro} />
+        <StatsQueryLab isPro={isPro} isSignedIn={isSignedIn} />
       </div>
       <div style={{ display: tab === 'explorer' ? 'block' : 'none' }}>
         <StatsExplorer isPro={isPro} isSignedIn={isSignedIn} />

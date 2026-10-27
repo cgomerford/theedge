@@ -245,7 +245,16 @@ function scatterOf(items: { name: string; totals: Totals | null; league: Totals 
 
 // ── main component ──────────────────────────────────────────────────────
 
-export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
+export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; isSignedIn: boolean }) {
+  // Daily lookup allowance: the server counts, this only shows what it sends back (null = Pro, or counting unavailable).
+  const [lookups, setLookups] = useState<{ left: number; perDay: number } | null>(null)
+  const [limited, setLimited] = useState(false)
+  useEffect(() => {
+    if (isPro) return
+    let live = true
+    fetch('/api/auth/status').then(r => r.json()).then(j => { if (live && typeof j.lookupsLeft === 'number' && typeof j.perDay === 'number') setLookups({ left: j.lookupsLeft, perDay: j.perDay }) }).catch(() => { /* the counter just stays hidden */ })
+    return () => { live = false }
+  }, [isPro])
   const [q, setQ] = useState<QueryState>(DEFAULT_QUERY)
   const [text, setText] = useState('')
   const [understood, setUnderstood] = useState<string[]>([])
@@ -327,7 +336,10 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
       try {
         const res = await fetch(`/api/stats/query?${param(q).toString()}`, { signal: ctrl.signal })
         const json = await res.json()
+        // Today's lookups are used up: keep the last result on screen and show the card.
+        if (res.status === 429 && json?.limit) { setLimited(true); setLookups(l => ({ left: 0, perDay: typeof json.perDay === 'number' ? json.perDay : l?.perDay ?? 5 })); setDeepProgress(null); return }
         if (!res.ok) throw new Error(json?.error ?? `Request failed (${res.status})`)
+        if (typeof json.lookupsLeft === 'number' && typeof json.perDay === 'number') { setLookups({ left: json.lookupsLeft, perDay: json.perDay }); setLimited(false) }
         // Stacked filters pull Baseball Savant a batch of game days at a time: show progress and ask again.
         if (json.loading) {
           setDeepProgress(json.loading as { done: number; total: number })
@@ -505,6 +517,29 @@ export default function StatsQueryLab({ isPro }: { isPro: boolean }) {
         <div style={{ fontFamily: SANS, fontSize: 13.5, color: '#5b5347', marginBottom: 12 }}>
           Ask it the way you’d say it — a player, a club, a situation, a year. We’ll turn it into filters you can adjust below.
         </div>
+        {!isPro ? (
+          <div style={{ minHeight: 20, marginBottom: 8, fontFamily: SANS, fontSize: 13, color: '#8a8275', fontVariantNumeric: 'tabular-nums' }}>
+            {lookups ? `${lookups.left} of ${lookups.perDay} left today` : ''}
+          </div>
+        ) : null}
+        {!isPro && (limited || lookups?.left === 0) ? (
+          <div style={{ border: '1px solid #e7e2d8', borderRadius: 14, background: '#fff', padding: '14px 18px', marginBottom: 14, fontFamily: SANS, fontSize: 14, color: '#1A1A1A' }}>
+            {isSignedIn ? (
+              <>
+                {/* [George: confirm wording] */}
+                <div style={{ marginBottom: 10 }}>You&apos;ve used today&apos;s {lookups?.perDay ?? 5} lookups. More at midnight UK time.</div>
+                <Link href="/pricing" style={{ display: 'inline-block', background: '#1A1A1A', color: '#fff', padding: '8px 14px', fontWeight: 800, textDecoration: 'none' }}>See Pro</Link>
+              </>
+            ) : (
+              <>
+                {/* [George: confirm wording] */}
+                <div style={{ marginBottom: 10 }}>You&apos;ve used today&apos;s {lookups?.perDay ?? 5} lookups. Create a free account to save your follows and dashboards.</div>
+                <Link href="/signup?return_to=/mlb/ask" style={{ display: 'inline-block', background: '#FF5722', color: '#fff', padding: '8px 14px', fontWeight: 800, textDecoration: 'none' }}>Create account</Link>
+                <Link href="/pricing" style={{ marginLeft: 14, color: '#5b5347', fontWeight: 700 }}>See Pro</Link>
+              </>
+            )}
+          </div>
+        ) : null}
         <form onSubmit={e => { e.preventDefault(); void runSearch(text) }} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           <input
             value={text} onChange={e => setText(e.target.value)}
