@@ -15,6 +15,8 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { ALL_ZONES, IN_ZONE, METRIC_DEFS, OUT_ZONE, aggregate, merge, metric, smallFor, type Agg, type MetricKey } from '@/lib/zone-stats'
 import { SmoothHeatmap } from './ArsenalExtras'
+import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
+import { buildPaths } from './PitchFlight'
 
 const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
 const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
@@ -109,6 +111,8 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
   }, [log, pitch, hand, countFn])
   const agg = useMemo(() => aggregate(pitches), [pitches])
 
+  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
+
   if (log === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load this pitcher&apos;s pitches right now.</p>
   if (log === null) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading every pitch…</p>
 
@@ -147,13 +151,14 @@ export default function LocationExplorer({ pitcherId }: { pitcherId: number }) {
       <style>{`.loc-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}.loc-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:6px}.loc-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A;font-family:inherit}.loc-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.loc-btn.on{border-color:#FF5722;background:#fff1ea}.loc-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}.loc-span2{grid-column:span 2}.loc-span3{grid-column:1 / -1}.loc-tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}.loc-tbl th{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a89e8c;text-align:right;padding:6px 8px;border-bottom:1px solid #e7e2d8}.loc-tbl th:first-child,.loc-tbl td:first-child{text-align:left}.loc-tbl td{text-align:right;padding:7px 8px;border-top:1px solid #f1eee6}.loc-tbl tr.sel td{background:#fff1ea}.loc-tbl tr.clk{cursor:pointer}@media (max-width:1180px){.loc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.loc-span3{grid-column:1 / -1}}@media (max-width:860px){.loc-grid{grid-template-columns:minmax(0,1fr)}.loc-side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.loc-btn{width:auto;white-space:nowrap}.loc-tiles{grid-template-columns:minmax(0,1fr)}.loc-span2{grid-column:auto}}`}</style>
 
       <nav className="loc-side" aria-label="Pitch types">
+        <SpinBallStyles />
         <button type="button" className={`loc-btn${pitch === 'ALL' ? ' on' : ''}`} onClick={() => setPitch('ALL')}>
           <span style={{ width: 14, height: 14, borderRadius: 999, background: '#1A1A1A', flexShrink: 0 }} />
           <span>All pitches<small>{log.pitches.length} pitches</small></span>
         </button>
         {types.map(t => (
           <button key={t.t} type="button" className={`loc-btn${pitch === t.t ? ' on' : ''}`} onClick={() => setPitch(t.t)}>
-            <span style={{ width: 14, height: 14, borderRadius: 999, background: pitchColor(t.t), flexShrink: 0 }} />
+            {(() => { const f = flights.find(x => x.type === t.t); return <SpinBall code={t.t} size={30} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} /> })()}
             <span>{t.name}<small>{((t.n / log.pitches.length) * 100).toFixed(0)}% · {t.n} pitches</small></span>
           </button>
         ))}
