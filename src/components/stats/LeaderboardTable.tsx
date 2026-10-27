@@ -5,7 +5,8 @@
 import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
-import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
+import { headshotUrl } from '@/lib/mlb-assets'
+import { Bar, BarChart, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Legend, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import { Headshot } from '@/components/home/Logo'
 import TeamChip from '@/components/ui/TeamChip'
 
@@ -19,8 +20,8 @@ const fmt = (v: number | null, c: Col) => {
   return sign + body + (c.pct ? '%' : '')
 }
 
-export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, isPro = false, exportName = 'x9lab-stats' }: {
-  rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; isPro?: boolean; exportName?: string
+export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], nLabel, nDigits = 0, sortKey, sortAsc, canFilter, minText, isPro = false, exportName = 'x9lab-stats', group, ctx, seasons = [] }: {
+  rows: Row[]; cols: Col[]; moreCols?: Col[]; nLabel: string; nDigits?: number; sortKey: string; sortAsc: boolean; canFilter: boolean; minText: string | null; isPro?: boolean; exportName?: string; group?: 'batting' | 'pitching'; ctx?: { season: number; sportId: number; gameType: string }; seasons?: number[]
 }) {
   const [extra, setExtra] = useState<string[]>([])
   const cols = useMemo(() => [...baseCols, ...extra.map(k => moreCols.find(c => c.key === k)).filter((c): c is Col => !!c)], [baseCols, moreCols, extra])
@@ -29,6 +30,34 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
   const [yKey, setYKey] = useState<string>('')
   const [xKey, setXKey] = useState<string>('')
   const [topN, setTopN] = useState(15)
+  const [color, setColor] = useState('#FF5722')
+  const [heads, setHeads] = useState(false)
+  const [headUris, setHeadUris] = useState<Record<number, string>>({})
+  const [cmpYear, setCmpYear] = useState('')
+  const [cmp, setCmp] = useState<Record<number, Record<string, number | null>> | null>(null)
+  const [cmpErr, setCmpErr] = useState('')
+  async function pickYear(y: string) {
+    setCmpYear(y); setCmp(null); setCmpErr('')
+    if (!y || !ctx || !group) return
+    try {
+      const r = await fetch(`/api/stats/compare?group=${group}&season=${y}&level=${ctx.sportId}&type=${ctx.gameType}`)
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error ?? 'failed')
+      setCmp(j.rows)
+    } catch (e) { console.error('[LeaderboardTable] compare failed', e); setCmpErr(`No ${y} data loaded.`) }
+  }
+  async function loadHeads(ids: number[]) {
+    // Headshots go through the image proxy so the downloaded picture includes them (cross-origin images are otherwise left blank).
+    for (const id of ids) {
+      if (headUris[id]) continue
+      try {
+        const u = headshotUrl(id, 120)
+        const r = await fetch(`/api/image-proxy?url=${encodeURIComponent(u)}`)
+        const j = await r.json()
+        if (j.dataUri) setHeadUris(h => ({ ...h, [id]: j.dataUri }))
+      } catch (e) { console.error('[LeaderboardTable] headshot failed', id, e) }
+    }
+  }
   const area = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
   async function download() {
@@ -114,11 +143,13 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
         const colY = all.find(c => c.key === (yKey || (key === '__n' ? baseCols[0].key : key))) ?? baseCols[0]
         const colX = all.find(c => c.key === (xKey || baseCols[1]?.key)) ?? baseCols[1] ?? baseCols[0]
         const pool = sorted.filter(r => r.v[colY.key] != null).sort((a, b) => (colY.asc ? 1 : -1) * ((a.v[colY.key] as number) - (b.v[colY.key] as number)))
-        const data = pool.slice(0, topN).map(r => ({ name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number }))
+        const data = pool.slice(0, topN).map(r => ({ id: r.id, name: r.name, v: r.v[colY.key] as number, x: r.v[colX.key] as number, o: cmp?.[r.id]?.[colY.key] ?? null }))
+        const overlay = !!cmp && kind !== 'scatter'
+        const swatches = ['#FF5722', '#6CABDD', '#1A1A1A', '#1D9E75', '#7C3AED', '#FDE047']
         const sc = kind === 'scatter' ? pool.slice(0, topN).filter(r => r.v[colX.key] != null).map(r => ({ name: r.name, x: r.v[colX.key] as number, y: r.v[colY.key] as number })) : []
         const sel: React.CSSProperties = { height: 32, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit' }
         const lab: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800 }
-        const title = kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
+        const title = overlay ? `${colY.label}: top ${data.length}, ${ctx?.season} against ${cmpYear}` : kind === 'scatter' ? `${colY.label} against ${colX.label}: top ${sc.length} by ${colY.label}` : `${colY.label}: top ${data.length}`
         const f = (v: unknown, c: Col) => fmt(Number(v), c)
         return (
           <div>
@@ -126,6 +157,22 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
               <label style={lab}>Chart<select style={sel} value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="hbar">Horizontal bars</option><option value="vbar">Vertical bars</option><option value="line">Line</option><option value="scatter">Scatter (two stats)</option></select></label>
               <label style={lab}>{kind === 'scatter' ? 'Up' : 'Stat'}<select style={sel} value={colY.key} onChange={e => setYKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label>
               {kind === 'scatter' ? <label style={lab}>Across<select style={sel} value={colX.key} onChange={e => setXKey(e.target.value)}>{all.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></label> : null}
+              <label style={lab}>Colour
+                <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                  {swatches.map(c => <button key={c} type="button" aria-label={`Bar colour ${c}`} onClick={() => setColor(c)} style={{ width: 22, height: 22, borderRadius: 11, background: c, border: color === c ? '3px solid #1A1A1A' : '1px solid #e7e2d8', cursor: 'pointer', padding: 0 }} />)}
+                  <input type="color" value={color} onChange={e => setColor(e.target.value)} aria-label="Choose any bar colour" style={{ width: 28, height: 28, border: 0, padding: 0, background: 'none', cursor: 'pointer' }} />
+                </span>
+              </label>
+              {kind === 'hbar' ? <label style={lab}><input type="checkbox" checked={heads} onChange={e => { setHeads(e.target.checked); if (e.target.checked) loadHeads(data.map(d => d.id)) }} />Headshots</label> : null}
+              {ctx && group && seasons.length ? (
+                <label style={lab}>Overlay a year
+                  <select style={sel} value={cmpYear} onChange={e => pickYear(e.target.value)}>
+                    <option value="">None</option>
+                    {seasons.filter(y => y !== ctx.season).map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </label>
+              ) : null}
+              {cmpErr ? <span style={{ fontSize: 13, color: '#D4533B' }}>{cmpErr}</span> : null}
               <label style={lab}>Top<select style={sel} value={topN} onChange={e => setTopN(Number(e.target.value))}>{[10, 15, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
             </div>
             <div style={{ fontWeight: 800, fontSize: 16, margin: '4px 0' }}>{title}</div>
@@ -135,15 +182,28 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                   <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56, top: 4, bottom: 4 }}>
                     <CartesianGrid horizontal={false} stroke="#e7e2d8" />
                     <XAxis type="number" hide domain={[0, 'dataMax']} />
-                    <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 13, fill: '#1A1A1A' }} axisLine={false} tickLine={false} />
-                    <Bar dataKey="v" fill="#FF5722" radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
+                    <YAxis type="category" dataKey="name" width={heads ? 190 : 150} axisLine={false} tickLine={false}
+                      tick={(p: { x?: number | string; y?: number | string; payload?: { value?: string | number; index?: number } }) => {
+                        const d = data[p.payload?.index ?? -1]
+                        return (
+                          <g transform={`translate(${p.x},${p.y})`}>
+                            {heads && d && headUris[d.id] ? <image href={headUris[d.id]} x={-190} y={-13} width={26} height={26} /> : null}
+                            <text x={-6} y={0} dy={4} textAnchor="end" fontSize={13} fill="#1A1A1A">{p.payload?.value}</text>
+                          </g>
+                        )
+                      }} />
+                    {overlay ? <Legend verticalAlign="top" /> : null}
+                    <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="v" position="right" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A' }} /></Bar>
+                    {overlay ? <Bar dataKey="o" name={cmpYear} fill="#bdb6a6" radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey="o" position="right" formatter={(v: unknown) => (v == null ? '' : f(v, colY))} style={{ fontSize: 12, fill: '#8a8275' }} /></Bar> : null}
                   </BarChart>
                 ) : kind === 'vbar' ? (
                   <BarChart data={data} margin={{ left: 0, right: 8, top: 22, bottom: 70 }}>
                     <CartesianGrid vertical={false} stroke="#e7e2d8" />
                     <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
                     <YAxis tick={{ fontSize: 12 }} width={46} />
-                    <Bar dataKey="v" fill="#FF5722" radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
+                    {overlay ? <Legend verticalAlign="top" /> : null}
+                    <Bar dataKey="v" name={String(ctx?.season ?? 'Now')} fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false}>{data.length <= 25 ? <LabelList dataKey="v" position="top" formatter={(v: unknown) => f(v, colY)} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A' }} /> : null}</Bar>
+                    {overlay ? <Bar dataKey="o" name={cmpYear} fill="#bdb6a6" radius={[3, 3, 0, 0]} isAnimationActive={false} /> : null}
                   </BarChart>
                 ) : kind === 'line' ? (
                   <LineChart data={data} margin={{ left: 0, right: 16, top: 12, bottom: 70 }}>
@@ -151,7 +211,9 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <XAxis dataKey="name" interval={0} angle={-40} textAnchor="end" height={80} tick={{ fontSize: 12, fill: '#1A1A1A' }} />
                     <YAxis tick={{ fontSize: 12 }} width={46} domain={['auto', 'auto']} />
                     <Tooltip formatter={(v: unknown) => f(v, colY)} />
-                    <Line type="monotone" dataKey="v" stroke="#FF5722" strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
+                    {overlay ? <Legend verticalAlign="top" /> : null}
+                    <Line type="monotone" dataKey="v" name={String(ctx?.season ?? 'Now')} stroke={color} strokeWidth={2} dot={{ r: 3, fill: '#1A1A1A' }} isAnimationActive={false} />
+                    {overlay ? <Line type="monotone" dataKey="o" name={cmpYear} stroke="#bdb6a6" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3, fill: '#8a8275' }} isAnimationActive={false} connectNulls /> : null}
                   </LineChart>
                 ) : (
                   <ScatterChart margin={{ left: 0, right: 24, top: 12, bottom: 24 }}>
@@ -160,7 +222,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
                     <YAxis type="number" dataKey="y" name={colY.label} domain={['auto', 'auto']} tick={{ fontSize: 12 }} width={46} />
                     <ZAxis range={[60, 60]} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ payload }) => payload && payload[0] ? <div style={{ background: '#1A1A1A', color: '#fff', padding: '6px 10px', fontSize: 12, borderRadius: 4 }}><b>{(payload[0].payload as { name: string }).name}</b><br />{colX.label} {f((payload[0].payload as { x: number }).x, colX)} · {colY.label} {f((payload[0].payload as { y: number }).y, colY)}</div> : null} />
-                    <Scatter data={sc} fill="#FF5722" isAnimationActive={false} />
+                    <Scatter data={sc} fill={color} isAnimationActive={false} />
                   </ScatterChart>
                 )}
               </ResponsiveContainer>

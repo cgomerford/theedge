@@ -20,8 +20,8 @@ export const metadata = pageMeta({
 
 const TABS = [{ id: 'batting', label: 'Batting' }, { id: 'pitching', label: 'Pitching' }, { id: 'statcast', label: 'Statcast' }, { id: 'advanced', label: 'Advanced' }]
 
-function Board({ b, qualifiable, isPro, name }: { b: Board; qualifiable: boolean; isPro: boolean; name: string }) {
-  return <LeaderboardTable isPro={isPro} exportName={name} moreCols={b.moreCols} rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
+function Board({ b, qualifiable, isPro, name, group, ctx }: { b: Board; qualifiable: boolean; isPro: boolean; name: string; group?: 'batting' | 'pitching'; ctx?: StatsCtx }) {
+  return <LeaderboardTable group={group} ctx={ctx} seasons={Array.from({ length: new Date().getFullYear() - 1989 }, (_, i) => new Date().getFullYear() - i)} isPro={isPro} exportName={name} moreCols={b.moreCols} rows={b.rows} cols={b.cols} nLabel={b.n.label} nDigits={b.n.key === 'ip' ? 1 : 0} sortKey={b.sortKey} sortAsc={b.sortAsc} canFilter={qualifiable} minText={b.minText} />
 }
 
 export default async function MLBStatsPage({ searchParams }: { searchParams: Promise<{ tab?: string; season?: string; level?: string; type?: string }> }) {
@@ -39,8 +39,8 @@ export default async function MLBStatsPage({ searchParams }: { searchParams: Pro
 
   let body: React.ReactNode = null
   const only = (what: string) => <p style={{ fontSize: 15, color: '#57534E', margin: '14px 0' }}>{what} is MLB regular-season data only. Switch Level to MLB and Games to Regular season to see it. Selected: {ctxLabel(ctx)}.</p>
-  if (tab === 'batting') { const b = await getBattingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No batting stats for {ctxLabel(ctx)}.</p> }
-  else if (tab === 'pitching') { const b = await getPitchingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No pitching stats for {ctxLabel(ctx)}.</p> }
+  if (tab === 'batting') { const b = await getBattingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} group="batting" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No batting stats for {ctxLabel(ctx)}.</p> }
+  else if (tab === 'pitching') { const b = await getPitchingBoardFor(ctx); body = b.rows.length ? <Board b={b} qualifiable isPro={isPro} name={name} group="pitching" ctx={ctx} /> : <p style={{ color: '#8a8275', margin: '14px 0' }}>No pitching stats for {ctxLabel(ctx)}.</p> }
   else if ((tab === 'statcast' || tab === 'advanced') && !mlbRegular) body = only(tab === 'statcast' ? 'Statcast' : 'Advanced stats')
   else if (tab === 'statcast') {
     const [bat, pit] = await Promise.all([getStatcastBatters(season), getStatcastPitchers(season)])
