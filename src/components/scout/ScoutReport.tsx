@@ -18,7 +18,7 @@ import type { MLBGame } from '@/lib/mlb'
 import ScoutSection from './ScoutSection'
 import ClubStatusSection from './ClubStatusSection'
 import FormTrendsSection from './FormTrendsSection'
-import BullpenSection from './BullpenSection'
+import BullpenDeskSection from './BullpenDeskSection'
 import ABSSection from './ABSSection'
 import RunGameSection from './RunGameSection'
 import DefenseSection from './DefenseSection'
@@ -35,7 +35,7 @@ import type { ScoutClub, ScoutContext } from './types'
 const SECTION_BODIES: Partial<Record<string, (ctx: ScoutContext) => React.ReactNode>> = {
   'club-status': (ctx) => <ClubStatusSection ctx={ctx} />,
   'form-vs-skill': (ctx) => <FormTrendsSection ctx={ctx} />,
-  bullpen: (ctx) => <BullpenSection ctx={ctx} />,
+  bullpen: (ctx) => <BullpenDeskSection ctx={ctx} />,
   abs: (ctx) => <ABSSection ctx={ctx} />,
   'run-game': (ctx) => <RunGameSection ctx={ctx} />,
   defense: (ctx) => <DefenseSection ctx={ctx} />,

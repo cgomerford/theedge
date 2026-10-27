@@ -3,6 +3,8 @@
 // Scout §3 deep layer — how a club's bullpen is used and how it is trending,
 // built from every current reliever's MLB game log (one batched Stats API call).
 //
+// Games counted: regular season and postseason (gameType R plus F, D, L, W), so a postseason game sees the postseason outings too.
+//
 // Scope, stated plainly: this is "the bullpen as constituted" — the arms on the
 // club's bullpen list today, counting only their relief appearances (games
 // started excluded) for THIS club. Arms who have left the club are not in the
@@ -46,6 +48,9 @@ export type ArmUsage = {
   inhR: number; inhRS: number
   gf: number; hold: number; save: number; bs: number
   recent: ReliefApp[]   // last 6, oldest → newest
+  /** this arm's own results by days of rest and by the pitches of his previous outing (relief outings this season, regular season) */
+  byRest: SplitBucket[]
+  byPrevLoad: SplitBucket[]
 }
 
 export type BullpenTrends = {
@@ -69,7 +74,7 @@ export const PEN_STATS: ExplorerStat[] = [
   { key: 'bbPct', label: 'Walk rate', group: 'Command', format: 'pct', higherIsBetter: false, hint: 'Walks per batter faced.' },
   { key: 'kPct', label: 'K%', group: 'Command', format: 'pct', higherIsBetter: true, hint: 'Strikeouts per batter faced.' },
   { key: 'kbbPct', label: 'K%−BB%', group: 'Command', format: 'pct', higherIsBetter: true, hint: 'Strikeout rate minus walk rate — the cleanest single read on a pen’s stuff and control.' },
-  { key: 'ipPerGame', weight: 'game' as const, label: 'Innings / game', group: 'Usage', format: 'num1', higherIsBetter: null, hint: 'Bullpen innings per game — how much of the game the pen is asked to cover.' },
+  { key: 'ipPerGame', weight: 'game' as const, label: 'Innings / game', group: 'Usage', format: 'num1', higherIsBetter: null, hint: 'Bullpen innings per game — how much of the game the pen is asked to pitch.' },
   { key: 'pitchesPerApp', weight: 'game' as const, label: 'Pitches / outing', group: 'Usage', format: 'num1', higherIsBetter: null, hint: 'Average pitches per relief appearance.' },
   { key: 'appsPerGame', weight: 'game' as const, label: 'Arms used / game', group: 'Usage', format: 'num1', higherIsBetter: null, hint: 'Relief appearances per game.' },
   { key: 'inhPerGame', weight: 'game' as const, label: 'Inherited runners / game', group: 'Usage', format: 'num2', higherIsBetter: null, hint: 'Runners already on base when a reliever enters, per game.' },
@@ -110,7 +115,7 @@ async function fetchReliefLogs(teamId: number, armIds: number[], gameDate: strin
   const season = gameDate.slice(0, 4)
   try {
     const res = await fetch(
-      `${MLB}/people?personIds=${armIds.join(',')}&hydrate=stats(group=[pitching],type=[gameLog],season=${season})`,
+      `${MLB}/people?personIds=${armIds.join(',')}&hydrate=stats(group=[pitching],type=[gameLog],season=${season},gameType=[R,F,D,L,W])`,
       { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) },
     )
     if (!res.ok) return []
@@ -193,6 +198,7 @@ function buildArmUsage(id: number, apps: ReliefApp[]): ArmUsage {
     inhR: sum('inhR'), inhRS: sum('inhRS'),
     gf: sum('gf'), hold: sum('hold'), save: sum('save'), bs: sum('bs'),
     recent: apps.slice(-6),
+    ...buildArmSplits(apps),
   }
 }
 

@@ -67,3 +67,6 @@ fetch	src/components/postgame/report/lab/PitchDesk.tsx
 fetch	src/components/postgame/report/lab/HitDesk.tsx
 fetch	src/lib/scout/recent-work.ts
 fetch	src/lib/scout/bullpen-desk.ts
+fetch	src/app/api/scout/bullpen-h2h/route.ts
+fetch	src/components/scout/lab/BullpenLab.tsx
+fetch	src/lib/scout/bullpen-trends.ts
