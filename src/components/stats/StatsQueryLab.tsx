@@ -85,7 +85,7 @@ function fromSearch(search: string): Partial<QueryState> {
   const gp = p.get('q_group')
   const group: Group = gp === 'pitching' || gp === 'fielding' ? gp : 'hitting'
   out.group = group
-  const gt = p.get('q_gt'); if (gt && GAME_TYPES.some(g => g.key === gt)) out.gameType = gt
+  const gt = p.get('q_gt'); if (gt && (gt === 'ALL' || GAME_TYPES.some(g => g.key === gt))) out.gameType = gt
   const from = Number(p.get('q_from')), to = Number(p.get('q_to'))
   if (from >= FIRST_SEASON && from <= CURRENT_SEASON) out.from = from
   if (to >= FIRST_SEASON && to <= CURRENT_SEASON) out.to = to
@@ -126,13 +126,13 @@ function sampleOf(group: Group, t: Totals | null | undefined): number {
 }
 
 function describe(q: QueryState): string {
-  const gt = GAME_TYPES.find(g => g.key === q.gameType)?.label ?? q.gameType
+  const gt = q.gameType === 'ALL' ? 'Any game' : GAME_TYPES.find(g => g.key === q.gameType)?.label ?? q.gameType
   const yrs = q.view === 'compare'
     ? q.years.join(' vs ')
     : q.from === q.to ? String(q.from) : `${Math.min(q.from, q.to)}–${Math.max(q.from, q.to)}`
   const sit = q.deep ? describeDeep(q.deep).join(' + ') : q.split ? splitLabel(q.split) : ''
   // The finder looks back from today across every game type, whatever the season and game-type pickers say.
-  if (q.view === 'recent') return `Latest first, since 2015 · ${GROUP_LABEL[q.group]}${sit ? ` · ${sit}` : ''}`
+  if (q.view === 'recent') return `Latest first, since 2015 · ${q.gameType === 'ALL' ? '' : `${gt} · `}${GROUP_LABEL[q.group]}${sit ? ` · ${sit}` : ''}`
   return `${gt} · ${yrs} · ${GROUP_LABEL[q.group]}${sit ? ` · ${sit}` : ''}`
 }
 
@@ -431,6 +431,8 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
     state.metric = picked[0] ?? clampMetric(grp, state.metric ?? defaultMetric(grp))
     setUnderstood(notes)
     setChosen(picked.length ? picked : [state.metric])
+    // "Last grand slam" looks in every game type; "last grand slam in a World Series" keeps the game type the question named.
+    if (state.view === 'recent' && !state.gameType) state.gameType = 'ALL'
     setOutput('table')
     setAskOpen(state.view !== 'recent')   // the finder is a list of occurrences — nothing to choose first
     setChartPick(null)
@@ -614,6 +616,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
           </Field>
           <Field label="Games" hint="Regular season, or any postseason round — or all postseason rounds together.">
             <select style={selectStyle} value={q.gameType} onChange={e => patch({ gameType: e.target.value })}>
+              {q.view === 'recent' && <option value="ALL">Any game</option>}
               {GAME_TYPES.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
             </select>
           </Field>

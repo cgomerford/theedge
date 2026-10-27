@@ -93,12 +93,12 @@ export async function runDeepQuery(q: QueryState): Promise<QueryResult> {
   const years = q.view === 'compare' ? [...new Set(q.years)] : []
   const from = q.view === 'compare' ? Math.min(...years) : Math.min(q.from, q.to)
   const to = q.view === 'compare' ? Math.max(...years) : Math.max(q.from, q.to)
-  // "When did this last happen" ignores the season and game-type pickers: it looks back from today, newest day first, until it has found enough.
+  // "When did this last happen" ignores the season pickers (and looks in every game type unless one was asked for): it looks back from today, newest day first, until it has found enough.
   result.seasons = finder ? Array.from({ length: CURRENT_SEASON - FINDER_FLOOR + 1 }, (_, i) => CURRENT_SEASON - i) : q.view === 'compare' ? years : Array.from({ length: to - from + 1 }, (_, i) => from + i)
 
   // Pull whatever Savant days are still missing (a bounded batch per request); until the whole range is
   // in, report progress instead of numbers built from a partial range.
-  const types = finder ? ['R', 'F', 'D', 'L', 'W'] : gameTypes(q.gameType)
+  const types = finder && q.gameType === 'ALL' ? ['R', 'F', 'D', 'L', 'W'] : gameTypes(q.gameType)
   const progress: LoadProgress & { days: string[]; finished?: boolean } = finder
     ? await ensureNewest(result.seasons, types, days => recentMatches(rowsFor(days, types), filters, 30).total >= FINDER_ENOUGH)
     : await ensureRange(result.seasons, types)

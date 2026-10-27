@@ -69,8 +69,9 @@ export async function GET(req: NextRequest) {
 
   const groupParam = sp.get('group')
   const group: Group = groupParam === 'pitching' || groupParam === 'fielding' ? groupParam : 'hitting'
-  const gameType = GAME_TYPES.some(g => g.key === sp.get('gameType')) ? (sp.get('gameType') as string) : DEFAULT_QUERY.gameType
   const view = VIEWS.includes(sp.get('view') as ViewMode) ? (sp.get('view') as ViewMode) : 'summary'
+  // 'ALL' (every game type) exists only for the last-time finder.
+  const gameType = GAME_TYPES.some(g => g.key === sp.get('gameType')) || (view === 'recent' && sp.get('gameType') === 'ALL') ? (sp.get('gameType') as string) : DEFAULT_QUERY.gameType
   const from = int(sp.get('from'), CURRENT_SEASON, FIRST_SEASON, CURRENT_SEASON)
   const to = int(sp.get('to'), CURRENT_SEASON, FIRST_SEASON, CURRENT_SEASON)
   const splitParam = sp.get('split') ?? ''
