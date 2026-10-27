@@ -14,5 +14,5 @@ export default function TrendsPage() {
   if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this pitcher&apos;s data right now.</div>
   if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
 
-  return <TrendLab pitcherId={data.id} />
+  return <TrendLab id={data.id} role="pitcher" />
 }

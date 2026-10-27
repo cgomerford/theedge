@@ -20,6 +20,7 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { SmoothHeatmap } from './ArsenalExtras'
 import { Scene, TransparentScene, buildPaths, type PitchPath } from './PitchFlight'
+import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
 type Cat = 'ball' | 'called' | 'swing' | 'foul' | 'play' | 'hbp'
@@ -166,7 +167,7 @@ function SequenceStage({ steps }: { steps: Step[] }) {
         ))}
       </div>
       <div style={{ marginTop: 8, fontSize: 13, color: '#5b5347', minHeight: 20 }}>
-        {last ? (over ? <b>{over}.</b> : after ? <>The count is now <b>{after}</b>. What he threw next is shown on the right.</> : null) : ''}
+        {last ? (over ? <b>{over}.</b> : after ? <>The count is now <b>{after}</b>. The next pitch is shown on the right.</> : null) : ''}
       </div>
       <button type="button" onClick={() => setRun(r => r + 1)} style={{ marginTop: 4, fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Replay</button>
       <p style={note}>An illustration of the chosen sequence: each pitch follows the average path for its type, and the count and result are the most common among the matching at-bats unless you chose one.</p>
@@ -176,7 +177,7 @@ function SequenceStage({ steps }: { steps: Step[] }) {
 
 const pc = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`
 
-export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
+export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role?: LabRole }) {
   const season = new Date().getFullYear()
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   const [hist, setHist] = useState<string[]>([])
@@ -199,9 +200,9 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
 
   useEffect(() => {
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}`).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
+    fetchLabLog(role, id, season).then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
-  }, [pitcherId, season])
+  }, [role, id, season])
 
   const abs = useMemo(() => {
     if (!log || log === 'error') return []
@@ -214,7 +215,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
     }
     return [...by.values()].map(a => a.sort((x, y) => (x.pitchNumber as number) - (y.pitchNumber as number)))
   }, [log])
-  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
+  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(role === 'batter' ? onlyHand(log, log.throws) : log) : []), [log, role])
   const types = useMemo(() => {
     if (!log || log === 'error') return []
     const by = new Map<string, number>()
@@ -227,7 +228,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
   const nextCounts = useMemo(() => tally(hits), [hits])
   const topTypes = useMemo(() => [...nextCounts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t), [nextCounts])
 
-  if (log === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load this pitcher&apos;s pitches right now.</p>
+  if (log === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load these pitches right now.</p>
   if (log === null) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading every pitch…</p>
 
   const nm = (t: string) => log.pitchNames[t] ?? t
@@ -279,7 +280,8 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
     for (const pq of pool) if (pq.zone) zc.set(pq.zone, (zc.get(pq.zone) ?? 0) + 1)
     const zone = modal(zc)
     const sub = zone ? pool.filter(pq => pq.zone === zone) : []
-    const placed = sub.length ? buildPaths({ ...log, pitches: sub }).find(f => f.type === t) ?? null : null
+    const subHand = role === 'batter' ? sub.filter(pp => pp.stand === log.throws) : sub
+    const placed = subHand.length ? buildPaths({ ...log, pitches: subHand }).find(f => f.type === t) ?? null : null
     return { type: t, name: nm(t), path: placed ?? flights.find(f => f.type === t) ?? null, count: modal(cs) ?? '0-0', cat: chosen }
   })
 
@@ -326,7 +328,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
           <Pills items={[['any', 'Any count'], ...COUNTS.filter(c => hist.length === 0 || c !== '0-0').map(c => [c, c] as [string, string])]} value={count} onChange={setCount} />
-          <Pills items={[['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']] as ['any' | 'L' | 'R', string][]} value={side} onChange={setSide} />
+          <Pills items={(role === 'batter' ? [['any', 'All pitchers'], ['L', 'Left-handed pitchers'], ['R', 'Right-handed pitchers']] : [['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']]) as ['any' | 'L' | 'R', string][]} value={side} onChange={setSide} />
         </div>
 
         {total === 0 ? (
@@ -343,7 +345,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
           <div className="sq-tiles">
             <SequenceStage steps={stageSteps} />
             <div className="sq-span2" style={tile}>
-              <div style={kick}>{hist.length === 0 ? 'What he threw' : `What he threw next, after ${hist.map(nm).join(' → ')}`}</div>
+              <div style={kick}>{role === 'batter' ? (hist.length === 0 ? 'What was thrown to him' : `What was thrown to him next, after ${hist.map(nm).join(' → ')}`) : (hist.length === 0 ? 'What he threw' : `What he threw next, after ${hist.map(nm).join(' → ')}`)}</div>
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {topTypes.map(t => {
                   const n = nextCounts.get(t) ?? 0, f = flights.find(x => x.type === t)

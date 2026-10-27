@@ -2,7 +2,7 @@
 
 // src/components/pitching-lab/TrendLab.tsx
 //
-// Pitching Lab → Trends. Is he the same pitcher as in April? A set of main trends (speed, spin, the pitch mix, whiffs, the strike zone,
+// Pitching Lab → Trends. Is he the same player as in April? A set of main trends (speed, spin, the pitch mix, whiffs, the strike zone,
 // contact quality) and a builder: choose any measure, any pitches, either hitter side, game by game or month by month, one to five seasons,
 // an optional rolling average, lines or bars, and save it under a name (kept in this browser). Everything is counted from the per-pitch
 // log (src/lib/pitcher-pitch-log.ts); a rate point is drawn only when enough pitches stand behind it, and the count shows on hover.
@@ -17,6 +17,7 @@ import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { buildPaths } from './PitchFlight'
+import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
 // ─── Measures ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ const WHIFF = new Set(['swinging_strike', 'swinging_strike_blocked', 'missed_bun
 const SWING = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'foul_bunt', 'missed_bunt', 'hit_into_play'])
 const isIn = (z: string | null) => z != null && Number(z) >= 1 && Number(z) <= 9
 
-type MKey = 'velo' | 'spin' | 'ext' | 'relz' | 'relx' | 'arm' | 'ivb' | 'hb' | 'usage' | 'whiff' | 'csw' | 'zone' | 'chase' | 'swing' | 'hard' | 'xwoba' | 'pitches'
+type MKey = 'ev' | 'la' | 'batspeed' | 'swinglen' | 'velo' | 'spin' | 'ext' | 'relz' | 'relx' | 'arm' | 'ivb' | 'hb' | 'usage' | 'whiff' | 'csw' | 'zone' | 'chase' | 'swing' | 'hard' | 'xwoba' | 'pitches'
 type Measure = { key: MKey; label: string; group: string; unit: string; digits: number; min: number; sum?: boolean; needsType?: boolean; per: (p: RawPitch, t: string | null) => [number, number]; hint: string; armSign?: boolean }
 const MEASURES: Measure[] = [
   { key: 'velo', label: 'Velocity', group: 'Stuff', unit: ' mph', digits: 1, min: 8, per: p => (p.velo != null ? [p.velo, 1] : [0, 0]), hint: 'Average release speed' },
@@ -46,7 +47,15 @@ const MEASURES: Measure[] = [
   { key: 'hard', label: 'Hard-hit rate', group: 'Results', unit: '%', digits: 1, min: 5, per: p => (p.description === 'hit_into_play' && p.exitVelo != null ? [p.exitVelo >= 95 ? 1 : 0, 1] : [0, 0]), hint: 'Balls in play hit 95 mph or harder' },
   { key: 'xwoba', label: 'xwOBA against', group: 'Results', unit: '', digits: 3, min: 5, per: p => (p.wobaDen != null && p.wobaDen > 0 ? [p.description === 'hit_into_play' && p.xwoba != null ? p.xwoba : p.woba ?? 0, p.wobaDen] : [0, 0]), hint: 'Expected wOBA on balls in play, actual wOBA on walks and strikeouts' },
 ]
-const MBY = Object.fromEntries(MEASURES.map(m => [m.key, m])) as Record<MKey, Measure>
+const BATTER_ONLY: Measure[] = [
+  { key: 'ev', label: 'Exit speed', group: 'Contact', unit: ' mph', digits: 1, min: 5, per: p => (p.description === 'hit_into_play' && p.exitVelo != null ? [p.exitVelo, 1] : [0, 0]), hint: 'Average exit speed on balls in play' },
+  { key: 'la', label: 'Launch angle', group: 'Contact', unit: '°', digits: 1, min: 5, per: p => (p.description === 'hit_into_play' && p.launchAngle != null ? [p.launchAngle, 1] : [0, 0]), hint: 'Average launch angle on balls in play' },
+  { key: 'batspeed', label: 'Bat speed', group: 'Contact', unit: ' mph', digits: 1, min: 8, per: p => (p.batSpeed != null ? [p.batSpeed, 1] : [0, 0]), hint: 'Average bat speed on swings' },
+  { key: 'swinglen', label: 'Swing length', group: 'Contact', unit: ' ft', digits: 2, min: 8, per: p => (p.swingLength != null ? [p.swingLength, 1] : [0, 0]), hint: 'Average swing length on swings' },
+]
+const PITCH_ONLY_GROUPS = new Set(['Delivery'])   // a hitter's page has no use for the pitcher's own delivery numbers
+const measuresFor = (role: LabRole): Measure[] => (role === 'batter' ? [...BATTER_ONLY, ...MEASURES.filter(m => !PITCH_ONLY_GROUPS.has(m.group)).map(m => (['Stuff', 'Approach'].includes(m.group) ? { ...m, label: m.key === 'usage' ? 'Pitch mix faced (share of pitches)' : m.key === 'zone' ? 'Zone rate of pitches faced' : m.key === 'pitches' ? 'Pitches seen' : `${m.label} faced`, group: m.group === 'Stuff' ? 'Pitches faced' : 'Approach' } : m))] : MEASURES)
+const MBY = Object.fromEntries([...MEASURES, ...BATTER_ONLY].map(m => [m.key, m])) as Record<MKey, Measure>
 const RATE: MKey[] = ['usage', 'zone', 'whiff', 'csw', 'swing', 'chase', 'hard']
 
 // ─── Config ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -55,6 +64,7 @@ type Cfg = { metric: MKey; pitches: string[]; split: boolean; side: 'any' | 'L' 
 const DEFAULT: Cfg = { metric: 'velo', pitches: [], split: true, side: 'any', period: 'game', years: 1, roll: 1, bars: false }
 type Saved = { id: string; name: string; cfg: Cfg }
 const STORE = 'x9:pitching-lab-trends'
+const STORE_BATTER = 'x9:batting-lab-trends'
 
 const MAIN: { name: string; blurb: string; cfg: Cfg }[] = [
   { name: 'Velocity by pitch', blurb: 'Is the speed holding up?', cfg: { ...DEFAULT, metric: 'velo', split: true } },
@@ -63,6 +73,15 @@ const MAIN: { name: string; blurb: string; cfg: Cfg }[] = [
   { name: 'Spin rate by pitch', blurb: 'Spin by pitch type.', cfg: { ...DEFAULT, metric: 'spin', split: true } },
   { name: 'Zone rate', blurb: 'How often he is in the zone.', cfg: { ...DEFAULT, metric: 'zone', roll: 3, split: false } },
   { name: 'Hard-hit rate', blurb: 'Balls in play hit 95 mph or more.', cfg: { ...DEFAULT, metric: 'hard', roll: 3, period: 'month', split: false } },
+]
+
+const MAIN_BATTER: { name: string; blurb: string; cfg: Cfg }[] = [
+  { name: 'Exit speed', blurb: 'How hard he hits the ball.', cfg: { ...DEFAULT, metric: 'ev', split: false, roll: 3 } },
+  { name: 'Hard-hit rate', blurb: 'Balls in play at 95 mph or more.', cfg: { ...DEFAULT, metric: 'hard', split: false, roll: 3, period: 'month' } },
+  { name: 'xwOBA', blurb: 'Quality of results, by month.', cfg: { ...DEFAULT, metric: 'xwoba', split: false, period: 'month' } },
+  { name: 'Whiff rate', blurb: 'Misses per swing.', cfg: { ...DEFAULT, metric: 'whiff', split: false, roll: 3 } },
+  { name: 'Chase rate', blurb: 'Swings at pitches outside the zone.', cfg: { ...DEFAULT, metric: 'chase', split: false, roll: 3 } },
+  { name: 'Pitch mix faced', blurb: 'What pitchers have thrown him.', cfg: { ...DEFAULT, metric: 'usage', roll: 3, period: 'month' } },
 ]
 
 // ─── Maths ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -157,7 +176,10 @@ function TrendChart({ log, cfg, height = 280, title }: { log: PitcherPitchLog; c
 
 // ─── Page ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export default function TrendLab({ pitcherId }: { pitcherId: number }) {
+export default function TrendLab({ id, role = 'pitcher' }: { id: number; role?: LabRole }) {
+  const measures = measuresFor(role)
+  const main = role === 'batter' ? MAIN_BATTER : MAIN
+  const store = role === 'batter' ? STORE_BATTER : STORE
   const season = new Date().getFullYear()
   const [logs, setLogs] = useState<Record<number, PitcherPitchLog | null>>({})
   const [mode, setMode] = useState<'main' | 'build' | string>('main')   // 'main', 'build', or a saved trend id
@@ -166,18 +188,18 @@ export default function TrendLab({ pitcherId }: { pitcherId: number }) {
   const [saved, setSaved] = useState<Saved[]>([])
   const [maxYears, setMaxYears] = useState(1)
 
-  useEffect(() => { try { const r = localStorage.getItem(STORE); if (r) setSaved(JSON.parse(r) as Saved[]) } catch { /* private window: saving is off */ } }, [])
-  const persist = (list: Saved[]) => { setSaved(list); try { localStorage.setItem(STORE, JSON.stringify(list)) } catch { /* ignore */ } }
+  useEffect(() => { try { const r = localStorage.getItem(store); if (r) setSaved(JSON.parse(r) as Saved[]) } catch { /* private window: saving is off */ } }, [])
+  const persist = (list: Saved[]) => { setSaved(list); try { localStorage.setItem(store, JSON.stringify(list)) } catch { /* ignore */ } }
 
   const need = Math.max(maxYears, cfg.years)
   useEffect(() => {
     let off = false
     for (let y = season; y > season - need; y--) {
       if (logs[y] !== undefined) continue
-      fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${y}`).then(r => r.json()).then(j => { if (!off) setLogs(l => ({ ...l, [y]: j.error ? null : (j as PitcherPitchLog) })) }).catch(() => { if (!off) setLogs(l => ({ ...l, [y]: null })) })
+      fetchLabLog(role, id, y).then(l => { if (!off) setLogs(x => ({ ...x, [y]: l })) })
     }
     return () => { off = true }
-  }, [pitcherId, season, need]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [role, id, season, need]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const merged = (years: number): PitcherPitchLog | null => {
     const got = Array.from({ length: years }, (_, i) => logs[season - i]).filter((x): x is PitcherPitchLog => !!x)
@@ -186,22 +208,23 @@ export default function TrendLab({ pitcherId }: { pitcherId: number }) {
   }
   const loading = logs[season] === undefined
   const curLog = merged(mode === 'main' ? 1 : cfg.years)
-  const flights = useMemo(() => { const l = merged(1); return l ? buildPaths(l) : [] }, [logs]) // eslint-disable-line react-hooks/exhaustive-deps
+  const flights = useMemo(() => { const l = merged(1); return l ? buildPaths(role === 'batter' ? onlyHand(l, l.throws) : l) : [] }, [logs, role]) // eslint-disable-line react-hooks/exhaustive-deps
   const allTypes = useMemo(() => { const l = merged(1); if (!l) return []; const by = new Map<string, number>(); for (const p of l.pitches) by.set(p.pitchType, (by.get(p.pitchType) ?? 0) + 1); return [...by.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => ({ t, name: l.pitchNames[t] ?? t })) }, [logs]) // eslint-disable-line react-hooks/exhaustive-deps
   const set = (patch: Partial<Cfg>) => { setCfg(c => ({ ...c, ...patch })); if (patch.years) setMaxYears(y => Math.max(y, patch.years as number)) }
   const open = (c: Cfg, m: string) => { setCfg(c); setMode(m); setMaxYears(y => Math.max(y, c.years)) }
-  const groups = [...new Set(MEASURES.map(m => m.group))]
-  const m = MBY[cfg.metric]
+  const groups = [...new Set(measures.map(m => m.group))]
+  const mOf = (k: MKey) => measures.find(x => x.key === k) ?? MBY[k]
+  const m = mOf(cfg.metric)
 
   const side = (
     <nav className="tr-side" aria-label="Trends">
       <SpinBallStyles />
       <div style={{ ...kick, margin: '0 2px 2px' }}>Trends</div>
-      <button type="button" className={`tr-btn${mode === 'main' ? ' on' : ''}`} onClick={() => setMode('main')}><span>Main trends<small>{MAIN.length} charts</small></span></button>
+      <button type="button" className={`tr-btn${mode === 'main' ? ' on' : ''}`} onClick={() => setMode('main')}><span>Main trends<small>{main.length} charts</small></span></button>
       <button type="button" className={`tr-btn${mode === 'build' ? ' on' : ''}`} onClick={() => open(cfg, 'build')}><span>Build your own<small>any measure, any pitch</small></span></button>
       {saved.length > 0 && <div style={{ ...kick, margin: '8px 2px 2px' }}>My trends</div>}
       {saved.map(s => (
-        <button key={s.id} type="button" className={`tr-btn${mode === s.id ? ' on' : ''}`} onClick={() => open(s.cfg, s.id)}><span>{s.name}<small>{MBY[s.cfg.metric].label}</small></span></button>
+        <button key={s.id} type="button" className={`tr-btn${mode === s.id ? ' on' : ''}`} onClick={() => open(s.cfg, s.id)}><span>{s.name}<small>{mOf(s.cfg.metric).label}</small></span></button>
       ))}
       {allTypes.length > 0 && <div style={{ ...kick, margin: '8px 2px 2px' }}>Pitches</div>}
       {allTypes.map(t => { const f = flights.find(x => x.type === t.t); return <div key={t.t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.mute, padding: '0 4px' }}><SpinBall code={t.t} size={20} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />{t.name}</div> })}
@@ -221,7 +244,7 @@ export default function TrendLab({ pitcherId }: { pitcherId: number }) {
               <p style={{ margin: '4px 0 0', fontSize: 14, color: '#5b5347' }}>Game by game, from the season&apos;s pitches. Open any chart in the builder to change the measure, pitches, seasons and more.</p>
             </div>
             <div className="tr-tiles">
-              {MAIN.map(t => (
+              {main.map(t => (
                 <div key={t.name} style={tile}>
                   <div style={kick}>{t.name}</div>
                   <p style={{ margin: '2px 0 6px', fontSize: 13, color: C.mute }}>{t.blurb}</p>
@@ -242,11 +265,11 @@ export default function TrendLab({ pitcherId }: { pitcherId: number }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', alignItems: 'center' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: C.mute }}>Measure
                   <select value={cfg.metric} onChange={e => set({ metric: e.target.value as MKey })} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 10, background: '#fff' }}>
-                    {groups.map(g => <optgroup key={g} label={g}>{MEASURES.filter(x => x.group === g).map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</optgroup>)}
+                    {groups.map(g => <optgroup key={g} label={g}>{measures.filter(x => x.group === g).map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</optgroup>)}
                   </select>
                 </label>
                 <Pills items={[['game', 'Game by game'], ['month', 'Month by month']] as ['game' | 'month', string][]} value={cfg.period} onChange={v => set({ period: v })} />
-                <Pills items={[['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']] as ['any' | 'L' | 'R', string][]} value={cfg.side} onChange={v => set({ side: v })} />
+                <Pills items={(role === 'batter' ? [['any', 'All pitchers'], ['L', 'Left-handed pitchers'], ['R', 'Right-handed pitchers']] : [['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']]) as ['any' | 'L' | 'R', string][]} value={cfg.side} onChange={v => set({ side: v })} />
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', alignItems: 'center' }}>
                 <Pills items={[['1', 'This season'], ['2', 'Last 2 seasons'], ['3', 'Last 3'], ['5', 'Last 5']] as [string, string][]} value={String(cfg.years)} onChange={v => set({ years: Number(v) })} />
