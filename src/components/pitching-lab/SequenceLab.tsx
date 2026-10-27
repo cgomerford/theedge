@@ -263,7 +263,16 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
       if (c) rs.set(c, (rs.get(c) ?? 0) + 1)
     }
     const chosen = stepRes[q] && stepRes[q] !== 'any' ? (stepRes[q] as Cat) : modal(rs)
-    return { type: t, name: nm(t), path: flights.find(f => f.type === t) ?? null, count: modal(cs) ?? '0-0', cat: chosen }
+    // Draw the pitch where pitches with this result usually ended up: the most common zone among the matching ones that turned out this way
+    // (a ball can only land outside the strike zone), using those pitches' own flight data. Falls back to the pitch type's average path.
+    let pool = hits.map(h => h.ab[h.j - hist.length + q]).filter(pq => chosen == null || cat(pq.description) === chosen)
+    if (chosen === 'ball') pool = pool.filter(pq => pq.zone != null && !isIn(pq.zone))
+    const zc = new Map<string, number>()
+    for (const pq of pool) if (pq.zone) zc.set(pq.zone, (zc.get(pq.zone) ?? 0) + 1)
+    const zone = modal(zc)
+    const sub = zone ? pool.filter(pq => pq.zone === zone) : []
+    const placed = sub.length ? buildPaths({ ...log, pitches: sub }).find(f => f.type === t) ?? null : null
+    return { type: t, name: nm(t), path: placed ?? flights.find(f => f.type === t) ?? null, count: modal(cs) ?? '0-0', cat: chosen }
   })
 
   return (
