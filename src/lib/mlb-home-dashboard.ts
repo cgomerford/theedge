@@ -241,26 +241,26 @@ export async function getStandingsDash(date: string): Promise<DashDivision[]> {
   return divs.sort((a, b) => DIV_ORDER.indexOf(a.name) - DIV_ORDER.indexOf(b.name))
 }
 
-// ─── Hot this week ────────────────────────────────────────────────────────────
+// ─── Who's hot this month ────────────────────────────────────────────────────────────
 
 export type HotRow = { id: number; name: string; team: string; n: number; nLabel: 'PA' | 'IP'; line: string; spark: number[]; sparkLabel: string; small: boolean }
 
-export async function getHotThisWeek(group: 'hitting' | 'pitching', postseason: boolean, date: string): Promise<HotRow[]> {
+export async function getHotThisMonth(group: 'hitting' | 'pitching', postseason: boolean, date: string): Promise<HotRow[]> {
   const season = Number(date.slice(0, 4))
   const gameType = postseason ? 'P' : 'R'
-  const start = addDays(date, -7), end = addDays(date, -1)
-  const j = await getJson(`${API}/stats?stats=byDateRange&group=${group}&startDate=${start}&endDate=${end}&season=${season}&gameType=${gameType}&sportId=1&playerPool=ALL&limit=2000`, `getHotThisWeek ${group}`)
+  const start = addDays(date, -30), end = addDays(date, -1)
+  const j = await getJson(`${API}/stats?stats=byDateRange&group=${group}&startDate=${start}&endDate=${end}&season=${season}&gameType=${gameType}&sportId=1&playerPool=ALL&limit=2000`, `getHotThisMonth ${group}`)
   const splits: any[] = j?.stats?.[0]?.splits ?? []
-  const minPa = postseason ? 7 : 20
+  const minPa = postseason ? 7 : 60
   let rows = splits.map(sp => ({ sp, st: sp.stat }))
   if (group === 'hitting') rows = rows.filter(r => (num(r.st.plateAppearances) ?? 0) >= minPa).sort((a, b) => (num(b.st.ops) ?? 0) - (num(a.st.ops) ?? 0))
-  else rows = rows.filter(r => (num(r.st.inningsPitched) ?? 0) >= 3).sort((a, b) => (num(b.st.inningsPitched) ?? 0) - (num(a.st.inningsPitched) ?? 0) || (num(a.st.era) ?? 99) - (num(b.st.era) ?? 99))
-  const top = rows.slice(0, 6)
+  else rows = rows.filter(r => (num(r.st.inningsPitched) ?? 0) >= (postseason ? 3 : 10)).sort((a, b) => (num(b.st.inningsPitched) ?? 0) - (num(a.st.inningsPitched) ?? 0) || (num(a.st.era) ?? 99) - (num(b.st.era) ?? 99))
+  const top = rows.slice(0, 10)
   const out: HotRow[] = []
   for (let i = 0; i < top.length; i += 6) {
     const rs = await Promise.all(top.slice(i, i + 6).map(async ({ sp, st }) => {
       const id = sp.player?.id as number
-      const gl = await getJson(`${API}/people/${id}/stats?stats=gameLog&group=${group}&season=${season}&gameType=${gameType}`, 'getHotThisWeek gameLog')
+      const gl = await getJson(`${API}/people/${id}/stats?stats=gameLog&group=${group}&season=${season}&gameType=${gameType}`, 'getHotThisMonth gameLog')
       const games = (gl?.stats?.[0]?.splits ?? []).filter((g: any) => g.date >= start && g.date <= end)
       const spark = games.map((g: any) => num(group === 'hitting' ? g.stat.hits : g.stat.strikeOuts) ?? 0)
       const n = group === 'hitting' ? num(st.plateAppearances) ?? 0 : num(st.inningsPitched) ?? 0
@@ -276,9 +276,9 @@ export async function getHotThisWeek(group: 'hitting' | 'pitching', postseason: 
   return out
 }
 
-export const WEEK_LABEL = (date: string) => {
+export const MONTH_LABEL = (date: string) => {
   const f = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-  return `${f(addDays(date, -7))} to ${f(addDays(date, -1))}`
+  return `${f(addDays(date, -30))} to ${f(addDays(date, -1))}`
 }
 
 // ─── Postseason leaders ───────────────────────────────────────────────────────

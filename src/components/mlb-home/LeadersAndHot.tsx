@@ -18,6 +18,21 @@ function Spark({ values, label }: { values: number[]; label: string }) {
   )
 }
 
+function LeaderRows({ rows, start }: { rows: MLBStatLeader[]; start: number }) {
+  return (
+    <div style={{ fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+      {rows.map((r, i) => (
+        <Link key={r.personId} href={`/mlb/players/${r.personId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', color: '#1A1A1A', textDecoration: 'none' }}>
+          <span style={{ width: 16, color: MUTED, fontSize: 12 }}>{start + i}</span>
+          <Headshot id={r.personId} name={r.name} size={28} />
+          <span style={{ flex: 1, minWidth: 0 }}>{r.name} <span style={{ color: MUTED }}>{r.teamAbbr}</span></span>
+          <b>{r.statValue}</b>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 export function Leaders({ groups, season }: { groups: { label: string; rows: MLBStatLeader[] }[]; season: SeasonState }) {
   return (
     <section aria-labelledby="ld-h" style={{ marginTop: 34 }}>
@@ -34,9 +49,13 @@ export function Leaders({ groups, season }: { groups: { label: string; rows: MLB
               <Link href={`/mlb/players/${top.personId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#1A1A1A', textDecoration: 'none', fontWeight: 800 }}>
                 <Headshot id={top.personId} name={top.name} size={32} />{top.name} <span style={{ color: MUTED, fontWeight: 600 }}>{top.teamAbbr}</span>
               </Link>
-              <ol start={2} style={{ margin: '8px 0 0', paddingLeft: 22, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
-                {rest.map(r => <li key={r.personId}><Link href={`/mlb/players/${r.personId}`} style={{ color: '#1A1A1A' }}>{r.name}</Link> <span style={{ color: MUTED }}>{r.teamAbbr}</span> · <b>{r.statValue}</b></li>)}
-              </ol>
+              <LeaderRows rows={rest.slice(0, 4)} start={2} />
+              {rest.length > 4 && (
+                <details style={{ marginTop: 2 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#FF5722', padding: '4px 0' }}>Show the top {rest.length + 1}</summary>
+                  <LeaderRows rows={rest.slice(4)} start={6} />
+                </details>
+              )}
             </div>
           )
         })}
@@ -56,8 +75,13 @@ function HotList({ title, rows }: { title: string; rows: HotRow[] }) {
       {rows.map(r => (
         <div key={r.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 8, alignItems: 'center', padding: '8px 0', borderTop: '1px solid #e7e2d8' }}>
           <div style={{ minWidth: 0 }}>
-            <Link href={`/mlb/players/${r.id}`} style={{ fontWeight: 800, color: '#1A1A1A', textDecoration: 'none' }}>{r.name}</Link> <span style={{ color: MUTED, fontSize: 13 }}>{r.team}</span>
-            <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.line} · {r.n} {r.nLabel}{r.small && <> · <SmallSample n={r.n} /></>}</div>
+            <Link href={`/mlb/players/${r.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1A1A1A', textDecoration: 'none', minWidth: 0 }}>
+              <Headshot id={r.id} name={r.name} size={36} />
+              <span style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 800 }}>{r.name}</span> <span style={{ color: MUTED, fontSize: 13 }}>{r.team}</span>
+                <span style={{ display: 'block', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: '#1A1A1A', fontWeight: 400 }}>{r.line} · {r.n} {r.nLabel}{r.small && <> · <SmallSample n={r.n} /></>}</span>
+              </span>
+            </Link>
           </div>
           <Spark values={r.spark} label={r.sparkLabel} />
         </div>
@@ -66,16 +90,16 @@ function HotList({ title, rows }: { title: string; rows: HotRow[] }) {
   )
 }
 
-export function HotThisWeek({ hitters, pitchers, week, post }: { hitters: HotRow[]; pitchers: HotRow[]; week: string; post: boolean }) {
+export function HotThisMonth({ hitters, pitchers, week, post }: { hitters: HotRow[]; pitchers: HotRow[]; week: string; post: boolean }) {
   return (
     <section aria-labelledby="hot-h" style={{ marginTop: 34 }}>
-      <h2 id="hot-h" style={{ margin: '0 0 10px', fontSize: 24, fontWeight: 800 }}>Hot this week</h2>
+      <h2 id="hot-h" style={{ margin: '0 0 10px', fontSize: 24, fontWeight: 800 }}>Who&apos;s hot this month</h2>
       <style>{`.hot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 32px}@media (max-width:760px){.hot-grid{grid-template-columns:minmax(0,1fr)}}`}</style>
       <div className="hot-grid">
         <HotList title="Hitters" rows={hitters} />
         <HotList title="Pitchers" rows={pitchers} />
       </div>
-      <p style={{ margin: '8px 0 0', fontSize: 12, color: MUTED }}>{post ? 'Postseason' : 'Regular season'}, {week}. Hitters by OPS (minimum {post ? 7 : 20} plate appearances); pitchers by innings, then ERA.</p>
+      <p style={{ margin: '8px 0 0', fontSize: 12, color: MUTED }}>{post ? 'Postseason' : 'Regular season'}, {week}. Hitters by OPS (minimum {post ? 7 : 60} plate appearances); pitchers by innings, then ERA.</p>
     </section>
   )
 }

@@ -8,7 +8,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
 import GamesDashboard from '@/components/mlb-home/GamesDashboard'
 import BracketOrStandings from '@/components/mlb-home/BracketOrStandings'
-import { Leaders, HotThisWeek } from '@/components/mlb-home/LeadersAndHot'
+import { Leaders, HotThisMonth } from '@/components/mlb-home/LeadersAndHot'
 import { LabsSearch } from '@/components/mlb-home/NewsAndSearch'
 import HomeRail from '@/components/home/HomeRail'
 import { PostseasonLeadersRail, StatOfTheDayRail } from '@/components/mlb-home/RailExtras'
@@ -17,7 +17,7 @@ import { pageMeta } from '@/lib/seo'
 import { getMLBStatLeaders } from '@/lib/mlb-homepage'
 import { getHomeSlate } from '@/lib/mlb-homepage'
 import {
-  etDate, getSeasonState, getDashboardGames, getPostseasonBracket, getStandingsDash, getHotThisWeek, getPostseasonLeaders, getStatOfTheDay, WEEK_LABEL,
+  etDate, getSeasonState, getDashboardGames, getPostseasonBracket, getStandingsDash, getHotThisMonth, getPostseasonLeaders, getStatOfTheDay, MONTH_LABEL,
   type DashDivision,
 } from '@/lib/mlb-home-dashboard'
 
@@ -58,15 +58,15 @@ export default async function MLBPage() {
     showBracket ? getPostseasonBracket(season.year - (season.state === 'offseason' && Number(date.slice(5, 7)) <= 2 ? 1 : 0)) : Promise.resolve([]),
   ])
   const [hitters, pitchers, postLeaders, statOfDay] = await Promise.all([
-    season.state === 'offseason' ? Promise.resolve([]) : getHotThisWeek('hitting', post, date),
-    season.state === 'offseason' ? Promise.resolve([]) : getHotThisWeek('pitching', post, date),
+    season.state === 'offseason' ? Promise.resolve([]) : getHotThisMonth('hitting', post, date),
+    season.state === 'offseason' ? Promise.resolve([]) : getHotThisMonth('pitching', post, date),
     season.state === 'postseason' || season.state === 'offseason' ? getPostseasonLeaders(season.year - (season.state === 'offseason' && Number(date.slice(5, 7)) <= 2 ? 1 : 0)) : Promise.resolve([]),
     getStatOfTheDay(date),
   ])
   const [hr, avg, so] = await Promise.all([
-    getMLBStatLeaders('homeRuns', 5, 'batting'),
-    getMLBStatLeaders('battingAverage', 5, 'batting'),
-    getMLBStatLeaders('strikeOuts', 5, 'pitching'),
+    getMLBStatLeaders('homeRuns', 10, 'batting'),
+    getMLBStatLeaders('battingAverage', 10, 'batting'),
+    getMLBStatLeaders('strikeOuts', 10, 'pitching'),
   ])
   // No games today in a live season: the next one for the state line.
   const slate = games.length === 0 && season.state !== 'offseason' ? await getHomeSlate() : null
@@ -88,7 +88,7 @@ export default async function MLBPage() {
         <div id="scout-reports" style={{ scrollMarginTop: 16 }}><GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} /></div>
         <BracketOrStandings season={season} bracket={bracket} divisions={divisions} />
         <Leaders season={season} groups={[{ label: 'HOME RUNS', rows: hr }, { label: 'BATTING AVERAGE', rows: avg }, { label: 'STRIKEOUTS', rows: so }]} />
-        {season.state !== 'offseason' && <HotThisWeek hitters={hitters} pitchers={pitchers} week={WEEK_LABEL(date)} post={post} />}
+        {season.state !== 'offseason' && <HotThisMonth hitters={hitters} pitchers={pitchers} week={MONTH_LABEL(date)} post={post} />}
         <LabsSearch />
         </div>
         <div className="ml-rail">

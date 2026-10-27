@@ -1,7 +1,7 @@
 // Development only: runs the /mlb dashboard loaders for any date so the regular-season and postponement cases can be checked
 // without waiting for the real day. GET /api/dev/mlb-dashboard-check?date=2026-09-15
 import { NextRequest, NextResponse } from 'next/server'
-import { getSeasonState, getDashboardGames, getStandingsDash, getHotThisWeek } from '@/lib/mlb-home-dashboard'
+import { getSeasonState, getDashboardGames, getStandingsDash, getHotThisMonth } from '@/lib/mlb-home-dashboard'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const season = await getSeasonState(date)
   const games = await getDashboardGames(date, season.state === 'postseason')
   const divs = await getStandingsDash(date)
-  const hot = await getHotThisWeek('hitting', season.state === 'postseason', date)
+  const hot = await getHotThisMonth('hitting', season.state === 'postseason', date)
   const count = (g: string) => games.filter(x => x.group === g).length
   return NextResponse.json({
     season, games: games.length, live: count('live'), upcoming: count('upcoming'), final: count('final'), compact: games.length >= 12,
