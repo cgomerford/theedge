@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Headshot } from '@/components/home/Logo'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
+import type { LabRole } from '@/lib/lab-log'
 import { C, SANS } from '@/components/team/ui'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { BatterPitchLog, RawBatterPitch } from '@/lib/batter-pitch-log'
@@ -98,16 +99,22 @@ function topShare(byZone: Record<string, Agg>, n: number): [string, number][] {
   return tot === 0 ? [] : ALL_ZONES.map(z => [z, byZone[z].n / tot] as [string, number]).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).slice(0, n)
 }
 
-export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
+export default function OverlayExplorer({ id, role = 'pitcher', fixedName = '' }: { id: number; role?: LabRole; fixedName?: string }) {
   const season = new Date().getFullYear()
-  const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
+  const [logState, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
+  // Pitcher lab: the pitcher is fixed and a hitter is chosen. Batting lab: the hitter is fixed and a pitcher is chosen.
+  const [pitcher, setPitcher] = useState<Person | null>(null)
+  const pid = role === 'pitcher' ? id : pitcher?.id ?? null
+  const pitcherId = pid ?? 0
+  const [bNames, setBNames] = useState<Record<number, string>>({})
+  const log: PitcherPitchLog = logState && logState !== 'error' ? logState : { pitcherId: 0, season, pitches: [], pitchNames: {}, batterNames: {}, batterActive: {}, throws: null }
   const [pitch, setPitch] = useState('ALL')
   const [count, setCount] = useState<CountKey>('all')
   const [measure, setMeasure] = useState<Measure>('whiff')
   const [tight, setTight] = useState('1.5')
   const [years, setYears] = useState(2)
   const [matchOn, setMatchOn] = useState<'match' | 'type'>('match')
-  const [batter, setBatter] = useState<Person | null>(null)
+  const [batter, setBatter] = useState<Person | null>(role === 'batter' ? { id, fullName: fixedName } : null)
   const [bLog, setBLog] = useState<RawBatterPitch[] | null | 'error' | 'locked'>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Person[]>([])
@@ -118,21 +125,23 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
   const seasonList = useMemo(() => Array.from({ length: years }, (_, i) => season - i), [years, season])
 
   useEffect(() => {
+    if (pid == null) return
     let off = false
-    Promise.all(seasonList.map(y => fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${y}`).then(r => r.json()).then(j => (j.error ? null : (j as PitcherPitchLog))).catch(() => null))).then(all => {
+    Promise.all(seasonList.map(y => fetch(`/api/mlb/pitch-log?playerId=${pid}&season=${y}`).then(r => r.json()).then(j => (j.error ? null : (j as PitcherPitchLog))).catch(() => null))).then(all => {
       if (off) return
       const got = all.filter((x): x is PitcherPitchLog => !!x)
       if (got.length === 0) { setLog('error'); return }
       setLog({ ...got[0], pitches: got.flatMap(g => g.pitches), pitchNames: Object.assign({}, ...got.map(g => g.pitchNames)), batterNames: Object.assign({}, ...got.map(g => g.batterNames)) })
     })
     return () => { off = true }
-  }, [pitcherId, seasonList])
+  }, [pid, seasonList])
 
   useEffect(() => {
+    if (role !== 'pitcher') return
     let off = false
     fetch(`/api/mlb/next-start?playerId=${pitcherId}`).then(r => r.json()).then(j => { if (!off && !j.error) setNext(j) }).catch(() => {})
     return () => { off = true }
-  }, [pitcherId])
+  }, [role, pitcherId])
 
   useEffect(() => {
     const q = query.trim()
@@ -152,20 +161,21 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
       if (off) return
       if (all.some(a => a === 'locked')) { setBLog('locked'); return }
       const logs = all.filter((x): x is BatterPitchLog => !!x && x !== 'locked')
+      setBNames(Object.assign({}, ...logs.map(l => l.pitcherNames)))
       setBLog(logs.length ? logs.flatMap(l => l.pitches) : 'error')
     })
     return () => { off = true }
   }, [batter, seasonList])
 
-  const throws = log && log !== 'error' ? log.throws : null
+  const throws = logState && logState !== 'error' ? log.throws : null
   const types = useMemo(() => {
-    if (!log || log === 'error') return []
+    if (!logState || logState === 'error') return []
     const by = new Map<string, number>()
     for (const p of log.pitches) by.set(p.pitchType, (by.get(p.pitchType) ?? 0) + 1)
     return [...by.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => ({ t, n, name: log.pitchNames[t] ?? t }))
   }, [log])
-  const flights = useMemo(() => (log && log !== 'error' ? buildPaths(log) : []), [log])
-  const profiles = useMemo(() => (log && log !== 'error' && throws ? types.map(t => profileOf(t.t, log.pitches, throws)) : []), [log, types, throws])
+  const flights = useMemo(() => (logState && logState !== 'error' ? buildPaths(log) : []), [log])
+  const profiles = useMemo(() => (logState && logState !== 'error' && throws ? types.map(t => profileOf(t.t, log.pitches, throws)) : []), [log, types, throws])
 
   const bList = bLog && bLog !== 'error' && bLog !== 'locked' ? bLog : null
   // His side of the plate against this pitcher's hand (a switch hitter bats the other way).
@@ -193,12 +203,12 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
 
   const chosen = (t: string) => (matchOn === 'match' ? matched.get(t) : sameType.get(t)) ?? []
   const B = useMemo(() => (pitch === 'ALL' ? profiles.flatMap(p => chosen(p.type)) : chosen(pitch)).filter(countFn), [profiles, pitch, matched, sameType, matchOn, countFn]) // eslint-disable-line react-hooks/exhaustive-deps
-  const P = useMemo(() => (!log || log === 'error' ? [] : log.pitches.filter(p => (pitch === 'ALL' || p.pitchType === pitch) && (stand == null || p.stand === stand) && countFn(p))), [log, pitch, stand, countFn])
+  const P = useMemo(() => (!logState || logState === 'error' ? [] : log.pitches.filter(p => (pitch === 'ALL' || p.pitchType === pitch) && (stand == null || p.stand === stand) && countFn(p))), [log, pitch, stand, countFn])
   const aggB = useMemo(() => aggregate(B.map(toZP)), [B])
   const aggP = useMemo(() => aggregate(P), [P])
 
-  if (log === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load this pitcher&apos;s pitches right now.</p>
-  if (log === null) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading every pitch…</p>
+  if (logState === 'error') return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Couldn&apos;t load these pitches right now.</p>
+  if (logState === null && pid != null) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute, padding: '24px 0' }}>Loading every pitch…</p>
 
   const name = pitch === 'ALL' ? 'All pitches' : log.pitchNames[pitch] ?? pitch
   const zonedP = ALL_ZONES.reduce((s, z) => s + aggP.byZone[z].n, 0)
@@ -251,24 +261,42 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, fontFamily: SANS }}>
         <div style={{ ...tile, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={kick}>Choose a hitter to set against {name === 'All pitches' ? 'the pitcher' : name}</div>
-          {batter ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <Headshot id={batter.id} name={batter.fullName} size={48} />
-              <div>
-                <b style={{ fontSize: 22, fontWeight: 800 }}>{batter.fullName}</b>
-                <div style={{ fontSize: 13, color: C.mute }}>{stand ? `Bats ${stand === 'L' ? 'left' : 'right'} against ${throws === 'L' ? 'left' : 'right'}-handers` : bLog === null ? 'Loading the pitches…' : ''}{bList ? ` · ${bList.length} pitches seen, ${years === 1 ? season : `${season - years + 1}–${season}`}` : ''}</div>
+          <div style={kick}>{role === 'batter' ? `Choose a pitcher to set against ${fixedName || 'the hitter'}` : `Choose a hitter to set against ${name === 'All pitches' ? 'the pitcher' : name}`}</div>
+          {(role === 'pitcher' ? batter : pitcher) ? (() => {
+            const who = (role === 'pitcher' ? batter : pitcher)!
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Headshot id={who.id} name={who.fullName} size={48} />
+                <div>
+                  <b style={{ fontSize: 22, fontWeight: 800 }}>{who.fullName}</b>
+                  <div style={{ fontSize: 13, color: C.mute }}>
+                    {role === 'batter' && throws ? `Throws ${throws === 'L' ? 'left' : 'right'} · ` : ''}{stand ? `${role === 'batter' ? fixedName.split(' ').slice(-1)[0] + ' bats' : 'Bats'} ${stand === 'L' ? 'left' : 'right'} against ${throws === 'L' ? 'left' : 'right'}-handers` : bLog === null ? 'Loading the pitches…' : ''}{bList ? ` · ${bList.length} pitches seen, ${years === 1 ? season : `${season - years + 1}–${season}`}` : ''}
+                  </div>
+                </div>
+                <button type="button" onClick={() => { if (role === 'pitcher') setBatter(null); else { setPitcher(null); setLog(null) } if (role === 'pitcher') setBLog(null); setQuery('') }} style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer' }}>{role === 'batter' ? 'Change pitcher' : 'Change hitter'}</button>
               </div>
-              <button type="button" onClick={() => { setBatter(null); setBLog(null); setQuery('') }} style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer' }}>Change hitter</button>
-            </div>
-          ) : (
+            )
+          })() : (
             <>
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search a hitter" aria-label="Search a hitter" style={{ fontFamily: SANS, fontSize: 15, padding: '9px 12px', border: `1px solid ${C.line}`, borderRadius: 10, maxWidth: 360 }} />
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder={role === 'batter' ? 'Search a pitcher' : 'Search a hitter'} aria-label={role === 'batter' ? 'Search a pitcher' : 'Search a hitter'} style={{ fontFamily: SANS, fontSize: 15, padding: '9px 12px', border: `1px solid ${C.line}`, borderRadius: 10, maxWidth: 360 }} />
               {query.trim().length >= 3 && results.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {results.map(r => <button key={r.id} type="button" onClick={() => { setBatter(r); setBLog(null); setResults([]) }} style={{ fontFamily: SANS, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '4px 12px', border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer' }}>{r.fullName}</button>)}
+                  {results.map(r => <button key={r.id} type="button" onClick={() => { if (role === 'pitcher') { setBatter(r); setBLog(null) } else { setPitcher(r); setLog(null) } setResults([]) }} style={{ fontFamily: SANS, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '4px 12px', border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer' }}>{r.fullName}</button>)}
                 </div>
               )}
+              {role === 'batter' ? (() => {
+                const by = new Map<number, number>()
+                for (const b of bList ?? []) if (b.pitcherId != null && (b.wobaDen ?? 0) > 0) by.set(b.pitcherId, (by.get(b.pitcherId) ?? 0) + 1)
+                const top = [...by.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)
+                return top.length > 0 ? (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: C.mute, marginBottom: 6 }}>Pitchers he has faced most</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {top.map(([pid2, n]) => <button key={pid2} type="button" onClick={() => { setPitcher({ id: pid2, fullName: bNames[pid2] ?? `#${pid2}` }); setLog(null) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: SANS, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '4px 12px 4px 6px', border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer' }}><Headshot id={pid2} name={bNames[pid2] ?? ''} size={24} />{bNames[pid2] ?? `#${pid2}`} <span style={{ fontWeight: 600, color: C.faint }}>{n} PA</span></button>)}
+                    </div>
+                  </div>
+                ) : <div style={{ fontSize: 13, color: C.mute }}>{bLog === null ? 'Loading his pitchers…' : 'Search any pitcher.'}</div>
+              })() : (
               <div style={{ fontSize: 13, color: C.mute }}>
                 {next?.nextStart && next.lineup.length > 0 ? (
                   <>
@@ -279,10 +307,12 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
                   </>
                 ) : next ? 'No next game with a lineup is scheduled yet, so search any hitter.' : ''}
               </div>
+              )}
             </>
           )}
         </div>
 
+        {role === 'batter' && !pitcher ? null : (<>
         {bLog === 'locked' && <p style={{ fontSize: 14, color: C.mute }}>This hitter&apos;s pitches need a deep look or Pro.</p>}
         {bLog === 'error' && <p style={{ fontSize: 14, color: C.mute }}>Couldn&apos;t load this hitter&apos;s pitches right now.</p>}
 
@@ -401,8 +431,8 @@ export default function OverlayExplorer({ pitcherId }: { pitcherId: number }) {
             </div>
           )}
         </div>
+        </>)}
       </div>
     </div>
   )
 }
-
