@@ -64,6 +64,39 @@ export default function PitchDesk({ pitches, away, home, season }: { pitches: Pi
   const rowFor = (fn: (p: PitchRec) => boolean) => { const ps = mine.filter(fn); const m = new Map<string, number>(); for (const p of ps) m.set(p.type, (m.get(p.type) ?? 0) + 1); return { n: ps.length, m } }
   const heat = focus.filter(p => p.x != null && p.z != null).map(p => ({ plateX: p.x as number, plateZ: p.z as number, balls: p.balls, strikes: p.strikes }))
 
+  // Inning by inning and times through the order, tonight: pitches, plate appearances, results, zone rate, misses and his top fastball's speed.
+  const fbType = types.find(t => ['FF', 'SI', 'FC', 'FA'].includes(t.t))?.t ?? null
+  const slice = (label: string, ps: PitchRec[]) => {
+    const pa = plateAppearances(ps)
+    let h = 0, k = 0, bb = 0
+    for (const a of pa) { const t = a.pitches[a.pitches.length - 1].resultType; if (['single', 'double', 'triple', 'home_run'].includes(t)) h++; else if (t.startsWith('strikeout')) k++; else if (t === 'walk' || t === 'intent_walk') bb++ }
+    const sw = ps.filter(p => p.swing).length, wh = ps.filter(p => p.whiff).length, zn = ps.filter(p => p.zone != null)
+    const fv = ps.filter(p => fbType != null && p.type === fbType && p.velo != null).map(p => p.velo as number)
+    const mixm = new Map<string, number>(); for (const p of ps) mixm.set(p.type, (mixm.get(p.type) ?? 0) + 1)
+    return { label, n: ps.length, pa: pa.length, h, k, bb, zone: zn.length ? zn.filter(p => (p.zone as number) <= 9).length / zn.length : null, whiff: sw ? wh / sw : null, fv: fv.length ? fv.reduce((a, b) => a + b, 0) / fv.length : null, mix: mixm }
+  }
+  const innRows = [...new Set(mine.map(p => p.inning))].sort((a, b) => a - b).map(i => slice(`Inning ${i}`, mine.filter(p => p.inning === i)))
+  const ttoRows = [1, 2, 3].map(k => slice(k === 1 ? 'First time through' : k === 2 ? 'Second time' : 'Third time or more', mine.filter(p => (k === 3 ? p.tto >= 3 : p.tto === k)))).filter(r => r.n > 0)
+  const SliceTable = ({ title, rows, foot }: { title: string; rows: ReturnType<typeof slice>[]; foot: string }) => {
+    const firstV = rows.find(r => r.fv != null)?.fv ?? null
+    return (
+      <div className="pd-span3" style={{ ...tile, overflowX: 'auto' }}>
+        <div style={kick}>{title}</div>
+        <table className="pd-tbl" style={{ marginTop: 6, minWidth: 620 }}>
+          <thead><tr><th></th><th>Pitches</th><th>PA</th><th>H</th><th>K</th><th>BB</th><th>Zone</th><th>Whiff</th><th>Speed</th>{cols.map(t => <th key={t.t}>{t.name}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.label}><td style={{ fontWeight: 800 }}>{r.label}</td><td>{r.n}</td><td>{r.pa}</td><td>{r.h}</td><td>{r.k}</td><td>{r.bb}</td><td>{pc(r.zone)}</td><td>{pc(r.whiff)}</td>
+                <td>{r.fv != null ? r.fv.toFixed(1) : '—'}{r.fv != null && firstV != null && Math.abs(r.fv - firstV) >= 0.1 && <span style={{ color: r.fv < firstV ? '#D4533B' : '#1D9E75', marginLeft: 4, fontSize: 11 }}>{r.fv > firstV ? '+' : ''}{(r.fv - firstV).toFixed(1)}</span>}</td>
+                {cols.map(t => { const v = r.n ? (r.mix.get(t.t) ?? 0) / r.n : 0; return <td key={t.t} style={{ background: r.n ? shade(v) : undefined }}>{r.n ? pc(v) : '—'}</td> })}</tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={note}>{foot}</p>
+      </div>
+    )
+  }
+
   if (pitchers.length === 0) return <p style={{ fontFamily: SANS, fontSize: 14, color: C.mute }}>No pitch data is available for this game.</p>
 
   return (
@@ -166,6 +199,9 @@ export default function PitchDesk({ pitches, away, home, season }: { pitches: Pi
           </div>
 
           {sLog && selPaths.length > 0 && <FlightSection log={sLog} paths={selPaths} slow={slow} setSlow={setSlow} title={`${pt === 'ALL' ? 'His pitches' : types.find(t => t.t === pt)?.name} · season shape`} />}
+
+          <SliceTable title="Inning by inning" rows={innRows} foot={`Speed is his ${types.find(t => t.t === fbType)?.name ?? 'fastball'}; the number beside it is the change from his first inning with a reading. The coloured cells are the share of his pitches of each type.`} />
+          <SliceTable title="Times through the order" rows={ttoRows} foot="Times through is how many plate appearances that hitter had against him in this game." />
 
           <div className="pd-span3" style={tile}>
             <div style={kick}>Every plate appearance · {pas.length}</div>

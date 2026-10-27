@@ -20,6 +20,8 @@ import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { FlightSection, buildPaths } from '@/components/pitching-lab/PitchFlight'
 import { MovementProfile, SmoothHeatmap } from '@/components/pitching-lab/ArsenalExtras'
 import { Pills, kick, note, star, tile } from '@/components/pitching-lab/LocationExplorer'
+import type { StarterProfile } from '@/lib/scout/starter-profile'
+import StarterViews, { STARTER_VIEWS, type StarterView } from './StarterViews'
 
 export type Starter = { id: number | null; name: string; clubId: number; abbr: string; side: 'Away' | 'Home' }
 
@@ -34,7 +36,8 @@ const COUNT_GROUPS: [string, string, (p: RawPitch) => boolean][] = [
 const pc = (v: number) => `${(v * 100).toFixed(0)}%`
 const shade = (v: number) => `rgba(255,87,34,${(0.08 + Math.min(1, v) * 0.7).toFixed(2)})`
 
-export default function StarterDesk({ starters }: { starters: Starter[] }) {
+export default function StarterDesk({ starters, profiles = {} }: { starters: Starter[]; profiles?: Record<number, StarterProfile | null> }) {
+  const [view, setView] = useState<StarterView>('overview')
   const season = new Date().getFullYear()
   const [who, setWho] = useState(() => Math.max(0, starters.findIndex(s => s.id != null)))
   const [pitch, setPitch] = useState('ALL')
@@ -116,6 +119,10 @@ export default function StarterDesk({ starters }: { starters: Starter[] }) {
               </span>
             </div>
 
+            <Pills items={STARTER_VIEWS} value={view} onChange={setView} />
+            {view !== 'overview' ? (
+              profiles[cur.id] ? <StarterViews p={profiles[cur.id] as StarterProfile} view={view} name={cur.name} /> : <p style={{ fontSize: 14, color: C.mute }}>No season breakdown is available for {cur.name} yet.</p>
+            ) : (
             <div className="sd-tiles">
               {paths.length > 0 && <MovementProfile log={log} paths={paths} focus={pitch === 'ALL' ? undefined : pitch} />}
               <div className="sd-span2" style={{ ...tile, overflowX: 'auto' }}>
@@ -164,6 +171,7 @@ export default function StarterDesk({ starters }: { starters: Starter[] }) {
                 <SmoothHeatmap pitches={log.pitches.filter(p => (pitch === 'ALL' || p.pitchType === pitch) && p.stand === hm)} title={hm === 'L' ? 'Against lefties' : 'Against righties'} counts={false} />
               </div>
             </div>
+            )}
             <p style={note}>Built from {cur.name}&apos;s Statcast pitches this season, all counts unless one is chosen. These describe what he has done, not what he will do. Sequencing, the hot zone overlay and head to head are in his Pitching Lab.</p>
           </>
         )}
