@@ -38,9 +38,9 @@ const fmtOps = (v: number) => v.toFixed(3).replace(/^0/, '')
 
 function FlagChip({ arm }: { arm: BullpenArm }) {
   const f = FLAG_STYLE[arm.flag]
-  if (!f) return <span className="text-[9px] font-mono text-stone-300" title={arm.flagReason}>—</span>
+  if (!f) return <span className="text-[9px] text-stone-300" title={arm.flagReason}>—</span>
   return (
-    <span title={arm.flagReason} className={`inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-md border whitespace-nowrap ${f.cls}`}>
+    <span title={arm.flagReason} className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-md border whitespace-nowrap ${f.cls}`}>
       <span aria-hidden>{f.symbol}</span>{f.label}
     </span>
   )
@@ -65,7 +65,7 @@ function DayBars({ arm, dates }: { arm: BullpenArm; dates: string[] }) {
 function WorkloadChart({ desk }: { desk: BullpenDesk }) {
   return (
     <div>
-      <div className="grid grid-cols-[minmax(0,1fr)_84px_2rem_2rem_5.5rem] items-end gap-x-2 pb-1 border-b border-stone-200 text-[9px] font-mono uppercase tracking-wider text-stone-400">
+      <div className="grid grid-cols-[minmax(0,1fr)_84px_2rem_2rem_5.5rem] items-end gap-x-2 pb-1 border-b border-stone-200 text-[9px] uppercase tracking-wider text-stone-400">
         <span>Arm</span>
         <span className="flex gap-[2px]">{desk.dates.map((d) => <span key={d} className="w-[10px] text-center" title={shortDate(d)}>{dow(d)}</span>)}</span>
         <span className="text-right">L3</span><span className="text-right">L7</span><span />
@@ -75,17 +75,17 @@ function WorkloadChart({ desk }: { desk: BullpenDesk }) {
           <li key={a.id} className="grid grid-cols-[minmax(0,1fr)_84px_2rem_2rem_5.5rem] items-center gap-x-2 py-1.5 border-b border-stone-100 last:border-0">
             <span className="min-w-0 text-[11.5px] font-sans text-stone-800 truncate" title={a.post ? `Postseason so far: ${a.post.apps} appearances, ${a.post.pitches} pitches, ${a.post.ip} IP${a.post.era != null ? `, ${a.post.era.toFixed(2)} ERA` : ''}` : undefined}>
               <span className="font-semibold">{a.name}</span>
-              <span className="ml-1.5 font-mono text-[9px] text-stone-400">{a.hand ?? ''}{a.hand ? 'HP' : ''}</span>
+              <span className="ml-1.5 text-[9px] text-stone-400">{a.hand ?? ''}{a.hand ? 'HP' : ''}</span>
               {a.post && a.post.apps > 0 && <span className="ml-1.5 text-[9px] text-stone-400">post {a.post.apps} app · {a.post.pitches} p</span>}
             </span>
             <DayBars arm={a} dates={desk.dates} />
-            <span className="text-right text-[11px] font-mono text-stone-700">{a.p3}</span>
-            <span className="text-right text-[11px] font-mono text-stone-500">{a.p7}</span>
+            <span className="text-right text-[11px] text-stone-700">{a.p3}</span>
+            <span className="text-right text-[11px] text-stone-500">{a.p7}</span>
             <span className="justify-self-end"><FlagChip arm={a} /></span>
           </li>
         ))}
       </ul>
-      <p className="text-[9px] font-mono text-stone-300 mt-1.5">Bars = pitches per day, oldest → yesterday (letter = weekday) · scale 0–{BAR_MAX}</p>
+      <p className="text-[9px] text-stone-300 mt-1.5">Bars = pitches per day, oldest → yesterday (letter = weekday) · scale 0–{BAR_MAX}</p>
     </div>
   )
 }
@@ -97,7 +97,7 @@ function UsageMap({ desk }: { desk: BullpenDesk }) {
   const groups: BullpenArm['role'][] = ['Closer', 'High-leverage', 'Bridge']
   return (
     <div>
-      <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,1.75rem)] items-end gap-x-1 pb-1 border-b border-stone-200 text-[9px] font-mono uppercase tracking-wider text-stone-400">
+      <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,1.75rem)] items-end gap-x-1 pb-1 border-b border-stone-200 text-[9px] uppercase tracking-wider text-stone-400">
         <span>Role · arm</span>
         {INNING_COLS.map((i) => <span key={i} className="text-center">{i === 9 ? '9+' : i}</span>)}
       </div>
@@ -106,7 +106,7 @@ function UsageMap({ desk }: { desk: BullpenDesk }) {
         if (arms.length === 0) return null
         return (
           <div key={role}>
-            <p className="text-[9px] font-mono uppercase tracking-widest text-stone-500 font-semibold pt-2 pb-1">{role}</p>
+            <p className="text-[9px] uppercase tracking-widest text-stone-500 font-semibold pt-2 pb-1">{role}</p>
             {arms.map((a) => (
               <div key={a.id} className="grid grid-cols-[minmax(0,1fr)_repeat(5,1.75rem)] items-center gap-x-1 py-0.5">
                 <span className="text-[11px] font-sans text-stone-700 truncate">{surname(a.name)}</span>
@@ -114,7 +114,7 @@ function UsageMap({ desk }: { desk: BullpenDesk }) {
                   const n = a.innings[i] ?? 0
                   return (
                     <span key={i} title={`${a.name}: ${n} appearances in the ${i === 9 ? '9th or later' : `${i}th`} this season`}
-                      className="h-5 rounded-[4px] text-[9px] font-mono flex items-center justify-center"
+                      className="h-5 rounded-[4px] text-[9px] flex items-center justify-center"
                       style={{ background: n > 0 ? `rgba(42,120,214,${(0.12 + 0.75 * (n / max)).toFixed(2)})` : '#f5f5f4', color: n / max > 0.55 ? '#fff' : '#57534e' }}>
                       {n > 0 ? n : ''}
                     </span>
@@ -125,7 +125,7 @@ function UsageMap({ desk }: { desk: BullpenDesk }) {
           </div>
         )
       })}
-      <p className="text-[9px] font-mono text-stone-300 mt-1.5">Season appearances by the inning the arm entered · role from the club&apos;s bullpen log</p>
+      <p className="text-[9px] text-stone-300 mt-1.5">Season appearances by the inning the arm entered · role from the club&apos;s bullpen log</p>
     </div>
   )
 }
@@ -134,7 +134,7 @@ function LeftArmBlock({ club, opp, desk, bench }: { club: ScoutClub; opp: ScoutC
   const lefties = (desk?.arms ?? []).filter((a) => a.hand === 'L')
   return (
     <div>
-      <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">{club.abbr} left arms vs {opp.abbr} reserve bats</p>
+      <p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold mb-1.5">{club.abbr} left arms vs {opp.abbr} reserve bats</p>
       {lefties.length === 0 ? (
         <p className="text-[11.5px] font-sans italic text-stone-400">{club.abbr} has no left-handed reliever in the bullpen log.</p>
       ) : (
@@ -151,7 +151,7 @@ function LeftArmBlock({ club, opp, desk, bench }: { club: ScoutClub; opp: ScoutC
       ) : (
         <table className="w-full text-[11px]">
           <thead>
-            <tr className="text-[9px] font-mono uppercase tracking-wider text-stone-400 text-right border-b border-stone-200">
+            <tr className="text-[9px] uppercase tracking-wider text-stone-400 text-right border-b border-stone-200">
               <th className="text-left font-semibold py-1">{opp.abbr} reserve bat</th><th className="font-semibold">Bats</th><th className="font-semibold">OPS vs LHP</th><th className="font-semibold">PA</th>
             </tr>
           </thead>
@@ -161,10 +161,10 @@ function LeftArmBlock({ club, opp, desk, bench }: { club: ScoutClub; opp: ScoutC
               const threat = !thin && b.opsVsL != null && b.opsVsL >= FLAG_RULES.threatOps
               return (
                 <tr key={b.id} className={`border-b border-stone-100 last:border-0 text-right ${thin ? 'text-stone-300' : 'text-stone-700'}`}>
-                  <td className="text-left py-1 font-sans font-semibold">{b.name}{threat && <span className="ml-1.5 text-[9px] font-mono font-normal text-amber-700 border border-amber-300 bg-amber-50 rounded px-1">▲ threat</span>}</td>
-                  <td className="font-mono">{b.bats ?? '—'}</td>
-                  <td className="font-mono">{b.opsVsL != null ? fmtOps(b.opsVsL) : '—'}</td>
-                  <td className="font-mono" title={thin ? `Fewer than ${FLAG_RULES.minBenchPa} PA — too small to trust` : undefined}>{b.paVsL}{thin ? '*' : ''}</td>
+                  <td className="text-left py-1 font-sans font-semibold">{b.name}{threat && <span className="ml-1.5 text-[9px] font-normal text-amber-700 border border-amber-300 bg-amber-50 rounded px-1">▲ threat</span>}</td>
+                  <td className="">{b.bats ?? '—'}</td>
+                  <td className="">{b.opsVsL != null ? fmtOps(b.opsVsL) : '—'}</td>
+                  <td className="" title={thin ? `Fewer than ${FLAG_RULES.minBenchPa} PA — too small to trust` : undefined}>{b.paVsL}{thin ? '*' : ''}</td>
                 </tr>
               )
             })}
@@ -188,11 +188,11 @@ export function AvailabilityColumn({ club, side, desk }: { club: ScoutClub; side
   return (
     <div className="space-y-5">
       <ClubHeader club={club} side={side}>
-        <span className="text-[10px] font-mono text-stone-500">{desk.arms.length} arms</span>
+        <span className="text-[10px] text-stone-500">{desk.arms.length} arms</span>
       </ClubHeader>
       {idle && <p className="text-[11.5px] font-sans italic text-stone-500 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">No bullpen work in the last 7 days — every arm is fully rested.</p>}
       <div>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">Workload · last 7 days</p>
+        <p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold mb-1.5">Workload · last 7 days</p>
         {desk.scope.kind !== 'regular' && (
           <p className="text-[11px] font-sans text-stone-500 mb-2 leading-snug">
             {desk.scope.kind === 'combined'
@@ -204,7 +204,7 @@ export function AvailabilityColumn({ club, side, desk }: { club: ScoutClub; side
         <WorkloadChart desk={desk} />
       </div>
       <div>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-stone-500 font-semibold mb-1.5">Role map · where each arm pitches</p>
+        <p className="text-[10px] uppercase tracking-widest text-stone-500 font-semibold mb-1.5">Role map · where each arm pitches</p>
         <UsageMap desk={desk} />
       </div>
     </div>
@@ -270,7 +270,7 @@ export default async function BullpenSection({ ctx }: { ctx: ScoutContext }) {
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} />
-      <div className="text-[10px] font-mono text-stone-400 leading-relaxed space-y-0.5">
+      <div className="text-[10px] text-stone-400 leading-relaxed space-y-0.5">
         <p><span className="text-amber-700">▲ Overworked</span> = {WORKLOAD_RULES.yesterdayPitches}+ pitches yesterday, {WORKLOAD_RULES.last3Pitches}+ over 3 days, back-to-back days with {WORKLOAD_RULES.backToBackPlusLast3}+ in 3, or {WORKLOAD_RULES.appearsInLast4} of the last 4 days.</p>
         <p><span className="text-emerald-700">● Effective</span> / <span className="text-rose-700">▼ Shaky</span> = L7 ERA ≤ {FLAG_RULES.sharpEra.toFixed(2)} / ≥ {FLAG_RULES.shakyEra.toFixed(2)}, only once the arm has faced {FLAG_RULES.minBf}+ batters in the window (IP and BF shown on hover). <span>○ Rested</span> = no pitches in the last 3 days.</p>
         <p>Trends, rest splits and usage describe the bullpen as it stands today — relief outings for the club by the arms currently on its bullpen list. Splits under a small sample are shown faded, never read into. * A reserve bat with fewer than {FLAG_RULES.minBenchPa} PA vs LHP is not graded; ▲ threat = {FLAG_RULES.threatOps.toFixed(3).replace(/^0/, '')}+ OPS vs LHP on {FLAG_RULES.minBenchPa}+ PA.</p>
