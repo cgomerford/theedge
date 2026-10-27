@@ -34,6 +34,16 @@ export const maxDuration = 30
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ pro?: string; tab?: string }> }
 
+// The report in six tabs, like the labs: Pitchers and Hitters are the lab layout; the older sections sit where they belong around them.
+const POST_TABS: { id: string; label: string; sections: string[] }[] = [
+  { id: 'recap', label: 'Recap', sections: [] },
+  { id: 'pitchers', label: 'Pitchers', sections: ['pitch-desk', 'starters', 'pitcher-check', 'seq-audit', 'count-audit'] },
+  { id: 'hitters', label: 'Hitters', sections: ['hit-desk', 'contact', 'hitter-check', 'key-players'] },
+  { id: 'late', label: 'Late game & bullpen', sections: ['swing', 'leverage-line', 'bullpen', 'abs'] },
+  { id: 'box', label: 'Box, umpires & defense', sections: ['final', 'performers', 'box', 'scorecard', 'umpires', 'defense', 'team-charts'] },
+  { id: 'next', label: 'Next up', sections: ['next', 'tomorrow'] },
+]
+
 const MAX_W = 1440
 const centered: React.CSSProperties = { maxWidth: MAX_W, width: '100%', marginInline: 'auto' }
 
@@ -51,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PostGamePage({ params, searchParams }: Props) {
   const { slug } = await params
-  const { pro } = await searchParams
+  const { pro, tab: tabParam } = await searchParams
   const dateMatch = slug.match(/(\d{4}-\d{2}-\d{2})(?:-game\d+)?$/)
   if (!dateMatch) notFound()
 
@@ -83,7 +93,7 @@ export default async function PostGamePage({ params, searchParams }: Props) {
   const headline = `Final: ${short(w.team.name)} ${Math.max(aScore, hScore)}, ${short(l.team.name)} ${Math.min(aScore, hScore)}`
   const dateText = new Date(`${dateMatch[1]}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const seriesText = game.seriesDescription && game.seriesDescription !== 'Regular Season' && game.seriesGameNumber ? `${game.seriesDescription}, Game ${game.seriesGameNumber}` : null
-  const tab = (await searchParams).tab === 'full' ? 'full' : 'recap'
+  const tab = POST_TABS.some(t => t.id === tabParam) ? (tabParam as string) : 'recap'
 
   return (
     <>
@@ -99,10 +109,10 @@ export default async function PostGamePage({ params, searchParams }: Props) {
               <h1 style={{ margin: '4px 0 8px', fontSize: 'clamp(30px, 5.5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{headline}</h1>
               <div style={{ fontSize: 15, color: '#57534E', marginBottom: 14 }}>{dateText}{game.venue?.name ? ` · ${game.venue.name}` : ''}{seriesText ? ` · ${seriesText}` : ''}</div>
               <Suspense fallback={null}>
-                <Tabs label="Postgame sections" defaultTab="recap" tabs={[{ id: 'recap', label: 'Recap' }, { id: 'full', label: 'Full report' }]} />
+                <Tabs label="Postgame sections" defaultTab="recap" tabs={POST_TABS.map(t => ({ id: t.id, label: t.label }))} />
               </Suspense>
               <div style={{ marginTop: 8 }}>
-                {tab === 'full' ? <PostgameShell ctx={ctx} /> : <Suspense fallback={null}><RecapTab ctx={ctx} /></Suspense>}
+                {tab === 'recap' ? <Suspense fallback={null}><RecapTab ctx={ctx} /></Suspense> : <PostgameShell ctx={ctx} only={POST_TABS.find(t => t.id === tab)!.sections} />}
               </div>
             </>
           ) : (

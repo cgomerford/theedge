@@ -25,8 +25,8 @@ import HitterCheckSection from './HitterCheckSection'
 import TeamChartsSection from './TeamChartsSection'
 import SeqAuditSection from './SeqAuditSection'
 import CountAuditSection from './CountAuditSection'
-import ZoneResultSection from './ZoneResultSection'
-import ArsenalNightSection from './ArsenalNightSection'
+import HitDeskSection from './HitDeskSection'
+import PitchDeskSection from './PitchDeskSection'
 import LeverageSection from './LeverageSection'
 import TomorrowSection from './TomorrowSection'
 import { CardLink } from './ui'
@@ -52,8 +52,8 @@ const SECTION_BODIES: Partial<Record<string, (ctx: PostgameContext) => React.Rea
   'team-charts': (ctx) => <TeamChartsSection ctx={ctx} />,
   'seq-audit': (ctx) => <SeqAuditSection ctx={ctx} />,
   'count-audit': (ctx) => <CountAuditSection ctx={ctx} />,
-  'zone-result': (ctx) => <ZoneResultSection ctx={ctx} />,
-  'arsenal-night': (ctx) => <ArsenalNightSection ctx={ctx} />,
+  'hit-desk': (ctx) => <HitDeskSection ctx={ctx} />,
+  'pitch-desk': (ctx) => <PitchDeskSection ctx={ctx} />,
   'leverage-line': (ctx) => <LeverageSection ctx={ctx} />,
   tomorrow: (ctx) => <TomorrowSection ctx={ctx} />,
 }
@@ -70,57 +70,29 @@ function Skeleton() {
   )
 }
 
-export default function PostgameShell({ ctx }: { ctx: PostgameContext }) {
+// `only` picks the sections of one tab (the report is five tabs, like the labs); without it every section shows, as before.
+export default function PostgameShell({ ctx, only }: { ctx: PostgameContext; only?: string[] }) {
   const withStatus = POSTGAME_SECTIONS.map((meta) => ({ ...meta, status: SECTION_BODIES[meta.id] ? ('live' as const) : ('planned' as const) }))
-  const live = withStatus.filter((s) => s.status === 'live')
-  const planned = withStatus.filter((s) => s.status === 'planned')
-  const freePlanned = planned.filter((s) => s.tier !== 'pro'), proPlanned = planned.filter((s) => s.tier === 'pro')
+  const live = withStatus.filter((s) => s.status === 'live' && (!only || only.includes(s.id))).sort((a, b) => (only ? only.indexOf(a.id) - only.indexOf(b.id) : 0))
 
   return (
-    <div className="lg:grid lg:grid-cols-[176px_minmax(0,1fr)] lg:gap-6 items-start">
-      <nav aria-label="Postgame sections" className="hidden lg:block sticky top-28 self-start">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-stone-400 font-bold mb-2 px-2">Sections</p>
-        <ol className="space-y-0.5">
-          {withStatus.map((s) => (
-            <li key={s.id}>
-              <a href={`#${s.id}`} className={`flex items-baseline gap-2 px-2 py-1.5 rounded-lg text-[11.5px] font-sans transition hover:bg-orange-50 hover:text-orange-700 ${s.status === 'live' ? 'text-stone-800 font-semibold' : 'text-stone-400'}`}>
-                <span className="font-mono text-[9px] w-4 shrink-0 text-stone-400">{s.num}</span>
-                <span className="leading-tight">{s.title}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </nav>
-
-      <div className="min-w-0 space-y-5">
-        <nav aria-label="Postgame sections" className="lg:hidden flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-          {withStatus.map((s) => (
-            <a key={s.id} href={`#${s.id}`} className="shrink-0 text-[10px] font-mono uppercase tracking-wide px-2.5 py-1.5 rounded-lg border bg-white text-stone-500 border-stone-200 whitespace-nowrap">{s.num}. {s.title}</a>
+    <div className="min-w-0 space-y-5">
+      {live.length > 1 && (
+        <nav aria-label="Sections in this tab" className="flex gap-1.5 overflow-x-auto pb-1">
+          {live.map((s) => (
+            <a key={s.id} href={`#${s.id}`} className="shrink-0 text-[12px] font-semibold px-3 py-1.5 rounded-full border bg-white text-stone-600 border-stone-200 whitespace-nowrap hover:border-orange-400 hover:text-orange-700">{s.title}</a>
           ))}
         </nav>
+      )}
 
-        {live.map((meta) => (
-          <ScoutSection key={meta.id} meta={meta} locked={meta.tier === 'pro' && !ctx.isPro}>
-            {ctx.isAdmin && CARDS[meta.id] && <CardLink gamePk={ctx.gamePk} card={CARDS[meta.id]} />}
-            <Suspense fallback={<Skeleton />}>{SECTION_BODIES[meta.id]?.(ctx)}</Suspense>
-          </ScoutSection>
-        ))}
+      {live.map((meta) => (
+        <ScoutSection key={meta.id} meta={meta} locked={meta.tier === 'pro' && !ctx.isPro}>
+          {ctx.isAdmin && CARDS[meta.id] && <CardLink gamePk={ctx.gamePk} card={CARDS[meta.id]} />}
+          <Suspense fallback={<Skeleton />}>{SECTION_BODIES[meta.id]?.(ctx)}</Suspense>
+        </ScoutSection>
+      ))}
 
-        {freePlanned.length > 0 && (
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-semibold mb-2">Coming next · free</p>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{freePlanned.map((meta) => <ScoutSection key={meta.id} meta={meta} locked={false} compact />)}</div>
-          </div>
-        )}
-        {proPlanned.length > 0 && (
-          <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-stone-400 font-semibold mb-2">Coming next · Pro — plan vs execution</p>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{proPlanned.map((meta) => <ScoutSection key={meta.id} meta={meta} locked={!ctx.isPro} compact />)}</div>
-          </div>
-        )}
-
-        <p className="text-[10px] font-mono text-stone-400 text-center pt-1">The Postgame report describes what happened. It is information, not advice.</p>
-      </div>
+      <p className="text-[10px] text-stone-400 text-center pt-1">The Postgame report describes what happened. It is information, not advice.</p>
     </div>
   )
 }

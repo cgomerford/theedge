@@ -63,3 +63,5 @@ fetch	src/components/pitching-lab/TrendLab.tsx
 fetch	src/lib/lab-log.ts
 fetch	src/components/batting-lab/BatterArsenal.tsx
 fetch	src/components/scout/lab/StarterDesk.tsx
+fetch	src/components/postgame/report/lab/PitchDesk.tsx
+fetch	src/components/postgame/report/lab/HitDesk.tsx
