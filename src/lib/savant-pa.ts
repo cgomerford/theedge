@@ -198,19 +198,40 @@ async function gameDays(season: number, types: string[]): Promise<string[]> {
 export type LoadProgress = { done: number; total: number }
 
 /**
- * Makes sure every game day in range is loaded, fetching at most `budget` new days per call (3 at a time)
+ * Makes sure every game day in range is loaded, fetching at most `budget` new days per call (8 at a time: a day is a 3 MB CSV, so the pull is bandwidth-bound and parallel requests are what make it faster)
  * so a request stays inside the serverless time limit. Returns how many days are done out of the total.
  */
-export async function ensureRange(seasons: number[], types: string[], budget = 12): Promise<LoadProgress & { days: string[] }> {
+export async function ensureRange(seasons: number[], types: string[], budget = 24): Promise<LoadProgress & { days: string[] }> {
   const days: string[] = []
   for (const y of seasons) days.push(...await gameDays(y, types))
   const missing = days.filter(d => !cachedDay(d))
   const batch = missing.slice(0, budget)
   let i = 0
-  await Promise.all(Array.from({ length: Math.min(3, batch.length) }, async () => {
+  await Promise.all(Array.from({ length: Math.min(8, batch.length) }, async () => {
     while (i < batch.length) { const d = batch[i++]; await fetchDay(d) }
   }))
   return { done: days.length - (missing.length - batch.length), total: days.length, days }
+}
+
+/**
+ * For "when did this last happen": loads game days NEWEST FIRST (across the given seasons, newest season first) and stops as soon as
+ * `enough(daysSoFar)` says the loaded stretch already holds what was asked for. `days` is the unbroken newest stretch that is loaded.
+ */
+export async function ensureNewest(
+  seasons: number[], types: string[], enough: (days: string[]) => boolean, budget = 24,
+): Promise<LoadProgress & { days: string[]; finished: boolean }> {
+  const days: string[] = []
+  for (const y of [...seasons].sort((a, b) => b - a)) days.push(...[...await gameDays(y, types)].reverse())
+  const stretch = () => { const i = days.findIndex(d => !cachedDay(d)); return days.slice(0, i === -1 ? days.length : i) }
+  let have = stretch()
+  if (have.length === days.length || enough(have)) return { done: have.length, total: days.length, days: have, finished: true }
+  const batch = days.filter(d => !cachedDay(d)).slice(0, budget)
+  let i = 0
+  await Promise.all(Array.from({ length: Math.min(8, batch.length) }, async () => {
+    while (i < batch.length) { const d = batch[i++]; await fetchDay(d) }
+  }))
+  have = stretch()
+  return { done: have.length, total: days.length, days: have, finished: have.length === days.length || enough(have) }
 }
 
 /** All plate-appearance rows for already-loaded days. */

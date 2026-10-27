@@ -657,7 +657,7 @@ export function parseQuery(text: string, current: QueryState): Parsed {
 
 /** Starter searches shown under the box, grouped the way a fan thinks about a question. */
 export const PROMPT_GROUPS: { title: string; blurb: string; pro?: boolean; prompts: { label: string; text: string }[] }[] = [
-  { title: 'Player vs club', blurb: 'One hitter or pitcher against one club', pro: true, prompts: [
+  { title: 'Player vs club', blurb: 'One hitter or pitcher against one club', prompts: [
     { label: 'Bryce Harper vs San Diego', text: 'Bryce Harper vs San Diego' },
     { label: 'Juan Soto vs the Yankees', text: 'Juan Soto vs Yankees' },
     { label: 'Tarik Skubal vs Red Sox', text: 'Tarik Skubal vs Red Sox' },
@@ -675,7 +675,7 @@ export const PROMPT_GROUPS: { title: string; blurb: string; pro?: boolean; promp
     { label: 'Stolen bases by inning (postseason)', text: 'postseason stolen bases by inning' },
     { label: 'World Series home runs by season', text: 'world series home runs by season' },
   ] },
-  { title: 'Last time it happened', blurb: 'Find the most recent occurrence', pro: true, prompts: [
+  { title: 'Last time it happened', blurb: 'Find the most recent occurrence', prompts: [
     { label: 'Last grand slam', text: 'last time a grand slam' },
     { label: 'Last triple', text: 'last time a triple' },
   ] },

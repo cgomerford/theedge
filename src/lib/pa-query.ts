@@ -10,7 +10,7 @@
 
 import { MLB_TEAMS } from '@/lib/teams'
 import { memo, type QueryResult, type TeamOut, type TeamPart, type PlayerOut } from '@/lib/stats-query'
-import { aggregatePa, coverageOf, ensureRange, recentMatches, rowsFor, type PaAgg, type PaQuery } from '@/lib/savant-pa'
+import { aggregatePa, coverageOf, ensureNewest, ensureRange, recentMatches, rowsFor, type LoadProgress, type PaAgg, type PaQuery } from '@/lib/savant-pa'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 import {
   CURRENT_SEASON, DEEP_GROUP_BY, deepGroupLabel, deepToParams,
@@ -79,26 +79,33 @@ function teamParts(rows: PaRow[], group: Group): TeamPart[] {
   return [...m.entries()].map(([abbr, r]) => ({ abbr, name: MLB_TEAMS.find(t => t.abbrev === abbr)?.name ?? abbr, totals: toTotals(r, group) }))
 }
 
+const FINDER_FLOOR = 2015   // the Statcast era
+const FINDER_ENOUGH = 5      // matches that make a useful "last times" list
+
 export async function runDeepQuery(q: QueryState): Promise<QueryResult> {
   if (q.group === 'fielding') throw new Error('Fielding is not available in the plate-appearance engine.')
   if (!q.deep) throw new Error('No deep filters supplied.')
   const group = q.group
   const result: QueryResult = { query: q, engine: 'deep', seasons: [], league: null, baseline: null }
 
+  const filters: PaQuery = deepToParams(q.deep, group)
+  const finder = q.view === 'recent'
   const years = q.view === 'compare' ? [...new Set(q.years)] : []
   const from = q.view === 'compare' ? Math.min(...years) : Math.min(q.from, q.to)
   const to = q.view === 'compare' ? Math.max(...years) : Math.max(q.from, q.to)
-  result.seasons = q.view === 'compare' ? years : Array.from({ length: to - from + 1 }, (_, i) => from + i)
+  // "When did this last happen" ignores the season and game-type pickers: it looks back from today, newest day first, until it has found enough.
+  result.seasons = finder ? Array.from({ length: CURRENT_SEASON - FINDER_FLOOR + 1 }, (_, i) => CURRENT_SEASON - i) : q.view === 'compare' ? years : Array.from({ length: to - from + 1 }, (_, i) => from + i)
 
   // Pull whatever Savant days are still missing (a bounded batch per request); until the whole range is
   // in, report progress instead of numbers built from a partial range.
-  const types = gameTypes(q.gameType)
-  const progress = await ensureRange(result.seasons, types)
-  if (progress.done < progress.total) return { ...result, loading: { done: progress.done, total: progress.total } }
+  const types = finder ? ['R', 'F', 'D', 'L', 'W'] : gameTypes(q.gameType)
+  const progress: LoadProgress & { days: string[]; finished?: boolean } = finder
+    ? await ensureNewest(result.seasons, types, days => recentMatches(rowsFor(days, types), filters, 30).total >= FINDER_ENOUGH)
+    : await ensureRange(result.seasons, types)
+  if (finder ? !progress.finished : progress.done < progress.total) return { ...result, loading: { done: progress.done, total: progress.total } }
   const plateAppearances = rowsFor(progress.days, types)
   result.coverage = coverageOf(plateAppearances)
 
-  const filters: PaQuery = deepToParams(q.deep, group)
   const run = (extra: Partial<PaQuery>, withFilters = true): Promise<PaRow[]> =>
     Promise.resolve(aggregatePa(plateAppearances, { ...(withFilters ? filters : {}), ...extra }))
 

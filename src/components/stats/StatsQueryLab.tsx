@@ -131,6 +131,8 @@ function describe(q: QueryState): string {
     ? q.years.join(' vs ')
     : q.from === q.to ? String(q.from) : `${Math.min(q.from, q.to)}–${Math.max(q.from, q.to)}`
   const sit = q.deep ? describeDeep(q.deep).join(' + ') : q.split ? splitLabel(q.split) : ''
+  // The finder looks back from today across every game type, whatever the season and game-type pickers say.
+  if (q.view === 'recent') return `Latest first, since 2015 · ${GROUP_LABEL[q.group]}${sit ? ` · ${sit}` : ''}`
   return `${gt} · ${yrs} · ${GROUP_LABEL[q.group]}${sit ? ` · ${sit}` : ''}`
 }
 
@@ -416,7 +418,7 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
       notes.push(...describeDeep({ stack: [], who: mu.who }))
     }
     const grp = state.group ?? q.group
-    if (state.deep && !isPro) {
+    if (state.deep && !isPro && state.view !== 'recent') {
       notes.push('Stacking filters is not available on your account — applied the first one only')
       state.split = state.deep.stack[0] ?? ''
       state.deep = null
@@ -429,10 +431,6 @@ export default function StatsQueryLab({ isPro, isSignedIn }: { isPro: boolean; i
     state.metric = picked[0] ?? clampMetric(grp, state.metric ?? defaultMetric(grp))
     setUnderstood(notes)
     setChosen(picked.length ? picked : [state.metric])
-    if (state.view === 'recent' && !isPro) {
-      notes.push('The last-happened finder is not available on your account — showing the overall numbers')
-      state.view = 'summary'
-    }
     setOutput('table')
     setAskOpen(state.view !== 'recent')   // the finder is a list of occurrences — nothing to choose first
     setChartPick(null)

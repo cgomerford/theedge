@@ -95,7 +95,9 @@ export async function GET(req: NextRequest) {
   // "When did this last happen" always runs on plate appearances: a single quick-mode situation becomes a one-chip stack.
   const deepParam = sp.get('deep') ?? (view === 'recent' ? JSON.stringify({ stack: split ? [split] : [] }) : null)
   if (deepParam) {
-    if (!pro) return NextResponse.json({ error: 'Stacked filters are a Pro feature.' }, { status: 403 })
+    // The "last time it happened" finder is open to everyone (within the daily lookups): every field is validated below and the finder is capped to the newest stretch of games.
+    const finderOnly = view === 'recent'
+    if (!pro && !finderOnly) return NextResponse.json({ error: 'Stacked filters are a Pro feature.' }, { status: 403 })
     if (group === 'fielding') return NextResponse.json({ error: 'Stacked filters are not available for fielding.' }, { status: 400 })
     try {
       const d = JSON.parse(deepParam) as Record<string, unknown>
