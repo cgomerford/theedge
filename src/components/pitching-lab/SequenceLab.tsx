@@ -165,7 +165,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
         {types.map(t => {
           const f = flights.find(x => x.type === t.t)
           return (
-            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setFocus('ALL') }}>
+            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setFocus('ALL'); if (count === '0-0') setCount('any') }}>
               <SpinBall code={t.t} size={30} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />
               <span>{t.name}<small>{((t.n / log.pitches.length) * 100).toFixed(0)}% · {t.n} pitches</small></span>
             </button>
@@ -193,12 +193,20 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
           {hist.length > 0 && <Pills items={[['any', 'Anywhere'], ['in', 'In the zone'], ['out', 'Out of the zone']] as [Where, string][]} value={where} onChange={setWhere} />}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
-          <Pills items={[['any', 'Any count'], ...COUNTS.map(c => [c, c] as [string, string])]} value={count} onChange={setCount} />
+          <Pills items={[['any', 'Any count'], ...COUNTS.filter(c => hist.length === 0 || c !== '0-0').map(c => [c, c] as [string, string])]} value={count} onChange={setCount} />
           <Pills items={[['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']] as ['any' | 'L' | 'R', string][]} value={side} onChange={setSide} />
         </div>
 
         {total === 0 ? (
-          <p style={{ fontSize: 14, color: C.mute }}>No pitches match this selection. Clear a filter or remove a pitch from the chain.</p>
+          <div style={{ fontSize: 14, color: C.mute }}>
+            {(() => {
+              const on = [res !== 'any' ? `result: ${CAT_LABEL[res]}` : null, where !== 'any' ? (where === 'in' ? 'in the zone' : 'out of the zone') : null, count !== 'any' ? `count ${count}` : null, side !== 'any' ? (side === 'L' ? 'left-handed hitters' : 'right-handed hitters') : null].filter(Boolean)
+              return on.length > 0
+                ? <>Nothing in the log matches {hist.length ? hist.map(nm).join(' → ') : 'this'} with {on.join(', ')}. </>
+                : <>Nothing follows {hist.map(nm).join(' → ')} in the log. </>
+            })()}
+            <button type="button" onClick={() => { setRes('any'); setWhere('any'); setCount('any'); setSide('any') }} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Clear the filters</button>
+          </div>
         ) : (
           <div className="sq-tiles">
             <div className="sq-span2" style={tile}>
@@ -207,7 +215,7 @@ export default function SequenceLab({ pitcherId }: { pitcherId: number }) {
                 {topTypes.map(t => {
                   const n = nextCounts.get(t) ?? 0, f = flights.find(x => x.type === t)
                   return (
-                    <button key={t} type="button" className="sq-bar" disabled={hist.length >= MAX_CHAIN} onClick={() => { setHist([...hist, t]); setFocus('ALL') }} title={hist.length >= MAX_CHAIN ? 'Remove a pitch from the chain to go further' : `See what came after ${nm(t)}`} style={hist.length >= MAX_CHAIN ? { cursor: 'default' } : undefined}>
+                    <button key={t} type="button" className="sq-bar" disabled={hist.length >= MAX_CHAIN} onClick={() => { setHist([...hist, t]); setFocus('ALL'); if (count === '0-0') setCount('any') }} title={hist.length >= MAX_CHAIN ? 'Remove a pitch from the chain to go further' : `See what came after ${nm(t)}`} style={hist.length >= MAX_CHAIN ? { cursor: 'default' } : undefined}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 14 }}><SpinBall code={t} size={24} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />{nm(t)}</span>
                       <span style={{ height: 16, background: C.soft, borderRadius: 8, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${(n / total) * 100}%`, background: pitchColor(t), borderRadius: 8 }} /></span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14, textAlign: 'right' }}><b>{pc(n / total)}</b> <span style={{ color: C.faint }}>({n})</span></span>
