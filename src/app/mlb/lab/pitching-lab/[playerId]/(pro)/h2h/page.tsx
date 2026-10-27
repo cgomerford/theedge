@@ -14,5 +14,5 @@ export default function H2HPage() {
   if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this pitcher&apos;s data right now.</div>
   if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
 
-  return <MatchupLab pitcherId={data.id} pitcherName={data.name} />
+  return <MatchupLab id={data.id} name={data.name} role="pitcher" />
 }

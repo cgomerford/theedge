@@ -21,6 +21,8 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import { MLB_TEAMS } from '@/lib/teams'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { aggregate, arrToAgg, merge, metric, type Agg } from '@/lib/zone-stats'
+import { batterAsPitchLog, type LabRole } from '@/lib/lab-log'
+import type { BatterPitchLog } from '@/lib/batter-pitch-log'
 import { SmoothHeatmap } from './ArsenalExtras'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
@@ -91,7 +93,8 @@ function buildPAs(pitches: RawPitch[]): PA[] {
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.key < b.key ? 1 : -1))
 }
 
-export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: number; pitcherName: string }) {
+export default function MatchupLab({ id: pitcherId, name: pitcherName, role = 'pitcher' }: { id: number; name: string; role?: LabRole }) {
+  const opp = role === 'batter' ? 'pitcher' : 'hitter'   // the other side of every matchup on this tab
   const season = new Date().getFullYear()
   const [scope, setScope] = useState<Scope>('career')
   const [rows, setRows] = useState<Row[] | null>(null)
@@ -111,20 +114,23 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
 
   useEffect(() => {
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&summary=matchups`).then(r => r.json()).then(j => {
+    const url = role === 'pitcher' ? `/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&summary=matchups` : `/api/mlb/batter-pitch-log?batterId=${pitcherId}&season=${season}&range=${scope}&summary=matchups`
+    fetch(url).then(r => r.json()).then(j => {
       if (off) return
       if (j.error) { setRows([]); return }
-      setRows(j.rows as Row[]); setNames(j.names as Record<number, string>)
-      const ids = [...new Set((j.rows as Row[]).map(r => r.g))]
+      // In a hitter's rows the opponent is the pitcher (`p`); keep it under `b`, the opponent id, so the rest of this file is the same for both.
+      const rs = (j.rows as (Row & { p?: number })[]).map(r => (role === 'batter' ? { ...r, b: r.p as number } : r)) as Row[]
+      setRows(rs); setNames(j.names as Record<number, string>)
+      const ids = [...new Set(rs.map(r => r.g))]
       if (ids.length) fetch(`/api/mlb/game-teams?gamePks=${ids.slice(0, 400).join(',')}`).then(x => x.json()).then(g => { if (!off && g.games) setGames(prev => ({ ...prev, ...g.games })) }).catch(() => {})
     }).catch(() => { if (!off) setRows([]) })
     return () => { off = true }
-  }, [pitcherId, season, scope])
+  }, [role, pitcherId, season, scope])
 
   useEffect(() => {
     if (teamId == null) return
     let off = false
-    fetch(`/api/mlb/team-roster?teamId=${teamId}`).then(r => r.json()).then(j => { if (!off) setRoster(j.error ? [] : (j.players as RosterRow[])) }).catch(() => { if (!off) setRoster([]) })
+    fetch(`/api/mlb/team-roster?teamId=${teamId}${role === 'batter' ? '&pos=pitchers' : ''}`).then(r => r.json()).then(j => { if (!off) setRoster(j.error ? [] : (j.players as RosterRow[])) }).catch(() => { if (!off) setRoster([]) })
     return () => { off = true }
   }, [teamId])
 
@@ -140,11 +146,13 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
   useEffect(() => {
     if (!batter) return
     let off = false
-    fetch(`/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&batterId=${batter.id}`).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : j) }).catch(() => { if (!off) setLog('error') })
+    const url = role === 'pitcher' ? `/api/mlb/pitch-log?playerId=${pitcherId}&season=${season}&range=${scope}&batterId=${batter.id}` : `/api/mlb/batter-pitch-log?batterId=${pitcherId}&season=${season}&range=${scope}&pitcherId=${batter.id}`
+    fetch(url).then(r => r.json()).then(j => { if (!off) setLog(j.error ? 'error' : role === 'pitcher' ? j : batterAsPitchLog(j as BatterPitchLog)) }).catch(() => { if (!off) setLog('error') })
     return () => { off = true }
-  }, [pitcherId, season, batter, scope])
+  }, [role, pitcherId, season, batter, scope])
 
-  const batterTeam = (r: Row): number | null => { const g = games[r.g]; return g ? (r.tb === 'T' ? g.away : r.tb === 'B' ? g.home : null) : null }
+  // The opponent's club in that game: a hitter's club is the away side when the top of the inning is being played; a pitcher's is the home side.
+  const batterTeam = (r: Row): number | null => { const g = games[r.g]; if (!g || !r.tb) return null; const away = r.tb === 'T'; return (role === 'pitcher') === away ? g.away : g.home }
   const facedMap = useMemo(() => {
     const m = new Map<number, { id: number; name: string; pa: number }>()
     for (const r of rows ?? []) { const e = m.get(r.b) ?? { id: r.b, name: names[r.b] ?? `#${r.b}`, pa: 0 }; e.pa += arrToAgg(r.a).den; m.set(r.b, e) }
@@ -221,12 +229,12 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
                 <b style={{ fontSize: 24, fontWeight: 800 }}>{batter.name}</b>
                 <div style={{ fontSize: 13, color: C.mute }}>{log === null ? 'Loading every meeting…' : log === 'error' ? 'Couldn’t load this matchup right now.' : pas.length === 0 ? 'They have not met in the regular-season Statcast data (2015 on).' : `${pas.filter(p => p.kind !== 'open').length} plate appearances since ${years[years.length - 1]}`}</div>
               </div>
-              <button type="button" onClick={() => { setBatter(null); setLog(null) }} style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer' }}>Change hitter</button>
+              <button type="button" onClick={() => { setBatter(null); setLog(null) }} style={{ marginLeft: 'auto', fontFamily: SANS, fontSize: 12, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer' }}>{`Change ${opp}`}</button>
             </div>
           )}
           {!batter && (
             <>
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search any hitter" aria-label="Search any hitter" style={{ fontFamily: SANS, fontSize: 15, padding: '9px 12px', border: `1px solid ${C.line}`, borderRadius: 10, maxWidth: 360 }} />
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder={`Search any ${opp}`} aria-label={`Search any ${opp}`} style={{ fontFamily: SANS, fontSize: 15, padding: '9px 12px', border: `1px solid ${C.line}`, borderRadius: 10, maxWidth: 360 }} />
               {query.trim().length >= 3 && results.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {results.map(r => <button key={r.id} type="button" onClick={() => choose({ id: r.id, name: r.fullName })} style={{ fontFamily: SANS, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '4px 12px', border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer' }}>{r.fullName}</button>)}
@@ -234,7 +242,7 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
               )}
               {team && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: C.mute, marginBottom: 6 }}>{team.name} hitters{roster === null ? ' (loading)' : ''}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: C.mute, marginBottom: 6 }}>{team.name} {opp}s{roster === null ? ' (loading)' : ''}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {rosterSorted.map(r => {
                       const f = facedMap.get(r.id)
@@ -247,7 +255,7 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
                   </div>
                 </div>
               )}
-              {!team && <div style={{ fontSize: 13, color: C.mute }}>Choose an opponent on the left for its hitters, or search for any player. Hitters {pitcherName} has faced are marked with their plate appearances.</div>}
+              {!team && <div style={{ fontSize: 13, color: C.mute }}>Choose an opponent on the left for its {opp}s, or search for any player. {opp === 'pitcher' ? 'Pitchers' : 'Hitters'} {pitcherName} has faced are marked with their plate appearances.</div>}
               {faced && faced.length > 0 && (
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 800, color: C.mute, marginBottom: 6 }}>Faced most</div>
@@ -277,9 +285,9 @@ export default function MatchupLab({ pitcherId, pitcherName }: { pitcherId: numb
                           ['K rate', t.agg.den ? pc(t.k / t.agg.den) : '—'], ['BB rate', t.agg.den ? pc(t.bb / t.agg.den) : '—'], ['Whiff', pc(metric(t.agg, 'whiff', 0).v)],
                         ] as [string, string][]).map(([k, v]) => <div key={k}><dt style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }}>{k}</dt><dd style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{v}</dd></div>)}
                       </dl>
-                      <p style={note}>{t.agg.den < MIN_SAMPLE.h2hPA ? <>{star} Under {MIN_SAMPLE.h2hPA} plate appearances: a small sample. </> : ''}Hitters are counted for the club they were playing for in each game, so a player who has since moved is under his old team. Choose a hitter below, or from the roster above.</p>
+                      <p style={note}>{t.agg.den < MIN_SAMPLE.h2hPA ? <>{star} Under {MIN_SAMPLE.h2hPA} plate appearances: a small sample. </> : ''}{opp === 'pitcher' ? 'Pitchers' : 'Hitters'} are counted for the club they were playing for in each game, so a player who has since moved is under the old club. Choose one below, or from the roster above.</p>
                       <table className="h2-tbl" style={{ marginTop: 8, minWidth: 620 }}>
-                        <thead><tr><th>Hitter</th><th>PA</th><th>AB</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>AVG</th><th>SLG</th><th>xwOBA</th></tr></thead>
+                        <thead><tr><th>{opp === 'pitcher' ? 'Pitcher' : 'Hitter'}</th><th>PA</th><th>AB</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>AVG</th><th>SLG</th><th>xwOBA</th></tr></thead>
                         <tbody>
                           {teamHitters.map(([id, x]) => (
                             <tr key={id} style={{ cursor: 'pointer' }} onClick={() => choose({ id, name: names[id] ?? `#${id}` })}>
