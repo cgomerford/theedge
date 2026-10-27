@@ -17,7 +17,8 @@ const FAQS = [
     items: [
       { q: 'What is x9Lab?', a: 'x9Lab turns public MLB game data into plain-number breakdowns of players, pitchers and games, with the sample size shown beside every stat.' },
       { q: 'Who is it for?', a: "Fans who want more than a box score. You don't need to be a data scientist: the numbers come with plain labels and their sample sizes." },
-      { q: 'Is x9Lab free?', a: 'Yes. A free account gets the scout report summary and recap, follows for up to 10 players and 3 teams, the free Batting Lab tabs, live games and one full deep look a day. Pro opens every deep module.' },
+      { q: 'Is x9Lab free?', a: 'Yes. A free account gets the scout report summary and recap, follows for up to 10 players and 3 teams, the free Batting Lab tabs, live games, ten Ask the stats questions a day, the stats graphs and one full deep look a day. Pro opens every deep module and makes Ask the stats unlimited.' },
+      { q: 'What is Ask the stats?', a: 'A box where you type a baseball question the way you would say it, like "2 out home runs in the 5th inning", "last grand slam in a World Series" or "Juan Soto vs Yankees". It sets the filters for you. Each new question uses one lookup: 10 a day with an account, 5 without one. The dropdown search on the same page is unlimited.' },
     ],
   },
   {

@@ -24,6 +24,9 @@ const FOLLOWS = `${FREE_FOLLOW_LIMITS.players} players, ${FREE_FOLLOW_LIMITS.tea
 const COMPARE: { feature: string; free: string; pro: string }[] = [
   { feature: 'Scout report: summary and recap', free: 'Yes', pro: 'Yes' },
   { feature: 'Follow players and teams, your own page', free: FOLLOWS, pro: FOLLOWS },
+  { feature: 'Ask the stats: a question in plain words, such as "2 out home runs in the 5th inning" or "Juan Soto vs Yankees"', free: '10 a day (5 without an account)', pro: 'Unlimited' },
+  { feature: 'Stats search by dropdown, and the leaderboards for any season, level and game type', free: 'Unlimited, no account needed', pro: 'Unlimited' },
+  { feature: 'Stats graphs: bars, lines and scatter, overlaid years, image download', free: 'Yes, with an account', pro: 'Yes' },
   { feature: 'Batting Lab: Contact, Approach, Swing, Decisions, Outcomes, Platoon', free: 'Yes', pro: 'Yes' },
   { feature: 'Live games, pitch by pitch', free: 'Yes', pro: 'Plus club and player filters, longer year ranges' },
   { feature: 'Deep modules: hot zones, vs arsenal, pitch shapes', free: 'One a day', pro: 'All, every player' },
@@ -50,7 +53,8 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
   { q: 'Can I get a refund?', a: '[George: refund policy]' },
   { q: 'Do I need an account to buy?', a: 'Yes. Create a free account first, then upgrade from inside it, so Pro is attached to you.' },
-  { q: "What's free forever?", a: 'The scout report summary and recap, following players and teams, the free Batting Lab tabs, live games and one full deep look a day.' },
+  { q: "What's free forever?", a: 'The scout report summary and recap, following players and teams, the free Batting Lab tabs, live games, the stats leaderboards and dropdown search, ten Ask the stats questions a day, the stats graphs and one full deep look a day.' },
+  { q: 'How do the Ask the stats lookups work?', a: 'Each new question you type uses one lookup: 10 a day with an account, 5 without one, unlimited on Pro. Changing seasons or filters on the same question within 15 minutes is free, and so is the dropdown search. The count resets at midnight UK time.' },
 ]
 
 const H2: React.CSSProperties = { margin: '0 0 6px', fontSize: 13, fontWeight: 800, letterSpacing: '.12em', color: '#FF5722', textTransform: 'uppercase' }

@@ -10,6 +10,7 @@ export const SIGNUP_BENEFITS = [
   'Full scout reports: the summary and the recap for every game.',
   "One full deep look a day: hot zones, a pitcher's arsenal or pitch shapes.",
   'Contact, Approach, Swing, Decisions, Outcomes and Platoon in Batting Lab.',
+  'Ask the stats: ten questions a day in plain words, plus the stats graphs.',
 ]
 export const SIGNUP_NOTE = "Free. We'll email you when recaps start, and you can stop anytime."
 export const SIGNUP_BUTTON = 'Create account'
