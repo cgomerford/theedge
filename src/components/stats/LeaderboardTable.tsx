@@ -87,7 +87,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px', margin: '0 0 10px' }}>
         {moreCols.length ? (
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 800 }}>
-            Add a column
+            Extra column
             <select value="" onChange={e => { if (e.target.value) setExtra(x => [...x, e.target.value]) }} style={{ height: 34, border: '1px solid #e7e2d8', borderRadius: 2, padding: '0 8px', background: '#fff', font: 'inherit', fontWeight: 400 }}>
               <option value="">Choose a stat</option>
               {moreCols.filter(c => !extra.includes(c.key)).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
