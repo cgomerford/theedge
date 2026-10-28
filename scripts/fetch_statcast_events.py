@@ -6,7 +6,10 @@ Pulls pitch-by-pitch Statcast data for a date range from Baseball Savant
 (via pybaseball) and writes it into two Supabase tables:
 
   - pitch_events        every pitch, needed for the "AVG/wOBA allowed on
-                         97mph+ pitches" range leaderboard
+                         97mph+ pitches" range leaderboard and (2026-10-28, columns from
+                         supabase/migrations/20261030100000_pitch_events_location.sql) the
+                         Sequencing Lab: plate location, movement, speed, spin, batter and
+                         pitcher hand, the count before the pitch and the batted ball's launch
   - batted_ball_events  every ball in play (a subset of pitches, filtered
                          to launch_speed not null), needed for the
                          hardest-hit-balls and HR-by-distance boards, and
@@ -103,6 +106,24 @@ def fetch_statcast_data(start_date: str, end_date: str) -> Optional[pd.DataFrame
     return df
 
 
+def _num(r, key, digits=None):
+    """A float from the row, or None when Statcast left it blank. Never 0 for a missing value."""
+    v = r.get(key)
+    if v is None or pd.isna(v):
+        return None
+    return round(float(v), digits) if digits is not None else float(v)
+
+
+def _int(r, key):
+    v = r.get(key)
+    return None if v is None or pd.isna(v) else int(v)
+
+
+def _side(r, key):
+    v = r.get(key)
+    return v if isinstance(v, str) and v in ("L", "R", "S") else None
+
+
 def build_pitch_events(df: pd.DataFrame) -> list[dict]:
     rows = []
     for _, r in df.iterrows():
@@ -120,6 +141,18 @@ def build_pitch_events(df: pd.DataFrame) -> list[dict]:
             "description": r.get("description") if not pd.isna(r.get("description")) else None,
             "events": r.get("events") if not pd.isna(r.get("events")) else None,
             "zone": int(r["zone"]) if not pd.isna(r.get("zone")) else None,
+            # Added 2026-10-28 (all nullable; Statcast column names verified against pybaseball's statcast() output)
+            "plate_x": _num(r, "plate_x", 3), "plate_z": _num(r, "plate_z", 3),
+            "sz_top": _num(r, "sz_top", 3), "sz_bot": _num(r, "sz_bot", 3),
+            "pfx_x": _num(r, "pfx_x", 3), "pfx_z": _num(r, "pfx_z", 3),
+            "effective_speed": _num(r, "effective_speed", 1), "release_spin_rate": _int(r, "release_spin_rate"),
+            "release_extension": _num(r, "release_extension", 2),
+            "release_pos_x": _num(r, "release_pos_x", 2), "release_pos_z": _num(r, "release_pos_z", 2),
+            "launch_speed": _num(r, "launch_speed", 1), "launch_angle": _num(r, "launch_angle", 1),
+            "bb_type": r.get("bb_type") if isinstance(r.get("bb_type"), str) else None,
+            "stand": _side(r, "stand"), "p_throws": _side(r, "p_throws"),
+            "balls": _int(r, "balls"), "strikes": _int(r, "strikes"), "outs_when_up": _int(r, "outs_when_up"), "inning": _int(r, "inning"),
+            "estimated_woba": _num(r, "estimated_woba_using_speedangle", 3), "woba_value": _num(r, "woba_value", 3), "woba_denom": _int(r, "woba_denom"),
         })
     return rows
 

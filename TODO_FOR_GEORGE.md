@@ -1,5 +1,22 @@
 # What to do next (George)
 
+## NEW (2026-10-28): load the pitch location data for the at-bat features
+
+Why: "Play the at-bat" and the matchup replay need, for every pitch in the league, where it crossed the plate, how it moved, how fast it was, who was batting, the count, and what the batted ball did. We store only 13 coarse zones today. I checked a live Savant file: every column below exists, and 47 of 54 fouls in a sample day carry launch angle, so pop fouls and line fouls can be told apart.
+
+1. **Run the SQL.** Supabase, SQL Editor, New query. Paste the contents of `supabase/migrations/20261030100000_pitch_events_location.sql` and press Run. It only adds empty columns and two indexes. Nothing is deleted or changed.
+2. **Reload the 2026 season** (this fills the new columns for pitches already stored; it takes a while, about a 10 second pause between weekly chunks). In Terminal, in the project folder:
+
+   `bash scripts/backfill_statcast.sh 2026-03-25 2026-10-27`
+
+   It asks for pybaseball (`pip3 install pybaseball --break-system-packages` if it complains). For each chunk it prints 5 sample rows and waits 5 seconds, so you can press Ctrl+C to stop. Check the sample rows show numbers for `plate_x`, `pfx_x`, `balls`, `strikes`, `stand`. Re-running is safe: it updates rows in place.
+3. **Tell Claude "location data is loaded."** It will check the row counts and then build the features (it will not build them before the data is there).
+
+The nightly job that already loads yesterday's games will fill the new columns from tomorrow on, with no change to its schedule.
+
+---
+
+
 Written 2026-10-27. Do these in order. Each step says why.
 
 ## 1. Run the follow table SQL in Supabase (needed for /me and the Follow buttons)
