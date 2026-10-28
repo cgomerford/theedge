@@ -250,7 +250,7 @@ export default function SequencingLab({ board, detail, events, shape, selectedId
       {/* ── league ── */}
       {view === 'league' && (
         <div className="sq-tiles">
-          <LeagueFinder season={season} />
+          <LeagueFinder season={season} pitchers={board.rows.all.map(r => ({ id: r.id, name: r.name, hand: r.hand }))} />
           <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
             <div style={kick}>The league · what comes after each pitch</div>
             <table className="sq-tbl" style={{ marginTop: 8, minWidth: 520 }}>

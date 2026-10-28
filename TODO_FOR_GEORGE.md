@@ -1,5 +1,15 @@
 # What to do next (George)
 
+## NEW (2026-10-28): at-bat index SQL (stack an at-bat in the Sequencing Lab finder)
+
+Why: you can now stack pitches into an at-bat in the League pitch finder and see the real at-bats that match (how many, how they ended, what came next, the most recent few). Matching needs every at-bat in one compact file, stored in one new table.
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030140000_league_ab_index.sql` and press Run. It creates one empty table. Nothing else is touched.
+2. Tell Claude "ab index sql done". Claude fills it (`python3 scripts/build_league_ab_index.py --season 2026`, about 3 minutes, 186,644 at-bats in 11 parts) and checks the page.
+3. After new pitches load, re-run that script to refresh it (it rebuilds the season). Not on a schedule yet.
+
+---
+
 ## DONE (2026-10-28): league pitch finder
 
 The summary table is built (347,248 cells from 724,761 pitches) and the finder works. After new pitches load, refresh it with `python3 scripts/build_league_pitch_bins.py --season 2026` (about 5 minutes; it rebuilds the season). It is not on a schedule yet.

@@ -78,3 +78,5 @@ fetch	src/components/pro/UnfollowButton.tsx
 logos	src/components/stats/StatsQueryLab.tsx
 fetch	src/lib/sequencing-lab/data.ts
 fetch	src/components/sequencing-lab/LeagueFinder.tsx
+fetch	src/components/sequencing-lab/PitcherPick.tsx
+fetch	src/components/sequencing-lab/AtBatStack.tsx

@@ -15,14 +15,17 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchColor, pitchLabel, PITCH_ORDER } from '@/lib/lab/pitch-meta'
 import { RESULTS, type ResultCode } from '@/lib/sequencing-lab/sequence'
 import { buildFlight, type FinderStats } from '@/lib/sequencing-lab/flight'
-import { H, Scene, SpeedToggle, W, proj, PLATE_Y } from '@/components/pitching-lab/PitchFlight'
+import { SpeedToggle } from '@/components/pitching-lab/PitchFlight'
+import { MAX_STACK, MOVE_WIN, SPEED_WIN } from '@/lib/sequencing-lab/ab-index'
+import FlightResult from './FlightResult'
+import AtBatStack, { type StackItem } from './AtBatStack'
+import PitcherPick, { type PitcherChoice } from './PitcherPick'
 import { NEUTRAL, ORANGE, Pills, VH, VW, cellRect, kick, labelAt, mix, note, px, pz, star, tile } from '@/components/pitching-lab/LocationExplorer'
 import type { FinderRow } from '@/app/api/sequencing/finder/route'
 
 const MIN = MIN_SAMPLE.zoneCellPitches
-const SPEED_WIN = 1.5, MOVE_WIN = 3
 const ZONES = ['11', '12', '13', '14', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-const RES_COLOR: Record<ResultCode, string> = { B: '#9DB4D6', C: '#0072B2', W: '#D55E00', F: '#E69F00', XH: '#c0392b', XO: '#8a8275' }
+const RES_COLOR: Record<ResultCode, string> = { B: '#9DB4D6', C: '#0072B2', W: '#D55E00', F: '#E69F00', XH: '#c0392b', XO: '#8a8275' }   // same as FlightResult
 const TYPES = PITCH_ORDER.filter(c => ['FF', 'SI', 'FC', 'SL', 'ST', 'SV', 'CU', 'KC', 'CH', 'FS'].includes(c))
 // Typical speed per pitch, only used to pick a cheap window for the first lookup (the sliders then start at the real average inside it).
 const TYPICAL_SPEED: Record<string, number> = { FF: 95, SI: 94, FC: 89, SL: 86, ST: 80, SV: 81, CU: 79, KC: 80, CH: 86, FS: 85 }
@@ -42,7 +45,7 @@ function statsOf(rows: FinderRow[], hand: 'R' | 'L'): FinderStats | null {
   return { ...(v as Omit<FinderStats, 'spin' | 'hand'>), spin: g('spin'), hand }
 }
 
-export default function LeagueFinder({ season }: { season: number }) {
+export default function LeagueFinder({ season, pitchers }: { season: number; pitchers: { id: number; name: string; hand: 'L' | 'R' | null }[] }) {
   const [type, setType] = useState('FF')
   const [hand, setHand] = useState<'R' | 'L'>('R')
   const [stand, setStand] = useState<'any' | 'R' | 'L'>('any')
@@ -56,6 +59,10 @@ export default function LeagueFinder({ season }: { season: number }) {
   const [slow, setSlow] = useState(6)
   const [run, setRun] = useState(0)
   const [p, setP] = useState(0)
+  const [stack, setStack] = useState<StackItem[]>([])
+  const [stackHand, setStackHand] = useState<'R' | 'L'>('R')
+  const [using, setUsing] = useState<string | null>(null)
+  const start = useRef<{ speed: number; hb: number; ivb: number } | null>(null)   // set when a pitcher's pitch is chosen: the sliders begin there instead of at the league average
 
   // Step 1: when the pitch or hand changes, ask for the pitches of that type and hand near its usual speed to find the typical speed and break, and start the sliders there.
   useEffect(() => {
@@ -65,6 +72,7 @@ export default function LeagueFinder({ season }: { season: number }) {
     fetch(`/api/sequencing/finder?type=${type}&hand=${hand}&season=${season}&slo=${ts - 5}&shi=${ts + 5}`, { signal: ac.signal })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j: { rows: FinderRow[] }) => {
+        if (start.current) { const o = start.current; start.current = null; setSpeed(o.speed); setHb(o.hb); setIvb(o.ivb); return }
         const sp = wmean(j.rows, 'speed'), h = wmean(j.rows, 'hb'), v = wmean(j.rows, 'ivb')
         if (sp == null || h == null || v == null) { setRows([]); setState('ok'); return }
         setSpeed(Math.round(sp * 2) / 2); setHb(Math.round(h)); setIvb(Math.round(v))
@@ -105,8 +113,20 @@ export default function LeagueFinder({ season }: { season: number }) {
     return () => cancelAnimationFrame(raf)
   }, [path, slow, run])
 
-  const landed = p >= 1 && path && endResult
-  const plate = path ? proj({ x: path.plate.x, y: PLATE_Y, z: path.plate.z }) : null
+  const usePitch = (c: PitcherChoice) => {
+    const o = { speed: Math.round(c.speed * 2) / 2, hb: Math.round(c.hb), ivb: Math.round(c.ivb) }
+    const h = c.hand ?? hand
+    setUsing(`${c.name}'s ${pitchLabel(c.t).toLowerCase()}`); setZone(null)
+    if (c.t === type && h === hand) { setSpeed(o.speed); setHb(o.hb); setIvb(o.ivb) } else { start.current = o; setType(c.t); setHand(h) }
+  }
+  const standNow: 'R' | 'L' | null = stand === 'any' ? null : stand
+  const blocked = stack.length > 0 && hand !== stackHand
+  const canAdd = !!path && total > 0 && stack.length < MAX_STACK && !blocked
+  const addPitch = () => {
+    if (!canAdd || speed == null || hb == null || ivb == null) return
+    if (stack.length === 0) setStackHand(hand)
+    setStack(x => [...x, { spec: { t: type, speed, hb, ivb, zone: zone ? Number(zone) : null, res }, path, result: endResult }])
+  }
   const small = total < MIN
   const handName = hand === 'R' ? 'right-handed' : 'left-handed'
 
@@ -118,6 +138,8 @@ export default function LeagueFinder({ season }: { season: number }) {
 
       <div className="lf-grid">
         <div>
+          <PitcherPick pitchers={pitchers} onUse={usePitch} />
+          {using && <p style={{ ...note, margin: '-4px 0 8px' }}>Sliders begin at {using}. Move them to explore around it.</p>}
           <div style={dt}>Pitch</div>
           <div className="lf-types" style={{ margin: '6px 0 10px' }}>
             {TYPES.map(c => <button key={c} type="button" className={`lf-t${type === c ? ' on' : ''}`} onClick={() => setType(c)}><SpinBall code={c} size={22} />{pitchLabel(c)}</button>)}
@@ -161,16 +183,7 @@ export default function LeagueFinder({ season }: { season: number }) {
 
           <div style={{ position: 'relative', marginTop: 12, maxWidth: 380 }}>
             {path ? (
-              <>
-                <Scene paths={[path]} p={p} showPlate />
-                {landed && plate && (
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden>
-                    <circle cx={plate.sx} cy={plate.sy} r={15} fill={RES_COLOR[endResult as ResultCode]} fillOpacity={0.25} stroke={RES_COLOR[endResult as ResultCode]} strokeWidth={2} />
-                    {endResult !== 'B' && endResult !== 'C' && <path d={`M ${plate.sx - 34} ${plate.sy + 14} Q ${plate.sx} ${plate.sy - 30} ${plate.sx + 34} ${plate.sy + 14}`} fill="none" stroke="#1A1A1A" strokeWidth={3} strokeLinecap="round" strokeOpacity={0.55} />}
-                    <text x={plate.sx} y={plate.sy - 22} textAnchor="middle" fontSize={12} fontWeight={800} fill="#1A1A1A">{RESULTS.find(r => r.code === endResult)?.label}</text>
-                  </svg>
-                )}
-              </>
+              <FlightResult path={path} p={p} result={endResult} />
             ) : (
               <div style={{ ...note, padding: 20, background: C.soft, borderRadius: 10 }}>{state === 'loading' ? 'Loading…' : total === 0 ? 'No league pitches match this selection. Widen it by moving a slider or clearing the zone.' : 'These pitches have no flight data stored.'}</div>
             )}
@@ -178,6 +191,10 @@ export default function LeagueFinder({ season }: { season: number }) {
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <SpeedToggle slow={slow} setSlow={setSlow} />
             <button type="button" onClick={() => setRun(r => r + 1)} style={{ marginTop: 8, background: 'none', border: 0, color: C.orange, fontWeight: 800, cursor: 'pointer', font: 'inherit', fontSize: 12 }}>Replay</button>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button type="button" onClick={addPitch} disabled={!canAdd} style={{ border: 0, borderRadius: 999, background: canAdd ? C.orange : C.line, color: canAdd ? '#fff' : C.faint, fontWeight: 800, padding: '8px 16px', cursor: canAdd ? 'pointer' : 'default', font: 'inherit', fontSize: 13 }}>Put this pitch in your at-bat</button>
+            <p style={{ ...note, marginTop: 6 }}>{blocked ? `Your at-bat is against a ${stackHand === 'R' ? 'right' : 'left'}-handed pitcher. Clear it to switch.` : stack.length >= MAX_STACK ? `An at-bat holds up to ${MAX_STACK} pitches.` : 'Stack pitches in the order thrown to find the real at-bats that match.'}</p>
           </div>
           {path && <p style={{ ...note, marginTop: 6 }}>{shownN.toLocaleString('en-US')} {handName} {pitchLabel(type).toLowerCase()}s {res ? `that ended as ${RESULTS.find(r => r.code === res)?.label.toLowerCase()}` : ''}: average {path.velo?.toFixed(1)} mph, {path.hb > 0 ? '+' : ''}{path.hb.toFixed(1)} in arm-side, {path.ivb > 0 ? '+' : ''}{path.ivb.toFixed(1)} in rise.</p>}
         </div>
@@ -197,6 +214,7 @@ export default function LeagueFinder({ season }: { season: number }) {
         )}
         <p style={note}>{total.toLocaleString('en-US')} pitches {small && total > 0 && <>{star} </>}within ±{SPEED_WIN} mph, ±{MOVE_WIN} in of arm-side break and ±{MOVE_WIN} in of rise of your selection, {season} season as stored. The path is drawn from those pitches&apos; own average release point, speed, break and plate crossing. It shows what has happened to pitches like these, not what will happen. Click a result to play a pitch that ended that way.</p>
       </div>
+      <AtBatStack stack={stack} hand={stackHand} stand={standNow} onRemove={i => setStack(x => x.filter((_, k) => k !== i))} onClear={() => setStack([])} />
     </div>
   )
 }
