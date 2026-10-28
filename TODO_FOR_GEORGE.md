@@ -1,11 +1,12 @@
 # What to do next (George)
 
-## NEW (2026-10-28): run the league pitch finder SQL (Sequencing Lab, League view)
+## NEW (2026-10-28): league pitch finder, replacement SQL (use THIS file, not the earlier one)
 
-Why: the League view now has a pitch finder: choose a pitch, speed, break, zone and result and it plays that pitch from behind the plate, with what has happened to league pitches like it. It counts over 728,000 stored pitches, so the counting lives in one read-only database function.
+Why: the first version counted over 728,000 pitches live and the database timed out. The finder now reads a small summary table that Claude builds from your pitches.
 
-1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030120000_league_pitch_finder.sql` and press Run. It creates one function and one index. Nothing is changed or deleted.
-2. Tell Claude "finder sql done" and Claude checks it returns rows. Until then the finder says it is not available yet.
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030130000_league_pitch_bins.sql` and press Run. It creates one empty table and replaces the finder function. Nothing in pitch_events is touched.
+2. Tell Claude "bins sql done". Claude fills the table (`scripts/build_league_pitch_bins.py --season 2026`, about 5 minutes) and checks the finder.
+3. Later, after new pitches are loaded, re-run that script to refresh the finder (it rebuilds the season). It is not on a schedule yet.
 
 ---
 
