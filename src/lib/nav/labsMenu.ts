@@ -39,6 +39,11 @@ export const LABS_MENU: LabsMenuItem[] = [
     blurb: 'Dial in a pitch’s velocity, ride, run and arm angle and see what pitches shaped like it have produced.',
   },
   {
+    label: 'x9Stuff Lab', href: '/mlb/lab/stuff', status: 'new',
+    tabs: ['Pitcher', 'Leaderboard', 'How we grade'],
+    blurb: 'How a team\'s analytics department grades a pitch before the results come in: Stuff, Command and Overall on a 100 scale, the arsenal and how each pitch moves.',
+  },
+  {
     label: 'Sequencing Lab', href: '/mlb/lab/sequencing', status: 'new',
     tabs: ['Compare pitchers', 'Pitcher', 'League'],
     blurb: 'Compare how every pitcher sequences: what he throws after each pitch, in each count and with two strikes, and where he goes.',

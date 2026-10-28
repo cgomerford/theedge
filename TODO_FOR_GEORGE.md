@@ -1,5 +1,20 @@
 # What to do next (George)
 
+## NEW (2026-10-28): x9Stuff Lab needs its tables and the grades loaded
+
+The lab is built (Labs menu, `/mlb/lab/stuff`). Until you do this it shows "The pitch grades are not loaded yet". A dev-only preview with invented data is at `localhost:3000/dev/stuff-lab-preview`.
+
+1. **Run the SQL.** Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030110000_stuff_lab.sql` and press Run. It only creates three empty tables.
+2. **Tell Claude "stuff tables done."** Claude loads the real Stuff Grade v1.0 results (830 pitchers, 3,910 pitch types from `models/reports/`) with `scripts/load_stuff_lab.py`. Or run it yourself:
+
+   `python3 scripts/load_stuff_lab.py --season 2026 --pitch-types models/reports/stuff_v1.0_2026_pitch_types.csv --pitchers models/reports/stuff_v1.0_2026_pitchers.csv --version stuff_v1.0`
+
+   It shows 5 sample rows per table and waits 5 seconds (Ctrl+C stops it).
+3. **What is real today:** Stuff Grade, the arsenal (speed, break, spin), movement, how each pitch has actually ended, expected runs saved, and ERA / xERA. **Still "Pending" until `edge_pitch_model.py` exists:** Command, Overall, the six sub-grades, actual run results by pitch and the pressure profile. When that model writes its CSVs, the same loader fills them and the page lights up with no code change.
+
+---
+
+
 ## NEW (2026-10-28): load the pitch location data for the at-bat features
 
 Why: "Play the at-bat" and the matchup replay need, for every pitch in the league, where it crossed the plate, how it moved, how fast it was, who was batting, the count, and what the batted ball did. We store only 13 coarse zones today. I checked a live Savant file: every column below exists, and 47 of 54 fouls in a sample day carry launch angle, so pop fouls and line fouls can be told apart.

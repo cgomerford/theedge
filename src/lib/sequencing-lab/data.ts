@@ -186,7 +186,15 @@ type ShapeRow = { pitch_type: string; n_pitches: number | string; ivb: number | 
 type MonthRow = { pitch_type: string; n_pitches: number | string; release_spin_rate: number | string | null }
 const wmean = (rows: { w: number; v: number | null }[]) => { const ok = rows.filter(r => r.v != null && r.w > 0); const d = ok.reduce((a, r) => a + r.w, 0); return d > 0 ? ok.reduce((a, r) => a + (r.v as number) * r.w, 0) / d : null }
 
-async function leagueSpin(season: number): Promise<Record<string, SpinAvg>> {
+let spinCache: { at: number; season: number; v: Record<string, SpinAvg> } | null = null
+/** League-average movement and spin per pitch type (cached 30 minutes per server process). */
+export async function leagueSpin(season: number): Promise<Record<string, SpinAvg>> {
+  if (spinCache && spinCache.season === season && Date.now() - spinCache.at < TTL_MS) return spinCache.v
+  const v = await leagueSpinUncached(season)
+  if (Object.keys(v).length) spinCache = { at: Date.now(), season, v }
+  return v
+}
+async function leagueSpinUncached(season: number): Promise<Record<string, SpinAvg>> {
   const supa = createAdminClient()
   const out: Record<string, SpinAvg> = {}
   try {

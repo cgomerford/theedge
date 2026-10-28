@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Front Office · Pitch Grades (mockup) · x9Lab</title>
+<!--
+  MOCKUP ONLY. Vanilla HTML, CSS and JS; no libraries, no network calls except the Google Fonts below.
+  Every number comes from the MOCK object in the script and is invented. Rows are shaped exactly like the model's CSV outputs
+  (pitch_type_grades, pitcher_grades, pressure_profile) so the React build can map them 1:1.
+  Two skins: "Brief" (Bebas Neue / Fraunces / JetBrains Mono, square corners) and "Site" (the site's current single font, Red Hat Display, rounded cards).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600;800&family=Red+Hat+Display:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#FAF8F3; --orange:#FF5722; --yellow:#FDE047; --black:#1A1A1A;
+  --card:#FFFFFF; --line:#D9D4C7; --soft:#F1EEE6; --mute:#5E5A50; --faint:#8E897C;
+  --below:#B9B5AA;                       /* below-average tint: neutral grey, never red or green */
+  --display:'Bebas Neue',Impact,sans-serif; --body:'Fraunces',Georgia,serif; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --r:0px;
+}
+html.site{ --display:'Red Hat Display',system-ui,sans-serif; --body:'Red Hat Display',system-ui,sans-serif; --mono:'Red Hat Display',system-ui,sans-serif; --r:14px; }
+*{box-sizing:border-box;border-radius:var(--r)}
+html{overflow-x:clip}
+body{margin:0;background:var(--cream);color:var(--black);font-family:var(--body);font-size:16px;line-height:1.5;overflow-x:clip}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.num,td,th,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+html.site .num,html.site td,html.site th,html.site .mono{font-variant-numeric:tabular-nums}
+
+/* banner */
+.banner{position:sticky;top:0;z-index:50;background:var(--yellow);color:var(--black);border-bottom:2px solid var(--black);display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;justify-content:space-between;padding:8px 16px;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.06em}
+.banner button{background:var(--black);color:var(--yellow);border:0;padding:5px 10px;font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.06em}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 90px;min-width:0}
+.mark{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--orange);font-weight:800}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,9vw,84px);line-height:.95;letter-spacing:.01em;margin:6px 0 10px}
+html.site h1,html.site h2{font-weight:800;letter-spacing:-.02em}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1;margin:0;letter-spacing:.02em}
+.lede{font-size:17px;max-width:760px;margin:0 0 6px}
+.sec{margin-top:48px;min-width:0}
+.sec>.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;border-top:3px solid var(--black);padding-top:10px;margin-bottom:6px}
+.sub{font-size:15px;color:var(--mute);max-width:760px;margin:2px 0 14px}
+.card{background:var(--card);border:1px solid var(--black);padding:16px;min-width:0}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+.know{font-size:13px;color:var(--mute);margin:6px 0 0}
+
+/* tooltips: hover or keyboard focus */
+.tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid var(--black);font-family:var(--mono);font-size:11px;font-weight:800;margin-left:6px;vertical-align:middle;cursor:help;background:var(--yellow);border-radius:50%}
+html:not(.site) .tip{border-radius:0}
+.tip::after{content:attr(data-tip);position:absolute;left:50%;bottom:130%;transform:translateX(-50%);width:max-content;max-width:250px;background:var(--black);color:var(--cream);padding:8px 10px;font-family:var(--body);font-size:12.5px;font-weight:400;line-height:1.35;text-align:left;letter-spacing:0;opacity:0;pointer-events:none;z-index:40;white-space:normal}
+.tip:hover::after,.tip:focus::after{opacity:1}
+@media (max-width:640px){.tip::after{left:0;transform:none;max-width:210px}}
+
+/* selector */
+.picker{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.picker label{font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.1em}
+select{border:2px solid var(--black);background:var(--card);padding:10px 12px;min-width:220px;font-family:var(--mono);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--black);background:var(--card);padding:6px 10px;font-family:var(--mono);font-size:12px;font-weight:800}
+.chip.on{background:var(--black);color:var(--cream)}
+
+/* grade card */
+.grades{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.g{border:1px solid var(--black);background:var(--card);padding:14px;min-width:0}
+.g .lab{font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.12em}
+.g .big{font-family:var(--display);font-size:78px;line-height:1;margin:2px 0}
+html.site .g .big{font-family:var(--mono);font-weight:800;font-size:64px}
+.g .why{font-size:14px;color:var(--mute);margin:2px 0 10px}
+.bar{position:relative;height:16px;background:var(--soft);border:1px solid var(--black)}
+.bar .fill{position:absolute;left:0;top:0;bottom:0}
+.bar .t100{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--black)}
+.bar .t100::after{content:'100';position:absolute;top:100%;left:-12px;font-family:var(--mono);font-size:10px;font-weight:800}
+.scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:16px}
+.note{display:inline-block;background:var(--yellow);border:1px solid var(--black);padding:2px 8px;font-family:var(--mono);font-size:11px;font-weight:800;margin-top:8px}
+.explain{margin-top:14px;background:var(--soft);border-left:4px solid var(--orange);padding:10px 14px;font-size:14px}
+
+/* tables */
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid var(--black);background:var(--card);vertical-align:bottom}
+th button{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;display:inline-flex;gap:4px;align-items:center}
+th[aria-sort="ascending"] button::after{content:'▲';font-size:9px}
+th[aria-sort="descending"] button::after{content:'▼';font-size:9px}
+tbody tr.pick{cursor:pointer}
+tbody tr.pick:hover{background:var(--soft)}
+tbody tr[aria-current="true"]{outline:3px solid var(--orange);outline-offset:-3px;background:#FFF1EA}
+td.rowhead button{background:none;border:0;padding:0;font:inherit;font-weight:800;text-align:left}
+.shade{font-weight:800}
+
+/* why bars */
+.why6{display:grid;gap:10px}
+.w6{display:grid;grid-template-columns:150px minmax(0,1fr) 46px;gap:8px 12px;align-items:center}
+.w6 .n{font-family:var(--mono);font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.w6 .line{grid-column:1/-1;font-size:14px;color:var(--mute);margin-top:-6px}
+.w6 .v{font-family:var(--mono);font-weight:800;text-align:right}
+@media (max-width:640px){.w6{grid-template-columns:110px minmax(0,1fr) 40px}}
+
+/* two-col compare */
+.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cmp .col{border:1px solid var(--black);background:var(--card);padding:14px}
+.cmp h3{font-family:var(--display);font-weight:400;font-size:28px;margin:0 0 6px}
+html.site .cmp h3{font-weight:800;font-size:22px}
+.kv{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:7px 0;font-size:14px}
+.kv b{font-family:var(--mono)}
+
+/* methodology */
+.meth{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px}
+.meth p{margin:0 0 4px;font-size:14.5px}
+.meth strong{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+svg{display:block;max-width:100%;height:auto}
+svg text{font-family:var(--mono)}
+
+@media (max-width:860px){.grades{grid-template-columns:minmax(0,1fr)}.cmp,.meth{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:420px){.wrap{padding:16px 12px 70px}.g .big{font-size:64px}}
+</style>
+</head>
+<body>
+<div class="banner" role="note"><span>MOCKUP DATA · NOT REAL · invented pitchers, invented numbers</span><button id="skin" type="button" aria-pressed="false">Skin: Brief (switch to current site style)</button></div>
+
+<main class="wrap">
+  <div class="mark">⊕ FRONT OFFICE</div>
+  <h1>§ Pitch Grades</h1>
+  <p class="lede">How a team's analytics department grades a pitch before the results come in. This page shows what each pitch does, where it goes, and how those two things combine into one grade on a 100 scale.</p>
+
+  <!-- 2. selector -->
+  <div class="sec" style="margin-top:22px">
+    <div class="picker">
+      <label for="who">PITCHER</label>
+      <select id="who" aria-label="Choose a pitcher"></select>
+      <span class="chips" id="meta"></span>
+    </div>
+  </div>
+
+  <!-- 3. grade card -->
+  <section class="sec" aria-labelledby="h-grade">
+    <div class="head"><span class="mark">§ 01</span><h2 id="h-grade">Grade card</h2></div>
+    <p class="sub">Three numbers per pitcher. Each sits on a 70 to 130 scale with 100 marked: right of the line is above average, left is below.</p>
+    <div class="grades" id="grades"></div>
+    <div class="explain"><b>How to read the scale.</b> 100 is league average. Every 10 points is one standard deviation, so 110 is clearly good and 120 is rare. Grades are defense-neutral: a ball in play is graded by how it was hit, not by who happened to field it. Leverage is not part of the grade: a pitch in a blowout counts the same as one in a tight game.</div>
+    <div id="sampleNote"></div>
+  </section>
+
+  <!-- 4. arsenal -->
+  <section class="sec" aria-labelledby="h-arsenal">
+    <div class="head"><span class="mark">§ 02</span><h2 id="h-arsenal">Arsenal</h2></div>
+    <p class="sub">One row per pitch type. Click a header to sort; click a row to choose that pitch for the next three sections. Grade cells are shaded by their distance from 100.</p>
+    <div class="card scroll"><table id="arsenal"><caption class="mono" style="text-align:left;font-size:11px;color:var(--faint);padding-bottom:6px">Choose a row. Velo in mph, IVB and HB in inches, spin in rpm.</caption><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 5. why -->
+  <section class="sec" aria-labelledby="h-why">
+    <div class="head"><span class="mark">§ 03</span><h2 id="h-why">Why it grades this way</h2><span class="mono" id="why-for" style="font-size:13px;color:var(--mute)"></span></div>
+    <p class="sub">The six things a pitch can do for a pitcher, each on the same 100 scale for the selected pitch.</p>
+    <div class="card"><div class="why6" id="why"></div></div>
+  </section>
+
+  <!-- 6. tree -->
+  <section class="sec" aria-labelledby="h-tree">
+    <div class="head"><span class="mark">§ 04</span><h2 id="h-tree">How a pitch gets graded</h2><span class="mono" id="tree-for" style="font-size:13px;color:var(--mute)"></span></div>
+    <p class="sub">Every pitch ends in one of a few outcomes. The percentages on the branches show how often the selected pitch takes each path.</p>
+    <div class="card scroll"><div id="tree" style="min-width:760px"></div></div>
+    <p class="know">Each outcome at the bottom is priced by its average effect on runs across the whole league (shown as runs for the batting team: a ball adds a little, a strikeout takes some away). A pitch's grade adds up those prices, weighted by how often the pitch takes each path.</p>
+  </section>
+
+  <!-- 7. movement -->
+  <section class="sec" aria-labelledby="h-move">
+    <div class="head"><span class="mark">§ 05</span><h2 id="h-move">Movement</h2></div>
+    <p class="sub">Each solid dot is one of his pitch types, sized by how often he throws it. The faint dot is the league average for that pitch type.</p>
+    <div class="card scroll"><div id="move" style="min-width:560px"></div></div>
+    <p class="know">Horizontal is inches toward the pitcher's arm side (right) or glove side (left); vertical is inches of rise beyond what gravity alone would give (negative means more drop than average).</p>
+  </section>
+
+  <!-- 8. stuff vs results -->
+  <section class="sec" aria-labelledby="h-results">
+    <div class="head"><span class="mark">§ 06</span><h2 id="h-results">Stuff vs results</h2></div>
+    <p class="sub">For each pitch type: what the stuff and command say should have happened (expected), next to what did happen (actual), in runs saved per 100 pitches.</p>
+    <div class="card scroll"><div id="results" style="min-width:560px"></div></div>
+    <p class="know">When results trail the stuff, it can be sequencing, defense or noise. The stuff is the stickier signal.</p>
+  </section>
+
+  <!-- 9. pressure -->
+  <section class="sec" aria-labelledby="h-pressure">
+    <div class="head"><span class="mark">§ 07</span><h2 id="h-pressure">Pressure profile</h2></div>
+    <p class="sub">High pressure means the 7th inning or later, the score within 2 runs, and a runner on base. Everything else is normal. This is a description of what happened, not a grade of nerve.</p>
+    <div class="cmp" id="pressure"></div>
+  </section>
+
+  <!-- 10. leaderboard -->
+  <section class="sec" aria-labelledby="h-board">
+    <div class="head"><span class="mark">§ 08</span><h2 id="h-board">Leaderboard</h2></div>
+    <p class="sub">All the mock pitchers. Sort by any grade; filter out small samples with the minimum-pitches buttons.</p>
+    <div class="picker" style="margin-bottom:10px" role="group" aria-label="Minimum pitches">
+      <span class="mono" style="font-size:12px;font-weight:800;letter-spacing:.1em">MIN PITCHES</span>
+      <span class="chips" id="minp"></span>
+    </div>
+    <div class="card scroll"><table id="board"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 11. methodology -->
+  <section class="sec" aria-labelledby="h-meth">
+    <div class="head"><span class="mark">§ 09</span><h2 id="h-meth">How we grade a pitch</h2></div>
+    <div class="card meth">
+      <div><strong>Outcome tree</strong><p>Every pitch is followed down a tree (take or swing, then strike, ball, miss, foul or ball in play) and each ending is priced by its average effect on runs.</p></div>
+      <div><strong>The 100 scale</strong><p>100 is league average and every 10 points is one standard deviation. Most pitches land between 80 and 125.</p></div>
+      <div><strong>Defense-neutral</strong><p>Balls in play are graded by how they were hit (speed and angle), not by whether a fielder made the play.</p></div>
+      <div><strong>The count</strong><p>The count is accounted for in Command and Overall only: Stuff is the same in any count, while a pitch placed for the count earns Command credit.</p></div>
+      <div><strong>Leverage</strong><p>Leverage is not part of any grade. Game situation is shown separately in the pressure profile.</p></div>
+      <div><strong>Sample size</strong><p>Stuff is reliable early, within a few hundred pitches. Command needs about 400 pitches before it settles, and rows below that carry a note.</p></div>
+    </div>
+    <p class="know">Mock data. The final page will read the model's outputs: pitch_type_grades, pitcher_grades and pressure_profile.</p>
+  </section>
+</main>
+
+<script>
+const MOCK = {
+  pitch_type_grades: [
+    {"pitcher": 900001, "player_name": "Pitcher A", "p_throws": "R", "pitch_type": "FF", "pitches": 809, "usage_pct": 44, "velo": 95.0, "ivb": 15.0, "hb": 7.0, "spin": 2306, "actual_rv_per100": 0.17, "expected_rv_per100": 0.54, "stuff_grade": 110, "command_grade": 112, "overall_grade": 108, "miss_bats_grade": 104, "chase_grade": 103, "steal_strikes_grade": 109, "ground_balls_grade": 91, "pop_ups_grade": 116, "weak_contact_grade": 104, "sample_note": ""},
+    {"pitcher": 900001, "player_name": "Pitcher A", "p_throws": "R", "pitch_type": "SL", "pitches": 570, "usage_pct": 31, "velo": 87.6, "ivb": 1.2, "hb": -3.0, "spin": 2187, "actual_rv_per100": 1.36, "expected_rv_per100": 1.14, "stuff_grade": 118, "command_grade": 115, "overall_grade": 119, "miss_bats_grade": 125, "chase_grade": 114, "steal_strikes_grade": 109, "ground_balls_grade": 111, "pop_ups_grade": 98, "weak_contact_grade": 112, "sample_note": ""},
+    {"pitcher": 900001, "player_name": "Pitcher A", "p_throws": "R", "pitch_type": "CH", "pitches": 312, "usage_pct": 17, "velo": 85.8, "ivb": 4.9, "hb": 13.7, "spin": 1833, "actual_rv_per100": 0.26, "expected_rv_per100": 0.29, "stuff_grade": 103, "command_grade": 108, "overall_grade": 104, "miss_bats_grade": 114, "chase_grade": 108, "steal_strikes_grade": 104, "ground_balls_grade": 112, "pop_ups_grade": 97, "weak_contact_grade": 107, "sample_note": "command still settling"},
+    {"pitcher": 900001, "player_name": "Pitcher A", "p_throws": "R", "pitch_type": "CU", "pitches": 147, "usage_pct": 8, "velo": 80.4, "ivb": -10.1, "hb": -7.3, "spin": 2598, "actual_rv_per100": 0.9, "expected_rv_per100": 0.38, "stuff_grade": 108, "command_grade": 102, "overall_grade": 107, "miss_bats_grade": 111, "chase_grade": 110, "steal_strikes_grade": 111, "ground_balls_grade": 101, "pop_ups_grade": 102, "weak_contact_grade": 112, "sample_note": "command still settling"},
+    {"pitcher": 900002, "player_name": "Pitcher B", "p_throws": "L", "pitch_type": "FF", "pitches": 501, "usage_pct": 38, "velo": 94.1, "ivb": 16.6, "hb": 6.4, "spin": 2347, "actual_rv_per100": -0.17, "expected_rv_per100": 0.21, "stuff_grade": 109, "command_grade": 100, "overall_grade": 104, "miss_bats_grade": 105, "chase_grade": 105, "steal_strikes_grade": 103, "ground_balls_grade": 90, "pop_ups_grade": 119, "weak_contact_grade": 113, "sample_note": ""},
+    {"pitcher": 900002, "player_name": "Pitcher B", "p_throws": "L", "pitch_type": "ST", "pitches": 343, "usage_pct": 26, "velo": 80.4, "ivb": 1.4, "hb": -19.4, "spin": 2560, "actual_rv_per100": 0.16, "expected_rv_per100": 0.5, "stuff_grade": 121, "command_grade": 98, "overall_grade": 110, "miss_bats_grade": 122, "chase_grade": 121, "steal_strikes_grade": 108, "ground_balls_grade": 112, "pop_ups_grade": 108, "weak_contact_grade": 112, "sample_note": "command still settling"},
+    {"pitcher": 900002, "player_name": "Pitcher B", "p_throws": "L", "pitch_type": "CH", "pitches": 264, "usage_pct": 20, "velo": 87.1, "ivb": 7.1, "hb": 15.4, "spin": 1717, "actual_rv_per100": 1.43, "expected_rv_per100": 0.41, "stuff_grade": 108, "command_grade": 110, "overall_grade": 106, "miss_bats_grade": 111, "chase_grade": 114, "steal_strikes_grade": 97, "ground_balls_grade": 116, "pop_ups_grade": 100, "weak_contact_grade": 106, "sample_note": "command still settling"},
+    {"pitcher": 900002, "player_name": "Pitcher B", "p_throws": "L", "pitch_type": "SI", "pitches": 211, "usage_pct": 16, "velo": 93.2, "ivb": 9.7, "hb": 15.5, "spin": 2200, "actual_rv_per100": 0.7, "expected_rv_per100": 0.23, "stuff_grade": 97, "command_grade": 108, "overall_grade": 103, "miss_bats_grade": 87, "chase_grade": 95, "steal_strikes_grade": 102, "ground_balls_grade": 114, "pop_ups_grade": 97, "weak_contact_grade": 110, "sample_note": "command still settling"},
+    {"pitcher": 900003, "player_name": "Pitcher C", "p_throws": "R", "pitch_type": "SI", "pitches": 373, "usage_pct": 41, "velo": 93.9, "ivb": 8.4, "hb": 15.8, "spin": 2291, "actual_rv_per100": -0.28, "expected_rv_per100": -0.27, "stuff_grade": 94, "command_grade": 99, "overall_grade": 95, "miss_bats_grade": 82, "chase_grade": 97, "steal_strikes_grade": 104, "ground_balls_grade": 107, "pop_ups_grade": 88, "weak_contact_grade": 107, "sample_note": "command still settling"},
+    {"pitcher": 900003, "player_name": "Pitcher C", "p_throws": "R", "pitch_type": "SL", "pitches": 218, "usage_pct": 24, "velo": 85.9, "ivb": 0.1, "hb": -4.9, "spin": 2461, "actual_rv_per100": 1.4, "expected_rv_per100": 0.82, "stuff_grade": 118, "command_grade": 109, "overall_grade": 114, "miss_bats_grade": 123, "chase_grade": 116, "steal_strikes_grade": 99, "ground_balls_grade": 115, "pop_ups_grade": 94, "weak_contact_grade": 110, "sample_note": "command still settling"},
+    {"pitcher": 900003, "player_name": "Pitcher C", "p_throws": "R", "pitch_type": "CH", "pitches": 200, "usage_pct": 22, "velo": 85.8, "ivb": 6.5, "hb": 16.9, "spin": 1771, "actual_rv_per100": 1.18, "expected_rv_per100": 0.7, "stuff_grade": 103, "command_grade": 118, "overall_grade": 110, "miss_bats_grade": 111, "chase_grade": 105, "steal_strikes_grade": 105, "ground_balls_grade": 112, "pop_ups_grade": 102, "weak_contact_grade": 106, "sample_note": "command still settling"},
+    {"pitcher": 900003, "player_name": "Pitcher C", "p_throws": "R", "pitch_type": "FC", "pitches": 118, "usage_pct": 13, "velo": 89.7, "ivb": 9.8, "hb": -4.8, "spin": 2312, "actual_rv_per100": 0.55, "expected_rv_per100": 0.25, "stuff_grade": 102, "command_grade": 109, "overall_grade": 103, "miss_bats_grade": 100, "chase_grade": 100, "steal_strikes_grade": 107, "ground_balls_grade": 104, "pop_ups_grade": 101, "weak_contact_grade": 109, "sample_note": "very small sample"},
+    {"pitcher": 900004, "player_name": "Pitcher D", "p_throws": "R", "pitch_type": "FF", "pitches": 310, "usage_pct": 50, "velo": 94.9, "ivb": 18.0, "hb": 6.9, "spin": 2481, "actual_rv_per100": -0.05, "expected_rv_per100": -0.11, "stuff_grade": 108, "command_grade": 94, "overall_grade": 99, "miss_bats_grade": 103, "chase_grade": 104, "steal_strikes_grade": 112, "ground_balls_grade": 91, "pop_ups_grade": 121, "weak_contact_grade": 101, "sample_note": "command still settling"},
+    {"pitcher": 900004, "player_name": "Pitcher D", "p_throws": "R", "pitch_type": "FS", "pitches": 167, "usage_pct": 27, "velo": 87.8, "ivb": 7.0, "hb": 14.1, "spin": 1330, "actual_rv_per100": -0.51, "expected_rv_per100": 0.38, "stuff_grade": 124, "command_grade": 91, "overall_grade": 109, "miss_bats_grade": 125, "chase_grade": 120, "steal_strikes_grade": 106, "ground_balls_grade": 125, "pop_ups_grade": 97, "weak_contact_grade": 119, "sample_note": "command still settling"},
+    {"pitcher": 900004, "player_name": "Pitcher D", "p_throws": "R", "pitch_type": "SL", "pitches": 142, "usage_pct": 23, "velo": 86.6, "ivb": 2.7, "hb": -6.8, "spin": 2418, "actual_rv_per100": 0.41, "expected_rv_per100": 0.68, "stuff_grade": 120, "command_grade": 101, "overall_grade": 113, "miss_bats_grade": 119, "chase_grade": 125, "steal_strikes_grade": 107, "ground_balls_grade": 117, "pop_ups_grade": 108, "weak_contact_grade": 107, "sample_note": "command still settling"},
+    {"pitcher": 900005, "player_name": "Pitcher E", "p_throws": "L", "pitch_type": "SI", "pitches": 220, "usage_pct": 46, "velo": 93.8, "ivb": 10.0, "hb": 15.5, "spin": 2225, "actual_rv_per100": 0.78, "expected_rv_per100": -0.16, "stuff_grade": 92, "command_grade": 105, "overall_grade": 96, "miss_bats_grade": 80, "chase_grade": 93, "steal_strikes_grade": 97, "ground_balls_grade": 109, "pop_ups_grade": 86, "weak_contact_grade": 101, "sample_note": "command still settling"},
+    {"pitcher": 900005, "player_name": "Pitcher E", "p_throws": "L", "pitch_type": "CH", "pitches": 144, "usage_pct": 30, "velo": 86.8, "ivb": 5.6, "hb": 15.4, "spin": 1705, "actual_rv_per100": -0.59, "expected_rv_per100": 0.01, "stuff_grade": 89, "command_grade": 112, "overall_grade": 98, "miss_bats_grade": 98, "chase_grade": 104, "steal_strikes_grade": 92, "ground_balls_grade": 102, "pop_ups_grade": 95, "weak_contact_grade": 98, "sample_note": "command still settling"},
+    {"pitcher": 900005, "player_name": "Pitcher E", "p_throws": "L", "pitch_type": "CU", "pitches": 115, "usage_pct": 24, "velo": 78.6, "ivb": -12.0, "hb": -9.8, "spin": 2708, "actual_rv_per100": -1.0, "expected_rv_per100": -0.08, "stuff_grade": 99, "command_grade": 97, "overall_grade": 99, "miss_bats_grade": 102, "chase_grade": 106, "steal_strikes_grade": 116, "ground_balls_grade": 113, "pop_ups_grade": 96, "weak_contact_grade": 104, "sample_note": "very small sample"},
+    {"pitcher": 900006, "player_name": "Pitcher F", "p_throws": "R", "pitch_type": "FF", "pitches": 170, "usage_pct": 55, "velo": 96.2, "ivb": 18.1, "hb": 7.6, "spin": 2424, "actual_rv_per100": 0.04, "expected_rv_per100": 0.34, "stuff_grade": 110, "command_grade": 98, "overall_grade": 107, "miss_bats_grade": 110, "chase_grade": 97, "steal_strikes_grade": 115, "ground_balls_grade": 92, "pop_ups_grade": 118, "weak_contact_grade": 97, "sample_note": "command still settling"},
+    {"pitcher": 900006, "player_name": "Pitcher F", "p_throws": "R", "pitch_type": "SL", "pitches": 102, "usage_pct": 33, "velo": 86.3, "ivb": 2.6, "hb": -6.8, "spin": 2311, "actual_rv_per100": 0.75, "expected_rv_per100": 0.58, "stuff_grade": 113, "command_grade": 106, "overall_grade": 110, "miss_bats_grade": 120, "chase_grade": 115, "steal_strikes_grade": 103, "ground_balls_grade": 108, "pop_ups_grade": 103, "weak_contact_grade": 106, "sample_note": "very small sample"},
+    {"pitcher": 900006, "player_name": "Pitcher F", "p_throws": "R", "pitch_type": "CH", "pitches": 27, "usage_pct": 9, "velo": 84.6, "ivb": 4.7, "hb": 12.9, "spin": 1766, "actual_rv_per100": 1.0, "expected_rv_per100": -0.1, "stuff_grade": 101, "command_grade": 95, "overall_grade": 99, "miss_bats_grade": 111, "chase_grade": 112, "steal_strikes_grade": 99, "ground_balls_grade": 103, "pop_ups_grade": 101, "weak_contact_grade": 103, "sample_note": "very small sample"},
+    {"pitcher": 900006, "player_name": "Pitcher F", "p_throws": "R", "pitch_type": "CU", "pitches": 9, "usage_pct": 3, "velo": 80.8, "ivb": -9.8, "hb": -4.8, "spin": 2477, "actual_rv_per100": 0.19, "expected_rv_per100": 0.27, "stuff_grade": 112, "command_grade": 96, "overall_grade": 106, "miss_bats_grade": 116, "chase_grade": 112, "steal_strikes_grade": 115, "ground_balls_grade": 112, "pop_ups_grade": 104, "weak_contact_grade": 119, "sample_note": "very small sample"},
+    {"pitcher": 900007, "player_name": "Pitcher G", "p_throws": "R", "pitch_type": "FF", "pitches": 693, "usage_pct": 42, "velo": 96.3, "ivb": 19.1, "hb": 9.6, "spin": 2360, "actual_rv_per100": -0.34, "expected_rv_per100": 0.42, "stuff_grade": 114, "command_grade": 101, "overall_grade": 108, "miss_bats_grade": 111, "chase_grade": 99, "steal_strikes_grade": 108, "ground_balls_grade": 98, "pop_ups_grade": 116, "weak_contact_grade": 107, "sample_note": ""},
+    {"pitcher": 900007, "player_name": "Pitcher G", "p_throws": "R", "pitch_type": "SL", "pitches": 495, "usage_pct": 30, "velo": 86.1, "ivb": 1.6, "hb": -3.8, "spin": 2374, "actual_rv_per100": -1.71, "expected_rv_per100": 0.54, "stuff_grade": 125, "command_grade": 91, "overall_grade": 112, "miss_bats_grade": 121, "chase_grade": 125, "steal_strikes_grade": 112, "ground_balls_grade": 116, "pop_ups_grade": 104, "weak_contact_grade": 114, "sample_note": ""},
+    {"pitcher": 900007, "player_name": "Pitcher G", "p_throws": "R", "pitch_type": "FS", "pitches": 297, "usage_pct": 18, "velo": 87.1, "ivb": 4.8, "hb": 14.4, "spin": 1424, "actual_rv_per100": -0.49, "expected_rv_per100": 0.24, "stuff_grade": 118, "command_grade": 93, "overall_grade": 106, "miss_bats_grade": 125, "chase_grade": 113, "steal_strikes_grade": 103, "ground_balls_grade": 125, "pop_ups_grade": 105, "weak_contact_grade": 119, "sample_note": "command still settling"},
+    {"pitcher": 900007, "player_name": "Pitcher G", "p_throws": "R", "pitch_type": "CU", "pitches": 165, "usage_pct": 10, "velo": 78.6, "ivb": -9.3, "hb": -5.8, "spin": 2460, "actual_rv_per100": -0.77, "expected_rv_per100": 0.34, "stuff_grade": 119, "command_grade": 92, "overall_grade": 108, "miss_bats_grade": 119, "chase_grade": 109, "steal_strikes_grade": 125, "ground_balls_grade": 118, "pop_ups_grade": 114, "weak_contact_grade": 123, "sample_note": "command still settling"},
+    {"pitcher": 900008, "player_name": "Pitcher H", "p_throws": "L", "pitch_type": "SI", "pitches": 110, "usage_pct": 58, "velo": 93.6, "ivb": 8.6, "hb": 17.2, "spin": 2192, "actual_rv_per100": 0.43, "expected_rv_per100": 0.15, "stuff_grade": 99, "command_grade": 110, "overall_grade": 101, "miss_bats_grade": 89, "chase_grade": 97, "steal_strikes_grade": 103, "ground_balls_grade": 113, "pop_ups_grade": 96, "weak_contact_grade": 106, "sample_note": "very small sample"},
+    {"pitcher": 900008, "player_name": "Pitcher H", "p_throws": "L", "pitch_type": "SL", "pitches": 79, "usage_pct": 42, "velo": 85.1, "ivb": 0.3, "hb": -5.5, "spin": 2435, "actual_rv_per100": 0.21, "expected_rv_per100": 0.32, "stuff_grade": 117, "command_grade": 95, "overall_grade": 107, "miss_bats_grade": 125, "chase_grade": 118, "steal_strikes_grade": 104, "ground_balls_grade": 114, "pop_ups_grade": 102, "weak_contact_grade": 103, "sample_note": "very small sample"}
+  ],
+  pitcher_grades: [
+    {"pitcher": 900001, "player_name": "Pitcher A", "p_throws": "R", "pitches": 1838, "velo": 90.0, "ivb": 7.0, "hb": 3.9, "spin": 2212, "actual_rv_per100": 0.61, "expected_rv_per100": 0.67, "stuff_grade": 111, "command_grade": 111, "overall_grade": 111, "miss_bats_grade": 113, "chase_grade": 108, "steal_strikes_grade": 108, "ground_balls_grade": 102, "pop_ups_grade": 106, "weak_contact_grade": 108, "sample_note": ""},
+    {"pitcher": 900002, "player_name": "Pitcher B", "p_throws": "L", "pitches": 1319, "velo": 89.0, "ivb": 9.6, "hb": 2.9, "spin": 2252, "actual_rv_per100": 0.38, "expected_rv_per100": 0.33, "stuff_grade": 110, "command_grade": 103, "overall_grade": 106, "miss_bats_grade": 108, "chase_grade": 109, "steal_strikes_grade": 103, "ground_balls_grade": 105, "pop_ups_grade": 109, "weak_contact_grade": 111, "sample_note": ""},
+    {"pitcher": 900003, "player_name": "Pitcher C", "p_throws": "R", "pitches": 909, "velo": 89.7, "ivb": 6.2, "hb": 8.4, "spin": 2220, "actual_rv_per100": 0.55, "expected_rv_per100": 0.27, "stuff_grade": 103, "command_grade": 107, "overall_grade": 104, "miss_bats_grade": 101, "chase_grade": 104, "steal_strikes_grade": 103, "ground_balls_grade": 110, "pop_ups_grade": 94, "weak_contact_grade": 108, "sample_note": ""},
+    {"pitcher": 900004, "player_name": "Pitcher D", "p_throws": "R", "pitches": 619, "velo": 91.1, "ivb": 11.5, "hb": 5.7, "spin": 2156, "actual_rv_per100": -0.07, "expected_rv_per100": 0.2, "stuff_grade": 115, "command_grade": 95, "overall_grade": 105, "miss_bats_grade": 113, "chase_grade": 113, "steal_strikes_grade": 109, "ground_balls_grade": 106, "pop_ups_grade": 112, "weak_contact_grade": 107, "sample_note": ""},
+    {"pitcher": 900005, "player_name": "Pitcher E", "p_throws": "L", "pitches": 479, "velo": 88.0, "ivb": 3.4, "hb": 9.4, "spin": 2184, "actual_rv_per100": -0.06, "expected_rv_per100": -0.09, "stuff_grade": 93, "command_grade": 105, "overall_grade": 97, "miss_bats_grade": 91, "chase_grade": 99, "steal_strikes_grade": 100, "ground_balls_grade": 108, "pop_ups_grade": 91, "weak_contact_grade": 101, "sample_note": ""},
+    {"pitcher": 900006, "player_name": "Pitcher F", "p_throws": "R", "pitches": 308, "velo": 91.5, "ivb": 11.0, "hb": 2.9, "spin": 2330, "actual_rv_per100": 0.36, "expected_rv_per100": 0.38, "stuff_grade": 110, "command_grade": 100, "overall_grade": 107, "miss_bats_grade": 114, "chase_grade": 105, "steal_strikes_grade": 110, "ground_balls_grade": 99, "pop_ups_grade": 111, "weak_contact_grade": 101, "sample_note": "command still settling"},
+    {"pitcher": 900007, "player_name": "Pitcher G", "p_throws": "R", "pitches": 1650, "velo": 89.8, "ivb": 8.4, "hb": 4.9, "spin": 2205, "actual_rv_per100": -0.82, "expected_rv_per100": 0.42, "stuff_grade": 119, "command_grade": 96, "overall_grade": 109, "miss_bats_grade": 117, "chase_grade": 110, "steal_strikes_grade": 110, "ground_balls_grade": 110, "pop_ups_grade": 110, "weak_contact_grade": 113, "sample_note": ""},
+    {"pitcher": 900008, "player_name": "Pitcher H", "p_throws": "L", "pitches": 189, "velo": 90.0, "ivb": 5.1, "hb": 7.7, "spin": 2293, "actual_rv_per100": 0.34, "expected_rv_per100": 0.22, "stuff_grade": 107, "command_grade": 104, "overall_grade": 104, "miss_bats_grade": 104, "chase_grade": 106, "steal_strikes_grade": 103, "ground_balls_grade": 113, "pop_ups_grade": 99, "weak_contact_grade": 105, "sample_note": "command still settling"}
+  ],
+  pressure_profile: [
+    {"pitcher": 900001, "player_name": "Pitcher A", "pressure": "high", "pitches": 312, "overall_grade": 109, "command_grade": 110, "fastball_pct": 49, "actual_rv_per100": 0.68},
+    {"pitcher": 900001, "player_name": "Pitcher A", "pressure": "normal", "pitches": 1526, "overall_grade": 112, "command_grade": 112, "fastball_pct": 45, "actual_rv_per100": 0.53},
+    {"pitcher": 900002, "player_name": "Pitcher B", "pressure": "high", "pitches": 224, "overall_grade": 99, "command_grade": 97, "fastball_pct": 56, "actual_rv_per100": 0.47},
+    {"pitcher": 900002, "player_name": "Pitcher B", "pressure": "normal", "pitches": 1095, "overall_grade": 108, "command_grade": 105, "fastball_pct": 54, "actual_rv_per100": 0.73},
+    {"pitcher": 900003, "player_name": "Pitcher C", "pressure": "high", "pitches": 154, "overall_grade": 98, "command_grade": 102, "fastball_pct": 59, "actual_rv_per100": 0.4},
+    {"pitcher": 900003, "player_name": "Pitcher C", "pressure": "normal", "pitches": 755, "overall_grade": 108, "command_grade": 110, "fastball_pct": 55, "actual_rv_per100": 0.46},
+    {"pitcher": 900004, "player_name": "Pitcher D", "pressure": "high", "pitches": 105, "overall_grade": 103, "command_grade": 94, "fastball_pct": 56, "actual_rv_per100": -0.41},
+    {"pitcher": 900004, "player_name": "Pitcher D", "pressure": "normal", "pitches": 514, "overall_grade": 108, "command_grade": 98, "fastball_pct": 51, "actual_rv_per100": 0.05},
+    {"pitcher": 900005, "player_name": "Pitcher E", "pressure": "high", "pitches": 81, "overall_grade": 92, "command_grade": 101, "fastball_pct": 53, "actual_rv_per100": -0.41},
+    {"pitcher": 900005, "player_name": "Pitcher E", "pressure": "normal", "pitches": 398, "overall_grade": 97, "command_grade": 105, "fastball_pct": 45, "actual_rv_per100": -0.25},
+    {"pitcher": 900006, "player_name": "Pitcher F", "pressure": "high", "pitches": 52, "overall_grade": 107, "command_grade": 100, "fastball_pct": 58, "actual_rv_per100": 0.67},
+    {"pitcher": 900006, "player_name": "Pitcher F", "pressure": "normal", "pitches": 256, "overall_grade": 106, "command_grade": 99, "fastball_pct": 55, "actual_rv_per100": 0.83},
+    {"pitcher": 900007, "player_name": "Pitcher G", "pressure": "high", "pitches": 280, "overall_grade": 115, "command_grade": 101, "fastball_pct": 45, "actual_rv_per100": -0.98},
+    {"pitcher": 900007, "player_name": "Pitcher G", "pressure": "normal", "pitches": 1370, "overall_grade": 112, "command_grade": 98, "fastball_pct": 43, "actual_rv_per100": -0.54},
+    {"pitcher": 900008, "player_name": "Pitcher H", "pressure": "high", "pitches": 32, "overall_grade": 102, "command_grade": 103, "fastball_pct": 61, "actual_rv_per100": -0.18},
+    {"pitcher": 900008, "player_name": "Pitcher H", "pressure": "normal", "pitches": 157, "overall_grade": 104, "command_grade": 104, "fastball_pct": 58, "actual_rv_per100": 0.16}
+  ],
+  league_avg_shape: {"FF": {"ivb": 17.0, "hb": 7.0, "name": "Four-seam"}, "SI": {"ivb": 9.0, "hb": 15.5, "name": "Sinker"}, "FC": {"ivb": 10.0, "hb": -2.0, "name": "Cutter"}, "SL": {"ivb": 1.5, "hb": -5.0, "name": "Slider"}, "ST": {"ivb": 1.0, "hb": -16.0, "name": "Sweeper"}, "CU": {"ivb": -9.5, "hb": -7.0, "name": "Curveball"}, "CH": {"ivb": 6.0, "hb": 15.0, "name": "Changeup"}, "FS": {"ivb": 4.0, "hb": 12.5, "name": "Splitter"}},
+  pitch_names: {"FF": "Four-seam", "SI": "Sinker", "FC": "Cutter", "SL": "Slider", "ST": "Sweeper", "CU": "Curveball", "CH": "Changeup", "FS": "Splitter"}
+};
+
+const TIPS = {
+  stuff:'Stuff: what the ball does on its own (speed, spin, movement, release), before location. 100 is league average.',
+  command:'Command: where the pitch went for the count, relative to where a pitcher is trying to throw it. 100 is league average.',
+  overall:'Overall: Stuff and Command together, weighted the way they predict future results.',
+  usage:'Usage: the share of his pitches that are this type.',
+  velo:'Velo: average release speed in miles per hour.',
+  ivb:'IVB: induced vertical break, in inches. How much more a pitch rises (or drops less) than gravity alone would allow.',
+  hb:'HB: horizontal break, in inches. Positive is toward the pitcher\'s arm side, negative toward the glove side.',
+  spin:'Spin: average spin rate, in revolutions per minute.',
+  miss:'Miss Bats: how often hitters swing and miss at this pitch, compared with league average for the pitch type. 100 is average.',
+  chase:'Chase: how often hitters swing at it outside the zone. More swings at balls help the pitcher.',
+  steal:'Steal Strikes: how often it gets a called strike in a spot where the pitch would usually be a ball or a take.',
+  gb:'Ground Balls: how often a ball in play is on the ground. Ground balls rarely go for extra bases.',
+  pop:'Pop-Ups: how often a ball in play is an infield pop-up. Infield pop-ups are nearly as good as a strikeout.',
+  weak:'Weak Contact: how softly balls in play are hit, by exit speed and launch angle, not by whether they became hits.',
+  actual:'Actual: runs saved per 100 pitches from what really happened. Positive means better than average for the pitcher.',
+  expected:'Expected: runs saved per 100 pitches that the pitch\'s stuff and command suggest. Positive means better than average.',
+  fb:'Fastball %: the share of his pitches that are four-seamers, sinkers or cutters.',
+  pitches:'Pitches: the number of pitches behind the grade.'
+};
+const tip = k => `<span class="tip" tabindex="0" role="img" aria-label="${TIPS[k].replace(/"/g,'&quot;')}" data-tip="${TIPS[k].replace(/"/g,'&quot;')}">?</span>`;
+const NAME = MOCK.pitch_names;
+const $ = s => document.querySelector(s);
+const fmt = (v,d=0) => Number(v).toFixed(d);
+const sgn = v => (v>0?'+':'')+Number(v).toFixed(2);
+
+/* shading: distance from 100. Above = orange tint, below = neutral grey tint. Never red or green. */
+function shade(g){
+  const d = Math.max(-25, Math.min(25, g-100));
+  if (d>=0) return `background:rgba(255,87,34,${(0.08+d/25*0.5).toFixed(2)})`;
+  return `background:rgba(94,90,80,${(0.06+(-d)/25*0.28).toFixed(2)})`;
+}
+const barColor = g => g>=100 ? 'var(--orange)' : 'var(--below)';
+function bar(g){
+  const lo=70, hi=130, pos = Math.max(0,Math.min(100,(g-lo)/(hi-lo)*100)), mid=(100-lo)/(hi-lo)*100;
+  return `<div class="bar" role="img" aria-label="${g} on a 70 to 130 scale, 100 is average"><div class="fill" style="left:${g>=100?mid:pos}%;width:${Math.abs(pos-mid)}%;background:${barColor(g)}"></div><div class="t100" style="left:${mid}%"></div></div><div class="scale"><span>70</span><span>130</span></div>`;
+}
+
+const state = { pid: MOCK.pitcher_grades[0].pitcher, pitch: null, sort: {key:'usage_pct',dir:-1}, bsort:{key:'overall_grade',dir:-1}, minp:0 };
+const pitcher = () => MOCK.pitcher_grades.find(p=>p.pitcher===state.pid);
+const rows = () => MOCK.pitch_type_grades.filter(r=>r.pitcher===state.pid);
+const sel = () => rows().find(r=>r.pitch_type===state.pitch) || rows().slice().sort((a,b)=>b.usage_pct-a.usage_pct)[0];
+
+/* ---------- selector ---------- */
+const who = $('#who');
+who.innerHTML = MOCK.pitcher_grades.map(p=>`<option value="${p.pitcher}">${p.player_name} · ${p.p_throws==='L'?'left':'right'}-handed · ${p.pitches.toLocaleString()} pitches</option>`).join('');
+who.value = 900002; state.pid = 900002;
+who.addEventListener('change',()=>{state.pid=Number(who.value);state.pitch=null;render()});
+
+/* ---------- 3. grade card ---------- */
+function renderGrades(){
+  const p=pitcher();
+  const cells=[['stuff','Stuff','What the ball does.',p.stuff_grade],['command','Command','Where it went for the count.',p.command_grade],['overall','Overall','Both together.',p.overall_grade]];
+  $('#grades').innerHTML = cells.map(([k,l,w,g])=>`<div class="g"><div class="lab">${l.toUpperCase()}${tip(k)}</div><div class="big num">${g}</div><div class="why">${w}</div>${bar(g)}</div>`).join('');
+  $('#meta').innerHTML = `<span class="chip">${p.p_throws==='L'?'Left':'Right'}-handed</span><span class="chip">${p.pitches.toLocaleString()} pitches${tip('pitches')}</span><span class="chip">${fmt(p.velo,1)} mph avg</span>`;
+  const gap = p.actual_rv_per100 - p.expected_rv_per100;
+  let html='';
+  if (p.sample_note) html += `<span class="note">NOTE: ${p.sample_note}. Command needs about 400 pitches to settle.</span> `;
+  if (gap < -0.6) html += `<span class="note" style="background:var(--soft)">Results trail the stuff: ${sgn(gap)} runs per 100 pitches below what the grades suggest.</span>`;
+  $('#sampleNote').innerHTML = html;
+}
+
+/* ---------- 4. arsenal (sortable) ---------- */
+const AC = [['pitch','Pitch',null],['usage_pct','Usage','usage'],['velo','Velo','velo'],['ivb','IVB','ivb'],['hb','HB','hb'],['spin','Spin','spin'],['stuff_grade','Stuff','stuff'],['command_grade','Command','command'],['overall_grade','Overall','overall']];
+function sortHead(el, cols, st, onSort, label){
+  el.innerHTML = `<tr>${cols.map(([k,l,t])=>`<th scope="col" aria-sort="${st.key===k?(st.dir>0?'ascending':'descending'):'none'}"><button type="button" data-k="${k}" aria-label="Sort by ${l}">${l}</button>${t?tip(t):''}</th>`).join('')}</tr>`;
+  el.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.k; st.dir = st.key===k ? -st.dir : (k==='pitch'||k==='player_name'?1:-1); st.key=k; onSort()}));
+}
+function renderArsenal(){
+  const th=$('#arsenal thead'), tb=$('#arsenal tbody');
+  sortHead(th, AC, state.sort, renderArsenal);
+  const k=state.sort.key, d=state.sort.dir;
+  const rs=rows().slice().sort((a,b)=> k==='pitch' ? d*NAME[a.pitch_type].localeCompare(NAME[b.pitch_type]) : d*(a[k]-b[k]));
+  const cur=sel().pitch_type;
+  tb.innerHTML = rs.map(r=>`<tr class="pick" data-p="${r.pitch_type}" ${r.pitch_type===cur?'aria-current="true"':''}>
+    <td class="rowhead"><button type="button" data-p="${r.pitch_type}">${NAME[r.pitch_type]}</button>${r.sample_note?` <span class="note" style="margin:0 0 0 6px">${r.sample_note}</span>`:''}</td>
+    <td>${r.usage_pct}%</td><td>${fmt(r.velo,1)}</td><td>${fmt(r.ivb,1)}</td><td>${fmt(r.hb,1)}</td><td>${r.spin.toLocaleString()}</td>
+    <td class="shade" style="${shade(r.stuff_grade)}">${r.stuff_grade}</td><td class="shade" style="${shade(r.command_grade)}">${r.command_grade}</td><td class="shade" style="${shade(r.overall_grade)}">${r.overall_grade}</td></tr>`).join('');
+  tb.querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>{state.pitch=tr.dataset.p;renderAll()}));
+  tb.querySelectorAll('button').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();state.pitch=b.dataset.p;renderAll();const n=document.querySelector(`#arsenal button[data-p="${b.dataset.p}"]`);n&&n.focus()}));
+}
+
+/* ---------- 5. why ---------- */
+const WHY=[['miss_bats_grade','Miss Bats','miss',g=>g>=105?'Hitters swing and miss at it more than at a typical pitch of this type.':g>=95?'About as many swings and misses as the league sees on this pitch.':'Hitters make contact with it more often than usual.'],
+ ['chase_grade','Chase','chase',g=>g>=105?'Hitters chase it off the plate more than usual, which turns balls into strikes.':g>=95?'An average number of swings at balls.':'Hitters mostly leave it alone when it is off the plate.'],
+ ['steal_strikes_grade','Steal Strikes','steal',g=>g>=105?'It earns called strikes in spots where a take would normally be a ball.':g>=95?'Called strikes about where you would expect.':'Called strikes are harder to come by with this pitch.'],
+ ['ground_balls_grade','Ground Balls','gb',g=>g>=105?'Balls in play are often on the ground, which keeps them from going far.':g>=95?'A normal mix of grounders and fly balls.':'Balls in play tend to be in the air.'],
+ ['pop_ups_grade','Pop-Ups','pop',g=>g>=105?'Pop-ups: infield pop-ups are nearly as good as a strikeout, and this pitch gets plenty.':g>=95?'An average number of infield pop-ups.':'Few pop-ups: contact is flatter and carries.'],
+ ['weak_contact_grade','Weak Contact','weak',g=>g>=105?'Hitters who hit it make soft, low-quality contact.':g>=95?'Contact quality is about what the league sees.':'When hitters connect, they hit it hard.']];
+function renderWhy(){
+  const r=sel();
+  $('#why-for').textContent = `· ${NAME[r.pitch_type]}`;
+  $('#why').innerHTML = WHY.map(([k,l,t,f])=>`<div class="w6"><div class="n">${l}${tip(t)}</div>${bar(r[k]).replace('<div class="scale"><span>70</span><span>130</span></div>','')}<div class="v">${r[k]}</div><div class="line">${f(r[k])}</div></div>`).join('') + `<div class="scale" style="margin-top:2px"><span>70</span><span>130</span></div>`;
+}
+
+/* ---------- 6. outcome tree ---------- */
+const RUNS = {cs:-0.06,ball:0.06,hbp:0.35,whiff:-0.11,foul:-0.03,pop:-0.19,wgb:-0.12,hgb:0.05,ld:0.36,wfb:-0.10,hfb:0.30}; // invented league-average run effects
+function probs(r){
+  const c=x=>Math.max(0.02,x);
+  const swing = Math.min(0.62,Math.max(0.36, 0.46+(r.chase_grade-100)*0.003));
+  const hbp=0.008, calledK = Math.min(0.5,Math.max(0.15, 0.27+(r.steal_strikes_grade-100)*0.004));
+  const take=1-swing, cs=take*calledK, hb=take*hbp, bl=take-cs-hb;
+  const whiffS=Math.min(0.5,Math.max(0.12,0.24+(r.miss_bats_grade-100)*0.006)), foulS=0.36-(r.miss_bats_grade-100)*0.0015, inpS=1-whiffS-foulS;
+  const inplay=swing*inpS;
+  let pop=c(0.04+(r.pop_ups_grade-100)*0.002), gb=c(0.43+(r.ground_balls_grade-100)*0.006), rest=1-pop-gb, ld=c(0.22), fb=Math.max(0.05,rest-ld);
+  const sum=pop+gb+ld+fb; pop/=sum; gb/=sum; ld/=sum; fb/=sum;
+  const weak=Math.min(0.75,Math.max(0.25,0.5+(r.weak_contact_grade-100)*0.008));
+  return {swing,take,cs,ball:bl,hbp:hb,whiff:swing*whiffS,foul:swing*foulS,inplay,
+    pop:inplay*pop,wgb:inplay*gb*weak,hgb:inplay*gb*(1-weak),ld:inplay*ld,wfb:inplay*fb*weak,hfb:inplay*fb*(1-weak),whiffS,foulS,inpS,calledK,weak,popS:pop,gbS:gb,ldS:ld,fbS:fb};
+}
+function renderTree(){
+  const r=sel(), p=probs(r); $('#tree-for').textContent=`· ${NAME[r.pitch_type]}`;
+  const pc=v=>(v*100).toFixed(v<0.1?1:0)+'%';
+  const W=940,H=470, nodes={}, edges=[];
+  const N=(id,x,y,label,share,run)=>{nodes[id]={x,y,label,share,run}};
+  N('root',100,235,'Pitch','100%');
+  N('take',320,130,'Take',pc(p.take)); N('swing',320,340,'Swing',pc(p.swing));
+  N('cs',560,40,'Called strike',pc(p.cs),RUNS.cs); N('ball',560,100,'Ball',pc(p.ball),RUNS.ball); N('hbp',560,160,'Hit by pitch',pc(p.hbp),RUNS.hbp);
+  N('whiff',560,235,'Whiff',pc(p.whiff),RUNS.whiff); N('foul',560,295,'Foul',pc(p.foul),RUNS.foul); N('inplay',560,380,'In play',pc(p.inplay));
+  const L=[['pop','Pop-up'],['wgb','Weak grounder'],['hgb','Hard grounder'],['ld','Line drive'],['wfb','Weak fly ball'],['hfb','Hard fly ball']];
+  L.forEach(([k,l],i)=>N(k,810,205+i*50,l,pc(p[k]),RUNS[k]));
+  const E=(a,b,t)=>edges.push([a,b,t]);
+  E('root','take',pc(p.take)); E('root','swing',pc(p.swing));
+  E('take','cs',pc(1-0)==='x'?'':pc(p.cs/p.take)); E('take','ball',pc(p.ball/p.take)); E('take','hbp',pc(p.hbp/p.take));
+  E('swing','whiff',pc(p.whiffS)); E('swing','foul',pc(p.foulS)); E('swing','inplay',pc(p.inpS));
+  E('inplay','pop',pc(p.popS)); E('inplay','wgb',pc(p.gbS*p.weak)); E('inplay','hgb',pc(p.gbS*(1-p.weak))); E('inplay','ld',pc(p.ldS)); E('inplay','wfb',pc(p.fbS*p.weak)); E('inplay','hfb',pc(p.fbS*(1-p.weak)));
+  const boxW=184,boxH=36;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Outcome tree for ${NAME[r.pitch_type]}: ${pc(p.take)} take, ${pc(p.swing)} swing"><rect width="${W}" height="${H}" fill="none"/>`;
+  edges.forEach(([a,b,t])=>{const A=nodes[a],B=nodes[b];const x1=A.x+boxW/2,x2=B.x-boxW/2;const mx=(x1+x2)/2;
+    s+=`<path d="M${x1} ${A.y} C ${mx} ${A.y}, ${mx} ${B.y}, ${x2} ${B.y}" fill="none" stroke="#1A1A1A" stroke-width="1.3"/>`;
+    s+=`<rect x="${mx-21}" y="${(A.y+B.y)/2-9}" width="42" height="18" fill="#FAF8F3"/><text x="${mx}" y="${(A.y+B.y)/2+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#FF5722">${t}</text>`;});
+  Object.entries(nodes).forEach(([id,n])=>{const leaf=n.run!==undefined;
+    s+=`<g><rect x="${n.x-boxW/2}" y="${n.y-boxH/2}" width="${boxW}" height="${boxH}" fill="${leaf?'#FFFFFF':'#1A1A1A'}" stroke="#1A1A1A" stroke-width="1.3"/>
+    <text x="${n.x}" y="${n.y-1}" text-anchor="middle" font-size="12" font-weight="800" fill="${leaf?'#1A1A1A':'#FAF8F3'}">${n.label}</text>
+    <text x="${n.x}" y="${n.y+12}" text-anchor="middle" font-size="10" fill="${leaf?'#5E5A50':'#FDE047'}">${n.share} of pitches${leaf?` · ${n.run>0?'+':''}${n.run.toFixed(2)} runs`:''}</text></g>`;});
+  s+=`</svg>`; $('#tree').innerHTML=s;
+}
+
+/* ---------- 7. movement ---------- */
+function renderMove(){
+  const rs=rows(), W=560,H=420,ml=56,mr=16,mt=16,mb=48, x0=-22,x1=22,y0=-16,y1=22;
+  const X=v=>ml+(v-x0)/(x1-x0)*(W-ml-mr), Y=v=>mt+(1-(v-y0)/(y1-y0))*(H-mt-mb);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Movement chart: induced vertical break against horizontal break for each pitch type">`;
+  for(let v=-20;v<=20;v+=10) s+=`<line x1="${X(v)}" y1="${mt}" x2="${X(v)}" y2="${H-mb}" stroke="#D9D4C7"/><text x="${X(v)}" y="${H-mb+16}" text-anchor="middle" font-size="11" fill="#5E5A50">${v}</text>`;
+  for(let v=-10;v<=20;v+=10) s+=`<line x1="${ml}" y1="${Y(v)}" x2="${W-mr}" y2="${Y(v)}" stroke="#D9D4C7"/><text x="${ml-8}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="#5E5A50">${v}</text>`;
+  s+=`<line x1="${X(0)}" y1="${mt}" x2="${X(0)}" y2="${H-mb}" stroke="#1A1A1A" stroke-width="1.5"/><line x1="${ml}" y1="${Y(0)}" x2="${W-mr}" y2="${Y(0)}" stroke="#1A1A1A" stroke-width="1.5"/>`;
+  s+=`<text x="${(ml+W-mr)/2}" y="${H-8}" text-anchor="middle" font-size="12" font-weight="800">HORIZONTAL BREAK (inches; glove side ← → arm side)</text><text transform="translate(14 ${(mt+H-mb)/2}) rotate(-90)" text-anchor="middle" font-size="12" font-weight="800">INDUCED VERTICAL BREAK (inches)</text>`;
+  rs.forEach(r=>{const lg=MOCK.league_avg_shape[r.pitch_type]; const lx=lg.hb; s+=`<circle cx="${X(lx)}" cy="${Y(lg.ivb)}" r="7" fill="none" stroke="#1A1A1A" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"><title>League average ${NAME[r.pitch_type]}: ${lx.toFixed(1)} in, ${lg.ivb.toFixed(1)} in</title></circle>`;});
+  /* arm side is positive for both hands, so league dots are never flipped */
+  const near=(r,o)=>o!==r&&Math.abs(X(o.hb)-X(r.hb))<70&&Y(o.ivb)<Y(r.ivb)&&Y(r.ivb)-Y(o.ivb)<48;
+  rs.slice().sort((a,b)=>b.usage_pct-a.usage_pct).forEach(r=>{const on=r.pitch_type===sel().pitch_type, rad=6+r.usage_pct*0.26, below=rs.some(o=>near(r,o));
+    s+=`<g><circle cx="${X(r.hb)}" cy="${Y(r.ivb)}" r="${rad}" fill="${r.overall_grade>=100?'#FF5722':'#B9B5AA'}" fill-opacity="0.85" stroke="#1A1A1A" stroke-width="${on?3:1.2}"><title>${NAME[r.pitch_type]}: ${fmt(r.hb,1)} in HB, ${fmt(r.ivb,1)} in IVB, ${r.usage_pct}% usage</title></circle>
+    <text x="${X(r.hb)}" y="${below?Y(r.ivb)+rad+14:Y(r.ivb)-rad-5}" text-anchor="middle" font-size="12" font-weight="800">${NAME[r.pitch_type]}</text></g>`;});
+  s+=`</svg><div class="know" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:8px"><span><svg width="14" height="14" style="display:inline-block;vertical-align:-2px"><circle cx="7" cy="7" r="6" fill="#FF5722" stroke="#1A1A1A"/></svg> solid: his pitch, orange when its Overall is 100 or better</span><span><svg width="14" height="14" style="display:inline-block;vertical-align:-2px"><circle cx="7" cy="7" r="5.5" fill="none" stroke="#1A1A1A" stroke-dasharray="3 3"/></svg> dashed: league average for that pitch type</span></div>`;
+  $('#move').innerHTML=s;
+}
+
+/* ---------- 8. stuff vs results ---------- */
+function renderResults(){
+  const rs=rows().slice().sort((a,b)=>b.usage_pct-a.usage_pct), W=560, rowH=54, H=rs.length*rowH+60, ml=104, mr=60, lo=-2, hi=3;
+  const X=v=>ml+(v-lo)/(hi-lo)*(W-ml-mr);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Expected against actual runs saved per 100 pitches for each pitch type">`;
+  for(let v=lo;v<=hi;v++) s+=`<line x1="${X(v)}" y1="28" x2="${X(v)}" y2="${H-8}" stroke="${v===0?'#1A1A1A':'#D9D4C7'}" stroke-width="${v===0?1.8:1}"/><text x="${X(v)}" y="18" text-anchor="middle" font-size="11" fill="#5E5A50">${v>0?'+':''}${v}</text>`;
+  rs.forEach((r,i)=>{const y=34+i*rowH, e=r.expected_rv_per100, a=r.actual_rv_per100;
+    const bar=(v,yy,label,solid)=>{const x=Math.min(X(0),X(v)), w=Math.abs(X(v)-X(0)); const col=v>=0?'#FF5722':'#B9B5AA';
+      return `<rect x="${x}" y="${yy}" width="${Math.max(1,w)}" height="14" fill="${solid?col:'#FAF8F3'}" stroke="${col}" stroke-width="1.6" ${solid?'':'stroke-dasharray="4 3"'}><title>${label}: ${sgn(v)} runs saved per 100 pitches</title></rect><text x="${v>=0?X(v)+6:X(v)-6}" y="${yy+11}" text-anchor="${v>=0?'start':'end'}" font-size="11" font-weight="800">${sgn(v)}</text>`};
+    s+=`<text x="${ml-10}" y="${y+22}" text-anchor="end" font-size="12" font-weight="800">${NAME[r.pitch_type]}</text>`+bar(e,y,'Expected',false)+bar(a,y+19,'Actual',true);});
+  s+=`</svg><div class="know" style="display:flex;flex-wrap:wrap;gap:14px;margin-top:8px"><span><b>Dashed</b> = expected from stuff and command${tip('expected')}</span><span><b>Solid</b> = actual results${tip('actual')}</span><span>Orange = better than average, grey = worse than average. Runs saved per 100 pitches.</span></div>`;
+  $('#results').innerHTML=s;
+}
+
+/* ---------- 9. pressure ---------- */
+function renderPressure(){
+  const hi=MOCK.pressure_profile.find(r=>r.pitcher===state.pid&&r.pressure==='high'), no=MOCK.pressure_profile.find(r=>r.pitcher===state.pid&&r.pressure==='normal');
+  const col=(t,r,sub)=>`<div class="col"><h3>${t}</h3><div class="mono" style="font-size:12px;color:var(--mute);margin-bottom:6px">${sub}</div>
+    <div class="kv"><span>Pitches${tip('pitches')}</span><b>${r.pitches.toLocaleString()}</b></div>
+    <div class="kv"><span>Overall${tip('overall')}</span><b class="shade" style="${shade(r.overall_grade)};padding:0 8px">${r.overall_grade}</b></div>
+    <div class="kv"><span>Command${tip('command')}</span><b class="shade" style="${shade(r.command_grade)};padding:0 8px">${r.command_grade}</b></div>
+    <div class="kv"><span>Fastball %${tip('fb')}</span><b>${r.fastball_pct}%</b></div>
+    <div class="kv"><span>Runs saved per 100${tip('actual')}</span><b>${sgn(r.actual_rv_per100)}</b></div></div>`;
+  $('#pressure').innerHTML = col('High pressure',hi,'7th or later · within 2 runs · runner on') + col('Normal situations',no,'every other pitch');
+}
+
+/* ---------- 10. leaderboard ---------- */
+const BC=[['player_name','Pitcher',null],['pitches','Pitches','pitches'],['stuff_grade','Stuff','stuff'],['command_grade','Command','command'],['overall_grade','Overall','overall'],['miss_bats_grade','Miss Bats','miss'],['chase_grade','Chase','chase'],['steal_strikes_grade','Steal Strikes','steal'],['ground_balls_grade','Ground Balls','gb'],['pop_ups_grade','Pop-Ups','pop'],['weak_contact_grade','Weak Contact','weak']];
+const minp=$('#minp');
+minp.innerHTML=[0,250,500].map(v=>`<button type="button" class="chip ${v===0?'on':''}" data-v="${v}" aria-pressed="${v===0}">${v===0?'All':v+'+'}</button>`).join('');
+minp.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.minp=Number(b.dataset.v);minp.querySelectorAll('button').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});renderBoard()}));
+function renderBoard(){
+  sortHead($('#board thead'),BC,state.bsort,renderBoard);
+  const k=state.bsort.key,d=state.bsort.dir;
+  const rs=MOCK.pitcher_grades.filter(p=>p.pitches>=state.minp).sort((a,b)=>k==='player_name'?d*a.player_name.localeCompare(b.player_name):d*(a[k]-b[k]));
+  $('#board tbody').innerHTML = rs.length? rs.map(p=>`<tr ${p.pitcher===state.pid?'aria-current="true"':''}><td class="rowhead"><button type="button" data-id="${p.pitcher}">${p.player_name}</button>${p.sample_note?` <span class="note" style="margin:0 0 0 6px">${p.sample_note}</span>`:''}</td><td>${p.pitches.toLocaleString()}</td>${['stuff_grade','command_grade','overall_grade','miss_bats_grade','chase_grade','steal_strikes_grade','ground_balls_grade','pop_ups_grade','weak_contact_grade'].map(c=>`<td class="shade" style="${shade(p[c])}">${p[c]}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="11" style="text-align:left">No pitcher has that many pitches yet.</td></tr>`;
+  $('#board tbody').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.pid=Number(b.dataset.id);state.pitch=null;who.value=state.pid;render();window.scrollTo({top:0,behavior:'smooth'})}));
+}
+
+function renderAll(){renderArsenal();renderWhy();renderTree();renderMove();renderResults()}
+function render(){renderGrades();renderPressure();renderBoard();renderAll()}
+render();
+
+/* skin switch */
+const skin=$('#skin');
+skin.addEventListener('click',()=>{const site=document.documentElement.classList.toggle('site');skin.setAttribute('aria-pressed',site);skin.textContent=site?'Skin: Current site (switch to the brief\'s style)':'Skin: Brief (switch to current site style)'});
+</script>
+</body>
+</html>
