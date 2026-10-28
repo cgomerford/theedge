@@ -7,7 +7,8 @@
 // (StatLineBuilder, ScoutGraphicBuilder). Nothing is saved server side; export is a download only.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SIZES } from '@/lib/graphics/constants'
+import { OTD_SIZES, SIZES } from '@/lib/graphics/constants'
+import { otdFileName, renderOtdPng } from '@/lib/graphics/otd-export'
 import { loadGraphicImages } from '@/lib/graphics/images'
 import { imageKeys } from '@/lib/graphics/teams'
 import { parseItemList, parsePipeList } from '@/lib/graphics/parse-pipe'
@@ -17,6 +18,7 @@ import type { Chip, GraphicImages, GraphicSpec, SizeKey, Stat, TeamKey, Template
 import { MLB_TEAMS } from '@/lib/teams'
 import { autofillGraphic, loadSlate, searchPlayers, type AutofillTemplate, type PlayerHit, type SlateGame } from './actions'
 import { BLOCKS, TEMPLATE_NAMES } from './index'
+import OtdForm from './otd/OtdForm'
 
 type Mode = 'form' | 'json'
 
@@ -28,8 +30,10 @@ const GROUPS: Record<TemplateId, { group: string; title: string }[]> = {
   attack: [{ group: 'TB', title: 'Rays hitters' }, { group: 'MIL', title: 'Brewers hitters' }, { group: 'oaa', title: 'Scoreboard strip' }],
   scoreboard: [{ group: 'catcher', title: 'Catchers' }, { group: 'run', title: 'Running game' }, { group: 'abs', title: 'Strike zone challenges won' }],
   textlist: [{ group: 'item', title: 'N triggers' }],
+  otd: [],
+  sotd: [],
 }
-const DEFAULT_PASTE_GROUP: Record<TemplateId, string> = { collision: 'tile', arsenal: 'pitch', contrast: 'contrast', attack: 'TB', scoreboard: 'run', textlist: 'item' }
+const DEFAULT_PASTE_GROUP: Record<TemplateId, string> = { collision: 'tile', arsenal: 'pitch', contrast: 'contrast', attack: 'TB', scoreboard: 'run', textlist: 'item', otd: '', sotd: '' }
 const TEAMS: TeamKey[] = ['neutral', ...[...MLB_TEAMS].map(t => t.abbrev).sort()]
 const input = 'rounded-md border border-stone-300 bg-white px-2 py-1 text-sm'
 const lab = 'text-[11px] uppercase tracking-widest text-stone-500'
@@ -68,7 +72,9 @@ export default function GraphicsStudio() {
 
   const check = useMemo(() => validateSpec(spec), [spec])
   const errors = [...jsonErrors, ...(check.ok ? [] : check.errors)]
-  const canExport = errors.length === 0 && spec.stats.length > 0
+  const isOtd = spec.template === 'otd' || spec.template === 'sotd'
+  const canExport = errors.length === 0 && (isOtd || spec.stats.length > 0)
+  const [overflow, setOverflow] = useState<string[]>([])
 
   // Measures the preview column so the full-size node can be scaled to fit (an external DOM sync, hence an effect).
   useEffect(() => {
@@ -98,6 +104,26 @@ export default function GraphicsStudio() {
     })
     return () => { live = false }
   }, [slateDate])
+
+  // Inline warning: after the card settles (headline and tile text shrink to fit first), list any text that is still cut off in its slot.
+  useEffect(() => {
+    if (!isOtd) { setOverflow([]); return }
+    const t = window.setTimeout(() => {
+      const root = exportRefs.current[previewSize]
+      if (!root) return
+      const found = new Set<string>()
+      root.querySelectorAll<HTMLElement>('*').forEach(el => {
+        const txt = (el.textContent ?? '').trim()
+        if (!txt || el.children.length > 0) return
+        const cs = getComputedStyle(el)
+        const clippedX = cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1
+        const clippedY = el.scrollHeight > el.clientHeight + 2 && cs.overflow === 'hidden'
+        if (clippedX || clippedY) found.add(txt.length > 48 ? `${txt.slice(0, 46)}…` : txt)
+      })
+      setOverflow([...found])
+    }, 250)
+    return () => window.clearTimeout(t)
+  }, [spec, previewSize, isOtd]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fill(template: AutofillTemplate) {
     const game = slate.find(g => g.gamePk === gamePk)
@@ -143,6 +169,12 @@ export default function GraphicsStudio() {
     setPasteMsg([])
   }
   function setTemplate(t: TemplateId) {
+    const toOtd = t === 'otd' || t === 'sotd'
+    if (toOtd && !spec.otd) {
+      commit({ id: spec.id, template: t, kicker: '', title: 'Headline', subtitle: '', chips: [], stats: [], otd: { date: '', body: { sections: [{ type: 'kv', label: 'Label', rows: [{ label: '', value: '' }] }] } } })
+      return
+    }
+    if (!toOtd && isOtd) { commit({ ...clone(PRESETS[0]), template: t }); setPasteGroup(DEFAULT_PASTE_GROUP[t]); return }
     commit({ ...spec, template: t })
     setPasteGroup(DEFAULT_PASTE_GROUP[t])
   }
@@ -172,12 +204,20 @@ export default function GraphicsStudio() {
     if (!node || !canExport) return
     setExporting(size); setExportError('')
     try {
-      const { toPng } = await import('html-to-image')
-      const { w, h } = SIZES[size]
-      const url = await toPng(node, { cacheBust: true, backgroundColor: '#FAF8F3', width: w, height: h, pixelRatio: 1 })
+      let url: string, name: string
+      if (isOtd) {
+        url = await renderOtdPng(node, size)
+        name = otdFileName(spec.id, spec.title)
+        if (size === 'portrait') name = name.replace(/\.png$/, '-4x5.png')
+      } else {
+        const { toPng } = await import('html-to-image')
+        const { w, h } = SIZES[size]
+        url = await toPng(node, { cacheBust: true, backgroundColor: '#FAF8F3', width: w, height: h, pixelRatio: 1 })
+        name = `${spec.id}-${size}.png`
+      }
       const a = document.createElement('a')
       a.href = url
-      a.download = `${spec.id}-${size}.png`
+      a.download = name
       a.click()
     } catch (err) {
       console.error('[GraphicsStudio] export failed:', err)
@@ -221,13 +261,13 @@ export default function GraphicsStudio() {
           </div>
           <label className="mt-3 flex flex-col gap-1"><span className={lab}>Load a preset</span>
             <select className={input} value="" onChange={e => loadPreset(e.target.value)} style={{ minHeight: 40 }}>
-              <option value="">Choose one of the six Game 1 graphics…</option>
+              <option value="">Choose a preset (six Game 1 scout graphics, seven On this day cards)…</option>
               {PRESETS.map(p => <option key={p.id} value={p.id}>{p.id} · {p.title}</option>)}
             </select>
           </label>
         </div>
 
-        <div className={box}>
+        {!isOtd && <div className={box}>
           <p className={`mb-2 ${lab}`}>Auto-fill from the data · choose a game</p>
           <div className="grid gap-2 sm:grid-cols-3">
             <input type="date" className={input} value={slateDate} onChange={e => e.target.value && setSlateDate(e.target.value)} style={{ minHeight: 40 }} />
@@ -250,7 +290,7 @@ export default function GraphicsStudio() {
           <p className="mt-2 text-[11px] text-stone-500">Numbers come from the stored season data and are still editable. Anything the data does not have is left out, not guessed. The numbered list is editorial, so type or paste it.</p>
           {fillError && <p role="alert" className="mt-1 text-[11px] font-bold text-red-600">{fillError}</p>}
           {fillMissing.length > 0 && <p className="mt-1 text-[11px] text-stone-600">Not in the data, left out: {fillMissing.join(', ')}.</p>}
-        </div>
+        </div>}
 
         <div className="flex w-fit overflow-hidden rounded-sm border border-stone-300 text-xs">
           {(['form', 'json'] as Mode[]).map(m => (
@@ -265,6 +305,8 @@ export default function GraphicsStudio() {
             <p className={`mb-2 ${lab}`}>Full spec · validated as you type</p>
             <textarea className={`${input} w-full`} rows={22} value={jsonText} onChange={e => onJson(e.target.value)} spellCheck={false} />
           </div>
+        ) : isOtd ? (
+          <OtdForm spec={spec} onChange={commit} />
         ) : (
           <>
             <div className={box}>
@@ -401,10 +443,11 @@ export default function GraphicsStudio() {
         <div className="flex flex-wrap items-center gap-3">
           {(['landscape', 'portrait'] as SizeKey[]).map(s => (
             <button key={s} className="gs-btn" disabled={!canExport || exporting !== null} onClick={() => void exportPng(s)} data-export={s}>
-              {exporting === s ? 'Exporting…' : `Download ${SIZES[s].w}x${SIZES[s].h}`}
+              {exporting === s ? 'Exporting…' : isOtd ? `Download ${OTD_SIZES[s].label}` : `Download ${SIZES[s].w}x${SIZES[s].h}`}
             </button>
           ))}
           {exportError && <span className="text-[11px] text-red-600">{exportError}</span>}
+          {isOtd && overflow.length > 0 && <p role="alert" className="w-full text-[11px] font-bold text-amber-700">Text is cut off in the {previewSize === 'portrait' ? '4:5' : '16:9'} card: {overflow.join(' · ')}. Shorten it or change the layout.</p>}
         </div>
       </div>
 

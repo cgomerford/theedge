@@ -5,9 +5,11 @@
 // handle are NOT part of the spec (see constants.ts), so they cannot be edited away.
 
 /** 'neutral' (white pill) or an MLB abbreviation such as 'TB', 'MIL', 'NYY'. */
+import type { OtdBody } from './otd-types'
+
 export type TeamKey = string
 export type SizeKey = 'landscape' | 'portrait' // 1200x675 | 1080x1350
-export type TemplateId = 'collision' | 'arsenal' | 'contrast' | 'attack' | 'scoreboard' | 'textlist'
+export type TemplateId = 'collision' | 'arsenal' | 'contrast' | 'attack' | 'scoreboard' | 'textlist' | 'otd' | 'sotd'
 
 /** Text pill only, e.g. "TB", "MIL", "PROJECTED". */
 export interface Chip { text: string; team: TeamKey }
@@ -44,4 +46,6 @@ export interface GraphicSpec {
   panels?: Record<string, string>
   /** Optional small footnote under a group's panel, keyed by group. */
   notes?: Record<string, string>
+  /** 'On this day' and 'Stat of the day' only: the event date as free text and the card body. These two templates never draw a team or player image. */
+  otd?: { date: string; body: OtdBody }
 }

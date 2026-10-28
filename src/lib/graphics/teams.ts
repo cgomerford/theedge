@@ -24,6 +24,8 @@ export const teamColor = (abbr: string): string => MLB_TEAMS.find(t => t.abbrev 
 
 /** Every image key a spec wants, so the studio can preload them. */
 export function imageKeys(spec: GraphicSpec): string[] {
+  // 'On this day' and 'Stat of the day' use only the inlined x9 mark: no team logo or headshot is ever requested for them.
+  if (spec.template === 'otd' || spec.template === 'sotd') return []
   const keys = new Set<string>(['x9'])
   for (const c of spec.chips) if (c.team !== 'neutral') keys.add(`team:${c.team}`)
   for (const s of spec.stats) {

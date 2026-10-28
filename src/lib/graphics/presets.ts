@@ -3,12 +3,13 @@
 // The six World Series Game 1 specs. Verified numbers only; the minus sign is the real U+2212.
 // A "" cell renders as a small grey dot. G4 carries `panels` so its two table tabs match the mockup.
 
+import { OTD_PRESETS } from './otd-presets'
 import type { GraphicSpec } from './types'
 
 const KICKER = 'World Series Game 1 Scout'
 const TB_MIL = [{ text: 'TB', team: 'TB' as const }, { text: 'MIL', team: 'MIL' as const }]
 
-export const PRESETS: GraphicSpec[] = [
+export const SCOUT_PRESETS: GraphicSpec[] = [
   {
     id: 'ws-g1-hook', template: 'collision', kicker: KICKER, title: 'The first collision',
     subtitle: "Milwaukee chases less than any lineup. Martinez's best pitch is a changeup.",
@@ -24,7 +25,7 @@ export const PRESETS: GraphicSpec[] = [
   },
   {
     id: 'ws-g2-martinez', template: 'arsenal', kicker: KICKER, title: 'Nick Martinez, RHP', player: { id: 607259, team: 'TB' },
-    subtitle: 'Five days of rest. Last start Oct 17: 5.1 innings, 79 pitches.',
+    subtitle: 'Five days of rest. Last outing Oct 17: 5.1 innings, 79 pitches.',
     chips: [{ text: 'TB', team: 'TB' }],
     columns: ['Usage', 'Whiff', 'xwOBA'],
     stats: [
@@ -61,8 +62,8 @@ export const PRESETS: GraphicSpec[] = [
   },
   {
     id: 'ws-g4-attack', template: 'attack', kicker: KICKER, title: 'Attack map',
-    subtitle: 'Regular season. Hitters are projected starters.',
-    chips: [...TB_MIL, { text: 'PROJECTED', team: 'neutral' }],
+    subtitle: 'Regular season. Lineups are not confirmed yet.',
+    chips: [...TB_MIL, { text: 'NOT CONFIRMED', team: 'neutral' }],
     columns: ['Pitch', 'xwOBA', 'Whiff'],
     panels: { TB: 'Rays hitters vs Misiorowski', MIL: 'Brewers hitters vs Martinez' },
     stats: [
@@ -118,3 +119,6 @@ export const PRESETS: GraphicSpec[] = [
     ],
   },
 ]
+
+/** The six Game 1 scout graphics, then the week-1 "On this day" cards. */
+export const PRESETS: GraphicSpec[] = [...SCOUT_PRESETS, ...OTD_PRESETS]

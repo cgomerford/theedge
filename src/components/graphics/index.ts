@@ -7,6 +7,7 @@ import ContrastBars from './ContrastBars'
 import ScoreboardCard from './ScoreboardCard'
 import StatCollisionCard from './StatCollisionCard'
 import TextListCard from './TextListCard'
+import { OtdBlock, SotdBlock } from './otd/OtdBlocks'
 
 export type BlockProps = { spec: GraphicSpec; size: SizeKey; images?: GraphicImages }
 
@@ -17,6 +18,8 @@ export const BLOCKS: Record<TemplateId, ComponentType<BlockProps>> = {
   attack: AttackTable,
   scoreboard: ScoreboardCard,
   textlist: TextListCard,
+  otd: OtdBlock,
+  sotd: SotdBlock,
 }
 
 export const TEMPLATE_NAMES: Record<TemplateId, string> = {
@@ -26,4 +29,6 @@ export const TEMPLATE_NAMES: Record<TemplateId, string> = {
   attack: 'Attack table',
   scoreboard: 'Scoreboard',
   textlist: 'Numbered list',
+  otd: 'On this day',
+  sotd: 'Stat of the day',
 }
