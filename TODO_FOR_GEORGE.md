@@ -1,12 +1,8 @@
 # What to do next (George)
 
-## NEW (2026-10-28): league pitch finder, replacement SQL (use THIS file, not the earlier one)
+## DONE (2026-10-28): league pitch finder
 
-Why: the first version counted over 728,000 pitches live and the database timed out. The finder now reads a small summary table that Claude builds from your pitches.
-
-1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030130000_league_pitch_bins.sql` and press Run. It creates one empty table and replaces the finder function. Nothing in pitch_events is touched.
-2. Tell Claude "bins sql done". Claude fills the table (`scripts/build_league_pitch_bins.py --season 2026`, about 5 minutes) and checks the finder.
-3. Later, after new pitches are loaded, re-run that script to refresh the finder (it rebuilds the season). It is not on a schedule yet.
+The summary table is built (347,248 cells from 724,761 pitches) and the finder works. After new pitches load, refresh it with `python3 scripts/build_league_pitch_bins.py --season 2026` (about 5 minutes; it rebuilds the season). It is not on a schedule yet.
 
 ---
 

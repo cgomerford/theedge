@@ -73,9 +73,9 @@ function SortTh({ k, label, tip, sort, set }: { k: string; label: string; tip?: 
   )
 }
 
-export default function StuffLab({ board, selected, detail, season, preview }: { board: StuffBoard; selected: PitcherGrade | null; detail: StuffDetail | null; season: number; preview?: boolean }) {
+export default function StuffLab({ board, selected, detail, season, preview, embedded }: { board: StuffBoard; selected: PitcherGrade | null; detail: StuffDetail | null; season: number; preview?: boolean; embedded?: boolean }) {
   const router = useRouter()
-  const [view, setView] = useState<'pitcher' | 'board' | 'method'>(selected ? 'pitcher' : 'board')
+  const [view, setView] = useState<'pitcher' | 'board' | 'method'>(selected || embedded ? 'pitcher' : 'board')
   const [pitchSel, setPitchSel] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [minp, setMinp] = useState(250)
@@ -103,6 +103,9 @@ export default function StuffLab({ board, selected, detail, season, preview }: {
 
       {preview && <div role="note" style={{ background: '#FDE047', border: '1px solid #1A1A1A', padding: '8px 12px', fontWeight: 800, fontSize: 13, marginBottom: 14 }}>MOCKUP DATA · NOT REAL · invented pitchers and numbers (dev preview only)</div>}
 
+      {embedded ? (
+        <p style={{ ...note, margin: '0 0 14px' }}>{board.pitchers.length} pitchers graded · {season}. <a href={`/mlb/lab/stuff${selected ? `?pitcher=${selected.id}` : ''}`} style={{ color: C.orange, fontWeight: 800 }}>Open the full x9Stuff Lab</a> for the leaderboard and how we grade.</p>
+      ) : (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 14 }}>
         <Pills items={[['pitcher', 'Pitcher'], ['board', 'Leaderboard'], ['method', 'How we grade']] as ['pitcher' | 'board' | 'method', string][]} value={view} onChange={setView} />
         <div style={{ position: 'relative' }}>
@@ -115,10 +118,11 @@ export default function StuffLab({ board, selected, detail, season, preview }: {
         </div>
         <span style={{ fontSize: 12, color: C.mute }}>{board.pitchers.length} pitchers graded · {season}</span>
       </div>
+      )}
 
       {/* ── pitcher ── */}
       {view === 'pitcher' && (!selected || !detail ? (
-        <div style={tile}><p style={{ ...note, margin: 0 }}>Find a pitcher above, or open one from the Leaderboard.</p></div>
+        <div style={tile}><p style={{ ...note, margin: 0 }}>{embedded ? 'This pitcher has no grade yet this season. A pitcher needs enough pitches thrown to be graded.' : 'Find a pitcher above, or open one from the Leaderboard.'}</p></div>
       ) : (
         <div className="st-grid">
           <nav className="st-side" aria-label="Pitches">

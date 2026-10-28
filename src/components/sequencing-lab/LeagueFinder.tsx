@@ -24,6 +24,8 @@ const SPEED_WIN = 1.5, MOVE_WIN = 3
 const ZONES = ['11', '12', '13', '14', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 const RES_COLOR: Record<ResultCode, string> = { B: '#9DB4D6', C: '#0072B2', W: '#D55E00', F: '#E69F00', XH: '#c0392b', XO: '#8a8275' }
 const TYPES = PITCH_ORDER.filter(c => ['FF', 'SI', 'FC', 'SL', 'ST', 'SV', 'CU', 'KC', 'CH', 'FS'].includes(c))
+// Typical speed per pitch, only used to pick a cheap window for the first lookup (the sliders then start at the real average inside it).
+const TYPICAL_SPEED: Record<string, number> = { FF: 95, SI: 94, FC: 89, SL: 86, ST: 80, SV: 81, CU: 79, KC: 80, CH: 86, FS: 85 }
 const dt: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }
 const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0)
 
@@ -55,11 +57,12 @@ export default function LeagueFinder({ season }: { season: number }) {
   const [run, setRun] = useState(0)
   const [p, setP] = useState(0)
 
-  // Step 1: when the pitch or hand changes, ask for every pitch of that type and hand to find the typical speed and break, and start the sliders there.
+  // Step 1: when the pitch or hand changes, ask for the pitches of that type and hand near its usual speed to find the typical speed and break, and start the sliders there.
   useEffect(() => {
     const ac = new AbortController()
     setState('loading'); setSpeed(null); setHb(null); setIvb(null); setZone(null)
-    fetch(`/api/sequencing/finder?type=${type}&hand=${hand}&season=${season}`, { signal: ac.signal })
+    const ts = TYPICAL_SPEED[type] ?? 90
+    fetch(`/api/sequencing/finder?type=${type}&hand=${hand}&season=${season}&slo=${ts - 5}&shi=${ts + 5}`, { signal: ac.signal })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j: { rows: FinderRow[] }) => {
         const sp = wmean(j.rows, 'speed'), h = wmean(j.rows, 'hb'), v = wmean(j.rows, 'ivb')
