@@ -39,8 +39,13 @@ export const LABS_MENU: LabsMenuItem[] = [
     blurb: 'Dial in a pitch’s velocity, ride, run and arm angle and see what pitches shaped like it have produced.',
   },
   {
+    label: 'Sequencing Lab', href: '/mlb/lab/sequencing', status: 'new',
+    tabs: ['Compare pitchers', 'Pitcher', 'League'],
+    blurb: 'Compare how every pitcher sequences: what he throws after each pitch, in each count and with two strikes, and where he goes.',
+  },
+  {
     label: 'Swing Decisions', href: '/mlb/lab/swing-decisions', status: 'soon', art: 'zones',
-    blurb: 'Does each hitter swing at the right pitches? We’ll show the runs his swing-or-take choices add or cost per 100 pitches, zone by zone.',
+    blurb: 'Does each hitter swing at the right pitches? We’ll show the runs his swing-or-take choices gain or lose per 100 pitches, zone by zone.',
   },
   {
     label: 'vs 95+', href: '/mlb/lab/velocity', status: 'soon', art: 'bars',

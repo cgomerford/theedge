@@ -76,3 +76,4 @@ fetch	src/lib/scout/run-lab.ts
 fetch	src/lib/scout/run-game.ts
 fetch	src/components/pro/UnfollowButton.tsx
 logos	src/components/stats/StatsQueryLab.tsx
+fetch	src/lib/sequencing-lab/data.ts
