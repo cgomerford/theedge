@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-28): run the league pitch finder SQL (Sequencing Lab, League view)
+
+Why: the League view now has a pitch finder: choose a pitch, speed, break, zone and result and it plays that pitch from behind the plate, with what has happened to league pitches like it. It counts over 728,000 stored pitches, so the counting lives in one read-only database function.
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030120000_league_pitch_finder.sql` and press Run. It creates one function and one index. Nothing is changed or deleted.
+2. Tell Claude "finder sql done" and Claude checks it returns rows. Until then the finder says it is not available yet.
+
+---
+
 ## NEW (2026-10-28): x9Stuff Lab needs its tables and the grades loaded
 
 The lab is built (Labs menu, `/mlb/lab/stuff`). Until you do this it shows "The pitch grades are not loaded yet". A dev-only preview with invented data is at `localhost:3000/dev/stuff-lab-preview`.

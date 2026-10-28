@@ -17,11 +17,11 @@ import { pitchColor } from '@/lib/mlb'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 
-const PLATE_Y = 17 / 12
+export const PLATE_Y = 17 / 12
 const CAM_Y = -3        // the eye sits 3 ft behind the front of the plate
 const CAM_Z = 2.6       // looking at about knee-to-belt height so a falling curveball stays in frame
 const F = 250           // focal length in px
-const W = 300, H = 345, CX = 150, CY = 165
+export const W = 300, H = 345, CX = 150, CY = 165
 
 type Pt = { x: number; y: number; z: number }
 export type PitchPath = {
@@ -85,7 +85,7 @@ export function buildPaths(log: PitcherPitchLog): PitchPath[] {
   return out.sort((a, b) => b.n - a.n)
 }
 
-const proj = (p: Pt) => {
+export const proj = (p: Pt) => {
   const d = p.y - CAM_Y
   return { sx: CX + (F * p.x) / d, sy: CY - (F * (p.z - CAM_Z)) / d, r: (F * 0.12) / d }
 }

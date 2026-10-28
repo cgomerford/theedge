@@ -11,6 +11,7 @@
 // Movement and foul types need data that is not stored yet, so they sit in marked "Pending" blocks. Nothing is estimated. Every rate shows the follow-ups behind it, and a
 // pitcher under the minimum shows "Small sample (n = X)" instead of a rate.
 
+import LeagueFinder from './LeagueFinder'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
@@ -249,6 +250,7 @@ export default function SequencingLab({ board, detail, events, shape, selectedId
       {/* ── league ── */}
       {view === 'league' && (
         <div className="sq-tiles">
+          <LeagueFinder season={season} />
           <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
             <div style={kick}>The league · what comes after each pitch</div>
             <table className="sq-tbl" style={{ marginTop: 8, minWidth: 520 }}>

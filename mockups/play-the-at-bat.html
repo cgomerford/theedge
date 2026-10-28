@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play the at-bat and Matchup replay (mockup) · x9Lab</title>
+<!--
+  MOCKUP ONLY. Vanilla HTML, CSS and JS; no libraries. Red Hat Display only, site skin (cream, orange, rounded 14px cards).
+  Every number comes from the MOCK helpers in the script and is INVENTED so you can judge layout and flow.
+  In the build each number comes from pitch_events (728,088 pitches: plate_x/z, pfx, speed, count, stand, p_throws, launch data).
+  Wording rule: "what has happened against pitches like it". Never a forecast of what will happen.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF8F3;--orange:#FF5722;--yellow:#FDE047;--ink:#1A1A1A;--card:#fff;--line:#e7e2d8;--soft:#f1eee6;--mute:#5b5347;--faint:#a89e8c;--sky:#6CABDD;--red:#D4533B}
+*{box-sizing:border-box}
+html{overflow-x:clip}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:'Red Hat Display',system-ui,sans-serif;font-size:15px;line-height:1.5;overflow-x:clip}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.banner{position:sticky;top:0;z-index:5;background:var(--yellow);padding:8px 16px;font-weight:800;font-size:12px;letter-spacing:.06em}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 80px}
+.kick{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--orange);text-transform:uppercase}
+h1{font-size:clamp(34px,5.6vw,56px);font-weight:800;letter-spacing:-.02em;line-height:1;margin:6px 0 8px}
+.lede{max-width:720px;color:var(--mute);margin:0 0 18px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-weight:800;font-size:13px}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media(max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.card h3{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--orange);text-transform:uppercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;display:inline-flex;gap:7px;align-items:center}
+.chip.on{border-color:var(--orange);background:#fff3ee}
+.ball{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--c,#999));border:1px solid rgba(0,0,0,.25);animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.ball{animation:none}}
+select{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#fff;font-weight:700}
+.count{display:flex;gap:18px;font-weight:800}
+.count b{font-size:30px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tile{background:var(--soft);border-radius:12px;padding:10px 12px;min-width:0}
+.tile .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tile .l{font-size:10px;font-weight:800;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.note{font-size:12px;color:var(--faint);margin:8px 0 0}
+.star{color:var(--red);font-weight:800}
+.log{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.log li{display:flex;gap:10px;align-items:center;background:var(--soft);border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px;min-width:0}
+.log .n{width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:11px;flex:none}
+svg{max-width:100%;height:auto;display:block}
+.zone{cursor:crosshair;touch-action:manipulation}
+.bar{height:12px;border-radius:6px;background:var(--soft);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+input[type=range]{width:100%;accent-color:var(--orange)}
+.sl{display:grid;gap:2px;margin-bottom:10px}
+.sl label{display:flex;justify-content:space-between;font-weight:800;font-size:13px}
+.hidden{display:none}
+.big{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.btn{border:0;border-radius:999px;background:var(--orange);color:#fff;font-weight:800;padding:9px 16px}
+.btn.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:10px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="banner">MOCKUP · every number below is invented · approve the layout and flow, then it is built on real pitch data</div>
+<div class="wrap">
+  <div class="kick">x9 · Labs</div>
+  <h1>At-bat Lab</h1>
+  <p class="lede">Throw the pitches yourself, then see what has happened against pitches like them. Or take a real home run at-bat and change the speed, location and movement of the pitch that was hit. Everything shown is a count of what has already happened in the 2026 season. Nothing here predicts anything.</p>
+
+  <div class="tabs">
+    <button class="pill on" data-tab="play">Play the at-bat</button>
+    <button class="pill" data-tab="replay">Matchup replay</button>
+  </div>
+
+  <!-- ============ PLAY THE AT-BAT ============ -->
+  <section id="play">
+    <div class="card" style="margin-bottom:14px">
+      <div class="row">
+        <label class="kick">Pitcher</label>
+        <select id="pSel"><option>Paul Skenes</option><option>Tarik Skubal</option><option>Garrett Crochet</option></select>
+        <label class="kick">Batter</label>
+        <select id="bSel"><option>Aaron Judge (R)</option><option>Shohei Ohtani (L)</option><option>Bobby Witt Jr. (R)</option></select>
+        <button class="btn alt" id="reset">New at-bat</button>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>1 · Choose the pitch</h3>
+        <div class="row" id="types"></div>
+        <div style="height:12px"></div>
+        <h3>2 · Click where it crosses the plate</h3>
+        <svg id="zone" class="zone" viewBox="0 0 300 340" role="img" aria-label="Strike zone, catcher view"></svg>
+        <p class="note">Catcher's view. The dashed box is the strike zone; the 13 zones from the Pitching Lab sit behind it. The pitch is placed exactly where you click.</p>
+        <h3 style="margin-top:12px">3 · What happened?</h3>
+        <div class="row" id="results"></div>
+        <p class="note">Or leave it open: <b>Show me what has happened</b> picks the result that has happened most often against pitches like yours.</p>
+        <div class="row" style="margin-top:8px"><button class="btn" id="throw">Throw it</button><button class="btn alt" id="likely">Show me what has happened</button></div>
+      </div>
+      <div style="display:grid;gap:14px;align-content:start">
+        <div class="card">
+          <h3>The at-bat so far</h3>
+          <div class="count"><div>Balls <b id="cb">0</b></div><div>Strikes <b id="cs">0</b></div><div>Pitch <b id="cn">0</b></div></div>
+          <ol class="log" id="log" style="margin-top:10px"></ol>
+          <div id="final" class="hidden" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <h3>Pitches like this one, league-wide</h3>
+          <div id="likeTitle" class="big">Place a pitch to see it</div>
+          <div class="tiles" id="likeTiles"></div>
+          <div class="bar" style="margin-top:12px" id="likeBar"></div>
+          <div class="legend" id="likeLegend"></div>
+          <p class="note">"Like this one" means the same pitch type, within 1.5 mph, within 4 inches of the click, thrown to this batter's side, in this count. <span class="star">*</span> marks a sample under 30 pitches.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MATCHUP REPLAY ============ -->
+  <section id="replay" class="hidden">
+    <div class="card" style="margin-bottom:14px">
+      <div class="row">
+        <label class="kick">Real home run</label>
+        <select id="hrSel"></select>
+      </div>
+      <p class="note">Every home run of 2026 is listed, newest first. Pick one, then move the sliders to change that pitch.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>The at-bat as it happened</h3>
+        <ol class="log" id="hrLog"></ol>
+        <p class="note">The last pitch is the one that was hit. It is the one you can change.</p>
+        <h3 style="margin-top:14px">Change the pitch</h3>
+        <div class="sl"><label>Speed <span id="vS"></span></label><input type="range" id="sS" min="-6" max="6" step="0.5" value="0"></div>
+        <div class="sl"><label>Left / right <span id="vX"></span></label><input type="range" id="sX" min="-12" max="12" step="1" value="0"></div>
+        <div class="sl"><label>Up / down <span id="vZ"></span></label><input type="range" id="sZ" min="-12" max="12" step="1" value="0"></div>
+        <div class="sl"><label>Sideways break <span id="vH"></span></label><input type="range" id="sH" min="-6" max="6" step="0.5" value="0"></div>
+        <div class="sl"><label>Rise / drop <span id="vV"></span></label><input type="range" id="sV" min="-6" max="6" step="0.5" value="0"></div>
+        <button class="btn alt" id="back">Back to the real pitch</button>
+      </div>
+      <div style="display:grid;gap:14px;align-content:start">
+        <div class="card">
+          <h3>Where it crossed the plate</h3>
+          <svg id="rzone" viewBox="0 0 300 340" role="img" aria-label="Real pitch and your changed pitch"></svg>
+          <div class="legend"><span><i style="background:var(--ink)"></i>The real pitch</span><span><i style="background:var(--orange)"></i>Your changed pitch</span><span><i style="background:#c9c2b2"></i>Pitches like yours that were hit</span></div>
+        </div>
+        <div class="card">
+          <h3>What has happened against pitches like your changed pitch</h3>
+          <div class="big" id="rTitle"></div>
+          <div class="tiles" id="rTiles"></div>
+          <div class="bar" id="rBar" style="margin-top:12px"></div>
+          <div class="legend" id="rLegend"></div>
+          <p class="note" id="rNote"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="card" style="margin-top:18px">
+    <h3>Appendix · how to read this</h3>
+    <p class="note" style="margin-top:0">Source: every pitch of the 2026 regular season from Baseball Savant, stored nightly. "Like this one" uses speed, plate location, pitch type, batter side and count; the sample size is always shown. Results are counts of what happened, not odds for the next pitch. <span class="star">*</span> = under 30 pitches. A batter's own line appears only with at least 15 pitches like it; below that the page shows the league line alone.</p>
+  </div>
+</div>
+
+<script>
+// ---------- MOCK helpers (invented) ----------
+const TYPES=[['Four-seam','#e0443a',97],['Sinker','#f08a3c',96],['Slider','#3b82c4',88],['Curveball','#7a56c2',80],['Changeup','#2e9e6b',89],['Cutter','#c9a227',93]];
+const RES=['Called strike','Swinging strike','Ball','Foul','In play'];
+const RC={'Called strike':'#6CABDD','Swinging strike':'#2b6fa6','Ball':'#c9c2b2','Foul':'#e9b44c','In play':'#D4533B'};
+function h(s){let x=0;for(const c of String(s))x=(x*31+c.charCodeAt(0))>>>0;return x}
+function rnd(s){let x=h(s)||1;x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;return (x%10000)/10000}
+// result mix for a pitch: depends on inside-zone, type, count (invented but shaped like the real thing)
+function mix(type,px,pz,b,s){
+  const inZ=Math.abs(px)<8.5&&pz>18&&pz<42;                       // inches from plate centre, height off ground
+  const edge=Math.max(Math.abs(px)-8.5,Math.abs(pz-30)-12);
+  const chase=inZ?0:Math.max(0,1-Math.abs(edge)/10);
+  let cs=inZ?0.30:0.06, sw=inZ?0.10:0.12*chase+0.03, ba=inZ?0.14:0.55-0.35*chase, fo=0.18, ip=0.18;
+  if(/Slider|Curve|Change/.test(type)) sw+=0.06;
+  if(s===2) {fo+=0.06;ba-=0.04}
+  const v=[cs,sw,ba,fo,ip];const t=v.reduce((a,c)=>a+c,0);return v.map(x=>x/t);
+}
+function nLike(type,px,pz,b,s){return Math.round(30+rnd(type+Math.round(px/4)+Math.round(pz/4)+b+s)*420)}
+const pct=x=>Math.round(x*100)+'%';
+function tile(v,l){return `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`}
+function bar(el,lg,m){el.innerHTML=m.map((x,i)=>`<i style="width:${x*100}%;background:${RC[RES[i]]}"></i>`).join('');lg.innerHTML=m.map((x,i)=>`<span><i style="background:${RC[RES[i]]}"></i>${RES[i]} ${pct(x)}</span>`).join('')}
+// strike-zone svg: x -24..24 inches, z 6..54 inches -> 300x340
+const X=px=>150+px*6, Z=pz=>320-(pz-6)*6;
+function zoneSvg(extra=''){
+  let g='<rect x="0" y="0" width="300" height="340" rx="14" fill="#f7f4ec"/>';
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++)g+=`<rect x="${X(-8.5)+i*(17*6/3)}" y="${Z(42)+j*(24*6/3)}" width="${17*6/3}" height="${24*6/3}" fill="none" stroke="#e7e2d8"/>`;
+  g+=`<rect x="${X(-8.5)}" y="${Z(42)}" width="${17*6}" height="${24*6}" fill="none" stroke="#1A1A1A" stroke-dasharray="5 4" stroke-width="1.6"/>`;
+  g+=`<polygon points="${X(-8.5)},330 ${X(8.5)},330 ${X(8.5)},336 150,340 ${X(-8.5)},336" fill="#fff" stroke="#e7e2d8"/>`;
+  return g+extra;
+}
+// ---------- PLAY THE AT-BAT ----------
+let st,pick;
+function fresh(){st={b:0,s:0,n:0,log:[],done:false};pick={type:null,px:null,pz:null,res:null};draw()}
+function chips(){
+  document.getElementById('types').innerHTML=TYPES.map(([t,c,v])=>`<button class="chip ${pick.type===t?'on':''}" data-t="${t}"><span class="ball" style="--c:${c}"></span>${t} <span style="color:var(--faint)">${v} mph</span></button>`).join('');
+  document.getElementById('results').innerHTML=RES.map(r=>`<button class="chip ${pick.res===r?'on':''}" data-r="${r}"><i style="width:9px;height:9px;border-radius:50%;background:${RC[r]};display:inline-block"></i>${r}</button>`).join('');
+}
+function draw(){
+  chips();
+  const pts=st.log.map((p,i)=>`<circle cx="${X(p.px)}" cy="${Z(p.pz)}" r="9" fill="${RC[p.res]}" stroke="#1A1A1A"/><text x="${X(p.px)}" y="${Z(p.pz)+4}" font-size="11" font-weight="800" text-anchor="middle" fill="#1A1A1A">${i+1}</text>`).join('');
+  const cur=pick.px!=null?`<circle cx="${X(pick.px)}" cy="${Z(pick.pz)}" r="11" fill="var(--orange)" fill-opacity=".85" stroke="#1A1A1A"/>`:'';
+  document.getElementById('zone').innerHTML=zoneSvg(pts+cur);
+  cb.textContent=st.b;cs.textContent=st.s;cn.textContent=st.n;
+  document.getElementById('log').innerHTML=st.log.map((p,i)=>`<li><span class="n">${i+1}</span>${p.type} · ${p.res}<span style="margin-left:auto;color:var(--faint)">${p.b}-${p.s}</span></li>`).join('')||'<li style="color:var(--faint)">No pitches yet</li>';
+  like();
+}
+function like(){
+  const T=document.getElementById('likeTitle');
+  if(!pick.type||pick.px==null){T.textContent='Choose a pitch and click the zone';likeTiles.innerHTML='';likeBar.innerHTML='';likeLegend.innerHTML='';return}
+  const n=nLike(pick.type,pick.px,pick.pz,st.b,st.s),m=mix(pick.type,pick.px,pick.pz,st.b,st.s);
+  T.innerHTML=`${n} pitches like this one${n<30?' <span class="star">*</span>':''}`;
+  likeTiles.innerHTML=tile(pct(m[1]/(m[1]+m[3]+m[4])),'Swing and miss')+tile(pct(m[4]),'Put in play')+tile(pct(m[0]+m[2]),'Taken');
+  bar(likeBar,likeLegend,m);
+}
+document.getElementById('types').onclick=e=>{const b=e.target.closest('[data-t]');if(b){pick.type=b.dataset.t;draw()}};
+document.getElementById('results').onclick=e=>{const b=e.target.closest('[data-r]');if(b){pick.res=b.dataset.r;chips()}};
+document.getElementById('zone').onclick=e=>{if(st.done)return;const s=zone.getBoundingClientRect(),k=300/s.width;pick.px=((e.clientX-s.left)*k-150)/6;pick.pz=(320-(e.clientY-s.top)*k)/6+6;draw()};
+document.getElementById('likely').onclick=()=>{if(!pick.type||pick.px==null)return;const m=mix(pick.type,pick.px,pick.pz,st.b,st.s);pick.res=RES[m.indexOf(Math.max(...m))];chips()};
+document.getElementById('throw').onclick=()=>{
+  if(st.done||!pick.type||pick.px==null||!pick.res)return;
+  st.n++;st.log.push({...pick,b:st.b,s:st.s});
+  if(pick.res==='Ball')st.b++;
+  else if(pick.res==='Called strike'||pick.res==='Swinging strike')st.s++;
+  else if(pick.res==='Foul'&&st.s<2)st.s++;
+  if(pick.res==='In play'||st.s>=3||st.b>=4)finish(pick.res);
+  pick={type:null,px:null,pz:null,res:null};draw();
+};
+function finish(r){
+  st.done=true;
+  const o=st.b>=4?'Walk':st.s>=3?'Strikeout':'Ball in play';
+  const n=120+Math.round(rnd(st.log.map(p=>p.type).join())*600);
+  const k=0.17+rnd('k'+st.n)*0.2,bb=0.06+rnd('b'+st.n)*0.08,ip=1-k-bb;
+  final.classList.remove('hidden');
+  final.innerHTML=`<div class="big">${o}${o==='Ball in play'?' · batter hits it':''}</div>
+  <p class="note" style="margin-top:4px">In ${n} real at-bats this season that began with ${st.log.slice(0,2).map(p=>p.type).join(' then ')} in similar spots, ${pct(k)} ended in a strikeout, ${pct(bb)} in a walk and ${pct(ip)} with the ball in play (batter hit .${Math.round(220+rnd('a'+st.n)*80)} on those).</p>`;
+}
+document.getElementById('reset').onclick=()=>{final.classList.add('hidden');fresh()};
+
+// ---------- MATCHUP REPLAY ----------
+const HRS=[
+ {d:'Oct 26',bat:'Aaron Judge',pit:'Gerrit Cole',seq:[['Slider',87,'Ball'],['Four-seam',97,'Foul'],['Slider',88,'Called strike'],['Four-seam',98,'Home run']],px:-1.5,pz:30,sp:98,h:-7,v:15,type:'Four-seam',ev:112,la:27},
+ {d:'Oct 25',bat:'Shohei Ohtani',pit:'Logan Webb',seq:[['Sinker',92,'Called strike'],['Changeup',85,'Ball'],['Sinker',92,'Home run']],px:3,pz:24,sp:92,h:-14,v:8,type:'Sinker',ev:108,la:30},
+ {d:'Oct 24',bat:'Bobby Witt Jr.',pit:'Tarik Skubal',seq:[['Four-seam',96,'Foul'],['Changeup',88,'Swinging strike'],['Slider',85,'Ball'],['Changeup',89,'Home run']],px:-4,pz:22,sp:89,h:-15,v:5,type:'Changeup',ev:106,la:26}
+];
+hrSel.innerHTML=HRS.map((x,i)=>`<option value="${i}">${x.d} · ${x.bat} off ${x.pit} (${x.type}, ${x.sp} mph)</option>`).join('');
+function rp(){
+  const x=HRS[+hrSel.value];
+  hrLog.innerHTML=x.seq.map((p,i)=>`<li><span class="n">${i+1}</span>${p[0]} · ${p[1]} mph<span style="margin-left:auto;font-weight:800;color:${p[2]==='Home run'?'var(--red)':'var(--mute)'}">${p[2]}</span></li>`).join('');
+  const dS=+sS.value,dX=+sX.value/2,dZ=+sZ.value/2,dH=+sH.value,dV=+sV.value;
+  vS.textContent=(x.sp+dS).toFixed(1)+' mph ('+(dS>=0?'+':'')+dS+')';
+  vX.textContent=(dX>=0?'+':'')+dX.toFixed(1)+' in';vZ.textContent=(dZ>=0?'+':'')+dZ.toFixed(1)+' in';
+  vH.textContent=(dH>=0?'+':'')+dH+' in';vV.textContent=(dV>=0?'+':'')+dV+' in';
+  const px=x.px+dX,pz=x.pz+dZ,moved=dS||dX||dZ||dH||dV;
+  const hits=Array.from({length:14},(_,i)=>[px+(rnd('hx'+i+x.pit)-.5)*8,pz+(rnd('hz'+i+x.pit)-.5)*8]);
+  rzone.innerHTML=zoneSvg(hits.map(a=>`<circle cx="${X(a[0])}" cy="${Z(a[1])}" r="5" fill="#c9c2b2" fill-opacity=".8"/>`).join('')
+    +`<circle cx="${X(x.px)}" cy="${Z(x.pz)}" r="9" fill="#1A1A1A"/>`+(moved?`<line x1="${X(x.px)}" y1="${Z(x.pz)}" x2="${X(px)}" y2="${Z(pz)}" stroke="#FF5722" stroke-dasharray="4 3"/><circle cx="${X(px)}" cy="${Z(pz)}" r="10" fill="#FF5722" stroke="#1A1A1A"/>`:''));
+  // invented: harder, middle-middle, flatter pitches are hit harder and further
+  const mid=1-Math.min(1,Math.hypot(px/8.5,(pz-30)/12)/1.6),slow=Math.max(0,(x.sp+dS<90?1:0));
+  const nLg=Math.round(80+rnd(x.pit+px.toFixed(0)+pz.toFixed(0)+dS)*900),nB=Math.round(nLg*0.04);
+  const hr=Math.max(0.005,0.01+mid*0.035+(dV>0?0.004*dV:0)),xw=.24+mid*.2;
+  const m=[Math.max(.02,.2-mid*.1),.17-mid*.05,.22-mid*.1,.14,.27+mid*.15];const t=m.reduce((a,c)=>a+c,0);const mm=m.map(a=>a/t);
+  rTitle.innerHTML=moved?`${nLg} league pitches like your changed pitch`:`${nLg} league pitches like the real one`;
+  rTiles.innerHTML=tile(pct(hr),'Home runs')+tile('.'+Math.round(xw*1000),'Expected wOBA')+tile(nB<15?`<span class="star">*</span> ${nB}`:nB,x.bat.split(' ').pop()+' saw');
+  bar(rBar,rLegend,mm);
+  rNote.innerHTML=nB<15?`<span class="star">*</span> ${x.bat} has faced only ${nB} pitches like this, below the 15 needed to show his own line. The league line above is what has happened against them.`:`${x.bat} has seen ${nB} pitches like this and hit .${Math.round(180+mid*200)} against them. League and batter lines are counts of 2026 pitches, not a forecast.`;
+}
+['sS','sX','sZ','sH','sV','hrSel'].forEach(id=>document.getElementById(id).oninput=rp);
+document.getElementById('back').onclick=()=>{['sS','sX','sZ','sH','sV'].forEach(id=>document.getElementById(id).value=0);rp()};
+
+// ---------- tabs ----------
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(!b)return;
+  document.querySelectorAll('.tabs .pill').forEach(p=>p.classList.toggle('on',p===b));
+  play.classList.toggle('hidden',b.dataset.tab!=='play');replay.classList.toggle('hidden',b.dataset.tab!=='replay');if(b.dataset.tab==='replay')rp()};
+fresh();
+</script>
+</body>
+</html>
