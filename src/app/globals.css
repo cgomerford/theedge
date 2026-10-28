@@ -95,3 +95,21 @@ body {
   [style*="font-size: 11.5px"],
   [style*="font-size:11.5px"] { font-size: 12px !important; }
 }
+
+/* ── Nothing spills sideways ───────────────────────────────────────────
+   A page never scrolls left and right: content wider than the screen scrolls inside its own box (tables) or wraps (text).
+   `clip` (not `hidden`) so position: sticky keeps working. */
+html, body { max-width: 100%; overflow-x: clip; }
+img, svg, video, canvas, iframe { max-width: 100%; }
+img, video { height: auto; }
+h1, h2, h3, h4, p, li, dd, dt, a, button, label, span { overflow-wrap: anywhere; }
+pre { max-width: 100%; overflow-x: auto; }
+/* Phones: a table wider than the screen scrolls inside itself. */
+@media (max-width: 767px) {
+  table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+/* The lab tables keep their first column pinned while the rest scrolls (they sit on white tiles, so the pinned cell is white). */
+.bl-tbl td:first-child, .bl-tbl th:first-child, .lv-tbl td:first-child, .lv-tbl th:first-child, .ab-tbl td:first-child, .ab-tbl th:first-child,
+.fl-tbl td:first-child, .fl-tbl th:first-child, .rn-tbl td:first-child, .rn-tbl th:first-child, .cl-tbl td:first-child, .cl-tbl th:first-child {
+  position: sticky; left: 0; z-index: 1; background: #fff;
+}

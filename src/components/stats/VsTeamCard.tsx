@@ -51,11 +51,11 @@ export default function VsTeamCard({ req, onLookups }: { req: VsReq; onLookups: 
     <Card title={`${out.player.name} against the ${out.team.name}`} note={out.group === 'pitching' ? 'career, as the pitcher' : 'career, as the batter'}>
       {!out.total ? <Empty>No recorded {out.group === 'pitching' ? 'appearances against' : 'plate appearances against'} this club.</Empty> : (
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS, fontSize: 15 }}>
-            <thead><tr><th style={{ ...th, textAlign: 'left' }}>Player</th>{cols.map(c => <th key={c.k} style={th}>{c.l}</th>)}</tr></thead>
+          <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontFamily: SANS, fontSize: 15 }}>
+            <thead><tr><th style={{ ...th, textAlign: 'left', position: 'sticky', left: 0, background: '#fff', zIndex: 1 }}>Player</th>{cols.map(c => <th key={c.k} style={th}>{c.l}</th>)}</tr></thead>
             <tbody>
               <tr style={{ borderTop: `1px solid ${C.line}` }}>
-                <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '8px', whiteSpace: 'nowrap', position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 200 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontWeight: 800 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={headshot(out.player.id, 80)} alt="" width={40} height={40} style={{ borderRadius: 20, background: C.soft, objectFit: 'cover' }} />
@@ -68,7 +68,7 @@ export default function VsTeamCard({ req, onLookups }: { req: VsReq; onLookups: 
               </tr>
               {open ? out.seasons.map(s => (
                 <tr key={s.season} style={{ borderTop: `1px solid ${C.line}`, color: '#5b5347' }}>
-                  <td style={{ padding: '8px 8px 8px 58px', fontWeight: 700 }}>{s.season}</td>
+                  <td style={{ padding: '8px 8px 8px 58px', fontWeight: 700, position: 'sticky', left: 0, background: '#fff', zIndex: 1 }}>{s.season}</td>
                   {cols.map(c => <td key={c.k} style={td}>{cell(s.stat, c.k)}</td>)}
                 </tr>
               )) : null}
