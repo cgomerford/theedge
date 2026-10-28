@@ -121,9 +121,10 @@ export async function PitchingHome() {
       {!slate ? <PendingBlock label="Next game" /> : (
         <section style={card}>
           <SpinBallStyles />
+          <style>{`.ph-row{display:grid;grid-template-columns:minmax(210px,1fr) 90px 150px minmax(240px,2fr);gap:10px 18px;align-items:center;padding:12px 0}.ph-row>*{min-width:0}@media (max-width:820px){.ph-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ph-row>:first-child,.ph-row>:last-child{grid-column:1 / -1}}`}</style>
           <p style={kicker}>Starting next · {gameLabel(slate)} · {whenText(slate)}</p>
           {sides.map(({ w, team, s }) => (
-            <div key={w} style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 1fr) 90px 150px minmax(240px, 2fr)', gap: '10px 18px', alignItems: 'center', padding: '12px 0', borderTop: `1px solid ${LINE}` }}>
+            <div key={w} className="ph-row" style={{ borderTop: `1px solid ${LINE}` }}>
               {s.id ? (
                 <Link href={`/mlb/lab/pitching-lab/${s.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
                   <Headshot id={s.id} name={s.name ?? ''} size={48} />
