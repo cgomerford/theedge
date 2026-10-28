@@ -15,11 +15,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { Headshot, TeamMark } from '@/components/home/Logo'
-import PendingBlock from '@/components/data/PendingBlock'
 import SmallSample from '@/components/data/SmallSample'
+import SpinBall, { SpinBallStyles, type SpinInfo } from '@/components/home/SpinBall'
+import PitchExplorer from './PitchExplorer'
 import { C, SANS } from '@/components/team/ui'
 import { PITCH_ORDER, pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
-import type { Board, BoardRow, Detail, Metrics, SeqSplit } from '@/lib/sequencing-lab/data'
+import type { Board, BoardRow, Detail, PitcherShape, SeqSplit } from '@/lib/sequencing-lab/data'
+import type { SeqPitch } from '@/lib/sequencing-lab/sequence'
 import { MLB_TEAMS } from '@/lib/teams'
 import { NEUTRAL, ORANGE, Pills, VH, VW, cellRect, kick, labelAt, mix, note, px, pz, star, tile } from '@/components/pitching-lab/LocationExplorer'
 
@@ -41,8 +43,9 @@ const ZONE_NAME = (z: string) => (Number(z) <= 9 ? `zone ${z}` : ({ '11': 'up an
 const dt: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }
 const order = (codes: string[]) => [...codes].sort((a, b) => (PITCH_ORDER.indexOf(a) + 100) % 100 - (PITCH_ORDER.indexOf(b) + 100) % 100)
 
-function PitchTag({ code }: { code: string }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: pitchColor(code), flexShrink: 0 }} />{pitchLabel(code)}</span>
+/** The pitch's ball (it turns the way that pitch turns when its spin is known) and its name. Colour is never the only cue: the name is always beside it. */
+function PitchTag({ code, spin }: { code: string; spin?: SpinInfo | null }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}><SpinBall code={code} spin={spin ?? null} size={18} />{pitchLabel(code)}</span>
 }
 
 /** A rate against the league: above it leans orange, below it blue; the colour is only a cue, the number and the league value are always printed. */
@@ -52,7 +55,7 @@ function tint(v: number | null, league: number | null): string | undefined {
   return d >= 0 ? mix(NEUTRAL, ORANGE, d * 0.8) : mix(NEUTRAL, [108, 171, 221], -d * 0.8)
 }
 
-export default function SequencingLab({ board, detail, selectedId, split: initialSplit, minSeq, season }: { board: Board; detail: Detail | null; selectedId: number | null; split: SeqSplit; minSeq: number; season: number }) {
+export default function SequencingLab({ board, detail, events, shape, selectedId, split: initialSplit, minSeq, season }: { board: Board; detail: Detail | null; events: SeqPitch[]; shape: PitcherShape; selectedId: number | null; split: SeqSplit; minSeq: number; season: number }) {
   const router = useRouter()
   const [view, setView] = useState<View>(selectedId && detail ? 'pitcher' : 'compare')
   const [split, setSplit] = useState<SeqSplit>(initialSplit)
@@ -64,6 +67,7 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
   const [pitchSel, setPitchSel] = useState<string | null>(null)
   const [versus, setVersus] = useState(true)
   const lg = board.league[split]
+  const spinOf = (code: string): SpinInfo | null => { const x = shape[code] ?? board.spin[code]; return x ? { rpm: x.rpm, ivb: x.ivb, hb: x.hb } : null }
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -93,6 +97,7 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
 
   return (
     <div className="sq" style={{ fontFamily: SANS }}>
+      <SpinBallStyles />
       <style>{`.sq-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}.sq-span2{grid-column:span 2}.sq-span3{grid-column:1 / -1}.sq-tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}.sq-tbl th{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#a89e8c;text-align:center;padding:6px 8px;border-bottom:1px solid #e7e2d8;vertical-align:bottom}.sq-tbl th:first-child,.sq-tbl td:first-child{text-align:left}.sq-tbl td{text-align:center;padding:7px 8px;border-top:1px solid #f1eee6}.sq-tbl td:first-child{position:sticky;left:0;z-index:1;background:#fff}@media (max-width:1100px){.sq-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:760px){.sq-tiles{grid-template-columns:minmax(0,1fr)}.sq-span2{grid-column:auto}}`}</style>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <Pills items={[['compare', 'Compare pitchers'], ['pitcher', 'Pitcher'], ['league', 'League']] as [View, string][]} value={view} onChange={setView} />
@@ -164,6 +169,7 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
             </div>
           )}
 
+          <PitchExplorer events={events} shape={shape} leagueSpin={board.spin} />
           <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
               <div style={kick}>What he throws next</div>
@@ -171,11 +177,11 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
             </div>
             {fromCodes.length === 0 ? <p style={note}>No follow-up pitches on record for this hitter side.</p> : (
               <table className="sq-tbl" style={{ marginTop: 8, minWidth: 520 }}>
-                <thead><tr><th>After this pitch</th><th>n</th>{toCodes.map(c => <th key={c}><PitchTag code={c} /></th>)}</tr></thead>
+                <thead><tr><th>After this pitch</th><th>n</th>{toCodes.map(c => <th key={c}><PitchTag code={c} spin={spinOf(c)} /></th>)}</tr></thead>
                 <tbody>
                   {fromCodes.map(f => (
                     <tr key={f}>
-                      <td style={{ fontWeight: 800 }}><PitchTag code={f} /></td>
+                      <td style={{ fontWeight: 800 }}><PitchTag code={f} spin={spinOf(f)} /></td>
                       <td>{tr[f].total.toLocaleString('en-US')}{tr[f].total < 30 && star}</td>
                       {toCodes.map(t => {
                         const n = tr[f].next.find(x => x.code === t), v = n?.pct ?? 0, l = leagueMat[f]?.[t] ?? 0
@@ -228,7 +234,7 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, fontSize: 13 }}>
                   {cell.map(p => (
                     <button key={p.code} type="button" onClick={() => setPitchSel(activePitch === p.code ? null : p.code)} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, background: activePitch === p.code ? '#fff1ea' : 'none', border: 0, borderRadius: 6, padding: '2px 4px', cursor: 'pointer', font: 'inherit', color: C.ink, textAlign: 'left' }}>
-                      <PitchTag code={p.code} /><span style={{ color: '#5b5347' }}>{p.pct.toFixed(0)}% · {p.zone ? ZONE_NAME(p.zone) : '—'}{p.n < MIN_PITCHES_ZONE && star}</span>
+                      <PitchTag code={p.code} spin={spinOf(p.code)} /><span style={{ color: '#5b5347' }}>{p.pct.toFixed(0)}% · {p.zone ? ZONE_NAME(p.zone) : '—'}{p.n < MIN_PITCHES_ZONE && star}</span>
                     </button>
                   ))}
                 </div>
@@ -237,9 +243,6 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
             )}
           </div>
 
-          <div style={tile}><div style={kick}>Movement · break by pitch</div><PendingBlock label="Movement and break for each pitch (needs the pitch's measured break, which is not stored yet)" /></div>
-          <div style={tile}><div style={kick}>What happened after · foul types</div><PendingBlock label="Pop foul, line foul and other foul types after each pitch (needs launch angle on fouls, which is not stored yet)" /></div>
-          <div style={tile}><div style={kick}>Exact location</div><PendingBlock label="Exact plate location of each pitch (only Statcast's 13 zones are stored today)" /></div>
         </div>
       ))}
 
@@ -249,10 +252,10 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
           <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
             <div style={kick}>The league · what comes after each pitch</div>
             <table className="sq-tbl" style={{ marginTop: 8, minWidth: 520 }}>
-              <thead><tr><th>After this pitch</th>{order([...new Set(Object.values(leagueMat).flatMap(m => Object.keys(m)))]).filter(c => PITCH_ORDER.includes(c)).slice(0, 12).map(c => <th key={c}><PitchTag code={c} /></th>)}</tr></thead>
+              <thead><tr><th>After this pitch</th>{order([...new Set(Object.values(leagueMat).flatMap(m => Object.keys(m)))]).filter(c => PITCH_ORDER.includes(c)).slice(0, 12).map(c => <th key={c}><PitchTag code={c} spin={spinOf(c)} /></th>)}</tr></thead>
               <tbody>
                 {order(Object.keys(leagueMat)).filter(c => PITCH_ORDER.includes(c)).slice(0, 12).map(f => (
-                  <tr key={f}><td style={{ fontWeight: 800 }}><PitchTag code={f} /></td>
+                  <tr key={f}><td style={{ fontWeight: 800 }}><PitchTag code={f} spin={spinOf(f)} /></td>
                     {order([...new Set(Object.values(leagueMat).flatMap(m => Object.keys(m)))]).filter(c => PITCH_ORDER.includes(c)).slice(0, 12).map(t => { const v = leagueMat[f]?.[t] ?? 0; return <td key={t} style={{ background: v ? mix(NEUTRAL, ORANGE, Math.min(1, v / 70)) : undefined }}>{v >= 0.5 ? `${v.toFixed(0)}%` : '·'}</td> })}
                   </tr>
                 ))}
@@ -270,7 +273,7 @@ export default function SequencingLab({ board, detail, selectedId, split: initia
                     <b style={{ fontSize: 14 }}>{ct}</b>
                     <div>
                       <div style={{ display: 'flex', height: 12, borderRadius: 4, overflow: 'hidden', gap: 1 }} aria-hidden>{ps.map(([c, v]) => <span key={c} style={{ width: `${v}%`, background: pitchColor(c) }} />)}</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginTop: 3, fontSize: 12, color: '#5b5347' }}>{ps.slice(0, 5).map(([c, v]) => <span key={c}><PitchTag code={c} /> {v.toFixed(0)}%</span>)}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginTop: 3, fontSize: 12, color: '#5b5347' }}>{ps.slice(0, 5).map(([c, v]) => <span key={c}><PitchTag code={c} spin={spinOf(c)} /> {v.toFixed(0)}%</span>)}</div>
                     </div>
                   </div>
                 )

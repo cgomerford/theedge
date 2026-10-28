@@ -11,6 +11,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS } from '@/lib/teams'
+import { buildSequence, type EventRow, type SeqPitch } from './sequence'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const TTL_MS = 30 * 60 * 1000
@@ -84,7 +85,10 @@ export type Board = {
   matrix: Record<SeqSplit, LeagueMatrix>
   counts: Record<SeqSplit, LeagueCounts>
   throughDate: string | null
+  /** league-average movement and spin per pitch type, so a ball can turn the way that pitch turns; missing for a type means a still ball */
+  spin: Record<string, SpinAvg>
 }
+export type SpinAvg = { rpm: number | null; ivb: number | null; hb: number | null }
 
 async function pageAll<T>(table: string, cols: string, season: number): Promise<T[] | null> {
   const supa = createAdminClient()
@@ -142,8 +146,9 @@ export async function getSeqBoard(season = new Date().getFullYear()): Promise<Bo
     rows[r.split].push({ id, name: r.player_name, team: team ? MLB_TEAMS.find(t => t.id === team)?.abbrev ?? null : null, hand: hands.get(id) ?? null, ...metricsOf(a) })
   }
   const norm = (m: Record<string, Record<string, number>>): Record<string, Record<string, number>> => Object.fromEntries(Object.entries(m).map(([k, v]) => { const t = Object.values(v).reduce((s, x) => s + x, 0); return [k, Object.fromEntries(Object.entries(v).map(([c, x]) => [c, t > 0 ? (x / t) * 100 : 0]))] }))
+  const spin = await leagueSpin(season)
   const board: Board = {
-    season, rows,
+    season, rows, spin,
     league: { all: metricsOf(pool.all), vs_lhb: metricsOf(pool.vs_lhb), vs_rhb: metricsOf(pool.vs_rhb) },
     matrix: { all: norm(mat.all), vs_lhb: norm(mat.vs_lhb), vs_rhb: norm(mat.vs_rhb) },
     counts: { all: norm(cmix.all), vs_lhb: norm(cmix.vs_lhb), vs_rhb: norm(cmix.vs_rhb) },
@@ -173,4 +178,78 @@ export async function getSeqDetail(id: number, season = new Date().getFullYear()
   for (const r of seq) for (const [from, t] of Object.entries(r.transitions ?? {})) d.transitions[r.split][from] = { name: t.pitch_name ?? from, total: Number(t.total_followed) || 0, next: (t.next_pitches ?? []).map(n => ({ code: n.pitch_type, pct: Number(n.pct), n: Number(n.count) })) }
   for (const r of (b.data ?? []) as unknown as { split: SeqSplit; counts: Record<string, RawCell> | null }[]) for (const [ct, cell] of Object.entries(r.counts ?? {})) d.counts[r.split][ct] = (cell.pitches ?? []).map(p => ({ code: p.pitch_type, name: p.pitch_name, pct: Number(p.pct), n: Number(p.count_n), zone: p.top_zone == null ? null : String(p.top_zone), zoneLabel: p.top_zone_label ?? null }))
   return d
+}
+
+// ─── Spin and movement (pitch_shape_pitcher: average ivb / hb; pitch_shape_monthly: release spin rate) ───
+
+type ShapeRow = { pitch_type: string; n_pitches: number | string; ivb: number | string | null; hb: number | string | null }
+type MonthRow = { pitch_type: string; n_pitches: number | string; release_spin_rate: number | string | null }
+const wmean = (rows: { w: number; v: number | null }[]) => { const ok = rows.filter(r => r.v != null && r.w > 0); const d = ok.reduce((a, r) => a + r.w, 0); return d > 0 ? ok.reduce((a, r) => a + (r.v as number) * r.w, 0) / d : null }
+
+async function leagueSpin(season: number): Promise<Record<string, SpinAvg>> {
+  const supa = createAdminClient()
+  const out: Record<string, SpinAvg> = {}
+  try {
+    const shape: ShapeRow[] = []
+    for (let o = 0; ; o += 1000) {
+      const { data, error } = await supa.from('pitch_shape_pitcher').select('pitch_type, n_pitches, ivb, hb').eq('season', season).order('pitcher_id').order('pitch_type').range(o, o + 999)
+      if (error) { console.error('[leagueSpin] shape Supabase error:', error.message); break }
+      shape.push(...((data ?? []) as unknown as ShapeRow[]))
+      if (!data || data.length < 1000) break
+    }
+    const last = await supa.from('pitch_shape_monthly').select('month').eq('season', season).order('month', { ascending: false }).limit(1)
+    const month = (last.data as { month: number }[] | null)?.[0]?.month
+    const mon: MonthRow[] = []
+    if (month != null) for (let o = 0; ; o += 1000) {
+      const { data, error } = await supa.from('pitch_shape_monthly').select('pitch_type, n_pitches, release_spin_rate').eq('season', season).eq('month', month).order('pitcher_id').order('pitch_type').range(o, o + 999)
+      if (error) { console.error('[leagueSpin] monthly Supabase error:', error.message); break }
+      mon.push(...((data ?? []) as unknown as MonthRow[]))
+      if (!data || data.length < 1000) break
+    }
+    for (const t of new Set(shape.map(r => r.pitch_type))) {
+      const a = shape.filter(r => r.pitch_type === t), m = mon.filter(r => r.pitch_type === t)
+      out[t] = {
+        ivb: wmean(a.map(r => ({ w: Number(r.n_pitches), v: r.ivb == null ? null : Number(r.ivb) }))), hb: wmean(a.map(r => ({ w: Number(r.n_pitches), v: r.hb == null ? null : Number(r.hb) }))),
+        rpm: wmean(m.map(r => ({ w: Number(r.n_pitches), v: r.release_spin_rate == null ? null : Number(r.release_spin_rate) }))),
+      }
+    }
+  } catch (err) { console.error('[leagueSpin] failed:', err instanceof Error ? err.message : err) }
+  return out
+}
+
+export type PitcherShape = Record<string, { n: number; velo: number | null; ivb: number | null; hb: number | null; rpm: number | null; points: { hb: number; ivb: number }[] }>
+
+/** One pitcher's measured average movement, velocity and spin per pitch type, with a sample of his individual pitches' break. {} when he has no shape rows. */
+export async function getPitcherShape(id: number, season = new Date().getFullYear()): Promise<PitcherShape> {
+  const supa = createAdminClient()
+  const [a, b] = await Promise.all([
+    supa.from('pitch_shape_pitcher').select('pitch_type, n_pitches, velo, ivb, hb, points').eq('pitcher_id', id).eq('season', season),
+    supa.from('pitch_shape_monthly').select('pitch_type, n_pitches, release_spin_rate').eq('pitcher_id', id).eq('season', season),
+  ])
+  if (a.error || b.error) { console.error('[getPitcherShape] Supabase error:', a.error?.message ?? b.error?.message); return {} }
+  const out: PitcherShape = {}
+  const mon = (b.data ?? []) as unknown as MonthRow[]
+  for (const r of (a.data ?? []) as unknown as (ShapeRow & { velo: number | string | null; points: { hb: number; ivb: number }[] | null })[]) {
+    const pts = (r.points ?? []).filter(p => Number.isFinite(Number(p.hb)) && Number.isFinite(Number(p.ivb)))
+    const step = Math.max(1, Math.ceil(pts.length / 300))
+    out[r.pitch_type] = {
+      n: Number(r.n_pitches), velo: r.velo == null ? null : Number(r.velo), ivb: r.ivb == null ? null : Number(r.ivb), hb: r.hb == null ? null : Number(r.hb),
+      rpm: wmean(mon.filter(m => m.pitch_type === r.pitch_type).map(m => ({ w: Number(m.n_pitches), v: m.release_spin_rate == null ? null : Number(m.release_spin_rate) }))),
+      points: pts.filter((_, i) => i % step === 0).map(p => ({ hb: Number(p.hb), ivb: Number(p.ivb) })),
+    }
+  }
+  return out
+}
+
+/** Every pitch he threw this season, in order, with the count before it and the pitches around it (see sequence.ts). */
+export async function getSeqEvents(id: number, season = new Date().getFullYear()): Promise<SeqPitch[]> {
+  const supa = createAdminClient()
+  const rows: EventRow[] = []
+  for (let o = 0; ; o += 1000) {
+    const { data, error } = await supa.from('pitch_events').select('game_pk, at_bat_number, pitch_number, pitch_type, description, events, zone').eq('pitcher_id', id).gte('game_date', `${season}-01-01`).order('game_pk').order('at_bat_number').order('pitch_number').range(o, o + 999)
+    if (error) { console.error('[getSeqEvents] Supabase error:', error.message); return [] }
+    rows.push(...((data ?? []) as unknown as EventRow[]))
+    if (!data || data.length < 1000) break
+  }
+  return buildSequence(rows)
 }
