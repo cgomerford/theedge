@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-29): My x9Lab dashboard, one SQL file so the Statcast percentiles fill in
+
+The new `/me` dashboard is built. Everything works today except the Statcast percentile bars on each player card, which say "Percentiles pending" until this table exists.
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030190000_player_percentiles.sql` and press Run. It creates one empty table. Nothing else is touched.
+2. Tell Claude "percentiles sql done". Claude runs `python3 scripts/fetch_player_percentiles.py --season 2026` (under a minute, about 1,300 rows) and checks the cards. After that the table refreshes itself: a step in the existing nightly workflow (`nightly-statcast-events.yml`, 11:00 UTC) runs the same script, and it can never fail the Statcast load (`continue-on-error`). No new schedule was added.
+
+---
+
 ## NEW (2026-10-29): strikeouts by time through on the pitcher, one small SQL file
 
 On a pitcher's page in the Sequencing Lab (Pitcher view) and on Second Look's "This pitcher" view there is now a section with his total strikeouts and how they were built the first time through, the second time and the third or later (the pitch that ended them, the pitch they opened with, swinging or looking, pitches per strikeout), next to the league. It reads one new small table (about 1,700 rows).

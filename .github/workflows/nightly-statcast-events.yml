@@ -36,3 +36,12 @@ jobs:
           python scripts/fetch_statcast_events.py \
             --start-date "$(date -u -d '2 days ago' +%F)" \
             --end-date "$(date -u -d '1 day ago' +%F)"
+
+      # Savant percentile ranks for the My x9Lab player cards (scripts/fetch_player_percentiles.py, single writer of player_percentiles).
+      # Runs inside this existing daily job (no new schedule). A failure here must not fail the Statcast load above, so it never stops the run.
+      - name: Refresh player percentile ranks
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/fetch_player_percentiles.py --season "$(date -u +%Y)"
