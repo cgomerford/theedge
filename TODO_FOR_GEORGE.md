@@ -1,5 +1,13 @@
 # What to do next (George)
 
+## NEW (2026-10-29): Second Look and Game Plan Card, Phase 1 SQL (two files, in this order)
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030150000_pitch_events_battery_columns.sql` and press Run. It adds six empty columns to pitch_events (catcher, runners on base, run value, times through the order). Nothing is changed or deleted.
+2. New query again. Paste `supabase/migrations/20261030160000_second_look_game_plan.sql` and press Run. It creates seven empty tables.
+3. Tell Claude "phase 1 sql done". Claude then reloads 2026 to fill the new pitch_events columns (about 15 to 20 minutes) and starts Phase 2 (the build scripts, no screens yet).
+
+---
+
 ## NEW (2026-10-28): at-bat index SQL (stack an at-bat in the Sequencing Lab finder)
 
 Why: you can now stack pitches into an at-bat in the League pitch finder and see the real at-bats that match (how many, how they ended, what came next, the most recent few). Matching needs every at-bat in one compact file, stored in one new table.
