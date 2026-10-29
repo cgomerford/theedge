@@ -40,7 +40,7 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
   const idNum = Number(sp.id)
   const filters: SlFilters = {
     hand: sp.hand === 'L' ? 'L' : 'R', stand: sp.stand === 'R' ? 'R' : 'L',
-    result: RESULT_CLASSES.includes(sp.ended as ResultClass) ? (sp.ended as ResultClass) : 'K',
+    result: RESULT_CLASSES.includes(sp.ended as ResultClass) ? (sp.ended as ResultClass) : 'ALL',
     pitch: /^[A-Z]{2}$/.test(sp.pitch ?? '') ? (sp.pitch as string) : null,
     opened: scope === 'league' && /^[A-Z]{2}$/.test(sp.opened ?? '') ? (sp.opened as string) : null,
     scope, id: Number.isInteger(idNum) && idNum > 0 ? idNum : null,

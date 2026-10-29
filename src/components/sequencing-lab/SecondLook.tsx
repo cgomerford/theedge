@@ -22,7 +22,8 @@ import { PageHead, PillGroup, kick, note, star, tile } from './ui'
 
 const MIN = MIN_SAMPLE.secondLookGroup
 const RESULT_LABEL: Record<ResultClass, string> = { K: 'Strikeout', BB: 'Walk', HIT: 'Hit', OUT_IN_PLAY: 'Out in play' }
-const RESULT_PHRASE: Record<ResultClass, string> = { K: 'a strikeout', BB: 'a walk', HIT: 'a hit', OUT_IN_PLAY: 'an out in play' }
+const RESULT_WORD: Record<string, string> = { K: 'strikeout', BB: 'walk', HIT: 'hit', OUT_IN_PLAY: 'out in play', OTHER: 'other result' }
+const RESULT_PHRASE: Record<string, string> = { K: 'a strikeout', BB: 'a walk', HIT: 'a hit', OUT_IN_PLAY: 'an out in play', ALL: 'any result (a strikeout, walk, hit or out)' }
 const FIRST_SHORT: Record<string, string> = { K: 'K', BB: 'BB', HIT: 'Hit', OUT_IN_PLAY: 'Out', OTHER: 'Other' }
 const ENDED: Record<string, string> = { strikeout: 'Strikeout', walk: 'Walk', hit_by_pitch: 'Hit by pitch', single: 'Single', double: 'Double', triple: 'Triple', home_run: 'Home run', out_in_play: 'Out in play', other: 'Other' }
 const PITCH_RESULT: Record<string, string> = { ball: 'ball', called: 'called strike', whiff: 'swinging strike', foul: 'foul', hit: 'in play, a hit', out: 'in play, an out' }
@@ -86,6 +87,11 @@ const dots = (ps: PairPitch[], upTo = ps.length, current = -1) => (
   </span>
 )
 
+/** One line under a row of dots, in words: what the at-bat opened with and how it ended. */
+const caption = (ps: PairPitch[], result: string) => ps.length === 0 ? null : (
+  <div style={{ fontSize: 12, color: '#3a352c', marginTop: 5, maxWidth: 270 }}>Opened with {article(pitchLabel(ps[0].t))} <b>{pitchLabel(ps[0].t).toLowerCase()}</b> · ended in {article(result)} <b>{result}</b> on {article(pitchLabel(ps[ps.length - 1].t))} <b>{pitchLabel(ps[ps.length - 1].t).toLowerCase()}</b></div>
+)
+
 /** One real pair, stepped through a pitch at a time: the dots light up in order with a plain-words caption. */
 function PairPlayer({ pair, stand, names, onClose }: { pair: RecentPair; stand: 'L' | 'R'; names: Record<number, string>; onClose: () => void }) {
   const all = [...pair.first.map(p => ({ p, at: 1 })), ...pair.second.map(p => ({ p, at: 2 }))]
@@ -138,7 +144,12 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
   const pitch = data?.pitch ?? null
   const row = data?.row ?? null
   const pName = pitch ? pitchLabel(pitch).toLowerCase() : ''
+  const samePitch = pitch ? `the ${pName}` : 'the same pitch'
+  const timesWord = (n: number) => (n === 1 ? 'second time through' : 'second times through')
   const scopeText = filters.scope === 'league' ? 'Across the league' : (nameOfScope ?? (filters.scope === 'pitcher' ? 'This pitcher' : 'This hitter'))
+  const isP = filters.scope === 'pitcher', isB = filters.scope === 'batter'
+  const subject = filters.scope === 'league' ? `${filters.hand === 'R' ? 'Right' : 'Left'}-handed pitchers facing ${filters.stand === 'L' ? 'left' : 'right'}-handed batters.` : isP ? `${nameOfScope ?? 'This pitcher'}, a ${filters.hand === 'R' ? 'right' : 'left'}-hander, facing ${filters.stand === 'L' ? 'left' : 'right'}-handed batters.` : `${nameOfScope ?? 'This hitter'}, a ${filters.stand === 'L' ? 'left' : 'right'}-handed hitter, facing ${filters.hand === 'R' ? 'right' : 'left'}-handed pitchers.`
+  const firstClause = isP ? 'he ended the at-bat' : filters.opened ? `the at-bat opened with ${article(pitchLabel(filters.opened))} ${pitchLabel(filters.opened).toLowerCase()} and ended` : 'the at-bat ended'
   const enough = !!row && row.opened >= MIN && row.other >= MIN
   const baseShare = (t: string) => (data?.baseline && data.baseline.n > 0 ? pct(data.baseline.mix[t] ?? 0, data.baseline.n) : null)
   const mixRows = row ? Object.entries(row.mix).map(([t, n]) => ({ t, p: pct(n, row.n), base: baseShare(t) })).sort((a, b) => b.p - a.p).slice(0, 6) : []
@@ -149,7 +160,7 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
   const types = (data?.types ?? []).filter(t => t.n >= MIN || t.t === pitch).slice(0, 8)
 
   const addToCard = (p: RecentPair, k: number) => {
-    const ok = savePair({ id: `${p.date}-${p.pitcherId}-${p.batterId}-${p.first.length}-${p.second.length}`, savedAt: new Date().toISOString(), hand: filters.hand, stand: filters.stand, ended: filters.result, pitch: pitch ?? '', date: p.date, pitcher: data?.names[p.pitcherId] ?? 'Pitcher', batter: data?.names[p.batterId] ?? 'Batter', first: p.first, second: p.second, result: ENDED[p.ended] ?? p.ended })
+    const ok = savePair({ id: `${p.date}-${p.pitcherId}-${p.batterId}-${p.first.length}-${p.second.length}`, savedAt: new Date().toISOString(), hand: filters.hand, stand: filters.stand, ended: filters.result, pitch: pitch ?? 'any', date: p.date, pitcher: data?.names[p.pitcherId] ?? 'Pitcher', batter: data?.names[p.batterId] ?? 'Batter', first: p.first, second: p.second, result: ENDED[p.ended] ?? p.ended })
     setSaved(ok ? `Saved. Find it under Game Plan Card, then Build your own card.` : 'Could not save in this browser (storage is blocked).')
     void k
   }
@@ -174,8 +185,8 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
           <div style={{ ...kick, color: C.orange, marginBottom: 10 }}>The first time through</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 28px' }}>
             {filters.scope === 'league' && (data?.openers.length ?? 0) > 0 && <PillGroup label="The at-bat opened with" items={[['', 'Any pitch'], ...(data?.openers ?? []).filter(o => o.n >= MIN).slice(0, 8).map(o => [o.t, <span key={o.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(o.t), border: '1px solid #1A1A1A' }} />{pitchLabel(o.t)}</span>] as [string, ReactNode])] as [string, ReactNode][]} value={filters.opened ?? ''} onChange={v => go({ opened: v || null, pitch: null })} />}
-            <PillGroup label="The at-bat ended in" items={(Object.keys(RESULT_LABEL) as ResultClass[]).map(k => [k, RESULT_LABEL[k]] as [ResultClass, string])} value={filters.result} onChange={v => go({ ended: v, pitch: null, opened: null })} />
-            {types.length > 0 && <PillGroup label="On this last pitch" items={types.map(t => [t.t, <span key={t.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(t.t), border: '1px solid #1A1A1A' }} />{pitchLabel(t.t)}</span>] as [string, ReactNode])} value={pitch ?? ''} onChange={v => go({ pitch: v })} />}
+            <PillGroup label="The at-bat ended in" items={[['ALL', 'All results'], ...(Object.keys(RESULT_LABEL) as ResultClass[]).map(k => [k, RESULT_LABEL[k]] as [string, string])] as [string, string][]} value={filters.result} onChange={v => go({ ended: v, pitch: null, opened: null })} />
+            {types.length > 0 && <PillGroup label="On this last pitch" items={[['ALL', 'Any pitch'], ...types.map(t => [t.t, <span key={t.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(t.t), border: '1px solid #1A1A1A' }} />{pitchLabel(t.t)}</span>] as [string, ReactNode])] as [string, ReactNode][]} value={pitch ?? 'ALL'} onChange={v => go({ pitch: v === 'ALL' ? null : v })} />}
           </div>
         </div>
       </div>
@@ -184,27 +195,27 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
 
       {!data ? (
         <div style={{ ...tile, marginTop: 16 }}><p style={{ ...note, margin: 0 }}>The Second Look numbers could not be loaded right now.</p></div>
-      ) : !pitch ? (
+      ) : data.types.length === 0 ? (
         <div style={{ ...tile, marginTop: 16, borderStyle: 'dashed' }}><p style={{ ...note, margin: 0 }}>No {season} pairs match this selection. Try the other hand or side.</p></div>
       ) : (
         <>
           <h2 style={{ margin: '20px 0 4px', fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.3, maxWidth: 900 }}>
-            {filters.hand === 'R' ? 'Right' : 'Left'}-handed pitchers facing {filters.stand === 'L' ? 'left' : 'right'}-handed batters. <span style={{ color: C.orange }}>The first time through</span>, {filters.opened ? `the at-bat opened with ${article(pitchLabel(filters.opened))} ${pitchLabel(filters.opened).toLowerCase()} and ` : 'the at-bat '}ended in {RESULT_PHRASE[filters.result]} on {article(pName)} {pName}. <span style={{ color: C.orange }}>The second time through</span>, what did he open with, and how did it end?
+            {subject} <span style={{ color: C.orange }}>The first time through</span>, {firstClause} in {RESULT_PHRASE[filters.result] ?? 'any result'}{pitch ? ` on ${article(pName)} ${pName}` : ''}. <span style={{ color: C.orange }}>The second time through</span>, what did {isP ? 'he' : 'the pitcher'} open with, and how did it end?
           </h2>
-          <div style={{ fontSize: 14, color: '#5b5347' }}>{lockedNode ? scopeText : <>{scopeText} · <b style={{ color: C.ink }}>n {(row?.n ?? 0).toLocaleString('en-US')}</b> second times through, same pitcher, same game</>}</div>
+          <div style={{ fontSize: 14, color: '#5b5347' }}>{lockedNode ? scopeText : <>{scopeText} · <b style={{ color: C.ink }}>n {(row?.n ?? 0).toLocaleString('en-US')}</b> {timesWord(row?.n ?? 0)}, same pitcher, same game</>}</div>
 
           {lockedNode ? <div style={{ marginTop: 16 }}>{lockedNode}</div> : !enough ? (
             <div style={{ ...tile, marginTop: 16, borderStyle: 'dashed', padding: 20 }}>
               <div style={{ fontSize: 20, fontWeight: 800 }}>Small sample (n = {(row?.n ?? 0).toLocaleString('en-US')}){star}</div>
-              <p style={note}>Each group needs at least {MIN} second times through before a rate is shown. Opened with the {pName || 'same pitch'} again: n {row?.opened ?? 0}. Opened with something else: n {row?.other ?? 0}.</p>
+              <p style={note}>Each group needs at least {MIN} second times through before a rate is shown. Opened with {samePitch} again: n {row?.opened ?? 0}. Opened with something else: n {row?.other ?? 0}.</p>
               {filters.scope !== 'league' && <button type="button" onClick={() => go({ scope: 'league', id: null })} style={{ marginTop: 10, fontFamily: SANS, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: '8px 16px', border: `1px solid ${C.orange}`, background: '#fff1ea', color: C.orange, cursor: 'pointer' }}>Show the league instead</button>}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 14, marginTop: 16 }}>
               <section style={tile} aria-label="First pitch of the second look">
                 <div style={kick}>1 · The second time through: the first pitch</div>
-                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>Second time through, he opened with the {pName} again: {Math.round(pct(row.opened, row.n))}%</h3>
-                {baseShare(pitch) != null && <div style={{ fontSize: 14, color: '#5b5347' }}>Against {Math.round(baseShare(pitch) as number)}% on every 0-0 pitch to this side.</div>}
+                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>Second time through, {isP ? 'he' : 'the pitcher'} opened with {samePitch} again: {Math.round(pct(row.opened, row.n))}%</h3>
+                {pitch && baseShare(pitch) != null && <div style={{ fontSize: 14, color: '#5b5347' }}>Against {Math.round(baseShare(pitch) as number)}% on every 0-0 pitch to this side.</div>}
                 <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
                   {mixRows.map(r => (
                     <div key={r.t} style={{ display: 'grid', gridTemplateColumns: '92px minmax(0,1fr)', gap: 10, alignItems: 'center' }}>
@@ -223,10 +234,12 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
                 <div style={kick}>2 · The second time through: how it ended</div>
                 <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>How the second at-bat ended</h3>
                 <div style={{ fontSize: 14, color: '#5b5347' }}>Split by whether the second time through opened with the same pitch that ended the first.</div>
-                <EndingBar title={`Second time through: opened with the ${pName} again`} n={row.opened} endings={row.endingsSame} />
+                <EndingBar title={`Second time through: opened with ${samePitch} again`} n={row.opened} endings={row.endingsSame} />
                 <EndingBar title="Second time through: opened with something else" n={row.other} endings={row.endingsOther} />
+                <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 14 }} />
+                <EndingBar title="Total outcome, either way" n={row.n} endings={(() => { const t: Record<string, number> = { ...row.endingsSame }; for (const [k, v] of Object.entries(row.endingsOther)) t[k] = (t[k] ?? 0) + v; return t })()} />
                 <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 16, paddingTop: 10, fontSize: 14 }}>
-                  {Math.abs(diff) < 1 ? 'Strikeouts were about as common either way.' : `Strikeouts were ${Math.abs(diff)} point${Math.abs(diff) === 1 ? '' : 's'} ${diff > 0 ? 'more' : 'less'} common when the second time through opened with the ${pName} again.`} Compare the sample sizes before reading much into it.
+                  {Math.abs(diff) < 1 ? 'Strikeouts were about as common either way.' : `Strikeouts were ${Math.abs(diff)} point${Math.abs(diff) === 1 ? '' : 's'} ${diff > 0 ? 'more' : 'less'} common when the second time through opened with ${samePitch} again.`} Compare the sample sizes before reading much into it.
                   <div style={{ fontSize: 12, color: '#5b5347', marginTop: 4 }}>Walk includes hit by pitch.</div>
                 </div>
               </section>
@@ -241,17 +254,16 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
               </div>
               {data.recent.length === 0 ? <p style={{ ...note, margin: 0, padding: '0 16px 14px' }}>No pairs to list for this selection.</p> : (
                 <div style={{ overflowX: 'auto', borderTop: `1px solid ${C.line}` }}>
-                  <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
-                    <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First time through', 'Second time through', 'Second ended', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
+                  <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+                    <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First time through', 'Second time through', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {data.recent.map((p: RecentPair, i) => (
                         <tr key={i} style={{ borderTop: `1px solid ${C.soft}`, background: playing === i ? '#fff8f4' : undefined }}>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{dateShort(p.date)}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{data.names[p.pitcherId] ?? '—'}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{data.names[p.batterId] ?? '—'}</td>
-                          <td style={{ padding: '10px 14px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{dots(p.first)}<b style={{ fontSize: 13 }}>{FIRST_SHORT[p.firstClass] ?? p.firstClass}</b></span></td>
-                          <td style={{ padding: '10px 14px' }}>{dots(p.second)}</td>
-                          <td style={{ padding: '10px 14px', fontWeight: 800, whiteSpace: 'nowrap' }}>{ENDED[p.ended] ?? p.ended}</td>
+                          <td style={{ padding: '10px 14px' }}>{dots(p.first)}{caption(p.first, RESULT_WORD[p.firstClass] ?? p.firstClass)}</td>
+                          <td style={{ padding: '10px 14px' }}>{dots(p.second)}{caption(p.second, (ENDED[p.ended] ?? p.ended).toLowerCase())}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
                             <button type="button" onClick={() => setPlaying(playing === i ? null : i)} style={{ fontFamily: SANS, fontWeight: 800, fontSize: 12, borderRadius: 999, padding: '5px 12px', border: `1px solid ${C.orange}`, background: playing === i ? C.orange : '#fff1ea', color: playing === i ? '#fff' : C.orange, cursor: 'pointer', marginRight: 6 }}>{playing === i ? 'Playing' : 'Play a pair'}</button>
                             <button type="button" onClick={() => addToCard(p, i)} style={{ fontFamily: SANS, fontWeight: 800, fontSize: 12, borderRadius: 999, padding: '5px 12px', border: `1px solid ${C.line}`, background: '#fff', color: C.ink, cursor: 'pointer' }}>Add to a Game Plan Card</button>
