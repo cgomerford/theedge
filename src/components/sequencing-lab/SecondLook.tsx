@@ -16,6 +16,8 @@ import { zoneLabel } from '@/lib/game-plan/zones'
 import { savePair } from '@/lib/game-plan/saved'
 import type { PairPitch, RecentPair, ResultClass, Scope, SlData, SlFilters } from '@/lib/second-look/data'
 import PitchDot, { dotColor } from './PitchDot'
+import StrikeoutStructure from './StrikeoutStructure'
+import type { KStructure } from '@/lib/k-structure/data'
 import { PageHead, PillGroup, kick, note, star, tile } from './ui'
 
 const MIN = MIN_SAMPLE.secondLookGroup
@@ -119,7 +121,7 @@ function PairPlayer({ pair, stand, names, onClose }: { pair: RecentPair; stand: 
   )
 }
 
-export default function SecondLook({ filters, data, season, lockedNode, nameOfScope }: { filters: SlFilters; data: SlData | null; season: number; lockedNode: ReactNode | null; nameOfScope: string | null }) {
+export default function SecondLook({ filters, data, season, lockedNode, nameOfScope, kStructure = null }: { filters: SlFilters; data: SlData | null; season: number; lockedNode: ReactNode | null; nameOfScope: string | null; kStructure?: KStructure | null }) {
   const router = useRouter()
   const [playing, setPlaying] = useState<number | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
@@ -177,6 +179,8 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
           </div>
         </div>
       </div>
+
+      {filters.scope === 'pitcher' && filters.id && !lockedNode && <div style={{ marginTop: 16 }}><StrikeoutStructure data={kStructure} name={nameOfScope ?? 'He'} /></div>}
 
       {!data ? (
         <div style={{ ...tile, marginTop: 16 }}><p style={{ ...note, margin: 0 }}>The Second Look numbers could not be loaded right now.</p></div>

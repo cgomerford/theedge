@@ -67,6 +67,8 @@ const SAMPLE_LABELS: Record<MinSampleKey, string> = {
   shapePitchesPerType: 'Pitch shape (pitches of that type)',
   secondLookGroup: 'Second Look, each group (second at-bats)',
   secondLookLine: 'A Second Look line on a Game Plan Card (pairs)',
+  kStructurePAs: 'A pitcher\'s strikeout rate by time through (plate appearances)',
+  kStructureKs: 'How a pitcher\'s strikeouts were built by time through (strikeouts)',
   gamePlanFirstPitch: 'Game Plan Card, first-pitch swing rate (0-0 pitches)',
   gamePlanOpenerAbs: 'Game Plan Card, opener line (league at-bats)',
   gamePlanTwoStrikeSwings: 'Game Plan Card, two-strike whiff rate (swings)',

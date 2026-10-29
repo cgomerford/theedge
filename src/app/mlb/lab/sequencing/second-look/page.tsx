@@ -12,6 +12,7 @@ import SeqSectionNav from '@/components/sequencing-lab/SeqSectionNav'
 import { ProGateRow } from '@/components/pro/ProGateView'
 import { isSignedIn } from '@/lib/require-signup'
 import { getViewerTier } from '@/lib/require-pro'
+import { getKStructure } from '@/lib/k-structure/data'
 import { getSecondLook, RESULT_CLASSES, type ResultClass, type Scope, type SlFilters } from '@/lib/second-look/data'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
@@ -50,6 +51,7 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
   // For a locked viewer the pitcher and hitter scopes are not read at all: the league lines still show behind the lock for the filters, but the scope rows are never fetched.
   const data = await getSecondLook(locked ? { ...filters, scope: 'league', id: null } : filters, season)
   const nameOfScope = !locked && scope !== 'league' && filters.id ? data?.names[filters.id] ?? null : null
+  const kStructure = !locked && scope === 'pitcher' && filters.id ? await getKStructure(filters.id, season) : null
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Sequencing Lab', path: '/mlb/lab/sequencing' }, { name: 'Second Look', path: '/mlb/lab/sequencing/second-look' }]} />
@@ -58,7 +60,7 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
         <SeqSectionNav />
         <SecondLook
-          filters={filters} data={data} season={season} nameOfScope={nameOfScope}
+          filters={filters} data={data} season={season} nameOfScope={nameOfScope} kStructure={kStructure}
           lockedNode={locked ? (
             <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>
               <div style={{ fontSize: 22, fontWeight: 800 }}>The pitcher and hitter views are part of Pro</div>

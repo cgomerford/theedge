@@ -11,6 +11,8 @@
 // Movement and foul types need data that is not stored yet, so they sit in marked "Pending" blocks. Nothing is estimated. Every rate shows the follow-ups behind it, and a
 // pitcher under the minimum shows "Small sample (n = X)" instead of a rate.
 
+import StrikeoutStructure from './StrikeoutStructure'
+import type { KStructure } from '@/lib/k-structure/data'
 import LeagueFinder from './LeagueFinder'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -56,7 +58,9 @@ function tint(v: number | null, league: number | null): string | undefined {
   return d >= 0 ? mix(NEUTRAL, ORANGE, d * 0.8) : mix(NEUTRAL, [108, 171, 221], -d * 0.8)
 }
 
-export default function SequencingLab({ board, detail, events, shape, selectedId, split: initialSplit, minSeq, season }: { board: Board; detail: Detail | null; events: SeqPitch[]; shape: PitcherShape; selectedId: number | null; split: SeqSplit; minSeq: number; season: number }) {
+export default function SequencingLab({ board, detail, events, shape, selectedId, split: initialSplit, minSeq, season, kStructure = null }: {
+  kStructure?: KStructure | null
+  board: Board; detail: Detail | null; events: SeqPitch[]; shape: PitcherShape; selectedId: number | null; split: SeqSplit; minSeq: number; season: number }) {
   const router = useRouter()
   const [view, setView] = useState<View>(selectedId && detail ? 'pitcher' : 'compare')
   const [split, setSplit] = useState<SeqSplit>(initialSplit)
@@ -170,6 +174,7 @@ export default function SequencingLab({ board, detail, events, shape, selectedId
             </div>
           )}
 
+          <div className="sq-span3"><StrikeoutStructure data={kStructure} name={sel?.name ?? 'He'} /></div>
           <PitchExplorer events={events} shape={shape} leagueSpin={board.spin} />
           <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>

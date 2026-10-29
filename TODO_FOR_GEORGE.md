@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-29): strikeouts by time through on the pitcher, one small SQL file
+
+On a pitcher's page in the Sequencing Lab (Pitcher view) and on Second Look's "This pitcher" view there is now a section with his total strikeouts and how they were built the first time through, the second time and the third or later (the pitch that ended them, the pitch they opened with, swinging or looking, pitches per strikeout), next to the league. It reads one new small table (about 1,700 rows).
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030180000_pitcher_k_structure.sql` and press Run. It creates one empty table. Nothing else is touched.
+2. Tell Claude "k structure sql done". Claude runs `python3 scripts/build_pitcher_k_structure.py --season 2026` (under a minute; it reads only the stored at-bat index) and checks the page. Until then the section says it is not available yet.
+
+---
+
 ## NEW (2026-10-29): Second Look "opened with" choice, one small SQL file
 
 The Second Look page now reads as "first time through, then second time through", and in the League view you can choose the pitch the first at-bat OPENED with (as well as how it ended and on which pitch). That needs one new small table (about 3,000 rows).

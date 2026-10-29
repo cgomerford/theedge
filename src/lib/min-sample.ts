@@ -20,6 +20,8 @@ export const MIN_SAMPLE = {
   gamePlanOpenerAbs: 15,      // league at-bats behind an opener line on the Game Plan Card
   gamePlanTwoStrikeSwings: 30, // swings behind a two-strike whiff rate
   gamePlanDamageBip: 40,      // balls in play against the hand before his own damage zones are used
+  kStructurePAs: 30,          // plate appearances in a time-through before a strikeout rate is shown
+  kStructureKs: 15,           // strikeouts in a time-through before the pitch mixes behind them are shown
   secondLookLine: 15,         // pairs behind a single "second look" sentence on the Game Plan Card
 } as const
 
