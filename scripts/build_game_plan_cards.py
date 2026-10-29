@@ -22,6 +22,8 @@ Per hitter (own data when its sample reaches the threshold, otherwise his cluste
 Thresholds below mirror src/lib/min-sample.ts (gamePlan* keys). Nothing is a forecast: every line is a count of what has happened.
 
 Usage:  python3 scripts/build_game_plan_cards.py --date 2026-10-26 [--game-pk N] [--dry-run] [--force-recent]
+        python3 scripts/build_game_plan_cards.py --from 2026-09-01 --to 2026-09-27      # back-date a range (reads the season once)
+A date that is already past is BACK-DATED: only what was known before that day is used (see build_for_date), and the card says so (card.backdated).
 Prints one full card as JSON and a summary, then waits 5 seconds (Ctrl+C aborts) before writing.
 """
 
@@ -67,6 +69,7 @@ MIN_RETIRED = 10          # his outs against the hand before his own "most commo
 SECOND_LOOK_MIN = 15      # second at-bats per group                        (secondLookGroup)
 SPEED_WIN, MOVE_WIN = 1.5, 3.0
 RECENT_DAYS = 14
+EPOCH = dt.date(2020, 1, 1)
 BENCH_SIZE = 6            # extra hitters stored per card for Build your own card
 BALLS = {"ball", "blocked_ball", "pitchout", "automatic_ball", "intent_ball", "hit_by_pitch"}
 WHIFFS = {"swinging_strike", "swinging_strike_blocked", "foul_tip", "missed_bunt"}
@@ -169,11 +172,13 @@ def load_ab_index(sb, season):
     return ix
 
 
-def open_stack_endings(ix, hand, stand, shapes):
+def open_stack_endings(ix, hand, stand, shapes, cutoff=None):
     """At-bats that open with pitches shaped like `shapes` (list of (type, speed, hb, ivb)): same windows as the Sequencing Lab matcher. Returns (n, k, hit)."""
     if ix is None or len(shapes) < 1:
         return 0, 0, 0
     mask = (ix["hand"] == (1 if hand == "L" else 0)) & (ix["stand"] == (1 if stand == "L" else 0)) & (ix["len"] >= len(shapes))
+    if cutoff is not None:
+        mask &= ix["date"] < cutoff          # only at-bats from BEFORE this day (days since 2020-01-01), so a back-dated card never sees the future
     for j, (t, sp, hb, ivb) in enumerate(shapes):
         ti = ix["meta"]["types"].index(t) if t in ix["meta"]["types"] else -1
         p = ix["start"] + j
@@ -191,44 +196,51 @@ def pct(a, b):
     return round(100 * a / b, 1) if b else None
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--date", required=True, help="the game date, YYYY-MM-DD; only pitches BEFORE this date are used")
-    ap.add_argument("--game-pk", type=int)
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--force-recent", action="store_true", help="ignore a posted lineup and use the recent-lineup rule (for testing that branch)")
-    a = ap.parse_args()
-    if not URL or not KEY:
-        sys.exit("Missing Supabase URL / service key in .env.local")
-    sb = create_client(URL, KEY)
-    season = int(a.date[:4])
-    target = dt.date.fromisoformat(a.date)
+def second_look_before(sb, cache, scope, sid, hand, stand, cls, pitch, before):
+    """The second-look counts from league_pa_pairs using ONLY games before `before` (a back-dated card must not see later games). Same shape as a second_look_summary row, or []."""
+    key = (scope, sid, hand, stand, cls, pitch, before)
+    if key in cache:
+        return cache[key]
+    def page(off):
+        q = (sb.table("league_pa_pairs").select("ab2_opened_same,ab2_first_pitch_type").eq("p_throws", hand).eq("stand", stand)
+             .eq("ab1_result_class", cls).eq("ab1_final_pitch_type", pitch).lt("game_date", before))
+        if scope == "batter":
+            q = q.eq("batter_id", sid)
+        return q.order("game_pk").order("batter_id").order("ab1_at_bat_number").range(off, off + 999).execute().data
+    rows, off = [], 0
+    while True:
+        got = with_retry(lambda: page(off), "pairs before the date")
+        rows += got
+        if len(got) < 1000:
+            break
+        off += 1000
+    n = len(rows)
+    same = sum(1 for r in rows if r["ab2_opened_same"])
+    out = [{"n_pairs": n, "n_opened_same": same, "n_opened_other": n - same, "first_pitch_mix": dict(Counter(r["ab2_first_pitch_type"] for r in rows))}] if n else []
+    cache[key] = out
+    return out
 
+
+def build_for_date(a, sb, df_all, ix, cl, defs, members, season, backdated):
+    """The cards for every game on a.date. Uses only pitches before that date. When `backdated` (the date is already past) nothing from after it is used: the hitter groups are off
+    (they were fitted on the whole season), the league endings and second-look counts are cut at the date, and the end-of-season Stuff grade is left off."""
+    target = dt.date.fromisoformat(a.date)
     sched = http_json(f"{MLB}/schedule?sportId=1&date={a.date}&hydrate=probablePitcher,lineups,team,venue")
     games = [g for d in (sched or {}).get("dates", []) for g in d.get("games", [])]
     if a.game_pk:
         games = [g for g in games if g["gamePk"] == a.game_pk]
     print(f"{len(games)} games on {a.date}.")
     if not games:
-        sys.exit("Nothing to build.")
+        return [], []
+    df = df_all[df_all["game_date"] < a.date]
+    cutoff = (target - EPOCH).days
+    sl_cache = {}
 
-    print("Loading the season's pitches before the game date...")
-    df = load_pitches(sb, a.date)
-    print(f"{len(df):,} pitches.")
-    ix = load_ab_index(sb, season)
-    print("At-bat index:", "loaded" if ix else "MISSING (opener endings will be small sample)")
-    cl = {}
-    for off in range(0, 20000, 1000):
-        got = with_retry(lambda: sb.table("hitter_clusters").select("batter_id,stand_vs,cluster_id").eq("season", season).order("batter_id").order("stand_vs").range(off, off + 999).execute().data, "clusters")
-        for r in got:
-            cl[(r["batter_id"], "R" if r["stand_vs"] == "vs RHP" else "L")] = r["cluster_id"]
-        if len(got) < 1000:
-            break
-    defs = {(r["stand_vs"], r["cluster_id"]): r["label"] for r in with_retry(lambda: sb.table("hitter_cluster_defs").select("stand_vs,cluster_id,label").eq("season", season).execute().data, "cluster defs")}
-    members = defaultdict(set)
-    for (b, h), c in cl.items():
-        members[(h, c)].add(b)
-    print(f"{len(cl):,} hitter cluster rows.")
+    def get_sl(scope, sid, hand, st, kcls, kpitch):
+        if backdated:
+            return second_look_before(sb, sl_cache, scope, sid, hand, st, kcls, kpitch, a.date)
+        return with_retry(lambda: sb.table("second_look_summary").select("n_pairs,n_opened_same,n_opened_other,first_pitch_mix").eq("season", season).eq("scope_type", scope).eq("scope_id", sid)
+                          .eq("p_throws", hand).eq("stand", st).eq("look_number", 0).eq("ab1_result_class", kcls).eq("ab1_final_pitch_type", kpitch).limit(1).execute().data, "second look")
 
     # league tertiles of xwOBA on contact per zone and pitcher hand (cells with enough balls in play)
     bip = df[df["bip"] & df["estimated_woba"].notna() & df["zone"].between(1, 9)]
@@ -289,7 +301,7 @@ def main():
             # arsenal
             tot = len(mine)
             arsenal = []
-            stuff = {r["pitch_type"]: r["stuff_grade"] for r in with_retry(lambda: sb.table("stuff_lab_pitch_grades").select("pitch_type,stuff_grade").eq("pitcher_id", pid).eq("season", season).execute().data, "stuff")}
+            stuff = {} if backdated else {r["pitch_type"]: r["stuff_grade"] for r in with_retry(lambda: sb.table("stuff_lab_pitch_grades").select("pitch_type,stuff_grade").eq("pitcher_id", pid).eq("season", season).execute().data, "stuff")}
             for t, gg in mine.groupby("pitch_type"):
                 arsenal.append({"type": t, "n": int(len(gg)), "usage": round(100 * len(gg) / tot, 1), "speed": round(float(gg["release_speed"].mean()), 1) if gg["release_speed"].notna().any() else None,
                                 "ivb": round(float(gg["ivb"].mean()), 1) if gg["ivb"].notna().any() else None, "hb": round(float(gg["hb"].mean()), 1) if gg["hb"].notna().any() else None,
@@ -311,7 +323,7 @@ def main():
                     k, n_ = pairs.most_common(1)[0]
                     zz = [zone_label(Counter(z[i] for z in zones[k] if not math.isnan(z[i])).most_common(1)[0][0], s) if any(not math.isnan(z[i]) for z in zones[k]) else None for i in (0, 1)]
                     shapes = [(t, *shape[t]) for t in k if t in shape and None not in shape[t]]
-                    n_l, k_l, h_l = open_stack_endings(ix, hand, s, shapes) if len(shapes) == 2 else (0, 0, 0)
+                    n_l, k_l, h_l = open_stack_endings(ix, hand, s, shapes, cutoff) if len(shapes) == 2 else (0, 0, 0)
                     opener = {"pitches": list(k), "zones": zz, "pitcher_n": int(n_), "league_n": n_l, "k_pct": pct(k_l, n_l) if n_l >= MIN_OPENER_ABS else None, "hit_pct": pct(h_l, n_l) if n_l >= MIN_OPENER_ABS else None}
                 two = m[m["strikes"] == 2]
                 ts = None
@@ -383,8 +395,7 @@ def main():
                     for scope, sid in (("batter", b), ("cluster", c), ("league", 0)):
                         if sid is None or st is None:
                             continue
-                        rr = with_retry(lambda: sb.table("second_look_summary").select("n_pairs,n_opened_same,n_opened_other,first_pitch_mix").eq("season", season).eq("scope_type", scope).eq("scope_id", sid)
-                                        .eq("p_throws", hand).eq("stand", st).eq("look_number", 0).eq("ab1_result_class", kcls).eq("ab1_final_pitch_type", kpitch).limit(1).execute().data, "second look")
+                        rr = get_sl(scope, sid, hand, st, kcls, kpitch)
                         if rr and seen_n is None:
                             seen_n = rr[0]["n_pairs"]
                         if rr and rr[0]["n_opened_same"] >= SECOND_LOOK_MIN and rr[0]["n_opened_other"] >= SECOND_LOOK_MIN:
@@ -410,23 +421,77 @@ def main():
                              "away": {"id": away["team"]["id"], "name": away["team"]["name"], "abbr": away["team"].get("abbreviation")}, "home": {"id": home["team"]["id"], "name": home["team"]["name"], "abbr": home["team"].get("abbreviation")}},
                     "starter": {"id": pid, "name": pp["fullName"], "hand": hand, "team": tm["team"]["name"]},
                     "batting": {"id": opp["team"]["id"], "name": opp["team"]["name"], "abbr": opp["team"].get("abbreviation")},
-                    "lineup_source": source, "pitches_before": a.date, "arsenal": arsenal[:6], "hitters": hitters, "bench": bench}
+                    "lineup_source": source, "pitches_before": a.date, "backdated": backdated, "arsenal": arsenal[:6], "hitters": hitters, "bench": bench}
             cards.append({"game_pk": gp, "game_date": a.date, "pitcher_id": pid, "opponent_team_id": opp["team"]["id"], "lineup_source": source, "card": card})
 
-    print(f"\n{len(cards)} cards built.")
-    for s in skipped:
-        print("  skipped:", s)
-    if cards:
-        print("\nOne full card:")
-        print(json.dumps(cards[0]["card"], indent=1)[:6000])
-    if a.dry_run or not cards:
-        print("Dry run: nothing written." if a.dry_run else "Nothing to write.")
-        return
-    print("--- Writing to Supabase in 5 seconds. Ctrl+C to abort. ---")
-    time.sleep(5)
-    for c in cards:
-        with_retry(lambda: sb.table("game_plan_cards").upsert({**c, "built_at": dt.datetime.now(dt.timezone.utc).isoformat()}, on_conflict="game_pk,pitcher_id").execute(), f"card {c['game_pk']}")
-    print("Done.")
+    return cards, skipped
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--date", help="one game date, YYYY-MM-DD; only pitches BEFORE this date are used")
+    ap.add_argument("--from", dest="d0", help="first date of a range to back-date, YYYY-MM-DD")
+    ap.add_argument("--to", dest="d1", help="last date of the range (default: the same as --from)")
+    ap.add_argument("--game-pk", type=int)
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force-recent", action="store_true", help="ignore a posted lineup and use the recent-lineup rule (for testing that branch)")
+    a = ap.parse_args()
+    if not URL or not KEY:
+        sys.exit("Missing Supabase URL / service key in .env.local")
+    if not a.date and not a.d0:
+        sys.exit("Give --date YYYY-MM-DD, or --from and --to for a range.")
+    first, last = (a.date, a.date) if a.date else (a.d0, a.d1 or a.d0)
+    d0, d1 = dt.date.fromisoformat(first), dt.date.fromisoformat(last)
+    if d1 < d0 or d0.year != d1.year:
+        sys.exit("The range must run forwards inside one season.")
+    dates = [(d0 + dt.timedelta(days=i)).isoformat() for i in range((d1 - d0).days + 1)]
+    sb = create_client(URL, KEY)
+    season = d0.year
+    try:
+        from zoneinfo import ZoneInfo
+        today = dt.datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+    except Exception:
+        today = dt.date.today().isoformat()
+
+    print("Loading the season's pitches once (each date then uses only the pitches before it)...")
+    df_all = load_pitches(sb, (d1).isoformat())
+    print(f"{len(df_all):,} pitches.")
+    ix = load_ab_index(sb, season)
+    print("At-bat index:", "loaded" if ix else "MISSING (opener endings will be small sample)")
+    cl = {}
+    for off in range(0, 20000, 1000):
+        got = with_retry(lambda: sb.table("hitter_clusters").select("batter_id,stand_vs,cluster_id").eq("season", season).order("batter_id").order("stand_vs").range(off, off + 999).execute().data, "clusters")
+        for r in got:
+            cl[(r["batter_id"], "R" if r["stand_vs"] == "vs RHP" else "L")] = r["cluster_id"]
+        if len(got) < 1000:
+            break
+    defs = {(r["stand_vs"], r["cluster_id"]): r["label"] for r in with_retry(lambda: sb.table("hitter_cluster_defs").select("stand_vs,cluster_id,label").eq("season", season).execute().data, "cluster defs")}
+    members = defaultdict(set)
+    for (b, h), c in cl.items():
+        members[(h, c)].add(b)
+    print(f"{len(cl):,} hitter cluster rows (used only for dates that are not yet past).")
+
+    wrote_any, total = False, 0
+    for D in dates:
+        a.date = D
+        backdated = D < today
+        cards, skipped = build_for_date(a, sb, df_all, ix, {} if backdated else cl, {} if backdated else defs, defaultdict(set) if backdated else members, season, backdated)
+        print(f"{D}: {len(cards)} cards built{' (back-dated: nothing from after the date is used)' if backdated else ''}.")
+        for s_ in skipped:
+            print("  skipped:", s_)
+        if cards and len(dates) == 1:
+            print("\nOne full card:")
+            print(json.dumps(cards[0]["card"], indent=1)[:6000])
+        if a.dry_run or not cards:
+            continue
+        if not wrote_any:
+            print("--- Writing to Supabase in 5 seconds. Ctrl+C to abort. ---")
+            time.sleep(5)
+            wrote_any = True
+        for c in cards:
+            with_retry(lambda: sb.table("game_plan_cards").upsert({**c, "built_at": dt.datetime.now(dt.timezone.utc).isoformat()}, on_conflict="game_pk,pitcher_id").execute(), f"card {c['game_pk']}")
+        total += len(cards)
+    print("Dry run: nothing written." if a.dry_run else f"Done. {total} cards written.")
 
 
 if __name__ == "__main__":

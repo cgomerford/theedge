@@ -61,6 +61,11 @@ export default function GamePlanCard({ card, others }: { card: Card; others: { p
     <div style={{ fontFamily: SANS, color: C.ink }}>
       <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's battery" intro={`One line per hitter, the way a catcher's wristband card is built: first pitch, opener, two strikes, damage zones and the second look. Every figure is what has happened in ${m.date.slice(0, 4)} against pitches and sequences like these, with the sample beside it.`} />
 
+      {card.backdated && (
+        <div role="note" style={{ ...tile, marginBottom: 14, background: '#FEF9C3' }}>
+          <b>Back-dated card.</b> Built after the game from pitches before {dateOf(m.date)} only. Later games, the end-of-season Stuff grade and the hitter groups are not used, so this is what could have been known then. The third tab sets it against what was thrown.
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 14, marginBottom: 18 }}>
         <div style={tile}>
           <div style={kick}>Matchup</div>

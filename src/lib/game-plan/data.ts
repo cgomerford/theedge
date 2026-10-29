@@ -22,6 +22,8 @@ export type Card = {
   batting: { id: number; name: string; abbr: string | null }
   lineup_source: 'posted' | 'recent_vs_hand'
   pitches_before: string
+  /** Built for a date that was already past: only what was known before that day is used (no hitter groups, no end-of-season Stuff grade, later games ignored). */
+  backdated?: boolean
   arsenal: CardArsenal[]
   hitters: CardHitter[]
   /** Other hitters from this club's recent lineups, with the same lines, so "Build your own card" can swap them in. Absent on cards built before it existed. */
@@ -52,4 +54,13 @@ export async function getLatestCards(date?: string): Promise<{ date: string | nu
   const { data, error } = await supa.from('game_plan_cards').select('game_pk, game_date, pitcher_id, built_at, card').eq('game_date', d).order('game_pk')
   if (error) { console.error('[getLatestCards] Supabase error:', error.message); return { date: d, cards: [] } }
   return { date: d, cards: ((data ?? []) as unknown as Row[]).map(shape) }
+}
+
+/** The dates that have stored cards (newest first) with how many each has, for the date picker. [] on failure. */
+export async function getCardDates(limit = 400): Promise<{ date: string; n: number }[]> {
+  const { data, error } = await createAdminClient().from('game_plan_cards').select('game_date').order('game_date', { ascending: false }).limit(limit)
+  if (error) { console.error('[getCardDates] Supabase error:', error.message); return [] }
+  const m = new Map<string, number>()
+  for (const r of (data ?? []) as { game_date: string }[]) m.set(r.game_date, (m.get(r.game_date) ?? 0) + 1)
+  return [...m.entries()].map(([date, n]) => ({ date, n }))
 }
