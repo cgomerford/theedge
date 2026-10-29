@@ -80,3 +80,5 @@ fetch	src/lib/sequencing-lab/data.ts
 fetch	src/components/sequencing-lab/LeagueFinder.tsx
 fetch	src/components/sequencing-lab/PitcherPick.tsx
 fetch	src/components/sequencing-lab/AtBatStack.tsx
+fetch	src/components/sequencing-lab/SecondLook.tsx
+fetch	src/components/sequencing-lab/GamePlanCard.tsx

@@ -142,7 +142,11 @@ def main():
         return
     print("--- Writing to Supabase in 5 seconds. Ctrl+C to abort. ---")
     time.sleep(5)
-    sb.table("second_look_summary").delete().eq("season", a.season).execute()
+    # Delete in pieces (scope, hand, side): one statement over every row can hit the database's statement timeout.
+    for scope in ("league", "pitcher", "batter", "cluster"):
+        for hand in ("R", "L"):
+            for stand in ("R", "L"):
+                with_retry(lambda: sb.table("second_look_summary").delete().eq("season", a.season).eq("scope_type", scope).eq("p_throws", hand).eq("stand", stand).execute(), f"clear {scope} {hand}{stand}")
     sb.table("second_look_baseline").delete().eq("season", a.season).execute()
     sb.table("second_look_baseline").insert(base_rows).execute()
     for i in range(0, len(out), 500):

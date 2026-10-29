@@ -23,6 +23,7 @@ Prints the totals and 5 sample rows, then waits 5 seconds (Ctrl+C aborts) before
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import math
 import os
 import sys
@@ -175,7 +176,20 @@ def main():
         return
     print("--- Writing to Supabase in 5 seconds. Ctrl+C to abort. ---")
     time.sleep(5)
-    sb.table("league_pa_pairs").delete().eq("season", a.season).execute()
+    # Delete the season in week-sized pieces: one statement over every row hits the database's statement timeout.
+    d0 = dt.date(a.season, 1, 1)
+    while d0 < dt.date(a.season + 1, 1, 1):
+        d1 = d0 + dt.timedelta(days=7)
+        for attempt in range(4):
+            try:
+                sb.table("league_pa_pairs").delete().eq("season", a.season).gte("game_date", d0.isoformat()).lt("game_date", d1.isoformat()).execute()
+                break
+            except Exception as e:
+                print(f"  retry {attempt + 1} (delete {d0}): {str(e)[:80]}")
+                time.sleep(3)
+        else:
+            sys.exit(f"Could not clear {d0}. Re-run to rebuild this season.")
+        d0 = d1
     for i in range(0, len(out), 500):
         chunk = out[i:i + 500]
         for attempt in range(4):

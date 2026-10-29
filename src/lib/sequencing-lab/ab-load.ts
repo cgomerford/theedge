@@ -26,3 +26,23 @@ export async function loadAbIndex(season: number): Promise<AbIndex | null> {
     return null
   }
 }
+
+const clusterCache = new Map<string, { at: number; map: Map<number, number> }>()
+
+/** Batter id -> hitter cluster id for one pitcher hand (hitter_clusters). Empty map, with a logged reason, when the clusters have not been built. */
+export async function loadClusterMap(season: number, hand: 'R' | 'L'): Promise<Map<number, number>> {
+  const key = `${season}${hand}`
+  const hit = clusterCache.get(key)
+  if (hit && Date.now() - hit.at < TTL) return hit.map
+  const map = new Map<number, number>()
+  const supa = createAdminClient()
+  for (let off = 0; off < 20000; off += 1000) {
+    const { data, error } = await supa.from('hitter_clusters').select('batter_id, cluster_id').eq('season', season).eq('stand_vs', hand === 'R' ? 'vs RHP' : 'vs LHP').order('batter_id').range(off, off + 999)
+    if (error) { console.error('[loadClusterMap] Supabase error:', error.message); return map }
+    for (const r of (data ?? []) as { batter_id: number; cluster_id: number }[]) map.set(Number(r.batter_id), Number(r.cluster_id))
+    if ((data ?? []).length < 1000) break
+  }
+  if (map.size === 0) console.error('[loadClusterMap] no hitter clusters stored for', key)
+  clusterCache.set(key, { at: Date.now(), map })
+  return map
+}

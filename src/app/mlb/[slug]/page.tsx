@@ -497,6 +497,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
                 { id: 'bullpen', label: 'Bullpen & park' },
                 { id: 'series', label: 'Series' },
                 { id: 'scout', label: 'Scout report', href: `/mlb/${slug}/scout-report` },
+                { id: 'plan', label: 'Game Plan', href: `/mlb/lab/sequencing/game-plan/${game.gamePk}` },
               ]}
             />
           </Suspense>

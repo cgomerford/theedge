@@ -15,6 +15,12 @@ export const MIN_SAMPLE = {
   sprayBBE: 25,
   vsPitchTypeSeen: 30,
   shapePitchesPerType: 25,
+  secondLookGroup: 15,        // second at-bats in each group (opened with the same pitch / with something else) before a rate is shown
+  gamePlanFirstPitch: 50,     // 0-0 pitches a hitter has seen against the hand before his own swing rate is used
+  gamePlanOpenerAbs: 15,      // league at-bats behind an opener line on the Game Plan Card
+  gamePlanTwoStrikeSwings: 30, // swings behind a two-strike whiff rate
+  gamePlanDamageBip: 40,      // balls in play against the hand before his own damage zones are used
+  secondLookLine: 15,         // pairs behind a single "second look" sentence on the Game Plan Card
 } as const
 
 export type MinSampleKey = keyof typeof MIN_SAMPLE

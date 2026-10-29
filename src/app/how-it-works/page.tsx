@@ -65,6 +65,12 @@ const SAMPLE_LABELS: Record<MinSampleKey, string> = {
   sprayBBE: 'Spray charts (batted balls)',
   vsPitchTypeSeen: 'A batter against a pitch type (pitches seen)',
   shapePitchesPerType: 'Pitch shape (pitches of that type)',
+  secondLookGroup: 'Second Look, each group (second at-bats)',
+  secondLookLine: 'A Second Look line on a Game Plan Card (pairs)',
+  gamePlanFirstPitch: 'Game Plan Card, first-pitch swing rate (0-0 pitches)',
+  gamePlanOpenerAbs: 'Game Plan Card, opener line (league at-bats)',
+  gamePlanTwoStrikeSwings: 'Game Plan Card, two-strike whiff rate (swings)',
+  gamePlanDamageBip: 'Game Plan Card, damage zones (balls in play)',
 }
 
 const row: React.CSSProperties = { padding: '14px 0', borderTop: '1px solid #e7e2d8' }

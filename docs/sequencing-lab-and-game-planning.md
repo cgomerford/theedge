@@ -157,3 +157,28 @@ Please decide first which of these answers the question a catcher or pitching co
 - **Refresh after new pitches load:** re-run `scripts/build_league_pitch_bins.py --season 2026` and `scripts/build_league_ab_index.py --season 2026` (a few minutes each). Not on a schedule; a scheduled run would need a new cron, which you have asked not to add without saying so.
 - **Access:** Sequencing Lab and x9Stuff Lab need a free sign-up (not Pro). The Pitching Lab Stuff tab sits inside the Pitching Lab Pro tabs.
 - **Product rules that apply to anything built from this:** no prediction or betting language; empty state over made-up numbers; the sample size beside every figure; Red Hat Display only; the raw Edge Score is never shown.
+
+
+---
+
+## 9. Second Look and Game Plan Card (added 2026-10-29)
+
+Two new sections inside the Sequencing Lab (one pill row across the top: Pitch sequencing | Second Look | Game Plan Card). The Labs menu keeps one "Sequencing Lab" entry listing all five tabs, and the MLB game page has a "Game Plan" tab that opens that game's card.
+
+**Second Look** (`/mlb/lab/sequencing/second-look`): what happened the next time a hitter saw the same pitcher in the same game. Choose the pitcher's hand, the batter's side, how the first at-bat ended (strikeout, walk, hit, out in play) and the pitch that ended it. It shows how often the second at-bat opened with that same pitch (against the first pitch of every plate appearance for that hand and side), how both groups of second at-bats ended, and the five most recent real pairs. League view needs a free account; "This pitcher" and "This hitter" are Pro (the server sends nothing for them to anyone else). A group under 15 second at-bats shows "Small sample" and no rate. Filters are in the URL, so links can be shared.
+
+**Game Plan Card** (`/mlb/lab/sequencing/game-plan`, one game at `/mlb/lab/sequencing/game-plan/[gamePk]`): for a probable starter, one line per hitter in the opposing lineup: first-pitch swing rate, opener (first two pitches, with the league endings of at-bats that open with pitches shaped like his), the two-strike pitch and its whiff rate, damage zones (3x3 from xwOBA on contact, by the league tertiles in the same zone) and the second look. Each line uses the hitter's own data when his sample is big enough, otherwise "hitters like him" (his cluster), otherwise "Small sample". A wristband view downloads as a PNG. Free account. "Build your own card" and "After the game: card vs what was thrown" are shown as coming soon.
+
+**Stored tables** (all written by manual scripts, one writer each): `league_pa_pairs` (66,047 pairs, looks 2 and 3), `second_look_summary` and `second_look_baseline`, `hitter_clusters` and `hitter_cluster_defs` (k = 8, 506 hitters, silhouette about 0.14 against right-handers and 0.11 against left-handers, so the groups overlap a lot), `game_plan_cards`. New `pitch_events` columns: `catcher_id`, `on_1b`, `on_2b`, `on_3b` (runner ids, blank = empty base), `delta_run_exp`, `times_through_order`.
+
+**Rebuild commands, in order** (each prints a sample and waits 5 seconds before writing; run from the project folder with the venv Python):
+1. `python3 scripts/fetch_statcast_events.py` (the nightly job already does this for yesterday)
+2. `python3 scripts/build_league_pa_pairs.py --season 2026`
+3. `python3 scripts/build_hitter_clusters.py --season 2026 --k 8` (add `--k-scan` first to see the silhouettes)
+4. `python3 scripts/build_second_look_summary.py --season 2026`
+5. `python3 scripts/build_league_ab_index.py --season 2026` and `python3 scripts/build_league_pitch_bins.py --season 2026` (the finder and the at-bat search)
+6. `python3 scripts/build_game_plan_cards.py --date YYYY-MM-DD` (uses only pitches before that date; add `--game-pk N` for one game)
+
+**What a nightly schedule would need (not added):** the pitch load runs at 11:00 UTC (`nightly-statcast-events.yml`), so everything above would follow it: pairs, then clusters (weekly is enough), then the summary, then the index and bins, then the cards for the day's games after lineups are posted (a second run later in the day would swap "recent lineup" for the posted lineup). Rough run times on this machine: pairs 4 minutes, clusters 5, summary 3, index 3, bins 5, cards about 10 per run because the script reads the whole season (it could be changed to read once and build every game). The database has a statement timeout, so deletes are done in small pieces. Each would need its own workflow and, per the project rules, a note in both `vercel.json` and `.github/workflows/`.
+
+**Known limits:** the hitter groups are weak (low silhouette); only about half of hitters meet every minimum for a group; looks 4 and later are not stored; the "Play a pair" replay is not built (a pair holds pitch types, zones and results but not the speed and break needed to draw each flight); "Add to a Game Plan Card" is a placeholder until Build your own card exists; two-strike n is swings (the rate's denominator), not pitches.

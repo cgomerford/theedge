@@ -54,3 +54,27 @@ describe('matchSequence', () => {
     expect(r.samples).toHaveLength(2); expect(r.samples[0].pitches[0]).toEqual({ t: 'FF', res: 'B', speed: 95 })
   })
 })
+
+describe('matchSequence: optional filters and starting count', () => {
+  const ix = parseIndex(build())
+  it('is unchanged when the new filters are absent', () => {
+    const a = matchSequence(ix, { hand: 'R', stand: null, mode: 'start', pitches: [ff, sl] })
+    const b = matchSequence(ix, { hand: 'R', stand: null, mode: 'start', pitches: [ff, sl], pitcherId: null, batterId: null, clusterId: null, count: null })
+    expect(b).toEqual(a)
+  })
+  it('filters by pitcher, batter and hitter cluster', () => {
+    const spec: MatchSpec = { hand: 'R', stand: null, mode: 'start', pitches: [ff] }
+    expect(matchSequence(ix, { ...spec, pitcherId: 11 }).total).toBe(2)
+    expect(matchSequence(ix, { ...spec, pitcherId: 12 }).total).toBe(0)
+    expect(matchSequence(ix, { ...spec, batterId: 21 }).total).toBe(1)
+    expect(matchSequence(ix, { ...spec, clusterId: 3 }, 8, { clusters: new Map([[21, 3], [22, 5]]) }).total).toBe(1)
+    expect(matchSequence(ix, { ...spec, clusterId: 3 }).total).toBe(0)   // no cluster map given: nothing is in the cluster
+  })
+  it('rebuilds the count from the calls and filters on it', () => {
+    // AB0: FF ball (1-0 after), SL swinging strike (1-1 after), FF in play
+    const base: MatchSpec = { hand: 'R', stand: null, mode: 'any', pitches: [sl] }
+    expect(matchSequence(ix, { ...base, count: { balls: 1, strikes: 0 } }).total).toBe(2)   // both right-handed at-bats threw the slider at 1-0
+    expect(matchSequence(ix, { ...base, count: { balls: 0, strikes: 0 } }).total).toBe(0)
+    expect(matchSequence(ix, { hand: 'R', stand: null, mode: 'any', pitches: [{ ...sl }], count: { balls: 1, strikes: 1 } }).total).toBe(1)   // AB1's second slider, after 1-0 then a swinging strike
+  })
+})

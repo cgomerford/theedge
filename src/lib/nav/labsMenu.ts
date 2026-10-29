@@ -45,7 +45,7 @@ export const LABS_MENU: LabsMenuItem[] = [
   },
   {
     label: 'Sequencing Lab', href: '/mlb/lab/sequencing', status: 'new',
-    tabs: ['Compare pitchers', 'Pitcher', 'League'],
+    tabs: ['Compare pitchers', 'Pitcher', 'League', 'Second Look', 'Game Plan Card'],
     blurb: 'Compare how every pitcher sequences: what he throws after each pitch, in each count and with two strikes, and where he goes.',
   },
   {

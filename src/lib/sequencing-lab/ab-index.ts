@@ -37,13 +37,21 @@ export function parseIndex(buf: Buffer): AbIndex {
 }
 
 export type PitchSpec = { t: string; speed: number; hb: number; ivb: number; zone?: number | null; res?: ResultCode | null }
-export type MatchSpec = { hand: 'R' | 'L'; stand: 'R' | 'L' | null; mode: 'start' | 'any'; pitches: PitchSpec[] }
+export type MatchSpec = {
+  hand: 'R' | 'L'; stand: 'R' | 'L' | null; mode: 'start' | 'any'; pitches: PitchSpec[]
+  /** Optional filters. Absent = no filter, and the result is exactly what it was before they existed. */
+  pitcherId?: number | null; batterId?: number | null; clusterId?: number | null
+  /** The count before the first stacked pitch (0-3 balls, 0-2 strikes), rebuilt from the order of calls: a ball adds a ball; a called or swinging strike adds a strike; a foul adds one only below two. */
+  count?: { balls: number; strikes: number } | null
+}
+/** Batter id -> hitter cluster id for the pitcher's hand (hitter_clusters). Only needed when a clusterId filter is used. */
+export type MatchContext = { clusters?: Map<number, number> }
 export type AbSample = { date: string; gamePk: number; pitcherId: number; batterId: number; outcome: string; pitches: { t: string; res: ResultCode | ''; speed: number | null }[] }
 export type MatchResult = { total: number; outcomes: Record<string, number>; next: Record<string, number>; samples: AbSample[]; builtAt: string }
 
 const EPOCH_MS = Date.UTC(2020, 0, 1)
 
-export function matchSequence(ix: AbIndex, spec: MatchSpec, sampleCount = 8): MatchResult {
+export function matchSequence(ix: AbIndex, spec: MatchSpec, sampleCount = 8, ctx: MatchContext = {}): MatchResult {
   const ps = spec.pitches.slice(0, MAX_STACK)
   const out: MatchResult = { total: 0, outcomes: {}, next: {}, samples: [], builtAt: ix.builtAt }
   if (ps.length === 0) return out
@@ -58,8 +66,17 @@ export function matchSequence(ix: AbIndex, spec: MatchSpec, sampleCount = 8): Ma
   for (let a = 0; a < ix.nAbs; a++) {
     const L = ix.len[a]
     if (L < k || ix.hand[a] !== hand || (stand != null && ix.stand[a] !== stand)) continue
+    if (spec.pitcherId != null && ix.pitcher[a] !== spec.pitcherId) continue
+    if (spec.batterId != null && ix.batter[a] !== spec.batterId) continue
+    if (spec.clusterId != null && ctx.clusters?.get(ix.batter[a]) !== spec.clusterId) continue
     const s = ix.start[a], lastStart = spec.mode === 'start' ? 0 : L - k
+    let balls = 0, strikes = 0                       // the count before pitch o, rebuilt from the calls
     for (let o = 0; o <= lastStart; o++) {
+      if (o > 0) {
+        const r = ix.res[s + o - 1]
+        if (r === 1) balls++; else if (r === 2 || r === 3) strikes++; else if (r === 4 && strikes < 2) strikes++
+      }
+      if (spec.count && (balls !== spec.count.balls || strikes !== spec.count.strikes)) continue
       let all = true
       for (let j = 0; j < k && all; j++) all = ok(s + o + j, want[j])
       if (all) {

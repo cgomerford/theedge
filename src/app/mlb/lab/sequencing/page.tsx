@@ -9,6 +9,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import SignUpGate from '@/components/SignUpGate'
 import { ChartFramePreview } from '@/components/pro/previews'
 import SequencingLab from '@/components/sequencing-lab/SequencingLab'
+import SeqSectionNav from '@/components/sequencing-lab/SeqSectionNav'
 import { Empty } from '@/components/team/ui'
 import { isSignedIn } from '@/lib/require-signup'
 import { getPitcherShape, getSeqBoard, getSeqDetail, getSeqEvents, MIN_SEQ, type SeqSplit } from '@/lib/sequencing-lab/data'
@@ -44,6 +45,7 @@ export default async function SequencingLabPage({ searchParams }: { searchParams
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+        <SeqSectionNav />
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Sequencing Lab</div>
         <h1 style={{ margin: '4px 0 6px', fontSize: 'clamp(30px, 5vw, 46px)', fontWeight: 800, letterSpacing: '-0.02em' }}>How every pitcher sequences</h1>
         <p style={{ margin: '0 0 18px', fontSize: 15, color: '#5b5347', maxWidth: 760 }}>What comes after each pitch, what is thrown in each count and with two strikes, and where, for every pitcher against the league.</p>
