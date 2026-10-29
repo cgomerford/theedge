@@ -5,11 +5,20 @@
 import { createAdminClient } from '@/lib/supabase'
 import type { AuthSubscriber } from '@/lib/auth'
 import { FREE_LIMITS } from '@/lib/follows/config'
+import { getDevView } from '@/lib/dev-view'
 
 export const FOLLOW_LIMITS = FREE_LIMITS
 export type FollowKind = 'player' | 'team'
 
 export type PlayerFollow = { player_id: number; player_name: string }
+
+// Local "view as Pro" only (next dev, never a deployed build): when that view is on and the list is empty, these three players are shown as followed, so the follows row, /me and
+// the Follow buttons can be seen filled in. Read-only: nothing is written to player_follows. Ids checked against the MLB people search.
+const DEV_PRO_DEMO_FOLLOWS: PlayerFollow[] = [
+  { player_id: 547180, player_name: 'Bryce Harper' },
+  { player_id: 681082, player_name: 'Bryson Stott' },
+  { player_id: 664761, player_name: 'Alec Bohm' },
+]
 
 export async function getPlayerFollows(subscriberId: string): Promise<PlayerFollow[]> {
   const { data, error } = await createAdminClient()
@@ -22,10 +31,12 @@ export async function getPlayerFollows(subscriberId: string): Promise<PlayerFoll
     console.error('[getPlayerFollows] Supabase error:', error.message)
     return []
   }
-  return ((data ?? []) as { player_id: number | string; player_name: string }[]).map(r => ({
+  const rows = ((data ?? []) as { player_id: number | string; player_name: string }[]).map(r => ({
     player_id: Number(r.player_id),
     player_name: r.player_name,
   }))
+  if (rows.length === 0 && (await getDevView()) === 'pro') return DEV_PRO_DEMO_FOLLOWS
+  return rows
 }
 
 export type FollowState = { following: boolean; atLimit: boolean }
