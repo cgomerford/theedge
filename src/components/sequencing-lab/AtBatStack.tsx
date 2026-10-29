@@ -88,7 +88,7 @@ export default function AtBatStack({ stack, hand, stand, onRemove, onClear }: { 
           <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: play?.i === i ? '#fff1ea' : C.soft, border: `1px solid ${play?.i === i ? C.orange : 'transparent'}`, borderRadius: 12, padding: '6px 10px', fontSize: 13, fontWeight: 800 }}>
             <span style={{ width: 20, height: 20, borderRadius: '50%', background: C.ink, color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11 }}>{i + 1}</span>
             <SpinBall code={s.spec.t} size={20} />
-            <span>{pitchLabel(s.spec.t)} <span style={{ fontWeight: 600, color: C.mute }}>{s.spec.speed.toFixed(1)} mph{s.spec.zone ? ` · zone ${s.spec.zone}` : ''}{s.result ? ` · ${RESULTS.find(r => r.code === s.result)?.label.toLowerCase()}` : ''}</span></span>
+            <span>{pitchLabel(s.spec.t)} <span style={{ fontWeight: 600, color: C.mute }}>{s.spec.speed.toFixed(1)} mph{s.spec.zone ? ` · zone ${s.spec.zone}` : ''}{s.spec.res ? ` · ${RESULTS.find(r => r.code === s.spec.res)?.label.toLowerCase()}` : ''}</span></span>
             <button type="button" onClick={() => onRemove(i)} aria-label={`Remove pitch ${i + 1}`} style={{ border: 0, background: 'none', cursor: 'pointer', color: C.faint, fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
           </li>
         ))}
@@ -126,8 +126,8 @@ export default function AtBatStack({ stack, hand, stand, onRemove, onClear }: { 
             <div className="scroll" style={{ overflowX: 'auto', marginTop: 6 }}>
               <table style={{ borderCollapse: 'collapse', fontSize: 13, minWidth: 520 }}>
                 <tbody>
-                  {m.samples.map(s => (
-                    <tr key={`${s.gamePk}-${s.batterId}-${s.date}-${s.pitches.length}`} style={{ borderBottom: `1px solid ${C.line}` }}>
+                  {m.samples.map((s, k) => (
+                    <tr key={k} style={{ borderBottom: `1px solid ${C.line}` }}>
                       <td style={{ padding: '6px 10px 6px 0', color: C.mute, whiteSpace: 'nowrap' }}>{s.date}</td>
                       <td style={{ padding: '6px 10px', fontWeight: 800, whiteSpace: 'nowrap' }}>{names[s.pitcherId] ?? 'Pitcher'} <span style={{ color: C.faint, fontWeight: 600 }}>to</span> {names[s.batterId] ?? 'batter'}</td>
                       <td style={{ padding: '6px 10px' }}><span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{s.pitches.map((p, i) => <span key={i} title={`${pitchLabel(p.t)}${p.speed ? ` ${p.speed.toFixed(1)} mph` : ''}${p.res ? ` · ${RESULTS.find(r => r.code === p.res)?.label}` : ''}`} style={{ width: 12, height: 12, borderRadius: '50%', background: pitchColor(p.t), outline: p.res ? `2px solid ${RES_COLOR[p.res]}` : undefined, outlineOffset: 1 }} />)}</span></td>
