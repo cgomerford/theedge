@@ -6,8 +6,7 @@
 // search routes in parallel and merges:
 //   - MLB: GET /api/lab/search?q=  → { people: [{ id, fullName, primaryPosition }] }
 //          href built as /mlb/players/[id]; headshot built from the MLB id.
-//   - NFL: GET /api/nfl/search?q=  → { results: [{ type,id,label,sublabel,imageUrl,href }] }
-//          already unified — used as-is.
+//   - NFL was removed from the site; the second slot always resolves empty.
 //
 // Promise.allSettled so one endpoint failing doesn't blank the other. A
 // request-id guard drops stale responses (typeahead race protection).
@@ -70,7 +69,7 @@ export default function PlayerSearch({
         sport === 'NFL' ? Promise.resolve({ people: [] }) : fetch(`/api/lab/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
         // MLB-only pages (e.g. /mlb) skip the NFL fetch entirely rather
         // than fetching and discarding it — one real request instead of two.
-        sport === 'MLB' ? Promise.resolve({ results: [] }) : fetch(`/api/nfl/search?q=${encodeURIComponent(q)}`).then(r => r.json()),
+        Promise.resolve({ results: [] }),   // NFL search was removed with the NFL pages
       ])
       if (reqId !== latest.current) return // stale response — ignore
 
@@ -128,15 +127,15 @@ export default function PlayerSearch({
         value={query}
         onChange={(e) => { setQuery(e.target.value) }}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
-        placeholder={placeholder ?? (sport === 'MLB' ? 'Search any MLB player…' : sport === 'NFL' ? 'Search any NFL player or team…' : 'Search any MLB or NFL player…')}
+        placeholder={placeholder ?? 'Search any MLB player…'}
         aria-label="Search players"
-        className={header ? 'w-full bg-white text-[#1A1A1A] border border-[#E8E4DC] rounded-sm h-9 pl-8 pr-3 text-[13px] outline-none placeholder:text-[#8A8577]' : `w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 font-mono text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
+        className={header ? 'w-full bg-white text-[#1A1A1A] border border-[#E8E4DC] rounded-sm h-9 pl-8 pr-3 text-[13px] outline-none placeholder:text-[#8A8577]' : `w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
       />
 
       {showDropdown && (
         <div className={`absolute top-full left-0 right-0 mt-1 bg-white border border-[#1A1A1A] max-h-80 overflow-y-auto z-30 text-left ${rounded ? 'rounded-2xl' : ''}`}>
           {loading ? (
-            <p className="p-3 font-mono text-[11px] text-[#8A8577]">Searching…</p>
+            <p className="p-3 text-[11px] text-[#8A8577]">Searching…</p>
           ) : results.length > 0 ? (
             results.map((r) => (
               <Link
@@ -156,16 +155,16 @@ export default function PlayerSearch({
                   ) : null}
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-serif text-sm text-[#1A1A1A] truncate">{r.label}</span>
-                  <span className="block font-mono text-[10px] uppercase tracking-widest text-[#8A8577]">{r.sublabel}</span>
+                  <span className="block text-sm text-[#1A1A1A] truncate">{r.label}</span>
+                  <span className="block text-[10px] uppercase tracking-widest text-[#8A8577]">{r.sublabel}</span>
                 </span>
-                <span className={`ml-auto font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 border ${r.sport === 'MLB' ? 'border-[#FF5722] text-[#FF5722]' : 'border-[#1A1A1A] text-[#1A1A1A]'}`}>
+                <span className={`ml-auto text-[9px] uppercase tracking-widest px-1.5 py-0.5 border ${r.sport === 'MLB' ? 'border-[#FF5722] text-[#FF5722]' : 'border-[#1A1A1A] text-[#1A1A1A]'}`}>
                   {r.sport}
                 </span>
               </Link>
             ))
           ) : (
-            <p className="p-3 font-mono text-[11px] text-[#8A8577]">No matches.</p>
+            <p className="p-3 text-[11px] text-[#8A8577]">No matches.</p>
           )}
         </div>
       )}

@@ -24,6 +24,8 @@ export type Card = {
   pitches_before: string
   arsenal: CardArsenal[]
   hitters: CardHitter[]
+  /** Other hitters from this club's recent lineups, with the same lines, so "Build your own card" can swap them in. Absent on cards built before it existed. */
+  bench?: CardHitter[]
 }
 export type StoredCard = { gamePk: number; date: string; pitcherId: number; builtAt: string; card: Card }
 

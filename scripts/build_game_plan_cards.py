@@ -12,6 +12,7 @@ second_look_summary, stuff_lab_pitch_grades, game_lineups (recent lineups) and l
 Lineup: the club's posted lineup when 9 names are posted (lineup_source 'posted'); otherwise the club's most common lineup against that pitcher hand over the last 14 days
 (lineup_source 'recent_vs_hand', shown as "Recent lineup vs RHP/LHP"). A card is skipped, with the reason printed, when a starter has no pitches this season or fewer than 3 recent games are usable.
 
+Bench: up to BENCH_SIZE other hitters from the club's recent lineups get the same lines (card.bench).
 Per hitter (own data when its sample reaches the threshold, otherwise his cluster's, otherwise "small sample"; the source is stored beside every figure):
   first_pitch   swing rate at 0-0 against that hand, with the number of 0-0 pitches
   opener        the pitcher's most used two-pitch start against that batter side, plain zone labels, and the league endings of at-bats that open with pitches shaped like his
@@ -66,6 +67,7 @@ MIN_RETIRED = 10          # his outs against the hand before his own "most commo
 SECOND_LOOK_MIN = 15      # second at-bats per group                        (secondLookGroup)
 SPEED_WIN, MOVE_WIN = 1.5, 3.0
 RECENT_DAYS = 14
+BENCH_SIZE = 6            # extra hitters stored per card for Build your own card
 BALLS = {"ball", "blocked_ball", "pitchout", "automatic_ball", "intent_ball", "hit_by_pitch"}
 WHIFFS = {"swinging_strike", "swinging_strike_blocked", "foul_tip", "missed_bunt"}
 FOULS = {"foul", "foul_bunt", "bunt_foul_tip"}
@@ -255,15 +257,15 @@ def main():
             hand = mine["p_throws"].mode().iloc[0]
             # lineup
             posted = (g.get("lineups") or {}).get("homePlayers" if opp_side == "home" else "awayPlayers") or []
+            abbr = opp["team"].get("abbreviation")
+            recent = df[(df["game_date"] >= str(target - dt.timedelta(days=RECENT_DAYS))) & (df["game_date"] < a.date)]["game_pk"].unique().tolist()
+            rows = []
+            for off in range(0, len(recent), 100):
+                rows += with_retry(lambda: sb.table("game_lineups").select("game_pk,batting_order,player_id,player_name").eq("team_abbr", abbr).in_("game_pk", recent[off:off + 100]).execute().data, "lineups")
             if len(posted) == 9 and not a.force_recent:
                 lineup = [{"id": p["id"], "name": p["fullName"], "slot": i + 1} for i, p in enumerate(posted)]
                 source = "posted"
             else:
-                abbr = opp["team"].get("abbreviation")
-                recent = df[(df["game_date"] >= str(target - dt.timedelta(days=RECENT_DAYS))) & (df["game_date"] < a.date)]["game_pk"].unique().tolist()
-                rows = []
-                for off in range(0, len(recent), 100):
-                    rows += with_retry(lambda: sb.table("game_lineups").select("game_pk,batting_order,player_id,player_name").eq("team_abbr", abbr).in_("game_pk", recent[off:off + 100]).execute().data, "lineups")
                 by_game = defaultdict(list)
                 for r in rows:
                     by_game[r["game_pk"]].append(r)
@@ -320,8 +322,7 @@ def main():
                 return opener, ts
             side_stats = {s: stand_stats(s) for s in ("L", "R")}
 
-            hitters = []
-            for h in lineup:
+            def build_hitter(h):
                 b = h["id"]
                 bm = df[df["batter_id"] == b]
                 vs = bm[bm["p_throws"] == hand]
@@ -394,13 +395,22 @@ def main():
                             break
                     if sl is None and seen_n is not None:
                         sl = {"small": True, "ended_class": kcls, "ended_pitch": kpitch, "n": seen_n, "opened_same_pct": None, "top_other": None, "top_other_pct": None, "source": "batter"}
-                hitters.append({"slot": h["slot"], "id": b, "name": h["name"], "bats": st, "cluster": {"id": int(c), "label": label} if c is not None else None,
-                                "first_pitch": fp, "opener": opener, "two_strikes": twos, "damage_zones": dz, "second_look": sl})
+                return {"slot": h["slot"], "id": b, "name": h["name"], "bats": st, "cluster": {"id": int(c), "label": label} if c is not None else None,
+                        "first_pitch": fp, "opener": opener, "two_strikes": twos, "damage_zones": dz, "second_look": sl}
+
+            hitters = [build_hitter(h) for h in lineup]
+            # Bench: other hitters from this club's recent lineups (most games first), with the same lines, so "Build your own card" can swap them in.
+            in_lineup = {h["id"] for h in lineup}
+            seen, names = Counter(), {}
+            for r in rows:
+                if r["player_id"] not in in_lineup:
+                    seen[r["player_id"]] += 1; names[r["player_id"]] = r["player_name"]
+            bench = [build_hitter({"id": i, "name": names[i], "slot": None}) for i, _ in seen.most_common(BENCH_SIZE)]
             card = {"meta": {"gamePk": gp, "date": a.date, "firstPitchUtc": g.get("gameDate"), "venue": (g.get("venue") or {}).get("name"),
                              "away": {"id": away["team"]["id"], "name": away["team"]["name"], "abbr": away["team"].get("abbreviation")}, "home": {"id": home["team"]["id"], "name": home["team"]["name"], "abbr": home["team"].get("abbreviation")}},
                     "starter": {"id": pid, "name": pp["fullName"], "hand": hand, "team": tm["team"]["name"]},
                     "batting": {"id": opp["team"]["id"], "name": opp["team"]["name"], "abbr": opp["team"].get("abbreviation")},
-                    "lineup_source": source, "pitches_before": a.date, "arsenal": arsenal[:6], "hitters": hitters}
+                    "lineup_source": source, "pitches_before": a.date, "arsenal": arsenal[:6], "hitters": hitters, "bench": bench}
             cards.append({"game_pk": gp, "game_date": a.date, "pitcher_id": pid, "opponent_team_id": opp["team"]["id"], "lineup_source": source, "card": card})
 
     print(f"\n{len(cards)} cards built.")

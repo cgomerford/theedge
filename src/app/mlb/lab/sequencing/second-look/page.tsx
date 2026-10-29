@@ -59,13 +59,13 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
         <SecondLook
           filters={filters} data={data} season={season} nameOfScope={nameOfScope}
           lockedNode={locked ? (
-            <div style={{ background: '#fff', border: '2px solid #1A1A1A', padding: 22 }}>
+            <div style={{ background: '#fff', border: '1px solid #e7e2d8', borderRadius: 14, padding: 20 }}>
               <div style={{ fontSize: 22, fontWeight: 800 }}>The pitcher and hitter views are part of Pro</div>
               <p style={{ margin: '6px 0 0', fontSize: 14, color: '#5b5347' }}>See how one pitcher, or one hitter, has fared on a second look. The league view is open to everyone with an account.</p>
               <ProGateRow tier={tier} source="second_look" lockedLine="Pitcher and hitter views are part of Pro." />
             </div>
           ) : filters.scope !== 'league' && !filters.id ? (
-            <div style={{ background: '#fff', border: '2px dashed #1A1A1A', padding: 22, fontSize: 15, color: '#5b5347' }}>Find {scope === 'pitcher' ? 'a pitcher' : 'a hitter'} above to see their second looks.</div>
+            <div style={{ background: '#fff', border: '1px dashed #cfc9ba', borderRadius: 14, padding: 20, fontSize: 15, color: '#5b5347' }}>Find {scope === 'pitcher' ? 'a pitcher' : 'a hitter'} above to see their second looks.</div>
           ) : null}
         />
       </div>

@@ -281,7 +281,7 @@ export default async function PreferencesPage({ params, searchParams }: Props) {
         )}
 
         <div className="text-xs text-stone-500 leading-relaxed mt-16 pt-6 border-t border-stone-200">
-          Don&apos;t see a sport you follow? NBA, NHL, NFL, and EPL are coming soon.
+          Don&apos;t see a sport you follow? NBA, NHL and EPL are coming soon.
         </div>
       </div>
     </main>

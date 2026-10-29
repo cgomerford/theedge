@@ -4,7 +4,7 @@
 // Used by the homepage, the Today tab redirect, and the daily email
 // so the product always leads with whatever's actually being played.
 
-export type Sport = 'mlb' | 'nfl' // add 'nba' | 'nhl' here when they ship
+export type Sport = 'mlb' // MLB is the only live sport; add the next one here when it ships
 
 export type ActiveSport = {
   primary: Sport       // the one sport to LEAD with
@@ -20,16 +20,12 @@ type Window = { from: [number, number]; to: [number, number] }
 const SEASON_WINDOWS: Record<Sport, Window> = {
   // Late March (Opening Day) through end of October (World Series)
   mlb: { from: [3, 20], to: [10, 31] },
-  // Early September (Week 1) through mid-February (Super Bowl).
-  // Move `from` to [8, 1] if you want the front door to flip for
-  // NFL draft season in August instead of at the season opener.
-  nfl: { from: [9, 1], to: [2, 15] },
 }
 
 // When two+ sports overlap (Sep–Oct = MLB playoffs + NFL), this order
 // decides who LEADS. Earlier = higher priority. This is the knob you'll
-// most likely flip seasonally. Set to ['mlb', 'nfl'] to keep MLB on top.
-const LEAD_PRIORITY: Sport[] = ['nfl', 'mlb']
+// most likely flip when a second sport ships.
+const LEAD_PRIORITY: Sport[] = ['mlb']
 
 // --- Helpers --------------------------------------------------------
 function isWithin(date: Date, w: Window): boolean {
@@ -70,5 +66,5 @@ export function getEmailLeadSport(date: Date = new Date()): Sport {
 }
 
 // --- Display helpers (handy for copy) ------------------------------
-export const SPORT_LABELS: Record<Sport, string> = { mlb: 'MLB', nfl: 'NFL' }
-export const SPORT_HUB_PATH: Record<Sport, string> = { mlb: '/mlb', nfl: '/nfl' }
+export const SPORT_LABELS: Record<Sport, string> = { mlb: 'MLB' }
+export const SPORT_HUB_PATH: Record<Sport, string> = { mlb: '/mlb' }

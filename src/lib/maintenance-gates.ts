@@ -6,12 +6,11 @@
 //
 // To launch a section: delete its prefix from this list. Nothing else to touch.
 //
-// Matching is on whole path segments, so '/nfl' covers '/nfl' and '/nfl/anything'
-// but not a hypothetical '/nflx'. API routes are outside the proxy matcher and are
+// Matching is on whole path segments, so '/nhl' covers '/nhl' and '/nhl/anything'
+// but not a hypothetical '/nhlx'. API routes are outside the proxy matcher and are
 // NOT gated by this list.
 
 export const MAINTENANCE_GATED_PREFIXES: readonly string[] = [
-  '/preview/nfl',
   '/nhl',
   '/preview/nhl',
 ]
