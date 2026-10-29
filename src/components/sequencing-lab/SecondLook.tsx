@@ -8,7 +8,7 @@
 // Plan Card" keeps that pair in this browser for Build your own card. Everything is what has happened in the stored season, never a forecast.
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { C, SANS } from '@/components/team/ui'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { pitchLabel } from '@/lib/lab/pitch-meta'
@@ -87,9 +87,9 @@ const dots = (ps: PairPitch[], upTo = ps.length, current = -1) => (
   </span>
 )
 
-/** One line under a row of dots, in words: what the at-bat opened with and how it ended. */
+/** One short line under a row of dots, in pitch codes: what the at-bat opened with and how it ended, e.g. "Open FC · Hit on FS". */
 const caption = (ps: PairPitch[], result: string) => ps.length === 0 ? null : (
-  <div style={{ fontSize: 12, color: '#3a352c', marginTop: 5, maxWidth: 270 }}>Opened with {article(pitchLabel(ps[0].t))} <b>{pitchLabel(ps[0].t).toLowerCase()}</b> · ended in {article(result)} <b>{result}</b> on {article(pitchLabel(ps[ps.length - 1].t))} <b>{pitchLabel(ps[ps.length - 1].t).toLowerCase()}</b></div>
+  <div style={{ fontSize: 12, color: '#3a352c', marginTop: 5, whiteSpace: 'nowrap' }}>Open <b>{ps[0].t}</b> · {result.charAt(0).toUpperCase() + result.slice(1)} on <b>{ps[ps.length - 1].t}</b></div>
 )
 
 /** One real pair, stepped through a pitch at a time: the dots light up in order with a plain-words caption. */
@@ -281,7 +281,8 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
                     <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First time through', 'Second time through', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {allPairs.map((p: RecentPair, i) => (
-                        <tr key={i} style={{ borderTop: `1px solid ${C.soft}`, background: playing === i ? '#fff8f4' : undefined }}>
+                        <Fragment key={i}>
+                        <tr style={{ borderTop: `1px solid ${C.soft}`, background: playing === i ? '#fff8f4' : undefined }}>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{dateShort(p.date)}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{allNames[p.pitcherId] ?? '—'}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{allNames[p.batterId] ?? '—'}</td>
@@ -292,12 +293,17 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
                             <button type="button" onClick={() => addToCard(p, i)} style={{ fontFamily: SANS, fontWeight: 800, fontSize: 12, borderRadius: 999, padding: '5px 12px', border: `1px solid ${C.line}`, background: '#fff', color: C.ink, cursor: 'pointer' }}>Add to a Game Plan Card</button>
                           </td>
                         </tr>
+                        {playing === i && <tr style={{ background: '#fff8f4' }}><td colSpan={6} style={{ padding: '0 14px 14px' }}><PairPlayer pair={p} stand={filters.stand} names={allNames} onClose={() => setPlaying(null)} /></td></tr>}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-              {playing != null && allPairs[playing] && <div style={{ padding: '0 16px 14px' }}><PairPlayer pair={allPairs[playing]} stand={filters.stand} names={allNames} onClose={() => setPlaying(null)} /></div>}
+              {allPairs.length > 0 && (() => {
+                const codes = [...new Set(allPairs.flatMap(p => [...p.first, ...p.second].map(x => x.t)))].sort()
+                return <div style={{ padding: '10px 16px 4px', display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 12, color: '#3a352c', borderTop: `1px solid ${C.soft}` }} aria-label="Pitch codes"><b style={{ color: C.mute }}>Key</b>{codes.map(t => <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><PitchDot t={t} size={16} />{t} = {pitchLabel(t).toLowerCase()}</span>)}</div>
+              })()}
               {totalPairs > 0 && <div style={{ padding: '4px 16px 14px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: '#5b5347' }}>{allPairs.length >= totalPairs ? `All ${totalPairs.toLocaleString('en-US')} matching pair${totalPairs === 1 ? '' : 's'}` : `Showing ${allPairs.length.toLocaleString('en-US')} of ${totalPairs.toLocaleString('en-US')}`}</span>
                 {allPairs.length < totalPairs && <button type="button" onClick={showMore} disabled={more === 'loading'} style={{ fontFamily: SANS, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: '7px 16px', border: `1px solid ${C.orange}`, background: '#fff1ea', color: C.orange, cursor: 'pointer' }}>{more === 'loading' ? 'Loading…' : 'Show more'}</button>}
