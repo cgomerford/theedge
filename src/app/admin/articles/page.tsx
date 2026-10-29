@@ -78,7 +78,7 @@ export default async function ArticlesListPage() {
                     color: a.status === 'published' ? '#FAF8F3' : '#1A1A1A',
                   }}
                 >
-                  {a.status}
+                  {a.status === 'published' && a.published_at && new Date(a.published_at) > new Date() ? `scheduled ${new Date(a.published_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} ET` : a.status}
                 </span>
 
                 {a.status === 'published' && (

@@ -162,7 +162,9 @@ export async function getCurrentSubscriber(): Promise<AuthSubscriber | null> {
   if (!view) return real
   if (view === 'out') return null
   const base: AuthSubscriber = real ?? { id: '00000000-0000-0000-0000-000000000000', email: 'dev@localhost', teams: [], primary_team: null, preferences_token: '', is_pro: false, role: 'user' }
-  return { ...base, is_pro: view === 'pro' }
+  // Local Pro view only: a demo follow of the Phillies when the account follows no team, so the My x9Lab team panel has something to show (same idea as DEV_PRO_DEMO_FOLLOWS).
+  const teams = view === 'pro' && base.teams.length === 0 ? ['phillies'] : base.teams
+  return { ...base, teams, is_pro: view === 'pro' }
 }
 
 async function readSession(): Promise<AuthSubscriber | null> {

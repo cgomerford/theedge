@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation';
 import { getArticleById } from '@/lib/articles';
-import ArticleEditorForm from '@/components/admin/ArticleEditorForm';
+import ArticleWriter from '@/components/admin/article-writer/ArticleWriter';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
+
+export const dynamic = 'force-dynamic';
 
 export default async function EditArticlePage({ params }: PageProps) {
   const { id } = await params;
@@ -14,5 +16,5 @@ export default async function EditArticlePage({ params }: PageProps) {
     notFound();
   }
 
-  return <ArticleEditorForm initialArticle={article} />;
+  return <ArticleWriter initialArticle={article} />;
 }

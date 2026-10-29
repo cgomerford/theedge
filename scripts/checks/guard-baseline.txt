@@ -88,3 +88,11 @@ fetch	src/components/PlayerSearch.tsx
 logos	src/components/PlayerSearch.tsx
 fetch	src/lib/mlb-offseason.ts
 fetch	src/components/me/FollowPill.tsx
+fetch	src/components/graphics/StudioExtras.tsx
+fetch	src/components/admin/article-writer/ArticleWriter.tsx
+fetch	src/components/admin/article-writer/Panels.tsx
+fetch	src/components/admin/article-writer/upload.ts
+fetch	src/components/admin/article-writer/extensions.tsx
+logos	src/components/admin/article-writer/Panels.tsx
+logos	src/components/admin/article-writer/extensions.tsx
+logos	src/components/ArticleRenderer.tsx

@@ -19,6 +19,8 @@ import { MLB_TEAMS } from '@/lib/teams'
 import { autofillGraphic, loadSlate, searchPlayers, type AutofillTemplate, type PlayerHit, type SlateGame } from './actions'
 import { BLOCKS, TEMPLATE_NAMES } from './index'
 import OtdForm from './otd/OtdForm'
+import StudioExtras, { type BatchState } from './StudioExtras'
+import { fillSnapshot } from '@/lib/graphics/checks'
 
 type Mode = 'form' | 'json'
 
@@ -67,9 +69,20 @@ export default function GraphicsStudio() {
   const [fillMissing, setFillMissing] = useState<string[]>([])
   const [fillError, setFillError] = useState('')
   const [boxW, setBoxW] = useState(480)
+  const [caption, setCaption] = useState('')
+  const [postAt, setPostAt] = useState('')
+  const [libId, setLibId] = useState<string | null>(null)
+  const [snapshot, setSnapshot] = useState<Record<string, string> | null>(null)
+  const [hasDraft, setHasDraft] = useState(false)
+  const [batch, setBatch] = useState<BatchState>({ running: false, done: 0, total: 0, message: '' })
+  const stopBatch = useRef(false)
+  const specRef = useRef(spec)
+  const imagesRef = useRef(images)
   const boxRef = useRef<HTMLDivElement>(null)
   const exportRefs = useRef<Record<SizeKey, HTMLDivElement | null>>({ landscape: null, portrait: null })
 
+  specRef.current = spec
+  imagesRef.current = images
   const check = useMemo(() => validateSpec(spec), [spec])
   const errors = [...jsonErrors, ...(check.ok ? [] : check.errors)]
   const isOtd = spec.template === 'otd' || spec.template === 'sotd'
@@ -93,6 +106,9 @@ export default function GraphicsStudio() {
     void loadGraphicImages(keyList.split(',')).then(m => { if (live) setImages(m) })
     return () => { live = false }
   }, [keyList])
+
+  // Is there an unsaved draft from an earlier visit? Read after mount so the server and browser first render match.
+  useEffect(() => { try { setHasDraft(!!localStorage.getItem('edge.graphics.draft')) } catch { /* no storage */ } }, [])
 
   // Slate for the chosen day (free MLB schedule, read by a server action behind /admin auth).
   useEffect(() => {
@@ -133,6 +149,7 @@ export default function GraphicsStudio() {
     setFilling(false)
     if ('error' in r) { setFillError(r.error); return }
     commit(r.spec)
+    setSnapshot(fillSnapshot(r.spec))
     setPasteGroup(DEFAULT_PASTE_GROUP[r.spec.template])
     setFillMissing(r.missing)
   }
@@ -148,6 +165,7 @@ export default function GraphicsStudio() {
   }
 
   function commit(next: GraphicSpec) {
+    try { localStorage.setItem('edge.graphics.draft', JSON.stringify(next)) } catch { /* private window: no draft */ }
     setSpec(next)
     setJsonText(pretty(next))
     setJsonErrors([])
@@ -199,21 +217,24 @@ export default function GraphicsStudio() {
     commit({ ...spec, stats: [...spec.stats.filter(s => s.group !== pasteGroup), ...rows] })
   }
 
-  async function exportPng(size: SizeKey) {
+  // Reads the spec from specRef, not the render's closure, so the slate batch (which swaps the card between exports) names each file after its own card.
+  async function exportPng(size: SizeKey, force = false) {
     const node = exportRefs.current[size]
-    if (!node || !canExport) return
+    const sp = specRef.current
+    const otd = sp.template === 'otd' || sp.template === 'sotd'
+    if (!node || (!force && !canExport)) return
     setExporting(size); setExportError('')
     try {
       let url: string, name: string
-      if (isOtd) {
+      if (otd) {
         url = await renderOtdPng(node, size)
-        name = otdFileName(spec.id, spec.title)
+        name = otdFileName(sp.id, sp.title)
         if (size === 'portrait') name = name.replace(/\.png$/, '-4x5.png')
       } else {
         const { toPng } = await import('html-to-image')
         const { w, h } = SIZES[size]
         url = await toPng(node, { cacheBust: true, backgroundColor: '#FAF8F3', width: w, height: h, pixelRatio: 1 })
-        name = `${spec.id}-${size}.png`
+        name = `${sp.id}-${size}.png`
       }
       const a = document.createElement('a')
       a.href = url
@@ -225,6 +246,51 @@ export default function GraphicsStudio() {
     } finally {
       setExporting(null)
     }
+  }
+
+  async function downloadBoth() {
+    await exportPng('landscape')
+    await new Promise(r => setTimeout(r, 400))
+    await exportPng('portrait')
+  }
+
+  function openSaved(next: GraphicSpec, cap: string, when: string) {
+    commit(next)
+    setCaption(cap); setPostAt(when); setSnapshot(null)
+    setPasteGroup(DEFAULT_PASTE_GROUP[next.template])
+  }
+  function resumeDraft() {
+    try {
+      const raw = localStorage.getItem('edge.graphics.draft')
+      const v = raw ? validateSpec(JSON.parse(raw)) : null
+      if (v?.ok) { setSpec(v.spec); setJsonText(pretty(v.spec)); setJsonErrors([]); setSnapshot(null); setPasteGroup(DEFAULT_PASTE_GROUP[v.spec.template]) }
+    } catch { /* unreadable draft: leave the studio as it is */ }
+  }
+
+  // Slate batch: for each game on the chosen date, fill the chosen template from the data and download its landscape PNG. Waits for the pictures
+  // (logos, headshots) to be ready before each export so a card is never saved half-drawn.
+  const batchTemplate: AutofillTemplate | null = spec.template === 'collision' || spec.template === 'attack' || spec.template === 'scoreboard' ? spec.template : null
+  async function runBatch() {
+    if (!batchTemplate || !slate.length) return
+    stopBatch.current = false
+    setBatch({ running: true, done: 0, total: slate.length, message: '' })
+    let made = 0
+    const skipped: string[] = []
+    for (const [i, game] of slate.entries()) {
+      if (stopBatch.current) break
+      setBatch(b => ({ ...b, done: i }))
+      const r = await autofillGraphic({ game, template: batchTemplate, side, kicker: specRef.current.kicker || 'Scout', date: slateDate })
+      if ('error' in r) { skipped.push(`${game.label}: ${r.error}`); continue }
+      commit({ ...r.spec, id: `${r.spec.id}-${game.gamePk}` })
+      setSnapshot(fillSnapshot(r.spec))
+      const need = imageKeys(r.spec)
+      for (let t = 0; t < 40 && !need.every(k => k in imagesRef.current); t++) await new Promise(res => setTimeout(res, 250))
+      await new Promise(res => setTimeout(res, 500))
+      await exportPng('landscape', true)
+      made += 1
+      await new Promise(res => setTimeout(res, 400))
+    }
+    setBatch({ running: false, done: made, total: slate.length, message: `Made ${made} of ${slate.length}.${stopBatch.current ? ' Stopped.' : ''}${skipped.length ? ` Skipped: ${skipped.slice(0, 3).join('; ')}${skipped.length > 3 ? '…' : ''}` : ''}` })
   }
 
   const Block = BLOCKS[spec.template]
@@ -432,6 +498,14 @@ export default function GraphicsStudio() {
             </div>
           </>
         )}
+
+        <StudioExtras
+          spec={spec} snapshot={snapshot} caption={caption} setCaption={setCaption} postAt={postAt} setPostAt={setPostAt} libId={libId} setLibId={setLibId}
+          onOpen={openSaved} canExport={canExport} exporting={exporting !== null} onDownloadBoth={() => void downloadBoth()}
+          batch={batch} onBatch={() => void runBatch()} onStopBatch={() => { stopBatch.current = true }}
+          batchLabel={batchTemplate ? TEMPLATE_NAMES[batchTemplate].toLowerCase() : 'a card'} canBatch={!!batchTemplate && slate.length > 0 && canExport}
+          hasDraft={hasDraft} onResume={resumeDraft}
+        />
 
         {errors.length > 0 && (
           <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-[11px] text-red-700">

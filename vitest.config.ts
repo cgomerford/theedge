@@ -7,6 +7,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/components/admin/story/**/*.test.ts', 'src/components/admin/stat-line/**/*.test.ts', 'src/components/admin/story-v5/**/*.test.ts', 'src/lib/graphics/**/*.test.ts', 'src/lib/sequencing-lab/**/*.test.ts', 'src/lib/stuff-lab/**/*.test.ts',
       'src/lib/follows/**/*.test.ts',
+      'src/lib/article-checks.test.ts',
       'src/components/me/**/*.test.tsx', 'src/lib/ask-lookups.test.ts', 'src/components/graphics/**/*.test.tsx'],
   },
   resolve: {

@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getArticleBySlug, getArticlesByTeam, getLatestArticles } from '@/lib/articles';
-import ArticleRenderer from '@/components/ArticleRenderer';
+import ArticleView from '@/components/article/ArticleView';
+import { ARTICLE_CSS } from '@/components/article/article-css';
 import SiteHeader from '@/components/SiteHeader';
 import { TEAM_CODE_TO_SLUG, teamCodeToId, teamCodeToName } from '@/lib/team-codes';
 import { getMLBTeamLeaders } from '@/lib/mlb-homepage';
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: article.title,
-    description: fitDescription(article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free account.', 'Read the full piece on x9Lab.']),
+    description: fitDescription(article.seo_description ?? article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free account.', 'Read the full piece on x9Lab.']),
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: article.title,
@@ -98,6 +99,7 @@ export default async function ArticlePage({ params }: PageProps) {
   // columns + migration, confirm the fetch function's real name/shape,
   // then restore this block and the PitcherPercentileStrip import above.
 
+  const railLess = article.layout === 'data' || article.layout === 'quick';
   const primaryTeam = article.team_tags[0];
   const primaryTeamSlug = primaryTeam ? TEAM_CODE_TO_SLUG[primaryTeam] : undefined;
 
@@ -124,7 +126,7 @@ export default async function ArticlePage({ params }: PageProps) {
       <SiteHeader variant="page" />
 
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 20px 60px' }}>
-        <div className="article-layout">
+        <div className={`article-layout${railLess ? ' article-wide' : ''}`} style={railLess ? { maxWidth: article.layout === 'data' ? 980 : 720, margin: '0 auto' } : undefined}>
           <article style={{ minWidth: 0 }}>
             {article.team_tags.length > 0 && (
               <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
@@ -136,32 +138,7 @@ export default async function ArticlePage({ params }: PageProps) {
               </div>
             )}
 
-            <h1
-              style={{
-                fontFamily: 'Red Hat Display, sans-serif',
-                fontWeight: 700,
-                fontSize: 'clamp(28px, 5vw, 44px)',
-                lineHeight: 1.1,
-                marginBottom: 12,
-              }}
-            >
-              {article.title}
-            </h1>
-
-            <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 12, opacity: 0.6, marginBottom: 28 }}>
-              {article.author}
-              {dateLabel ? ` · ${dateLabel}` : ''}
-            </div>
-
-            {article.hero_image && (
-              <img
-                src={article.hero_image}
-                alt={article.title}
-                style={{ width: '100%', height: 'auto', marginBottom: 32 }}
-              />
-            )}
-
-            <ArticleRenderer body={article.body} />
+            <ArticleView article={article} dateLabel={dateLabel} />
 
             <footer
               style={{
@@ -192,7 +169,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </footer>
           </article>
 
-          <aside style={{ minWidth: 0 }}>
+          {!railLess && <aside style={{ minWidth: 0 }}>
             {/* Player percentile strip removed until subject_player_id /
                 subject_player_name exist on Article and the fetch is
                 confirmed — see TODO above generateMetadata's return. */}
@@ -221,7 +198,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   Follow the {teamCodeToName(primaryTeam)}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16, lineHeight: 1.4 }}>
-                  Get the daily Edge read for every {teamCodeToName(primaryTeam)} game — free.
+                  Get the daily x9Lab report for every {teamCodeToName(primaryTeam)} game — free.
                 </div>
                 <Link
                   href={primaryTeamSlug ? `/mlb/teams/${primaryTeamSlug}` : '/pricing'}
@@ -257,7 +234,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 ))}
               </div>
             )}
-          </aside>
+          </aside>}
         </div>
       </div>
 
@@ -272,44 +249,9 @@ export default async function ArticlePage({ params }: PageProps) {
             grid-template-columns: 1fr 320px;
           }
         }
-        .article-body {
-          font-family: Red Hat Display, sans-serif;
-          font-size: 17px;
-          line-height: 1.7;
-          color: #1A1A1A;
-        }
-        .article-body p { margin-bottom: 1.3em; }
-        .article-body h2 {
-          font-family: 'Red Hat Display', sans-serif;
-          font-weight: 600;
-          font-size: 26px;
-          margin: 1.6em 0 0.6em;
-        }
-        .article-body h3 {
-          font-family: 'Red Hat Display', sans-serif;
-          font-weight: 600;
-          font-size: 20px;
-          margin: 1.4em 0 0.5em;
-        }
-        .article-body ul, .article-body ol { margin: 0 0 1.3em 1.4em; }
-        .article-body li { margin-bottom: 0.4em; }
-        .article-body blockquote {
-          border-left: 3px solid #FF5722;
-          padding-left: 16px;
-          margin: 1.6em 0;
-          font-style: italic;
-          opacity: 0.85;
-        }
-        .article-body a {
-          color: #FF5722;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-        }
-        .article-body img { margin: 1.8em 0; }
-        @media (max-width: 640px) {
-          .article-body { font-size: 16px; }
-        }
+        .article-wide.article-layout { grid-template-columns: 1fr; }
       `}</style>
+      <style>{ARTICLE_CSS}</style>
     </>
   );
 }

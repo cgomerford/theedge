@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Graphics studio mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF8F3;--ink:#1A1A1A;--line:#e7e2d8;--soft:#f1eee6;--mute:#8a8275;--orange:#FF5722;--good:#1D9E75;--bad:#D4533B}
+*{box-sizing:border-box}body{margin:0;font-family:'Red Hat Display',system-ui,sans-serif;background:var(--cream);color:var(--ink)}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top .t{font-weight:800}.sp{flex:1}.st{font-size:12px;color:var(--mute)}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700}.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn{border:1px solid var(--ink);background:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:13px}.btn.pri{background:var(--orange);border-color:var(--orange);color:#fff}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr) 330px;min-height:calc(100vh - 54px)}
+@media(max-width:1100px){.app{grid-template-columns:1fr}}
+.left,.right{background:#fff;padding:14px;overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line);padding:0}
+h3{margin:16px 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}h3:first-child{margin-top:0}
+.tpl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.t1{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--cream);text-align:left;font-size:12px;font-weight:800}.t1.on{border-color:var(--orange);box-shadow:0 0 0 2px #ff572233}
+.t1 i{display:block;height:36px;border-radius:5px;background:var(--soft);margin-bottom:5px}.t1 small{display:block;font-weight:400;color:var(--mute);font-size:10.5px}
+.src{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12.5px;background:var(--cream)}.src select,.src input{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px;margin-top:6px;background:#fff}
+.src .ok{color:var(--good);font-weight:700;font-size:12px;margin-top:6px}
+.layer{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:5px;font-size:12.5px;background:#fff}.layer.on{border-color:var(--orange);background:#fff7f3}
+.layer em{font-style:normal;color:var(--mute);width:16px}.layer span{flex:1}.layer b{font-size:11px;color:var(--mute)}
+.stage{padding:20px;display:flex;flex-direction:column;align-items:center;gap:14px;background:#efeade;overflow:auto}
+.sizes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.frame{background:#fff;box-shadow:0 10px 36px #0003;position:relative;overflow:hidden;transition:all .2s}
+.frame.s169{width:min(100%,780px);aspect-ratio:16/9}.frame.s45{width:min(100%,470px);aspect-ratio:4/5}.frame.s11{width:min(100%,560px);aspect-ratio:1/1}.frame.s916{width:min(100%,330px);aspect-ratio:9/16}
+.g{position:absolute;inset:0;padding:5.5%;display:flex;flex-direction:column;gap:2.4%;background:var(--cream)}
+.g .k{font-size:clamp(8px,1.2vw,12px);font-weight:800;letter-spacing:.16em;color:var(--orange);text-transform:uppercase}
+.g .h{font-size:clamp(18px,3.4vw,34px);font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.row{display:grid;grid-template-columns:1fr 3fr 52px;gap:10px;align-items:center;font-size:clamp(9px,1.35vw,13px)}
+.row i{display:block;height:11px;border-radius:3px;background:var(--orange)}.row i.b{background:#1A1A1A}
+.row b{font-variant-numeric:tabular-nums;text-align:right}
+.hs{width:15%;aspect-ratio:1;background:var(--soft);border-radius:8px;display:grid;place-items:center;font-size:9px;color:var(--mute)}
+.who{display:flex;gap:12px;align-items:center}.who .lg{width:9%;aspect-ratio:1;background:var(--soft);border-radius:50%;display:grid;place-items:center;font-size:8px;color:var(--mute)}
+.foot{margin-top:auto;display:flex;justify-content:space-between;font-size:clamp(7px,1vw,10px);color:var(--mute);border-top:1px solid var(--line);padding-top:6px}
+.guide{position:absolute;inset:3.5%;border:1px dashed #FF572266;pointer-events:none}
+.tabs{display:flex;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.tabs button{flex:1;border:0;background:none;padding:13px 4px;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);border-bottom:2px solid transparent}.tabs button.on{color:var(--ink);border-color:var(--orange)}
+.pane{display:none;padding:14px}.pane.on{display:block}
+.f{margin-bottom:13px}.f label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:5px}
+.f input,.f textarea,.f select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--cream);font-size:13.5px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:11.5px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:#fff}.chip.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}.tbl td,.tbl th{padding:5px 4px;border-bottom:1px solid var(--soft);text-align:left}.tbl th{font-size:10px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
+.tbl input{width:100%;border:1px solid transparent;background:none;padding:3px;border-radius:5px}.tbl input:focus{border-color:var(--orange);background:#fff}
+.miss{font-size:12px;color:var(--bad);background:#fdf0ec;border-radius:8px;padding:8px 10px;margin-top:8px}
+.check{display:flex;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--soft)}.check i{font-style:normal;width:18px;font-weight:800}.ok i{color:var(--good)}.warn i{color:var(--orange)}
+.note{font-size:11.5px;color:var(--mute);line-height:1.5;margin-top:8px}
+.q{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:6px;font-size:12.5px}.q .th{width:46px;height:30px;background:var(--soft);border-radius:5px}.q span{flex:1}
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+</style></head><body>
+<div class="top">
+  <span class="t">Graphics studio</span><span class="st">Draft · autosaved 12:41 · Phillies at Dodgers</span><span class="sp"></span>
+  <button class="btn">Undo</button><button class="btn">Save to library</button><button class="btn">Add to post queue</button><button class="btn pri">Download</button>
+</div>
+<div class="app">
+<aside class="left">
+  <h3>1 · Start from a game</h3>
+  <div class="src">Slate for <b>29 Oct</b>
+    <select><option>Phillies at Dodgers · Wheeler vs Yamamoto</option><option>Yankees at Mariners</option></select>
+    <div class="ok">Filled from the Scout Report tables. 11 of 13 fields found.</div>
+    <div class="note" style="margin-top:4px">Or load a saved graphic, a preset, or paste a pipe table.</div>
+  </div>
+  <h3>2 · Template</h3>
+  <div class="tpl" id="tpl">
+    <button class="t1 on" data-t="arsenal"><i></i>Arsenal<small>Usage, whiff, damage</small></button>
+    <button class="t1" data-t="collision"><i></i>Collision<small>Two stats head to head</small></button>
+    <button class="t1" data-t="contrast"><i></i>Contrast<small>Him vs the league</small></button>
+    <button class="t1" data-t="attack"><i></i>Attack map<small>Hitters by pitch</small></button>
+    <button class="t1" data-t="scoreboard"><i></i>Scoreboard<small>Run game, zone</small></button>
+    <button class="t1" data-t="textlist"><i></i>What to watch<small>Numbered list</small></button>
+    <button class="t1" data-t="otd"><i></i>On this day<small>Dated story</small></button>
+    <button class="t1" data-t="new"><i></i>+ Blank<small>Build from blocks</small></button>
+  </div>
+  <h3>Layers</h3>
+  <div class="layer"><em>▣</em><span>Kicker</span><b>text</b></div>
+  <div class="layer on"><em>▣</em><span>Headline</span><b>text</b></div>
+  <div class="layer"><em>☺</em><span>Headshot · Wheeler</span><b>image</b></div>
+  <div class="layer"><em>◉</em><span>Team logo · PHI</span><b>image</b></div>
+  <div class="layer"><em>≡</em><span>Pitch rows (5)</span><b>data</b></div>
+  <div class="layer"><em>✕</em><span>x9 mark and source</span><b>locked</b></div>
+</aside>
+
+<main class="stage">
+  <div class="sizes" id="sizes">
+    <button class="pill on" data-s="s169">X landscape 1600×900</button><button class="pill" data-s="s45">X portrait 1080×1350</button><button class="pill" data-s="s11">Square 1080</button><button class="pill" data-s="s916">Story 1080×1920</button>
+    <button class="pill" id="gd">Safe-area guide</button>
+  </div>
+  <div class="frame s169" id="frame"><div class="g">
+    <div class="who"><div class="hs">cut-out</div><div><div class="k">Scout report · Phillies at Dodgers</div><div class="h">Zack Wheeler, RHP</div></div><div class="lg" style="margin-left:auto">PHI</div></div>
+    <div class="row"><span>Four-seam</span><i style="width:88%"></i><b>46%</b></div>
+    <div class="row"><span>Sweeper</span><i style="width:55%" class="b"></i><b>24%</b></div>
+    <div class="row"><span>Sinker</span><i style="width:38%"></i><b>16%</b></div>
+    <div class="row"><span>Curve</span><i style="width:22%" class="b"></i><b>9%</b></div>
+    <div class="row"><span>Changeup</span><i style="width:10%"></i><b>5%</b></div>
+    <div class="foot"><span>Usage share, 2026 regular season, n = 3,204 pitches</span><span>x9Lab · Statcast</span></div>
+    <div class="guide" id="guide" style="display:none"></div>
+  </div></div>
+  <div class="sizes"><button class="pill">Tonight's slate: make all 15 games</button><button class="pill">Apply to all sizes</button><button class="pill">Dark version</button></div>
+</main>
+
+<aside class="right">
+  <div class="tabs" id="tabs"><button class="on" data-p="content">Content</button><button data-p="images">Images</button><button data-p="checks">Checks</button><button data-p="queue">Library</button></div>
+  <div class="pane on" id="p-content">
+    <div class="f"><label>Kicker</label><input value="Scout report · Phillies at Dodgers"></div>
+    <div class="f"><label>Headline</label><input value="Zack Wheeler, RHP"></div>
+    <div class="f"><label>Source line (always shown)</label><input value="Usage share, 2026 regular season"></div>
+    <div class="f"><label>Rows</label>
+      <table class="tbl"><tr><th>Pitch</th><th>Use</th><th>Whiff</th><th>n</th></tr>
+        <tr><td><input value="Four-seam"></td><td><input value="46%"></td><td><input value="27%"></td><td><input value="1,472"></td></tr>
+        <tr><td><input value="Sweeper"></td><td><input value="24%"></td><td><input value="38%"></td><td><input value="770"></td></tr>
+        <tr><td><input value="Sinker"></td><td><input value="16%"></td><td><input value="14%"></td><td><input value="512"></td></tr></table>
+      <div class="note">Typed over an auto-filled number turns it amber so you know it no longer matches the data.</div></div>
+    <div class="miss"><b>Not in the data:</b> pop time, strikeouts by pitch. Left out, never invented.</div>
+  </div>
+  <div class="pane" id="p-images">
+    <div class="f"><label>Headshot or logo search</label><input placeholder="Player or team name" value="Wheeler"></div>
+    <div class="chips" style="margin-bottom:12px"><span class="chip on">Cut-out, transparent</span><span class="chip">Framed photo</span><span class="chip">Team logo</span><span class="chip">Upload</span></div>
+    <div class="f"><label>Placement</label><div class="chips"><span class="chip on">Left</span><span class="chip">Right</span><span class="chip">Large, behind</span><span class="chip">None</span></div></div>
+    <div class="f"><label>Team colour accent</label><div class="chips"><span class="chip on">PHI red</span><span class="chip">Orange</span><span class="chip">Ink</span></div></div>
+    <div class="f"><label>Background</label><div class="chips"><span class="chip on">Cream</span><span class="chip">Team colour</span><span class="chip">Photo</span><span class="chip">Dark</span></div></div>
+    <div class="note">Logos and headshots are always allowed in graphics. Uploaded images are compressed and cropped to the chosen size with a focal point.</div>
+  </div>
+  <div class="pane" id="p-checks">
+    <div class="check ok"><i>✓</i>No banned or betting words</div>
+    <div class="check ok"><i>✓</i>Every number has its sample (n)</div>
+    <div class="check ok"><i>✓</i>Source line present</div>
+    <div class="check warn"><i>!</i>Text under 24 px at phone size: sweeper row <button class="pill" style="margin-left:auto">Show</button></div>
+    <div class="check warn"><i>!</i>1 value edited by hand (no longer from data)</div>
+    <div class="check ok"><i>✓</i>Inside the safe area for X cropping</div>
+    <div class="check ok"><i>✓</i>Raw Edge Score not used</div>
+    <div class="note">The checks run on the finished frame, in every size you have turned on, before Download is allowed.</div>
+  </div>
+  <div class="pane" id="p-queue">
+    <div class="f"><label>Post caption</label><textarea rows="3">Zack Wheeler's pitch mix tonight. Four-seam 46%, sweeper 24% (n = 3,204).</textarea><div class="note">Caption is checked with the same word list.</div></div>
+    <div class="f"><label>Add to post queue</label><div class="chips"><span class="chip on">Today 6:30 pm ET</span><span class="chip">Pick a time…</span></div></div>
+    <h3>Saved graphics</h3>
+    <div class="q"><div class="th"></div><span><b>Wheeler arsenal</b><br><small style="color:#8a8275">Today · 3 sizes</small></span><button class="pill">Open</button></div>
+    <div class="q"><div class="th"></div><span><b>Dodgers attack map</b><br><small style="color:#8a8275">Yesterday · 1 size</small></span><button class="pill">Open</button></div>
+    <div class="q"><div class="th"></div><span><b>Collision: Game 2</b><br><small style="color:#8a8275">27 Oct · 2 sizes</small></span><button class="pill">Open</button></div>
+    <div class="dl" style="margin-top:10px"><button class="btn">Download PNG</button><button class="btn">Download all sizes (zip)</button></div>
+  </div>
+</aside>
+</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)]
+$$('#tabs button').forEach(b=>b.onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p))})
+$$('#tpl .t1').forEach(b=>b.onclick=()=>$$('#tpl .t1').forEach(x=>x.classList.toggle('on',x===b)))
+$$('#sizes [data-s]').forEach(b=>b.onclick=()=>{$$('#sizes [data-s]').forEach(x=>x.classList.toggle('on',x===b));$('#frame').className='frame '+b.dataset.s})
+$('#gd').onclick=()=>{const g=$('#guide');g.style.display=g.style.display==='none'?'block':'none'}
+$$('.layer').forEach(l=>l.onclick=()=>$$('.layer').forEach(x=>x.classList.toggle('on',x===l)))
+</script></body></html>

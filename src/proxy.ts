@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isMaintenanceGated } from '@/lib/maintenance-gates';
+import { ADMIN_COOKIE, adminToken } from '@/lib/admin-auth';
 
 const MAINTENANCE_MODE = false;
 const BYPASS_COOKIE = 'edge_preview_access';
@@ -43,7 +44,10 @@ export async function proxy(request: NextRequest) {
       if (scheme === 'Basic' && encoded) {
         const [u, p] = atob(encoded).split(':');
         if (u === user && p === pass) {
-          return NextResponse.next();
+          // Remember the sign-in for the admin's own API routes (the matcher below skips /api, so they check this cookie themselves).
+          const res = NextResponse.next();
+          res.cookies.set(ADMIN_COOKIE, await adminToken(user, pass), { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', path: '/' });
+          return res;
         }
       }
     }

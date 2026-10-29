@@ -36,7 +36,7 @@ export default function HomeAskOrFollows({ children }: { children: React.ReactNo
           {items.map(it => (
             <Link key={it.href} href={it.href} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#1A1A1A', textDecoration: 'none', fontSize: 15 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.img} alt="" width={28} height={28} style={{ borderRadius: it.kind === 'player' ? '50%' : 0, objectFit: it.kind === 'player' ? 'cover' : 'contain', background: it.kind === 'player' ? '#f1eee6' : undefined }} />
+              <img src={it.img} alt="" width={36} height={36} style={{ width: 36, height: 36, objectFit: 'contain', objectPosition: 'center bottom' }} />
               {it.kind === 'team' && <span style={{ fontSize: 12, fontWeight: 800 }}>{it.chip}</span>}
               <b>{it.name}</b>
               {it.next && <span style={{ fontSize: 13, color: '#8a8275' }}>{it.next}</span>}

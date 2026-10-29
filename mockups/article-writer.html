@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Article writer mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF8F3;--ink:#1A1A1A;--line:#e7e2d8;--soft:#f1eee6;--mute:#8a8275;--orange:#FF5722;--good:#1D9E75}
+*{box-sizing:border-box}body{margin:0;font-family:'Red Hat Display',system-ui,sans-serif;background:var(--cream);color:var(--ink)}
+button{font:inherit;cursor:pointer}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line)}
+.top .t{font-weight:800}.top .st{font-size:12px;color:var(--mute)}.sp{flex:1}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn{border:1px solid var(--ink);background:#fff;border-radius:8px;padding:8px 14px;font-weight:800;font-size:13px}.btn.pri{background:var(--orange);border-color:var(--orange);color:#fff}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;min-height:calc(100vh - 54px)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+.canvas{padding:28px 18px 80px;display:flex;flex-direction:column;align-items:center}
+.layouts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;width:100%;max-width:720px}
+.lay{flex:1;min-width:120px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;text-align:left}
+.lay.on{border-color:var(--orange);box-shadow:0 0 0 2px #ff572233}
+.lay b{display:block;font-size:13px}.lay span{font-size:11px;color:var(--mute)}
+.lay i{display:block;height:34px;border-radius:5px;background:var(--soft);margin-bottom:7px;position:relative}
+.lay i::after{content:'';position:absolute;left:8px;right:8px;bottom:6px;height:4px;background:#d9d3c5;box-shadow:0 -8px #d9d3c5}
+.lay[data-l=feature] i{background:linear-gradient(#cfc8b8 55%,var(--soft) 55%)}
+.lay[data-l=data] i{background:linear-gradient(90deg,var(--soft) 50%,#e9d2c8 50%)}
+.lay[data-l=quick] i::after{box-shadow:none}
+.page{width:100%;max-width:720px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:34px 38px 40px}
+.page.wide{max-width:900px}.dev-m .page{max-width:390px;padding:22px 18px}
+.kick{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--orange);text-transform:uppercase}
+.h{font-size:clamp(30px,4.6vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1.08;margin:8px 0 10px;outline:none}
+.dek{font-size:18px;color:#5b5347;line-height:1.45;margin:0 0 14px;outline:none}
+.by{font-size:12.5px;color:var(--mute);padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:20px}
+.hero{height:230px;border-radius:12px;background:repeating-linear-gradient(135deg,#efeade,#efeade 12px,#e8e2d3 12px,#e8e2d3 24px);display:grid;place-items:center;color:var(--mute);font-size:13px;margin-bottom:6px}
+.feature .hero{height:320px;margin:-34px -38px 20px;border-radius:14px 14px 0 0}
+.cap{font-size:12px;color:var(--mute);margin-bottom:20px}
+.body p{font-size:17px;line-height:1.65;margin:0 0 16px;outline:none}
+.blk{position:relative;margin:18px 0;border:1px dashed transparent;border-radius:10px}.blk:hover{border-color:var(--orange)}
+.blk .tools{display:none;position:absolute;top:-14px;right:8px;gap:4px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px}
+.blk:hover .tools{display:flex}.tools button{border:0;background:none;font-size:11.5px;font-weight:700;padding:3px 7px;border-radius:5px}.tools button:hover{background:var(--soft)}
+.img{height:170px;border-radius:10px;background:linear-gradient(120deg,#d8e4ee,#eef2f6);display:grid;place-items:center;font-size:12.5px;color:#5b6b7a}
+.blk.w-wide{margin-left:-60px;margin-right:-60px}.blk.w-full .img{height:240px}.blk.w-full{margin-left:-38px;margin-right:-38px}
+.pull{border-left:4px solid var(--orange);padding:6px 0 6px 16px;font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.3}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat div{background:var(--soft);border-radius:10px;padding:12px;text-align:center}
+.stat b{display:block;font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}.stat span{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.1em}
+.pc{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.pc .hs{width:54px;height:54px;border-radius:8px;background:var(--soft);display:grid;place-items:center;font-size:10px;color:var(--mute)}
+.slash{position:absolute;z-index:6;width:300px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px #0002;padding:6px;display:none}
+.slash.open{display:block}.slash div{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;font-size:13.5px;font-weight:700}.slash div:hover{background:var(--soft)}
+.slash small{display:block;font-weight:400;color:var(--mute);font-size:11.5px}.slash em{font-style:normal;width:26px;height:26px;border-radius:6px;background:var(--soft);display:grid;place-items:center;font-size:12px}
+.add{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:13px;margin:10px 0}.add button{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:#fff}
+.side{border-left:1px solid var(--line);background:#fff;padding:0 0 40px;overflow:auto}
+.tabs{display:flex;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.tabs button{flex:1;border:0;background:none;padding:13px 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);border-bottom:2px solid transparent}
+.tabs button.on{color:var(--ink);border-color:var(--orange)}
+.pane{display:none;padding:16px}.pane.on{display:block}
+.f{margin-bottom:15px}.f label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:5px}
+.f input,.f textarea,.f select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13.5px;background:var(--cream)}
+.cnt{font-size:11px;color:var(--mute);text-align:right;margin-top:3px}.cnt.ok{color:var(--good)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:11.5px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:#fff}.chip.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.check{display:flex;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--soft)}.check i{font-style:normal;width:18px;font-weight:800}.ok i{color:var(--good)}.warn i{color:var(--orange)}
+.lib{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.lib div{aspect-ratio:1;border-radius:8px;background:var(--soft);display:grid;place-items:center;font-size:10px;color:var(--mute);border:1px solid var(--line)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;font-size:13px;color:var(--mute);margin-bottom:12px}
+.share{border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12px}.share .im{height:110px;background:repeating-linear-gradient(135deg,#efeade,#efeade 10px,#e8e2d3 10px,#e8e2d3 20px)}.share div{padding:8px 10px}.share b{display:block;font-size:13px}
+.note{font-size:11.5px;color:var(--mute);line-height:1.5;margin-top:10px}
+</style></head><body>
+<div class="top">
+  <span class="t">Article writer</span><span class="st" id="st">Draft · autosaved 12:41</span><span class="sp"></span>
+  <button class="pill on" data-dev="d">Desktop</button><button class="pill" data-dev="m">Phone</button>
+  <button class="btn">Save draft</button><button class="btn">Preview</button><button class="btn pri">Publish…</button>
+</div>
+<div class="wrap" id="wrap">
+<main class="canvas">
+  <div class="layouts" id="layouts">
+    <button class="lay on" data-l="standard"><i></i><b>Standard</b><span>Headline, image, text</span></button>
+    <button class="lay" data-l="feature"><i></i><b>Feature</b><span>Full-width hero image</span></button>
+    <button class="lay" data-l="data"><i></i><b>Data story</b><span>Chart first, wide</span></button>
+    <button class="lay" data-l="quick"><i></i><b>Quick take</b><span>Short, one graphic</span></button>
+  </div>
+  <article class="page" id="page">
+    <div class="kick" contenteditable>Matchup notes</div>
+    <h1 class="h" contenteditable>Why the Phillies bullpen looks different in September</h1>
+    <p class="dek" contenteditable>Three arms changed their sinker shape this year. Here is what the pitches have done since.</p>
+    <div class="by">By George Comerford · 5 min read · 29 Oct 2026</div>
+    <div class="hero" id="hero">Hero image: click to upload, paste, or search headshots and logos</div>
+    <div class="cap" contenteditable>Caption goes here. Credit: MLB / Statcast</div>
+    <div class="body" id="body">
+      <p contenteditable>Start writing. Type <b>/</b> on an empty line for blocks: image, chart, stat row, player card, pull quote.</p>
+      <div class="blk w-wide"><div class="tools"><button>Inline</button><button>Wide</button><button>Full</button><button>Side by side</button><button>Crop</button><button>Alt text</button><button>Remove</button></div><div class="img">Image · wide · 16:9 · alt text missing</div></div>
+      <div class="cap" contenteditable>Caption · Credit</div>
+      <div class="blk"><div class="stat"><div><b>.231</b><span>xwOBA against</span></div><div><b>34%</b><span>Whiff / swing</span></div><div><b>n = 212</b><span>Sample</span></div></div></div>
+      <p contenteditable>Text continues here.</p>
+      <div class="blk"><div class="pull" contenteditable>A pitch is a shape, and shapes have histories.</div></div>
+      <div class="blk"><div class="pc"><div class="hs">cut-out</div><div><b>Bryce Harper</b><div style="font-size:12px;color:#8a8275">PHI · 1B · .865 OPS · player card, live from the site</div></div></div></div>
+      <div class="add"><button id="plus">+</button> Add a block <span style="position:relative"><div class="slash" id="slash">
+        <div><em>▣</em><span>Image<small>Upload, paste, library or headshot</small></span></div>
+        <div><em>◔</em><span>Chart<small>From the chart picker, Recharts only</small></span></div>
+        <div><em>≡</em><span>Stat row<small>3 numbers with the sample</small></span></div>
+        <div><em>☺</em><span>Player card<small>Headshot, team, one stat line</small></span></div>
+        <div><em>❝</em><span>Pull quote<small>Large highlighted line</small></span></div>
+        <div><em>▦</em><span>Table<small>Sortable, colour-coded</small></span></div>
+        <div><em>▤</em><span>Image gallery<small>2 to 4 images, one caption</small></span></div>
+        <div><em>✕</em><span>X post embed<small>Paste a link</small></span></div>
+        <div><em>—</em><span>Divider<small>Section break</small></span></div></div></span></div>
+    </div>
+  </article>
+</main>
+<aside class="side">
+  <div class="tabs" id="tabs"><button class="on" data-p="story">Story</button><button data-p="visuals">Visuals</button><button data-p="check">Checks</button><button data-p="publish">Publish</button></div>
+  <div class="pane on" id="p-story">
+    <div class="f"><label>Section</label><select><option>Matchup notes</option><option>Usage &amp; role</option><option>What changed</option><option>How they win</option><option>What to watch</option></select></div>
+    <div class="f"><label>Headline</label><input value="Why the Phillies bullpen looks different in September"><div class="cnt ok">56 characters · good for search (under 60)</div></div>
+    <div class="f"><label>Dek (the line under the headline)</label><textarea rows="2">Three arms changed their sinker shape this year. Here is what the pitches have done since.</textarea><div class="cnt ok">89 / 160</div></div>
+    <div class="f"><label>Slug</label><input value="phillies-bullpen-september"><div class="cnt">/articles/phillies-bullpen-september</div></div>
+    <div class="f"><label>Teams</label><div class="chips"><span class="chip on">PHI</span><span class="chip">ATL</span><span class="chip">NYM</span><span class="chip">+ all 30</span></div></div>
+    <div class="f"><label>Subject player</label><input placeholder="Search a player by name" value="Bryce Harper"><div class="note">Shows the live percentile strip in the article sidebar.</div></div>
+    <div class="f"><label>Byline</label><select><option>George Comerford</option></select></div>
+  </div>
+  <div class="pane" id="p-visuals">
+    <div class="drop"><b>Drop, paste or click to upload</b><br>PNG, JPG, WebP. Resized and compressed for you.</div>
+    <div class="f"><label>Find a headshot or logo</label><input placeholder="Player or team name"></div>
+    <div class="f"><label>Aspect ratio</label><div class="chips"><span class="chip on">16:9</span><span class="chip">4:3</span><span class="chip">1:1</span><span class="chip">4:5</span><span class="chip">Free</span></div></div>
+    <div class="f"><label>Focal point</label><div class="note" style="margin:0">Click the image to choose what stays in frame when it is cropped for phone, card and share image.</div></div>
+    <div class="f"><label>Library (your past uploads)</label><div class="lib"><div>img</div><div>img</div><div>img</div><div>img</div><div>img</div><div>img</div></div></div>
+    <div class="f"><label>Chart</label><button class="btn" style="width:100%">Open chart picker</button></div>
+  </div>
+  <div class="pane" id="p-check">
+    <div class="check warn"><i>!</i>1 image has no alt text</div>
+    <div class="check ok"><i>✓</i>Headline under 60 characters</div>
+    <div class="check ok"><i>✓</i>Hero image set (1600 px wide)</div>
+    <div class="check warn"><i>!</i>Banned word found: "decides" in paragraph 4 <button class="pill" style="margin-left:auto">Show</button></div>
+    <div class="check ok"><i>✓</i>Every number has its sample beside it</div>
+    <div class="check ok"><i>✓</i>No betting or prediction language</div>
+    <div class="check warn"><i>!</i>Source line missing at the end</div>
+    <div class="note">Runs the same list the site uses (copy-lint), as you type. Publishing is blocked while a banned word remains.</div>
+  </div>
+  <div class="pane" id="p-publish">
+    <div class="f"><label>Status</label><div class="chips"><span class="chip on">Draft</span><span class="chip">In review</span><span class="chip">Scheduled</span><span class="chip">Published</span></div></div>
+    <div class="f"><label>Publish</label><div class="chips"><span class="chip on">Now</span><span class="chip">Schedule…</span></div><input type="datetime-local" style="margin-top:8px"></div>
+    <div class="f"><label>Share preview (X)</label><div class="share"><div class="im"></div><div><b>Why the Phillies bullpen looks different in September</b>xlab9.com · Three arms changed their sinker shape…</div></div><div class="note">Image auto-made from the hero, with the x9Lab mark.</div></div>
+    <div class="f"><label>Search description</label><textarea rows="2">Three Phillies relievers changed their sinker shape this year. What those pitches have done since.</textarea><div class="cnt ok">99 / 155</div></div>
+    <div class="f"><label>Preview link</label><button class="btn" style="width:100%">Copy private preview link</button></div>
+    <div class="f"><label>History</label><div class="note" style="margin:0">12:41 autosaved · 12:20 autosaved · 11:58 Created. Restore any version.</div></div>
+  </div>
+</aside>
+</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)]
+$$('#tabs button').forEach(b=>b.onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p))})
+$$('#layouts .lay').forEach(b=>b.onclick=()=>{$$('#layouts .lay').forEach(x=>x.classList.toggle('on',x===b));const l=b.dataset.l,p=$('#page');p.classList.toggle('feature',l==='feature');p.classList.toggle('wide',l==='data');$('#hero').style.display=l==='quick'?'none':''})
+$$('[data-dev]').forEach(b=>b.onclick=()=>{$$('[data-dev]').forEach(x=>x.classList.toggle('on',x===b));document.body.classList.toggle('dev-m',b.dataset.dev==='m')})
+$('#plus').onclick=()=>$('#slash').classList.toggle('open')
+$$('.tools button').forEach(b=>b.onclick=()=>{const k=$('.blk');if(['Inline','Wide','Full'].includes(b.textContent)){const blk=b.closest('.blk');blk.classList.remove('w-wide','w-full');if(b.textContent==='Wide')blk.classList.add('w-wide');if(b.textContent==='Full')blk.classList.add('w-full')}})
+</script></body></html>

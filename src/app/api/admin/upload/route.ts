@@ -2,13 +2,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 const BUCKET = 'article-images';
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB — plenty for a chart PNG, keeps abuse limited
 
 export async function POST(req: NextRequest) {
-  // TODO: same auth gap as /api/admin/articles — wire to match your /admin
-  // auth pattern once confirmed.
+  if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   const formData = await req.formData();
   const file = formData.get('file');

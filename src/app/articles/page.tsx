@@ -34,6 +34,7 @@ async function getAllPublishedArticles(): Promise<ArticleListItem[]> {
     .from('articles')
     .select('id, title, slug, excerpt, hero_image, team_tags, author, published_at')
     .eq('status', 'published')
+    .lte('published_at', new Date().toISOString()) // a future time means scheduled, not live yet
     .order('published_at', { ascending: false })
     .limit(50); // simple cap — swap for real pagination once volume warrants it
 

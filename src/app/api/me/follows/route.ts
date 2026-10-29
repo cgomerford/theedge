@@ -4,7 +4,7 @@ import { getPlayerFollows } from '@/lib/follows'
 import { findTeamBySlug } from '@/lib/teams'
 import { getMLBTeamNextGame } from '@/lib/mlb-homepage'
 import { initialsOf } from '@/components/ui/InitialsChip'
-import { headshotUrl } from '@/lib/mlb-assets'
+import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import { teamLogoUrl } from '@/lib/mlb'
 
 // Private: who the signed-in person follows (up to 6 players and teams) with each one's next game.
@@ -48,7 +48,7 @@ export async function GET() {
     kind: 'team' as const, name: t.short, chip: t.abbrev, img: teamLogoUrl(t.id), href: `/mlb/teams/${t.slug}`, next: await nextText(t.id),
   }))
   const playerItems: Promise<Item>[] = players.slice(0, 6).map(async p => ({
-    kind: 'player' as const, name: p.player_name, chip: initialsOf(p.player_name), img: headshotUrl(p.player_id, 80), href: `/mlb/players/${p.player_id}`, next: await nextText(await playerTeamId(p.player_id)),
+    kind: 'player' as const, name: p.player_name, chip: initialsOf(p.player_name), img: headshotCutoutUrl(p.player_id, 160), href: `/mlb/players/${p.player_id}`, next: await nextText(await playerTeamId(p.player_id)),
   }))
   const items = (await Promise.all([...teamItems, ...playerItems])).slice(0, 6)
   return NextResponse.json({ signedIn: true, items }, { headers: NO_STORE })

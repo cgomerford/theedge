@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-30): two SQL files for the new article writer and graphics studio
+
+Both tools are built and need one table change each before they can save. Supabase, SQL Editor, New query, paste, Run:
+
+1. `supabase/migrations/20261030200000_articles_writer.sql`: adds dek, section, layout and search description to articles, and a revision history table. Until it is run, the article writer cannot save.
+2. `supabase/migrations/20261030210000_graphics_library.sql`: one new table for saved graphics. Until it is run, "Save to library" says the table is not set up; everything else in the studio works.
+
+---
+
 ## NEW (2026-10-29): My x9Lab dashboard, one SQL file so the Statcast percentiles fill in
 
 The new `/me` dashboard is built. Everything works today except the Statcast percentile bars on each player card, which say "Percentiles pending" until this table exists.
