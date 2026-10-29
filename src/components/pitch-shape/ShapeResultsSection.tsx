@@ -135,7 +135,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
         : placeRate == null ? <p style={{ fontSize: 14, color: '#5b5347' }}>This area has too few league swings to compare anyone against. Choose a coloured square.</p>
         : (
           <>
-            {!locLoaded && <div style={{ background: '#FFF7CC', border: '1px solid #FDE047', borderRadius: R, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>Location and contact-result numbers load with the next data refresh. Until then each pitcher shows whiffs, contact quality, movement spread and calls.</div>}
+            {!locLoaded && <div style={{ background: '#FFF7CC', border: '1px solid #FDE047', borderRadius: R, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>Location and contact-result numbers load with the next data refresh. Until then each pitcher shows whiffs, contact quality, how much the movement varies, and calls.</div>}
             <div className="pf2-vs" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, alignItems: 'start' }}>
               <style>{'@media(max-width:900px){.pf2-vs{grid-template-columns:1fr !important}}'}</style>
               <div>
