@@ -96,3 +96,7 @@ fetch	src/components/admin/article-writer/extensions.tsx
 logos	src/components/admin/article-writer/Panels.tsx
 logos	src/components/admin/article-writer/extensions.tsx
 logos	src/components/ArticleRenderer.tsx
+fetch	src/components/graphics/creator/GraphicCreator.tsx
+logos	src/components/graphics/creator/GraphicCreator.tsx
+logos	src/components/graphics/creator/CanvasView.tsx
+logos	src/lib/graphics/creator.ts

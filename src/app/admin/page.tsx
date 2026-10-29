@@ -18,7 +18,8 @@ const SECTIONS: { title: string; note: string; tools: Tool[] }[] = [
     note: 'Daily output for X and the site',
     tools: [
       { href: '/admin/dashboard', title: 'Dashboard', tag: 'Daily', blurb: 'Game preview teaser video, pitcher, batter and post-game reels, player stat line graphic, scout report graphic, bracket and in-game X cards.' },
-      { href: '/admin/graphics', title: 'Graphic Blocks', tag: 'New', blurb: 'Six graphic templates with logos and headshots. Auto-fill from a game or type the numbers, then download a PNG at 1200x675 or 1080x1350.' },
+      { href: '/admin/creator', title: 'Graphic Creator', tag: 'New', blurb: 'A free canvas: choose a layout or a blank page, place text, stats, bars, headshots, team logos and pictures, drag and resize, and download in landscape, portrait, square or story size.' },
+      { href: '/admin/graphics', title: 'Graphic Blocks', blurb: 'Fixed templates filled from the game data (head to head, attack map, catchers and running, arsenal). Auto-fill from a game or type the numbers, then download a PNG at 1200x675 or 1080x1350.' },
       { href: '/admin/story-v5', title: 'Story v5', tag: 'Video', blurb: 'Animated game preview video: choose a game, select and reorder the slides, edit the text, then render a 1080x1350 MP4 and contact sheet.' },
       { href: '/admin/articles', title: 'Articles', blurb: 'Article drafts and published pieces. Drafts are created first and published as a separate step.' },
       { href: '/admin/articles/new', title: 'New article', blurb: 'Open the article editor with a blank draft.' },
