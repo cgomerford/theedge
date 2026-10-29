@@ -86,3 +86,4 @@ fetch	src/components/sequencing-lab/GamePlanAfter.tsx
 fetch	src/components/sequencing-lab/GamePlanCells.tsx
 fetch	src/components/PlayerSearch.tsx
 logos	src/components/PlayerSearch.tsx
+fetch	src/lib/mlb-offseason.ts

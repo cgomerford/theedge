@@ -55,11 +55,17 @@ export async function getSeasonState(date = etDate()): Promise<SeasonState> {
   const types: string[] = (today?.dates?.[0]?.games ?? []).map((g: any) => g.gameType)
   if (types.some(t => ['F', 'D', 'L', 'W'].includes(t))) state = 'postseason'
   else if (types.includes('R') && state !== 'regular') state = 'regular'
+  // The scheduled end of the postseason is a deadline, not the finish: once every World Series game on the schedule is Final and none is still to come, the season is over.
+  if (state === 'postseason' && types.length === 0) {
+    const ws = await getJson(`${API}/schedule?sportId=1&startDate=${addDays(date, -10)}&endDate=${addDays(date, 10)}&gameType=W`, 'getSeasonState world series')
+    const wsGames: any[] = (ws?.dates ?? []).flatMap((d: any) => d.games)
+    if (wsGames.length > 0 && wsGames.every(g => g.status?.abstractGameState === 'Final')) state = 'offseason'
+  }
 
   let nextStart: string | null = null
   let lastFinal: SeasonState['lastFinal'] = null
   if (state === 'offseason' || state === 'preseason') {
-    const nextYear = state === 'offseason' && postEnd && date > postEnd ? year + 1 : year
+    const nextYear = state === 'offseason' && regEnd && date > regEnd ? year + 1 : year
     nextStart = (await getJson(`${API}/seasons/${nextYear}?sportId=1`, 'getSeasonState next'))?.seasons?.[0]?.regularSeasonStartDate ?? null
     const back = await getJson(`${API}/schedule?sportId=1&startDate=${addDays(date, -60)}&endDate=${date}&hydrate=team`, 'getSeasonState lastFinal')
     const games = (back?.dates ?? []).flatMap((d: any) => d.games).filter((g: any) => g.status?.abstractGameState === 'Final')

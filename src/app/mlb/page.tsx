@@ -3,6 +3,7 @@
 // /mlb: the daily MLB dashboard. Top to bottom: follows row (signed in, client island) → state line + today's games as cockpit cards →
 // postseason bracket / division standings → leaders → hot this week → news → player lookup. Server output is identical for every
 // visitor and cached 5 minutes (no cookies are read here); live scores come from /api/mlb/live inside the games island.
+import { getOffseasonCalendar } from '@/lib/mlb-offseason'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
@@ -70,9 +71,10 @@ export default async function MLBPage() {
   ])
   // No games today in a live season: the next one for the state line.
   const slate = games.length === 0 && season.state !== 'offseason' ? await getHomeSlate() : null
-  const next = slate && slate.game
+  const next = slate && slate.game && slate.mode !== 'last'   // 'last' is the most recent FINAL game, never a game still to come
     ? { label: `${slate.game.teams.away.team.name} at ${slate.game.teams.home.team.name}`, startUtc: slate.game.gameDate, venue: slate.game.venue?.name ?? '' }
     : null
+  const calendar = season.state === 'offseason' || season.state === 'preseason' ? await getOffseasonCalendar(season) : []
   const playing = new Set(games.flatMap(g => [g.away.id, g.home.id]))
 
   return (
@@ -85,7 +87,7 @@ export default async function MLBPage() {
        <div className="ml-layout">
         <div style={{ minWidth: 0 }}>
         <HomeAskOrFollows>{null}</HomeAskOrFollows>
-        <div id="scout-reports" style={{ scrollMarginTop: 16 }}><GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} /></div>
+        <div id="scout-reports" style={{ scrollMarginTop: 16 }}><GamesDashboard season={season} date={date} games={games} tightest={post ? null : tightestRace(divisions, playing)} next={next} calendar={calendar} /></div>
         <BracketOrStandings season={season} bracket={bracket} divisions={divisions} />
         <Leaders season={season} groups={[{ label: 'HOME RUNS', rows: hr }, { label: 'BATTING AVERAGE', rows: avg }, { label: 'STRIKEOUTS', rows: so }]} />
         {season.state !== 'offseason' && <HotThisMonth hitters={hitters} pitchers={pitchers} week={MONTH_LABEL(date)} post={post} />}

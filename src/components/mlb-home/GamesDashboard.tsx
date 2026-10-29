@@ -1,5 +1,7 @@
 'use client'
 
+import OffseasonCalendar from './OffseasonCalendar'
+import type { CalItem } from '@/lib/mlb-offseason'
 import Link from 'next/link'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { useEffect, useMemo, useState } from 'react'
@@ -156,8 +158,9 @@ function Group({ title, games, compact, live, collapse }: { title: string; games
   )
 }
 
-export default function GamesDashboard({ season, date, games, tightest, next }: {
+export default function GamesDashboard({ season, date, games, tightest, next, calendar = [] }: {
   season: SeasonState; date: string; games: DashGame[]
+  calendar?: CalItem[]
   tightest: string | null
   next: { label: string; startUtc: string; venue: string } | null
 }) {
@@ -172,7 +175,7 @@ export default function GamesDashboard({ season, date, games, tightest, next }: 
   let sub: React.ReactNode = null
   if (season.state === 'offseason' || season.state === 'preseason') {
     const f = season.lastFinal
-    line = `Off-season${season.nextStart ? ` · ${season.year + (season.state === 'offseason' ? 1 : 0)} season starts ${new Date(`${season.nextStart}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}` : ''}`
+    line = `Off-season${season.nextStart ? ` · ${season.nextStart ? season.nextStart.slice(0, 4) : season.year + 1} season starts ${new Date(`${season.nextStart}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}` : ''}`
     if (f) sub = `Last game: ${f.away} ${f.awayScore}, ${f.home} ${f.homeScore}${f.note ? ` (${f.note})` : ''}, ${new Date(`${f.date}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}`
   } else if (games.length === 0 && next) {
     line = `No games today · next: ${next.label}`
@@ -206,6 +209,7 @@ export default function GamesDashboard({ season, date, games, tightest, next }: 
       <h1 style={{ margin: 0, fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>MLB</h1>
       <p style={{ margin: '8px 0 0', fontSize: 18, fontWeight: 700 }}>{line}</p>
       {sub && <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>{sub}</p>}
+      {(season.state === 'offseason' || season.state === 'preseason') && <OffseasonCalendar items={calendar} today={season.today} />}
       <Group title="Live" games={by('live')} compact={compact} live={live} />
       <Group title="Upcoming" games={by('upcoming')} compact={compact} live={live} />
       <Group title="Final" games={by('final')} compact={compact} live={live} collapse />
