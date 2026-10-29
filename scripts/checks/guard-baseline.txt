@@ -100,3 +100,7 @@ fetch	src/components/graphics/creator/GraphicCreator.tsx
 logos	src/components/graphics/creator/GraphicCreator.tsx
 logos	src/components/graphics/creator/CanvasView.tsx
 logos	src/lib/graphics/creator.ts
+fetch	src/components/pitch-shape/PitchFinderV2.tsx
+fetch	src/components/pitch-shape/ShapeSandboxV2.tsx
+fetch	src/components/pitch-shape/LocationPanel.tsx
+fetch	src/components/pitch-shape/SandboxClient.tsx

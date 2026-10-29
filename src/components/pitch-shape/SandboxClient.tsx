@@ -4,6 +4,7 @@
 // server component) and keeps the shape API contract in one place.
 
 import ShapeSandbox, { type LoadBins, type SearchPitchers } from './ShapeSandbox'
+import ShapeSandboxV2 from './ShapeSandboxV2'
 import type { PitcherHit, ShapeBin } from '@/lib/pitch-shape/model'
 
 const loadBins: LoadBins = async (pitchType, hand) => {
@@ -30,6 +31,7 @@ const searchPitchers: SearchPitchers = async q => {
   }
 }
 
-export default function SandboxClient({ isPro, lookLeft, pitchTypes }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[] }) {
+export default function SandboxClient({ isPro, lookLeft, pitchTypes, variant = 'classic' }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[]; variant?: 'classic' | 'new' }) {
+  if (variant === 'new') return <ShapeSandboxV2 isPro={isPro} lookLeft={lookLeft} pitchTypes={pitchTypes} loadBins={loadBins} searchPitchers={searchPitchers} />
   return <ShapeSandbox isPro={isPro} lookLeft={lookLeft} pitchTypes={pitchTypes} loadBins={loadBins} searchPitchers={searchPitchers} />
 }

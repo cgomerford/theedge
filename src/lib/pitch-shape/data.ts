@@ -401,6 +401,8 @@ export type Thrower = {
   inSpot: number; sample: number
   /** share of his sampled pitches in the window, and that share applied to all his pitches of this type (a rough count: the sample is small) */
   share: number; estPitches: number
+  /** his sampled pitches as [hb, ivb] in inches (up to 60), so the map can draw them as dots */
+  points: [number, number][]
 }
 
 const MIN_IN_SPOT = 3   // fewer than 3 of 60 sampled pitches in the window is noise, not a pitcher who throws it there
@@ -430,6 +432,7 @@ export async function getThrowers(type: string, hand: Hand, hb: number, ivb: num
       pitcherId: r.pitcher_id, name: r.pitcher_name, teamAbbr: r.team_abbr ?? '', nPitches: r.n_pitches,
       velo: Number(r.velo), ivb: Number(r.ivb), hb: Number(r.hb), slot: Number(r.slot), nSwings: r.n_swings, nWhiffs: r.n_whiffs,
       inSpot: k, sample: pts.length, share, estPitches: Math.round(share * r.n_pitches),
+      points: pts.map(p => [Math.round(p.hb * 10) / 10, Math.round(p.ivb * 10) / 10] as [number, number]),
     })
   }
   return out.sort((a, b) => b.estPitches - a.estPitches).slice(0, limit)

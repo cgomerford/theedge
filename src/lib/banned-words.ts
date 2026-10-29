@@ -22,6 +22,7 @@ export const ALLOWED: RegExp[] = [
   /pick a (?:batter|pitcher)/gi, /projected lineup, not yet confirmed/gi, /first mlb start/gi, /most recent outing/gi,
   /when recaps start/gi, /pick your teams/gi,   // George's exact wording on /me
   /add a team/gi,                               // the button wording in the My x9Lab dashboard design
+  /start here/gi, /start from a real pitcher/gi,   // George's approved wording in the Pitch Shape Lab redesign PDF
   /add to a game plan card/gi,                  // the button wording in George's approved Second Look mockup
   /swing[ -]path tilt/gi, /swing tilt/gi,   // Savant's own bat-tracking metric (swing_path_tilt), not a lean
 ]

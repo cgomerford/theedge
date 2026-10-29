@@ -184,7 +184,7 @@ const GW = 100, GH = 120                              // density grid; the canva
 const STOPS: [number, number, number, number, number][] = [   // [t, r, g, b, alpha]: sky blue, then yellow, orange, deep red
   [0, 108, 171, 221, 0], [0.08, 108, 171, 221, 0.35], [0.35, 253, 224, 71, 0.75], [0.65, 255, 87, 34, 0.9], [1, 179, 38, 30, 0.95],
 ]
-function ramp(t: number): [number, number, number, number] {
+export function ramp(t: number): [number, number, number, number] {
   for (let i = 1; i < STOPS.length; i++) {
     if (t <= STOPS[i][0]) {
       const a = STOPS[i - 1], b = STOPS[i], k = (t - a[0]) / (b[0] - a[0])
