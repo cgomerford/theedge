@@ -153,6 +153,9 @@ def build_pitch_events(df: pd.DataFrame) -> list[dict]:
             "stand": _side(r, "stand"), "p_throws": _side(r, "p_throws"),
             "balls": _int(r, "balls"), "strikes": _int(r, "strikes"), "outs_when_up": _int(r, "outs_when_up"), "inning": _int(r, "inning"),
             "estimated_woba": _num(r, "estimated_woba_using_speedangle", 3), "woba_value": _num(r, "woba_value", 3), "woba_denom": _int(r, "woba_denom"),
+            # Battery columns (supabase/migrations/20261030150000): catcher = Statcast fielder_2; on_1b/2b/3b are runner ids (blank = base empty).
+            "catcher_id": _int(r, "fielder_2"), "on_1b": _int(r, "on_1b"), "on_2b": _int(r, "on_2b"), "on_3b": _int(r, "on_3b"),
+            "delta_run_exp": _num(r, "delta_run_exp", 3), "times_through_order": _int(r, "n_thruorder_pitcher"),
         })
     return rows
 
