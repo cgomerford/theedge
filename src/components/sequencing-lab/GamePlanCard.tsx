@@ -201,7 +201,8 @@ export default function GamePlanCard({ card, others }: { card: Card; others: { p
           <span>{card.starter.name} vs {card.batting.abbr ?? card.batting.name} · {dateOf(m.date)}</span>
           <span><span style={{ color: '#FF5722' }}>x9</span>LAB · What has happened, not a forecast</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+        <style>{`.gp-band{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}@media (max-width:700px){.gp-band{grid-template-columns:minmax(0,1fr)}}`}</style>
+        <div className="gp-band">
           {card.hitters.map(h => (
             <div key={h.id} style={{ border: '1px solid #4a463d', padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}><span style={{ fontSize: 34, fontWeight: 800, color: '#FDE047', lineHeight: 1 }}>{h.slot}</span><b style={{ fontSize: 14, color: '#FDE047' }}>{h.bats ?? '?'}</b><span style={{ marginLeft: 4, color: '#cfc9ba', fontSize: 11 }}>{h.name}</span></div>
