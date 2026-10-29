@@ -43,7 +43,7 @@ BALLS = {'ball', 'blocked_ball'}
 TAKEN = BALLS | {'called_strike'}
 USECOLS = ['pitch_type', 'p_throws', 'release_speed', 'pfx_x', 'pfx_z', 'arm_angle', 'description', 'estimated_woba_using_speedangle',
            'pitcher', 'player_name', 'game_date', 'balls', 'strikes', 'stand', 'inning_topbot', 'home_team', 'away_team',
-           'zone', 'game_pk', 'at_bat_number', 'pitch_number']
+           'zone', 'woba_value', 'game_pk', 'at_bat_number', 'pitch_number']
 URL = ('https://baseballsavant.mlb.com/statcast_search/csv?all=true&type=details&hfGT=R%7C'
        '&game_date_gt={d}&game_date_lt={d}&player_type=pitcher')
 MONTHS = {3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov'}
@@ -111,6 +111,14 @@ def prep(df: pd.DataFrame) -> pd.DataFrame:
         'miss': (desc.isin(BALLS) & (df['zone'] <= 9)).astype(int),
         'called': (desc == 'called_strike').astype(int),
         'prev_type': df['prev_type'], 'dv': df['prev_speed'] - df['release_speed'],
+        # location and contact results (see supabase/migrations/20261031100000_pitch_shape_pitcher_diagnostics.sql)
+        'loc': df['zone'].notna().astype(int),
+        'in_zone': ((df['zone'] >= 1) & (df['zone'] <= 9)).astype(int),
+        'heart': (df['zone'] == 5).astype(int),
+        'ooz': (df['zone'] >= 11).astype(int),
+        'chase': ((df['zone'] >= 11) & desc.isin(SWING)).astype(int),
+        'bbe_w': (bbe & df['woba_value'].notna()).astype(int),
+        'woba_con': df['woba_value'].where(bbe & df['woba_value'].notna(), 0).fillna(0),
     })
 
 
@@ -151,6 +159,10 @@ def build(df: pd.DataFrame, now_iso: str) -> list[dict]:
             'sd_hb': round(float(g['hb'].std(ddof=0)), 2), 'sd_ivb': round(float(g['ivb'].std(ddof=0)), 2),
             'n_swings': int(g['swing'].sum()), 'n_whiffs': int(g['whiff'].sum()),
             'n_taken': int(g['taken'].sum()), 'n_gift': int(g['gift'].sum()), 'n_miss': int(g['miss'].sum()), 'setup': setup,
+            'n_loc': int(g['loc'].sum()), 'n_zone': int(g['in_zone'].sum()), 'n_heart': int(g['heart'].sum()),
+            'n_ooz': int(g['ooz'].sum()), 'n_chase': int(g['chase'].sum()),
+            'n_bbe': int(g['bbe'].sum()), 'xwoba_con_sum': round(float(g['xw'].sum()), 4),
+            'n_bbe_w': int(g['bbe_w'].sum()), 'woba_con_sum': round(float(g['woba_con'].sum()), 4),
             'points': [{'hb': round(float(h), 1), 'ivb': round(float(i), 1)} for h, i in zip(pts['hb'], pts['ivb'])],
             'counts': counts, 'batter_sides': sides, 'monthly': monthly, 'updated_at': now_iso,
         })

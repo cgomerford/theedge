@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
-import { getThrowers } from '@/lib/pitch-shape/data'
+import { getThrowersDetailed } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
 
 export async function GET(req: NextRequest) {
@@ -21,6 +21,6 @@ export async function GET(req: NextRequest) {
   if (!(FREE_SANDBOX_TYPES as readonly string[]).includes(type) && !(await isProViewer())) {
     return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   }
-  const throwers = await getThrowers(type, hand as Hand, hb, ivb, radius, season)
-  return NextResponse.json({ throwers })
+  const { throwers, league } = await getThrowersDetailed(type, hand as Hand, hb, ivb, radius, season)
+  return NextResponse.json({ throwers, league })
 }

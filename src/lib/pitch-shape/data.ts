@@ -15,6 +15,7 @@
 //   coord_era  = LEAGUE_COORD_ERA (rows from other tracking eras are never pooled with these)
 
 import { createAdminClient } from '@/lib/supabase'
+import { diagOf, leagueOf, type Diag, type DiagRow } from './diagnostics'
 import { MLB_TEAMS } from '@/lib/teams'
 import { aggregateSeason } from './aggregate'
 import { FIELD, MIN_COMPARE_PITCHES, pickField, shapeDistance, type ComparePitcher, type SetupRow } from './compare'
@@ -403,6 +404,8 @@ export type Thrower = {
   share: number; estPitches: number
   /** his sampled pitches as [hb, ivb] in inches (up to 60), so the map can draw them as dots */
   points: [number, number][]
+  /** location, calls, repeatability and contact numbers for the ahead / behind section (null where the data is not loaded yet) */
+  diag: Diag
 }
 
 const MIN_IN_SPOT = 3   // fewer than 3 of 60 sampled pitches in the window is noise, not a pitcher who throws it there
@@ -412,17 +415,33 @@ const MIN_IN_SPOT = 3   // fewer than 3 of 60 sampled pitches in the window is n
  * up to 60 of each pitcher's pitches kept in pitch_shape_pitcher (min 300 pitches of the type that season). Most in the
  * spot first. [] on error / none. The sample is random, so shares are approximate.
  */
+const THROWER_BASE_COLS = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,points,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
+const THROWER_DIAG_COLS = ',n_loc,n_zone,n_heart,n_ooz,n_chase,n_bbe,xwoba_con_sum,n_bbe_w,woba_con_sum'
+
+export type ThrowersResult = { throwers: Thrower[]; /** the same figures pooled over every pitcher of this pitch type, hand and season */ league: Diag }
+
 export async function getThrowers(type: string, hand: Hand, hb: number, ivb: number, radius: number, season: number, limit = 40): Promise<Thrower[]> {
+  return (await getThrowersDetailed(type, hand, hb, ivb, radius, season, limit)).throwers
+}
+
+/**
+ * Same as getThrowers, plus each pitcher's diagnostics and the league figures to set them against. The diagnostic columns come from
+ * supabase/migrations/20261031100000_pitch_shape_pitcher_diagnostics.sql; until that is applied the select without them is used, so nothing else breaks.
+ */
+export async function getThrowersDetailed(type: string, hand: Hand, hb: number, ivb: number, radius: number, season: number, limit = 40): Promise<ThrowersResult> {
   const supa = createAdminClient()
-  const { data, error } = await supa
+  const ask = (cols: string) => supa
     .from('pitch_shape_pitcher')
-    .select('pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,points')
+    .select(cols)
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES)
     .limit(1000)
-  if (error) { console.error('[getThrowers] Supabase error:', error.message); return [] }
-  type Row = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number; points: { hb: number; ivb: number }[] | null }
+  let { data, error } = await ask(THROWER_BASE_COLS + THROWER_DIAG_COLS)
+  if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(THROWER_BASE_COLS))
+  if (error) { console.error('[getThrowers] Supabase error:', error.message); return { throwers: [], league: leagueOf([]) } }
+  type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number; points: { hb: number; ivb: number }[] | null }
+  const rows = (data ?? []) as unknown as Row[]
   const out: Thrower[] = []
-  for (const r of (data ?? []) as unknown as Row[]) {
+  for (const r of rows) {
     const pts = r.points ?? []
     if (pts.length === 0) continue
     const k = pts.filter(p => Math.abs(p.hb - hb) <= radius && Math.abs(p.ivb - ivb) <= radius).length
@@ -433,9 +452,10 @@ export async function getThrowers(type: string, hand: Hand, hb: number, ivb: num
       velo: Number(r.velo), ivb: Number(r.ivb), hb: Number(r.hb), slot: Number(r.slot), nSwings: r.n_swings, nWhiffs: r.n_whiffs,
       inSpot: k, sample: pts.length, share, estPitches: Math.round(share * r.n_pitches),
       points: pts.map(p => [Math.round(p.hb * 10) / 10, Math.round(p.ivb * 10) / 10] as [number, number]),
+      diag: diagOf(r),
     })
   }
-  return out.sort((a, b) => b.estPitches - a.estPitches).slice(0, limit)
+  return { throwers: out.sort((a, b) => b.estPitches - a.estPitches).slice(0, limit), league: leagueOf(rows) }
 }
 
 /** The Shape tab's payload for one pitcher. null = no shape rows for him (empty state). */

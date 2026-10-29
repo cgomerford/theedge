@@ -21,6 +21,8 @@ import type { MovementCellsPayload, Thrower as ApiThrower } from '@/lib/pitch-sh
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand, type PitcherHit } from '@/lib/pitch-shape/model'
 import { PV_CSS } from './pvCss'
 import LocationPanel from './LocationPanel'
+import ShapeResultsSection, { type ResultRow } from './ShapeResultsSection'
+import type { Diag } from '@/lib/pitch-shape/diagnostics'
 import { FlightPlayer, SpeedToggle } from '@/components/pitching-lab/PitchFlight'
 import { buildFlight } from '@/lib/sequencing-lab/flight'
 import { makeGrid, stats, type Grid, type Span } from './heatGrid'
@@ -72,6 +74,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [place, setPlace] = useState<Place | null>(null)
   const [hover, setHover] = useState<{ hb: number; ivb: number; x: number; y: number } | null>(null)
   const [throwers, setThrowers] = useState<ApiThrower[] | null | undefined>(null)
+  const [league, setLeague] = useState<Diag | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<PitcherHit[]>([])
@@ -123,7 +126,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     let live = true
     fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${place.hb.toFixed(1)}&ivb=${place.ivb.toFixed(1)}&radius=${radius}&season=${latest}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j: { throwers: ApiThrower[] }) => { if (live) setThrowers(j.throwers) })
+      .then((j: { throwers: ApiThrower[]; league?: Diag }) => { if (live) { setThrowers(j.throwers); setLeague(j.league ?? null) } })
       .catch(e => { console.error('[PitchFinderV2] throwers fetch failed:', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
     return () => { live = false }
   }, [place, payload, type, hand, latest, locked, radius])
@@ -156,8 +159,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const tone = diffPts != null ? toneOf(diffPts) : null
   const spotName = place && ms ? nameSpot(type, name, place.hb, place.ivb, ms) : null
 
-  const rated: Rated[] = useMemo(() => (throwers ? rateThrowers(throwers, placeRate) : []), [throwers, placeRate])
+  const rated: ResultRow[] = useMemo(() => (throwers ? rateThrowers(throwers, placeRate).map(r => ({ ...r, diag: throwers.find(t => t.pitcherId === r.pitcherId)!.diag })) : []), [throwers, placeRate])
   const split = useMemo(() => splitThrowers(rated), [rated])
+  const showOnMap = (id: number) => { setFocus(f => (f === id ? null : id)); if (typeof document !== 'undefined') document.getElementById('pf2-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
   const focusT = focus != null && throwers ? throwers.find(t => t.pitcherId === focus) ?? null : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
   const flightSpeed = useMemo(() => {
@@ -200,37 +204,6 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const toBox = (hb: number, ivb: number) => (grid ? { x: hb * 10 - (grid.gx0 + grid.m10) + 0.5, y: N - (ivb * 10 - (grid.gy0 + grid.m10) + 0.5) } : { x: 0, y: 0 })
   const barPos = (v: number) => Math.max(0, Math.min(100, ((v - 0.05) / 0.35) * 100))
   const hbToPct = (v: number) => (payload ? ((v - (payload.hb0 - HALF)) / (2 * HALF)) * 100 : 0)
-
-  const pitcherRow = (t: Rated) => {
-    const dot = t.verdict === 'ahead' ? C.orange : t.verdict === 'behind' ? '#5E7A99' : '#fff'
-    return (
-      <div key={t.pitcherId} style={{ padding: '10px 0', borderTop: `1px solid ${C.soft}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <Link href={`/mlb/players/${t.pitcherId}`} style={{ fontWeight: 800, fontSize: 14.5, color: ORANGE_TEXT, textDecoration: 'none' }}>{t.name} · {t.teamAbbr}</Link>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: C.ink }}>{t.gapPts != null ? pts(t.gapPts) : ''}</span>
-            <button type="button" aria-pressed={focus === t.pitcherId} onClick={() => setFocus(focus === t.pitcherId ? null : t.pitcherId)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${focus === t.pitcherId ? C.ink : C.line}`, background: focus === t.pitcherId ? C.ink : '#fff', color: focus === t.pitcherId ? '#fff' : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{focus === t.pitcherId ? 'Hide from map' : 'Show on map'}</button>
-          </span>
-        </div>
-        <div style={{ position: 'relative', height: 8, background: C.soft, borderRadius: 4, margin: '12px 0 6px' }} aria-hidden>
-          {placeRate != null && <span style={{ position: 'absolute', left: `${barPos(placeRate)}%`, top: -5, width: 2, height: 18, background: C.ink }} />}
-          {t.own != null && <span style={{ position: 'absolute', left: `${barPos(t.own)}%`, top: -6, width: 18, height: 18, marginLeft: -9, borderRadius: '50%', border: `2px solid ${C.ink}`, background: dot }} />}
-        </div>
-        <div style={{ fontSize: 12.5, color: '#5b5347' }}>
-          His whiffs per swing <b style={{ color: C.ink }}>{pctText(t.own)}</b> ({t.nSwings.toLocaleString()} swings) · the line is this shape’s {pctText(placeRate)} · about {t.estPitches.toLocaleString()} of his {t.nPitches.toLocaleString()} {lc}s land here
-        </div>
-      </div>
-    )
-  }
-  const group = (title: string, blurb: string, list: Rated[], tint: string) => list.length === 0 ? null : (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 3, background: tint, color: tint === '#1A1A1A' ? GOLD.fill : C.ink }}>{title}</span>
-        <span style={{ fontSize: 12.5, color: '#5b5347', flex: 1, minWidth: 200 }}>{blurb}</span>
-      </div>
-      {(showAll ? list : list.slice(0, 3)).map(pitcherRow)}
-    </div>
-  )
 
   return (
     <div className="pf2-root">
@@ -303,7 +276,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               <div style={{ position: 'relative' }}>
                 {yticks.map(v => <span key={v} style={{ position: 'absolute', right: 4, top: `${((payload.ivb0 + HALF - v) / (2 * HALF)) * 100}%`, transform: 'translateY(-50%)', fontSize: 10.5, color: C.mute }}>{v}</span>)}
               </div>
-              <div style={{ position: 'relative', aspectRatio: '1 / 1', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden', cursor: 'crosshair', background: '#EDE8DC' }}
+              <div id="pf2-map" style={{ position: 'relative', aspectRatio: '1 / 1', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden', cursor: 'crosshair', background: '#EDE8DC' }}
                 onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); setHover({ hb: payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb: payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF, x: e.clientX - r.left, y: e.clientY - r.top }) }}
                 onMouseLeave={() => setHover(null)}
                 onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setShowAll(false); setPlace({ hb: Math.round((payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF) * 10) / 10, ivb: Math.round((payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF) * 10) / 10, spot: null }) }}>
@@ -383,7 +356,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             {shown && (
               <div style={{ fontSize: 13.5, color: '#3a352c', marginTop: 8, lineHeight: 1.5 }}>
                 <b>{shown.name}</b> ({shown.team}) · his average {lc}: {shown.velo.toFixed(1)} mph, {shown.ivb.toFixed(1)} in of ride, {shown.hb.toFixed(1)} in of run (the ring on the map).{' '}
-                {shownStats?.rate != null ? <>The ring is his average movement. Across the league, {lc}s that move like his get {(shownStats.rate * 100).toFixed(1)}% misses per swing ({pts((shownStats.rate - leagueRate) * 100)} vs average). The dashed box is the area you chose, so compare where the ring sits with it. To see his individual pitches as dots, find him in “Who throws this shape” and choose Show on map.</> : 'Too few league swings at his shape to give a rate.'}
+                {shownStats?.rate != null ? <>The ring is his average movement. Across the league, {lc}s that move like his get {(shownStats.rate * 100).toFixed(1)}% misses per swing ({pts((shownStats.rate - leagueRate) * 100)} vs average). The dashed box is the area you chose, so compare where the ring sits with it. To see his individual pitches as dots, find him in the “Ahead or behind the shape” section below and choose Show on map.</> : 'Too few league swings at his shape to give a rate.'}
               </div>
             )}
           </div>
@@ -413,33 +386,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13.5, fontWeight: 700 }}>
                   <span>Ride {place.ivb.toFixed(1)} in</span><span>Run {place.hb.toFixed(1)} in</span><span>{placeStats.swings.toLocaleString()} swings within ±{radius} in</span>
                 </div>
+                <a href="#shape-vs-results" style={{ display: 'block', marginTop: 10, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, textDecoration: 'none', minHeight: 32 }}>Who gets more or less than this shape ↓</a>
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? C.ink : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? GOLD.fill : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
-
-            {place && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                  <h3 style={{ margin: 0, fontSize: 19, fontWeight: 800, letterSpacing: '-.01em' }}>Who throws this shape</h3>
-                  <span style={{ fontSize: 12.5, color: '#5b5347' }}>{latest} · each pitcher against what this shape usually gets</span>
-                </div>
-                {throwers === undefined ? <div style={{ padding: 16, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
-                  : rated.length === 0 ? <p style={{ fontSize: 13.5, color: '#5b5347' }}>No {hand === 'L' ? 'left' : 'right'}-handed pitcher with 300+ {lc}s threw enough of them into this area in {latest} (3 or more of his sampled pitches). Try another spot.</p>
-                  : placeRate == null ? <p style={{ fontSize: 13.5, color: '#5b5347' }}>This area has too few league swings to compare anyone against. Choose a coloured square.</p>
-                  : (
-                    <>
-                      {group('GETTING MORE THAN THE SHAPE', 'They throw this shape and get more misses than it usually does. Something beyond movement is helping them (location, deception, or what they throw alongside it). The map can’t say which.', split.ahead, C.ink)}
-                      {group('ABOUT LEVEL', `Within ${ABOUT_LEVEL_PTS} points of the shape's rate: the shape is doing what it usually does.`, split.level, C.soft)}
-                      {group('GETTING LESS THAN THE SHAPE', 'They throw this shape but get fewer misses than it usually does. The shape is not what is holding them back; something else is (command, where it is thrown, or what hitters have seen before it). The map can’t say which.', split.behind, '#E3EAF2')}
-                      {(split.ahead.length + split.level.length + split.behind.length > 6 || showAll) && (split.ahead.length > 3 || split.level.length > 3 || split.behind.length > 3) && (
-                        <button type="button" onClick={() => setShowAll(v => !v)} style={{ marginTop: 10, minHeight: 44, background: 'none', border: 0, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{showAll ? 'Show fewer' : 'See every pitcher near this spot →'}</button>
-                      )}
-                      {split.unknown.length > 0 && <div style={{ fontSize: 12, color: C.mute, marginTop: 8 }}>{split.unknown.length} more {split.unknown.length === 1 ? 'pitcher throws' : 'pitchers throw'} this shape but {split.unknown.length === 1 ? 'has' : 'have'} under {MIN_OWN_SWINGS} swings of {split.unknown.length === 1 ? 'his' : 'their'} own, too few to compare.</div>}
-                    </>
-                  )}
-                <Foot>{latest} regular season, pitchers with 300+ {lc}s. “Land here” uses up to 60 sampled pitches per pitcher, so counts are approximate. A pitcher’s own rate needs {MIN_OWN_SWINGS}+ swings; “about level” is within {ABOUT_LEVEL_PTS} points. This describes results so far and does not say why.</Foot>
-              </div>
-            )}
 
             {place && (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }}>
@@ -465,6 +415,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             )}
           </div>
         </div>
+      )}
+
+      {!locked && payload && grid && place && (
+        throwers === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
+          : league ? <ShapeResultsSection split={split} league={league} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} shownId={focus} />
+          : null
       )}
 
       <div className="pf2-foot" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 24, borderTop: `2px solid ${C.ink}`, marginTop: 26, paddingTop: 14, fontSize: 13.5, lineHeight: 1.55, color: '#5b5347' }}>

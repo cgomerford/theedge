@@ -4,6 +4,8 @@
 // place is read, and how each pitcher who throws there is tagged. No React, no fetching, so every rule is tested. Descriptions of what pitches
 // shaped like this have produced; never a forecast.
 
+import type { Diag } from '@/lib/pitch-shape/diagnostics'
+
 /** a map box shows a rate only when its window holds at least this many swings (below it the box is blank) */
 export const MIN_WINDOW_SWINGS = 40
 /** boxes between MIN_WINDOW_SWINGS and this are drawn faded: a thinner sample */
@@ -110,4 +112,65 @@ export function splitThrowers(rated: Rated[]) {
     behind: by('behind').sort((a, b) => (a.gapPts ?? 0) - (b.gapPts ?? 0)),
     unknown: rated.filter(r => r.verdict == null),
   }
+}
+
+// ---- reading the numbers behind a pitcher who is ahead of or behind the shape -----------------------------------------------------------------------
+
+
+/** zone%, down-the-middle% and chase% differ from the league by at least this many points to be worth a mention */
+export const LOCATION_GAP_PTS = 3
+/** his movement varies this many times more (or less) from pitch to pitch than the league's */
+export const SPREAD_RATIO = 1.25
+/** wOBA on contact minus xwOBA on contact: how far results sit from the quality of contact (defense and luck) */
+export const CONTACT_GAP = 0.03
+/** samples a figure needs before it can be called out */
+export const MIN_LOC_FOR_CLUE = 200, MIN_OOZ_FOR_CLUE = 100, MIN_BBE_FOR_CLUE = 60
+
+export type Clue = { id: 'zone' | 'heart' | 'chase' | 'spread' | 'contact'; kind: 'location' | 'contact' | 'movement'; text: string }
+
+const p1 = (x: number) => `${(x * 100).toFixed(0)}%`
+const w3 = (x: number) => x.toFixed(3).replace(/^0/, '')
+
+/**
+ * What in a pitcher's numbers could explain why he is behind (or ahead of) the shape. Only rates with a real sample and a real gap are named; nothing is
+ * inferred from a missing figure. These are clues, not causes: the wording says "may" and "suggests".
+ */
+export function diagnose(verdict: 'ahead' | 'level' | 'behind' | null, d: Diag, lg: Diag, pitchName: string): Clue[] {
+  if (verdict !== 'ahead' && verdict !== 'behind') return []
+  const behind = verdict === 'behind'
+  const lc = pitchName.toLowerCase()
+  const out: Clue[] = []
+  const gapPts = (a: number | null, b: number | null) => (a == null || b == null ? null : (a - b) * 100)
+
+  const z = gapPts(d.zonePct, lg.zonePct)
+  if (z != null && d.nLoc >= MIN_LOC_FOR_CLUE && (behind ? z <= -LOCATION_GAP_PTS : z >= LOCATION_GAP_PTS))
+    out.push({ id: 'zone', kind: 'location', text: behind
+      ? `Throws fewer ${lc}s in the strike zone than most (${p1(d.zonePct!)} vs ${p1(lg.zonePct!)}). The movement is there; where it ends up may be the gap.`
+      : `Throws more ${lc}s in the strike zone than most (${p1(d.zonePct!)} vs ${p1(lg.zonePct!)}) and still gets the extra misses.` })
+
+  const h = gapPts(d.heartPct, lg.heartPct)
+  if (h != null && d.nLoc >= MIN_LOC_FOR_CLUE && (behind ? h >= LOCATION_GAP_PTS : h <= -LOCATION_GAP_PTS))
+    out.push({ id: 'heart', kind: 'location', text: behind
+      ? `More of them land down the middle (${p1(d.heartPct!)} vs ${p1(lg.heartPct!)}), where hitters can square them up.`
+      : `Fewer of them land down the middle (${p1(d.heartPct!)} vs ${p1(lg.heartPct!)}), so the shape is not being wasted over the plate.` })
+
+  const c = gapPts(d.chasePct, lg.chasePct)
+  if (c != null && d.nOoz >= MIN_OOZ_FOR_CLUE && (behind ? c <= -LOCATION_GAP_PTS : c >= LOCATION_GAP_PTS))
+    out.push({ id: 'chase', kind: 'location', text: behind
+      ? `Hitters chase it less when it is outside the zone (${p1(d.chasePct!)} of swings vs ${p1(lg.chasePct!)}). Fewer swings at bad pitches means fewer misses.`
+      : `Hitters chase it more when it is outside the zone (${p1(d.chasePct!)} of swings vs ${p1(lg.chasePct!)}), which adds misses.` })
+
+  const spread = (a: number | null, b: number | null) => (a == null || b == null || b <= 0 ? null : a / b)
+  const sH = spread(d.sdHb, lg.sdHb), sI = spread(d.sdIvb, lg.sdIvb)
+  const wide = (sH != null && sH >= SPREAD_RATIO) || (sI != null && sI >= SPREAD_RATIO)
+  const tight = (sH != null && sH <= 1 / SPREAD_RATIO) && (sI != null && sI <= 1 / SPREAD_RATIO)
+  if (behind && wide) out.push({ id: 'spread', kind: 'movement', text: `His movement varies more from pitch to pitch than most pitchers' (ride ±${d.sdIvb?.toFixed(1)} in, run ±${d.sdHb?.toFixed(1)} in), so he gets this exact shape less often than his average suggests.` })
+  if (!behind && tight) out.push({ id: 'spread', kind: 'movement', text: `His movement is more repeatable than most pitchers' (ride ±${d.sdIvb?.toFixed(1)} in, run ±${d.sdHb?.toFixed(1)} in): he gets this shape pitch after pitch.` })
+
+  if (d.xwobaCon != null && d.wobaCon != null && d.nBbe >= MIN_BBE_FOR_CLUE) {
+    const g = d.wobaCon - d.xwobaCon
+    if (behind && g >= CONTACT_GAP) out.push({ id: 'contact', kind: 'contact', text: `Contact results (${w3(d.wobaCon)}) are worse than the quality of contact he allowed (${w3(d.xwobaCon)}). That points to defense or luck, not to the pitch.` })
+    if (!behind && g <= -CONTACT_GAP) out.push({ id: 'contact', kind: 'contact', text: `Contact results (${w3(d.wobaCon)}) are better than the quality of contact he allowed (${w3(d.xwobaCon)}). Defense or luck may be helping.` })
+  }
+  return out
 }

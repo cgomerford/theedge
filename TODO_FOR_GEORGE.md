@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-31): one SQL file for the Pitch Shape Lab "ahead or behind the shape" numbers
+
+The new Pitch Shape Lab view works today, but the location and contact-result numbers (strike zone %, down the middle %, chase %, wOBA on contact against xwOBA) show "load with the next data refresh" until this is done:
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261031100000_pitch_shape_pitcher_diagnostics.sql` and press Run. It adds nine empty columns to `pitch_shape_pitcher`.
+2. Tell Claude "diagnostics sql done". Claude runs `python3 scripts/build_pitch_shape_pitcher.py` to fill them (a long job: it re-reads the 2025 and 2026 seasons), or you can wait for the Wednesday 06:00 UTC `shape-pitcher.yml` run, which now writes them too.
+
+---
+
 ## NEW (2026-10-30): two SQL files for the new article writer and graphics studio
 
 Both tools are built and need one table change each before they can save. Supabase, SQL Editor, New query, paste, Run:

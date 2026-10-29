@@ -62,3 +62,35 @@ describe('verdicts for pitchers', () => {
     expect(s.unknown.map(x => x.pitcherId)).toEqual([4])
   })
 })
+
+import { diagnose, CONTACT_GAP } from './finder-math'
+import type { Diag } from '@/lib/pitch-shape/diagnostics'
+
+const D = (o: Partial<Diag> = {}): Diag => ({ zonePct: 0.5, heartPct: 0.1, chasePct: 0.3, xwobaCon: 0.35, wobaCon: 0.35, nBbe: 120, giftPct: 0.05, missPct: 0.04, sdHb: 2, sdIvb: 1.5, nLoc: 600, nOoz: 250, ...o })
+const LG = D()
+
+describe('diagnose', () => {
+  it('names location clues for a pitcher behind the shape, only with a real sample and gap', () => {
+    const c = diagnose('behind', D({ zonePct: 0.44, heartPct: 0.15, chasePct: 0.24 }), LG, 'Four-seam').map(x => x.id)
+    expect(c).toEqual(expect.arrayContaining(['zone', 'heart', 'chase']))
+    expect(diagnose('behind', D({ zonePct: 0.44, nLoc: 100 }), LG, 'Four-seam').map(x => x.id)).not.toContain('zone')   // too few located pitches
+    expect(diagnose('behind', D({ zonePct: 0.49 }), LG, 'Four-seam')).toEqual([])                                    // 1 point is not a gap
+  })
+  it('points at defense or luck only when results sit well off the contact quality', () => {
+    const k = diagnose('behind', D({ wobaCon: 0.35 + CONTACT_GAP + 0.01 }), LG, 'Four-seam')
+    expect(k.find(x => x.id === 'contact')?.text).toMatch(/defense or luck/)
+    expect(diagnose('behind', D({ wobaCon: 0.36 }), LG, 'Four-seam').find(x => x.id === 'contact')).toBeUndefined()
+  })
+  it('mirrors for a pitcher ahead of the shape, and says nothing for level or unknown', () => {
+    const a = diagnose('ahead', D({ chasePct: 0.36, heartPct: 0.05, wobaCon: 0.3 }), LG, 'Four-seam').map(x => x.id)
+    expect(a).toEqual(expect.arrayContaining(['chase', 'heart', 'contact']))
+    expect(diagnose('level', D({ zonePct: 0.3 }), LG, 'Four-seam')).toEqual([])
+    expect(diagnose(null, D({ zonePct: 0.3 }), LG, 'Four-seam')).toEqual([])
+  })
+  it('reads missing figures as no clue, never as a clue', () => {
+    expect(diagnose('behind', D({ zonePct: null, heartPct: null, chasePct: null, wobaCon: null }), LG, 'Four-seam')).toEqual([])
+  })
+  it('flags a wider spread of movement for a pitcher behind', () => {
+    expect(diagnose('behind', D({ sdHb: 2.8 }), LG, 'Four-seam').map(x => x.id)).toContain('spread')
+  })
+})
