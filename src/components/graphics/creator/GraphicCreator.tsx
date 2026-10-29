@@ -286,7 +286,8 @@ export default function GraphicCreator() {
     </div>
   )
 
-  function Props({ l }: { l: Layer }) {
+  // Called as a plain function (not rendered as <Props />): a component defined inside this one is a new type on every render, which remounts the inputs and drops focus after each character.
+  function renderProps(l: Layer) {
     return (
       <div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -426,7 +427,7 @@ export default function GraphicCreator() {
             ))}
           </div>
           <div style={{ padding: 14 }}>
-            {tab === 'edit' && (selected ? <Props l={selected} /> : <div style={{ fontSize: 13, color: C.mute, lineHeight: 1.6 }}>Select a layer on the canvas or in the list to edit it.<br />Undo is Cmd Z, duplicate Cmd D, delete removes.</div>)}
+            {tab === 'edit' && (selected ? renderProps(selected) : <div style={{ fontSize: 13, color: C.mute, lineHeight: 1.6 }}>Select a layer on the canvas or in the list to edit it.<br />Undo is Cmd Z, duplicate Cmd D, delete removes.</div>)}
             {tab === 'checks' && (
               <div>
                 {[...checks].sort((a, b) => (a.level === b.level ? 0 : a.level === 'warn' ? -1 : 1)).map(c => (
