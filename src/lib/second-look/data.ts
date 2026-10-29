@@ -91,16 +91,33 @@ export async function getSecondLook(f: SlFilters, season = new Date().getFullYea
   const row = f.scope === 'league' ? merge(pick(leagueRows)) : scopeId == null ? null : merge(pick(((scoped.data ?? []) as unknown as SumRow[])))
   if (typeRows.length === 0) return { types: typeRows, openers, pitch: null, row: null, baseline, recent: [], names: {} }
 
-  let pairQ = supa.from('league_pa_pairs').select('game_date, pitcher_id, batter_id, ab1_result_class, ab1_pitches, ab2_pitches, ab2_event')
-    .eq('season', season).eq('p_throws', f.hand).eq('stand', f.stand)
-  if (!all) pairQ = pairQ.eq('ab1_result_class', f.result)
-  if (pitch) pairQ = pairQ.eq('ab1_final_pitch_type', pitch)
-  if (useOpen) pairQ = pairQ.filter('ab1_pitches->0->>t', 'eq', f.opened as string)
-  if (f.scope === 'pitcher' && f.id) pairQ = pairQ.eq('pitcher_id', f.id)
-  if (f.scope === 'batter' && f.id) pairQ = pairQ.eq('batter_id', f.id)
-  const pairRes = await pairQ.order('game_date', { ascending: false }).limit(5)
-  if (pairRes.error) { console.error('[getSecondLook] Supabase error:', pairRes.error.message); return null }
-  const recent: RecentPair[] = ((pairRes.data ?? []) as PairDb[]).map(p => ({ date: p.game_date, pitcherId: p.pitcher_id, batterId: p.batter_id, firstClass: p.ab1_result_class, first: p.ab1_pitches, second: p.ab2_pitches, ended: p.ab2_event }))
+  const recent = await pairsPage(f, season, 0, PAIR_PAGE, pitch)
+  if (recent === null) return null
   const names = await namesOf([...recent.flatMap(p => [p.pitcherId, p.batterId]), ...(f.scope !== 'league' && f.id ? [f.id] : [])])
   return { types: typeRows, openers, pitch, row, baseline, recent, names }
+}
+
+export const PAIR_PAGE = 50
+
+/** One page of the matching pairs, newest first, for the choices made (null on a read failure). `pitch` is the resolved last-pitch choice (null = any). */
+async function pairsPage(f: SlFilters, season: number, offset: number, limit: number, pitch: string | null): Promise<RecentPair[] | null> {
+  const supa = createAdminClient()
+  const all = f.result === 'ALL'
+  const useOpen = f.scope === 'league' && !!f.opened
+  let q = supa.from('league_pa_pairs').select('game_date, pitcher_id, batter_id, ab1_result_class, ab1_pitches, ab2_pitches, ab2_event').eq('season', season).eq('p_throws', f.hand).eq('stand', f.stand)
+  if (!all) q = q.eq('ab1_result_class', f.result)
+  if (pitch) q = q.eq('ab1_final_pitch_type', pitch)
+  if (useOpen) q = q.filter('ab1_pitches->0->>t', 'eq', f.opened as string)
+  if (f.scope === 'pitcher' && f.id) q = q.eq('pitcher_id', f.id)
+  if (f.scope === 'batter' && f.id) q = q.eq('batter_id', f.id)
+  const { data, error } = await q.order('game_date', { ascending: false }).order('game_pk', { ascending: false }).order('ab1_at_bat_number', { ascending: false }).range(offset, offset + limit - 1)
+  if (error) { console.error('[getSecondLook] pairs Supabase error:', error.message); return null }
+  return ((data ?? []) as PairDb[]).map(p => ({ date: p.game_date, pitcherId: p.pitcher_id, batterId: p.batter_id, firstClass: p.ab1_result_class, first: p.ab1_pitches, second: p.ab2_pitches, ended: p.ab2_event }))
+}
+
+/** The next page of matching pairs with their names, for "Show more". */
+export async function getMorePairs(f: SlFilters, offset: number, season = new Date().getFullYear()): Promise<{ pairs: RecentPair[]; names: Record<number, string> } | null> {
+  const pairs = await pairsPage(f, season, offset, PAIR_PAGE, f.pitch)
+  if (!pairs) return null
+  return { pairs, names: await namesOf(pairs.flatMap(p => [p.pitcherId, p.batterId])) }
 }

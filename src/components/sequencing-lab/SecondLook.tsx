@@ -159,6 +159,29 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
   const diff = Math.round(sameK) - Math.round(otherK)
   const types = (data?.types ?? []).filter(t => t.n >= MIN || t.t === pitch).slice(0, 8)
 
+  // Every matching pair, newest first: the first page comes with the page, "Show more" fetches the next ones.
+  const [extra, setExtra] = useState<{ pairs: RecentPair[]; names: Record<number, string> }>({ pairs: [], names: {} })
+  const [more, setMore] = useState<'idle' | 'loading' | 'error'>('idle')
+  const filterKey = JSON.stringify([filters.hand, filters.stand, filters.result, filters.pitch, filters.opened ?? null, filters.scope, filters.id])
+  useEffect(() => { setExtra({ pairs: [], names: {} }); setMore('idle'); setPlaying(null) }, [filterKey])
+  const allPairs: RecentPair[] = [...(data?.recent ?? []), ...extra.pairs]
+  const allNames: Record<number, string> = { ...(data?.names ?? {}), ...extra.names }
+  const totalPairs = row?.n ?? allPairs.length
+  const showMore = async () => {
+    setMore('loading')
+    const q = new URLSearchParams({ hand: filters.hand, stand: filters.stand, ended: filters.result, offset: String(allPairs.length), scope: filters.scope })
+    if (filters.pitch) q.set('pitch', filters.pitch)
+    if (filters.opened) q.set('opened', filters.opened)
+    if (filters.id) q.set('id', String(filters.id))
+    try {
+      const r = await fetch(`/api/second-look/pairs?${q}`)
+      if (!r.ok) throw new Error(String(r.status))
+      const j = (await r.json()) as { pairs: RecentPair[]; names: Record<number, string> }
+      setExtra(e => ({ pairs: [...e.pairs, ...j.pairs], names: { ...e.names, ...j.names } }))
+      setMore('idle')
+    } catch { setMore('error') }
+  }
+
   const addToCard = (p: RecentPair, k: number) => {
     const ok = savePair({ id: `${p.date}-${p.pitcherId}-${p.batterId}-${p.first.length}-${p.second.length}`, savedAt: new Date().toISOString(), hand: filters.hand, stand: filters.stand, ended: filters.result, pitch: pitch ?? 'any', date: p.date, pitcher: data?.names[p.pitcherId] ?? 'Pitcher', batter: data?.names[p.batterId] ?? 'Batter', first: p.first, second: p.second, result: ENDED[p.ended] ?? p.ended })
     setSaved(ok ? `Saved. Find it under Game Plan Card, then Build your own card.` : 'Could not save in this browser (storage is blocked).')
@@ -247,21 +270,21 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
           )}
 
           {!lockedNode && (
-            <section style={{ ...tile, padding: 0, marginTop: 14, overflow: 'hidden' }} aria-label="Recent pairs that match">
+            <section style={{ ...tile, padding: 0, marginTop: 14, overflow: 'hidden' }} aria-label="Matching pairs">
               <div style={{ padding: '14px 16px', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>⊕ Recent pairs that match</h3>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>⊕ Matching pairs, newest first</h3>
                 <span style={{ fontSize: 13, color: '#5b5347' }}>First time through, then the second, same game. Each dot is a pitch in order; ring = swing and miss.</span>
               </div>
-              {data.recent.length === 0 ? <p style={{ ...note, margin: 0, padding: '0 16px 14px' }}>No pairs to list for this selection.</p> : (
+              {allPairs.length === 0 ? <p style={{ ...note, margin: 0, padding: '0 16px 14px' }}>No pairs to list for this selection.</p> : (
                 <div style={{ overflowX: 'auto', borderTop: `1px solid ${C.line}` }}>
                   <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
                     <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First time through', 'Second time through', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
                     <tbody>
-                      {data.recent.map((p: RecentPair, i) => (
+                      {allPairs.map((p: RecentPair, i) => (
                         <tr key={i} style={{ borderTop: `1px solid ${C.soft}`, background: playing === i ? '#fff8f4' : undefined }}>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{dateShort(p.date)}</td>
-                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{data.names[p.pitcherId] ?? '—'}</td>
-                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{data.names[p.batterId] ?? '—'}</td>
+                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{allNames[p.pitcherId] ?? '—'}</td>
+                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>{allNames[p.batterId] ?? '—'}</td>
                           <td style={{ padding: '10px 14px' }}>{dots(p.first)}{caption(p.first, RESULT_WORD[p.firstClass] ?? p.firstClass)}</td>
                           <td style={{ padding: '10px 14px' }}>{dots(p.second)}{caption(p.second, (ENDED[p.ended] ?? p.ended).toLowerCase())}</td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
@@ -274,7 +297,12 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
                   </table>
                 </div>
               )}
-              {playing != null && data.recent[playing] && <div style={{ padding: '0 16px 14px' }}><PairPlayer pair={data.recent[playing]} stand={filters.stand} names={data.names} onClose={() => setPlaying(null)} /></div>}
+              {playing != null && allPairs[playing] && <div style={{ padding: '0 16px 14px' }}><PairPlayer pair={allPairs[playing]} stand={filters.stand} names={allNames} onClose={() => setPlaying(null)} /></div>}
+              {totalPairs > 0 && <div style={{ padding: '4px 16px 14px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: '#5b5347' }}>{allPairs.length >= totalPairs ? `All ${totalPairs.toLocaleString('en-US')} matching pair${totalPairs === 1 ? '' : 's'}` : `Showing ${allPairs.length.toLocaleString('en-US')} of ${totalPairs.toLocaleString('en-US')}`}</span>
+                {allPairs.length < totalPairs && <button type="button" onClick={showMore} disabled={more === 'loading'} style={{ fontFamily: SANS, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: '7px 16px', border: `1px solid ${C.orange}`, background: '#fff1ea', color: C.orange, cursor: 'pointer' }}>{more === 'loading' ? 'Loading…' : 'Show more'}</button>}
+                {more === 'error' && <span style={{ fontSize: 12.5, color: '#D4533B' }}>Could not load more right now.</span>}
+              </div>}
               {saved && <p role="status" style={{ ...note, margin: 0, padding: '0 16px 14px' }}>{saved}</p>}
             </section>
           )}
