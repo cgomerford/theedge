@@ -16,7 +16,7 @@ import PitchDot from './PitchDot'
 import { star } from './ui'
 
 export const LEVEL = ['#EDEAE2', '#FFC4B0', '#FF5722']
-const CLASS_TEXT: Record<string, string> = { K: 'a K', OUT_IN_PLAY: 'an out in play', BB: 'a walk', HIT: 'a hit' }
+const CLASS_TEXT: Record<string, string> = { K: 'a strikeout', OUT_IN_PLAY: 'an out in play', BB: 'a walk', HIT: 'a hit' }
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'an' : 'a')
 export const small = (n: number) => <span style={{ fontSize: 12, fontWeight: 700 }}>Small sample (n = {n.toLocaleString('en-US')}){star}</span>
 
@@ -74,13 +74,15 @@ export function Damage({ h }: { h: CardHitter }) {
 export function SecondLookCell({ h, hand }: { h: CardHitter; hand: string }) {
   const s = h.second_look
   if (!s) return <span style={{ fontSize: 12, color: '#5b5347' }}>Not enough of his outs yet{star}</span>
-  if (s.small || s.opened_same_pct == null) return <span style={{ fontSize: 12 }}>After {CLASS_TEXT[s.ended_class] ?? s.ended_class} on the {pitchLabel(s.ended_pitch).toLowerCase()}<br />{small(s.n)}</span>
+  const first = <>First time through: {CLASS_TEXT[s.ended_class] ?? s.ended_class} on the {pitchLabel(s.ended_pitch).toLowerCase()}.</>
+  if (s.small || s.opened_same_pct == null) return <span style={{ fontSize: 12 }}>{first}<br />{small(s.n)}</span>
   const same = s.opened_same_pct >= (s.top_other_pct ?? 0)
   const q = new URLSearchParams({ hand, stand: h.bats ?? 'R', ended: s.ended_class, pitch: s.ended_pitch })
   return (
     <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-      After {CLASS_TEXT[s.ended_class] ?? s.ended_class} on the {pitchLabel(s.ended_pitch).toLowerCase()}, {same ? 'his next look opened with it' : `next look opened with ${article(s.top_other ?? '')} ${pitchLabel(s.top_other).toLowerCase()}`} {Math.round(same ? s.opened_same_pct : (s.top_other_pct as number))}%{same ? ' of the time' : ''}
-      <div style={{ fontSize: 11, color: '#3a352c', marginTop: 3 }}>n {s.n.toLocaleString('en-US')} second at-bats · <Link href={`/mlb/lab/sequencing/second-look?${q}`} style={{ color: C.orange, fontWeight: 800 }}>Open Second Look</Link></div>
+      <div>{first}</div>
+      <div><b>Second time through:</b> the pitcher opened with {same ? 'it' : `${article(s.top_other ?? '')} ${pitchLabel(s.top_other).toLowerCase()}`} {Math.round(same ? s.opened_same_pct : (s.top_other_pct as number))}% of the time.</div>
+      <div style={{ fontSize: 11, color: '#3a352c', marginTop: 3 }}>n {s.n.toLocaleString('en-US')} second times through · <Link href={`/mlb/lab/sequencing/second-look?${q}`} style={{ color: C.orange, fontWeight: 800 }}>Open Second Look</Link></div>
       {s.source !== 'batter' && <div style={{ fontSize: 10.5, color: '#5b5347' }}>{s.source === 'cluster' ? 'hitters like him' : 'league line'}</div>}
     </div>
   )
@@ -93,7 +95,7 @@ export function LineupTable({ hitters, hand, cols = ALL_COLS, lead, notes }: { h
   return (
     <div style={{ overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 14, background: '#fff' }}>
       <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontVariantNumeric: 'tabular-nums' }}>
-        <thead><tr>{lead && <th style={TH} />}<th style={TH}>Hitter</th>{cols.first && <th style={TH}>First pitch</th>}{cols.opener && <th style={TH}>Opener (first two pitches)</th>}{cols.two && <th style={TH}>Two strikes</th>}{cols.damage && <th style={TH}>Damage zones</th>}{cols.second && <th style={TH}>Second look</th>}</tr></thead>
+        <thead><tr>{lead && <th style={TH} />}<th style={TH}>Hitter</th>{cols.first && <th style={TH}>First pitch</th>}{cols.opener && <th style={TH}>Opener (first two pitches)</th>}{cols.two && <th style={TH}>Two strikes</th>}{cols.damage && <th style={TH}>Damage zones</th>}{cols.second && <th style={TH}>Second time through</th>}</tr></thead>
         <tbody>
           {hitters.map((h, i) => (
             <tr key={h.id} style={{ borderTop: `1px solid ${C.soft}`, verticalAlign: 'top' }}>

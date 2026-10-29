@@ -25,7 +25,7 @@ export type RunSide = {
   rg: RunGame | null; sit: SbSituations | null; against: Situations | null; boards: RunBoards | null; sprintField: number[]
 }
 type View = 'steals' | 'battery'
-const VIEWS: [View, string][] = [['steals', 'Steals'], ['battery', 'Runners vs battery']]
+const VIEWS: [View, string][] = [['steals', 'Steals'], ['battery', 'Runners vs pitcher and catcher']]
 const dt: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.1em', color: C.faint, textTransform: 'uppercase' }
 const pc = (n: number, d: number) => (d > 0 ? (n / d) * 100 : null)
 const fp = (v: number | null | undefined) => (v == null ? '—' : `${v.toFixed(0)}%`)
@@ -123,7 +123,7 @@ export default function RunningLab({ clubs, minAttempts, minSit, minLead }: { cl
 
       <nav className="rn-side" aria-label="Base running subjects">
         <Pills items={[['away', `${clubs.away.club.abbr} running`], ['home', `${clubs.home.club.abbr} running`]] as ['away' | 'home', string][]} value={side} onChange={v => { setSide(v); setPick('club') }} />
-        <button type="button" className={`rn-btn${kind === 'club' ? ' on' : ''}`} onClick={() => setPick('club')}><TeamMark id={k.club.id} abbr={k.club.abbr} size={28} /><span style={{ minWidth: 0 }}>The running game<small>vs the {k.def.abbr} battery</small></span></button>
+        <button type="button" className={`rn-btn${kind === 'club' ? ' on' : ''}`} onClick={() => setPick('club')}><TeamMark id={k.club.id} abbr={k.club.abbr} size={28} /><span style={{ minWidth: 0 }}>The running game<small>vs the {k.def.abbr} pitcher and catcher</small></span></button>
         <div className="rn-h">Runners</div>
         {(o?.runners ?? []).length === 0 && <p style={{ ...note, margin: '0 2px' }}>No lineup is available yet.</p>}
         {(o?.runners ?? []).map(r => (
@@ -132,7 +132,7 @@ export default function RunningLab({ clubs, minAttempts, minSit, minLead }: { cl
             <span style={{ minWidth: 0 }}>{r.name}<small>{r.sprint != null ? `${r.sprint.toFixed(1)} ft/s · ` : ''}{r.sb} SB · {r.cs} CS</small></span>
           </button>
         ))}
-        <div className="rn-h">The {k.def.abbr} battery</div>
+        <div className="rn-h">The {k.def.abbr} pitcher and catcher</div>
         {cat ? <button type="button" className={`rn-btn${kind === 'catcher' ? ' on' : ''}`} onClick={() => setPick('catcher')}><Headshot id={cat.id} name={cat.name} size={32} /><span style={{ minWidth: 0 }}>{cat.name}<small>Catcher{cat.strips[0]?.value != null ? ` · pop ${cat.strips[0].value.toFixed(2)}s` : ''}</small></span></button> : <p style={{ ...note, margin: '0 2px' }}>No catcher in the lineup yet.</p>}
         {pit ? <button type="button" className={`rn-btn${kind === 'pitcher' ? ' on' : ''}`} onClick={() => setPick('pitcher')}><Headshot id={pit.id} name={pit.name} size={32} /><span style={{ minWidth: 0 }}>{pit.name}<small>Probable starter · {pit.throws ?? '?'}HP</small></span></button> : <p style={{ ...note, margin: '0 2px' }}>No probable starter yet.</p>}
       </nav>
@@ -144,7 +144,7 @@ export default function RunningLab({ clubs, minAttempts, minSit, minLead }: { cl
           {kind === 'catcher' && cat && <Headshot id={cat.id} name={cat.name} size={52} />}
           {kind === 'pitcher' && pit && <Headshot id={pit.id} name={pit.name} size={52} />}
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{runner?.name ?? (kind === 'catcher' ? cat?.name : kind === 'pitcher' ? pit?.name : `${k.club.name} running`)}</h2>
-          <span style={{ fontSize: 15, color: '#5b5347' }}>{runner ? `${k.club.abbr} runner` : kind === 'catcher' ? `${k.def.abbr} catcher` : kind === 'pitcher' ? `${k.def.abbr} probable starter` : `Against the ${k.def.abbr} battery`}</span>
+          <span style={{ fontSize: 15, color: '#5b5347' }}>{runner ? `${k.club.abbr} runner` : kind === 'catcher' ? `${k.def.abbr} catcher` : kind === 'pitcher' ? `${k.def.abbr} probable starter` : `Against the ${k.def.abbr} pitcher and catcher`}</span>
         </div>
 
         {kind === 'club' && <Pills items={VIEWS} value={view} onChange={setView} />}

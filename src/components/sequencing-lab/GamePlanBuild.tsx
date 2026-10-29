@@ -14,7 +14,7 @@ import PitchDot from './PitchDot'
 import { ALL_COLS, LineupTable, Wristband, type Cols } from './GamePlanCells'
 import { kick, note, tile } from './ui'
 
-const COL_LABEL: [keyof Cols, string][] = [['first', 'First pitch'], ['opener', 'Opener'], ['two', 'Two strikes'], ['damage', 'Damage zones'], ['second', 'Second look']]
+const COL_LABEL: [keyof Cols, string][] = [['first', 'First pitch'], ['opener', 'Opener'], ['two', 'Two strikes'], ['damage', 'Damage zones'], ['second', 'Second time through']]
 const small: React.CSSProperties = { fontFamily: SANS, fontWeight: 800, fontSize: 12, borderRadius: 999, padding: '4px 10px', whiteSpace: 'nowrap', border: `1px solid ${C.line}`, background: '#fff', color: C.ink, cursor: 'pointer' }
 
 export default function GamePlanBuild({ card }: { card: Card }) {

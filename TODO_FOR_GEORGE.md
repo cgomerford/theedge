@@ -1,5 +1,14 @@
 # What to do next (George)
 
+## NEW (2026-10-29): Second Look "opened with" choice, one small SQL file
+
+The Second Look page now reads as "first time through, then second time through", and in the League view you can choose the pitch the first at-bat OPENED with (as well as how it ended and on which pitch). That needs one new small table (about 3,000 rows).
+
+1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030170000_second_look_open_summary.sql` and press Run. It creates one empty table. Nothing else is touched.
+2. Tell Claude "open summary sql done". Claude runs `python3 scripts/build_second_look_summary.py --season 2026` (about 4 minutes) and checks the page. Until then the "opened with" choice is simply not shown, and everything else on the page works.
+
+---
+
 ## NEW (2026-10-29): Second Look and Game Plan Card, Phase 1 SQL (two files, in this order)
 
 1. Supabase, SQL Editor, New query. Paste `supabase/migrations/20261030150000_pitch_events_battery_columns.sql` and press Run. It adds six empty columns to pitch_events (catcher, runners on base, run value, times through the order). Nothing is changed or deleted.

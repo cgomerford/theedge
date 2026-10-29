@@ -109,11 +109,11 @@ function PairPlayer({ pair, stand, names, onClose }: { pair: RecentPair; stand: 
         </span>
       </div>
       <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><b style={{ width: 92, fontSize: 13 }}>First at-bat</b>{dots(pair.first, Math.min(i, firstN), cur < firstN ? cur : -1)}<b style={{ fontSize: 13 }}>{i >= firstN ? FIRST_SHORT[pair.firstClass] ?? pair.firstClass : ''}</b></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><b style={{ width: 92, fontSize: 13 }}>Second at-bat</b>{dots(pair.second, Math.max(0, i - firstN), cur >= firstN ? cur - firstN : -1)}<b style={{ fontSize: 13 }}>{i >= all.length ? ENDED[pair.ended] ?? pair.ended : ''}</b></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><b style={{ width: 120, fontSize: 13 }}>First time through</b>{dots(pair.first, Math.min(i, firstN), cur < firstN ? cur : -1)}<b style={{ fontSize: 13 }}>{i >= firstN ? FIRST_SHORT[pair.firstClass] ?? pair.firstClass : ''}</b></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><b style={{ width: 120, fontSize: 13 }}>Second time through</b>{dots(pair.second, Math.max(0, i - firstN), cur >= firstN ? cur - firstN : -1)}<b style={{ fontSize: 13 }}>{i >= all.length ? ENDED[pair.ended] ?? pair.ended : ''}</b></div>
       </div>
       <div style={{ marginTop: 10, fontSize: 14, fontWeight: 700, minHeight: 22 }}>
-        {c ? <>{c.at === 1 ? 'First' : 'Second'} at-bat, pitch {c.at === 1 ? cur + 1 : cur - firstN + 1}: {pitchLabel(c.p.t)}{zoneLabel(c.p.z, stand) ? `, ${zoneLabel(c.p.z, stand)}` : ''}{c.p.r ? `, ${PITCH_RESULT[c.p.r] ?? c.p.r}` : ''}</> : <span style={{ color: C.mute, fontWeight: 600 }}>Starting…</span>}
+        {c ? <>{c.at === 1 ? 'First' : 'Second'} time through, pitch {c.at === 1 ? cur + 1 : cur - firstN + 1}: {pitchLabel(c.p.t)}{zoneLabel(c.p.z, stand) ? `, ${zoneLabel(c.p.z, stand)}` : ''}{c.p.r ? `, ${PITCH_RESULT[c.p.r] ?? c.p.r}` : ''}</> : <span style={{ color: C.mute, fontWeight: 600 }}>Starting…</span>}
       </div>
     </div>
   )
@@ -123,11 +123,12 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
   const router = useRouter()
   const [playing, setPlaying] = useState<number | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
-  const go = (patch: Partial<{ hand: string; stand: string; ended: string; pitch: string | null; scope: string; id: number | null }>) => {
-    const next = { hand: filters.hand, stand: filters.stand, ended: filters.result, pitch: filters.pitch, scope: filters.scope, id: filters.id, ...patch }
+  const go = (patch: Partial<{ hand: string; stand: string; ended: string; pitch: string | null; opened: string | null; scope: string; id: number | null }>) => {
+    const next = { hand: filters.hand, stand: filters.stand, ended: filters.result, pitch: filters.pitch, opened: filters.opened ?? null, scope: filters.scope, id: filters.id, ...patch }
     const q = new URLSearchParams()
     q.set('hand', next.hand); q.set('stand', next.stand); q.set('ended', next.ended)
     if (next.pitch) q.set('pitch', next.pitch)
+    if (next.opened && next.scope === 'league') q.set('opened', next.opened)
     if (next.scope !== 'league') { q.set('scope', next.scope); if (next.id) q.set('id', String(next.id)) }
     setPlaying(null)
     router.push(`/mlb/lab/sequencing/second-look?${q}`, { scroll: false })
@@ -153,13 +154,13 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
 
   return (
     <div style={{ fontFamily: SANS, color: C.ink }}>
-      <PageHead kicker="Sequencing Lab · Second Look" title="The next time he sees him" intro="Catchers say a hitter hunts the pitch that got him out. Choose how the first at-bat ended and on which pitch, and see what pitchers threw in the second at-bat of the same game, and how those at-bats ended." />
+      <PageHead kicker="Sequencing Lab · Second Look" title="The next time he sees him" intro="Catchers say a hitter hunts the pitch that got him out. Choose how a hitter's first time through went against a pitcher: what the at-bat opened with, how it ended and on which pitch. Then see what the pitcher opened with the second time through, and how that at-bat ended." />
 
       <div style={{ ...tile, display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 28px' }}>
-          <PillGroup label="Pitcher throws" items={[['R', 'Right'], ['L', 'Left']]} value={filters.hand} onChange={v => go({ hand: v, pitch: null })} />
-          <PillGroup label="Batter hits" items={[['L', 'Left'], ['R', 'Right']]} value={filters.stand} onChange={v => go({ stand: v, pitch: null })} />
-          <PillGroup label="Look at" items={[['league', 'League'], ['pitcher', 'This pitcher (Pro)'], ['batter', 'This hitter (Pro)']] as [Scope, string][]} value={filters.scope} onChange={v => go({ scope: v, id: null })} />
+          <PillGroup label="Pitcher throws" items={[['R', 'Right'], ['L', 'Left']]} value={filters.hand} onChange={v => go({ hand: v, pitch: null, opened: null })} />
+          <PillGroup label="Batter hits" items={[['L', 'Left'], ['R', 'Right']]} value={filters.stand} onChange={v => go({ stand: v, pitch: null, opened: null })} />
+          <PillGroup label="Look at" items={[['league', 'League'], ['pitcher', 'This pitcher (Pro)'], ['batter', 'This hitter (Pro)']] as [Scope, string][]} value={filters.scope} onChange={v => go({ scope: v, id: null, opened: null })} />
         </div>
         {filters.scope !== 'league' && (
           <div>
@@ -167,9 +168,13 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
             <PlayerPick placeholder={filters.scope === 'pitcher' ? 'Pitcher name' : 'Hitter name'} onPick={id => go({ id })} />
           </div>
         )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 28px' }}>
-          <PillGroup label="First at-bat ended in" items={(Object.keys(RESULT_LABEL) as ResultClass[]).map(k => [k, RESULT_LABEL[k]] as [ResultClass, string])} value={filters.result} onChange={v => go({ ended: v, pitch: null })} />
-          {types.length > 0 && <PillGroup label="On a" items={types.map(t => [t.t, <span key={t.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(t.t), border: '1px solid #1A1A1A' }} />{pitchLabel(t.t)}</span>] as [string, ReactNode])} value={pitch ?? ''} onChange={v => go({ pitch: v })} />}
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
+          <div style={{ ...kick, color: C.orange, marginBottom: 10 }}>The first time through</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 28px' }}>
+            {filters.scope === 'league' && (data?.openers.length ?? 0) > 0 && <PillGroup label="The at-bat opened with" items={[['', 'Any pitch'], ...(data?.openers ?? []).filter(o => o.n >= MIN).slice(0, 8).map(o => [o.t, <span key={o.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(o.t), border: '1px solid #1A1A1A' }} />{pitchLabel(o.t)}</span>] as [string, ReactNode])] as [string, ReactNode][]} value={filters.opened ?? ''} onChange={v => go({ opened: v || null, pitch: null })} />}
+            <PillGroup label="The at-bat ended in" items={(Object.keys(RESULT_LABEL) as ResultClass[]).map(k => [k, RESULT_LABEL[k]] as [ResultClass, string])} value={filters.result} onChange={v => go({ ended: v, pitch: null, opened: null })} />
+            {types.length > 0 && <PillGroup label="On this last pitch" items={types.map(t => [t.t, <span key={t.t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span aria-hidden style={{ width: 11, height: 11, borderRadius: '50%', background: dotColor(t.t), border: '1px solid #1A1A1A' }} />{pitchLabel(t.t)}</span>] as [string, ReactNode])} value={pitch ?? ''} onChange={v => go({ pitch: v })} />}
+          </div>
         </div>
       </div>
 
@@ -180,21 +185,21 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
       ) : (
         <>
           <h2 style={{ margin: '20px 0 4px', fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.3, maxWidth: 900 }}>
-            {filters.hand === 'R' ? 'Right' : 'Left'}-handed pitchers facing {filters.stand === 'L' ? 'left' : 'right'}-handed batters. The first at-bat ended in {RESULT_PHRASE[filters.result]} on {article(pName)} {pName}. What happened the next time up?
+            {filters.hand === 'R' ? 'Right' : 'Left'}-handed pitchers facing {filters.stand === 'L' ? 'left' : 'right'}-handed batters. <span style={{ color: C.orange }}>The first time through</span>, {filters.opened ? `the at-bat opened with ${article(pitchLabel(filters.opened))} ${pitchLabel(filters.opened).toLowerCase()} and ` : 'the at-bat '}ended in {RESULT_PHRASE[filters.result]} on {article(pName)} {pName}. <span style={{ color: C.orange }}>The second time through</span>, what did he open with, and how did it end?
           </h2>
-          <div style={{ fontSize: 14, color: '#5b5347' }}>{lockedNode ? scopeText : <>{scopeText} · <b style={{ color: C.ink }}>n {(row?.n ?? 0).toLocaleString('en-US')}</b> second at-bats, same pitcher, same game</>}</div>
+          <div style={{ fontSize: 14, color: '#5b5347' }}>{lockedNode ? scopeText : <>{scopeText} · <b style={{ color: C.ink }}>n {(row?.n ?? 0).toLocaleString('en-US')}</b> second times through, same pitcher, same game</>}</div>
 
           {lockedNode ? <div style={{ marginTop: 16 }}>{lockedNode}</div> : !enough ? (
             <div style={{ ...tile, marginTop: 16, borderStyle: 'dashed', padding: 20 }}>
               <div style={{ fontSize: 20, fontWeight: 800 }}>Small sample (n = {(row?.n ?? 0).toLocaleString('en-US')}){star}</div>
-              <p style={note}>Each group needs at least {MIN} second at-bats before a rate is shown. Opened with the {pName || 'same pitch'} again: n {row?.opened ?? 0}. Opened with something else: n {row?.other ?? 0}.</p>
+              <p style={note}>Each group needs at least {MIN} second times through before a rate is shown. Opened with the {pName || 'same pitch'} again: n {row?.opened ?? 0}. Opened with something else: n {row?.other ?? 0}.</p>
               {filters.scope !== 'league' && <button type="button" onClick={() => go({ scope: 'league', id: null })} style={{ marginTop: 10, fontFamily: SANS, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: '8px 16px', border: `1px solid ${C.orange}`, background: '#fff1ea', color: C.orange, cursor: 'pointer' }}>Show the league instead</button>}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 14, marginTop: 16 }}>
               <section style={tile} aria-label="First pitch of the second look">
-                <div style={kick}>1 · First pitch of the second look</div>
-                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>Opened with the {pName} again: {Math.round(pct(row.opened, row.n))}%</h3>
+                <div style={kick}>1 · The second time through: the first pitch</div>
+                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>Second time through, he opened with the {pName} again: {Math.round(pct(row.opened, row.n))}%</h3>
                 {baseShare(pitch) != null && <div style={{ fontSize: 14, color: '#5b5347' }}>Against {Math.round(baseShare(pitch) as number)}% on every 0-0 pitch to this side.</div>}
                 <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
                   {mixRows.map(r => (
@@ -207,17 +212,17 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
                     </div>
                   ))}
                 </div>
-                <p style={note}>Thick bar: second look after this ending. Thin grey bar: every 0-0 pitch from this hand to this side.</p>
+                <p style={note}>Thick bar: the second time through, after the first time you chose above. Thin grey bar: every 0-0 pitch from this hand to this side.</p>
               </section>
 
               <section style={tile} aria-label="How the second look ended">
-                <div style={kick}>2 · Went back to it, or didn&apos;t</div>
-                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>How the second look ended</h3>
-                <div style={{ fontSize: 14, color: '#5b5347' }}>Split by whether the second at-bat opened with the same pitch that ended the first.</div>
-                <EndingBar title={`Opened with the ${pName} again`} n={row.opened} endings={row.endingsSame} />
-                <EndingBar title="Opened with something else" n={row.other} endings={row.endingsOther} />
+                <div style={kick}>2 · The second time through: how it ended</div>
+                <h3 style={{ margin: '6px 0 2px', fontSize: 24, fontWeight: 800, letterSpacing: '-0.015em' }}>How the second at-bat ended</h3>
+                <div style={{ fontSize: 14, color: '#5b5347' }}>Split by whether the second time through opened with the same pitch that ended the first.</div>
+                <EndingBar title={`Second time through: opened with the ${pName} again`} n={row.opened} endings={row.endingsSame} />
+                <EndingBar title="Second time through: opened with something else" n={row.other} endings={row.endingsOther} />
                 <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 16, paddingTop: 10, fontSize: 14 }}>
-                  {Math.abs(diff) < 1 ? 'Strikeouts were about as common either way.' : `Strikeouts were ${Math.abs(diff)} point${Math.abs(diff) === 1 ? '' : 's'} ${diff > 0 ? 'more' : 'less'} common when the second look opened with the ${pName} again.`} Compare the sample sizes before reading much into it.
+                  {Math.abs(diff) < 1 ? 'Strikeouts were about as common either way.' : `Strikeouts were ${Math.abs(diff)} point${Math.abs(diff) === 1 ? '' : 's'} ${diff > 0 ? 'more' : 'less'} common when the second time through opened with the ${pName} again.`} Compare the sample sizes before reading much into it.
                   <div style={{ fontSize: 12, color: '#5b5347', marginTop: 4 }}>Walk includes hit by pitch.</div>
                 </div>
               </section>
@@ -228,12 +233,12 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
             <section style={{ ...tile, padding: 0, marginTop: 14, overflow: 'hidden' }} aria-label="Recent pairs that match">
               <div style={{ padding: '14px 16px', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>⊕ Recent pairs that match</h3>
-                <span style={{ fontSize: 13, color: '#5b5347' }}>First at-bat, then the second, same game. Ring = swing and miss.</span>
+                <span style={{ fontSize: 13, color: '#5b5347' }}>First time through, then the second, same game. Each dot is a pitch in order; ring = swing and miss.</span>
               </div>
               {data.recent.length === 0 ? <p style={{ ...note, margin: 0, padding: '0 16px 14px' }}>No pairs to list for this selection.</p> : (
                 <div style={{ overflowX: 'auto', borderTop: `1px solid ${C.line}` }}>
                   <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
-                    <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First at-bat', 'Second at-bat', 'Ended', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
+                    <thead><tr style={{ textAlign: 'left' }}>{['Date', 'Pitcher', 'Batter', 'First time through', 'Second time through', 'Second ended', ''].map((h, i) => <th key={i} style={{ padding: '9px 14px', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: C.faint, fontWeight: 800 }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {data.recent.map((p: RecentPair, i) => (
                         <tr key={i} style={{ borderTop: `1px solid ${C.soft}`, background: playing === i ? '#fff8f4' : undefined }}>
@@ -261,7 +266,7 @@ export default function SecondLook({ filters, data, season, lockedNode, nameOfSc
       )}
 
       <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 22, paddingTop: 12, fontSize: 12.5, color: '#5b5347', lineHeight: 1.6 }}>
-        <p style={{ margin: 0 }}>How it is built: each hitter&apos;s first and second plate appearance against the same pitcher in the same game (and the second and third), from the stored {season} pitches. Each pair counts once. Small sample under {MIN} second at-bats in a group. The &quot;0-0&quot; line is the first pitch of every plate appearance from that hand to that side.</p>
+        <p style={{ margin: 0 }}>How it is built: each hitter&apos;s first and second time through against the same pitcher in the same game (and the second and third), from the stored {season} pitches. Each pair counts once. Small sample under {MIN} second times through in a group. The &quot;0-0&quot; line is the first pitch of every plate appearance from that hand to that side.</p>
         <p style={{ margin: '6px 0 0' }}>This describes what has happened in {season}. It does not say what a hitter will do next time.</p>
       </div>
     </div>

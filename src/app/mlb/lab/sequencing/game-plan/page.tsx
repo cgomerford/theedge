@@ -18,7 +18,7 @@ import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
   title: 'Game Plan Card',
-  description: 'How a probable starter has fared against each hitter in the opposing lineup: first pitch, opener, two strikes, damage zones and the second look.',
+  description: 'How a probable starter has fared against each hitter in the opposing lineup: first pitch, opener, two strikes, damage zones and the second time through.',
   path: '/mlb/lab/sequencing/game-plan',
 })
 export const dynamic = 'force-dynamic'
@@ -32,8 +32,8 @@ export default async function GamePlanIndex({ searchParams }: { searchParams: Pr
     return <SignUpGate
       title="Sign up to open the Game Plan Card"
       blurb="One line per hitter for a probable starter, with the sample behind every figure."
-      preview={<ChartFramePreview title="How to read tonight's battery" x="Hitter" y="Line" />}
-      features={['First pitch, opener, two strikes, damage zones and the second look for every hitter', 'A wristband view you can download']}
+      preview={<ChartFramePreview title="How to read tonight's lineup" x="Hitter" y="Line" />}
+      features={['First pitch, opener, two strikes, damage zones and the second time through for every hitter', 'A wristband view you can download']}
     />
   }
   const sp = await searchParams
@@ -50,7 +50,7 @@ export default async function GamePlanIndex({ searchParams }: { searchParams: Pr
       <MLBSubNav />
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
         <SeqSectionNav />
-        <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's battery" intro="Choose a game and a starter. Each card has one line per hitter in the opposing lineup, built from what has happened this season. Choose any date to open a back-dated card, built from only what was known before that day." />
+        <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's lineup" intro="Choose a game and a starter. Each card has one line per hitter in the opposing lineup, built from what has happened this season. Choose any date to open a back-dated card, built from only what was known before that day." />
         <form method="get" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'end', margin: '0 0 14px' }}>
           <label style={{ display: 'grid', gap: 4, fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: '#a89e8c', textTransform: 'uppercase' }}>Date
             <input type="date" name="date" min={SEASON_START} max={today} defaultValue={shown ?? today} style={{ font: 'inherit', fontSize: 14, fontWeight: 700, color: '#1A1A1A', border: '1px solid #e7e2d8', borderRadius: 8, padding: '7px 10px', background: '#fff' }} />

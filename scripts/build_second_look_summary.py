@@ -5,7 +5,7 @@ scripts/build_second_look_summary.py
 Builds second_look_summary and second_look_baseline (supabase/migrations/20261030160000_second_look_game_plan.sql) from league_pa_pairs, so the Second Look page reads small
 indexed rows and never counts live.
 
-TABLE OWNERSHIP: this script is the SINGLE writer of second_look_summary and second_look_baseline. It rebuilds one season at a time.
+TABLE OWNERSHIP: this script is the SINGLE writer of second_look_summary, second_look_open_summary and second_look_baseline. It rebuilds one season at a time.
 Run AFTER build_league_pa_pairs.py (and after build_hitter_clusters.py if you want the cluster scope).
 
 A cell is: scope (league id 0 | pitcher id | batter id | hitter cluster id), pitcher hand, batter side, look number (league only: 0 both, 2, 3; the other scopes store 0 = both),
@@ -38,7 +38,7 @@ from supabase import create_client
 
 URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
-PAIR_COLS = "game_pk,batter_id,ab1_at_bat_number,ab2_at_bat_number,pitcher_id,p_throws,stand,look_number,ab1_result_class,ab1_final_pitch_type,ab2_first_pitch_type,ab2_opened_same,ab2_event"
+PAIR_COLS = "game_pk,batter_id,ab1_at_bat_number,ab2_at_bat_number,pitcher_id,p_throws,stand,look_number,ab1_result_class,ab1_final_pitch_type,ab2_first_pitch_type,ab2_opened_same,ab2_event,ab1_pitches"
 
 
 def with_retry(fn, what):
@@ -110,10 +110,24 @@ def main():
         else:
             c["other"] += 1; c["end_other"][p["ab2_event"]] += 1
 
+    open_cells = {}   # league scope only: the same cell split by the pitch the FIRST at-bat opened with
+
+    def add_open(key, p):
+        c = open_cells.setdefault(key, {"n": 0, "same": 0, "other": 0, "mix": Counter(), "end_same": Counter(), "end_other": Counter()})
+        c["n"] += 1
+        c["mix"][p["ab2_first_pitch_type"]] += 1
+        if p["ab2_opened_same"]:
+            c["same"] += 1; c["end_same"][p["ab2_event"]] += 1
+        else:
+            c["other"] += 1; c["end_other"][p["ab2_event"]] += 1
+
     for p in pairs:
         tail = (p["p_throws"], p["stand"])
         end = (p["ab1_result_class"], p["ab1_final_pitch_type"])
         add(("league", 0) + tail + (0,) + end, p)
+        first = (p.get("ab1_pitches") or [{}])[0].get("t")
+        if first:
+            add_open((p["p_throws"], p["stand"], first) + end, p)
         add(("league", 0) + tail + (p["look_number"],) + end, p)
         add(("pitcher", p["pitcher_id"]) + tail + (0,) + end, p)
         add(("batter", p["batter_id"]) + tail + (0,) + end, p)
@@ -124,6 +138,9 @@ def main():
     out = [{"season": a.season, "scope_type": k[0], "scope_id": int(k[1]), "p_throws": k[2], "stand": k[3], "look_number": k[4], "ab1_result_class": k[5], "ab1_final_pitch_type": k[6],
             "n_pairs": v["n"], "n_opened_same": v["same"], "n_opened_other": v["other"], "first_pitch_mix": dict(v["mix"]), "endings_same": dict(v["end_same"]), "endings_other": dict(v["end_other"])}
            for k, v in cells.items()]
+    open_rows = [{"season": a.season, "p_throws": k[0], "stand": k[1], "ab1_first_pitch_type": k[2], "ab1_result_class": k[3], "ab1_final_pitch_type": k[4], "n_pairs": v["n"], "n_opened_same": v["same"],
+                  "n_opened_other": v["other"], "first_pitch_mix": dict(v["mix"]), "endings_same": dict(v["end_same"]), "endings_other": dict(v["end_other"])} for k, v in open_cells.items()]
+    print(f"{len(open_rows):,} opening-pitch rows (league)")
     base = read_baseline(sb, a.season)
     base_rows = [{"season": a.season, "p_throws": k[0], "stand": k[1], "n_pitches": sum(c.values()), "first_pitch_mix": dict(c)} for k, c in base.items()]
 
@@ -140,6 +157,10 @@ def main():
     if a.dry_run:
         print("Dry run: nothing written.")
         return
+    try:
+        sb.table("second_look_open_summary").select("season").limit(1).execute()
+    except Exception:
+        sys.exit("The table second_look_open_summary does not exist yet: run supabase/migrations/20261030170000_second_look_open_summary.sql in the SQL Editor first. Nothing was written.")
     print("--- Writing to Supabase in 5 seconds. Ctrl+C to abort. ---")
     time.sleep(5)
     # Delete in pieces (scope, hand, side): one statement over every row can hit the database's statement timeout.
@@ -149,6 +170,9 @@ def main():
                 with_retry(lambda: sb.table("second_look_summary").delete().eq("season", a.season).eq("scope_type", scope).eq("p_throws", hand).eq("stand", stand).execute(), f"clear {scope} {hand}{stand}")
     sb.table("second_look_baseline").delete().eq("season", a.season).execute()
     sb.table("second_look_baseline").insert(base_rows).execute()
+    with_retry(lambda: sb.table("second_look_open_summary").delete().eq("season", a.season).execute(), "clear open summary")
+    for i in range(0, len(open_rows), 500):
+        with_retry(lambda: sb.table("second_look_open_summary").insert(open_rows[i:i + 500]).execute(), f"open rows {i}")
     for i in range(0, len(out), 500):
         with_retry(lambda: sb.table("second_look_summary").insert(out[i:i + 500]).execute(), f"summary rows {i}")
         if (i // 500) % 40 == 0:

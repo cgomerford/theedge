@@ -16,7 +16,7 @@ import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
   title: 'Game Plan Card',
-  description: 'One line per hitter for a probable starter: first pitch, opener, two strikes, damage zones and the second look, with the sample behind every figure.',
+  description: 'One line per hitter for a probable starter: first pitch, opener, two strikes, damage zones and the second time through, with the sample behind every figure.',
   path: '/mlb/lab/sequencing/game-plan',
 })
 export const dynamic = 'force-dynamic'
@@ -25,9 +25,9 @@ export default async function GamePlanPage({ params, searchParams }: { params: P
   if (!(await isSignedIn())) {
     return <SignUpGate
       title="Sign up to open the Game Plan Card"
-      blurb="One line per hitter for tonight's starter: first pitch, opener, two strikes, damage zones and the second look."
-      preview={<ChartFramePreview title="How to read tonight's battery" x="Hitter" y="Line" />}
-      features={['First-pitch swing rate, opener, two-strike pitch and damage zones for every hitter', 'The second look: what happened the next time a hitter faced the same pitcher', 'A wristband view you can download']}
+      blurb="One line per hitter for tonight's starter: first pitch, opener, two strikes, damage zones and the second time through."
+      preview={<ChartFramePreview title="How to read tonight's lineup" x="Hitter" y="Line" />}
+      features={['First-pitch swing rate, opener, two-strike pitch and damage zones for every hitter', 'The second time through: what the pitcher opened with the next time a hitter faced him', 'A wristband view you can download']}
     />
   }
   const { gamePk } = await params

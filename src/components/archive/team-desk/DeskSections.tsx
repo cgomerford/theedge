@@ -235,7 +235,7 @@ export async function RunGameDesk({ c }: { c: DeskCtx }) {
   return (
     <div className="space-y-4">
       <Tabs tabs={[
-        { id: 'matchup', label: `Runners vs ${c.opp.abbr} battery`, content: <RunMatchup runners={c.club} defender={c.opp} side={c.side} rg={rg} defProbable={c.opp.probableName} /> },
+        { id: 'matchup', label: `Runners vs ${c.opp.abbr} pitcher and catcher`, content: <RunMatchup runners={c.club} defender={c.opp} side={c.side} rg={rg} defProbable={c.opp.probableName} /> },
         { id: 'situations', label: 'Counts & situations', content: <SituationsColumn runners={c.club} defender={c.opp} side={c.side} mine={mine} theirs={theirs} /> },
       ]} />
       <Foot>

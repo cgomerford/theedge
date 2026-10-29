@@ -230,7 +230,7 @@ export default async function RunGameSection({ ctx }: { ctx: ScoutContext }) {
   return (
     <div className="space-y-4">
       <Tabs tabs={[
-        { id: 'matchup', label: 'Runners vs battery', content: cols(
+        { id: 'matchup', label: 'Runners vs pitcher and catcher', content: cols(
           <Matchup runners={ctx.away} defender={ctx.home} side="away" rg={awayRuns} defProbable={ctx.home.probableName} />,
           <Matchup runners={ctx.home} defender={ctx.away} side="home" rg={homeRuns} defProbable={ctx.away.probableName} />) },
         { id: 'situations', label: 'Counts & situations', content: cols(

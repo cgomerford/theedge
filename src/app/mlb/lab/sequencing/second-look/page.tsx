@@ -23,7 +23,7 @@ export const metadata = pageMeta({
 })
 export const dynamic = 'force-dynamic'
 
-type SP = { hand?: string; stand?: string; ended?: string; pitch?: string; scope?: string; id?: string }
+type SP = { hand?: string; stand?: string; ended?: string; pitch?: string; opened?: string; scope?: string; id?: string }
 
 export default async function SecondLookPage({ searchParams }: { searchParams: Promise<SP> }) {
   if (!(await isSignedIn())) {
@@ -41,6 +41,7 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
     hand: sp.hand === 'L' ? 'L' : 'R', stand: sp.stand === 'R' ? 'R' : 'L',
     result: RESULT_CLASSES.includes(sp.ended as ResultClass) ? (sp.ended as ResultClass) : 'K',
     pitch: /^[A-Z]{2}$/.test(sp.pitch ?? '') ? (sp.pitch as string) : null,
+    opened: scope === 'league' && /^[A-Z]{2}$/.test(sp.opened ?? '') ? (sp.opened as string) : null,
     scope, id: Number.isInteger(idNum) && idNum > 0 ? idNum : null,
   }
   const tier = await getViewerTier()

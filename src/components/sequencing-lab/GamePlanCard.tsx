@@ -59,7 +59,7 @@ export default function GamePlanCard({ card, others }: { card: Card; others: { p
 
   return (
     <div style={{ fontFamily: SANS, color: C.ink }}>
-      <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's battery" intro={`One line per hitter, the way a catcher's wristband card is built: first pitch, opener, two strikes, damage zones and the second look. Every figure is what has happened in ${m.date.slice(0, 4)} against pitches and sequences like these, with the sample beside it.`} />
+      <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's lineup" intro={`One line per hitter, the way a catcher's wristband card is built: first pitch, opener, two strikes, damage zones and the second time through. Every figure is what has happened in ${m.date.slice(0, 4)} against pitches and sequences like these, with the sample beside it.`} />
 
       {card.backdated && (
         <div role="note" style={{ ...tile, marginBottom: 14, background: '#FEF9C3' }}>
