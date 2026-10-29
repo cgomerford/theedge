@@ -24,41 +24,41 @@ const w3 = (x: number | null) => (x == null ? '—' : x.toFixed(3).replace(/^0/,
 const sd = (x: number | null) => (x == null ? '—' : `±${x.toFixed(1)} in`)
 const diffPts = (a: number | null, b: number | null) => (a == null || b == null ? null : (a - b) * 100)
 
-type Line = { label: string; him: string; lg: string; note: string | null; flag: boolean }
+type Line = { label: string; him: string; lgd: string; note: string | null; flag: boolean }
 
-function lines(t: ResultRow, lg: Diag, placeRate: number | null): { group: string; rows: Line[] }[] {
+function lines(t: ResultRow, lgd: Diag, placeRate: number | null): { group: string; rows: Line[] }[] {
   const d = t.diag
   const loc = (a: number | null, b: number | null) => { const g = diffPts(a, b); return { note: g == null ? null : `${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(1)} pts`, flag: g != null && Math.abs(g) >= LOCATION_GAP_PTS } }
-  const z = loc(d.zonePct, lg.zonePct), h = loc(d.heartPct, lg.heartPct), c = loc(d.chasePct, lg.chasePct)
+  const z = loc(d.zonePct, lgd.zonePct), h = loc(d.heartPct, lgd.heartPct), c = loc(d.chasePct, lgd.chasePct)
   const gap = d.wobaCon != null && d.xwobaCon != null ? d.wobaCon - d.xwobaCon : null
-  const lgGap = lg.wobaCon != null && lg.xwobaCon != null ? lg.wobaCon - lg.xwobaCon : null
+  const lgGap = lgd.wobaCon != null && lgd.xwobaCon != null ? lgd.wobaCon - lgd.xwobaCon : null
   return [
     { group: 'Misses', rows: [
-      { label: 'Whiffs per swing', him: pc(t.own), lg: pc(placeRate), note: t.gapPts == null ? null : `${t.gapPts >= 0 ? '+' : '−'}${Math.abs(t.gapPts).toFixed(1)} pts`, flag: Math.abs(t.gapPts ?? 0) > ABOUT_LEVEL_PTS },
-      { label: 'Hitters chase it outside the zone', him: pc(d.chasePct), lg: pc(lg.chasePct), ...c },
+      { label: 'Whiffs per swing', him: pc(t.own), lgd: pc(placeRate), note: t.gapPts == null ? null : `${t.gapPts >= 0 ? '+' : '−'}${Math.abs(t.gapPts).toFixed(1)} pts`, flag: Math.abs(t.gapPts ?? 0) > ABOUT_LEVEL_PTS },
+      { label: 'Hitters chase it outside the zone', him: pc(d.chasePct), lgd: pc(lgd.chasePct), ...c },
     ] },
     { group: 'Location', rows: [
-      { label: 'In the strike zone', him: pc(d.zonePct), lg: pc(lg.zonePct), ...z },
-      { label: 'Down the middle', him: pc(d.heartPct), lg: pc(lg.heartPct), ...h },
+      { label: 'In the strike zone', him: pc(d.zonePct), lgd: pc(lgd.zonePct), ...z },
+      { label: 'Down the middle', him: pc(d.heartPct), lgd: pc(lgd.heartPct), ...h },
     ] },
     { group: 'Contact: defense and luck', rows: [
-      { label: 'Contact quality allowed (xwOBA)', him: w3(d.xwobaCon), lg: w3(lg.xwobaCon), note: null, flag: false },
-      { label: 'What actually happened (wOBA)', him: w3(d.wobaCon), lg: w3(lg.wobaCon), note: null, flag: false },
-      { label: 'Results minus quality', him: gap == null ? '—' : `${gap >= 0 ? '+' : '−'}${Math.abs(gap).toFixed(3).replace(/^0/, '')}`, lg: lgGap == null ? '—' : `${lgGap >= 0 ? '+' : '−'}${Math.abs(lgGap).toFixed(3).replace(/^0/, '')}`, note: gap == null ? null : gap > 0.03 ? 'worse than quality' : gap < -0.03 ? 'better than quality' : 'in line', flag: gap != null && Math.abs(gap) > 0.03 },
+      { label: 'Contact quality allowed (xwOBA)', him: w3(d.xwobaCon), lgd: w3(lgd.xwobaCon), note: null, flag: false },
+      { label: 'What actually happened (wOBA)', him: w3(d.wobaCon), lgd: w3(lgd.wobaCon), note: null, flag: false },
+      { label: 'Results minus quality', him: gap == null ? '—' : `${gap >= 0 ? '+' : '−'}${Math.abs(gap).toFixed(3).replace(/^0/, '')}`, lgd: lgGap == null ? '—' : `${lgGap >= 0 ? '+' : '−'}${Math.abs(lgGap).toFixed(3).replace(/^0/, '')}`, note: gap == null ? null : gap > 0.03 ? 'worse than quality' : gap < -0.03 ? 'better than quality' : 'in line', flag: gap != null && Math.abs(gap) > 0.03 },
     ] },
     { group: 'How repeatable and how called', rows: [
-      { label: 'Ride, pitch to pitch', him: sd(d.sdIvb), lg: sd(lg.sdIvb), note: null, flag: false },
-      { label: 'Run, pitch to pitch', him: sd(d.sdHb), lg: sd(lg.sdHb), note: null, flag: false },
-      { label: 'Called strikes outside the zone', him: pc(d.giftPct), lg: pc(lg.giftPct), note: null, flag: false },
+      { label: 'Ride, pitch to pitch', him: sd(d.sdIvb), lgd: sd(lgd.sdIvb), note: null, flag: false },
+      { label: 'Run, pitch to pitch', him: sd(d.sdHb), lgd: sd(lgd.sdHb), note: null, flag: false },
+      { label: 'Called strikes outside the zone', him: pc(d.giftPct), lgd: pc(lgd.giftPct), note: null, flag: false },
     ] },
   ]
 }
 
-function Card({ t, lg, placeRate, lc, pitchName, onShow, shownId, tint }: { t: ResultRow; lg: Diag; placeRate: number | null; lc: string; pitchName: string; onShow: (id: number) => void; shownId: number | null; tint: string }) {
+function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: ResultRow; lgd: Diag; placeRate: number | null; lc: string; pitchName: string; onShow: (id: number) => void; shownId: number | null; tint: string }) {
   const [open, setOpen] = useState(false)
-  const clues = diagnose(t.verdict, t.diag, lg, pitchName)
+  const clues = diagnose(t.verdict, t.diag, lgd, pitchName)
   const loaded = t.diag.zonePct != null
-  const g = lines(t, lg, placeRate)
+  const g = lines(t, lgd, placeRate)
   return (
     <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderLeft: `4px solid ${tint}`, borderRadius: R, padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -90,7 +90,7 @@ function Card({ t, lg, placeRate, lc, pitchName, onShow, shownId, tint }: { t: R
                     <tr key={r.label} style={{ borderTop: `1px solid ${C.soft}` }}>
                       <td style={{ padding: '5px 0' }}>{r.label}</td>
                       <td style={{ textAlign: 'right', fontWeight: 800, color: r.flag ? ORANGE_TEXT : C.ink }}>{r.him}</td>
-                      <td style={{ textAlign: 'right', color: '#5b5347' }}>{r.lg}</td>
+                      <td style={{ textAlign: 'right', color: '#5b5347' }}>{r.lgd}</td>
                       <td style={{ textAlign: 'right', fontSize: 11.5, color: r.flag ? ORANGE_TEXT : C.mute, paddingLeft: 8 }}>{r.note ?? ''}</td>
                     </tr>
                   ))}
@@ -144,7 +144,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
                   <span style={{ fontSize: 12.5, color: '#5b5347' }}>{ahead.length} pitcher{ahead.length === 1 ? '' : 's'}</span>
                 </div>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px', lineHeight: 1.5 }}>More misses than this shape usually gets. Something beyond movement is helping.</p>
-                <div style={{ display: 'grid', gap: 10 }}>{shownAhead.map(t => <Card key={t.pitcherId} t={t} lg={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint={C.orange} />)}{ahead.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points ahead.</p>}</div>
+                <div style={{ display: 'grid', gap: 10 }}>{shownAhead.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint={C.orange} />)}{ahead.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points ahead.</p>}</div>
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -152,7 +152,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
                   <span style={{ fontSize: 12.5, color: '#5b5347' }}>{behind.length} pitcher{behind.length === 1 ? '' : 's'}</span>
                 </div>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px', lineHeight: 1.5 }}>They have the shape but fewer misses than it usually gets. The shape is not what is holding them back.</p>
-                <div style={{ display: 'grid', gap: 10 }}>{shownBehind.map(t => <Card key={t.pitcherId} t={t} lg={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint="#5E7A99" />)}{behind.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points behind.</p>}</div>
+                <div style={{ display: 'grid', gap: 10 }}>{shownBehind.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint="#5E7A99" />)}{behind.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points behind.</p>}</div>
               </div>
             </div>
             {(ahead.length > 3 || behind.length > 3) && <button type="button" onClick={() => setAll(a => !a)} style={{ marginTop: 12, minHeight: 44, background: 'none', border: 0, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{all ? 'Show fewer' : 'See every pitcher near this spot →'}</button>}
