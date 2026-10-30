@@ -458,6 +458,44 @@ export async function getThrowersDetailed(type: string, hand: Hand, hb: number, 
   return { throwers: out.sort((a, b) => b.estPitches - a.estPitches).slice(0, limit), league: leagueOf(rows) }
 }
 
+export type PitcherDot = {
+  pitcherId: number; name: string; teamAbbr: string
+  nPitches: number; velo: number; ivb: number; hb: number; slot: number
+  nSwings: number; nWhiffs: number
+  diag: Diag
+}
+
+/**
+ * Every pitcher with 300+ of this pitch type that season, at his average movement, with his own whiff counts and the same diagnostics as the throwers list. This is the
+ * layer of dots on the map (each dot a pitcher, coloured by whether he is ahead of or behind what his own shape usually gets). [] on error. Same table, same fallback as
+ * getThrowersDetailed when the diagnostic columns are not applied yet.
+ */
+export async function getPitcherDots(type: string, hand: Hand, season: number): Promise<{ dots: PitcherDot[]; league: Diag }> {
+  const supa = createAdminClient()
+  const cols = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
+  const ask = (c: string) => supa.from('pitch_shape_pitcher').select(c)
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES).limit(1000)
+  let { data, error } = await ask(cols + THROWER_DIAG_COLS)
+  if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
+  if (error) { console.error('[getPitcherDots] Supabase error:', error.message); return { dots: [], league: leagueOf([]) } }
+  type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number }
+  const rows = (data ?? []) as unknown as Row[]
+  const dots: PitcherDot[] = rows.map(r => ({
+    pitcherId: r.pitcher_id, name: r.pitcher_name, teamAbbr: r.team_abbr ?? '', nPitches: r.n_pitches,
+    velo: Number(r.velo), ivb: Number(r.ivb), hb: Number(r.hb), slot: Number(r.slot), nSwings: r.n_swings ?? 0, nWhiffs: r.n_whiffs ?? 0, diag: diagOf(r),
+  }))
+  return { dots, league: leagueOf(rows) }
+}
+
+/** One pitcher's sampled pitches (up to 60) as [hb, ivb], for drawing his dots. [] when he has none. */
+export async function getPitcherPoints(type: string, hand: Hand, season: number, pitcherId: number): Promise<[number, number][]> {
+  const { data, error } = await createAdminClient().from('pitch_shape_pitcher').select('points')
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).eq('pitcher_id', pitcherId).maybeSingle()
+  if (error) { console.error('[getPitcherPoints] Supabase error:', error.message); return [] }
+  const pts = ((data as unknown as { points: { hb: number; ivb: number }[] | null } | null)?.points ?? [])
+  return pts.map(p => [Math.round(p.hb * 10) / 10, Math.round(p.ivb * 10) / 10] as [number, number])
+}
+
 /** The Shape tab's payload for one pitcher. null = no shape rows for him (empty state). */
 export async function getShapeLabData(pitcherId: number): Promise<ShapeLabData | null> {
   if (!Number.isInteger(pitcherId) || pitcherId <= 0) return null

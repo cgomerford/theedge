@@ -11,13 +11,15 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { C, Foot } from '@/components/team/ui'
+import FollowIsland from '@/components/signup/FollowIsland'
+import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 import { ABOUT_LEVEL_PTS, LOCATION_GAP_PTS, MIN_OWN_SWINGS, diagnose, splitThrowers, type Rated } from './finder-math'
 
 const ORANGE_TEXT = '#B83A0E'
 const R = 6
 type Split = ReturnType<typeof splitThrowers>
-export type ResultRow = Rated & { diag: Diag }
+export type ResultRow = Rated & { diag: Diag; /** set when he is compared with what his OWN shape gets (the across-the-map list) instead of the chosen spot */ shapeRate?: number | null }
 
 const pc = (x: number | null) => (x == null ? '—' : `${(x * 100).toFixed(1)}%`)
 const w3 = (x: number | null) => (x == null ? '—' : x.toFixed(3).replace(/^0/, ''))
@@ -26,7 +28,7 @@ const diffPts = (a: number | null, b: number | null) => (a == null || b == null 
 
 type Line = { label: string; him: string; lgd: string; note: string | null; flag: boolean }
 
-function lines(t: ResultRow, lgd: Diag, placeRate: number | null): { group: string; rows: Line[] }[] {
+function lines(t: ResultRow, lgd: Diag, placeRate: number | null, own: boolean): { group: string; rows: Line[] }[] {
   const d = t.diag
   const loc = (a: number | null, b: number | null) => { const g = diffPts(a, b); return { note: g == null ? null : `${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(1)} pts`, flag: g != null && Math.abs(g) >= LOCATION_GAP_PTS } }
   const z = loc(d.zonePct, lgd.zonePct), h = loc(d.heartPct, lgd.heartPct), c = loc(d.chasePct, lgd.chasePct)
@@ -56,16 +58,23 @@ function lines(t: ResultRow, lgd: Diag, placeRate: number | null): { group: stri
 
 function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: ResultRow; lgd: Diag; placeRate: number | null; lc: string; pitchName: string; onShow: (id: number) => void; shownId: number | null; tint: string }) {
   const [open, setOpen] = useState(false)
+  const own = t.shapeRate !== undefined   // compared with his own shape, not the chosen spot
+  const refRate = own ? t.shapeRate ?? null : placeRate
   const clues = diagnose(t.verdict, t.diag, lgd, pitchName)
   const loaded = t.diag.zonePct != null
-  const g = lines(t, lgd, placeRate)
+  const g = lines(t, lgd, refRate, own)
   return (
     <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderLeft: `4px solid ${tint}`, borderRadius: R, padding: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <Link href={`/mlb/players/${t.pitcherId}`} style={{ fontWeight: 800, fontSize: 16, color: ORANGE_TEXT, textDecoration: 'none' }}>{t.name} · {t.teamAbbr}</Link>
-        <span style={{ fontSize: 13, fontWeight: 800 }}>{t.gapPts != null ? `${t.gapPts >= 0 ? '+' : '−'}${Math.abs(t.gapPts).toFixed(1)} pts vs the shape` : ''}</span>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={headshotCutoutUrl(t.pitcherId, 240)} alt="" width={56} height={56} loading="lazy" style={{ width: 56, height: 56, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Link href={`/mlb/players/${t.pitcherId}`} style={{ fontWeight: 800, fontSize: 16, color: ORANGE_TEXT, textDecoration: 'none' }}>{t.name} · {t.teamAbbr}</Link>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>{t.gapPts != null ? `${t.gapPts >= 0 ? '+' : '−'}${Math.abs(t.gapPts).toFixed(1)} pts vs ${own ? 'his own shape' : 'the shape'}` : ''}</div>
+        </div>
+        <div style={{ flex: 'none', color: C.ink }}><FollowIsland kind="player" refId={String(t.pitcherId)} name={t.name} /></div>
       </div>
-      <div style={{ fontSize: 12.5, color: '#5b5347', margin: '4px 0 8px' }}>{pc(t.own)} whiffs per swing ({t.nSwings.toLocaleString()} swings) · about {t.estPitches.toLocaleString()} of his {t.nPitches.toLocaleString()} {lc}s land in this area</div>
+      <div style={{ fontSize: 12.5, color: '#5b5347', margin: '6px 0 8px' }}>{pc(t.own)} whiffs per swing ({t.nSwings.toLocaleString()} swings){own ? ` · his shape usually gets ${pc(refRate)}` : ` · about ${t.estPitches.toLocaleString()} of his ${t.nPitches.toLocaleString()} ${lc}s land in this area`}</div>
 
       <div style={{ background: C.cream, borderRadius: R, padding: '9px 11px', fontSize: 13, lineHeight: 1.5 }}>
         <div className="pv-k" style={{ marginBottom: 3 }}>What the numbers suggest</div>
@@ -80,13 +89,15 @@ function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: 
 
       {open && (
         <div style={{ marginTop: 6 }}>
-          {g.map(grp => (
+          {g.map(grp => {
+            const shown = grp.rows.filter(r => !(r.him === '—' && r.lgd === '—'))
+            return (
             <div key={grp.group} style={{ marginTop: 8 }}>
               <div className="pv-k" style={{ color: C.mute }}>{grp.group}</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-                <thead><tr style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}><th style={{ textAlign: 'left', fontWeight: 700 }} /><th style={{ textAlign: 'right', fontWeight: 700 }}>Him</th><th style={{ textAlign: 'right', fontWeight: 700 }}>{grp.group === 'Misses' ? 'This shape' : 'League'}</th><th /></tr></thead>
+              {shown.length === 0 ? <div style={{ fontSize: 12.5, color: C.mute, padding: '4px 0' }}>Not loaded yet. These fill in with the next data refresh.</div> : <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                <thead><tr style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}><th style={{ textAlign: 'left', fontWeight: 700 }} /><th style={{ textAlign: 'right', fontWeight: 700 }}>Him</th><th style={{ textAlign: 'right', fontWeight: 700 }}>{grp.group === 'Misses' ? (own ? 'His shape' : 'This shape') : 'League'}</th><th /></tr></thead>
                 <tbody>
-                  {grp.rows.map(r => (
+                  {shown.map(r => (
                     <tr key={r.label} style={{ borderTop: `1px solid ${C.soft}` }}>
                       <td style={{ padding: '5px 0' }}>{r.label}</td>
                       <td style={{ textAlign: 'right', fontWeight: 800, color: r.flag ? ORANGE_TEXT : C.ink }}>{r.him}</td>
@@ -95,9 +106,9 @@ function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: 
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table>}
             </div>
-          ))}
+          )})}
           <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>League = every pitcher with 300+ {lc}s this season (the Misses block compares with this shape instead). Highlighted when {LOCATION_GAP_PTS}+ points apart, or 30+ points of wOBA on contact apart.</div>
         </div>
       )}
@@ -105,9 +116,11 @@ function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: 
   )
 }
 
-export default function ShapeResultsSection({ split, league, placeRate, lc, pitchName, latest, onShow, shownId }: {
+export default function ShapeResultsSection({ split, league, placeRate, lc, pitchName, latest, onShow, shownId, across }: {
   split: Split & { unknownCount?: number }; league: Diag; placeRate: number | null; lc: string; pitchName: string; latest: number
   onShow: (pitcherId: number) => void; shownId: number | null
+  /** the most ahead and most behind across the whole map, each against his own shape: always something to show */
+  across: { ahead: ResultRow[]; behind: ResultRow[] }
 }) {
   const [all, setAll] = useState(false)
   const rows = (l: Rated[]) => l as ResultRow[]
@@ -160,6 +173,26 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
             {split.unknown.length > 0 && <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>{split.unknown.length} more {split.unknown.length === 1 ? 'pitcher throws' : 'pitchers throw'} this shape but {split.unknown.length === 1 ? 'has' : 'have'} under {MIN_OWN_SWINGS} swings of {split.unknown.length === 1 ? 'his' : 'their'} own, too few to compare.</div>}
           </>
         )}
+      {(across.ahead.length > 0 || across.behind.length > 0) && (
+        <div style={{ marginTop: 28, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
+          <div className="pv-k" style={{ color: ORANGE_TEXT }}>Across the whole map</div>
+          <h3 style={{ margin: '4px 0 6px', fontSize: 'clamp(22px,3vw,28px)', fontWeight: 800, letterSpacing: '-.015em' }}>The most ahead and the most behind of their own shape</h3>
+          <p style={{ color: '#5b5347', fontSize: 14, maxWidth: 780, margin: '0 0 12px', lineHeight: 1.5 }}>
+            Every dot on the map is a pitcher at his average {lc}. Here are the ones who get the most and the fewest misses compared with what the league gets from pitches that move like his, wherever on the map he sits. The same numbers, and the same caution: the map shows where he differs, not why.
+          </p>
+          <div className="pf2-vs2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, alignItems: 'start' }}>
+            <style>{'@media(max-width:900px){.pf2-vs2{grid-template-columns:1fr !important}}'}</style>
+            <div>
+              <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: C.ink, color: '#FDE047' }}>MOST AHEAD OF HIS OWN SHAPE</span>
+              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.ahead.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint={C.orange} />)}</div>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: '#E3EAF2', color: C.ink }}>MOST BEHIND HIS OWN SHAPE</span>
+              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.behind.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint="#5E7A99" />)}</div>
+            </div>
+          </div>
+        </div>
+      )}
       <Foot>{latest} regular season. These are clues, not causes: the numbers show where a pitcher differs from the league, and cannot prove why. “Land in this area” uses up to 60 sampled pitches per pitcher, so counts are approximate.</Foot>
     </section>
   )

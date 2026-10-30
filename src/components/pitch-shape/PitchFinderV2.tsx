@@ -17,18 +17,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { C, Empty, Foot } from '@/components/team/ui'
 import UpgradePrompt from '@/components/pro/UpgradePrompt'
-import type { MovementCellsPayload, Thrower as ApiThrower } from '@/lib/pitch-shape/data'
+import type { MovementCellsPayload, PitcherDot, Thrower as ApiThrower } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand, type PitcherHit } from '@/lib/pitch-shape/model'
 import { PV_CSS } from './pvCss'
 import LocationPanel from './LocationPanel'
 import ShapeResultsSection, { type ResultRow } from './ShapeResultsSection'
+import FollowIsland from '@/components/signup/FollowIsland'
+import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 import { FlightPlayer, SpeedToggle } from '@/components/pitching-lab/PitchFlight'
 import { buildFlight } from '@/lib/sequencing-lab/flight'
 import { makeGrid, stats, type Grid, type Span } from './heatGrid'
 import {
   ABOUT_LEVEL_PTS, MAP_BG, MIN_OWN_SWINGS, MIN_WINDOW_SWINGS, SPOT_MIN_SWINGS, STRONG_SWINGS,
-  boxColour, movementStats, nameSpot, rateThrowers, splitThrowers, toneLine, toneOf, type Rated,
+  boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 
 const HALF = 12
@@ -75,6 +77,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [hover, setHover] = useState<{ hb: number; ivb: number; x: number; y: number } | null>(null)
   const [throwers, setThrowers] = useState<ApiThrower[] | null | undefined>(null)
   const [league, setLeague] = useState<Diag | null>(null)
+  const [leagueAll, setLeagueAll] = useState<Diag | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<PitcherHit[]>([])
@@ -82,14 +85,17 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [shownMsg, setShownMsg] = useState('')
   const [plate, setPlate] = useState<{ plateX: number; plateZ: number; n: number } | null>(null)
   const [slow, setSlow] = useState(6)
-  const [focus, setFocus] = useState<number | null>(null)   // a pitcher from the list, drawn on the map as dots
+  const [focus, setFocus] = useState<number | null>(null)   // the chosen pitcher: his sampled pitches drawn as dots, a ring at his average
+  const [dots, setDots] = useState<PitcherDot[]>([])
+  const [showDots, setShowDots] = useState(true)
+  const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const locked = !isPro && !lookLeft && !isFree(type)
   const name = PITCH_NAMES[type] ?? type
   const lc = name.toLowerCase()
 
   useEffect(() => {
-    setPlace(null); setThrowers(null); setShown(null); setShownMsg(''); setShowAll(false); setFocus(null)
+    setPlace(null); setThrowers(null); setShown(null); setShownMsg(''); setShowAll(false); setFocus(null); setFocusPts(null); setDots([])
     if (locked) { setPayload(null); return }
     if (cache.has(key)) { setPayload(cache.get(key)); return }
     setPayload(undefined)
@@ -112,6 +118,30 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     const se = payload ? (span === 'latest' ? payload.seasons.filter(s => s.season === payload.latest) : payload.seasons) : []
     return movementStats(se.flatMap(s => s.cells))
   }, [payload, span])
+
+  // every pitcher on the map: one dot each, at his average movement
+  useEffect(() => {
+    if (!payload || locked) { setDots([]); return }
+    let live = true
+    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j: { dots: PitcherDot[]; league?: Diag }) => { if (live) { setDots(j.dots ?? []); if (j.league) setLeagueAll(j.league) } })
+      .catch(e => { console.error('[PitchFinderV2] pitcher dots fetch failed:', e instanceof Error ? e.message : e); if (live) setDots([]) })
+    return () => { live = false }
+  }, [payload, type, hand, locked])
+
+  // the chosen pitcher's sampled pitches (from the list when he is in it, else fetched)
+  useEffect(() => {
+    if (focus == null || !payload) { setFocusPts(null); return }
+    const inList = throwers?.find(t => t.pitcherId === focus)
+    if (inList) { setFocusPts(inList.points); return }
+    let live = true
+    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}&pitcher=${focus}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j: { points: [number, number][] }) => { if (live) setFocusPts(j.points ?? []) })
+      .catch(e => { console.error('[PitchFinderV2] pitcher points fetch failed:', e instanceof Error ? e.message : e); if (live) setFocusPts([]) })
+    return () => { live = false }
+  }, [focus, payload, type, hand, throwers])
 
   // choose the top spot when a map arrives, so the right-hand column is never empty
   useEffect(() => {
@@ -162,7 +192,18 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const rated: ResultRow[] = useMemo(() => (throwers ? rateThrowers(throwers, placeRate).map(r => ({ ...r, diag: throwers.find(t => t.pitcherId === r.pitcherId)!.diag })) : []), [throwers, placeRate])
   const split = useMemo(() => splitThrowers(rated), [rated])
   const showOnMap = (id: number) => { setFocus(f => (f === id ? null : id)); if (typeof document !== 'undefined') document.getElementById('pf2-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
-  const focusT = focus != null && throwers ? throwers.find(t => t.pitcherId === focus) ?? null : null
+  const ratedDots = useMemo(() => rateDots(dots.map(d => ({ ...d })), (hb, ivb) => {
+    if (!grid) return null
+    const s2 = stats(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
+    return s2.swings >= MIN_WINDOW_SWINGS ? s2.whiffs / s2.swings : null
+  }), [dots, grid])
+  const across = useMemo(() => {
+    const e = extremes(ratedDots, 6)
+    const row = (r: (typeof ratedDots)[number]): ResultRow => ({ pitcherId: r.pitcherId, name: r.name, teamAbbr: r.teamAbbr, nPitches: r.nPitches, nSwings: r.nSwings, nWhiffs: r.nWhiffs, estPitches: r.nPitches, share: 1, own: r.own, gapPts: r.gapPts, verdict: r.verdict, diag: r.diag, shapeRate: r.shapeRate })
+    return { ahead: e.ahead.map(row), behind: e.behind.map(row) }
+  }, [ratedDots])
+  const focusDot = focus != null ? ratedDots.find(d => d.pitcherId === focus) ?? null : null
+  const focusT = focusDot && focusPts ? { name: focusDot.name, sample: focusPts.length, points: focusPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
   const flightSpeed = useMemo(() => {
     const w = (throwers ?? []).reduce((s, t) => s + t.estPitches, 0)
@@ -191,6 +232,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const pickPitcher = (h: PitcherHit) => {
     const p = h.pitches.find(x => x.pitchType === type)
     setQ(''); setHits([])
+    if (dots.some(d => d.pitcherId === h.id)) { setShown(null); setShownMsg(''); setFocus(h.id); return }   // he is on the map: choose his dot
     if (!p || h.hand !== hand) { setShown(null); setShownMsg(`${h.name} does not throw a ${hand === 'L' ? 'left' : 'right'}-handed ${lc} in the data (${h.season}).`); return }
     setShownMsg(''); setShown({ name: h.name, team: h.team, hb: p.shape.hb, ivb: p.shape.ivb, velo: p.shape.velo })
   }
@@ -279,13 +321,27 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               <div id="pf2-map" style={{ position: 'relative', aspectRatio: '1 / 1', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden', cursor: 'crosshair', background: '#EDE8DC' }}
                 onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); setHover({ hb: payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb: payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF, x: e.clientX - r.left, y: e.clientY - r.top }) }}
                 onMouseLeave={() => setHover(null)}
-                onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setShowAll(false); setPlace({ hb: Math.round((payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF) * 10) / 10, ivb: Math.round((payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF) * 10) / 10, spot: null }) }}>
+                onClick={e => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  const hb = payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb = payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF
+                  if (showDots) {   // a click close to a pitcher's dot chooses him; anywhere else chooses a place
+                    let best: (typeof ratedDots)[number] | null = null, bd = 0.9
+                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
+                    if (best) { setFocus(best.pitcherId); return }
+                  }
+                  setShowAll(false); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
+                }}>
                 <canvas ref={canvasRef} role="img" aria-label={`League ${lc} movement map: each square is a way a pitch moves (ride up, run right), coloured by how often hitters miss. It is not the strike zone.`} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
                 <svg viewBox={`0 0 ${N} ${N}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
                   {place && (() => { const b = toBox(place.hb, place.ivb), h = Math.round(radius * 10); return <rect x={b.x - h} y={b.y - h} width={2 * h} height={2 * h} fill="rgba(255,255,255,.08)" stroke={C.ink} strokeWidth={N / 200} strokeDasharray="4 3" /> })()}
                   {focusT && focusT.points.map((p, i) => { const b = toBox(p[0], p[1]), inside = inBox(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={inside ? C.orange : C.ink} fillOpacity={inside ? 1 : 0.6} stroke={inside ? C.ink : 'none'} strokeWidth={N / 700} /> })}
                   {focusT && (() => { const b = toBox(focusT.hb, focusT.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
                   {shown && (() => { const b = toBox(shown.hb, shown.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
+                  {showDots && ratedDots.filter(d => focus == null || d.pitcherId === focus).map(d => {   // with a pitcher chosen, only he stays on the map
+                    const b = toBox(d.hb, d.ivb), on = focus === d.pitcherId
+                    const fill = d.verdict === 'ahead' ? C.orange : d.verdict === 'behind' ? '#5E7A99' : d.verdict === 'level' ? '#fff' : 'none'
+                    return <circle key={d.pitcherId} cx={b.x} cy={b.y} r={on ? N / 70 : N / 110} fill={fill} stroke={on ? C.ink : d.verdict ? C.ink : C.mute} strokeWidth={on ? N / 150 : N / 330} strokeOpacity={d.verdict ? 0.9 : 0.5} />
+                  })}
                   {spots.map((s, i) => {
                     const b = toBox(s.hb, s.ivb), on = place?.spot === i
                     return (
@@ -316,7 +372,15 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 <span>More misses than average</span>
               </div>
               <div style={{ color: '#5b5347', marginTop: 6 }}>League average: <b style={{ color: C.ink }}>{(leagueRate * 100).toFixed(1)}%</b> of swings miss</div>
-              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Faded squares = thinner sample ({MIN_WINDOW_SWINGS}–{STRONG_SWINGS} swings) · blank = under {MIN_WINDOW_SWINGS}, not estimated</div>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: '#3a352c' }}>
+                {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
+                <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: C.orange, border: `1px solid ${C.ink}`, display: 'inline-block' }} />ahead of his own shape</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: '#5E7A99', border: `1px solid ${C.ink}`, display: 'inline-block' }} />behind it</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', border: `1px solid ${C.ink}`, display: 'inline-block' }} />about level</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', border: `1px solid ${C.mute}`, display: 'inline-block' }} />too few swings</span>
+              </div>
+              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Click one to see him. Faded squares = thinner sample ({MIN_WINDOW_SWINGS}–{STRONG_SWINGS} swings) · blank = under {MIN_WINDOW_SWINGS}, not estimated</div>
             </div>
 
             {place && (
@@ -340,6 +404,23 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 ) : (
                   <div style={{ marginTop: 8, color: '#5b5347' }}>Choose “Show on map” beside a pitcher below, and his pitches appear here as dots with a ring at his average.</div>
                 )}
+              </div>
+            )}
+
+            {focusDot && (
+              <div style={{ background: '#fff', border: `2px solid ${C.ink}`, borderRadius: 6, padding: '12px 14px', marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={headshotCutoutUrl(focusDot.pitcherId, 240)} alt="" width={64} height={64} style={{ width: 64, height: 64, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <Link href={`/mlb/players/${focusDot.pitcherId}`} style={{ fontWeight: 800, fontSize: 17, color: ORANGE_TEXT, textDecoration: 'none' }}>{focusDot.name} · {focusDot.teamAbbr}</Link>
+                  <div style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5 }}>
+                    {focusDot.own != null && focusDot.shapeRate != null
+                      ? <>His {lc}: {(focusDot.own * 100).toFixed(1)}% whiffs per swing ({focusDot.nSwings.toLocaleString()} swings). Pitches that move like his get {(focusDot.shapeRate * 100).toFixed(1)}% across the league: <b>{focusDot.verdict === 'ahead' ? 'ahead of his shape' : focusDot.verdict === 'behind' ? 'behind his shape' : 'about level'}{focusDot.gapPts != null ? ` (${pts(focusDot.gapPts)})` : ''}</b>.</>
+                      : <>Too few swings of his own ({focusDot.nSwings}) or too thin a spot on the map to compare.</>}
+                  </div>
+                </div>
+                <div style={{ color: C.ink }}><FollowIsland kind="player" refId={String(focusDot.pitcherId)} name={focusDot.name} /></div>
+                <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.ink}`, background: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Clear and show all pitchers</button>
               </div>
             )}
 
@@ -418,8 +499,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       )}
 
       {!locked && payload && grid && place && (
-        throwers === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
-          : league ? <ShapeResultsSection split={split} league={league} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} shownId={focus} />
+        throwers === undefined && dots.length === 0 ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
+          : (league ?? leagueAll) ? <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} shownId={focus} across={across} />
           : null
       )}
 

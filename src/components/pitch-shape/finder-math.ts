@@ -174,3 +174,27 @@ export function diagnose(verdict: 'ahead' | 'level' | 'behind' | null, d: Diag, 
   }
   return out
 }
+
+// ---- every pitcher on the map: ahead of or behind what HIS OWN shape usually gets ------------------------------------------------------------------
+
+export type DotIn = { pitcherId: number; name: string; teamAbbr: string; nPitches: number; nSwings: number; nWhiffs: number; hb: number; ivb: number }
+export type DotRated<T extends DotIn> = T & { own: number | null; shapeRate: number | null; gapPts: number | null; verdict: Verdict | null }
+
+/**
+ * Each pitcher against the league's rate for pitches that move like HIS average (rateAt gives that rate, or null when the window is thin). Ahead means he gets more
+ * misses than his shape usually gets, behind fewer, level within ABOUT_LEVEL_PTS. A pitcher with under MIN_OWN_SWINGS swings of his own has no verdict.
+ */
+export function rateDots<T extends DotIn>(dots: T[], rateAt: (hb: number, ivb: number) => number | null): DotRated<T>[] {
+  return dots.map(d => {
+    const own = d.nSwings >= MIN_OWN_SWINGS ? d.nWhiffs / d.nSwings : null
+    const shapeRate = rateAt(d.hb, d.ivb)
+    return { ...d, own, shapeRate, ...verdictOf(own, shapeRate) }
+  })
+}
+
+/** The most ahead and most behind across the whole map: the guaranteed "some pitchers either side" list, whatever spot is chosen. */
+export function extremes<T extends DotIn>(rated: DotRated<T>[], n = 4) {
+  const ahead = rated.filter(r => r.verdict === 'ahead').sort((a, b) => (b.gapPts ?? 0) - (a.gapPts ?? 0)).slice(0, n)
+  const behind = rated.filter(r => r.verdict === 'behind').sort((a, b) => (a.gapPts ?? 0) - (b.gapPts ?? 0)).slice(0, n)
+  return { ahead, behind }
+}

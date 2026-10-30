@@ -94,3 +94,19 @@ describe('diagnose', () => {
     expect(diagnose('behind', D({ sdHb: 2.8 }), LG, 'Four-seam').map(x => x.id)).toContain('spread')
   })
 })
+
+import { extremes, rateDots } from './finder-math'
+
+describe('rateDots and extremes', () => {
+  const dot = (id: number, hb: number, nS: number, nW: number) => ({ pitcherId: id, name: `P${id}`, teamAbbr: 'X', nPitches: 500, nSwings: nS, nWhiffs: nW, hb, ivb: 15 })
+  const rateAt = (hb: number) => (hb > 90 ? null : 0.2)   // the league gets 20% at every shape except one thin spot
+  const rated = rateDots([dot(1, 5, 200, 70), dot(2, 6, 200, 20), dot(3, 7, 200, 41), dot(4, 8, 50, 30), dot(5, 99, 200, 70)], rateAt)
+  it('compares each pitcher with what his own shape gets, with a swing gate and no verdict on a thin shape', () => {
+    expect(rated.map(r => r.verdict)).toEqual(['ahead', 'behind', 'level', null, null])
+    expect(rated[0].gapPts).toBeCloseTo(15)
+  })
+  it('lists the most ahead and the most behind across the map', () => {
+    const e = extremes(rated, 3)
+    expect(e.ahead.map(r => r.pitcherId)).toEqual([1]); expect(e.behind.map(r => r.pitcherId)).toEqual([2])
+  })
+})
