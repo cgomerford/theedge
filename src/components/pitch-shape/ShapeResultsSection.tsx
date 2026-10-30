@@ -56,7 +56,7 @@ function lines(t: ResultRow, lgd: Diag, placeRate: number | null, own: boolean):
   ]
 }
 
-function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: ResultRow; lgd: Diag; placeRate: number | null; lc: string; pitchName: string; onShow: (id: number) => void; shownId: number | null; tint: string }) {
+function Card({ t, lgd, placeRate, lc, pitchName, onShow, onOpen, shownId, tint }: { t: ResultRow; lgd: Diag; placeRate: number | null; lc: string; pitchName: string; onShow: (id: number) => void; onOpen: (id: number, name: string) => void; shownId: number | null; tint: string }) {
   const [open, setOpen] = useState(false)
   const own = t.shapeRate !== undefined   // compared with his own shape, not the chosen spot
   const refRate = own ? t.shapeRate ?? null : placeRate
@@ -85,6 +85,7 @@ function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: 
       </div>
 
       <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={{ marginTop: 8, minHeight: 44, background: 'none', border: 0, color: ORANGE_TEXT, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>{open ? 'Hide all the numbers' : 'See all the numbers →'}</button>
+      <button type="button" onClick={() => onOpen(t.pitcherId, t.name)} style={{ marginLeft: 14, minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.orange}`, background: C.orange, color: '#fff', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Open all his pitches →</button>
       <button type="button" aria-pressed={shownId === t.pitcherId} onClick={() => onShow(t.pitcherId)} style={{ marginLeft: 14, minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${shownId === t.pitcherId ? C.ink : C.line}`, background: shownId === t.pitcherId ? C.ink : '#fff', color: shownId === t.pitcherId ? '#fff' : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{shownId === t.pitcherId ? 'Hide from map' : 'Show on map'}</button>
 
       {open && (
@@ -116,9 +117,9 @@ function Card({ t, lgd, placeRate, lc, pitchName, onShow, shownId, tint }: { t: 
   )
 }
 
-export default function ShapeResultsSection({ split, league, placeRate, lc, pitchName, latest, onShow, shownId, across }: {
+export default function ShapeResultsSection({ split, league, placeRate, lc, pitchName, latest, onShow, onOpen, shownId, across }: {
   split: Split & { unknownCount?: number }; league: Diag; placeRate: number | null; lc: string; pitchName: string; latest: number
-  onShow: (pitcherId: number) => void; shownId: number | null
+  onShow: (pitcherId: number) => void; onOpen: (pitcherId: number, name: string) => void; shownId: number | null
   /** the most ahead and most behind across the whole map, each against his own shape: always something to show */
   across: { ahead: ResultRow[]; behind: ResultRow[] }
 }) {
@@ -157,7 +158,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
                   <span style={{ fontSize: 12.5, color: '#5b5347' }}>{ahead.length} pitcher{ahead.length === 1 ? '' : 's'}</span>
                 </div>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px', lineHeight: 1.5 }}>More misses than this shape usually gets. Something beyond movement is helping.</p>
-                <div style={{ display: 'grid', gap: 10 }}>{shownAhead.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint={C.orange} />)}{ahead.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points ahead.</p>}</div>
+                <div style={{ display: 'grid', gap: 10 }}>{shownAhead.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} onOpen={onOpen} shownId={shownId} tint={C.orange} />)}{ahead.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points ahead.</p>}</div>
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -165,7 +166,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
                   <span style={{ fontSize: 12.5, color: '#5b5347' }}>{behind.length} pitcher{behind.length === 1 ? '' : 's'}</span>
                 </div>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px', lineHeight: 1.5 }}>They have the shape but fewer misses than it usually gets. The shape is not what is holding them back.</p>
-                <div style={{ display: 'grid', gap: 10 }}>{shownBehind.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint="#5E7A99" />)}{behind.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points behind.</p>}</div>
+                <div style={{ display: 'grid', gap: 10 }}>{shownBehind.map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} onOpen={onOpen} shownId={shownId} tint="#5E7A99" />)}{behind.length === 0 && <p style={{ fontSize: 13.5, color: '#5b5347' }}>No pitcher here is more than {ABOUT_LEVEL_PTS} points behind.</p>}</div>
               </div>
             </div>
             {(ahead.length > 3 || behind.length > 3) && <button type="button" onClick={() => setAll(a => !a)} style={{ marginTop: 12, minHeight: 44, background: 'none', border: 0, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{all ? 'Show fewer' : 'See every pitcher near this spot →'}</button>}
@@ -184,11 +185,11 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
             <style>{'@media(max-width:900px){.pf2-vs2{grid-template-columns:1fr !important}}'}</style>
             <div>
               <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: C.ink, color: '#FDE047' }}>MOST AHEAD OF HIS OWN SHAPE</span>
-              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.ahead.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint={C.orange} />)}</div>
+              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.ahead.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} onOpen={onOpen} shownId={shownId} tint={C.orange} />)}</div>
             </div>
             <div>
               <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: '#E3EAF2', color: C.ink }}>MOST BEHIND HIS OWN SHAPE</span>
-              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.behind.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} shownId={shownId} tint="#5E7A99" />)}</div>
+              <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.behind.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} onOpen={onOpen} shownId={shownId} tint="#5E7A99" />)}</div>
             </div>
           </div>
         </div>

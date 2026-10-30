@@ -23,6 +23,7 @@ import { PV_CSS } from './pvCss'
 import LocationPanel from './LocationPanel'
 import ShapeResultsSection, { type ResultRow } from './ShapeResultsSection'
 import FollowIsland from '@/components/signup/FollowIsland'
+import PitcherTab from './PitcherTab'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 import { FlightPlayer, SpeedToggle } from '@/components/pitching-lab/PitchFlight'
@@ -89,13 +90,15 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [dots, setDots] = useState<PitcherDot[]>([])
   const [showDots, setShowDots] = useState(true)
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
+  const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
+  const [view, setView] = useState<'map' | 'pitcher'>('map')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const locked = !isPro && !lookLeft && !isFree(type)
   const name = PITCH_NAMES[type] ?? type
   const lc = name.toLowerCase()
 
   useEffect(() => {
-    setPlace(null); setThrowers(null); setShown(null); setShownMsg(''); setShowAll(false); setFocus(null); setFocusPts(null); setDots([])
+    setPlace(null); setThrowers(null); setShown(null); setShownMsg(''); setShowAll(false); setFocus(null); setFocusPts(null); setDots([]); setTabPitcher(null); setView('map')
     if (locked) { setPayload(null); return }
     if (cache.has(key)) { setPayload(cache.get(key)); return }
     setPayload(undefined)
@@ -191,6 +194,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
   const rated: ResultRow[] = useMemo(() => (throwers ? rateThrowers(throwers, placeRate).map(r => ({ ...r, diag: throwers.find(t => t.pitcherId === r.pitcherId)!.diag })) : []), [throwers, placeRate])
   const split = useMemo(() => splitThrowers(rated), [rated])
+  const openPitcher = (id: number, nm: string) => { setTabPitcher({ id, name: nm }); setView('pitcher'); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const showOnMap = (id: number) => { setFocus(f => (f === id ? null : id)); if (typeof document !== 'undefined') document.getElementById('pf2-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
   const ratedDots = useMemo(() => rateDots(dots.map(d => ({ ...d })), (hb, ivb) => {
     if (!grid) return null
@@ -261,7 +265,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
 
-      <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '14px 16px', marginBottom: 14 }}>
+      <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '14px 16px', marginBottom: 14, display: view === 'map' ? undefined : 'none' }}>
         <div className="pv-k">How to read this map</div>
         <div className="pf2-read" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginTop: 6 }}>
           <style>{'@media(max-width:800px){.pf2-read{grid-template-columns:1fr !important}}'}</style>
@@ -271,6 +275,17 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         </div>
       </div>
 
+      <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px' }}>
+        <button role="tab" aria-selected={view === 'map'} type="button" onClick={() => setView('map')} style={tabStyle(view === 'map')}>League map</button>
+        {tabPitcher && (
+          <span style={{ display: 'inline-flex', gap: 0 }}>
+            <button role="tab" aria-selected={view === 'pitcher'} type="button" onClick={() => setView('pitcher')} style={{ ...tabStyle(view === 'pitcher'), borderRadius: '4px 0 0 4px' }}>{tabPitcher.name}</button>
+            <button type="button" aria-label={`Close the ${tabPitcher.name} tab`} onClick={() => { setTabPitcher(null); setView('map') }} style={{ ...tabStyle(false), borderRadius: '0 4px 4px 0', borderLeft: 0, minWidth: 44 }}>×</button>
+          </span>
+        )}
+      </div>
+      {view === 'pitcher' && tabPitcher && <PitcherTab pitcherId={tabPitcher.id} season={latest} isPro={isPro} onClose={() => setView('map')} />}
+      <div style={{ display: view === 'map' ? undefined : 'none' }}>
       <div className="pv-row" style={{ marginTop: 0 }}>
         <span className="pv-k">Pitch</span>
         {pitchTypes.map(t => {
@@ -420,6 +435,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   </div>
                 </div>
                 <div style={{ color: C.ink }}><FollowIsland kind="player" refId={String(focusDot.pitcherId)} name={focusDot.name} /></div>
+                <button type="button" onClick={() => openPitcher(focusDot.pitcherId, focusDot.name)} style={{ minHeight: 44, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Open all his pitches →</button>
                 <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.ink}`, background: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Clear and show all pitchers</button>
               </div>
             )}
@@ -500,7 +516,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
       {!locked && payload && grid && place && (
         throwers === undefined && dots.length === 0 ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
-          : (league ?? leagueAll) ? <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} shownId={focus} across={across} />
+          : (league ?? leagueAll) ? <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={openPitcher} shownId={focus} across={across} />
           : null
       )}
 
@@ -510,6 +526,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <div><b style={{ color: C.ink }}>What it can’t tell you.</b> Command, deception and sequencing aren’t in the map. It describes what pitches like this have done; it doesn’t predict.</div>
         <div><b style={{ color: C.ink }}>Why some squares are blank.</b> Under {MIN_WINDOW_SWINGS} swings is too few to trust, so we leave it empty rather than guess.</div>
       </div>
+      </div>
     </div>
   )
 }
+
+const tabStyle = (on: boolean): React.CSSProperties => ({ minHeight: 44, padding: '0 16px', borderRadius: 4, border: `1px solid ${on ? '#1A1A1A' : '#e7e2d8'}`, background: on ? '#1A1A1A' : '#fff', color: on ? '#FAF8F3' : '#1A1A1A', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' })

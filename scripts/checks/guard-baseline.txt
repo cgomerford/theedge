@@ -106,3 +106,5 @@ fetch	src/components/pitch-shape/LocationPanel.tsx
 fetch	src/components/pitch-shape/SandboxClient.tsx
 logos	src/components/pitch-shape/PitchFinderV2.tsx
 logos	src/components/pitch-shape/ShapeResultsSection.tsx
+fetch	src/components/pitch-shape/PitcherTab.tsx
+logos	src/components/pitch-shape/PitcherTab.tsx

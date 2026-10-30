@@ -171,7 +171,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
       img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
-  }, [grid, N, lw])
+  }, [grid, N, lw, state])   // state: the canvas only exists once the bins have loaded, which can be after the map data arrived
 
   // pitchers who throw something close: those whose pitches land within 2 in of this movement, nearest on all four settings first
   useEffect(() => {

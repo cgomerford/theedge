@@ -487,6 +487,35 @@ export async function getPitcherDots(type: string, hand: Hand, season: number): 
   return { dots, league: leagueOf(rows) }
 }
 
+export type RepertoireRow = {
+  pitchType: string; nPitches: number; velo: number; ivb: number; hb: number; slot: number
+  nSwings: number; nWhiffs: number; diag: Diag
+}
+export type Repertoire = { pitcherId: number; name: string; teamAbbr: string; hand: Hand; season: number; rows: RepertoireRow[]; /** pitch types left out because they are Pro */ lockedTypes: number }
+
+/**
+ * Every pitch type one pitcher threw that season (50+ pitches, as the writer keeps), with his own results and diagnostics. A viewer who is not Pro only gets the free
+ * pitch types (four-seam and sweeper); the rest are counted in lockedTypes and never sent. null when he has no rows (empty state).
+ */
+export async function getPitcherRepertoire(pitcherId: number, season: number, proTypes: boolean): Promise<Repertoire | null> {
+  if (!Number.isInteger(pitcherId) || pitcherId <= 0) return null
+  const supa = createAdminClient()
+  const cols = 'pitcher_id,pitcher_name,team_abbr,p_throws,pitch_type,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
+  const ask = (c: string) => supa.from('pitch_shape_pitcher').select(c).eq('pitcher_id', pitcherId).eq('season', season).order('n_pitches', { ascending: false }).limit(20)
+  let { data, error } = await ask(cols + THROWER_DIAG_COLS)
+  if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
+  if (error) { console.error('[getPitcherRepertoire] Supabase error:', error.message); return null }
+  type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; p_throws: string; pitch_type: string; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number }
+  const all = (data ?? []) as unknown as Row[]
+  if (all.length === 0) return null
+  const ok = (t: string) => proTypes || (FREE_SANDBOX_TYPES as readonly string[]).includes(t)
+  const rows: RepertoireRow[] = all.filter(r => ok(r.pitch_type) && r.pitch_type in PITCH_NAMES).map(r => ({
+    pitchType: r.pitch_type, nPitches: r.n_pitches, velo: Number(r.velo), ivb: Number(r.ivb), hb: Number(r.hb), slot: Number(r.slot),
+    nSwings: r.n_swings ?? 0, nWhiffs: r.n_whiffs ?? 0, diag: diagOf(r),
+  }))
+  return { pitcherId, name: all[0].pitcher_name, teamAbbr: all[0].team_abbr ?? '', hand: all[0].p_throws === 'L' ? 'L' : 'R', season, rows, lockedTypes: all.filter(r => !ok(r.pitch_type) && r.pitch_type in PITCH_NAMES).length }
+}
+
 /** One pitcher's sampled pitches (up to 60) as [hb, ivb], for drawing his dots. [] when he has none. */
 export async function getPitcherPoints(type: string, hand: Hand, season: number, pitcherId: number): Promise<[number, number][]> {
   const { data, error } = await createAdminClient().from('pitch_shape_pitcher').select('points')
