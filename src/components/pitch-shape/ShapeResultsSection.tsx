@@ -130,7 +130,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
   const locLoaded = [...ahead, ...behind].some(t => t.diag.zonePct != null)
   const shownAhead = all ? ahead.slice(0, 12) : ahead.slice(0, 3), shownBehind = all ? behind.slice(0, 12) : behind.slice(0, 3)
   return (
-    <section id="shape-vs-results" style={{ marginTop: 36, borderTop: `2px solid ${C.ink}`, paddingTop: 16 }}>
+    <section id="shape-vs-results" style={{ marginTop: 36, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
       <div className="pv-k" style={{ color: ORANGE_TEXT }}>⊕ Ahead or behind the shape</div>
       <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(26px,4vw,38px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>Who gets more than the shape, and who gets less?</h2>
       <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 820, margin: '0 0 12px', lineHeight: 1.5 }}>
@@ -149,12 +149,12 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
         : placeRate == null ? <p style={{ fontSize: 14, color: '#5b5347' }}>This area has too few league swings to compare anyone against. Choose a coloured square.</p>
         : (
           <>
-            {!locLoaded && <div style={{ background: '#FFF7CC', border: '1px solid #FDE047', borderRadius: R, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>Location and contact-result numbers load with the next data refresh. Until then each pitcher shows whiffs, contact quality, how much the movement varies, and calls.</div>}
+            {!locLoaded && <div style={{ background: '#FFF1EA', border: '1px solid #f3dccf', borderRadius: R, padding: '8px 12px', fontSize: 13, marginBottom: 12 }}>Location and contact-result numbers load with the next data refresh. Until then each pitcher shows whiffs, contact quality, how much the movement varies, and calls.</div>}
             <div className="pf2-vs" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, alignItems: 'start' }}>
               <style>{'@media(max-width:900px){.pf2-vs{grid-template-columns:1fr !important}}'}</style>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: C.ink, color: '#FDE047' }}>GETTING MORE THAN THE SHAPE</span>
+                  <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: '#FFE4D6', color: ORANGE_TEXT }}>GETTING MORE THAN THE SHAPE</span>
                   <span style={{ fontSize: 12.5, color: '#5b5347' }}>{ahead.length} pitcher{ahead.length === 1 ? '' : 's'}</span>
                 </div>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px', lineHeight: 1.5 }}>More misses than this shape usually gets. Something beyond movement is helping.</p>
@@ -184,7 +184,7 @@ export default function ShapeResultsSection({ split, league, placeRate, lc, pitc
           <div className="pf2-vs2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 18, alignItems: 'start' }}>
             <style>{'@media(max-width:900px){.pf2-vs2{grid-template-columns:1fr !important}}'}</style>
             <div>
-              <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: C.ink, color: '#FDE047' }}>MOST AHEAD OF HIS OWN SHAPE</span>
+              <span style={{ fontSize: 11, letterSpacing: '.1em', fontWeight: 800, padding: '4px 9px', borderRadius: 4, background: '#FFE4D6', color: ORANGE_TEXT }}>MOST AHEAD OF HIS OWN SHAPE</span>
               <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{across.ahead.slice(0, all ? 6 : 3).map(t => <Card key={t.pitcherId} t={t} lgd={league} placeRate={placeRate} lc={lc} pitchName={pitchName} onShow={onShow} onOpen={onOpen} shownId={shownId} tint={C.orange} />)}</div>
             </div>
             <div>

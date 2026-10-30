@@ -55,7 +55,7 @@ No schema change for the first version:
 
 Later (needs a schema change, SQL for George): add Statcast run value to `pitch_shape_bins` for a single run-value-per-100-pitches figure, and zone/chase counts (already queued in `20261031100000_pitch_shape_pitcher_diagnostics.sql`) to explain location.
 
-## 6. Decisions for George
+## 6. Decisions for George (approved 2026-10-31: both framings, FIP and runs per nine with ERA only as context, strikeout and contact parts combined and labelled arithmetic)
 1. Wording: framing 1 ("worth about"), framing 2 ("has produced"), or both? (Recommended: both, framing 2 as the headline.)
 2. Show ERA at all, or FIP and runs per nine only? (Recommended: FIP and runs per nine; ERA only as context.)
 3. Allow the strikeout part and the contact part to be added into one "runs per nine" figure? (Recommended yes, labelled arithmetic.)

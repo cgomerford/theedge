@@ -300,7 +300,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
           : state === 'failed' || !bins || !index || !league || !L || !A ? (
             <div style={{ border: `1.5px dashed ${C.line}`, borderRadius: 6, padding: 16, textAlign: 'center', color: C.mute, fontSize: 13 }}><b style={{ display: 'block', color: C.ink, fontSize: 14 }}>No league sample for this pitch yet</b>The shape table has no rows for {lc}s thrown {hand === 'R' ? 'right' : 'left'}-handed. We don’t estimate. Choose another pitch type or hand.</div>
           ) : thin ? (
-            <div style={{ border: `2px solid ${C.ink}`, borderRadius: 6, padding: 18, background: '#fff' }}>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 18, background: '#fff' }}>
               <div className="pv-k" style={{ color: ORANGE_TEXT }}>{headLine}</div>
               <h3 style={{ fontSize: 32, margin: '10px 0 8px', fontWeight: 800, letterSpacing: '-.02em' }}>Almost no one throws this</h3>
               <p style={{ fontSize: 14, color: '#5b5347', lineHeight: 1.5, margin: 0 }}>Only {fmtN(L.swings)} swings in the ±2-bin neighbourhood (needs {GATE.swings}). We don’t estimate. Try a shape closer to where real pitches live.</p>
@@ -308,13 +308,13 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
               <button type="button" onClick={snapNearest} style={{ marginTop: 12, minHeight: 44, padding: '0 16px', border: `1.5px solid ${C.ink}`, background: '#fff', borderRadius: 4, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Move to the nearest shape with enough data</button>
             </div>
           ) : (
-            <div style={{ border: `2px solid ${C.ink}`, borderRadius: 6, padding: 16, background: '#fff' }}>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, background: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <span className="pv-k" style={{ color: ORANGE_TEXT, margin: 0 }}>{headLine}</span>
-                <span style={{ fontSize: 11, letterSpacing: '.08em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: L.reach === 1 ? C.ink : C.soft, color: L.reach === 1 ? C.yellow : C.ink }}>{L.reach === 1 ? `STRONG SAMPLE · ${fmtN(L.swings)} SWINGS` : `THIN SAMPLE · WIDENED TO ±2 BINS · ${fmtN(L.swings)} SWINGS`}</span>
+                <span style={{ fontSize: 11, letterSpacing: '.08em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: L.reach === 1 ? '#FFE4D6' : C.soft, color: L.reach === 1 ? ORANGE_TEXT : C.ink }}>{L.reach === 1 ? `STRONG SAMPLE · ${fmtN(L.swings)} SWINGS` : `THIN SAMPLE · WIDENED TO ±2 BINS · ${fmtN(L.swings)} SWINGS`}</span>
               </div>
               <h3 style={{ fontSize: 'clamp(22px,3vw,30px)', lineHeight: 1.2, letterSpacing: '-.015em', margin: '12px 0 14px', fontWeight: 800 }}>
-                {hand === 'L' ? 'Left' : 'Right'}-handed {lc}s shaped like this have been <mark style={{ background: C.yellow, padding: '0 4px', borderRadius: 4 }}>{verdictOf(gw ?? 0.5)}</mark> at getting misses{gg == null ? '.' : <>, and <mark style={{ background: C.yellow, padding: '0 4px', borderRadius: 4 }}>{verdictOf(gg)}</mark> at getting ground balls.</>}
+                {hand === 'L' ? 'Left' : 'Right'}-handed {lc}s shaped like this have been <b style={{ color: ORANGE_TEXT }}>{verdictOf(gw ?? 0.5)}</b> at getting misses{gg == null ? '.' : <>, and <b style={{ color: ORANGE_TEXT }}>{verdictOf(gg)}</b> at getting ground balls.</>}
               </h3>
               <div className="ps2-mets">
                 {card('Whiff%', 'misses per swing', 'whiff', L.whiff.value, f1, league.whiff)}
@@ -322,7 +322,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
                 {card('GB%', 'ground balls per batted ball', 'gb', L.gb.value, f1, league.gb)}
                 {card('Damage on contact', 'xwOBAcon, lower is better', 'xw', L.xwobaCon.value, w3, league.xw)}
               </div>
-              {way && <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: C.ink, color: '#fff', borderRadius: 6, padding: '12px 14px', marginTop: 12, fontSize: 14, lineHeight: 1.4 }}><span style={{ fontSize: 22 }}>↑</span><span><b style={{ color: C.yellow }}>Which way helps:</b> shapes with 2 more inches of {way.text} than this have got <b>{way.d >= 0 ? '+' : '−'}{Math.abs(way.d).toFixed(1)} points</b> {way.d >= 0 ? 'more' : 'fewer'} whiffs per swing. Extra {way.other} has mattered less here.</span></div>}
+              {way && <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#FFF1EA', border: '1px solid #f3dccf', color: C.ink, borderRadius: 6, padding: '12px 14px', marginTop: 12, fontSize: 14, lineHeight: 1.4 }}><span style={{ fontSize: 22, color: ORANGE_TEXT }}>↑</span><span><b style={{ color: ORANGE_TEXT }}>Which way helps:</b> shapes with 2 more inches of {way.text} than this have got <b>{way.d >= 0 ? '+' : '−'}{Math.abs(way.d).toFixed(1)} points</b> {way.d >= 0 ? 'more' : 'fewer'} whiffs per swing. Extra {way.other} has mattered less here.</span></div>}
               {compare && L.whiff.value != null && (
                 <div style={{ marginTop: 10, background: C.soft, borderRadius: 6, padding: '10px 12px', fontSize: 13.5 }}>
                   <b>Compare, shape B:</b> adding{' '}
@@ -343,7 +343,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
                 {cells === undefined ? <div style={{ color: C.mute, fontSize: 13 }}>Loading the map…</div> : !grid || lw == null ? <div style={{ color: C.mute, fontSize: 13 }}>The league map isn’t built for this pitch yet.</div> : (
                   <div style={{ position: 'relative', aspectRatio: '1 / 1', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden', background: '#EDE8DC' }}>
                     <canvas ref={canvasRef} role="img" aria-label={`League ${lc} movement map with your shape marked. The squares are movement (ride up, run right), not the strike zone.`} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
-                    {ring && <svg viewBox={`0 0 ${N} ${N}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden><circle cx={ring.x} cy={ring.y} r={N / 28} fill="#FDE047" fillOpacity=".85" stroke={C.ink} strokeWidth={N / 90} /></svg>}
+                    {ring && <svg viewBox={`0 0 ${N} ${N}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} aria-hidden><circle cx={ring.x} cy={ring.y} r={N / 28} fill={C.orange} fillOpacity=".9" stroke="#fff" strokeWidth={N / 90} /></svg>}
                   </div>
                 )}
                 <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>↑ ride · run → · each square is a way a pitch moves (not the strike zone) · the ring is your shape (velocity and arm angle are not on this map)</div>

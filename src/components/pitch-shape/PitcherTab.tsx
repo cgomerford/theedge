@@ -22,6 +22,8 @@ import type { Repertoire, RepertoireRow } from '@/lib/pitch-shape/data'
 import { fmtN, indexBins, lookup, typicalShape, PITCH_NAMES, type BinIndex, type Shape, type ShapeBin } from '@/lib/pitch-shape/model'
 import { band, buildDist, changeBetween, goodness, leagueAverages, sliderRange, verdictWord, type Dist, type Metric } from '@/lib/pitch-shape/sandbox-math'
 import { ABOUT_LEVEL_PTS, MIN_OWN_SWINGS, verdictOf } from './finder-math'
+import { IMPACT_CONSTANTS, LARGE_EFFECT, translateChange } from '@/lib/pitch-shape/impact'
+import type { Workload } from '@/lib/pitch-shape/workload'
 
 const ORANGE_TEXT = '#B83A0E'
 const R = 6
@@ -57,13 +59,14 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
   const [loaded, setLoaded] = useState<Record<string, Loaded>>({})
   const [sel, setSel] = useState<string | null>(null)
   const [B, setB] = useState<Shape | null>(null)
+  const [workload, setWorkload] = useState<Workload | null>(null)
 
   useEffect(() => {
     setRep(undefined); setSel(null); setB(null)
     let live = true
     fetch(`/api/mlb/pitch-shape/pitcher?id=${pitcherId}&season=${season}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j: { repertoire: Repertoire | null }) => { if (live) { setRep(j.repertoire); setSel(j.repertoire?.rows[0]?.pitchType ?? null) } })
+      .then((j: { repertoire: Repertoire | null; workload?: Workload | null }) => { if (live) { setRep(j.repertoire); setWorkload(j.workload ?? null); setSel(j.repertoire?.rows[0]?.pitchType ?? null) } })
       .catch(e => { console.error('[PitcherTab] repertoire fetch failed:', e instanceof Error ? e.message : e); if (live) setRep(null) })
     return () => { live = false }
   }, [pitcherId, season])
@@ -102,6 +105,8 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
   const moved = A && B ? (['velo', 'ivb', 'hb', 'slot'] as (keyof Shape)[]).filter(k => Math.abs(A[k] - B[k]) > (k === 'slot' ? 0.9 : 0.09)) : []
   const wChange = change?.find(c => c.metric === 'whiff') ?? null
   const phrase = B && A ? moved.map(k => `${signed(B[k] - A[k], k === 'slot' ? 0 : 1)}${k === 'velo' ? ' mph' : k === 'slot' ? '°' : ' in'} of ${k === 'velo' ? 'velocity' : k === 'ivb' ? 'ride' : k === 'hb' ? 'run' : 'arm angle'}`).join(' and ') : ''
+  const xwChange = change?.find(c => c.metric === 'xw') ?? null
+  const impact = row && wChange ? translateChange({ whiffDelta: wChange.delta, xwobaDelta: xwChange?.delta ?? null, swings: row.nSwings, bbe: row.diag.nBbe, ip: workload?.ip ?? null, bf: workload?.bf ?? null }) : null
   const g = (k: Metric, v: number | null) => (v == null || !L ? null : goodness(L.dist, k, v))
 
   return (
@@ -138,7 +143,7 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
                   <td style={{ ...cell, fontWeight: 800 }}>{pc(own)}</td>
                   <td style={cell}>{lk ? pc(lk.whiff.value) : '…'}</td>
                   <td style={{ ...cell, fontWeight: 800 }}>{gapPts == null ? '—' : `${signed(gapPts)} pts`}</td>
-                  <td style={cell}>{verdict == null ? <span style={{ color: C.mute, fontSize: 12 }}>{own == null ? `under ${MIN_OWN_SWINGS} swings` : '—'}</span> : <span style={{ fontSize: 10.5, letterSpacing: '.08em', fontWeight: 800, padding: '3px 7px', borderRadius: 4, background: verdict === 'ahead' ? C.ink : verdict === 'behind' ? '#E3EAF2' : C.soft, color: verdict === 'ahead' ? '#FDE047' : C.ink }}>{verdict === 'ahead' ? 'AHEAD' : verdict === 'behind' ? 'BEHIND' : 'LEVEL'}</span>}</td>
+                  <td style={cell}>{verdict == null ? <span style={{ color: C.mute, fontSize: 12 }}>{own == null ? `under ${MIN_OWN_SWINGS} swings` : '—'}</span> : <span style={{ fontSize: 10.5, letterSpacing: '.08em', fontWeight: 800, padding: '3px 7px', borderRadius: 4, background: verdict === 'ahead' ? '#FFE4D6' : verdict === 'behind' ? '#E3EAF2' : C.soft, color: verdict === 'ahead' ? ORANGE_TEXT : C.ink }}>{verdict === 'ahead' ? 'AHEAD' : verdict === 'behind' ? 'BEHIND' : 'LEVEL'}</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -195,14 +200,14 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
                 <div style={{ fontSize: 11.5, color: C.mute, marginTop: 8 }}>The faint line on each slider is where his pitch is now.</div>
               </div>
 
-              <div style={{ border: `2px solid ${C.ink}`, borderRadius: R, padding: 16, background: '#fff' }}>
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: R, padding: 16, background: '#fff' }}>
                 {moved.length === 0 ? <p style={{ margin: 0, fontSize: 15, color: '#3a352c', lineHeight: 1.5 }}>Move a slider to see what changes. At his current shape, {PITCH_NAMES[row.pitchType]?.toLowerCase()}s like his have produced <b>{pc(LA?.whiff.value ?? null)}</b> whiffs per swing across the league.</p> : !LB || LB.whiff.value == null || !LA || LA.whiff.value == null ? (
                   <div><b style={{ fontSize: 20 }}>Almost no one throws this</b><p style={{ margin: '6px 0 0', fontSize: 14, color: '#5b5347', lineHeight: 1.5 }}>Only {fmtN(LB?.swings ?? 0)} league swings are near that shape (needs 150), so there is no comparison to show. We do not estimate. Try a smaller change, or stay inside the shaded part of each slider.</p></div>
                 ) : (
                   <>
                     <div className="pv-k" style={{ color: ORANGE_TEXT }}>Adding {phrase}</div>
                     <h4 style={{ margin: '8px 0 12px', fontSize: 'clamp(20px,2.6vw,26px)', lineHeight: 1.25, fontWeight: 800, letterSpacing: '-.01em' }}>
-                      League pitches with that shape have got <mark style={{ background: '#FDE047', padding: '0 4px', borderRadius: 4 }}>{pc(LB.whiff.value)}</mark> whiffs per swing, against <mark style={{ background: '#FDE047', padding: '0 4px', borderRadius: 4 }}>{pc(LA.whiff.value)}</mark> for pitches shaped like his now{wChange?.delta != null ? <> ({signed(wChange.delta * 100)} points)</> : null}.
+                      League pitches with that shape have got <b style={{ color: ORANGE_TEXT }}>{pc(LB.whiff.value)}</b> whiffs per swing, against <b style={{ color: ORANGE_TEXT }}>{pc(LA.whiff.value)}</b> for pitches shaped like his now{wChange?.delta != null ? <> ({signed(wChange.delta * 100)} points)</> : null}.
                     </h4>
                     {canCompare ? (
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>
@@ -216,7 +221,35 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
                           </tr>
                         ))}</tbody>
                       </table>
-                    ) : <div><p style={{ fontSize: 13.5, color: '#5b5347', margin: '0 0 8px' }}>Pro shows all four measures for the change, side by side.</p><UpgradePrompt source="pitch_shape" /></div>}
+                    ) : <div><p style={{ fontSize: 13.5, color: '#5b5347', margin: '0 0 8px' }}>Pro shows all four measures for the change, side by side, and what it is worth in strikeouts, FIP and runs.</p><UpgradePrompt source="pitch_shape" /></div>}
+                    {canCompare && impact && (
+                      <div style={{ marginTop: 14, background: '#FFF8F4', border: '1px solid #f3dccf', borderRadius: R, padding: '12px 14px' }}>
+                        <div className="pv-k" style={{ color: ORANGE_TEXT }}>What that is worth, by the arithmetic</div>
+                        {impact.totalPerNine != null ? (
+                          <p style={{ margin: '6px 0 8px', fontSize: 16.5, lineHeight: 1.4, fontWeight: 800, letterSpacing: '-.01em' }}>
+                            If his {PITCH_NAMES[row.pitchType]?.toLowerCase()} got what league pitches with that shape get, the change is worth about <span style={{ color: ORANGE_TEXT }}>{signed(impact.totalPerNine, 2)} runs per nine</span> over his current workload{workload ? ` (${workload.ip.toFixed(0)} innings)` : ''}. Lower is better for the pitcher.
+                          </p>
+                        ) : <p style={{ margin: '6px 0 8px', fontSize: 14, color: '#5b5347' }}>Not enough of his own results on this pitch, or no innings, to turn the change into runs. The league comparison above still holds.</p>}
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>
+                          <tbody>
+                            {([
+                              ['Extra whiffs on his swings', impact.extraWhiffs == null ? '—' : `${signed(impact.extraWhiffs)} on ${row.nSwings} swings`],
+                              ['Extra strikeouts (0.53 per whiff)', impact.extraK == null ? '—' : `${signed(impact.extraK)}${impact.kPctPts != null ? ` · K% ${signed(impact.kPctPts)} pts` : ''}`],
+                              ['FIP, strikeout part', impact.fipDelta == null ? '—' : signed(impact.fipDelta, 2)],
+                              ['Contact quality, as runs per nine', impact.contactPerNine == null ? '—' : `${signed(impact.contactPerNine, 2)} (before defense and luck)`],
+                              ['Together, runs per nine', impact.totalPerNine == null ? '—' : signed(impact.totalPerNine, 2)],
+                            ] as [string, string][]).map(([k, v], i) => (
+                              <tr key={k} style={{ borderTop: i ? `1px solid #f3dccf` : undefined }}><td style={{ padding: '6px 0' }}>{k}</td><td style={{ textAlign: 'right', fontWeight: i === 4 ? 800 : 700 }}>{v}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {impact.thin.length > 0 && <p style={{ fontSize: 12, color: C.mute, margin: '8px 0 0' }}>Left out: {impact.thin.join('; ')}.</p>}
+                        {impact.totalPerNine != null && Math.abs(impact.totalPerNine) >= LARGE_EFFECT && <p style={{ fontSize: 12.5, color: ORANGE_TEXT, margin: '8px 0 0', fontWeight: 700 }}>A change this large moves the pitch a long way from where it is now. Treat it with extra care.</p>}
+                        <p style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.5, margin: '8px 0 0' }}>
+                          Arithmetic, not a forecast. It assumes his pitch would get what league pitches of that shape get, and leaves out his location, deception, sequencing and defense. Whiffs become strikeouts at {IMPACT_CONSTANTS.kPerWhiff} per swinging strike (2026, 429 pitchers); FIP takes 2 ÷ innings off for each strikeout (FanGraphs); contact quality becomes runs at a wOBA scale of {IMPACT_CONSTANTS.wobaScale}. {workload?.era != null ? `His ERA this season is ${workload.era.toFixed(2)}; it also moves with defense and sequencing, so no ERA claim is made. ` : ''}Constants as of {IMPACT_CONSTANTS.asOf}.
+                        </p>
+                      </div>
+                    )}
                     <p style={{ fontSize: 12, color: C.mute, margin: '10px 0 0', lineHeight: 1.5 }}>{fmtN(LB.swings)} league swings near the dialled shape, {fmtN(LA.swings)} near his current one{LB.reach === 2 ? '; the dialled shape is thin, widened to ±2 bins' : ''}. Green means a change that helps the pitcher on that measure; lower damage on contact is better. He currently gets {pc(row.nSwings >= MIN_OWN_SWINGS ? row.nWhiffs / row.nSwings : null)} from this pitch, so a move in the shape would also have to carry over his location and deception.</p>
                   </>
                 )}

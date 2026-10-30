@@ -53,7 +53,7 @@ export default async function ShapeSandboxPage({ searchParams }: { searchParams:
           : view === 'new' ? (
             <>
               <PitchFinderV2 isPro={isPro} pitchTypes={pitchTypes} />
-              <div style={{ margin: '44px 0 10px', borderTop: '2px solid #1A1A1A', paddingTop: 14 }}>
+              <div style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
                 <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 02 · DIAL IN A SHAPE</div>
                 <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(26px,4vw,38px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>What have pitches shaped like this produced?</h2>
                 <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 14px', lineHeight: 1.5 }}>

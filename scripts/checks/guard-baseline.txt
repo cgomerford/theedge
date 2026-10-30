@@ -108,3 +108,4 @@ logos	src/components/pitch-shape/PitchFinderV2.tsx
 logos	src/components/pitch-shape/ShapeResultsSection.tsx
 fetch	src/components/pitch-shape/PitcherTab.tsx
 logos	src/components/pitch-shape/PitcherTab.tsx
+fetch	src/lib/pitch-shape/workload.ts

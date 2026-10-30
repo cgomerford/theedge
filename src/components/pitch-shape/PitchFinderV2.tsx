@@ -40,7 +40,7 @@ const ORANGE_TEXT = '#B83A0E'   // small orange text that passes contrast
 // The animation uses a typical release point for the hand (only the movement, speed and where it crosses come from the chosen spot).
 const RELEASE = { R: { x: -1.9, z: 5.9, ext: 6.3 }, L: { x: 1.9, z: 5.9, ext: 6.3 } } as const
 const TYPICAL_MPH: Record<string, number> = { FF: 94.5, SI: 94, FC: 89, SL: 86, ST: 82, SV: 81, CU: 79, KC: 80, CH: 86, FS: 85 }
-const GOLD = { fill: '#FDE047', ink: '#1A1A1A' }
+const SPOT = { fill: '#fff', ink: '#B83A0E' }   // numbered spot markers: white with orange text, orange when chosen (no yellow, no black)
 type Spot = { hb: number; ivb: number; rate: number; swings: number }
 type Place = { hb: number; ivb: number; spot: number | null }
 
@@ -324,9 +324,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: C.ink, color: '#fff', borderRadius: 6, padding: '11px 14px', fontSize: 13.5, marginBottom: 10 }}>
-              <span style={{ width: 22, height: 22, borderRadius: '50%', background: GOLD.fill, color: C.ink, display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, flex: 'none' }}>1</span>
-              <span><b>Start here:</b> click a gold spot, or any red area, to see what makes it work and who throws a pitch like it.</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#FFF1EA', border: '1px solid #f3dccf', color: C.ink, borderRadius: 6, padding: '11px 14px', fontSize: 13.5, marginBottom: 10 }}>
+              <span style={{ width: 22, height: 22, borderRadius: '50%', background: C.orange, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, flex: 'none' }}>1</span>
+              <span><b>Start here:</b> click a numbered spot, or any red area, to see what makes it work and who throws a pitch like it.</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '26px minmax(0,1fr)', gridTemplateRows: 'auto 22px' }}>
@@ -361,8 +361,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     const b = toBox(s.hb, s.ivb), on = place?.spot === i
                     return (
                       <g key={i}>
-                        <circle cx={b.x} cy={b.y} r={N / 30} fill={on ? C.ink : GOLD.fill} stroke={on ? GOLD.fill : C.ink} strokeWidth={N / 110} />
-                        <text x={b.x} y={b.y + N / 95} textAnchor="middle" fontSize={N / 26} fontWeight={800} fill={on ? GOLD.fill : C.ink}>{i + 1}</text>
+                        <circle cx={b.x} cy={b.y} r={N / 30} fill={on ? SPOT.ink : SPOT.fill} stroke={on ? '#fff' : SPOT.ink} strokeWidth={N / 110} />
+                        <text x={b.x} y={b.y + N / 95} textAnchor="middle" fontSize={N / 26} fontWeight={800} fill={on ? '#fff' : SPOT.ink}>{i + 1}</text>
                       </g>
                     )
                   })}
@@ -423,7 +423,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             )}
 
             {focusDot && (
-              <div style={{ background: '#fff', border: `2px solid ${C.ink}`, borderRadius: 6, padding: '12px 14px', marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={headshotCutoutUrl(focusDot.pitcherId, 240)} alt="" width={64} height={64} style={{ width: 64, height: 64, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
                 <div style={{ flex: 1, minWidth: 180 }}>
@@ -460,11 +460,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
           <div>
             {place && placeStats && spotName ? (
-              <div style={{ background: '#fff', border: `2px solid ${C.ink}`, borderRadius: 6, padding: 16, marginBottom: 14 }}>
+              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14 }}>
                 <div className="pv-k" style={{ color: ORANGE_TEXT }}>{place.spot != null ? `Spot ${place.spot + 1} of ${spots.length} · where ${lc}s work best` : 'The place you chose'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '4px 0 6px' }}>
                   <span style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', lineHeight: 1.05 }}>{spotName.name}</span>
-                  {tone && <span style={{ fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: tone === 'red' ? C.ink : tone === 'blue' ? '#E3EAF2' : C.soft, color: tone === 'red' ? GOLD.fill : C.ink }}>{tone === 'red' ? 'HIGH-MISS SHAPE' : tone === 'blue' ? 'LOW-MISS SHAPE' : 'ORDINARY SHAPE'}</span>}
+                  {tone && <span style={{ fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: tone === 'red' ? '#FFE4D6' : tone === 'blue' ? '#E3EAF2' : C.soft, color: tone === 'red' ? ORANGE_TEXT : C.ink }}>{tone === 'red' ? 'HIGH-MISS SHAPE' : tone === 'blue' ? 'LOW-MISS SHAPE' : 'ORDINARY SHAPE'}</span>}
                 </div>
                 <p style={{ fontSize: 14, color: '#5b5347', lineHeight: 1.5, margin: '0 0 6px' }}>{spotName.why}</p>
                 {tone && <p style={{ fontSize: 14, color: '#3a352c', lineHeight: 1.5, margin: '0 0 8px', fontWeight: 600 }}>{toneLine(tone, name)}</p>}
@@ -476,7 +476,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     </div>
                     <div style={{ position: 'relative', height: 8, background: C.soft, borderRadius: 4, margin: '18px 0 10px' }} aria-hidden>
                       <span style={{ position: 'absolute', left: `${barPos(leagueRate)}%`, top: -6, width: 2, height: 20, background: C.ink }}><em style={{ position: 'absolute', top: -16, left: -14, fontStyle: 'normal', fontSize: 10.5, fontWeight: 700, color: '#5b5347', whiteSpace: 'nowrap' }}>avg {(leagueRate * 100).toFixed(1)}%</em></span>
-                      <span style={{ position: 'absolute', left: `${barPos(placeRate)}%`, top: -6, width: 20, height: 20, marginLeft: -10, borderRadius: '50%', border: `2px solid ${C.ink}`, background: C.orange }} />
+                      <span style={{ position: 'absolute', left: `${barPos(placeRate)}%`, top: -6, width: 20, height: 20, marginLeft: -10, borderRadius: '50%', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(26,26,26,.25)', background: C.orange }} />
                     </div>
                   </>
                 )}
@@ -484,7 +484,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   <span>Ride {place.ivb.toFixed(1)} in</span><span>Run {place.hb.toFixed(1)} in</span><span>{placeStats.swings.toLocaleString()} swings within ±{radius} in</span>
                 </div>
                 <a href="#shape-vs-results" style={{ display: 'block', marginTop: 10, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, textDecoration: 'none', minHeight: 32 }}>Who gets more or less than this shape ↓</a>
-                <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? C.ink : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? GOLD.fill : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
+                <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
@@ -520,7 +520,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
           : null
       )}
 
-      <div className="pf2-foot" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 24, borderTop: `2px solid ${C.ink}`, marginTop: 26, paddingTop: 14, fontSize: 13.5, lineHeight: 1.55, color: '#5b5347' }}>
+      <div className="pf2-foot" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 24, borderTop: `1px solid ${C.line}`, marginTop: 26, paddingTop: 14, fontSize: 13.5, lineHeight: 1.55, color: '#5b5347' }}>
         <style>{'@media(max-width:800px){.pf2-foot{grid-template-columns:1fr !important}}'}</style>
         <div><b style={{ color: C.ink }}>What a square means.</b> Every league {lc} within ±{radius} inch of that square’s movement: of the swings at them, the share that missed. It is a movement shape, not a place in the zone.</div>
         <div><b style={{ color: C.ink }}>What it can’t tell you.</b> Command, deception and sequencing aren’t in the map. It describes what pitches like this have done; it doesn’t predict.</div>
