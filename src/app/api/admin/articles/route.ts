@@ -8,9 +8,11 @@
 // An autosave of an already-published article never touches the live row; it only writes a revision.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { lintProse } from '@/lib/banned-words';
 import { docText } from '@/lib/article-doc';
+import { authorFor } from '@/lib/authors';
 import {
   createArticle,
   updateArticle,
@@ -138,6 +140,10 @@ export async function POST(req: NextRequest) {
       const published = await publishArticle(saved.id, payload.publish_at);
       if (!published) {
         return NextResponse.json({ error: 'Saved as draft, but the publish step failed. Try publishing again.' }, { status: 500 });
+      }
+      // Publishing should show on the live site at once: the Articles index, the homepage list, the article, its author page and the sitemap are all cached for minutes.
+      for (const path of ['/articles', '/', `/articles/${published.slug}`, `/authors/${published.author ? authorFor(published.author).slug : 'george'}`, '/sitemap.xml']) {
+        try { revalidatePath(path); } catch (e) { console.error('[POST /api/admin/articles] revalidate failed for', path, e instanceof Error ? e.message : e); }
       }
       return NextResponse.json(published, { status: 200 });
     }
