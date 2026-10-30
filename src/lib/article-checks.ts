@@ -13,6 +13,8 @@ export interface CheckInput {
   excerpt: string
   seoDescription: string
   heroImage: string
+  heroWidth?: number | null
+  heroHeight?: number | null
   section: string
   teamTags: string[]
   layout: string
@@ -46,11 +48,17 @@ export function runChecks(i: CheckInput): { checks: Check[]; blocking: boolean; 
   else add('section', 'ok', `Section: ${i.section}`)
 
   if (!(i.excerpt.trim() || i.seoDescription.trim())) add('desc', 'error', 'Write an excerpt or a search description', 'It is the text under the link in search and on X.')
+  else if (i.excerpt.trim().length > 200) add('desc', 'error', `Excerpt is ${i.excerpt.trim().length} characters`, 'Keep it to 200: that is all Google News and X show.')
   else add('desc', 'ok', 'Search and share description is set')
 
   if (i.layout === 'quick') add('hero', 'ok', 'Quick take: no hero image needed')
   else if (!i.heroImage.trim()) add('hero', 'warn', 'No hero image', 'The share card and the article header use it.')
-  else add('hero', 'ok', 'Hero image is set')
+  else {
+    add('hero', 'ok', 'Hero image is set')
+    if (i.heroWidth && i.heroHeight && (i.heroWidth < 1200 || i.heroHeight < 675)) add('herosize', 'warn', `Hero is ${i.heroWidth} × ${i.heroHeight}`, 'Link previews on X and Google News need 1200 × 675 or larger. A generated card is used until it is replaced.')
+    else if (!i.heroWidth || !i.heroHeight) add('herosize', 'warn', 'Hero size not measured', 'A hero hosted on another site cannot be used for link previews. Upload it here so it can.')
+    else add('herosize', 'ok', `Hero is ${i.heroWidth} × ${i.heroHeight}`)
+  }
 
   if (!i.teamTags.length) add('teams', 'warn', 'No team tagged', 'Team pages and the "More from x9Lab" rail use the tags.')
   else add('teams', 'ok', `${i.teamTags.length} team${i.teamTags.length === 1 ? '' : 's'} tagged`)

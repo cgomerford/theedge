@@ -9,6 +9,9 @@ export interface WriterMeta {
   excerpt: string
   seoDescription: string
   heroImage: string
+  heroWidth: number | null
+  heroHeight: number | null
+  heroAlt: string
   teamTags: string[]
   author: string
   subjectPlayerId: string

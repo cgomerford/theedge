@@ -45,6 +45,9 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
     excerpt: initialArticle?.excerpt ?? '',
     seoDescription: initialArticle?.seo_description ?? '',
     heroImage: initialArticle?.hero_image ?? '',
+    heroWidth: initialArticle?.hero_width ?? null,
+    heroHeight: initialArticle?.hero_height ?? null,
+    heroAlt: initialArticle?.hero_alt ?? '',
     teamTags: initialArticle?.team_tags ?? [],
     author: initialArticle?.author ?? 'George',
     subjectPlayerId: initialArticle?.subject_player_id != null ? String(initialArticle.subject_player_id) : '',
@@ -198,6 +201,7 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id, title: m.title.trim(), slug: m.slug.trim(), body: editor.getJSON(), excerpt: m.excerpt.trim() || undefined, hero_image: m.heroImage.trim() || undefined,
+          hero_width: m.heroImage.trim() ? m.heroWidth : null, hero_height: m.heroImage.trim() ? m.heroHeight : null, hero_alt: m.heroAlt.trim() || undefined,
           team_tags: m.teamTags, sport: 'mlb', author: m.author, dek: m.dek, section: m.section, layout: m.layout, seo_description: m.seoDescription,
           subject_player_id: pid, subject_player_name: m.subjectPlayerName, publish: !!opts.publish, autosave: !!opts.autosave,
           publish_at: opts.publish && when ? new Date(when).toISOString() : undefined,
@@ -221,6 +225,18 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
       setSaving(false)
     }
   }, [editor, loadRevisions])
+
+  // Measure the hero whenever it changes: Google News and X previews need at least 1200x675, so the size is stored with the article.
+  useEffect(() => {
+    const url = meta.heroImage.trim()
+    if (!url) { setMeta(m => (m.heroWidth == null && m.heroHeight == null ? m : { ...m, heroWidth: null, heroHeight: null })); return }
+    let live = true
+    const im = new window.Image()
+    im.onload = () => { if (live) setMeta(m => (m.heroImage.trim() === url && (m.heroWidth !== im.naturalWidth || m.heroHeight !== im.naturalHeight) ? { ...m, heroWidth: im.naturalWidth, heroHeight: im.naturalHeight } : m)) }
+    im.onerror = () => { if (live) setMeta(m => (m.heroImage.trim() === url ? { ...m, heroWidth: null, heroHeight: null } : m)) }
+    im.src = url
+    return () => { live = false }
+  }, [meta.heroImage])
 
   // Autosave 4 seconds after the last change.
   useEffect(() => {
@@ -347,7 +363,7 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
           </div>
           <div style={{ padding: 16 }}>
             {tab === 'story' && <StoryPanel meta={meta} set={set} slugLocked={!!articleId} onTitleSlug={() => set({ slug: slugify(meta.title) })} />}
-            {tab === 'visuals' && <VisualsPanel heroImage={meta.heroImage} onHero={u => set({ heroImage: u })} onInsert={insertFigure} onUpload={handleFiles} onChart={() => setChartOpen(true)} busy={busy} error={uploadError} />}
+            {tab === 'visuals' && <VisualsPanel heroImage={meta.heroImage} heroSize={meta.heroWidth && meta.heroHeight ? { w: meta.heroWidth, h: meta.heroHeight } : null} heroAlt={meta.heroAlt} onHeroAlt={v => set({ heroAlt: v })} onHero={u => set({ heroImage: u })} onInsert={insertFigure} onUpload={handleFiles} onChart={() => setChartOpen(true)} busy={busy} error={uploadError} />}
             {tab === 'checks' && <ChecksPanel checks={result.checks} words={result.words} minutes={result.minutes} />}
             {tab === 'publish' && <PublishPanel meta={meta} set={set} status={status} publishedAt={publishedAt} publishWhen={publishWhen || toLocalInput(null)} setPublishWhen={setPublishWhen} onPublish={doPublish} onSave={() => void save()} blocking={errors > 0} saving={saving} articleId={articleId} revisions={revisions} onRestore={restore} />}
           </div>

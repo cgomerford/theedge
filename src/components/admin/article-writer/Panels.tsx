@@ -56,8 +56,8 @@ export function StoryPanel({ meta, set, slugLocked, onTitleSlug }: { meta: Write
         {!slugLocked && <button type="button" style={{ ...chip(false), marginTop: 6 }} onClick={onTitleSlug}>Make from headline</button>}
       </F>
       <F label="Excerpt (the card on the homepage and team pages)">
-        <textarea style={{ ...inp, resize: 'vertical' }} rows={3} value={meta.excerpt} onChange={e => set({ excerpt: e.target.value })} />
-        <div style={cnt(meta.excerpt.length >= 60 && meta.excerpt.length <= 200)}>{meta.excerpt.length} / 200</div>
+        <textarea style={{ ...inp, resize: 'vertical' }} rows={3} maxLength={200} value={meta.excerpt} onChange={e => set({ excerpt: e.target.value })} />
+        <div style={cnt(meta.excerpt.length >= 60 && meta.excerpt.length <= 200)}>{meta.excerpt.length} / 200 (the most Google News and X show)</div>
       </F>
       <F label="Teams">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{MLB_CODES.map(c => <button key={c} type="button" title={teamCodeToName(c)} style={chip(meta.teamTags.includes(c))} onClick={() => toggle(c)}>{c}</button>)}</div>
@@ -87,8 +87,11 @@ export function StoryPanel({ meta, set, slugLocked, onTitleSlug }: { meta: Write
 
 type LibImg = { name: string; url: string }
 
-export function VisualsPanel({ heroImage, onHero, onInsert, onUpload, onChart, busy, error }: {
+export function VisualsPanel({ heroImage, heroSize, heroAlt, onHeroAlt, onHero, onInsert, onUpload, onChart, busy, error }: {
   heroImage: string
+  heroSize: { w: number; h: number } | null
+  heroAlt: string
+  onHeroAlt: (v: string) => void
   onHero: (url: string) => void
   onInsert: (url: string, alt: string, credit: string, width?: 'inline' | 'wide' | 'full') => void
   onUpload: (files: FileList | null, asHero: boolean) => void
@@ -125,6 +128,8 @@ export function VisualsPanel({ heroImage, onHero, onInsert, onUpload, onChart, b
           </div>
         ) : <button type="button" style={chip(false)} onClick={() => heroRef.current?.click()}>Upload a hero image</button>}
         <input ref={heroRef} type="file" accept="image/*" hidden onChange={e => onUpload(e.target.files, true)} />
+        {heroImage && <div style={note}>{heroSize ? (heroSize.w >= 1200 && heroSize.h >= 675 ? `${heroSize.w} × ${heroSize.h}: big enough for link previews.` : `${heroSize.w} × ${heroSize.h}: under the 1200 × 675 that link previews need, so a generated card is used instead.`) : 'Measuring…'}</div>}
+        {heroImage && <input style={{ ...inp, marginTop: 8 }} placeholder="Describe the hero image (alt text)" value={heroAlt} onChange={e => onHeroAlt(e.target.value)} />}
       </F>
 
       <F label="Find a headshot">

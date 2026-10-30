@@ -37,6 +37,9 @@ interface SaveArticleRequest {
   section?: string;
   layout?: ArticleLayout;
   seo_description?: string;
+  hero_width?: number | null;
+  hero_height?: number | null;
+  hero_alt?: string;
   subject_player_id?: number;
   subject_player_name?: string;
   publish: boolean;
@@ -78,6 +81,9 @@ export async function POST(req: NextRequest) {
     if (!(payload.excerpt?.trim() || payload.seo_description?.trim())) {
       return NextResponse.json({ error: 'Write an excerpt or a search description before publishing. It powers the search and share preview.' }, { status: 400 });
     }
+    if ((payload.excerpt?.trim().length ?? 0) > 200) {
+      return NextResponse.json({ error: 'Shorten the excerpt to 200 characters or fewer: that is all Google News and X show.' }, { status: 400 });
+    }
     // Content gate: the same word list the site's copy check uses (prediction, betting and fantasy-advice words).
     const text = [payload.title, payload.dek ?? '', payload.excerpt ?? '', payload.seo_description ?? '', docText(payload.body)].join('\n');
     const hits = lintProse(text);
@@ -97,6 +103,9 @@ export async function POST(req: NextRequest) {
     section: payload.section?.trim(),
     layout: payload.layout,
     seo_description: payload.seo_description?.trim(),
+    hero_width: payload.hero_width ?? null,
+    hero_height: payload.hero_height ?? null,
+    hero_alt: payload.hero_alt?.trim(),
     subject_player_id: payload.subject_player_id ?? null,
     subject_player_name: payload.subject_player_name?.trim() || null,
   };

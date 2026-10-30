@@ -18,7 +18,8 @@ interface PageProps {
 }
 
 import { SITE_HOST, SITE_URL, X_HANDLE, X_URL } from '@/lib/site';
-import { fitDescription } from '@/lib/game-slug';
+import { authorFor } from '@/lib/authors';
+import { articleUrl, authorUrl, buildNewsArticleJsonLd, descriptionOf, iso, sectionLabel, shareImage } from '@/lib/seo/news';
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -28,28 +29,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'Article not found', robots: { index: false, follow: true } };
   }
 
-  const canonicalUrl = `${SITE_URL}/articles/${article.slug}`;
+  const url = articleUrl(article.slug);
+  const description = descriptionOf(article);
+  const image = shareImage(article);
+  const au = authorFor(article.author);
+  const auUrl = authorUrl(article.author);
 
   return {
     title: article.title,
-    description: fitDescription(article.seo_description ?? article.excerpt ?? `${article.title}: analysis from x9Lab, written around the numbers and the sample behind them.`, ['Free account.', 'Read the full piece on x9Lab.']),
-    alternates: { canonical: canonicalUrl },
+    description,
+    alternates: { canonical: url },
+    authors: [{ name: au.name, url: auUrl }],
     openGraph: {
       title: article.title,
-      description: article.excerpt ?? undefined,
-      url: canonicalUrl,
+      description,
+      url,
       siteName: 'x9Lab',
-      images: article.hero_image ? [article.hero_image] : undefined,
       type: 'article',
-      publishedTime: article.published_at ?? undefined,
-      modifiedTime: article.updated_at,
+      publishedTime: iso(article.published_at),
+      modifiedTime: iso(article.updated_at),
+      authors: [auUrl],
+      section: sectionLabel(article),
+      tags: article.team_tags,
+      images: [{ url: image.url, width: image.width, height: image.height, alt: image.alt }],
     },
     twitter: {
       card: 'summary_large_image',
       site: X_HANDLE,
       title: article.title,
-      description: article.excerpt ?? undefined,
-      images: article.hero_image ? [article.hero_image] : undefined,
+      description,
+      images: [{ url: image.url, alt: image.alt }],
     },
   };
 }
@@ -103,24 +112,13 @@ export default async function ArticlePage({ params }: PageProps) {
   const primaryTeam = article.team_tags[0];
   const primaryTeamSlug = primaryTeam ? TEAM_CODE_TO_SLUG[primaryTeam] : undefined;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    headline: article.title,
-    description: article.excerpt ?? undefined,
-    image: article.hero_image ? [article.hero_image] : undefined,
-    datePublished: article.published_at ?? undefined,
-    dateModified: article.updated_at,
-    author: { '@type': 'Person', name: article.author },
-    publisher: { '@type': 'Organization', name: 'x9Lab', url: SITE_URL },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
-  };
+  const jsonLd = buildNewsArticleJsonLd(article);
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
 
       <SiteHeader variant="page" />

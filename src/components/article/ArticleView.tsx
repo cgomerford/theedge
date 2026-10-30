@@ -5,8 +5,13 @@
 // data (wide, no side rail), quick (short, no hero).
 
 import type { Article } from '@/lib/articles';
+import Link from 'next/link';
 import ArticleRenderer from '@/components/ArticleRenderer';
 import { readMinutes } from '@/lib/article-doc';
+import { authorFor } from '@/lib/authors';
+import { iso, showUpdated } from '@/lib/seo/news';
+
+const fmt = (s: string) => new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
 
 export default function ArticleView({ article, dateLabel }: { article: Article; dateLabel: string | null }) {
   const layout = article.layout ?? 'standard';
@@ -32,9 +37,10 @@ export default function ArticleView({ article, dateLabel }: { article: Article; 
       {article.dek && layout !== 'quick' && (
         <p style={{ fontSize: 19, lineHeight: 1.45, color: '#5b5347', margin: '0 0 16px' }}>{article.dek}</p>
       )}
-      <div style={{ fontSize: 12.5, color: '#8a8275', padding: '10px 0', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', marginBottom: 28 }}>
-        {article.author}
-        {dateLabel ? ` · ${dateLabel}` : ''}
+      <div style={{ fontSize: 13, color: '#8a8275', padding: '10px 0', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', marginBottom: 28 }}>
+        By <Link href={`/authors/${authorFor(article.author).slug}`} rel="author" style={{ color: '#1A1A1A', fontWeight: 700, textDecoration: 'none' }}>{authorFor(article.author).name}</Link>
+        {article.published_at ? <> · <time dateTime={iso(article.published_at)}>{fmt(article.published_at)}</time></> : dateLabel ? ` · ${dateLabel}` : ''}
+        {article.published_at && showUpdated(article) ? <> · Updated <time dateTime={iso(article.updated_at)}>{fmt(article.updated_at)}</time></> : null}
         {` · ${readMinutes(article.body)} min read`}
       </div>
       {layout !== 'feature' && hero}

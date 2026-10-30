@@ -47,6 +47,10 @@ export interface Article {
   section: string | null;
   layout: ArticleLayout;
   seo_description: string | null;
+  /** the hero picture's pixel size and description (writer migration); null/undefined = not measured, so the share card is generated instead */
+  hero_width?: number | null;
+  hero_height?: number | null;
+  hero_alt?: string | null;
 }
 
 export type ArticleLayout = 'standard' | 'feature' | 'data' | 'quick';
@@ -164,6 +168,9 @@ export interface CreateArticleInput {
   seo_description?: string;
   subject_player_id?: number | null;
   subject_player_name?: string | null;
+  hero_width?: number | null;
+  hero_height?: number | null;
+  hero_alt?: string;
 }
 
 /**
@@ -210,6 +217,9 @@ export interface UpdateArticleInput {
   section?: string;
   layout?: ArticleLayout;
   seo_description?: string;
+  hero_width?: number | null;
+  hero_height?: number | null;
+  hero_alt?: string;
   subject_player_id?: number | null;
   subject_player_name?: string | null;
 }
@@ -221,6 +231,9 @@ function extraFields(i: Partial<CreateArticleInput>) {
   if (i.section !== undefined) o.section = i.section || null;
   if (i.layout !== undefined && ARTICLE_LAYOUTS.includes(i.layout)) o.layout = i.layout;
   if (i.seo_description !== undefined) o.seo_description = i.seo_description || null;
+  if (i.hero_width !== undefined) o.hero_width = i.hero_width;
+  if (i.hero_height !== undefined) o.hero_height = i.hero_height;
+  if (i.hero_alt !== undefined) o.hero_alt = i.hero_alt || null;
   if (i.subject_player_id !== undefined) o.subject_player_id = i.subject_player_id;
   if (i.subject_player_name !== undefined) o.subject_player_name = i.subject_player_name;
   return o;
@@ -229,11 +242,11 @@ function extraFields(i: Partial<CreateArticleInput>) {
 export async function updateArticle(input: UpdateArticleInput): Promise<Article | null> {
   const supabase = createAdminClient();
   const { id, ...fields } = input;
-  const { dek, section, layout, seo_description, subject_player_id, subject_player_name, ...core } = fields;
+  const { dek, section, layout, seo_description, hero_width, hero_height, hero_alt, subject_player_id, subject_player_name, ...core } = fields;
 
   const { data, error } = await supabase
     .from('articles')
-    .update({ ...core, ...extraFields({ dek, section, layout, seo_description, subject_player_id, subject_player_name }) })
+    .update({ ...core, ...extraFields({ dek, section, layout, seo_description, hero_width, hero_height, hero_alt, subject_player_id, subject_player_name }) })
     .eq('id', id)
     .select()
     .single();

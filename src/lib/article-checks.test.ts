@@ -48,3 +48,14 @@ describe('an empty editor', () => {
     expect(r.blocking).toBe(false)
   })
 })
+
+describe('share-preview checks', () => {
+  it('warns when the hero is under 1200x675 and errors on an excerpt over 200 characters', () => {
+    const small = runChecks({ ...base, heroWidth: 800, heroHeight: 450, body: doc(p('Text.')) })
+    expect(small.checks.find(c => c.id === 'herosize')?.level).toBe('warn')
+    const long = runChecks({ ...base, excerpt: 'x'.repeat(201), body: doc(p('Text.')) })
+    expect(long.blocking).toBe(true)
+    const ok = runChecks({ ...base, heroWidth: 1600, heroHeight: 900, body: doc(p('Text.')) })
+    expect(ok.checks.find(c => c.id === 'herosize')?.level).toBe('ok')
+  })
+})

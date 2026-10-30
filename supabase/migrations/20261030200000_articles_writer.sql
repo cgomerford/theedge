@@ -14,6 +14,11 @@ alter table public.articles add column if not exists dek text;
 alter table public.articles add column if not exists section text;
 alter table public.articles add column if not exists layout text not null default 'standard';
 alter table public.articles add column if not exists seo_description text;
+-- hero_width / hero_height / hero_alt: the hero picture's pixel size (measured by the writer) and its description. Google News and X previews need a hero of at least
+-- 1200x675; an article whose hero is smaller, unmeasured or hosted elsewhere gets the generated share card instead.
+alter table public.articles add column if not exists hero_width int;
+alter table public.articles add column if not exists hero_height int;
+alter table public.articles add column if not exists hero_alt text;
 
 create table if not exists public.article_revisions (
   id          uuid primary key default gen_random_uuid(),

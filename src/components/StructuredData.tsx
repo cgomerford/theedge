@@ -11,6 +11,7 @@
  * No Product or Offer schema, and no logo image.
  */
 
+import { buildOrganizationJsonLd } from '@/lib/seo/news'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
 
 function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -26,7 +27,7 @@ function JsonLd({ data }: { data: Record<string, unknown> }) {
 export function SiteSchema() {
   return (
     <>
-      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: SITE_NAME, url: SITE_URL }} />
+      <JsonLd data={buildOrganizationJsonLd()} />
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebSite', name: SITE_NAME, url: SITE_URL }} />
     </>
   )

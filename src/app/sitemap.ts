@@ -16,6 +16,7 @@ import { teamSlug } from '@/lib/mlb'
 import { MLB_TEAMS } from '@/lib/teams'
 import { LABS_MENU } from '@/lib/nav/labsMenu'
 import { getLatestArticles } from '@/lib/articles'
+import { authorFor } from '@/lib/authors'
 import { SITE_URL } from '@/lib/site'
 
 export const revalidate = 86400 // 24h: the roster section makes 30 MLB API calls, rosters barely change day to day
@@ -33,6 +34,7 @@ const STATIC_PATHS: { path: string; changeFrequency: Entry['changeFrequency']; p
   { path: '/how-it-works', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/why-edge', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
+  { path: '/contact', changeFrequency: 'yearly', priority: 0.4 },
   { path: '/faq', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/pricing', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/privacy', changeFrequency: 'yearly', priority: 0.3 },
@@ -103,9 +105,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const articlePages: MetadataRoute.Sitemap = []
   try {
-    for (const a of await getLatestArticles(200)) {
-      articlePages.push({ url: url(`/articles/${a.slug}`), lastModified: new Date(a.updated_at ?? a.published_at ?? now), changeFrequency: 'monthly', priority: 0.5 })
+    const authors = new Map<string, Date>()
+    for (const a of await getLatestArticles(5000)) {
+      const when = new Date(a.updated_at ?? a.published_at ?? now)
+      articlePages.push({ url: url(`/articles/${a.slug}`), lastModified: when, changeFrequency: 'monthly', priority: 0.5 })
+      const slug = authorFor(a.author).slug
+      if (!authors.has(slug) || when > (authors.get(slug) as Date)) authors.set(slug, when)
     }
+    for (const [slug, when] of authors) articlePages.push({ url: url(`/authors/${slug}`), lastModified: when, changeFrequency: 'weekly', priority: 0.4 })
   } catch (e) {
     console.error('[sitemap] articles failed', e)
   }
