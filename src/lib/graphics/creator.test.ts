@@ -57,3 +57,25 @@ describe('parseDoc', () => {
     expect(parseDoc(null)).toBeNull()
   })
 })
+
+import { newPlayers, MAX_PLAYER_ROWS } from './creator'
+describe('players list layer', () => {
+  it('starts with real players and a sample on each row, and its text is read by the checks', () => {
+    const d = startDoc('players', 'landscape')
+    const l = d.layers.find(x => x.kind === 'players')!
+    expect(l.kind).toBe('players')
+    expect(docTexts(d).join(' ')).toContain('Bryce Harper')
+    expect(checkCreator(d).filter(c => c.level === 'warn').map(c => c.id)).toEqual([])
+    expect(parseDoc(d)).not.toBeNull()
+  })
+  it('warns about a number with no sample and a row with no player chosen', () => {
+    const p = newPlayers({ rows: [{ playerId: 0, name: 'Someone', team: '', value: '.300', sub: '' }] })
+    const ids = checkCreator({ ...emptyDoc('landscape'), layers: [p] }).filter(c => c.level === 'warn').map(c => c.id)
+    expect(ids).toEqual(expect.arrayContaining(['psample', 'pheadshot']))
+  })
+  it('scales with the canvas like any layer and allows up to ten rows', () => {
+    const r = resizeDoc({ ...emptyDoc('landscape'), layers: [newPlayers()] }, 'story')
+    expect(r.layers[0].w).toBe(Math.round(1040 * 1080 / 1200))
+    expect(MAX_PLAYER_ROWS).toBe(10)
+  })
+})

@@ -31,6 +31,10 @@ export function inkFor(hex: string): string {
   return lum < 0.5 ? '#FAF8F3' : INK
 }
 
+/** Every picture a layer needs (a players list needs one headshot per row). */
+export const pictureKeys = (l: Layer): string[] =>
+  l.kind === 'players' ? l.rows.filter(r => r.playerId).map(r => `hs:${r.playerId}`) : (() => { const k = pictureKey(l); return k ? [k] : [] })()
+
 export const pictureKey = (l: Layer): string | null =>
   l.kind === 'logo' ? `team:${l.team}` : l.kind === 'headshot' && l.playerId ? `hs:${l.playerId}` : l.kind === 'image' && l.src ? `img:${l.src}` : null
 
@@ -63,6 +67,38 @@ function LayerBody({ l, pics, ink, edit }: { l: Layer; pics: PictureMap; ink: st
               <div style={{ fontSize: Math.min(30, rowH * 0.42), fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.value}</div>
             </div>
           ))}
+        </div>
+      )
+    }
+    case 'players': {
+      const rows = l.rows.slice(0, 10)
+      const cols = l.cols === 2 && rows.length > 1 ? 2 : 1
+      const per = Math.ceil(rows.length / cols)
+      const rowH = l.h / Math.max(1, per)
+      const gap = cols === 2 ? 28 : 0
+      const colW = (l.w - gap * (cols - 1)) / cols
+      const head = Math.min(rowH * 0.92, 120)
+      const nameSz = Math.max(18, Math.min(38, rowH * 0.3)), subSz = Math.max(13, Math.min(22, rowH * 0.2)), valSz = Math.max(22, Math.min(54, rowH * 0.42))
+      return (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {rows.map((r, i) => {
+            const col = Math.floor(i / per), row = i % per
+            const src = r.playerId ? pics[`hs:${r.playerId}`] : undefined
+            return (
+              <div key={i} style={{ position: 'absolute', left: col * (colW + gap), top: row * rowH, width: colW, height: rowH, display: 'flex', alignItems: 'center', gap: 16, boxSizing: 'border-box', borderTop: row === 0 ? undefined : `1px solid ${ink === INK ? '#D6D2C8' : 'rgba(250,248,243,.25)'}`, color: ink }}>
+                {l.showRank && <div style={{ width: nameSz * 1.1, flex: 'none', fontSize: nameSz, fontWeight: 800, color: l.color, textAlign: 'center' }}>{i + 1}</div>}
+                <div style={{ width: head, height: head, flex: 'none' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {src ? <img src={src} alt={r.name} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center bottom', display: 'block' }} /> : edit ? <Empty label={r.playerId ? '…' : 'Player'} /> : null}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: nameSz, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name || 'Player name'}{r.team ? <span style={{ fontSize: subSz, fontWeight: 800, letterSpacing: '.1em', color: l.color, marginLeft: 12 }}>{r.team.toUpperCase()}</span> : null}</div>
+                  {r.sub && <div style={{ fontSize: subSz, color: ink === INK ? '#5B5347' : 'rgba(250,248,243,.8)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.sub}</div>}
+                </div>
+                <div style={{ flex: 'none', fontSize: valSz, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{r.value}</div>
+              </div>
+            )
+          })}
         </div>
       )
     }

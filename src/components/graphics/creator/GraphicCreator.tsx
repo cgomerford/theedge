@@ -12,11 +12,11 @@ import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import { loadGraphicImages } from '@/lib/graphics/images'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
-  CREATOR_SIZES, FOOTER_H, INK, ORANGE, STARTS, checkCreator, layerId, newBars, newStat, newText, parseDoc, resizeDoc, startDoc, emptyDoc,
+  CREATOR_SIZES, FOOTER_H, INK, MAX_PLAYER_ROWS, ORANGE, STARTS, checkCreator, layerId, newBars, newPlayers, newStat, newText, parseDoc, stableIds, resizeDoc, startDoc, emptyDoc,
   type Background, type CreatorDoc, type CreatorSize, type Layer, type StartId,
 } from '@/lib/graphics/creator'
 import { uploadImage } from '@/components/admin/article-writer/upload'
-import CanvasView, { bgColor, pictureKey, type PictureMap } from './CanvasView'
+import CanvasView, { bgColor, pictureKeys, type PictureMap } from './CanvasView'
 
 const C = { line: '#e7e2d8', soft: '#f1eee6', mute: '#8a8275', orange: ORANGE, good: '#1D9E75', cream: '#FAF8F3' }
 const inp: React.CSSProperties = { width: '100%', border: `1px solid ${C.line}`, borderRadius: 8, padding: '7px 9px', fontSize: 13, background: C.cream, fontFamily: 'inherit' }
@@ -48,7 +48,8 @@ async function loadPictures(doc: CreatorDoc): Promise<PictureMap> {
   const teams = new Set<string>()
   const jobs: Promise<void>[] = []
   for (const l of doc.layers) {
-    const k = pictureKey(l)
+    if (l.kind === 'players') { for (const r of l.rows) if (r.playerId) jobs.push(fetchDataUrl(headshotCutoutUrl(r.playerId, 480)).then(d => { if (d) out[`hs:${r.playerId}`] = d })); continue }
+    const k = pictureKeys(l)[0]
     if (!k) continue
     if (l.kind === 'logo') teams.add(l.team)
     else if (l.kind === 'headshot') jobs.push(fetchDataUrl(headshotCutoutUrl(l.playerId, 480)).then(d => { if (d) out[k] = d }))
@@ -65,7 +66,7 @@ type Person = { id: number; fullName: string; primaryPosition: string }
 interface LibItem { id: string; name: string; updated_at: string }
 
 export default function GraphicCreator() {
-  const [doc, setDoc] = useState<CreatorDoc>(() => startDoc('bigNumber', 'landscape'))
+  const [doc, setDoc] = useState<CreatorDoc>(() => stableIds(startDoc('bigNumber', 'landscape')))
   const [hist, setHist] = useState<Hist>({ past: [], future: [] })
   const [sel, setSel] = useState<string | null>(null)
   const [pics, setPics] = useState<PictureMap>({})
@@ -105,7 +106,7 @@ export default function GraphicCreator() {
   }, [])
 
   // load the pictures the document needs (and the export copy's)
-  const picKey = JSON.stringify(doc.layers.map(pictureKey).filter(Boolean))
+  const picKey = JSON.stringify(doc.layers.flatMap(pictureKeys))
   useEffect(() => { let live = true; void loadPictures(doc).then(m => { if (live) setPics(p => ({ ...p, ...m })) }); return () => { live = false } }, [picKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- history ---------------------------------------------------------------------------------------------------------------------------
@@ -312,6 +313,40 @@ export default function GraphicCreator() {
           <span style={lab}>Sample (always show one)</span><input style={{ ...inp, borderColor: l.sample.trim() ? C.line : C.orange }} value={l.sample} onChange={e => patch(l.id, { sample: e.target.value }, 's')} placeholder="n = 212 pitches" />
           <span style={lab}>Tile</span><div style={{ display: 'flex', gap: 5 }}>{(['light', 'dark', 'accent'] as const).map(t => <button key={t} style={chip(l.tone === t)} onClick={() => patch(l.id, { tone: t })}>{t}</button>)}</div>
         </>}
+        {l.kind === 'players' && <>
+          <span style={lab}>Find a player</span>
+          <input style={inp} placeholder="Search a player by name" value={query} onChange={e => search(e.target.value)} />
+          {found.map(p => <button key={p.id} style={{ ...chip(false), display: 'block', margin: '5px 0 0', borderRadius: 8 }} disabled={l.rows.length >= MAX_PLAYER_ROWS} onClick={() => { patch(l.id, { rows: [...l.rows, { playerId: p.id, name: p.fullName, team: '', value: '', sub: '' }] }); setQuery(''); setFound([]) }}>{p.fullName} · {p.primaryPosition}</button>)}
+          <div style={{ fontSize: 11.5, color: C.mute, marginTop: 6 }}>Up to {MAX_PLAYER_ROWS} players. Each shows a transparent cut-out headshot.</div>
+          <span style={lab}>Players ({l.rows.length})</span>
+          {l.rows.map((r, i) => {
+            const set = (p: Partial<typeof r>, k: string) => patch(l.id, { rows: l.rows.map((x, j) => (j === i ? { ...x, ...p } : x)) }, `p${i}${k}`)
+            return (
+              <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 8, padding: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input style={{ ...inp, flex: 1 }} value={r.name} placeholder="Name" onChange={e => set({ name: e.target.value }, 'n')} />
+                  <input style={{ ...inp, width: 54 }} value={r.team} placeholder="TM" maxLength={4} onChange={e => set({ team: e.target.value.toUpperCase() }, 't')} />
+                </div>
+                <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                  <input style={{ ...inp, width: 82 }} value={r.value} placeholder=".865" onChange={e => set({ value: e.target.value }, 'v')} />
+                  <input style={{ ...inp, flex: 1, borderColor: !r.value.trim() || r.sub.trim() ? C.line : C.orange }} value={r.sub} placeholder="OPS · n = 693 PA" onChange={e => set({ sub: e.target.value }, 's')} />
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                  <button style={chip(false)} disabled={i === 0} onClick={() => patch(l.id, { rows: l.rows.map((x, j) => (j === i - 1 ? l.rows[i] : j === i ? l.rows[i - 1] : x)) })}>Up</button>
+                  <button style={chip(false)} disabled={i === l.rows.length - 1} onClick={() => patch(l.id, { rows: l.rows.map((x, j) => (j === i + 1 ? l.rows[i] : j === i ? l.rows[i + 1] : x)) })}>Down</button>
+                  <button style={{ ...chip(false), color: '#D4533B' }} onClick={() => patch(l.id, { rows: l.rows.filter((_, j) => j !== i) })}>Remove</button>
+                </div>
+              </div>
+            )
+          })}
+          <span style={lab}>Layout</span>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            <button style={chip(l.cols === 1)} onClick={() => patch(l.id, { cols: 1 })}>One column</button>
+            <button style={chip(l.cols === 2)} onClick={() => patch(l.id, { cols: 2 })}>Two columns</button>
+            <button style={chip(l.showRank)} onClick={() => patch(l.id, { showRank: !l.showRank })}>Rank numbers</button>
+          </div>
+          <span style={lab}>Accent colour</span>{color(l.color, c => patch(l.id, { color: c }))}
+        </>}
         {l.kind === 'bars' && <>
           <span style={lab}>Rows</span>
           {l.rows.map((r, i) => (
@@ -385,6 +420,7 @@ export default function GraphicCreator() {
             <button style={chip(false)} onClick={() => addLayer(newStat({ x: Math.round(W * 0.07), y: Math.round(H * 0.3) }))}>Stat</button>
             <button style={chip(false)} onClick={() => addLayer(newBars({ x: Math.round(W * 0.07), y: Math.round(H * 0.25), w: Math.round(W * 0.86), h: Math.round(H * 0.4) }))}>Bars</button>
             <button style={chip(false)} onClick={() => addLayer({ id: layerId(), kind: 'rect', color: '#F1EEE6', radius: 16, x: Math.round(W * 0.07), y: Math.round(H * 0.3), w: Math.round(W * 0.3), h: Math.round(H * 0.25) })}>Box</button>
+            <button style={chip(false)} onClick={() => addLayer(newPlayers({ x: Math.round(W * 0.07), y: Math.round(H * 0.25), w: Math.round(W * 0.86), h: Math.round(H * 0.5) }))}>Players</button>
             <button style={chip(false)} onClick={() => addLayer({ id: layerId(), kind: 'headshot', playerId: 0, name: '', x: Math.round(W * 0.07), y: Math.round(H * 0.2), w: Math.round(H * 0.3), h: Math.round(H * 0.3) })}>Headshot</button>
             <button style={chip(false)} onClick={() => addLayer({ id: layerId(), kind: 'logo', team: 'PHI', x: Math.round(W * 0.07), y: Math.round(H * 0.2), w: Math.round(H * 0.2), h: Math.round(H * 0.2) })}>Team logo</button>
             <label style={{ ...chip(false), display: 'inline-block' }}>Picture<input type="file" accept="image/*" hidden onChange={e => { void addPicture(e.target.files?.[0]); e.target.value = '' }} /></label>
@@ -392,7 +428,7 @@ export default function GraphicCreator() {
           <span style={lab}>Layers (front first)</span>
           <div>{[...doc.layers].reverse().map(l => (
             <div key={l.id} onClick={() => { setSel(l.id); setTab('edit') }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', border: `1px solid ${l.id === sel ? C.orange : C.line}`, background: l.id === sel ? '#fff7f3' : '#fff', borderRadius: 8, marginBottom: 4, fontSize: 12.5, cursor: 'pointer' }}>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b style={{ color: C.mute, textTransform: 'uppercase', fontSize: 10 }}>{l.kind}</b> {l.kind === 'text' ? l.text : l.kind === 'stat' ? `${l.value} ${l.label}` : l.kind === 'headshot' ? l.name : l.kind === 'logo' ? l.team : ''}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b style={{ color: C.mute, textTransform: 'uppercase', fontSize: 10 }}>{l.kind}</b> {l.kind === 'text' ? l.text : l.kind === 'stat' ? `${l.value} ${l.label}` : l.kind === 'headshot' ? l.name : l.kind === 'logo' ? l.team : l.kind === 'players' ? `${l.rows.length} players` : ''}</span>
             </div>
           ))}</div>
           {!doc.layers.length && <div style={{ fontSize: 12, color: C.mute }}>Nothing yet. Choose a layout or use Place.</div>}
