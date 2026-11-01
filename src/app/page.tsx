@@ -15,7 +15,8 @@ import GamesStrip from '@/components/home/GamesStrip'
 import HomeRail from '@/components/home/HomeRail'
 import HeroStrip from '@/components/home/HeroStrip'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import { getFeaturedScout, getHomeSlate, getHomeStrip } from '@/lib/mlb-homepage'
+import LatestArticles from '@/components/home/LatestArticles'
+import { getFeaturedScout, getHomeSlate, getHomeStrip, postgameWindowClosed } from '@/lib/mlb-homepage'
 import { canonical } from '@/lib/seo'
 
 export const revalidate = 600
@@ -33,7 +34,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const slate = await getHomeSlate()
-  const [featured, strip] = await Promise.all([getFeaturedScout(slate), getHomeStrip(slate)])
+  // More than 5 days after the season's last game: no game report, games strip or scout-report button; articles take the main column.
+  const offseason = postgameWindowClosed(slate)
+  const [featured, strip] = offseason ? [null, null] : await Promise.all([getFeaturedScout(slate), getHomeStrip(slate)])
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -62,10 +65,12 @@ export default async function HomePage() {
       <SiteHeader variant="home" />
 
       <div className="hm-wrap">
-        <HeroStrip reportHref={featured ? `/mlb/${featured.slug}/${featured.isFinal ? 'postgame' : 'scout-report'}` : '/mlb'} />
+        <HeroStrip reportHref={offseason ? '/articles' : featured ? `/mlb/${featured.slug}/${featured.isFinal ? 'postgame' : 'scout-report'}` : '/mlb'} reportLabel={offseason ? 'Read the latest articles' : 'See a scout report'} />
         <div className="hm-layout">
           <div className="hm-main">
-        {featured ? (
+        {offseason ? (
+          <LatestArticles />
+        ) : featured ? (
           <FeaturedScout data={featured} />
         ) : (
           <section style={{ padding: '32px 0 8px' }}>
@@ -77,7 +82,7 @@ export default async function HomePage() {
           <HomeEmailAsk />
         </HomeAskOrFollows>
 
-        <GamesStrip strip={strip} />
+        {strip && <GamesStrip strip={strip} />}
 
         <p className="hm-links" style={{ margin: 0, padding: '14px 0', borderTop: '1px solid #e7e2d8', fontSize: 15 }}>
           <Link href="/how-it-works">How the numbers work</Link>
@@ -87,7 +92,7 @@ export default async function HomePage() {
           <Link href="/how-it-works#sample-size">Sample-size minimums</Link>
         </p>
           </div>
-          <HomeRail />
+          <HomeRail articleCount={offseason ? 0 : 8} />
         </div>
       </div>
     </main>

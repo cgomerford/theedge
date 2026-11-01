@@ -8,7 +8,7 @@ import { openSignup } from '@/components/signup/openSignup'
 // this island only hides "Create account" once it learns the visitor is already signed in (private /api/me/follows).
 // Brand colours only: black #1A1A1A, cream #FAF8F3, orange #FF5722, yellow #FDE047. The tagline is George's.
 
-export default function HeroStrip({ reportHref }: { reportHref: string }) {
+export default function HeroStrip({ reportHref, reportLabel = 'See a scout report' }: { reportHref: string; reportLabel?: string }) {
   const [signedIn, setSignedIn] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -33,7 +33,7 @@ export default function HeroStrip({ reportHref }: { reportHref: string }) {
           </button>
         )}
         <Link href={reportHref} style={{ padding: '10px 18px', border: '1.5px solid #1A1A1A', color: '#1A1A1A', borderRadius: 2, fontSize: 15, fontWeight: 800, textDecoration: 'none' }}>
-          See a scout report
+          {reportLabel}
         </Link>
       </div>
     </section>

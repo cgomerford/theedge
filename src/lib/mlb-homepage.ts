@@ -674,6 +674,16 @@ export async function getHomeSlate(): Promise<HomeSlate | null> {
   return null
 }
 
+/** How many days after the season's last game the homepage keeps its game report, games strip and scout-report button. */
+export const POSTGAME_WINDOW_DAYS = 5
+
+/** True once the featured game is the season's last one (nothing ahead on the schedule) and it was more than POSTGAME_WINDOW_DAYS ago. */
+export function postgameWindowClosed(slate: HomeSlate | null): boolean {
+  if (!slate || slate.mode !== 'last') return false
+  const days = (new Date(`${isoDay(new Date())}T12:00:00Z`).getTime() - new Date(`${slate.date}T12:00:00Z`).getTime()) / 86_400_000
+  return days > POSTGAME_WINDOW_DAYS
+}
+
 // ─── Games strip ────────────────────────────────────────────────────────────
 
 const lastName = (full?: string) => (full ? full.trim().split(/\s+/).slice(-1)[0] : null)

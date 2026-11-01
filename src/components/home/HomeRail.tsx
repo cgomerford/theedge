@@ -19,8 +19,8 @@ function ago(iso: string | null): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-export default async function HomeRail({ top }: { /** extra sections shown above the articles (e.g. on /mlb) */ top?: React.ReactNode }) {
-  const [articles, news] = await Promise.all([getLatestArticles(4).catch(() => []), getMLBNewsMultiSource().catch(() => [])])
+export default async function HomeRail({ top, articleCount = 4 }: { /** extra sections shown above the articles (e.g. on /mlb) */ top?: React.ReactNode; /** x9Lab articles listed; 0 hides the section (the page shows them elsewhere) */ articleCount?: number }) {
+  const [articles, news] = await Promise.all([articleCount > 0 ? getLatestArticles(articleCount).catch(() => []) : Promise.resolve([]), getMLBNewsMultiSource().catch(() => [])])
 
   return (
     <aside aria-label="Articles" className="hm-rail">
