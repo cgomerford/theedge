@@ -8,6 +8,8 @@ import { getPitchMovementFromDB } from '@/lib/pitcher-full-stats'
 import { buildArsenal } from '@/components/admin/story-v5/arsenal'
 import { parseCsv } from '@/components/admin/story-v5/csv'
 import { getLeagueTables } from '@/lib/team-profile/league'
+import { getTeamBatting } from '@/lib/team-batting'
+import { findTeamByName } from '@/lib/teams'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +47,53 @@ export async function GET(req: NextRequest) {
       console.error('[chart-data pitch-paths]', e instanceof Error ? e.message : e)
       return NextResponse.json({ pitches: [], error: 'Baseball Savant did not answer' })
     }
+  }
+  if (kind === 'game-log') {
+    // A player's games this season (regular season and postseason), newest first, for the picker's game chooser.
+    if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
+    const group = q.get('group') === 'hitting' ? 'hitting' : 'pitching'
+    try {
+      const parts = await Promise.all(['R', 'P'].map(async gt => {
+        const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${playerId}/stats?stats=gameLog&group=${group}&season=${season}&gameType=${gt}`, { cache: 'no-store' })
+        if (!res.ok) return []
+        const d = await res.json()
+        return (d?.stats?.[0]?.splits ?? []) as { date: string; isHome: boolean; gameType: string; opponent?: { name: string }; game?: { gamePk: number }; stat?: { summary?: string } }[]
+      }))
+      const games = parts.flat().filter(g => g.game?.gamePk).sort((a, b) => b.date.localeCompare(a.date)).map(g => ({
+        gamePk: g.game!.gamePk, date: g.date, postseason: g.gameType !== 'R',
+        opp: findTeamByName(g.opponent?.name ?? '')?.short ?? g.opponent?.name ?? '', home: g.isHome, summary: g.stat?.summary ?? '',
+      }))
+      return NextResponse.json({ games })
+    } catch (e) {
+      console.error('[chart-data game-log]', e instanceof Error ? e.message : e)
+      return NextResponse.json({ games: [], error: 'The MLB Stats API did not answer' })
+    }
+  }
+  if (kind === 'game-pitches') {
+    // One game of one player's Savant pitches (admin, on demand, never a public page). Pitchers: per pitch type numbers and average paths. Hitters: balls in play.
+    const date = q.get('date') ?? ''
+    const gamePk = Number(q.get('gamePk'))
+    if (!playerId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: 'playerId and date required' }, { status: 400 })
+    const batter = q.get('role') === 'batter'
+    try {
+      const res = await fetch(`https://baseballsavant.mlb.com/statcast_search/csv?all=true&type=details&player_type=${batter ? 'batter' : 'pitcher'}&${batter ? 'batters_lookup' : 'pitchers_lookup'}%5B%5D=${playerId}&hfSea=${season}%7C&hfGT=R%7CPO%7C&game_date_gt=${date}&game_date_lt=${date}`, { cache: 'no-store', signal: AbortSignal.timeout(60000) })
+      if (!res.ok) return NextResponse.json({ pitches: [], balls: [], error: `Baseball Savant answered ${res.status}` })
+      let rows = parseCsv(await res.text())
+      if (gamePk) rows = rows.filter(r => !r.game_pk || Number(r.game_pk) === gamePk)
+      if (batter) {
+        const balls = rows.filter(r => r.type === 'X' && Number(r.hc_x) > 0 && Number.isFinite(Number(r.hc_y))).map(r => ({ x: Number(r.hc_x), y: Number(r.hc_y), events: r.events ?? '', bb_type: r.bb_type ?? '' }))
+        return NextResponse.json({ balls, pitchesSeen: rows.length })
+      }
+      return NextResponse.json({ pitches: buildArsenal(rows, 8, 5), total: rows.filter(r => r.pitch_type).length })
+    } catch (e) {
+      console.error('[chart-data game-pitches]', e instanceof Error ? e.message : e)
+      return NextResponse.json({ pitches: [], balls: [], error: 'Baseball Savant did not answer' })
+    }
+  }
+  if (kind === 'team-batting') {
+    const b = await getTeamBatting(Number(q.get('teamId')), season)
+    if (!b) return NextResponse.json({ regular: null, post: null, rounds: [], error: 'The MLB Stats API did not answer' })
+    return NextResponse.json(b)
   }
   if (kind === 'league-pitching') {
     const t = await getLeagueTables(season)

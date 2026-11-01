@@ -17,10 +17,11 @@ import type { PitchMovementRow } from '@/lib/pitcher-full-stats'
 import type { PctBlock } from '@/lib/follows/percentiles'
 import PitchUsageDonut from '@/components/PitchUsageDonut'
 import PitchVeloChart from '@/components/PitchVeloChart'
-import SprayChart from '@/components/SprayChart'
+import SprayChart, { type BattedBall } from '@/components/SprayChart'
 import PitchPathsPlayer from '@/components/admin/story-v5/remotion/scenes/paths'
 import type { ArsenalPitch } from '@/components/admin/story-v5/types'
 import { MLB_TEAMS, type Team } from '@/lib/teams'
+import type { BatLine, TeamBatting } from '@/lib/team-batting'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
 
@@ -58,15 +59,30 @@ const Head = ({ title, name, sub }: { title: string; name: string; sub?: string 
 )
 const Foot = ({ text }: { text: string }) => <div style={{ fontSize: 9.5, color: '#8A8275', marginTop: 10 }}>{text}</div>
 
-type Ctx = { playerId: number; name: string; team: Team }
+type GameSel = { gamePk: number; date: string; label: string }
+type Ctx = { playerId: number; name: string; team: Team; /** one past game instead of the season (pitch charts and the spray chart) */ game: GameSel | null }
+type GameData = { pitches?: ArsenalPitch[]; balls?: BattedBall[]; total?: number; pitchesSeen?: number; error?: string }
+const MIN_GAME = 5
+/** One game's Savant pitches (pitcher) or balls in play (hitter); idle when the chart is showing the season. */
+function useGame(c: Ctx, role: 'pitcher' | 'batter') {
+  return useJson<GameData>(c.game ? `/api/admin/chart-data?kind=game-pitches&playerId=${c.playerId}&date=${c.game.date}&gamePk=${c.game.gamePk}&role=${role}&season=${SEASON}` : null)
+}
+const gameNote = (c: Ctx) => `${c.game?.label}. Pitch types with fewer than ${MIN_GAME} pitches are left out; whiff% needs ${MIN_GAME} swings.`
 
 /** Arsenal rows from Savant's pitch-arsenal table. */
-function useArsenal(c: Ctx) { return useJson<{ rows: ArsenalRow[] }>(`/api/pitcher-arsenal?pitcherId=${c.playerId}&season=${SEASON}`) }
-function useMovement(c: Ctx) { return useJson<{ rows: PitchMovementRow[] }>(`/api/admin/chart-data?kind=movement&playerId=${c.playerId}&season=${SEASON}`) }
+function useArsenal(c: Ctx) { return useJson<{ rows: ArsenalRow[] }>(c.game ? null : `/api/pitcher-arsenal?pitcherId=${c.playerId}&season=${SEASON}`) }
+function useMovement(c: Ctx) { return useJson<{ rows: PitchMovementRow[] }>(c.game ? null : `/api/admin/chart-data?kind=movement&playerId=${c.playerId}&season=${SEASON}`) }
 
 function PitchMix(c: Ctx) {
   const { data, state } = useArsenal(c)
-  if (state === 'loading') return <Note text="Loading…" />
+  const g = useGame(c, 'pitcher')
+  if (state === 'loading' || g.state === 'loading') return <Note text={c.game ? 'Loading that game from Baseball Savant…' : 'Loading…'} />
+  if (c.game) {
+    const ps = g.data?.pitches ?? []
+    if (!ps.length) return <Note text={g.data?.error ?? 'No pitch tracking on record for that game.'} />
+    const rows = ps.map(p => ({ pitchType: p.code, pitchName: p.name, pitches: p.n, usage: p.usagePct })) as unknown as ArsenalRow[]
+    return <><Head title="Pitch mix" name={c.name} sub={`${c.game.label} · ${g.data?.total ?? ps.reduce((s, p) => s + p.n, 0)} pitches`} /><PitchUsageDonut rows={rows} /><Foot text={`${gameNote(c)} ${sourceLine('Source: Baseball Savant')}`} /></>
+  }
   const rows = (data?.rows ?? []).filter(r => r.usage > 0)
   if (!rows.length) return <Note text="No pitch-mix data on record for this pitcher yet." />
   const n = rows.reduce((s, r) => s + r.pitches, 0)
@@ -83,14 +99,17 @@ const METRICS: Metric[] = [
 ]
 function PitchResults(c: Ctx & { metric: Metric }) {
   const { data, state } = useArsenal(c)
-  if (state === 'loading') return <Note text="Loading…" />
+  const g = useGame(c, 'pitcher')
   const e = useEase()
-  const rows = (data?.rows ?? []).filter(r => r[c.metric.key] != null && r.pitches >= 50).map(r => ({ name: r.pitchName, type: r.pitchType, v: Number(r[c.metric.key]), n: r.pitches, shown: Number(r[c.metric.key]) * e }))
-  if (!rows.length) return <Note text="No pitch with 50 or more pitches on record yet." />
+  if (state === 'loading' || g.state === 'loading') return <Note text={c.game ? 'Loading that game from Baseball Savant…' : 'Loading…'} />
+  const season = !c.game
+  const src = season ? (data?.rows ?? []).filter(r => r.pitches >= 50).map(r => ({ ...r, v: r[c.metric.key] })) : (g.data?.pitches ?? []).map(p => ({ pitchName: p.name, pitchType: p.code, pitches: p.n, v: p.whiffPct }))
+  const rows = src.filter(r => r.v != null).map(r => ({ name: r.pitchName, type: r.pitchType, v: Number(r.v), n: r.pitches, shown: Number(r.v) * e }))
+  if (!rows.length) return <Note text={season ? 'No pitch with 50 or more pitches on record yet.' : `No pitch type had ${MIN_GAME} or more swings in that game.`} />
   rows.sort((a, b) => b.v - a.v)
   return (
     <>
-      <Head title={c.metric.label} name={c.name} sub={`${c.metric.blurb} · pitches thrown 50 or more times`} />
+      <Head title={c.metric.label} name={c.name} sub={season ? `${c.metric.blurb} · pitches thrown 50 or more times` : `${c.metric.blurb} · ${c.game?.label}`} />
       <div style={{ height: rows.length * 44 + 20 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 72, top: 0, bottom: 0 }}>
@@ -103,7 +122,7 @@ function PitchResults(c: Ctx & { metric: Metric }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <Foot text={`${rows.map(r => `${r.name} n = ${r.n.toLocaleString()}`).join(' · ')}. ${sourceLine('Source: Baseball Savant pitch arsenal')}`} />
+      <Foot text={`${rows.map(r => `${r.name} n = ${r.n.toLocaleString()}`).join(' · ')}. ${season ? '' : `${gameNote(c)} `}${sourceLine('Source: Baseball Savant pitch arsenal')}`} />
     </>
   )
 }
@@ -111,21 +130,35 @@ function PitchResults(c: Ctx & { metric: Metric }) {
 /** The pitch-movement chart is the Story v5 catcher-view animation: each pitch type's average real path flies to the plate, with its card. */
 function Movement(c: Ctx) {
   const t = useContext(ProgressCtx)
-  const { data, state } = useJson<{ pitches: ArsenalPitch[]; error?: string }>(`/api/admin/chart-data?kind=pitch-paths&playerId=${c.playerId}&season=${SEASON}`)
-  if (state === 'loading') return <Note text="Loading his pitches from Baseball Savant… (about 10 to 20 seconds)" />
-  const pitches = data?.pitches ?? []
-  if (!pitches.length) return <Note text={data?.error ?? 'No pitch with 20 or more tracked pitches on record for this pitcher yet.'} />
-  return <><PitchPathsPlayer name={c.name} season={SEASON} pitches={pitches} t={t} /><Foot text={`Average path of each pitch type with 20 or more pitches, from Statcast tracking. ${sourceLine('Source: Baseball Savant')}`} /></>
+  const { data, state } = useJson<{ pitches: ArsenalPitch[]; error?: string }>(c.game ? null : `/api/admin/chart-data?kind=pitch-paths&playerId=${c.playerId}&season=${SEASON}`)
+  const g = useGame(c, 'pitcher')
+  if (state === 'loading' || g.state === 'loading') return <Note text={c.game ? 'Loading that game from Baseball Savant…' : 'Loading his pitches from Baseball Savant… (about 10 to 20 seconds)'} />
+  const pitches = (c.game ? g.data?.pitches : data?.pitches)?.slice(0, 4) ?? []
+  if (!pitches.length) return <Note text={(c.game ? g.data?.error : data?.error) ?? (c.game ? 'No pitch tracking on record for that game.' : 'No pitch with 20 or more tracked pitches on record for this pitcher yet.')} />
+  return <><PitchPathsPlayer name={c.name} season={c.game ? c.game.label.toUpperCase() : SEASON} pitches={pitches} t={t} /><Foot text={`Average path of each pitch type with ${c.game ? MIN_GAME : 20} or more pitches${c.game ? ' in that game' : ''}, from Statcast tracking. ${sourceLine('Source: Baseball Savant')}`} /></>
 }
 function Velocity(c: Ctx) {
   const { data, state } = useMovement(c)
-  if (state === 'loading') return <Note text="Loading…" />
+  const g = useGame(c, 'pitcher')
+  if (state === 'loading' || g.state === 'loading') return <Note text="Loading…" />
+  if (c.game) {
+    const ge = (g.data?.pitches ?? []).map(p => ({ pitchName: p.name, pitchType: p.code, avgVelo: p.velo })).sort((a, b) => b.avgVelo - a.avgVelo)
+    if (!ge.length) return <Note text={g.data?.error ?? 'No pitch tracking on record for that game.'} />
+    return <><Head title="Pitch velocity" name={c.name} sub={`Average speed of each pitch, mph · ${c.game.label}`} /><PitchVeloChart entries={ge} /><Foot text={`${gameNote(c)} ${sourceLine('Source: Baseball Savant')}`} /></>
+  }
   const entries = (data?.rows ?? []).filter(r => r.avgVelocity != null).map(r => ({ pitchName: r.pitchName, pitchType: r.pitchType, avgVelo: Number(r.avgVelocity) })).sort((a, b) => b.avgVelo - a.avgVelo)
   if (!entries.length) return <Note text="No velocity data on record for this pitcher yet." />
   return <><Head title="Pitch velocity" name={c.name} sub="Average speed of each pitch, mph" /><PitchVeloChart entries={entries} /><Foot text={sourceLine('Source: Statcast pitch tracking')} /></>
 }
 
 function Spray(c: Ctx) {
+  const g = useGame(c, 'batter')
+  if (c.game) {
+    if (g.state === 'loading') return <Note text="Loading that game from Baseball Savant…" />
+    const balls = g.data?.balls ?? []
+    if (!balls.length) return <Note text={g.data?.error ?? 'No balls in play on record for that game.'} />
+    return <><Head title="Spray chart" name={c.name} sub={c.game.label} /><SprayChart playerId={c.playerId} playerName={c.name} isPro={false} balls={balls} scope={`in this game (${c.game.label})`} /><Foot text={sourceLine('Source: Baseball Savant batted balls')} /></>
+  }
   // isPro is passed explicitly as false: the picture is the free chart, so no Pro-only element can be captured into a public article.
   return <><Head title="Spray chart" name={c.name} sub="Where his batted balls went" /><SprayChart playerId={c.playerId} playerName={c.name} isPro={false} /><Foot text={sourceLine('Source: Baseball Savant batted balls')} /></>
 }
@@ -351,15 +384,87 @@ function TeamFit(c: Ctx & { fm: FitMetric }) {
   )
 }
 
-type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe'; /** the one-club 'where it fits' version of this chart, when it has one */ fit?: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }> }
+// ── Team batting: regular season, postseason, and each postseason round (MLB Stats API team game logs, summed from counting stats) ──
+const useBatting = (c: Ctx) => useJson<TeamBatting & { error?: string }>(`/api/admin/chart-data?kind=team-batting&teamId=${c.team.id}&season=${SEASON}`)
+const rate3 = (v: number | null) => (v == null ? '—' : v.toFixed(3).replace(/^0/, ''))
+const pct1 = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
+const dec2 = (v: number | null) => (v == null ? '—' : v.toFixed(2))
+const BAT_COLS: { label: string; get: (l: BatLine) => number | null; fmt: (v: number | null) => string; max: number }[] = [
+  { label: 'AVG', get: l => l.avg, fmt: rate3, max: 0.4 }, { label: 'OBP', get: l => l.obp, fmt: rate3, max: 0.5 }, { label: 'SLG', get: l => l.slg, fmt: rate3, max: 0.7 },
+  { label: 'OPS', get: l => l.ops, fmt: rate3, max: 1 }, { label: 'Runs per game', get: l => l.rPerG, fmt: dec2, max: 8 },
+  { label: 'Home runs per game', get: l => (l.g ? l.hr / l.g : null), fmt: dec2, max: 2 }, { label: 'K%', get: l => l.kPct, fmt: pct1, max: 0.35 }, { label: 'BB%', get: l => l.bbPct, fmt: pct1, max: 0.2 },
+]
+function BattingSplit(c: Ctx) {
+  const { data, state } = useBatting(c)
+  const e = useEase()
+  if (state === 'loading') return <Note text="Loading…" />
+  const reg = data?.regular, post = data?.post
+  if (!reg) return <Note text={data?.error ?? 'No batting data on record for this club yet.'} />
+  if (!post) return <Note text="This club has no postseason games on record this year." />
+  const bar = (v: number | null, max: number, color: string) => <div style={{ height: 9, borderRadius: 2, background: '#F1EEE6' }}><div style={{ width: `${clamp01((v ?? 0) / max) * 100 * e}%`, height: '100%', borderRadius: 2, background: color }} /></div>
+  return (
+    <>
+      <Head title="Batting: regular season vs postseason" name={c.team.name} sub={`${reg.g} regular-season games and ${post.g} postseason games (${post.w}-${post.g - post.w})`} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: '8px 16px', alignItems: 'center', marginTop: 8 }}>
+        <span /><span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute }}>Regular season</span><span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.orange }}>Postseason</span>
+        {BAT_COLS.map(col => {
+          const a = col.get(reg), b = col.get(post)
+          return (
+            <div key={col.label} style={{ display: 'contents' }}>
+              <span style={{ fontSize: 13, fontWeight: 800 }}>{col.label}</span>
+              <div><span style={{ fontSize: 17, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{col.fmt(a)}</span>{bar(a, col.max, '#8A8275')}</div>
+              <div><span style={{ fontSize: 17, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{col.fmt(b)}</span>{bar(b, col.max, '#FF5722')}</div>
+            </div>
+          )
+        })}
+      </div>
+      <Foot text={`Rates are built from the club's summed counting stats. ${post.pa.toLocaleString()} postseason plate appearances against ${reg.pa.toLocaleString()} in the regular season: a short postseason sample moves a lot. ${sourceLine('Source: MLB Stats API team game logs')}`} />
+    </>
+  )
+}
+function BattingRounds(c: Ctx) {
+  const { data, state } = useBatting(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const reg = data?.regular
+  if (!reg) return <Note text={data?.error ?? 'No batting data on record for this club yet.'} />
+  if (!data?.post || !data.rounds.length) return <Note text="This club has no postseason games on record this year." />
+  const cols = '1.5fr .85fr .8fr .7fr .75fr .75fr .75fr .75fr .55fr .75fr'
+  const head = ['Round', 'Vs', 'W-L', 'R/G', 'AVG', 'OBP', 'SLG', 'OPS', 'HR', 'K%']
+  const rows: { key: string; label: string; opp: string; l: BatLine; strong?: boolean }[] = [
+    { key: 'rs', label: 'Regular season', opp: '', l: reg },
+    ...data.rounds.map(r => ({ key: r.short, label: r.short, opp: r.opp, l: r.line })),
+    { key: 'ps', label: 'All postseason', opp: '', l: data.post, strong: true },
+  ]
+  return (
+    <>
+      <Head title="Postseason batting, round by round" name={c.team.name} sub="Every round of the club's run, against its regular season" />
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '0 6px', marginTop: 8, fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+        {head.map(h => <span key={h} style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute, padding: '4px 0', borderBottom: `2px solid ${C.ink}`, textAlign: h === 'Round' || h === 'Vs' ? 'left' : 'right' }}>{h}</span>)}
+        {rows.map(r => {
+          const cells = [r.label, r.opp, `${r.l.w}-${r.l.g - r.l.w}`, dec2(r.l.rPerG), rate3(r.l.avg), rate3(r.l.obp), rate3(r.l.slg), rate3(r.l.ops), String(r.l.hr), pct1(r.l.kPct)]
+          return (
+            <div key={r.key} style={{ display: 'contents' }}>
+              {cells.map((v, i) => <span key={i} style={{ padding: '7px 0', borderBottom: `1px solid ${C.line}`, fontWeight: i === 0 || r.strong ? 800 : 600, color: r.key === 'rs' ? '#5B5347' : C.ink, background: r.strong ? '#FFF1EA' : undefined, textAlign: i < 2 ? 'left' : 'right', whiteSpace: 'nowrap' }}>{v}</span>)}
+            </div>
+          )
+        })}
+      </div>
+      <Foot text={`Each round's rates come from that round's summed counting stats, so they are real totals, not averages of games. Round samples are small (a few games each). ${sourceLine('Source: MLB Stats API team game logs and schedule')}`} />
+    </>
+  )
+}
+
+type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** can show one past game instead of the season */ game?: boolean; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe'; /** the one-club 'where it fits' version of this chart, when it has one */ fit?: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }> }
 const KINDS: Kind[] = [
-  { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe' },
-  ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own' })),
-  { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own' },
-  { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe' },
-  { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe' },
+  { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe', game: true },
+  ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own', game: m.key === 'whiffPct' })),
+  { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own', game: true },
+  { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe', game: true },
+  { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe', game: true },
   { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> , anim: 'own' },
   { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'One club: the number, its rank, and where it sits', who: ['team'], render: c => <TeamFit {...c} fm={FIT_METRICS[0]} />, anim: 'own' },
+  { id: 'bat-split', label: 'Batting: regular season vs postseason', blurb: 'AVG, OBP, SLG, OPS, runs, K% and BB% side by side', who: ['team'], render: BattingSplit, anim: 'own' },
+  { id: 'bat-rounds', label: 'Postseason batting by round', blurb: 'Wild Card, division, league and World Series, with the regular season', who: ['team'], render: BattingRounds, anim: 'wipe' },
   { id: 'team-fit', label: 'Where a team sits (any stat)', blurb: 'Choose the stat: team, starters or bullpen', who: ['team'], render: TeamFit, anim: 'own' },
   { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit, anim: 'wipe', fit: TeamFit },
   ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} />, anim: 'own', fit: c => <TeamFit {...c} fm={FIT_METRICS.find(m => m.id === lm.id)!} /> })),
@@ -377,6 +482,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const [teamId, setTeamId] = useState<number | null>(null)
   const [fitId, setFitId] = useState('sp-era')
   const [fitView, setFitView] = useState(false)
+  const [gamePk, setGamePk] = useState<number | null>(null)
   const [t, setT] = useState(1)
   const [playing, setPlaying] = useState(false)
   const [status, setStatus] = useState('')
@@ -391,7 +497,11 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const who = kind.who[0]
   const team = MLB_TEAMS.find(t => t.id === teamId) ?? MLB_TEAMS[0]
   const ready = who === 'team' ? teamId != null : player != null
-  const ctx: Ctx = { playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team }
+  const gameLog = useJson<{ games: { gamePk: number; date: string; postseason: boolean; opp: string; home: boolean; summary: string }[]; error?: string }>(kind.game && player ? `/api/admin/chart-data?kind=game-log&playerId=${player.playerId}&group=${who === 'batter' ? 'hitting' : 'pitching'}&season=${SEASON}` : null)
+  const picked = gameLog.data?.games.find(g => g.gamePk === gamePk) ?? null
+  const dayText = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const game: GameSel | null = kind.game && picked ? { gamePk: picked.gamePk, date: picked.date, label: `${dayText(picked.date)} ${picked.home ? 'vs' : 'at'} ${picked.opp}${picked.postseason ? ' (postseason)' : ''}` } : null
+  const ctx: Ctx = { playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team, game }
   const fm = FIT_METRICS.find(m => m.id === fitId) ?? FIT_METRICS[0]
   const metric = METRICS.find(m => kind.id === `res-${m.key}`) ?? METRICS[0]
 
@@ -490,7 +600,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
                 {g.ids.map(id => {
                   const k = KINDS.find(x => x.id === id)!
                   return (
-                    <button key={id} onClick={() => { setKindId(id); setFound([]); setQuery(''); if (KINDS.find(x => x.id === id)?.who[0] !== who) setPlayer(null) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 4, borderRadius: 6, border: `1px solid ${id === kindId ? C.orange : C.line}`, background: id === kindId ? '#FFF1EA' : '#fff', cursor: 'pointer', fontFamily: SANS }}>
+                    <button key={id} onClick={() => { setKindId(id); setGamePk(null); setFound([]); setQuery(''); if (KINDS.find(x => x.id === id)?.who[0] !== who) setPlayer(null) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 4, borderRadius: 6, border: `1px solid ${id === kindId ? C.orange : C.line}`, background: id === kindId ? '#FFF1EA' : '#fff', cursor: 'pointer', fontFamily: SANS }}>
                       <div style={{ fontSize: 13, fontWeight: 800 }}>{k.label}</div>
                       <div style={{ fontSize: 11, color: C.mute }}>{k.blurb}</div>
                     </button>
@@ -522,12 +632,19 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
               <>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{who === 'pitcher' ? 'Pitcher' : 'Hitter'}</label>
                 <input style={inp} value={query} placeholder="Search by name" onChange={e => search(e.target.value)} />
-                {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
+                {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setGamePk(null); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
+                {kind.game && player && (
+                  <select style={{ ...inp, marginTop: 8 }} value={gamePk ?? ''} onChange={e => setGamePk(e.target.value ? Number(e.target.value) : null)} aria-label="Season or one game">
+                    <option value="">{`Whole ${SEASON} season`}</option>
+                    {(gameLog.data?.games ?? []).map(g => <option key={g.gamePk} value={g.gamePk}>{`${dayText(g.date)} ${g.home ? 'vs' : 'at'} ${g.opp}${g.postseason ? ' (postseason)' : ''} · ${g.summary}`}</option>)}
+                  </select>
+                )}
+                {kind.game && player && gameLog.state === 'loading' && <div style={{ fontSize: 11, color: C.mute, marginTop: 4 }}>Loading his games…</div>}
               </>
             )}
             <div style={{ marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 8, padding: 10, background: '#fff', overflowX: 'auto' }}>
               {ready ? (
-                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && !showFit && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${showFit}-${fitId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
+                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && !showFit && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${gamePk}-${showFit}-${fitId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
               ) : <Note text={who === 'team' ? 'Choose a team to see the chart here.' : 'Search and choose a player to see the chart here.'} />}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

@@ -27,24 +27,24 @@ const asPitch = (r: Row): StatcastPitch => ({
   vx0: num(r.vx0), vy0: num(r.vy0), vz0: num(r.vz0), ax: num(r.ax), ay: num(r.ay), az: num(r.az),
 })
 
-/** Up to `max` pitch types with MIN_PITCHES or more pitches, most used first. Types whose rows have no usable trajectory are dropped. */
-export function buildArsenal(rows: Row[], max = 4): ArsenalPitch[] {
+/** Up to `max` pitch types with `min` (default MIN_PITCHES) or more pitches, most used first. Types whose rows have no usable trajectory are dropped. A single game passes a lower `min`. */
+export function buildArsenal(rows: Row[], max = 4, min = MIN_PITCHES): ArsenalPitch[] {
   const total = rows.filter(r => r.pitch_type).length
   const by = new Map<string, Row[]>()
   for (const r of rows) if (r.pitch_type) (by.get(r.pitch_type) ?? by.set(r.pitch_type, []).get(r.pitch_type)!).push(r)
   const out: ArsenalPitch[] = []
   for (const [code, rs] of by) {
-    if (rs.length < MIN_PITCHES) continue
+    if (rs.length < min) continue
     const paths = rs.map(r => pathFor(asPitch(r))).filter((p): p is NonNullable<typeof p> => !!p)
     const avg = averagePath(paths)
     const speeds = rs.map(r => num(r.release_speed)).filter(Number.isFinite)
-    if (!avg || paths.length < MIN_PITCHES || !speeds.length) continue
+    if (!avg || paths.length < min || !speeds.length) continue
     const swings = rs.filter(r => SWING.has(r.description)).length
     const whiffs = rs.filter(r => WHIFF.has(r.description)).length
     out.push({
       code, name: PITCH_NAME[code] ?? code, n: rs.length, usagePct: round1((rs.length / total) * 100),
       velo: round1(speeds.reduce((a, b) => a + b, 0) / speeds.length),
-      whiffPct: swings >= MIN_PITCHES ? round1((whiffs / swings) * 100) : null, swings,
+      whiffPct: swings >= min ? round1((whiffs / swings) * 100) : null, swings,
       path: { points: avg.points, tPlate: avg.tPlate },
     })
   }

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
-interface BattedBall {
+export interface BattedBall {
   x:       number
   y:       number
   events:  string
@@ -134,25 +134,30 @@ function FilterBtn({ label, active, onClick }: { label: string; active: boolean;
 /* ── Main export ─────────────────────────────────────────────────────── */
 
 export default function SprayChart({
-  playerId, playerName, stand, isPro,
+  playerId, playerName, stand, isPro, balls: given, scope = 'this season',
 }: {
   playerId:    number
   playerName:  string
   stand?:      'L' | 'R' | null
   isPro:       boolean
+  /** balls already loaded (one game, say): skips the season fetch */
+  balls?:      BattedBall[]
+  /** wording for the period the balls cover */
+  scope?:      string
 }) {
   const [balls,   setBalls]   = useState<BattedBall[]>([])
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState<Filter>('all')
 
   useEffect(() => {
+    if (given) { setBalls(given); setLoading(false); return }
     setLoading(true)
     setBalls([])
     fetchSprayData(playerId).then(data => {
       setBalls(data)
       setLoading(false)
     })
-  }, [playerId])
+  }, [playerId, given])
 
   const displayed = balls.filter(b => {
     if (filter === 'hits') return ['home_run','single','double','triple'].includes(b.events)
@@ -185,7 +190,7 @@ export default function SprayChart({
               color: '#FF5722', background: 'rgba(255,87,34,0.15)',
               padding: '2px 7px', borderRadius: 4, marginLeft: 'auto',
             }}>
-              {hrs} HR this season
+              {hrs} HR {scope}
             </span>
           )}
         </div>
@@ -255,7 +260,7 @@ export default function SprayChart({
             gap: 6,
           }}>
             <div style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 15, color: '#6B6B6B' }}>
-              No data yet for this season
+              No batted balls {scope === 'this season' ? 'yet for this season' : scope}
             </div>
             <div style={{
               fontFamily: 'Red Hat Display, sans-serif', fontSize: 9,
@@ -297,7 +302,7 @@ export default function SprayChart({
         fontFamily: 'Red Hat Display, sans-serif', fontSize: 9, color: '#6B6B6B',
         lineHeight: 1.6,
       }}>
-        Each dot is one ball hit into play this season. Orange dots cleared the fence.
+        Each dot is one ball hit into play {scope}. Orange dots cleared the fence.
         {pullText ? ` This batter ${pullText.toLowerCase()} — defenders adjust accordingly.` : ''}
       </div>
     </div>

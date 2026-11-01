@@ -19,7 +19,7 @@ import type { ArsenalPitch } from '../../types'
 const HOLD = 36
 export const pathsFrames = (n: number) => TIMING.arsenal.firstPitch + Math.max(0, n - 1) * TIMING.arsenal.gap + TIMING.arsenal.flight + HOLD
 
-type Props = { name: string; season: number; pitches: ArsenalPitch[] }
+type Props = { name: string; season: number | string; pitches: ArsenalPitch[] }
 
 function PathsScene({ name, season, pitches }: Props) {
   const t = useTheme()
