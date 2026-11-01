@@ -18,7 +18,7 @@ export interface WriterMeta {
   subjectPlayerName: string
 }
 
-export const SECTIONS = ['Matchup notes', 'Usage & role', 'How they win', "Where they're vulnerable", 'What changed', 'Situational', 'Venue', 'X-factor', 'What to watch', 'What we flagged, what happened']
+export const SECTIONS = ['Matchup notes', 'Usage & role', 'How they win', "Where they're vulnerable", 'What changed', 'Situational', 'Venue', 'X-factor', 'What to watch', 'What we flagged, what happened', 'Free agents', 'Who can improve the team']
 
 export const LAYOUTS: { id: ArticleLayout; name: string; blurb: string }[] = [
   { id: 'standard', name: 'Standard', blurb: 'Headline, image, text, side rail' },

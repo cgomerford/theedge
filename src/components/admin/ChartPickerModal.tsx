@@ -1,192 +1,417 @@
+'use client'
+
 // components/admin/ChartPickerModal.tsx
-'use client';
+//
+// The article writer's chart picker: choose a chart, search a player, preview it, insert it as an image (captured with html-to-image, uploaded through /api/admin/upload).
+// Every chart reads real stored or public data and shows its sample and source underneath; with no data it shows an empty state, which is not captured.
+// Pitcher charts read Baseball Savant's pitch-arsenal table (/api/pitcher-arsenal) or our pitch_arsenals table; percentiles read player_percentiles (admin route).
 
-import { useState, useRef } from 'react';
-import { toPng } from 'html-to-image';
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { toPng } from 'html-to-image'
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { C, SANS } from '@/components/team/ui'
+import { pitchColor } from '@/lib/mlb'
+import type { ArsenalRow } from '@/app/api/pitcher-arsenal/route'
+import type { PitchMovementRow } from '@/lib/pitcher-full-stats'
+import type { PctBlock } from '@/lib/follows/percentiles'
+import PitchUsageDonut from '@/components/PitchUsageDonut'
+import PitchVeloChart from '@/components/PitchVeloChart'
+import PitchMovementChart from '@/components/PitchMovementChart'
+import SprayChart from '@/components/SprayChart'
+import { MLB_TEAMS, type Team } from '@/lib/teams'
+import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
+import type { PitLine } from '@/lib/team-profile/league'
 
-// TODO — replace with your real components once confirmed:
-// import PitchingArsenalChart from '@/components/game/PitchingArsenalChart';
-// import OverlayChart from '@/components/admin/OverlayChart';
+type Person = { id: number; fullName: string; primaryPosition: string }
+type Who = 'pitcher' | 'batter' | 'team'
+interface Props { onInsert: (url: string) => void; onClose: () => void }
 
-type ChartType = 'pitching_arsenal' | 'overlay_builder';
+const SEASON = new Date().getFullYear()
+const sourceLine = (what: string) => `${what}, ${SEASON}. Independent, not affiliated with MLB.`
 
-interface ChartPickerModalProps {
-  onInsert: (url: string) => void;
-  onClose: () => void;
+function useJson<T>(url: string | null): { data: T | null; state: 'idle' | 'loading' | 'done' | 'error' } {
+  const [s, set] = useState<{ data: T | null; state: 'idle' | 'loading' | 'done' | 'error' }>({ data: null, state: 'idle' })
+  useEffect(() => {
+    if (!url) { set({ data: null, state: 'idle' }); return }
+    let live = true
+    set({ data: null, state: 'loading' })
+    fetch(url).then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))).then(d => live && set({ data: d as T, state: 'done' })).catch(() => live && set({ data: null, state: 'error' }))
+    return () => { live = false }
+  }, [url])
+  return s
 }
 
-export default function ChartPickerModal({ onInsert, onClose }: ChartPickerModalProps) {
-  const [chartType, setChartType] = useState<ChartType>('pitching_arsenal');
-  const [playerId, setPlayerId] = useState('');
-  const [statA, setStatA] = useState('OPS');
-  const [statB, setStatB] = useState('SLG');
-  const [gameStart, setGameStart] = useState(1);
-  const [gameEnd, setGameEnd] = useState(10);
-  const [capturing, setCapturing] = useState(false);
-  const [error, setError] = useState('');
+const Note = ({ text }: { text: string }) => <div style={{ padding: '36px 12px', textAlign: 'center', fontSize: 13, color: C.mute }}>{text}</div>
+const Head = ({ title, name, sub }: { title: string; name: string; sub?: string }) => (
+  <div style={{ marginBottom: 10 }}>
+    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.orange }}>{title}</div>
+    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em' }}>{name}</div>
+    {sub && <div style={{ fontSize: 12, color: '#5B5347' }}>{sub}</div>}
+  </div>
+)
+const Foot = ({ text }: { text: string }) => <div style={{ fontSize: 9.5, color: '#8A8275', marginTop: 10 }}>{text}</div>
 
-  const captureRef = useRef<HTMLDivElement>(null);
+type Ctx = { playerId: number; name: string; team: Team }
 
-  async function handleCapture() {
-    if (!captureRef.current) return;
-    setCapturing(true);
-    setError('');
+/** Arsenal rows from Savant's pitch-arsenal table. */
+function useArsenal(c: Ctx) { return useJson<{ rows: ArsenalRow[] }>(`/api/pitcher-arsenal?pitcherId=${c.playerId}&season=${SEASON}`) }
+function useMovement(c: Ctx) { return useJson<{ rows: PitchMovementRow[] }>(`/api/admin/chart-data?kind=movement&playerId=${c.playerId}&season=${SEASON}`) }
 
+function PitchMix(c: Ctx) {
+  const { data, state } = useArsenal(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const rows = (data?.rows ?? []).filter(r => r.usage > 0)
+  if (!rows.length) return <Note text="No pitch-mix data on record for this pitcher yet." />
+  const n = rows.reduce((s, r) => s + r.pitches, 0)
+  return <><Head title="Pitch mix" name={c.name} sub={`How often he throws each pitch · ${n.toLocaleString()} pitches`} /><PitchUsageDonut rows={rows} /><Foot text={sourceLine('Source: Baseball Savant pitch arsenal')} /></>
+}
+
+type Metric = { key: 'whiffPct' | 'estWoba' | 'hardHitPct' | 'kPct' | 'runValuePer100'; label: string; blurb: string; fmt: (v: number) => string }
+const METRICS: Metric[] = [
+  { key: 'whiffPct', label: 'Whiff%', blurb: 'Misses per swing, by pitch', fmt: v => `${v.toFixed(1)}%` },
+  { key: 'estWoba', label: 'xwOBA against', blurb: 'Expected damage on contact, by pitch (lower is better for him)', fmt: v => v.toFixed(3).replace(/^0/, '') },
+  { key: 'hardHitPct', label: 'Hard-hit%', blurb: 'Share of batted balls at 95+ mph, by pitch', fmt: v => `${v.toFixed(1)}%` },
+  { key: 'kPct', label: 'K%', blurb: 'Strikeouts per plate appearance ending on the pitch', fmt: v => `${v.toFixed(1)}%` },
+  { key: 'runValuePer100', label: 'Runs per 100 pitches', blurb: 'Runs above average per 100 pitches, Savant (negative is good for him)', fmt: v => v.toFixed(1) },
+]
+function PitchResults(c: Ctx & { metric: Metric }) {
+  const { data, state } = useArsenal(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const rows = (data?.rows ?? []).filter(r => r[c.metric.key] != null && r.pitches >= 50).map(r => ({ name: r.pitchName, type: r.pitchType, v: Number(r[c.metric.key]), n: r.pitches }))
+  if (!rows.length) return <Note text="No pitch with 50 or more pitches on record yet." />
+  rows.sort((a, b) => b.v - a.v)
+  return (
+    <>
+      <Head title={c.metric.label} name={c.name} sub={`${c.metric.blurb} · pitches thrown 50 or more times`} />
+      <div style={{ height: rows.length * 44 + 20 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 72, top: 0, bottom: 0 }}>
+            <XAxis type="number" hide domain={[Math.min(0, ...rows.map(r => r.v)), 'dataMax']} />
+            <YAxis type="category" dataKey="name" width={104} axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#1A1A1A', fontFamily: SANS }} />
+            <Bar dataKey="v" barSize={20} isAnimationActive={false}>
+              {rows.map(r => <Cell key={r.type} fill={pitchColor(r.type)} />)}
+              <LabelList dataKey="v" position="right" formatter={(v: unknown) => c.metric.fmt(Number(v))} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <Foot text={`${rows.map(r => `${r.name} n = ${r.n.toLocaleString()}`).join(' · ')}. ${sourceLine('Source: Baseball Savant pitch arsenal')}`} />
+    </>
+  )
+}
+
+function Movement(c: Ctx) {
+  const { data, state } = useMovement(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const rows = (data?.rows ?? []).filter(r => r.avgHBreak != null && r.avgVBreak != null)
+  if (!rows.length) return <Note text="No pitch-movement data on record for this pitcher yet." />
+  return <><Head title="Pitch movement" name={c.name} sub="Where each pitch moves, from the pitcher's view" /><PitchMovementChart rows={rows} /><Foot text={sourceLine('Source: Statcast pitch tracking')} /></>
+}
+function Velocity(c: Ctx) {
+  const { data, state } = useMovement(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const entries = (data?.rows ?? []).filter(r => r.avgVelocity != null).map(r => ({ pitchName: r.pitchName, pitchType: r.pitchType, avgVelo: Number(r.avgVelocity) })).sort((a, b) => b.avgVelo - a.avgVelo)
+  if (!entries.length) return <Note text="No velocity data on record for this pitcher yet." />
+  return <><Head title="Pitch velocity" name={c.name} sub="Average speed of each pitch, mph" /><PitchVeloChart entries={entries} /><Foot text={sourceLine('Source: Statcast pitch tracking')} /></>
+}
+
+function Spray(c: Ctx) {
+  // isPro is passed explicitly as false: the picture is the free chart, so no Pro-only element can be captured into a public article.
+  return <><Head title="Spray chart" name={c.name} sub="Where his batted balls went" /><SprayChart playerId={c.playerId} playerName={c.name} isPro={false} /><Foot text={sourceLine('Source: Baseball Savant batted balls')} /></>
+}
+
+function Percentiles(c: Ctx & { who: Who }) {
+  const { data, state } = useJson<{ block: PctBlock | null; error?: string }>(`/api/admin/chart-data?kind=percentiles&playerId=${c.playerId}&role=${c.who}&season=${SEASON}`)
+  if (state === 'loading') return <Note text="Loading…" />
+  const b = data?.block
+  if (!b || b.state === 'pending') return <Note text={data?.error ?? 'No percentile ranks on record for him yet.'} />
+  if (b.state === 'small') return <Note text={`Too small a sample so far: ${b.n} of the ${b.need} ${c.who === 'pitcher' ? 'batters faced' : 'plate appearances'} needed.`} />
+  const tone = (p: number) => (p >= 70 ? '#FF5722' : p <= 30 ? '#5E7A99' : '#B7AF9F')
+  return (
+    <>
+      <Head title="Percentile ranks" name={c.name} sub={`Against MLB, 100 is best · ${b.n.toLocaleString()} ${c.who === 'pitcher' ? 'batters faced' : 'plate appearances'}`} />
+      <div style={{ display: 'grid', gap: 7 }}>
+        {b.rows.map(r => (
+          <div key={r.key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 34px', alignItems: 'center', gap: 10, fontSize: 12.5, fontWeight: 700 }}>
+            <span>{r.label}</span>
+            <span style={{ height: 14, background: '#F1EEE6', borderRadius: 4, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${r.pct}%`, background: tone(r.pct), borderRadius: 4 }} /></span>
+            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.pct}</span>
+          </div>
+        ))}
+      </div>
+      <Foot text={`${sourceLine('Source: Baseball Savant percentile rankings')} Orange is 70 or higher, blue is 30 or lower.`} />
+    </>
+  )
+}
+
+
+// ─── team charts ───
+type LeagueRow = { id: number; abbr: string; name: string; all: PitLine | null; sp: PitLine | null; rp: PitLine | null }
+const useLeague = () => useJson<{ rows: LeagueRow[]; error?: string }>(`/api/admin/chart-data?kind=league-pitching&season=${SEASON}`)
+
+type TM = { key: string; label: string; lower: boolean; get: (l: PitLine) => number | null; fmt: (v: number) => string }
+const d2 = (v: number) => v.toFixed(2), pc = (v: number) => `${(v * 100).toFixed(1)}%`
+const TEAM_METRICS: TM[] = [
+  { key: 'era', label: 'ERA', lower: true, get: l => l.era, fmt: d2 },
+  { key: 'fip', label: 'FIP', lower: true, get: l => l.fip, fmt: d2 },
+  { key: 'whip', label: 'WHIP', lower: true, get: l => l.whip, fmt: d2 },
+  { key: 'k', label: 'K%', lower: false, get: l => l.kPct, fmt: pc },
+  { key: 'bb', label: 'BB%', lower: true, get: l => l.bbPct, fmt: pc },
+  { key: 'hr9', label: 'HR/9', lower: true, get: l => l.hr9, fmt: d2 },
+]
+const ord = (n: number) => `${n}${[, 'st', 'nd', 'rd'][(n % 100 >> 3) ^ 1 && n % 10] || 'th'}`
+const rankOf = (rows: LeagueRow[], id: number, role: 'sp' | 'rp', m: TM): { v: number; rank: number; of: number } | null => {
+  const vals = rows.flatMap(r => { const l = r[role]; const v = l ? m.get(l) : null; return v == null ? [] : [{ id: r.id, v }] })
+  const mine = vals.find(x => x.id === id)
+  if (!mine) return null
+  return { v: mine.v, rank: 1 + vals.filter(x => (m.lower ? x.v < mine.v : x.v > mine.v)).length, of: vals.length }
+}
+const rankTone = (rank: number, of: number) => (rank <= 5 ? '#1D9E75' : rank > of - 5 ? '#D4533B' : '#8A8275')
+
+function TeamSplit(c: Ctx) {
+  const { data, state } = useLeague()
+  if (state === 'loading') return <Note text="Loading…" />
+  const rows = data?.rows ?? []
+  if (!rows.length) return <Note text={data?.error ?? 'No league pitching table on record.'} />
+  const mine = rows.find(r => r.id === c.team.id)
+  const ip = (l: PitLine | null | undefined) => (l ? `${Math.round(l.ip)} IP` : '')
+  return (
+    <>
+      <Head title="Starters and bullpen" name={c.team.name} sub={`How each group has pitched, with the rank among ${rows.length} clubs (1st is best)`} />
+      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: '8px 12px', alignItems: 'center' }}>
+        <span /><b style={{ fontSize: 12 }}>Starters <span style={{ fontWeight: 400, color: C.mute }}>{ip(mine?.sp)}</span></b><b style={{ fontSize: 12 }}>Bullpen <span style={{ fontWeight: 400, color: C.mute }}>{ip(mine?.rp)}</span></b>
+        {TEAM_METRICS.map(m => (
+          <div key={m.key} style={{ display: 'contents' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#5B5347' }}>{m.label}</span>
+            {(['sp', 'rp'] as const).map(role => {
+              const r = rankOf(rows, c.team.id, role, m)
+              return <span key={role} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{r ? m.fmt(r.v) : '—'}</span>
+                {r && <span style={{ fontSize: 11, fontWeight: 800, color: rankTone(r.rank, r.of) }}>{ord(r.rank)} of {r.of}</span>}
+              </span>
+            })}
+          </div>
+        ))}
+      </div>
+      <Foot text={`${sourceLine('Source: MLB Stats API season splits for starters and relievers')} FIP uses the league constant for the season.`} />
+    </>
+  )
+}
+
+type LeagueMetric = { id: string; label: string; role: 'sp' | 'rp'; m: TM }
+const byKey = (k: string) => TEAM_METRICS.find(m => m.key === k)!
+const LEAGUE_METRICS: LeagueMetric[] = (['sp', 'rp'] as const).flatMap(role => TEAM_METRICS.map(m => ({ id: `${role}-${m.key}`, label: `${role === 'sp' ? 'Starter' : 'Bullpen'} ${m.label}`, role, m: byKey(m.key) })))
+function LeagueRank(c: Ctx & { lm: LeagueMetric }) {
+  const { data, state } = useLeague()
+  if (state === 'loading') return <Note text="Loading…" />
+  const all = data?.rows ?? []
+  const rows = all.flatMap(r => { const l = r[c.lm.role]; const v = l ? c.lm.m.get(l) : null; return v == null ? [] : [{ id: r.id, abbr: r.abbr, v }] }).sort((a, b) => (c.lm.m.lower ? a.v - b.v : b.v - a.v))
+  if (!rows.length) return <Note text={data?.error ?? 'No league pitching table on record.'} />
+  const i = rows.findIndex(r => r.id === c.team.id)
+  return (
+    <>
+      <Head title={`${c.lm.label}, all ${rows.length} clubs`} name={c.team.name} sub={`${i >= 0 ? `${ord(i + 1)} of ${rows.length}` : 'Not ranked'} · ${c.lm.m.lower ? 'lower is better' : 'higher is better'}`} />
+      <div style={{ height: rows.length * 20 + 10 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ left: 0, right: 56, top: 0, bottom: 0 }}>
+            <XAxis type="number" hide domain={[0, 'dataMax']} />
+            <YAxis type="category" dataKey="abbr" width={40} axisLine={false} tickLine={false} interval={0} tick={{ fontSize: 11, fontWeight: 700, fill: '#1A1A1A', fontFamily: SANS }} />
+            <Bar dataKey="v" barSize={13} isAnimationActive={false}>
+              {rows.map(r => <Cell key={r.id} fill={r.id === c.team.id ? '#FF5722' : '#D6D2C8'} />)}
+              <LabelList dataKey="v" position="right" formatter={(v: unknown) => c.lm.m.fmt(Number(v))} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <Foot text={sourceLine('Source: MLB Stats API season splits')} />
+    </>
+  )
+}
+
+function TeamArm(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
+  const { data, state } = useJson<{ arms: PitcherArm[]; low: number | null; high: number | null; pitches: number }>(`/api/admin/chart-data?kind=team-arm&teamId=${c.team.id}&role=${c.role}&season=${SEASON}`)
+  if (state === 'loading') return <Note text="Loading… (the first load of a club can take a few seconds)" />
+  const arms = [...(data?.arms ?? [])].sort((a, b) => b.armAngle - a.armAngle).slice(0, 18)
+  if (!arms.length) return <Note text="No arm-angle data on record for this club yet." />
+  const max = Math.max(...arms.map(a => a.armAngle), 1)
+  const who = c.role === 'sp' ? 'Starters' : c.role === 'rp' ? 'Bullpen' : 'All pitchers'
+  return (
+    <>
+      <Head title={`Arm angle · ${who}`} name={c.team.name} sub="Degrees above horizontal, per pitcher. Higher is more over the top, lower is more sidearm." />
+      <div style={{ display: 'grid', gap: 5 }}>
+        {arms.map(a => (
+          <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 46px', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700 }}>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name.includes(', ') ? a.name.split(', ').reverse().join(' ') : a.name} <span style={{ color: C.mute, fontWeight: 400 }}>{a.throws}</span></span>
+            <span style={{ height: 12, background: '#F1EEE6', borderRadius: 3, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${(a.armAngle / max) * 100}%`, background: c.team.primary_color, borderRadius: 3 }} /></span>
+            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{a.armAngle.toFixed(0)}°</span>
+          </div>
+        ))}
+      </div>
+      <Foot text={`Each pitcher's average over ${(data?.pitches ?? 0).toLocaleString()} pitches, up to 18 shown. ${sourceLine('Source: Statcast pitch tracking')}`} />
+    </>
+  )
+}
+
+/** One number and where it fits: the whole staff's ERA, its rank, and all 30 clubs as dots on one line. */
+function TeamEraFit(c: Ctx) {
+  const { data, state } = useLeague()
+  if (state === 'loading') return <Note text="Loading…" />
+  const pts = (data?.rows ?? []).flatMap(r => (r.all?.era != null ? [{ id: r.id, abbr: r.abbr, era: r.all.era }] : []))
+  const mine = pts.find(p => p.id === c.team.id)
+  if (!mine || pts.length < 2) return <Note text={data?.error ?? 'No team ERA on record yet.'} />
+  const rank = 1 + pts.filter(p => p.era < mine.era).length
+  const avg = pts.reduce((s, p) => s + p.era, 0) / pts.length
+  const lo = Math.min(...pts.map(p => p.era)), hi = Math.max(...pts.map(p => p.era))
+  const W = 560, L = 20, R = 540, x = (v: number) => L + ((v - lo) / (hi - lo || 1)) * (R - L)
+  const best = pts.find(p => p.era === lo)!, worst = pts.find(p => p.era === hi)!
+  // dots that would sit on top of each other are stacked upward
+  const sorted = [...pts].sort((a, b) => a.era - b.era)
+  const stack: Record<number, number> = {}
+  sorted.forEach((p, i) => { let h = 0; for (let j = i - 1; j >= 0 && x(p.era) - x(sorted[j].era) < 11; j--) h = Math.max(h, (stack[sorted[j].id] ?? 0) + 1); stack[p.id] = h })
+  return (
+    <>
+      <Head title="Team ERA" name={c.team.name} sub="Runs per nine innings charged to the pitchers: starters and bullpen together" />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 4px' }}>
+        <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{mine.era.toFixed(2)}</span>
+        <span style={{ fontSize: 20, fontWeight: 800, color: rankTone(rank, pts.length) }}>{ord(rank)} of {pts.length}</span>
+        <span style={{ fontSize: 12, color: '#5B5347' }}>{mine.era < avg ? `${(avg - mine.era).toFixed(2)} better than` : `${(mine.era - avg).toFixed(2)} worse than`} the league average of {avg.toFixed(2)}</span>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} 180`} style={{ display: 'block' }}>
+        <line x1={L} x2={R} y1={124} y2={124} stroke="#D6D2C8" strokeWidth={2} />
+        <line x1={x(avg)} x2={x(avg)} y1={20} y2={132} stroke="#8A8275" strokeDasharray="3 3" />
+        <text x={x(avg)} y={150} textAnchor="middle" fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>League avg {avg.toFixed(2)}</text>
+        {pts.filter(p => p.id !== mine.id).map(p => <circle key={p.id} cx={x(p.era)} cy={118 - stack[p.id] * 11} r={4.5} fill="#B7AF9F" />)}
+        <circle cx={x(mine.era)} cy={118 - stack[mine.id] * 11} r={8} fill="#FF5722" />
+        <text x={x(mine.era)} y={118 - stack[mine.id] * 11 - 14} textAnchor="middle" fontSize={11} fontWeight={800} fill="#1A1A1A" fontFamily={SANS}>{c.team.abbrev}</text>
+        <text x={L} y={172} fontSize={10} fontWeight={700} fill="#1D9E75" fontFamily={SANS}>Best: {best.abbr} {lo.toFixed(2)}</text>
+        <text x={R} y={172} textAnchor="end" fontSize={10} fontWeight={700} fill="#D4533B" fontFamily={SANS}>Highest: {worst.abbr} {hi.toFixed(2)}</text>
+      </svg>
+      <Foot text={`Each dot is one club; lower ERA is better. ${sourceLine('Source: MLB Stats API season pitching')}`} />
+    </>
+  )
+}
+
+type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric }> }
+const KINDS: Kind[] = [
+  { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix },
+  ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> })),
+  { id: 'move', label: 'Pitch movement', blurb: 'Horizontal and vertical break of each pitch', who: ['pitcher'], render: Movement },
+  { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity },
+  { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray },
+  { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> },
+  { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'The number, its rank and all 30 clubs on one line', who: ['team'], render: TeamEraFit },
+  { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit },
+  ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} /> })),
+  { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" /> },
+  { id: 'team-arm-sp', label: 'Team arm angle · starters', blurb: 'Starters only', who: ['team'], render: c => <TeamArm {...c} role="sp" /> },
+  { id: 'team-arm-rp', label: 'Team arm angle · bullpen', blurb: 'Relievers only', who: ['team'], render: c => <TeamArm {...c} role="rp" /> },
+  { id: 'pct-p', label: 'Percentile ranks (pitcher)', blurb: 'Savant percentiles vs MLB', who: ['pitcher'], render: c => <Percentiles {...c} who="pitcher" /> },
+]
+
+export default function ChartPickerModal({ onInsert, onClose }: Props) {
+  const [kindId, setKindId] = useState(KINDS[0].id)
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<Person[]>([])
+  const [player, setPlayer] = useState<{ playerId: number; name: string } | null>(null)
+  const [teamId, setTeamId] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const stage = useRef<HTMLDivElement>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const kind = KINDS.find(k => k.id === kindId) ?? KINDS[0]
+  const Chart = kind.render
+  const who = kind.who[0]
+  const team = MLB_TEAMS.find(t => t.id === teamId) ?? MLB_TEAMS[0]
+  const ready = who === 'team' ? teamId != null : player != null
+  const ctx: Ctx = { playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team }
+  const metric = METRICS.find(m => kind.id === `res-${m.key}`) ?? METRICS[0]
+
+  const search = useCallback((v: string) => {
+    setQuery(v)
+    if (timer.current) clearTimeout(timer.current)
+    if (v.trim().length < 2) { setFound([]); return }
+    timer.current = setTimeout(async () => {
+      try { setFound(((await (await fetch(`/api/lab/search?q=${encodeURIComponent(v.trim())}`)).json()) as { people: Person[] }).people.slice(0, 6)) } catch { setFound([]) }
+    }, 250)
+  }, [])
+
+  async function insert() {
+    if (!stage.current || !ready) return
+    setBusy(true); setError('')
     try {
-      // Small delay so the chart component finishes its own mount/animation
-      // before the snapshot is taken — avoids capturing a half-drawn chart.
-      await new Promise((r) => setTimeout(r, 400));
-
-      const dataUrl = await toPng(captureRef.current, {
-        pixelRatio: 2, // retina-quality snapshot for the article page
-        backgroundColor: '#FAF8F3',
-      });
-
-      const blob = await (await fetch(dataUrl)).blob();
-      const formData = new FormData();
-      formData.append('file', blob, 'chart.png');
-
-      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? 'Upload failed');
-      }
-
-      const { url } = await res.json();
-      onInsert(url);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Capture failed');
-    } finally {
-      setCapturing(false);
-    }
+      await new Promise(r => setTimeout(r, 600)) // let a Recharts / fetch-driven chart finish drawing before the snapshot
+      const dataUrl = await toPng(stage.current, { pixelRatio: 2, backgroundColor: '#FAF8F3' })
+      const form = new FormData()
+      form.append('file', await (await fetch(dataUrl)).blob(), 'chart.png')
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: form })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed')
+      onInsert(((await res.json()) as { url: string }).url)
+      onClose()
+    } catch (e) {
+      console.error('[ChartPickerModal] insert failed:', e instanceof Error ? e.message : e)
+      setError(e instanceof Error ? e.message : 'Capture failed')
+    } finally { setBusy(false) }
   }
 
+  const groups: { title: string; ids: string[] }[] = [
+    { title: 'Pitchers', ids: KINDS.filter(k => k.who[0] === 'pitcher').map(k => k.id) },
+    { title: 'Hitters', ids: KINDS.filter(k => k.who[0] === 'batter').map(k => k.id) },
+    { title: 'Teams', ids: KINDS.filter(k => k.who[0] === 'team').map(k => k.id) },
+  ]
+  const inp: React.CSSProperties = { width: '100%', padding: '9px 10px', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff', fontFamily: SANS, fontSize: 14, boxSizing: 'border-box' }
+
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h2 style={{ fontFamily: 'Red Hat Display, sans-serif', fontSize: 20 }}>⊕ Insert chart</h2>
-          <button onClick={onClose} style={closeBtnStyle}>Close</button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,26,26,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, fontFamily: SANS }}>
+      <div style={{ background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 14, padding: 22, width: 'min(1040px, 96vw)', maxHeight: '92vh', overflowY: 'auto', color: C.ink }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>⊕ Insert chart</h2>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: SANS }}>Close</button>
         </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Chart type</label>
-          <select
-            value={chartType}
-            onChange={(e) => setChartType(e.target.value as ChartType)}
-            style={inputStyle}
-          >
-            <option value="pitching_arsenal">Pitching arsenal</option>
-            <option value="overlay_builder">Stat overlay</option>
-          </select>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Player ID</label>
-          <input
-            type="text"
-            value={playerId}
-            onChange={(e) => setPlayerId(e.target.value)}
-            placeholder="e.g. 592450"
-            style={inputStyle}
-          />
-        </div>
-
-        {chartType === 'overlay_builder' && (
-          <>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Stat A</label>
-                <input value={statA} onChange={(e) => setStatA(e.target.value)} style={inputStyle} />
+        <div className="cp-grid" style={{ display: 'grid', gridTemplateColumns: '260px minmax(0, 1fr)', gap: 18 }}>
+          <style>{'@media (max-width: 760px){.cp-grid{grid-template-columns:1fr !important}}'}</style>
+          <div>
+            {groups.map(g => (
+              <div key={g.title} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{g.title}</div>
+                {g.ids.map(id => {
+                  const k = KINDS.find(x => x.id === id)!
+                  return (
+                    <button key={id} onClick={() => { setKindId(id); setFound([]); setQuery(''); if (KINDS.find(x => x.id === id)?.who[0] !== who) setPlayer(null) }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', marginBottom: 4, borderRadius: 6, border: `1px solid ${id === kindId ? C.orange : C.line}`, background: id === kindId ? '#FFF1EA' : '#fff', cursor: 'pointer', fontFamily: SANS }}>
+                      <div style={{ fontSize: 13, fontWeight: 800 }}>{k.label}</div>
+                      <div style={{ fontSize: 11, color: C.mute }}>{k.blurb}</div>
+                    </button>
+                  )
+                })}
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Stat B</label>
-                <input value={statB} onChange={(e) => setStatB(e.target.value)} style={inputStyle} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Game start</label>
-                <input
-                  type="number"
-                  value={gameStart}
-                  onChange={(e) => setGameStart(Number(e.target.value))}
-                  style={inputStyle}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Game end</label>
-                <input
-                  type="number"
-                  value={gameEnd}
-                  onChange={(e) => setGameEnd(Number(e.target.value))}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Off-screen capture stage — rendered but visually hidden until captured.
-            Positioned off-canvas rather than display:none, since html-to-image
-            can't capture elements that aren't actually laid out. */}
-        <div style={{ position: 'absolute', left: -9999, top: 0 }}>
-          <div ref={captureRef} style={{ width: 600, padding: 20, background: '#FAF8F3' }}>
-            {chartType === 'pitching_arsenal' ? (
-              // TODO: <PitchingArsenalChart playerId={playerId} />
-              <div style={placeholderStyle}>
-                [Pitching arsenal chart placeholder — swap in real component]
-              </div>
+            ))}
+          </div>
+          <div>
+            {who === 'team' ? (
+              <>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>Team</label>
+                <select style={inp} value={teamId ?? ''} onChange={e => setTeamId(e.target.value ? Number(e.target.value) : null)}>
+                  <option value="">Choose a team</option>
+                  {[...MLB_TEAMS].sort((a, b) => a.name.localeCompare(b.name)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </>
             ) : (
-              // TODO: <OverlayChart playerId={playerId} statA={statA} statB={statB}
-              //         gameStart={gameStart} gameEnd={gameEnd} />
-              <div style={placeholderStyle}>
-                [Overlay chart placeholder — swap in real component]
-              </div>
+              <>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{who === 'pitcher' ? 'Pitcher' : 'Hitter'}</label>
+                <input style={inp} value={query} placeholder="Search by name" onChange={e => search(e.target.value)} />
+                {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
+              </>
             )}
+            <div style={{ marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 8, padding: 10, background: '#fff', overflowX: 'auto' }}>
+              {ready ? (
+                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><Chart key={`${kindId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} /></div>
+              ) : <Note text={who === 'team' ? 'Choose a team to see the chart here.' : 'Search and choose a player to see the chart here.'} />}
+            </div>
+            <button type="button" onClick={insert} disabled={!ready || busy} style={{ width: '100%', marginTop: 12, padding: 12, background: C.ink, color: '#FAF8F3', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: ready ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.4, fontFamily: SANS }}>{busy ? 'Capturing…' : 'Insert chart'}</button>
+            {error && <div style={{ marginTop: 10, fontSize: 12, color: '#D4533B' }}>{error}</div>}
+            <div style={{ fontSize: 11.5, color: C.mute, marginTop: 8 }}>Inserted as a picture of the chart above, with its sample and source line. Check the preview first; a chart that says there is no data should not be inserted.</div>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleCapture}
-          disabled={!playerId.trim() || capturing}
-          style={{ ...primaryBtnStyle, opacity: playerId.trim() ? 1 : 0.4, marginTop: 8 }}
-        >
-          {capturing ? 'Capturing…' : 'Insert chart'}
-        </button>
-
-        {error && <div style={{ marginTop: 10, fontSize: 12, color: '#c0392b' }}>{error}</div>}
       </div>
     </div>
-  );
+  )
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.5)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-};
-const modalStyle: React.CSSProperties = {
-  background: '#FAF8F3', border: '1px solid #1A1A1A', padding: 24,
-  width: 460, maxHeight: '90vh', overflowY: 'auto',
-};
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-  opacity: 0.6, marginBottom: 6,
-};
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 10px', border: '1px solid #1A1A1A',
-  background: '#fff', fontFamily: 'inherit', fontSize: 14,
-};
-const closeBtnStyle: React.CSSProperties = {
-  border: 'none', background: 'none', cursor: 'pointer', fontSize: 16,
-};
-const primaryBtnStyle: React.CSSProperties = {
-  width: '100%', padding: 12, background: '#1A1A1A', color: '#FAF8F3',
-  border: 'none', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
-};
-const placeholderStyle: React.CSSProperties = {
-  height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center',
-  border: '1px dashed #1A1A1A', fontSize: 12, opacity: 0.5, textAlign: 'center', padding: 20,
-};
