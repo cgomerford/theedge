@@ -6,8 +6,9 @@
 // Every chart reads real stored or public data and shows its sample and source underneath; with no data it shows an empty state, which is not captured.
 // Pitcher charts read Baseball Savant's pitch-arsenal table (/api/pitcher-arsenal) or our pitch_arsenals table; percentiles read player_percentiles (admin route).
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
+import { loadFFmpegInstance } from '@/lib/video-export'
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
@@ -21,6 +22,11 @@ import SprayChart from '@/components/SprayChart'
 import { MLB_TEAMS, type Team } from '@/lib/teams'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
+
+/** Animation progress for the chart on show: 0 at the start, 1 when finished. Charts read it through useEase(); 1 means fully drawn (the normal still picture). */
+const ProgressCtx = createContext(1)
+const useEase = () => { const t = useContext(ProgressCtx); return 1 - Math.pow(1 - t, 3) }
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
 type Person = { id: number; fullName: string; primaryPosition: string }
 type Who = 'pitcher' | 'batter' | 'team'
@@ -77,7 +83,8 @@ const METRICS: Metric[] = [
 function PitchResults(c: Ctx & { metric: Metric }) {
   const { data, state } = useArsenal(c)
   if (state === 'loading') return <Note text="Loading…" />
-  const rows = (data?.rows ?? []).filter(r => r[c.metric.key] != null && r.pitches >= 50).map(r => ({ name: r.pitchName, type: r.pitchType, v: Number(r[c.metric.key]), n: r.pitches }))
+  const e = useEase()
+  const rows = (data?.rows ?? []).filter(r => r[c.metric.key] != null && r.pitches >= 50).map(r => ({ name: r.pitchName, type: r.pitchType, v: Number(r[c.metric.key]), n: r.pitches, shown: Number(r[c.metric.key]) * e }))
   if (!rows.length) return <Note text="No pitch with 50 or more pitches on record yet." />
   rows.sort((a, b) => b.v - a.v)
   return (
@@ -86,11 +93,11 @@ function PitchResults(c: Ctx & { metric: Metric }) {
       <div style={{ height: rows.length * 44 + 20 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 72, top: 0, bottom: 0 }}>
-            <XAxis type="number" hide domain={[Math.min(0, ...rows.map(r => r.v)), 'dataMax']} />
+            <XAxis type="number" hide domain={[Math.min(0, ...rows.map(r => r.v)), Math.max(...rows.map(r => r.v))]} />
             <YAxis type="category" dataKey="name" width={104} axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#1A1A1A', fontFamily: SANS }} />
-            <Bar dataKey="v" barSize={20} isAnimationActive={false}>
+            <Bar dataKey="shown" barSize={20} isAnimationActive={false}>
               {rows.map(r => <Cell key={r.type} fill={pitchColor(r.type)} />)}
-              <LabelList dataKey="v" position="right" formatter={(v: unknown) => c.metric.fmt(Number(v))} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
+              <LabelList dataKey="shown" position="right" formatter={(v: unknown) => c.metric.fmt(Number(v))} style={{ fontSize: 13, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -126,6 +133,7 @@ function Percentiles(c: Ctx & { who: Who }) {
   const b = data?.block
   if (!b || b.state === 'pending') return <Note text={data?.error ?? 'No percentile ranks on record for him yet.'} />
   if (b.state === 'small') return <Note text={`Too small a sample so far: ${b.n} of the ${b.need} ${c.who === 'pitcher' ? 'batters faced' : 'plate appearances'} needed.`} />
+  const e = useEase()
   const tone = (p: number) => (p >= 70 ? '#FF5722' : p <= 30 ? '#5E7A99' : '#B7AF9F')
   return (
     <>
@@ -134,8 +142,8 @@ function Percentiles(c: Ctx & { who: Who }) {
         {b.rows.map(r => (
           <div key={r.key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr 34px', alignItems: 'center', gap: 10, fontSize: 12.5, fontWeight: 700 }}>
             <span>{r.label}</span>
-            <span style={{ height: 14, background: '#F1EEE6', borderRadius: 4, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${r.pct}%`, background: tone(r.pct), borderRadius: 4 }} /></span>
-            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.pct}</span>
+            <span style={{ height: 14, background: '#F1EEE6', borderRadius: 4, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${r.pct * e}%`, background: tone(r.pct), borderRadius: 4 }} /></span>
+            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Math.round(r.pct * e)}</span>
           </div>
         ))}
       </div>
@@ -205,7 +213,8 @@ function LeagueRank(c: Ctx & { lm: LeagueMetric }) {
   const { data, state } = useLeague()
   if (state === 'loading') return <Note text="Loading…" />
   const all = data?.rows ?? []
-  const rows = all.flatMap(r => { const l = r[c.lm.role]; const v = l ? c.lm.m.get(l) : null; return v == null ? [] : [{ id: r.id, abbr: r.abbr, v }] }).sort((a, b) => (c.lm.m.lower ? a.v - b.v : b.v - a.v))
+  const e = useEase()
+  const rows = all.flatMap(r => { const l = r[c.lm.role]; const v = l ? c.lm.m.get(l) : null; return v == null ? [] : [{ id: r.id, abbr: r.abbr, v, shown: (v ?? 0) * e }] }).sort((a, b) => (c.lm.m.lower ? a.v - b.v : b.v - a.v))
   if (!rows.length) return <Note text={data?.error ?? 'No league pitching table on record.'} />
   const i = rows.findIndex(r => r.id === c.team.id)
   return (
@@ -214,11 +223,11 @@ function LeagueRank(c: Ctx & { lm: LeagueMetric }) {
       <div style={{ height: rows.length * 20 + 10 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} layout="vertical" margin={{ left: 0, right: 56, top: 0, bottom: 0 }}>
-            <XAxis type="number" hide domain={[0, 'dataMax']} />
+            <XAxis type="number" hide domain={[0, Math.max(...rows.map(r => r.v))]} />
             <YAxis type="category" dataKey="abbr" width={40} axisLine={false} tickLine={false} interval={0} tick={{ fontSize: 11, fontWeight: 700, fill: '#1A1A1A', fontFamily: SANS }} />
-            <Bar dataKey="v" barSize={13} isAnimationActive={false}>
+            <Bar dataKey="shown" barSize={13} isAnimationActive={false}>
               {rows.map(r => <Cell key={r.id} fill={r.id === c.team.id ? '#FF5722' : '#D6D2C8'} />)}
-              <LabelList dataKey="v" position="right" formatter={(v: unknown) => c.lm.m.fmt(Number(v))} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
+              <LabelList dataKey="shown" position="right" formatter={(v: unknown) => c.lm.m.fmt(Number(v))} style={{ fontSize: 11, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -231,6 +240,7 @@ function LeagueRank(c: Ctx & { lm: LeagueMetric }) {
 function TeamArm(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
   const { data, state } = useJson<{ arms: PitcherArm[]; low: number | null; high: number | null; pitches: number }>(`/api/admin/chart-data?kind=team-arm&teamId=${c.team.id}&role=${c.role}&season=${SEASON}`)
   if (state === 'loading') return <Note text="Loading… (the first load of a club can take a few seconds)" />
+  const e = useEase()
   const arms = [...(data?.arms ?? [])].sort((a, b) => b.armAngle - a.armAngle).slice(0, 18)
   if (!arms.length) return <Note text="No arm-angle data on record for this club yet." />
   const max = Math.max(...arms.map(a => a.armAngle), 1)
@@ -242,8 +252,8 @@ function TeamArm(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
         {arms.map(a => (
           <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 46px', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700 }}>
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name.includes(', ') ? a.name.split(', ').reverse().join(' ') : a.name} <span style={{ color: C.mute, fontWeight: 400 }}>{a.throws}</span></span>
-            <span style={{ height: 12, background: '#F1EEE6', borderRadius: 3, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${(a.armAngle / max) * 100}%`, background: c.team.primary_color, borderRadius: 3 }} /></span>
-            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{a.armAngle.toFixed(0)}°</span>
+            <span style={{ height: 12, background: '#F1EEE6', borderRadius: 3, position: 'relative' }}><span style={{ position: 'absolute', inset: 0, width: `${(a.armAngle / max) * 100 * e}%`, background: c.team.primary_color, borderRadius: 3 }} /></span>
+            <span style={{ fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{(a.armAngle * e).toFixed(0)}°</span>
           </div>
         ))}
       </div>
@@ -252,60 +262,70 @@ function TeamArm(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
   )
 }
 
-/** One number and where it fits: the whole staff's ERA, its rank, and all 30 clubs as dots on one line. */
-function TeamEraFit(c: Ctx) {
+/** Where a club sits on one stat: the number, its rank, and all 30 clubs as dots on one line with only this club named. */
+type FitMetric = { id: string; label: string; role: 'all' | 'sp' | 'rp'; m: TM }
+const ROLE_WORD = { all: 'Team', sp: 'Starter', rp: 'Bullpen' } as const
+const FIT_METRICS: FitMetric[] = (['all', 'sp', 'rp'] as const).flatMap(role => TEAM_METRICS.map(m => ({ id: `${role}-${m.key}`, label: `${ROLE_WORD[role]} ${m.label}`, role, m })))
+const FIT_BLURB: Record<string, string> = { era: 'Runs per nine innings charged to the pitchers', fip: 'ERA with luck and defence taken out: strikeouts, walks, hit batters and home runs only', whip: 'Walks plus hits per inning', k: 'Share of batters faced who strike out', bb: 'Share of batters faced who walk', hr9: 'Home runs allowed per nine innings' }
+function TeamFit(c: Ctx & { fm: FitMetric }) {
   const { data, state } = useLeague()
+  const e = useEase()
   if (state === 'loading') return <Note text="Loading…" />
-  const pts = (data?.rows ?? []).flatMap(r => (r.all?.era != null ? [{ id: r.id, abbr: r.abbr, era: r.all.era }] : []))
+  const { role, m } = c.fm
+  const pts = (data?.rows ?? []).flatMap(r => { const l = r[role]; const v = l ? m.get(l) : null; return v == null ? [] : [{ id: r.id, abbr: r.abbr, v }] })
   const mine = pts.find(p => p.id === c.team.id)
-  if (!mine || pts.length < 2) return <Note text={data?.error ?? 'No team ERA on record yet.'} />
-  const rank = 1 + pts.filter(p => p.era < mine.era).length
-  const avg = pts.reduce((s, p) => s + p.era, 0) / pts.length
-  const lo = Math.min(...pts.map(p => p.era)), hi = Math.max(...pts.map(p => p.era))
+  if (!mine || pts.length < 2) return <Note text={data?.error ?? `No ${c.fm.label} on record yet.`} />
+  const rank = 1 + pts.filter(p => (m.lower ? p.v < mine.v : p.v > mine.v)).length
+  const avg = pts.reduce((a, p) => a + p.v, 0) / pts.length
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v))
+  const better = m.lower ? mine.v < avg : mine.v > avg
   const W = 560, L = 20, R = 540, x = (v: number) => L + ((v - lo) / (hi - lo || 1)) * (R - L)
-  const best = pts.find(p => p.era === lo)!, worst = pts.find(p => p.era === hi)!
-  // dots that would sit on top of each other are stacked upward
-  const sorted = [...pts].sort((a, b) => a.era - b.era)
+  const bestV = m.lower ? lo : hi, worstV = m.lower ? hi : lo
+  const best = pts.find(p => p.v === bestV)!, worst = pts.find(p => p.v === worstV)!
+  const sorted = [...pts].sort((a, b) => a.v - b.v)
   const stack: Record<number, number> = {}
-  sorted.forEach((p, i) => { let h = 0; for (let j = i - 1; j >= 0 && x(p.era) - x(sorted[j].era) < 11; j--) h = Math.max(h, (stack[sorted[j].id] ?? 0) + 1); stack[p.id] = h })
+  sorted.forEach((p, i) => { let h = 0; for (let j = i - 1; j >= 0 && x(p.v) - x(sorted[j].v) < 11; j--) h = Math.max(h, (stack[sorted[j].id] ?? 0) + 1); stack[p.id] = h })
+  const shown = sorted.filter((_, i) => e * (sorted.length + 4) > i)
+  const landed = clamp01((e - 0.8) / 0.2)
   return (
     <>
-      <Head title="Team ERA" name={c.team.name} sub="Runs per nine innings charged to the pitchers: starters and bullpen together" />
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 4px' }}>
-        <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{mine.era.toFixed(2)}</span>
-        <span style={{ fontSize: 20, fontWeight: 800, color: rankTone(rank, pts.length) }}>{ord(rank)} of {pts.length}</span>
-        <span style={{ fontSize: 12, color: '#5B5347' }}>{mine.era < avg ? `${(avg - mine.era).toFixed(2)} better than` : `${(mine.era - avg).toFixed(2)} worse than`} the league average of {avg.toFixed(2)}</span>
+      <Head title={c.fm.label} name={c.team.name} sub={FIT_BLURB[m.key]} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 4px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{m.fmt(mine.v * e)}</span>
+        <span style={{ fontSize: 20, fontWeight: 800, color: rankTone(rank, pts.length), opacity: landed }}>{ord(rank)} of {pts.length}</span>
+        <span style={{ fontSize: 12, color: '#5B5347', opacity: landed }}>{better ? 'Better than' : 'Behind'} the league average of {m.fmt(avg)}</span>
       </div>
       <svg width="100%" viewBox={`0 0 ${W} 180`} style={{ display: 'block' }}>
         <line x1={L} x2={R} y1={124} y2={124} stroke="#D6D2C8" strokeWidth={2} />
         <line x1={x(avg)} x2={x(avg)} y1={20} y2={132} stroke="#8A8275" strokeDasharray="3 3" />
-        <text x={x(avg)} y={150} textAnchor="middle" fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>League avg {avg.toFixed(2)}</text>
-        {pts.filter(p => p.id !== mine.id).map(p => <circle key={p.id} cx={x(p.era)} cy={118 - stack[p.id] * 11} r={4.5} fill="#B7AF9F" />)}
-        <circle cx={x(mine.era)} cy={118 - stack[mine.id] * 11} r={8} fill="#FF5722" />
-        <text x={x(mine.era)} y={118 - stack[mine.id] * 11 - 14} textAnchor="middle" fontSize={11} fontWeight={800} fill="#1A1A1A" fontFamily={SANS}>{c.team.abbrev}</text>
-        <text x={L} y={172} fontSize={10} fontWeight={700} fill="#1D9E75" fontFamily={SANS}>Best: {best.abbr} {lo.toFixed(2)}</text>
-        <text x={R} y={172} textAnchor="end" fontSize={10} fontWeight={700} fill="#D4533B" fontFamily={SANS}>Highest: {worst.abbr} {hi.toFixed(2)}</text>
+        <text x={x(avg)} y={150} textAnchor="middle" fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>League average {m.fmt(avg)}</text>
+        {shown.filter(p => p.id !== mine.id).map(p => <circle key={p.id} cx={x(p.v)} cy={118 - stack[p.id] * 11} r={4.5} fill="#B7AF9F" />)}
+        <circle cx={x(mine.v)} cy={118 - stack[mine.id] * 11} r={8 * landed} fill="#FF5722" />
+        <text x={x(mine.v)} y={118 - stack[mine.id] * 11 - 14} textAnchor="middle" fontSize={11} fontWeight={800} fill="#1A1A1A" opacity={landed} fontFamily={SANS}>{c.team.abbrev}</text>
+        <text x={L} y={172} fontSize={10} fontWeight={700} fill={m.lower ? '#1D9E75' : '#D4533B'} fontFamily={SANS}>{m.lower ? `Best: ${best.abbr} ${m.fmt(lo)}` : `Lowest: ${worst.abbr} ${m.fmt(lo)}`}</text>
+        <text x={R} y={172} textAnchor="end" fontSize={10} fontWeight={700} fill={m.lower ? '#D4533B' : '#1D9E75'} fontFamily={SANS}>{m.lower ? `Highest: ${worst.abbr} ${m.fmt(hi)}` : `Best: ${best.abbr} ${m.fmt(hi)}`}</text>
       </svg>
-      <Foot text={`Each dot is one club; lower ERA is better. ${sourceLine('Source: MLB Stats API season pitching')}`} />
+      <Foot text={`Each dot is one club; ${m.lower ? 'lower is better' : 'higher is better'}. ${sourceLine('Source: MLB Stats API season pitching')}`} />
     </>
   )
 }
 
-type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric }> }
+type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe' }
 const KINDS: Kind[] = [
-  { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix },
-  ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> })),
-  { id: 'move', label: 'Pitch movement', blurb: 'Horizontal and vertical break of each pitch', who: ['pitcher'], render: Movement },
-  { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity },
-  { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray },
-  { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> },
-  { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'The number, its rank and all 30 clubs on one line', who: ['team'], render: TeamEraFit },
-  { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit },
-  ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} /> })),
-  { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" /> },
-  { id: 'team-arm-sp', label: 'Team arm angle · starters', blurb: 'Starters only', who: ['team'], render: c => <TeamArm {...c} role="sp" /> },
-  { id: 'team-arm-rp', label: 'Team arm angle · bullpen', blurb: 'Relievers only', who: ['team'], render: c => <TeamArm {...c} role="rp" /> },
-  { id: 'pct-p', label: 'Percentile ranks (pitcher)', blurb: 'Savant percentiles vs MLB', who: ['pitcher'], render: c => <Percentiles {...c} who="pitcher" /> },
+  { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe' },
+  ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own' })),
+  { id: 'move', label: 'Pitch movement', blurb: 'Horizontal and vertical break of each pitch', who: ['pitcher'], render: Movement, anim: 'wipe' },
+  { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe' },
+  { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe' },
+  { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> , anim: 'own' },
+  { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'One club: the number, its rank, and where it sits', who: ['team'], render: c => <TeamFit {...c} fm={FIT_METRICS[0]} />, anim: 'own' },
+  { id: 'team-fit', label: 'Where a team sits (any stat)', blurb: 'Pick the stat: team, starters or bullpen', who: ['team'], render: TeamFit, anim: 'own' },
+  { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit, anim: 'wipe' },
+  ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} /> , anim: 'own' })),
+  { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" /> , anim: 'own' },
+  { id: 'team-arm-sp', label: 'Team arm angle · starters', blurb: 'Starters only', who: ['team'], render: c => <TeamArm {...c} role="sp" /> , anim: 'own' },
+  { id: 'team-arm-rp', label: 'Team arm angle · bullpen', blurb: 'Relievers only', who: ['team'], render: c => <TeamArm {...c} role="rp" /> , anim: 'own' },
+  { id: 'pct-p', label: 'Percentile ranks (pitcher)', blurb: 'Savant percentiles vs MLB', who: ['pitcher'], render: c => <Percentiles {...c} who="pitcher" /> , anim: 'own' },
 ]
 
 export default function ChartPickerModal({ onInsert, onClose }: Props) {
@@ -314,6 +334,11 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const [found, setFound] = useState<Person[]>([])
   const [player, setPlayer] = useState<{ playerId: number; name: string } | null>(null)
   const [teamId, setTeamId] = useState<number | null>(null)
+  const [fitId, setFitId] = useState(FIT_METRICS[0].id)
+  const [t, setT] = useState(1)
+  const [playing, setPlaying] = useState(false)
+  const [status, setStatus] = useState('')
+  const raf = useRef(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const stage = useRef<HTMLDivElement>(null)
@@ -324,6 +349,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const team = MLB_TEAMS.find(t => t.id === teamId) ?? MLB_TEAMS[0]
   const ready = who === 'team' ? teamId != null : player != null
   const ctx: Ctx = { playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team }
+  const fm = FIT_METRICS.find(m => m.id === fitId) ?? FIT_METRICS[0]
   const metric = METRICS.find(m => kind.id === `res-${m.key}`) ?? METRICS[0]
 
   const search = useCallback((v: string) => {
@@ -334,6 +360,51 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
       try { setFound(((await (await fetch(`/api/lab/search?q=${encodeURIComponent(v.trim())}`)).json()) as { people: Person[] }).people.slice(0, 6)) } catch { setFound([]) }
     }, 250)
   }, [])
+
+  const play = useCallback(() => {
+    cancelAnimationFrame(raf.current)
+    setPlaying(true)
+    const t0 = performance.now(), DUR = 2400
+    const step = (now: number) => { const p = Math.min(1, (now - t0) / DUR); setT(p); if (p < 1) raf.current = requestAnimationFrame(step); else setPlaying(false) }
+    setT(0); raf.current = requestAnimationFrame(step)
+  }, [])
+  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+
+  /** Draws the chart at 30 points along its animation, then asks ffmpeg.wasm (already used for the story videos) to join the pictures into one looping GIF that holds on the finished chart. */
+  async function insertAnimated() {
+    if (!stage.current || !ready) return
+    setBusy(true); setError('')
+    try {
+      cancelAnimationFrame(raf.current); setPlaying(false)
+      const N = 30
+      const frames: Uint8Array[] = []
+      for (let i = 0; i < N; i++) {
+        setStatus(`Drawing frame ${i + 1} of ${N}`)
+        setT(i / (N - 1))
+        await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 40))))
+        const url = await toPng(stage.current, { pixelRatio: 1.2, backgroundColor: '#FAF8F3' })
+        frames.push(new Uint8Array(await (await fetch(url)).arrayBuffer()))
+      }
+      setT(1)
+      setStatus('Joining the frames into a GIF (the first time loads the video tool, about 30 MB)')
+      const { ffmpeg } = await loadFFmpegInstance()
+      for (let i = 0; i < frames.length; i++) await ffmpeg.writeFile(`f${String(i).padStart(3, '0')}.png`, frames[i])
+      await ffmpeg.exec(['-framerate', '15', '-i', 'f%03d.png', '-vf', 'tpad=stop_mode=clone:stop_duration=2,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5', '-loop', '0', 'out.gif'])
+      const data = (await ffmpeg.readFile('out.gif')) as Uint8Array
+      const buf = new ArrayBuffer(data.byteLength); new Uint8Array(buf).set(data)
+      const blob = new Blob([buf], { type: 'image/gif' })
+      if (blob.size > 4_000_000) throw new Error(`The GIF is ${(blob.size / 1e6).toFixed(1)} MB; the upload limit is about 4 MB. Try a chart with fewer rows.`)
+      setStatus('Uploading')
+      const form = new FormData(); form.append('file', blob, 'chart.gif')
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: form })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed')
+      onInsert(((await res.json()) as { url: string }).url)
+      onClose()
+    } catch (e) {
+      console.error('[ChartPickerModal] animated insert failed:', e instanceof Error ? e.message : e)
+      setError(e instanceof Error ? e.message : 'Animation failed')
+    } finally { setBusy(false); setStatus(''); setT(1) }
+  }
 
   async function insert() {
     if (!stage.current || !ready) return
@@ -393,6 +464,11 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
                   <option value="">Choose a team</option>
                   {[...MLB_TEAMS].sort((a, b) => a.name.localeCompare(b.name)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
+                {kind.id === 'team-fit' && (
+                  <select style={{ ...inp, marginTop: 8 }} value={fitId} onChange={e => setFitId(e.target.value)}>
+                    {FIT_METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                )}
               </>
             ) : (
               <>
@@ -403,10 +479,14 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
             )}
             <div style={{ marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 8, padding: 10, background: '#fff', overflowX: 'auto' }}>
               {ready ? (
-                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><Chart key={`${kindId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} /></div>
+                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
               ) : <Note text={who === 'team' ? 'Choose a team to see the chart here.' : 'Search and choose a player to see the chart here.'} />}
             </div>
-            <button type="button" onClick={insert} disabled={!ready || busy} style={{ width: '100%', marginTop: 12, padding: 12, background: C.ink, color: '#FAF8F3', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: ready ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.4, fontFamily: SANS }}>{busy ? 'Capturing…' : 'Insert chart'}</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={play} disabled={!ready || busy || playing} style={{ flex: 1, padding: 11, background: '#fff', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: 6, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: ready ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.4, fontFamily: SANS }}>{playing ? 'Playing…' : 'Preview animation'}</button>
+              <button type="button" onClick={insertAnimated} disabled={!ready || busy} style={{ flex: 1, padding: 11, background: C.orange, color: '#1A1A1A', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: ready ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.4, fontFamily: SANS }}>Insert animated (GIF)</button>
+            </div>
+            <button type="button" onClick={insert} disabled={!ready || busy} style={{ width: '100%', marginTop: 8, padding: 12, background: C.ink, color: '#FAF8F3', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', cursor: ready ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.4, fontFamily: SANS }}>{busy ? (status || 'Capturing…') : 'Insert still picture'}</button>
             {error && <div style={{ marginTop: 10, fontSize: 12, color: '#D4533B' }}>{error}</div>}
             <div style={{ fontSize: 11.5, color: C.mute, marginTop: 8 }}>Inserted as a picture of the chart above, with its sample and source line. Check the preview first; a chart that says there is no data should not be inserted.</div>
           </div>
