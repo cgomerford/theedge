@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getArticleBySlug, getArticlesByTeam, getLatestArticles } from '@/lib/articles';
 import ArticleView from '@/components/article/ArticleView';
+import Comments from '@/components/article/Comments';
+import { getComments } from '@/lib/comments';
+import { getCurrentSubscriber } from '@/lib/auth';
 import { ARTICLE_CSS } from '@/components/article/article-css';
 import SiteHeader from '@/components/SiteHeader';
 import { TEAM_CODE_TO_SLUG, teamCodeToId, teamCodeToName } from '@/lib/team-codes';
@@ -112,6 +115,8 @@ export default async function ArticlePage({ params }: PageProps) {
   const primaryTeam = article.team_tags[0];
   const primaryTeamSlug = primaryTeam ? TEAM_CODE_TO_SLUG[primaryTeam] : undefined;
 
+  const [comments, viewer] = await Promise.all([getComments(article.id), getCurrentSubscriber()]);
+
   const jsonLd = buildNewsArticleJsonLd(article);
 
   return (
@@ -137,6 +142,8 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
 
             <ArticleView article={article} dateLabel={dateLabel} />
+
+            <Comments articleId={article.id} initial={comments} signedIn={viewer !== null} />
 
             <footer
               style={{

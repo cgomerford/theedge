@@ -22,6 +22,7 @@ const SECTIONS: { title: string; note: string; tools: Tool[] }[] = [
       { href: '/admin/graphics', title: 'Graphic Blocks', blurb: 'Fixed templates filled from the game data (head to head, attack map, catchers and running, arsenal). Auto-fill from a game or type the numbers, then download a PNG at 1200x675 or 1080x1350.' },
       { href: '/admin/story-v5', title: 'Story v5', tag: 'Video', blurb: 'Animated game preview video: choose a game, select and reorder the slides, edit the text, then render a 1080x1350 MP4 and contact sheet.' },
       { href: '/admin/articles', title: 'Articles', blurb: 'Article drafts and published pieces. Drafts are created first and published as a separate step.' },
+      { href: '/admin/comments', title: 'Comments', blurb: 'Reader comments on articles: hide, show again or delete. Reported ones are listed first.' },
       { href: '/admin/articles/new', title: 'New article', blurb: 'Open the article editor with a blank draft.' },
     ],
   },
