@@ -7,7 +7,7 @@ export const metadata = pageMeta({
 
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
-import { CONTACT_EMAIL } from '@/lib/site'
+import { PUBLIC_CONTACT_EMAIL } from '@/lib/site'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 
@@ -75,7 +75,7 @@ export default function AboutPage() {
         </p>
 
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid #e7e2d8', fontSize: 14, color: '#8a8275' }}>
-          Have a question, a correction or an idea? <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#FF5722', fontWeight: 800 }}>{CONTACT_EMAIL}</a>
+          Have a question, a correction or an idea? <a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} style={{ color: '#FF5722', fontWeight: 800 }}>{PUBLIC_CONTACT_EMAIL}</a>
         </div>
       </div>
     </main>

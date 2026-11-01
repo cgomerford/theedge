@@ -59,7 +59,7 @@ export default async function AuthorPage({ params }: { params: Promise<{ slug: s
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 16px 80px' }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.14em', color: '#B83A0E', textTransform: 'uppercase' }}>{au.role}</div>
         <h1 style={{ margin: '6px 0 12px', fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-.02em', lineHeight: 1.05 }}>{au.name}</h1>
-        <p style={{ margin: '0 0 8px', fontSize: 17, lineHeight: 1.6, color: '#3a352c' }}>{au.bio}</p>
+        {(au.intro ?? [au.bio]).map((t, i) => <p key={i} style={{ margin: '0 0 14px', fontSize: 17, lineHeight: 1.65, color: '#3a352c' }}>{t}</p>)}
         <p style={{ margin: '0 0 28px', fontSize: 14 }}>
           <Link href="/about" style={{ color: '#B83A0E', fontWeight: 700 }}>About x9Lab</Link>
           {au.xUrl && <> · <a href={au.xUrl} rel="me noopener noreferrer" target="_blank" style={{ color: '#B83A0E', fontWeight: 700 }}>On X</a></>}

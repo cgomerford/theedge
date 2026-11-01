@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
 import { BreadcrumbSchema } from '@/components/StructuredData'
-import { CONTACT_EMAIL, X_HANDLE, X_URL } from '@/lib/site'
+import { PUBLIC_CONTACT_EMAIL, X_HANDLE, X_URL } from '@/lib/site'
 import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
@@ -21,7 +21,7 @@ export default function ContactPage() {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 16px 80px' }}>
         <h1 style={{ margin: '0 0 12px', fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>Contact x9Lab</h1>
         <p style={p}>x9Lab is built and run by one person, <Link href="/authors/george" style={{ color: '#B83A0E', fontWeight: 700 }}>George</Link>. Every message is read by him.</p>
-        <p style={{ ...p, fontSize: 20, fontWeight: 800 }}><a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#B83A0E' }}>{CONTACT_EMAIL}</a></p>
+        <p style={{ ...p, fontSize: 20, fontWeight: 800 }}><a href={`mailto:${PUBLIC_CONTACT_EMAIL}`} style={{ color: '#B83A0E' }}>{PUBLIC_CONTACT_EMAIL}</a></p>
         <h2 style={h2}>Corrections</h2>
         <p style={p}>If a number on the site looks wrong, say which page and which figure. We check it against the public source and fix it, and an article that changes after publishing shows an Updated date.</p>
         <h2 style={h2}>Press and data questions</h2>

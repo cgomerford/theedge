@@ -12,6 +12,10 @@ export const MAIL_HOST = process.env.EMAIL_FROM_DOMAIN || SITE_HOST
 
 /** Mailboxes on the mail domain. */
 export const CONTACT_EMAIL = `hello@${MAIL_HOST}`
+
+/** The address shown to readers on the site (contact, about, FAQ, privacy, terms) and linked with mailto. Replies from people go to George directly.
+ *  Do NOT use it as a send-from address: Resend only sends from the verified domain, which is what CONTACT_EMAIL above is for. */
+export const PUBLIC_CONTACT_EMAIL = 'george.x9lab@gmail.com'
 export const POSTGAME_EMAIL = `postgame@${MAIL_HOST}`
 export const PREVIEW_EMAIL = `preview@${MAIL_HOST}`
 

@@ -1,6 +1,6 @@
 import SiteHeader from '@/components/SiteHeader'
 import Link from 'next/link'
-import { CONTACT_EMAIL } from '@/lib/site'
+import { PUBLIC_CONTACT_EMAIL } from '@/lib/site'
 import { pageMeta } from '@/lib/seo'
 import { FAQSchema, BreadcrumbSchema } from '@/components/StructuredData'
 
@@ -55,19 +55,19 @@ export default function FAQPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
 
         {/* Back link */}
-        <Link href="/" className="text-xs font-mono uppercase tracking-widest text-orange-600 hover:underline">
+        <Link href="/" className="text-xs uppercase tracking-widest text-orange-600 hover:underline">
           ← Back to home
         </Link>
 
         {/* Hero */}
         <div className="mt-8 mb-14 border-b border-stone-200 pb-10">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-600 mb-3">
+          <div className="text-xs uppercase tracking-widest text-orange-600 mb-3">
             — Frequently asked questions
           </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-light tracking-tight leading-none mb-4">
+          <h1 className="text-5xl md:text-6xl font-light tracking-tight leading-none mb-4">
             FAQ.
           </h1>
-          <p className="text-lg text-stone-600 font-serif leading-relaxed max-w-xl">
+          <p className="text-lg text-stone-600 leading-relaxed max-w-xl">
             What x9Lab is, how the data works, and — importantly — what it isn&apos;t.
           </p>
         </div>
@@ -77,7 +77,7 @@ export default function FAQPage() {
           {FAQS.map((section) => (
             <div key={section.section}>
               {/* Section label */}
-              <div className="text-xs font-mono uppercase tracking-widest text-orange-600 font-bold mb-6">
+              <div className="text-xs uppercase tracking-widest text-orange-600 font-bold mb-6">
                 {section.section}
               </div>
 
@@ -85,7 +85,7 @@ export default function FAQPage() {
               <div className="space-y-8">
                 {section.items.map((item) => (
                   <div key={item.q} className="border-b border-stone-100 pb-8 last:border-0">
-                    <h2 className="font-serif font-semibold text-lg text-stone-900 mb-2 leading-snug">
+                    <h2 className=" font-semibold text-lg text-stone-900 mb-2 leading-snug">
                       {item.q}
                     </h2>
                     <p className="text-stone-600 leading-relaxed text-[15px]">
@@ -100,25 +100,25 @@ export default function FAQPage() {
 
         {/* Footer CTA */}
         <div className="mt-16 p-8 bg-stone-900 text-stone-100">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-400 mb-3">
+          <div className="text-xs uppercase tracking-widest text-orange-400 mb-3">
             — Still have a question?
           </div>
-          <h3 className="text-2xl font-serif font-semibold mb-2">
+          <h3 className="text-2xl font-semibold mb-2">
             We&apos;re a small team. We read everything.
           </h3>
-          <p className="text-stone-400 text-sm mb-5 font-serif">
-            If your question isn&apos;t answered above, drop us an email.
+          <p className="text-stone-400 text-sm mb-5">
+            If your question isn&apos;t answered above, send us an email.
           </p>
           <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="inline-block text-xs font-mono uppercase tracking-widest bg-yellow-300 text-stone-900 px-5 py-3 hover:bg-yellow-200 transition font-semibold"
+            href={`mailto:${PUBLIC_CONTACT_EMAIL}`}
+            className="inline-block text-xs uppercase tracking-widest bg-yellow-300 text-stone-900 px-5 py-3 hover:bg-yellow-200 transition font-semibold"
           >
-            {CONTACT_EMAIL}
+            {PUBLIC_CONTACT_EMAIL}
           </a>
         </div>
 
         {/* Legal note */}
-        <p className="text-center text-[11px] font-mono text-stone-400 mt-8 uppercase tracking-wider">
+        <p className="text-center text-[11px] text-stone-400 mt-8 uppercase tracking-wider">
           x9Lab · Information only · Not gambling advice ·{' '}
           <Link href="/terms" className="hover:text-stone-600 transition">Terms</Link>
           {' · '}
