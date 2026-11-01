@@ -23,9 +23,9 @@ export const PREVIEW_EMAIL = `preview@${MAIL_HOST}`
 export const X_HANDLE = '@x9LabHQ'
 export const X_URL = 'https://x.com/x9LabHQ'
 
-/** The publisher logo for structured data (an absolute URL). */
-export const SITE_LOGO_URL = `${SITE_URL}/brand/x9labs-mark.png`
-export const SITE_LOGO_SIZE = { width: 600, height: 380 }
+/** The publisher logo for structured data (an absolute URL). Google's article guidance: no taller than 60px and no wider than 600px, so this is the 600x60 bar. */
+export const SITE_LOGO_URL = `${SITE_URL}/brand/publisher/x9lab-logo-600x60.png`
+export const SITE_LOGO_SIZE = { width: 600, height: 60 }
 
 // /signup exists (src/app/signup/page.tsx), so signup prompts go there.
 export const SIGNUP_URL = '/signup'
