@@ -319,7 +319,7 @@ const KINDS: Kind[] = [
   { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe' },
   { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> , anim: 'own' },
   { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'One club: the number, its rank, and where it sits', who: ['team'], render: c => <TeamFit {...c} fm={FIT_METRICS[0]} />, anim: 'own' },
-  { id: 'team-fit', label: 'Where a team sits (any stat)', blurb: 'Pick the stat: team, starters or bullpen', who: ['team'], render: TeamFit, anim: 'own' },
+  { id: 'team-fit', label: 'Where a team sits (any stat)', blurb: 'Choose the stat: team, starters or bullpen', who: ['team'], render: TeamFit, anim: 'own' },
   { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit, anim: 'wipe' },
   ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} /> , anim: 'own' })),
   { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" /> , anim: 'own' },
