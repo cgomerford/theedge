@@ -740,6 +740,15 @@ function toStripGame(g: RawGame, date: string, nextPk: number | null): StripGame
   }
 }
 
+/** The most recent finished games (newest first) across the last 30 days, for the homepage's condensed postgame list. [] when none. */
+export async function getRecentFinals(limit = 8): Promise<StripGame[]> {
+  const now = new Date()
+  const days = await fetchRange(isoDay(addDays(now, -30)), isoDay(now))
+  const rows = days.flatMap(d => d.games.filter(g => g.status?.abstractGameState === 'Final' && g.teams.away.score != null).map(game => ({ game, date: d.date })))
+  rows.sort((a, b) => new Date(b.game.gameDate).getTime() - new Date(a.game.gameDate).getTime())
+  return rows.slice(0, limit).map(r => toStripGame(r.game, r.date, null))
+}
+
 export type HomeStrip = {
   games: StripGame[]
   /** "No games today (Sun 25 Oct) · next: WS G3, Mon 26 Oct", or null on a game day */

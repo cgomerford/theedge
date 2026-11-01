@@ -8,7 +8,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import SiteHeader from '@/components/SiteHeader'
-import FeaturedScout from '@/components/home/FeaturedScout'
+import RecentPostgames from '@/components/home/RecentPostgames'
 import HomeEmailAsk from '@/components/home/HomeEmailAsk'
 import HomeAskOrFollows from '@/components/home/HomeAskOrFollows'
 import GamesStrip from '@/components/home/GamesStrip'
@@ -16,7 +16,7 @@ import HomeRail from '@/components/home/HomeRail'
 import HeroStrip from '@/components/home/HeroStrip'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import LatestArticles from '@/components/home/LatestArticles'
-import { getFeaturedScout, getHomeSlate, getHomeStrip, postgameWindowClosed } from '@/lib/mlb-homepage'
+import { getHomeSlate, getHomeStrip, getRecentFinals, postgameWindowClosed } from '@/lib/mlb-homepage'
 import { canonical } from '@/lib/seo'
 
 export const revalidate = 600
@@ -34,9 +34,11 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const slate = await getHomeSlate()
-  // More than 5 days after the season's last game: no game report, games strip or scout-report button; articles take the main column.
+  // Articles lead the page. Recent postgame reports sit below them, condensed; more than 5 days after the season's last game they (and the
+  // games strip) are dropped and the articles stand alone.
   const offseason = postgameWindowClosed(slate)
-  const [featured, strip] = offseason ? [null, null] : await Promise.all([getFeaturedScout(slate), getHomeStrip(slate)])
+  const [strip, finals] = offseason ? [null, []] : await Promise.all([getHomeStrip(slate), getRecentFinals(8)])
+  const liveOrUpcoming = strip && strip.games.some(g => g.state !== 'final')
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -65,24 +67,18 @@ export default async function HomePage() {
       <SiteHeader variant="home" />
 
       <div className="hm-wrap">
-        <HeroStrip reportHref={offseason ? '/articles' : featured ? `/mlb/${featured.slug}/${featured.isFinal ? 'postgame' : 'scout-report'}` : '/mlb'} reportLabel={offseason ? 'Read the latest articles' : 'See a scout report'} />
+        <HeroStrip reportHref={offseason || !finals[0] ? '/articles' : `/mlb/${finals[0].slug}/postgame`} reportLabel={offseason || !finals[0] ? 'Read the latest articles' : 'Read the latest postgame report'} />
         <div className="hm-layout">
           <div className="hm-main">
-        {offseason ? (
-          <LatestArticles />
-        ) : featured ? (
-          <FeaturedScout data={featured} />
-        ) : (
-          <section style={{ padding: '32px 0 8px' }}>
-            <h2 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em' }}>MLB game previews in plain numbers</h2>
-          </section>
-        )}
+        <LatestArticles />
 
         <HomeAskOrFollows>
           <HomeEmailAsk />
         </HomeAskOrFollows>
 
-        {strip && <GamesStrip strip={strip} />}
+        {strip && liveOrUpcoming && <GamesStrip strip={strip} />}
+
+        <RecentPostgames games={finals} />
 
         <p className="hm-links" style={{ margin: 0, padding: '14px 0', borderTop: '1px solid #e7e2d8', fontSize: 15 }}>
           <Link href="/how-it-works">How the numbers work</Link>
@@ -92,7 +88,7 @@ export default async function HomePage() {
           <Link href="/how-it-works#sample-size">Sample-size minimums</Link>
         </p>
           </div>
-          <HomeRail articleCount={offseason ? 0 : 8} />
+          <HomeRail articleCount={0} />
         </div>
       </div>
     </main>

@@ -9,7 +9,7 @@ const MUTED = '#8a8275'
 const ago = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' }) : '')
 
 export default async function LatestArticles() {
-  const articles = await getLatestArticles(10).catch(() => [])
+  const articles = await getLatestArticles(9).catch(() => [])
   if (articles.length === 0) {
     return (
       <section style={{ padding: '32px 0 8px' }}>
