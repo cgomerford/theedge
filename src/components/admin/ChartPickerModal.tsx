@@ -17,8 +17,9 @@ import type { PitchMovementRow } from '@/lib/pitcher-full-stats'
 import type { PctBlock } from '@/lib/follows/percentiles'
 import PitchUsageDonut from '@/components/PitchUsageDonut'
 import PitchVeloChart from '@/components/PitchVeloChart'
-import PitchMovementChart from '@/components/PitchMovementChart'
 import SprayChart from '@/components/SprayChart'
+import PitchPathsPlayer from '@/components/admin/story-v5/remotion/scenes/paths'
+import type { ArsenalPitch } from '@/components/admin/story-v5/types'
 import { MLB_TEAMS, type Team } from '@/lib/teams'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
@@ -107,12 +108,14 @@ function PitchResults(c: Ctx & { metric: Metric }) {
   )
 }
 
+/** The pitch-movement chart is the Story v5 catcher-view animation: each pitch type's average real path flies to the plate, with its card. */
 function Movement(c: Ctx) {
-  const { data, state } = useMovement(c)
-  if (state === 'loading') return <Note text="Loading…" />
-  const rows = (data?.rows ?? []).filter(r => r.avgHBreak != null && r.avgVBreak != null)
-  if (!rows.length) return <Note text="No pitch-movement data on record for this pitcher yet." />
-  return <><Head title="Pitch movement" name={c.name} sub="Where each pitch moves, from the pitcher's view" /><PitchMovementChart rows={rows} /><Foot text={sourceLine('Source: Statcast pitch tracking')} /></>
+  const t = useContext(ProgressCtx)
+  const { data, state } = useJson<{ pitches: ArsenalPitch[]; error?: string }>(`/api/admin/chart-data?kind=pitch-paths&playerId=${c.playerId}&season=${SEASON}`)
+  if (state === 'loading') return <Note text="Loading his pitches from Baseball Savant… (about 10 to 20 seconds)" />
+  const pitches = data?.pitches ?? []
+  if (!pitches.length) return <Note text={data?.error ?? 'No pitch with 20 or more tracked pitches on record for this pitcher yet.'} />
+  return <><PitchPathsPlayer name={c.name} season={SEASON} pitches={pitches} t={t} /><Foot text={`Average path of each pitch type with 20 or more pitches, from Statcast tracking. ${sourceLine('Source: Baseball Savant')}`} /></>
 }
 function Velocity(c: Ctx) {
   const { data, state } = useMovement(c)
@@ -262,6 +265,44 @@ function TeamArm(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
   )
 }
 
+/** Where each pitcher on a club sits on the arm-angle line. League-wide arm angle is not stored (it would take 30 Savant pulls), so this places pitchers against their own staff. */
+function TeamArmFit(c: Ctx & { role: 'all' | 'sp' | 'rp' }) {
+  const e = useEase()
+  const { data, state } = useJson<{ arms: PitcherArm[]; pitches: number }>(`/api/admin/chart-data?kind=team-arm&teamId=${c.team.id}&role=${c.role}&season=${SEASON}`)
+  if (state === 'loading') return <Note text="Loading… (the first load of a club can take a few seconds)" />
+  const arms = data?.arms ?? []
+  if (arms.length < 2) return <Note text="Not enough arm-angle data on record for this club yet." />
+  const total = arms.reduce((a, p) => a + p.pitches, 0)
+  const avg = arms.reduce((a, p) => a + p.armAngle * p.pitches, 0) / total
+  const lo = Math.min(...arms.map(a => a.armAngle)), hi = Math.max(...arms.map(a => a.armAngle))
+  const W = 560, L = 20, R = 540, x = (v: number) => L + ((v - lo) / (hi - lo || 1)) * (R - L)
+  const low = arms.find(a => a.armAngle === lo)!, high = arms.find(a => a.armAngle === hi)!
+  const sorted = [...arms].sort((a, b) => a.armAngle - b.armAngle)
+  const stack: Record<number, number> = {}
+  sorted.forEach((p, i) => { let h = 0; for (let j = i - 1; j >= 0 && x(p.armAngle) - x(sorted[j].armAngle) < 14; j--) h = Math.max(h, (stack[sorted[j].id] ?? 0) + 1); stack[p.id] = h })
+  const nm = (n: string) => (n.includes(', ') ? n.split(', ').reverse().join(' ') : n)
+  const who = c.role === 'sp' ? 'starters' : c.role === 'rp' ? 'bullpen' : 'pitchers'
+  const shown = sorted.filter((_, i) => e * (sorted.length + 3) > i)
+  return (
+    <>
+      <Head title={`Arm angle · ${who}`} name={c.team.name} sub="Where each pitcher sits between sidearm and over the top. Dot size is pitches thrown." />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, margin: '6px 0 4px' }}>
+        <span style={{ fontSize: 56, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{(avg * e).toFixed(0)}°</span>
+        <span style={{ fontSize: 13, color: '#5B5347' }}>average across {arms.length} pitchers, weighted by pitches</span>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} 190`} style={{ display: 'block' }}>
+        <line x1={L} x2={R} y1={130} y2={130} stroke="#D6D2C8" strokeWidth={2} />
+        <line x1={x(avg)} x2={x(avg)} y1={20} y2={138} stroke="#8A8275" strokeDasharray="3 3" />
+        <text x={x(avg)} y={156} textAnchor="middle" fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>Staff average {avg.toFixed(0)}°</text>
+        {shown.map(p => <circle key={p.id} cx={x(p.armAngle)} cy={124 - stack[p.id] * 13} r={4 + Math.sqrt(p.pitches / total) * 14} fill={c.team.primary_color} fillOpacity={0.8} />)}
+        <text x={L} y={178} fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>Lowest: {nm(low.name)} {lo.toFixed(0)}°</text>
+        <text x={R} y={178} textAnchor="end" fontSize={10} fontWeight={700} fill="#5B5347" fontFamily={SANS}>Highest: {nm(high.name)} {hi.toFixed(0)}°</text>
+      </svg>
+      <Foot text={`Each pitcher's average over ${total.toLocaleString()} pitches. Compared with his own staff, not the league. ${sourceLine('Source: Statcast pitch tracking')}`} />
+    </>
+  )
+}
+
 /** Where a club sits on one stat: the number, its rank, and all 30 clubs as dots on one line with only this club named. */
 type FitMetric = { id: string; label: string; role: 'all' | 'sp' | 'rp'; m: TM }
 const ROLE_WORD = { all: 'Team', sp: 'Starter', rp: 'Bullpen' } as const
@@ -310,21 +351,21 @@ function TeamFit(c: Ctx & { fm: FitMetric }) {
   )
 }
 
-type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe' }
+type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe'; /** the one-club 'where it fits' version of this chart, when it has one */ fit?: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }> }
 const KINDS: Kind[] = [
   { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe' },
   ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own' })),
-  { id: 'move', label: 'Pitch movement', blurb: 'Horizontal and vertical break of each pitch', who: ['pitcher'], render: Movement, anim: 'wipe' },
+  { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own' },
   { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe' },
   { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe' },
   { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> , anim: 'own' },
   { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'One club: the number, its rank, and where it sits', who: ['team'], render: c => <TeamFit {...c} fm={FIT_METRICS[0]} />, anim: 'own' },
   { id: 'team-fit', label: 'Where a team sits (any stat)', blurb: 'Choose the stat: team, starters or bullpen', who: ['team'], render: TeamFit, anim: 'own' },
-  { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit, anim: 'wipe' },
-  ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} /> , anim: 'own' })),
-  { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" /> , anim: 'own' },
-  { id: 'team-arm-sp', label: 'Team arm angle · starters', blurb: 'Starters only', who: ['team'], render: c => <TeamArm {...c} role="sp" /> , anim: 'own' },
-  { id: 'team-arm-rp', label: 'Team arm angle · bullpen', blurb: 'Relievers only', who: ['team'], render: c => <TeamArm {...c} role="rp" /> , anim: 'own' },
+  { id: 'team-split', label: 'Starters vs bullpen', blurb: 'ERA, FIP, WHIP, K%, BB%, HR/9 with league rank', who: ['team'], render: TeamSplit, anim: 'wipe', fit: TeamFit },
+  ...LEAGUE_METRICS.map((lm): Kind => ({ id: `lg-${lm.id}`, label: `${lm.label} · all 30`, blurb: 'Every club ranked, this club highlighted', who: ['team'], render: c => <LeagueRank {...c} lm={lm} />, anim: 'own', fit: c => <TeamFit {...c} fm={FIT_METRICS.find(m => m.id === lm.id)!} /> })),
+  { id: 'team-arm-all', label: 'Team arm angle', blurb: 'Every pitcher on the club', who: ['team'], render: c => <TeamArm {...c} role="all" />, anim: 'own', fit: c => <TeamArmFit {...c} role="all" /> },
+  { id: 'team-arm-sp', label: 'Team arm angle · starters', blurb: 'Starters only', who: ['team'], render: c => <TeamArm {...c} role="sp" />, anim: 'own', fit: c => <TeamArmFit {...c} role="sp" /> },
+  { id: 'team-arm-rp', label: 'Team arm angle · bullpen', blurb: 'Relievers only', who: ['team'], render: c => <TeamArm {...c} role="rp" />, anim: 'own', fit: c => <TeamArmFit {...c} role="rp" /> },
   { id: 'pct-p', label: 'Percentile ranks (pitcher)', blurb: 'Savant percentiles vs MLB', who: ['pitcher'], render: c => <Percentiles {...c} who="pitcher" /> , anim: 'own' },
 ]
 
@@ -334,7 +375,8 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const [found, setFound] = useState<Person[]>([])
   const [player, setPlayer] = useState<{ playerId: number; name: string } | null>(null)
   const [teamId, setTeamId] = useState<number | null>(null)
-  const [fitId, setFitId] = useState(FIT_METRICS[0].id)
+  const [fitId, setFitId] = useState('sp-era')
+  const [fitView, setFitView] = useState(false)
   const [t, setT] = useState(1)
   const [playing, setPlaying] = useState(false)
   const [status, setStatus] = useState('')
@@ -344,7 +386,8 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const stage = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const kind = KINDS.find(k => k.id === kindId) ?? KINDS[0]
-  const Chart = kind.render
+  const showFit = !!kind.fit && fitView
+  const Chart = showFit && kind.fit ? kind.fit : kind.render
   const who = kind.who[0]
   const team = MLB_TEAMS.find(t => t.id === teamId) ?? MLB_TEAMS[0]
   const ready = who === 'team' ? teamId != null : player != null
@@ -464,7 +507,12 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
                   <option value="">Choose a team</option>
                   {[...MLB_TEAMS].sort((a, b) => a.name.localeCompare(b.name)).map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                {kind.id === 'team-fit' && (
+                {kind.fit && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    {[[false, 'Full chart'], [true, 'Just this club: where it fits']].map(([v, label]) => <button key={String(v)} onClick={() => setFitView(v as boolean)} style={{ flex: 1, padding: '8px 10px', borderRadius: 6, border: `1px solid ${fitView === v ? C.orange : C.line}`, background: fitView === v ? '#FFF1EA' : '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 12.5, fontWeight: 800 }}>{label as string}</button>)}
+                  </div>
+                )}
+                {(kind.id === 'team-fit' || (showFit && kind.id === 'team-split')) && (
                   <select style={{ ...inp, marginTop: 8 }} value={fitId} onChange={e => setFitId(e.target.value)}>
                     {FIT_METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
                   </select>
@@ -479,7 +527,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
             )}
             <div style={{ marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 8, padding: 10, background: '#fff', overflowX: 'auto' }}>
               {ready ? (
-                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
+                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && !showFit && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${showFit}-${fitId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
               ) : <Note text={who === 'team' ? 'Choose a team to see the chart here.' : 'Search and choose a player to see the chart here.'} />}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

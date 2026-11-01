@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { getPercentileBlocks } from '@/lib/follows/percentiles'
 import { getPitchMovementFromDB } from '@/lib/pitcher-full-stats'
+import { buildArsenal } from '@/components/admin/story-v5/arsenal'
+import { parseCsv } from '@/components/admin/story-v5/csv'
 import { getLeagueTables } from '@/lib/team-profile/league'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 
@@ -32,6 +34,18 @@ export async function GET(req: NextRequest) {
   const playerId = Number(q.get('playerId'))
   const season = Number(q.get('season') ?? new Date().getFullYear())
 
+  if (kind === 'pitch-paths') {
+    if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
+    // The Story v5 recipe: one pitcher's Savant pitches (regular season and postseason) averaged into one 3D path per pitch type. Admin only, on demand, never on a public page.
+    try {
+      const res = await fetch(`https://baseballsavant.mlb.com/statcast_search/csv?all=true&type=details&player_type=pitcher&pitchers_lookup%5B%5D=${playerId}&hfSea=${season}%7C&hfGT=R%7CPO%7C`, { cache: 'no-store', signal: AbortSignal.timeout(90000) })
+      if (!res.ok) return NextResponse.json({ pitches: [], error: `Baseball Savant answered ${res.status}` })
+      return NextResponse.json({ pitches: buildArsenal(parseCsv(await res.text()), 4) })
+    } catch (e) {
+      console.error('[chart-data pitch-paths]', e instanceof Error ? e.message : e)
+      return NextResponse.json({ pitches: [], error: 'Baseball Savant did not answer' })
+    }
+  }
   if (kind === 'league-pitching') {
     const t = await getLeagueTables(season)
     if (!t) return NextResponse.json({ rows: [], error: 'The MLB Stats API did not answer' })

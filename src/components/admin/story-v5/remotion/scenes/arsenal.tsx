@@ -15,7 +15,7 @@ import type { ArsenalPitch, PreviewData, Side } from '../../types'
 
 const colorOf = (code: string, fallback: string) => PITCH_COLOR[code] ?? fallback
 
-function PitchCard({ p, delay, best, w = 430 }: { p: ArsenalPitch; delay: number; best: boolean; w?: number }) {
+export function PitchCard({ p, delay, best, w = 430 }: { p: ArsenalPitch; delay: number; best: boolean; w?: number }) {
   const frame = useCurrentFrame()
   const t = useTheme()
   const s = sp(frame, delay)
