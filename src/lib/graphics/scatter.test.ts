@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { autoHighlights, checkScatter, decimalsFor, displayName, fmt, layoutLabels, mergeColumn, nameKey, niceTicks, parsePasted, pickHighlights, type ScatterDataset } from './scatter'
+import { joinDataset, autoHighlights, checkScatter, decimalsFor, displayName, fmt, layoutLabels, mergeColumn, nameKey, niceTicks, parsePasted, pickHighlights, type ScatterDataset } from './scatter'
 
 describe('names', () => {
   it('flips Last, First and ignores accents, hyphens, punctuation and suffixes', () => {
@@ -21,13 +21,18 @@ describe('pasted columns', () => {
     expect(t.columns[1].values.get(nameKey('JJ Wetherholt'))).toBe(-2)
     expect(parsePasted('Player,DRS\n"Witt Jr., Bobby",8').columns[0].values.get('bobby witt')).toBe(8)
   })
+  it('finds the Name column wherever it is and skips duplicates', () => {
+    const t = parsePasted('Rk\tName\tTeam\tDRS\n1\tPete Crow-Armstrong\tCHC\t16\n2\tPete Crow-Armstrong\tCHC\t99\n3\tJJ Wetherholt\tSTL\t12\n')
+    expect(t.columns.map(c => c.label)).toEqual(['Rk', 'DRS'])
+    expect(t.columns[1].values.get('pete crow armstrong')).toBe(16)
+  })
   it('explains a paste it cannot use', () => {
     expect(parsePasted('only one line').error).toMatch(/header/)
     expect(parsePasted('Name,Note\nA,hello').error).toMatch(/numbers/)
   })
   it('joins onto a dataset by name and reports the leftovers', () => {
-    const ds: ScatterDataset = { id: 'd', label: 'd', columns: [{ key: 'frv', label: 'FRV', decimals: 1 }], rows: [
-      { id: 1, name: 'Pete Crow-Armstrong', v: { frv: 26.3 } }, { id: 2, name: 'Taylor Walls', v: { frv: -1.9 } } ] }
+    const ds: ScatterDataset = { id: 'd', label: 'd', columns: [{ key: 'frv', label: 'FRV', decimals: 1 }], cats: [], rows: [
+      { id: 1, name: 'Pete Crow-Armstrong', v: { frv: 26.3 }, c: {} }, { id: 2, name: 'Taylor Walls', v: { frv: -1.9 }, c: {} } ] }
     const p = parsePasted('Name,DRS\n"Crow-Armstrong, Pete",16\nSomeone Else,3\n')
     const r = mergeColumn(ds, p.columns[0])
     expect(r.matched).toBe(1)
@@ -59,6 +64,10 @@ describe('highlights', () => {
     expect(autoHighlights(pts, 'top-y', 1)[0].name).toBe('B'); expect(autoHighlights(pts, 'bottom-x', 1)[0].name).toBe('A')
     expect(autoHighlights(pts, 'none', 3)).toEqual([])
   })
+  it('skips players clicked off and fills the place with the next one', () => {
+    const r = pickHighlights(pts, 'gap', 2, [], ['c'])
+    expect(r.picked.map(p => p.name)).toEqual(['B', 'D'])
+  })
   it('adds typed names once and reports the ones that match nobody', () => {
     const r = pickHighlights(pts, 'gap', 1, ['b', 'd', 'Nobody'])
     expect(r.picked.map(p => p.name)).toEqual(['C', 'B', 'D']); expect(r.missing).toEqual(['Nobody'])
@@ -82,5 +91,18 @@ describe('checks', () => {
   it('warns about a thin or unfinished chart', () => {
     expect(checkScatter({ title: '', subtitle: '', xKey: 'a', yKey: 'a', points: 4, missing: ['X'], unmatched: ['y'] }).length).toBe(5)
     expect(checkScatter({ title: 'T', subtitle: '', xKey: 'a', yKey: 'b', points: 200, missing: [], unmatched: [] })).toEqual([])
+  })
+})
+
+describe('joining another table', () => {
+  const mk = (id: string, rows: [string, number][]): ScatterDataset => ({ id, label: id, columns: [{ key: 'x', label: 'X', decimals: 1 }], cats: [], rows: rows.map(([n, x]) => ({ id: null, name: n, v: { x }, c: {} })) })
+  it('adds the other table\'s stats by name, with a tag, and counts matches', () => {
+    const a = mk('frv', [['Pete Crow-Armstrong', 26.3], ['Taylor Walls', -1.9]])
+    const b = mk('bat', [['Crow-Armstrong, Pete', 0.35]])
+    const r = joinDataset(a, b, 'Hitting')
+    expect(r.matched).toBe(1)
+    expect(r.dataset.columns.map(c => [c.key, c.label])).toEqual([['x', 'X'], ['bat__x', 'Hitting: X']])
+    expect(r.dataset.rows[0].v.bat__x).toBe(0.35); expect(r.dataset.rows[1].v.bat__x).toBeNull()
+    expect(joinDataset(r.dataset, b, 'Hitting').dataset.columns.length).toBe(2)
   })
 })

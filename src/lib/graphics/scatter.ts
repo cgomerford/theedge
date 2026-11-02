@@ -3,9 +3,10 @@
 // Pure logic for the admin scatter chart builder (/admin/scatter): one dot per player, two stats, a few highlighted and labelled.
 // Nothing here fetches or draws. The data comes from src/lib/scatter-data.ts (public Savant leaderboards) and from columns the editor pastes in.
 
-export type ScatterRow = { id: number | null; name: string; team?: string; v: Record<string, number | null> }
+export type ScatterRow = { id: number | null; name: string; team?: string; v: Record<string, number | null>; /** text columns: team, league, position, pitch name... */ c: Record<string, string> }
 export type ScatterColumn = { key: string; label: string; decimals: number }
-export type ScatterDataset = { id: string; label: string; columns: ScatterColumn[]; rows: ScatterRow[] }
+export type CatColumn = { key: string; label: string }
+export type ScatterDataset = { id: string; label: string; columns: ScatterColumn[]; cats: CatColumn[]; rows: ScatterRow[] }
 
 // ── Names ─────────────────────────────────────────────────────────────────────────────────
 
@@ -52,22 +53,25 @@ function splitLine(line: string, d: string): string[] {
   return out
 }
 
-/** Header row first; the first column is the player name; every other column with numbers becomes a choosable stat. Tab or comma separated (a paste from a web table is tabs). */
+/** Header row first. The name column is the one headed Name or Player (else the first); every other column with numbers becomes a choosable stat. Tab or comma separated (a paste from a web table or a spreadsheet is tabs). */
 export function parsePasted(text: string, keyPrefix = 'p'): PasteResult {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() !== '')
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim() !== '')
   if (lines.length < 2) return { columns: [], names: 0, error: 'Paste a header row and at least one player.' }
   const d = lines[0].includes('\t') ? '\t' : ','
-  const head = splitLine(lines[0], d)
+  const head = splitLine(lines[0], d).map(h => h.replace(/^"|"$/g, ''))
   if (head.length < 2) return { columns: [], names: 0, error: 'Needs a name column and at least one number column.' }
   const body = lines.slice(1).map(l => splitLine(l, d))
+  const found = head.findIndex(h => /^(name|player|player name|playername)$/i.test(h.trim()))
+  const nc = found >= 0 ? found : 0
   const columns: PastedColumn[] = []
-  for (let c = 1; c < head.length; c++) {
+  for (let c = 0; c < head.length; c++) {
+    if (c === nc) continue
     const values = new Map<string, number>()
-    for (const r of body) { const v = toNum(r[c] ?? ''); const k = nameKey(r[0] ?? ''); if (v != null && k) values.set(k, v) }
-    if (values.size > 0) columns.push({ key: `${keyPrefix}${c}`, label: head[c] || `Column ${c}`, values })
+    for (const r of body) { const v = toNum(r[c] ?? ''); const k = nameKey(r[nc] ?? ''); if (v != null && k && !values.has(k)) values.set(k, v) }
+    if (values.size > 0 && values.size >= body.length * 0.3) columns.push({ key: `${keyPrefix}${c}`, label: head[c] || `Column ${c + 1}`, values })
   }
   if (!columns.length) return { columns: [], names: 0, error: 'No column with numbers was found. Put the player name first.' }
-  return { columns, names: new Set(body.map(r => nameKey(r[0] ?? '')).filter(Boolean)).size }
+  return { columns, names: new Set(body.map(r => nameKey(r[nc] ?? '')).filter(Boolean)).size }
 }
 
 /** Joins a pasted column onto the dataset by name. Names in the paste that match nobody are returned so the editor can see them. */
@@ -83,6 +87,25 @@ export function mergeColumn(ds: ScatterDataset, col: PastedColumn): { dataset: S
   const vals = [...col.values.values()]
   const decimals = vals.every(Number.isInteger) ? 0 : decimalsFor(vals)
   return { dataset: { ...ds, columns: [...ds.columns.filter(c => c.key !== col.key), { key: col.key, label: col.label, decimals }], rows }, matched: have.size, unmatched }
+}
+
+/** Joins another table's stats onto this one by player name, so a chart can set a stat from one table against a stat from another (DRS against xwOBA, say).
+ *  Columns arrive as `<id>__<key>`, labelled `<tag>: <label>`. Players missing from the other table get null. Returns how many players matched. */
+export function joinDataset(base: ScatterDataset, other: ScatterDataset, tag: string): { dataset: ScatterDataset; matched: number } {
+  const by = new Map<string, ScatterRow>()
+  for (const r of other.rows) { const k = nameKey(r.name); if (k && !by.has(k)) by.set(k, r) }
+  let matched = 0
+  const key = (k: string) => `${other.id}__${k}`
+  const rows = base.rows.map(r => {
+    const o = by.get(nameKey(r.name))
+    if (o) matched++
+    const v = { ...r.v }
+    for (const c of other.columns) v[key(c.key)] = o ? o.v[c.key] ?? null : null
+    return { ...r, v }
+  })
+  const have = new Set(base.columns.map(c => c.key))
+  const cols = other.columns.filter(c => !have.has(key(c.key))).map(c => ({ key: key(c.key), label: `${tag}: ${c.label}`, decimals: c.decimals }))
+  return { dataset: { ...base, columns: [...base.columns, ...cols], rows }, matched }
 }
 
 /** Decimal places for a stat: whole numbers none, under 2 three places (.254), under 10 two, otherwise one. */
@@ -133,10 +156,12 @@ export function autoHighlights(points: Point[], mode: HighlightMode, n: number):
 }
 
 /** Automatic picks plus the names typed in, once each, in the order they should be drawn. Typed names that match nobody come back as `missing`. */
-export function pickHighlights(points: Point[], mode: HighlightMode, n: number, manual: string[]): { picked: Point[]; missing: string[] } {
+export function pickHighlights(points: Point[], mode: HighlightMode, n: number, manual: string[], off: string[] = []): { picked: Point[]; missing: string[] } {
   const byKey = new Map(points.map(p => [nameKey(p.name), p]))
   const picked: Point[] = []; const seen = new Set<string>(); const missing: string[] = []
-  for (const p of autoHighlights(points, mode, n)) { const k = nameKey(p.name); if (!seen.has(k)) { seen.add(k); picked.push(p) } }
+  const skip = new Set(off.map(nameKey))
+  // Names the editor clicked off are skipped, and the next-best player takes the place, so "top 12" stays 12.
+  for (const p of autoHighlights(points, mode, n + skip.size)) { const k = nameKey(p.name); if (skip.has(k) || seen.has(k) || picked.length >= n) continue; seen.add(k); picked.push(p) }
   for (const m of manual) {
     const k = nameKey(m); if (!k) continue
     const p = byKey.get(k)
@@ -162,12 +187,12 @@ export function layoutLabels(items: LabelIn[], bounds: { x0: number; y0: number;
   return items.map((it, idx) => {
     const w = it.text.length * fontSize * charW
     const g = dotR + 4
-    const cands: { x: number; y: number; anchor: 'start' | 'end' }[] = [
-      { x: it.px + g, y: it.py, anchor: 'start' }, { x: it.px - g, y: it.py, anchor: 'end' },
-      { x: it.px + g, y: it.py - h * 0.9, anchor: 'start' }, { x: it.px - g, y: it.py - h * 0.9, anchor: 'end' },
-      { x: it.px + g, y: it.py + h * 0.9, anchor: 'start' }, { x: it.px - g, y: it.py + h * 0.9, anchor: 'end' },
-      { x: it.px - w / 2, y: it.py - dotR - h * 0.6, anchor: 'start' }, { x: it.px - w / 2, y: it.py + dotR + h * 0.9, anchor: 'start' },
-    ]
+    const cands: { x: number; y: number; anchor: 'start' | 'end' }[] = []
+    // Beside the dot first, then stepping up and down, then further out; right side before left at each step.
+    for (const far of [0, 18, 46]) for (const k of [0, -0.9, 0.9, -1.8, 1.8, -2.7, 2.7]) {
+      cands.push({ x: it.px + g + far, y: it.py + k * h, anchor: 'start' }, { x: it.px - g - far, y: it.py + k * h, anchor: 'end' })
+    }
+    cands.push({ x: it.px - w / 2, y: it.py - dotR - h * 0.6, anchor: 'start' }, { x: it.px - w / 2, y: it.py + dotR + h * 0.9, anchor: 'start' })
     const boxOf = (c: { x: number; y: number; anchor: 'start' | 'end' }): Box => {
       const x0 = c.anchor === 'start' ? c.x : c.x - w
       return { x0, y0: c.y - h * 0.78, x1: x0 + w, y1: c.y + h * 0.28 }
@@ -201,14 +226,31 @@ export function checkScatter(s: Spec): string[] {
 
 // ── The datasets the builder can load (the server side lives in src/lib/scatter-data.ts) ──
 
-export const DATASET_CHOICES: { id: string; label: string; blurb: string }[] = [
-  { id: 'frv', label: 'Fielding runs (FRV), fielders', blurb: 'Savant fielding runs by skill, with outs played (innings)' },
-  { id: 'oaa', label: 'Outs above average, fielders', blurb: 'Savant OAA by direction and batter side' },
-  { id: 'arm', label: 'Arm strength, fielders', blurb: 'Savant average and hardest throw by position' },
-  { id: 'xstats-bat', label: 'Expected stats, hitters', blurb: 'BA, SLG, wOBA against their expected versions' },
-  { id: 'statcast-bat', label: 'Exit velocity and barrels, hitters', blurb: 'Savant batted-ball quality' },
-  { id: 'bat-tracking', label: 'Bat tracking, hitters', blurb: 'Bat speed, swing length, squared-up and blast rates' },
-  { id: 'sprint', label: 'Sprint speed, players', blurb: 'Savant sprint speed and home to first' },
-  { id: 'xstats-pit', label: 'Expected stats, pitchers', blurb: 'ERA against xERA, and wOBA against expected' },
-  { id: 'statcast-pit', label: 'Exit velocity and barrels allowed, pitchers', blurb: 'Savant batted-ball quality against' },
+export type DatasetChoice = { id: string; label: string; group: string; blurb: string; /** true when the table has one row per player, so a player can be followed across seasons */ seasons: boolean }
+export const DATASET_CHOICES: DatasetChoice[] = [
+  { id: 'bat-all', group: 'Hitters (Savant)', label: 'Every hitter metric', blurb: 'Results, expected stats, batted balls, plate discipline, spray and speed in one table (60+ stats)', seasons: true },
+  { id: 'bat-pct', group: 'Hitters (Savant)', label: 'Hitter percentile ranks', blurb: 'Savant percentiles: xwOBA, barrel, exit velocity, chase, whiff, speed, OAA, bat speed', seasons: true },
+  { id: 'xstats-bat', group: 'Hitters (Savant)', label: 'Expected stats, hitters', blurb: 'BA, SLG, wOBA against their expected versions', seasons: true },
+  { id: 'statcast-bat', group: 'Hitters (Savant)', label: 'Exit velocity and barrels, hitters', blurb: 'Batted-ball quality', seasons: true },
+  { id: 'bat-tracking', group: 'Hitters (Savant)', label: 'Bat tracking, hitters', blurb: 'Bat speed, swing length, squared-up and blast rates', seasons: true },
+  { id: 'baserun', group: 'Hitters (Savant)', label: 'Baserunning runs', blurb: 'Runs from extra bases, stolen bases and baserunning', seasons: true },
+  { id: 'sprint', group: 'Hitters (Savant)', label: 'Sprint speed, players', blurb: 'Sprint speed and home to first', seasons: true },
+  { id: 'pit-all', group: 'Pitchers (Savant)', label: 'Every pitcher metric', blurb: 'Results, expected stats, batted balls, plate discipline, velocity, spin, break, extension (70+ stats)', seasons: true },
+  { id: 'pit-pct', group: 'Pitchers (Savant)', label: 'Pitcher percentile ranks', blurb: 'Savant percentiles: xERA, whiff, K%, BB%, barrel, hard-hit, velocity, spin', seasons: true },
+  { id: 'xstats-pit', group: 'Pitchers (Savant)', label: 'Expected stats, pitchers', blurb: 'ERA against xERA, and wOBA against expected', seasons: true },
+  { id: 'statcast-pit', group: 'Pitchers (Savant)', label: 'Exit velocity and barrels allowed', blurb: 'Batted-ball quality against', seasons: true },
+  { id: 'pit-speeds', group: 'Pitchers (Savant)', label: 'Pitch speeds by type', blurb: 'Average velocity of each pitch type', seasons: true },
+  { id: 'pit-arsenal', group: 'Pitchers (Savant)', label: 'Pitch arsenal (one row per pitch type)', blurb: 'Usage, whiff, runs per 100, xwOBA by pitch; group by pitch name', seasons: false },
+  { id: 'drs', group: 'Fielding', label: 'Defensive Runs Saved (DRS), fielders', blurb: 'DRS and its parts from The Fielding Bible (Sports Info Solutions)', seasons: true },
+  { id: 'frv', group: 'Fielding', label: 'Fielding runs (FRV), fielders', blurb: 'Savant fielding runs by skill, with innings. DRS is joined on by name', seasons: true },
+  { id: 'oaa', group: 'Fielding', label: 'Outs above average, fielders', blurb: 'Savant OAA by direction and batter side. DRS is joined on by name', seasons: true },
+  { id: 'arm', group: 'Fielding', label: 'Arm strength, fielders', blurb: 'Average and hardest throw by position', seasons: true },
+  { id: 'framing', group: 'Fielding', label: 'Catcher framing', blurb: 'Framing totals by zone', seasons: true },
+  { id: 'poptime', group: 'Fielding', label: 'Catcher pop time and arm', blurb: 'Pop time, exchange and arm to second and third', seasons: true },
+  { id: 'mlb-hit', group: 'MLB stats (all players)', label: 'Hitters, traditional stats', blurb: 'AVG, OBP, SLG, OPS, HR, RBI, SB, K and BB totals for every player', seasons: true },
+  { id: 'mlb-pit', group: 'MLB stats (all players)', label: 'Pitchers, traditional stats', blurb: 'ERA, WHIP, K/9, BB/9, innings, saves and more for every pitcher', seasons: true },
+  { id: 'mlb-field', group: 'MLB stats (all players)', label: 'Fielding, traditional stats', blurb: 'Errors, fielding %, assists, putouts, double plays', seasons: true },
+  { id: 'mlb-team-hit', group: 'MLB stats (teams)', label: 'Team batting', blurb: 'All 30 clubs: AVG, OBP, SLG, OPS, runs, HR, K and BB', seasons: true },
+  { id: 'mlb-team-pit', group: 'MLB stats (teams)', label: 'Team pitching', blurb: 'All 30 clubs: ERA, WHIP, K/9, BB/9, HR/9 and more', seasons: true },
+  { id: 'mlb-team-field', group: 'MLB stats (teams)', label: 'Team fielding', blurb: 'All 30 clubs: errors, fielding %, double plays', seasons: true },
 ]

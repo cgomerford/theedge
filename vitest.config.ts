@@ -10,6 +10,7 @@ export default defineConfig({
       'src/lib/article-checks.test.ts',
       'src/lib/comments.test.ts',
       'src/lib/log.test.ts',
+      'src/lib/fielding-bible.test.ts',
       'src/lib/proxy-matcher.test.ts',
       'src/lib/team-batting.test.ts',
       'src/lib/seo/**/*.test.ts',

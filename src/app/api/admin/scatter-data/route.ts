@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   const id = req.nextUrl.searchParams.get('dataset') ?? ''
   const season = Number(req.nextUrl.searchParams.get('season') ?? new Date().getFullYear())
-  const ds = await getScatterDataset(id, season)
+  const ds = await getScatterDataset(id, season, req.nextUrl.searchParams.get('lite') === '1')
   if (!ds) return NextResponse.json({ error: 'No data for that table and season. Baseball Savant may not have it yet.' }, { status: 404 })
   return NextResponse.json(ds)
 }
