@@ -33,3 +33,6 @@ export const SIGNUP_URL = '/signup'
 export function signupHref(source: string): string {
   return `${SIGNUP_URL}?source=${source}`
 }
+
+/** Google Analytics 4 measurement ID (public by design; it is printed in every page's source). Set here, not in an env var, so a stale Vercel setting cannot point the site at an old property. */
+export const GA_MEASUREMENT_ID = 'G-NSV4B60Q37'

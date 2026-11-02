@@ -2,8 +2,7 @@
 
 import Script from 'next/script'
 import { useEffect } from 'react'
-
-const GA_ID = process.env.NEXT_PUBLIC_GA4_ID
+import { GA_MEASUREMENT_ID as GA_ID } from '@/lib/site'
 
 export default function GoogleAnalytics() {
   useEffect(() => {
