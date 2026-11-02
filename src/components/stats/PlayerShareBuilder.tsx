@@ -31,6 +31,7 @@ import LastFiveStarts from '@/components/stats/LastFiveStarts'
 import type { PercentileStat } from '@/lib/pitcher-percentiles'
 import type { PitcherGameLog } from '@/lib/mlb'
 import { SITE_HOST, X_HANDLE } from '@/lib/site'
+import { log } from '@/lib/log'
 
 type Subject = 'batter' | 'pitcher'
 
@@ -490,7 +491,7 @@ export default function PlayerShareBuilder({
       link.href = dataUrl
       link.click()
       setShowReferralPrompt(true)
-    } catch (err) { console.error('[PlayerShareBuilder] card export failed:', err) }
+    } catch (err) { log.error('PlayerShareBuilder', 'card export failed', err) }
     finally { setDownloading(false) }
   }
 

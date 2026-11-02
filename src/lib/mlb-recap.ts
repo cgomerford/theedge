@@ -1,3 +1,4 @@
+import { log, logOnce } from '@/lib/log'
 // src/lib/mlb-recap.ts
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
@@ -112,7 +113,7 @@ async function getYesterdaysGamePks(dateStr: string): Promise<{ gamePk: number; 
     return games
       .filter(g => g.status?.abstractGameState === 'Final')
       .map(g => ({ gamePk: g.gamePk, awayAbbr: g.teams?.away?.team?.abbreviation ?? '—', homeAbbr: g.teams?.home?.team?.abbreviation ?? '—' }))
-  } catch (e) { console.error('getYesterdaysGamePks error:', e); return [] }
+  } catch (e) { log.error('mlb-recap', 'getYesterdaysGamePks error', e); return [] }
 }
 
 async function getBoxscore(gamePk: number): Promise<any | null> {
@@ -121,14 +122,13 @@ async function getBoxscore(gamePk: number): Promise<any | null> {
     const res = await fetch(url, { next: { revalidate: 3600 } })
     if (!res.ok) return null
     return await res.json()
-  } catch (e) { console.error(`getBoxscore(${gamePk}) error:`, e); return null }
+  } catch (e) { logOnce('mlb-recap:getBoxscore(#) error', 'mlb-recap', `getBoxscore(${gamePk}) error`, e); return null }
 }
 
 export async function getYesterdaysPerformers(
   dateStr: string, limit = 5
 ): Promise<{ batters: RecapResult<BatterPerformance>; pitchers: RecapResult<PitcherPerformance> }> {
   const games = await getYesterdaysGamePks(dateStr)
-  console.log(`[mlb-recap] getYesterdaysPerformers(${dateStr}): found ${games.length} final games —`, games.map(g => g.gamePk))
   if (games.length === 0) {
     const r = { available: false as const, reason: `No completed games found for ${dateStr}.` }
     return { batters: r, pitchers: r }
@@ -152,7 +152,7 @@ export async function getPerformersForGames(
 
   for (const game of games) {
     const box = await getBoxscore(game.gamePk)
-    if (!box) { console.error(`[mlb-recap] boxscore null for gamePk ${game.gamePk}`); continue }
+    if (!box) { logOnce('mlb-recap:boxscore null for gamePk #', 'mlb-recap', `boxscore null for gamePk ${game.gamePk}`); continue }
     for (const side of ['away', 'home'] as const) {
       const players = box.teams?.[side]?.players ?? {}
       const teamAbbr = side === 'away' ? game.awayAbbr : game.homeAbbr
@@ -199,7 +199,7 @@ export async function getPerformersForGames(
   }
   batters.sort((a, b) => b.score - a.score)
   pitchers.sort((a, b) => b.score - a.score)
-  console.log(`[mlb-recap] getPerformersForGames(${games.map(g => g.gamePk).join(',')}): ${batters.length} batter perfs, ${pitchers.length} pitcher perfs before slicing to limit=${limit}`)
+  log.debug('mlb-recap', `getPerformersForGames(${games.map(g => g.gamePk).join(',')}): ${batters.length} batter perfs, ${pitchers.length} pitcher perfs before slicing to limit=${limit}`)
   return {
     batters: batters.length > 0 ? { available: true, items: batters.slice(0, limit) } : { available: false, reason: 'No qualifying batting performances found.' },
     pitchers: pitchers.length > 0 ? { available: true, items: pitchers.slice(0, limit) } : { available: false, reason: 'No qualifying pitching performances found.' },
@@ -269,14 +269,14 @@ async function getGameFeed(gamePk: number): Promise<any | null> {
       // DIAGNOSTIC: this branch was previously silent — a 404/429/5xx here
       // would produce exactly "missing stats/pitch locations" with zero
       // trace in the logs. Confirm via this line whether it's firing.
-      console.error(`[mlb-recap] getGameFeed(${gamePk}) NOT OK — status ${res.status} ${res.statusText}`)
+      logOnce('mlb-recap:getGameFeed(#) NOT OK — status # #', 'mlb-recap', `getGameFeed(${gamePk}) NOT OK — status ${res.status} ${res.statusText}`)
       return null
     }
     const json = await res.json()
     const playCount = json?.liveData?.plays?.allPlays?.length ?? 0
-    console.log(`[mlb-recap] getGameFeed(${gamePk}) OK — ${playCount} plays, gameState=${json?.gameData?.status?.abstractGameState}`)
+    log.debug('mlb-recap', `getGameFeed(${gamePk}) OK — ${playCount} plays, gameState=${json?.gameData?.status?.abstractGameState}`)
     return json
-  } catch (e) { console.error(`[mlb-recap] getGameFeed(${gamePk}) THREW:`, e); return null }
+  } catch (e) { logOnce('mlb-recap:getGameFeed(#) THREW', 'mlb-recap', `getGameFeed(${gamePk}) THREW`, e); return null }
 }
 
 type PAInfo = { pitchCount: number; inning: number; result: string }
@@ -359,11 +359,9 @@ function emptyEnrichedData(): EnrichedPerformerData {
 
 export async function enrichPerformersWithPitchData(batters: BatterPerformance[], pitchers: PitcherPerformance[], gamePks: number[]): Promise<{ batters: EnrichedBatterPerformance[]; pitchers: EnrichedPitcherPerformance[] }> {
   const uniquePks = [...new Set(gamePks)]
-  console.log(`[mlb-recap] enrichPerformersWithPitchData: ${batters.length} batters, ${pitchers.length} pitchers, gamePks in =`, uniquePks)
 
   const feeds: Record<number, any> = {}
   for (const pk of uniquePks) { const f = await getGameFeed(pk); if (f) feeds[pk] = f }
-  console.log(`[mlb-recap] feeds loaded: ${Object.keys(feeds).length} / ${uniquePks.length} requested —`, Object.keys(feeds))
 
   function findFeed(pid: number, role: 'batter' | 'pitcher') {
     for (const [pk, feed] of Object.entries(feeds)) {
@@ -377,22 +375,20 @@ export async function enrichPerformersWithPitchData(batters: BatterPerformance[]
   const eb: EnrichedBatterPerformance[] = batters.map(b => {
     const f = findFeed(b.personId, 'batter')
     if (!f) {
-      console.warn(`[mlb-recap] NO FEED MATCH for batter ${b.name} (${b.personId}) — falling back to empty pitchData`)
+      log.warn('mlb-recap', `NO FEED MATCH for batter ${b.name} (${b.personId}) — falling back to empty pitchData`)
       return { ...b, pitchData: emptyEnrichedData() }
     }
     const { pitches, strikeZoneTop, strikeZoneBottom, plateAppearances } = extractPitchesForPlayer(f.feed, b.personId, 'batter')
-    console.log(`[mlb-recap] batter ${b.name} (${b.personId}) — gamePk ${f.gamePk} — ${pitches.length} pitches extracted`)
     return { ...b, pitchData: computeEnrichedData(pitches, strikeZoneTop, strikeZoneBottom, plateAppearances) }
   })
 
   const ep: EnrichedPitcherPerformance[] = pitchers.map(p => {
     const f = findFeed(p.personId, 'pitcher')
     if (!f) {
-      console.warn(`[mlb-recap] NO FEED MATCH for pitcher ${p.name} (${p.personId}) — falling back to empty pitchData`)
+      log.warn('mlb-recap', `NO FEED MATCH for pitcher ${p.name} (${p.personId}) — falling back to empty pitchData`)
       return { ...p, pitchData: emptyEnrichedData() }
     }
     const { pitches, strikeZoneTop, strikeZoneBottom, plateAppearances } = extractPitchesForPlayer(f.feed, p.personId, 'pitcher')
-    console.log(`[mlb-recap] pitcher ${p.name} (${p.personId}) — gamePk ${f.gamePk} — ${pitches.length} pitches extracted`)
     const data = computeEnrichedData(pitches, strikeZoneTop, strikeZoneBottom, plateAppearances)
     const plays: any[] = f.feed?.liveData?.plays?.allPlays ?? []
     let fpS = 0, fpT = 0

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
 import { isAdminRequest } from '@/lib/admin-auth';
+import { log } from '@/lib/log'
 
 const BUCKET = 'article-images';
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB — plenty for a chart PNG, keeps abuse limited
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     });
 
   if (uploadError) {
-    console.error('[POST /api/admin/upload] Supabase storage error:', uploadError.message);
+    log.error('POST /api/admin/upload', 'Supabase storage error', uploadError.message);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 

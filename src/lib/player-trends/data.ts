@@ -26,6 +26,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { withSavantCache } from '@/lib/savant-cache'
 import { getLeagueTables, ipToDecimal } from '@/lib/team-profile/league'
 import { BB_WEIGHT, HBP_WEIGHT, type BatterTrendsData, type BbePoint, type PaRow, type PitGame, type PitTypeGame, type PitcherTrendsData } from './rolling'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const SWING = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul_tip', 'foul', 'foul_bunt', 'missed_bunt', 'hit_into_play', 'hit_into_play_score', 'hit_into_play_no_out'])
@@ -43,7 +44,7 @@ async function fetchAll<T>(table: string, select: string, col: string, id: numbe
   const out: T[] = []
   for (let from = 0; from < 20000; from += 1000) {
     const { data, error } = await supa.from(table).select(select).eq(col, id).order('id', { ascending: true }).range(from, from + 999)
-    if (error) { console.error(`[${tag}] Supabase error:`, error.message); return null }
+    if (error) { log.error(`${tag}`, `Supabase error`, error.message); return null }
     out.push(...((data ?? []) as unknown as T[]))
     if (!data || data.length < 1000) break
   }
@@ -71,7 +72,7 @@ async function handsOf(ids: number[]): Promise<Map<number, 'L' | 'R'>> {
       const res = await fetch(`${MLB}/people?personIds=${uniq.slice(i, i + 100).join(',')}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10000) })
       if (!res.ok) continue
       for (const p of (await res.json()).people ?? []) { const c = p.pitchHand?.code; if (c === 'L' || c === 'R') out.set(p.id, c) }
-    } catch (e) { console.error('[handsOf]', e instanceof Error ? e.message : e) }
+    } catch (e) { log.error('handsOf', 'failed', e instanceof Error ? e.message : e) }
   }
   return out
 }
@@ -83,7 +84,7 @@ async function sessionsOf(teamId: number | null, season: number): Promise<Map<nu
     const res = await fetch(`${MLB}/schedule?sportId=1&teamId=${teamId}&season=${season}&gameType=R`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(12000) })
     if (!res.ok) return m
     for (const d of (await res.json()).dates ?? []) for (const g of d.games ?? []) if (g.dayNight === 'day' || g.dayNight === 'night') m.set(g.gamePk, g.dayNight)
-  } catch (e) { console.error('[sessionsOf]', e instanceof Error ? e.message : e) }
+  } catch (e) { log.error('sessionsOf', 'failed', e instanceof Error ? e.message : e) }
   return m
 }
 
@@ -99,13 +100,13 @@ async function fetchBbe(batterId: number, season: number): Promise<BbePoint[] | 
     `&game_date_gt=${season}-01-01&game_date_lt=${season}-12-31`, '&min_pitches=0&min_results=0&group_by=name&sort_col=pitches', '&player_event_sort=api_p_release_speed&sort_order=desc&type=details'].join('')
   try {
     const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TheEdge/1.0)', Accept: 'text/csv,*/*' }, cache: 'no-store', signal: AbortSignal.timeout(30000) })
-    if (!res.ok) { console.error('[fetchBbe] Savant status', res.status); return null }
+    if (!res.ok) { log.error('fetchBbe', 'Savant status', res.status); return null }
     const lines = (await res.text()).replace(/^﻿/, '').trim().split(/\r?\n/)
     if (lines.length < 2) return []
     const head = parseLine(lines[0]).map(h => h.replace(/^"|"$/g, ''))
     const ix = (n: string) => head.indexOf(n)
     const [iD, iPk, iX, iY, iSt, iH, iS, iA, iT] = ['game_date', 'game_pk', 'hc_x', 'hc_y', 'stand', 'p_throws', 'launch_speed', 'launch_angle', 'type'].map(ix)
-    if ([iD, iX, iSt, iS, iT].some(i => i < 0)) { console.error('[fetchBbe] unexpected Savant columns'); return null }
+    if ([iD, iX, iSt, iS, iT].some(i => i < 0)) { log.error('fetchBbe', 'unexpected Savant columns'); return null }
     const out: BbePoint[] = []
     for (const l of lines.slice(1)) {
       const c = parseLine(l)
@@ -113,7 +114,7 @@ async function fetchBbe(batterId: number, season: number): Promise<BbePoint[] | 
       out.push({ d: c[iD], pk: Number(c[iPk]) || 0, x: NUM(c[iX]), y: NUM(c[iY]), st: c[iSt] === 'L' || c[iSt] === 'R' ? (c[iSt] as 'L' | 'R') : null, h: c[iH] === 'L' || c[iH] === 'R' ? (c[iH] as 'L' | 'R') : null, s: NUM(c[iS]), a: NUM(c[iA]) })
     }
     return out.sort((a, b) => a.d.localeCompare(b.d) || a.pk - b.pk)
-  } catch (e) { console.error('[fetchBbe]', e instanceof Error ? e.message : e); return null }
+  } catch (e) { log.error('fetchBbe', 'failed', e instanceof Error ? e.message : e); return null }
 }
 const getBbe = (id: number, season: number) => withSavantCache<BbePoint[] | null>(`bbe-trend:${id}:${season}`, 21600, () => fetchBbe(id, season))
 

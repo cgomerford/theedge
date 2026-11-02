@@ -9,6 +9,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
 import { checkLive } from '@/lib/stats-live'
 import { deepSupports, deepToParams, type DeepFilters, type Group } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 export const maxDuration = 30
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
     const out = signedIn ? live : { ...live, games: live.games.map(g => ({ ...g, sequence: g.sequence.slice(-3) })) }
     return NextResponse.json(out, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    console.error('[stats/live] failed:', (e as Error).message)
+    log.error('stats/live', 'failed', (e as Error).message)
     return NextResponse.json({ error: 'MLB Stats API did not respond. Try again in a moment.' }, { status: 502 })
   }
 }

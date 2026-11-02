@@ -1,6 +1,7 @@
 // MLB Stats API — official, free, no API key needed
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
+import { logOnce } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -90,13 +91,13 @@ export const getScheduleForDate = cache(async (date: string): Promise<MLBGame[]>
   try {
     const res = await fetchWithRetry(url, { next: { revalidate: 1800 } })
     if (!res.ok) {
-      console.error('MLB schedule fetch failed:', res.status)
+      logOnce('mlb:' + 'MLB schedule fetch failed', 'mlb', 'MLB schedule fetch failed', res.status)
       return []
     }
     const data = await res.json()
     return data.dates?.[0]?.games ?? []
   } catch (err) {
-    console.error('MLB fetch error:', err)
+    logOnce('mlb:' + 'MLB fetch error', 'mlb', 'MLB fetch error', err)
     return []
   }
 })
@@ -237,7 +238,7 @@ export const getPitcherFullSeasonGameLog = cache(async (
         hits: parseInt(g.stat?.hits ?? '0'),
       }))
   } catch (err) {
-    console.error('Pitcher full-season game log fetch failed:', err)
+    logOnce('mlb:' + 'Pitcher full-season game log fetch failed', 'mlb', 'Pitcher full-season game log fetch failed', err)
     return []
   }
 })
@@ -267,7 +268,7 @@ export const getPitcherRecentStarts = cache(async (
       result: g.isWin ? 'W' : g.isLoss ? 'L' : 'ND',
     }))
   } catch (err) {
-    console.error('Pitcher game log fetch failed:', err)
+    logOnce('mlb:' + 'Pitcher game log fetch failed', 'mlb', 'Pitcher game log fetch failed', err)
     return []
   }
 })
@@ -311,7 +312,7 @@ export const getPitcherHitsFromGameFeed = cache(async (
     }
     return hits
   } catch (err) {
-    console.error(`getPitcherHitsFromGameFeed failed (game ${gamePk}, pitcher ${pitcherId}):`, err)
+    logOnce('mlb:' + `getPitcherHitsFromGameFeed failed (game ${gamePk}, pitcher ${pitcherId})`, 'mlb', `getPitcherHitsFromGameFeed failed (game ${gamePk}, pitcher ${pitcherId})`, err)
     return []
   }
 })
@@ -345,7 +346,7 @@ export const getPitcherSeasonStats = cache(async (
       hits: stats.hits ?? 0,
     }
   } catch (err) {
-    console.error('Pitcher season stats fetch failed:', err)
+    logOnce('mlb:' + 'Pitcher season stats fetch failed', 'mlb', 'Pitcher season stats fetch failed', err)
     return null
   }
 })
@@ -365,7 +366,7 @@ export const getPitcherHandedness = cache(async (
     const code = data.people?.[0]?.pitchHand?.code
     return (code === 'L' || code === 'R') ? code : null
   } catch (err) {
-    console.error('Pitcher handedness fetch failed:', err)
+    logOnce('mlb:' + 'Pitcher handedness fetch failed', 'mlb', 'Pitcher handedness fetch failed', err)
     return null
   }
 })
@@ -433,7 +434,7 @@ const fetchOpenMeteoHourly = cache(async (lat: number, lon: number): Promise<Ope
   try {
     const res = await fetchWithRetry(url, { next: { revalidate: 3600 } })
     if (!res.ok) {
-      console.error('Open-Meteo fetch failed:', res.status)
+      logOnce('mlb:' + 'Open-Meteo fetch failed', 'mlb', 'Open-Meteo fetch failed', res.status)
       return null
     }
     const data = await res.json()
@@ -441,7 +442,7 @@ const fetchOpenMeteoHourly = cache(async (lat: number, lon: number): Promise<Ope
     if (!hourly || !hourly.time) return null
     return hourly as OpenMeteoHourly
   } catch (err) {
-    console.error('Weather fetch error:', err)
+    logOnce('mlb:' + 'Weather fetch error', 'mlb', 'Weather fetch error', err)
     return null
   }
 })
@@ -572,7 +573,7 @@ export async function getPitchMix(playerId: number): Promise<PitchType[]> {
     .order('percentage', { ascending: false })
 
   if (error || !data) {
-    console.error('getPitchMix DB error:', error)
+    logOnce('mlb:' + 'getPitchMix DB error', 'mlb', 'getPitchMix DB error', error)
     return []
   }
 
@@ -717,7 +718,7 @@ export const getTeamForm = cache(async (teamId: number): Promise<TeamForm | null
       trend,
     }
   } catch (err) {
-    console.error('Team form fetch error:', err)
+    logOnce('mlb:' + 'Team form fetch error', 'mlb', 'Team form fetch error', err)
     return null
   }
 })

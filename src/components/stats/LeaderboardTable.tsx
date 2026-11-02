@@ -10,6 +10,7 @@ import { MLB_TEAMS } from '@/lib/teams'
 import { Bar, BarChart, Cell, CartesianGrid, LabelList, Line, LineChart, ResponsiveContainer, Legend, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import { Headshot } from '@/components/home/Logo'
 import TeamChip from '@/components/ui/TeamChip'
+import { log } from '@/lib/log'
 
 type Row = { id: number; name: string; team: string; n: number; qualified: boolean; v: Record<string, number | null> }
 type Col = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; signed?: boolean; tip?: string }
@@ -60,7 +61,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
       const j = await r.json()
       if (!r.ok) throw new Error(j.error ?? 'failed')
       setCmps(cs => cs.map(c => (c.year === y ? { ...c, rows: j.rows } : c)))
-    } catch (e) { console.error('[LeaderboardTable] compare failed', e); setCmps(cs => cs.filter(c => c.year !== y)); setCmpErr(`No ${y} data loaded.`) }
+    } catch (e) { log.error('LeaderboardTable', 'compare failed', e); setCmps(cs => cs.filter(c => c.year !== y)); setCmpErr(`No ${y} data loaded.`) }
   }
   async function loadHeads(ids: number[]) {
     // Headshots go through the image proxy so the downloaded picture includes them (cross-origin images are otherwise left blank).
@@ -71,7 +72,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
         const r = await fetch(`/api/image-proxy?url=${encodeURIComponent(u)}`)
         const j = await r.json()
         if (j.dataUri) setHeadUris(h => ({ ...h, [id]: j.dataUri }))
-      } catch (e) { console.error('[LeaderboardTable] headshot failed', id, e) }
+      } catch (e) { log.error('LeaderboardTable', 'headshot failed', [id, e].join(' ')) }
     }
   }
   const area = useRef<HTMLDivElement>(null)
@@ -82,7 +83,7 @@ export default function LeaderboardTable({ rows, cols: baseCols, moreCols = [], 
     try {
       const url = await toPng(area.current, { backgroundColor: '#FAF8F3', pixelRatio: 2, cacheBust: true, filter: n => !(n instanceof HTMLElement && n.dataset.noexport) })
       const a = document.createElement('a'); a.href = url; a.download = `${exportName}.png`; a.click()
-    } catch (e) { console.error('[LeaderboardTable] export failed', e) } finally { setBusy(false) }
+    } catch (e) { log.error('LeaderboardTable', 'export failed', e) } finally { setBusy(false) }
   }
   const [key, setKey] = useState(sortKey)
   const [asc, setAsc] = useState(sortAsc)

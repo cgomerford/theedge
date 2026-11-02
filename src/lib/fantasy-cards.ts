@@ -10,6 +10,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
+import { log } from '@/lib/log'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MODEL = 'claude-haiku-4-5-20251001'
@@ -279,7 +280,7 @@ export async function generateFantasyCards(
   input: FantasyCardsInput
 ): Promise<FantasyCards | null> {
    if (process.env.DRY_RUN === 'true') {
-    console.log('DRY_RUN: skipping fantasy cards LLM call')
+    log.debug('fantasy-cards', 'DRY_RUN: skipping fantasy cards LLM call')
     return null
   }
 
@@ -307,7 +308,7 @@ export async function generateFantasyCards(
 
     const match = text.match(/<fantasy_cards>([\s\S]*?)<\/fantasy_cards>/)
     if (!match) {
-      console.error('Fantasy cards: no XML tag in output:', text.slice(0, 300))
+      log.error('fantasy-cards', 'Fantasy cards: no XML tag in output', text.slice(0, 300))
       return null
     }
 
@@ -315,14 +316,13 @@ export async function generateFantasyCards(
     try {
       parsed = JSON.parse(match[1].trim())
     } catch (parseErr) {
-      console.error('Fantasy cards: JSON parse failed:', match[1].slice(0, 300))
+      log.error('fantasy-cards', 'Fantasy cards: JSON parse failed', match[1].slice(0, 300))
       return null
     }
 
 
 // ADD THESE TWO LINES
-console.log(`Fantasy cards parsed — pitchers: ${(parsed.pitchers as any[])?.length}, batters: ${(parsed.batters as any[])?.length}`)
-console.log(`Fantasy cards batters:`, JSON.stringify(parsed.batters))
+log.debug('fantasy-cards', `Fantasy cards parsed — pitchers: ${(parsed.pitchers as any[])?.length}, batters: ${(parsed.batters as any[])?.length}`)
 
 return {
       generated_at: new Date().toISOString(),
@@ -332,7 +332,7 @@ return {
       stack_pick: (parsed.stack_pick ?? null) as FantasyStackPick | null,
     }
   } catch (err) {
-    console.error('generateFantasyCards error:', err)
+    log.error('fantasy-cards', 'generateFantasyCards error', err)
     return null
   }
 }

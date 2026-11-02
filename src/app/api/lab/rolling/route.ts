@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getRollingMetric, type MetricKey, type SubjectType } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const points = await getRollingMetric({ subjectType, id, metric, season, window })
     return NextResponse.json({ points })
   } catch (err) {
-    console.error('[lab/rolling]', err)
+    log.error('lab/rolling', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

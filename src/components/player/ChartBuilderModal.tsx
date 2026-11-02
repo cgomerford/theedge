@@ -7,6 +7,7 @@ import { aggregateBatting, aggregatePitching } from '@/lib/stats-gamelog'
 import { SITE_HOST } from '@/lib/site'
 import Tabs from '@/components/ui/Tabs'
 import { Suspense } from 'react'
+import { log } from '@/lib/log'
 
 type ChartType = 'line' | 'bar'
 
@@ -117,7 +118,7 @@ link.download = `player-${playerId}-${stat.key}-${windowSize}game-chart.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[ChartBuilderModal] PNG export failed:', err)
+      log.error('ChartBuilderModal', 'PNG export failed', err)
     } finally {
       setSaving(false)
     }

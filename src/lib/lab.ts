@@ -81,7 +81,7 @@ export const TEAM_COLORS: Record<number, string> = {
 // copies drifting apart.
 export async function getCurrentTeamId(personId: number): Promise<number | null> {
   try {
-    const res = await fetch(`${MLB_API}/people/${personId}?hydrate=currentTeam`)
+    const res = await fetch(`${MLB_API}/people/${personId}?hydrate=currentTeam`, { next: { revalidate: 3600 } })
     if (!res.ok) return null
     const json = await res.json()
     return json.people?.[0]?.currentTeam?.id ?? null
@@ -141,14 +141,14 @@ export async function getPitcherSeasonProgression(id: number, season: number): P
 // ─── Player gameLogs (rolling charts) ──────────────────────────────────────
 
 async function fetchPersonGameLog(personId: number, season: number, group: 'pitching' | 'hitting') {
-  const res = await fetch(`${MLB_API}/people/${personId}/stats?stats=gameLog&group=${group}&season=${season}`)
+  const res = await fetch(`${MLB_API}/people/${personId}/stats?stats=gameLog&group=${group}&season=${season}`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return (json.stats?.[0]?.splits ?? []) as any[]
 }
 
 async function fetchTeamGameLog(teamId: number, season: number, group: 'pitching' | 'hitting' | 'fielding') {
-  const res = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=gameLog&group=${group}&season=${season}`)
+  const res = await fetch(`${MLB_API}/teams/${teamId}/stats?stats=gameLog&group=${group}&season=${season}`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return (json.stats?.[0]?.splits ?? []) as any[]
@@ -217,14 +217,14 @@ function rollingHitting(splits: any[], window: number, metric: 'ops' | 'slg' | '
 export type YearMode = 'single' | 'multi' | 'career'
 
 export async function fetchYearByYearHitting(id: number): Promise<any[]> {
-  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=hitting`)
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=hitting`, { next: { revalidate: 3600 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return (json.stats?.[0]?.splits ?? []).filter((s: any) => s.season)
 }
 
 async function fetchCareerHitting(id: number): Promise<any> {
-  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=career&group=hitting`)
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=career&group=hitting`, { next: { revalidate: 3600 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return json.stats?.[0]?.splits?.[0]?.stat ?? {}
@@ -385,7 +385,7 @@ export async function getRollingMetric(opts: {
 }
 
 export async function searchPeople(query: string) {
-  const res = await fetch(`${MLB_API}/people/search?names=${encodeURIComponent(query)}`)
+  const res = await fetch(`${MLB_API}/people/search?names=${encodeURIComponent(query)}`, { next: { revalidate: 3600 } })
   if (!res.ok) return []
   const json = await res.json()
   return (json.people ?? []).map((p: any) => ({
@@ -556,7 +556,7 @@ export type TeamValueRow = { teamId: number; name: string; abbreviation: string;
 
 async function fetchAllTeamSeasonValues(metric: TeamMetric, season: number): Promise<TeamValueRow[]> {
   const group = metric === 'errors_per_game' ? 'fielding' : metric === 'team_era' ? 'pitching' : 'hitting'
-  const res = await fetch(`${MLB_API}/teams/stats?season=${season}&group=${group}&stats=season&sportId=1`)
+  const res = await fetch(`${MLB_API}/teams/stats?season=${season}&group=${group}&stats=season&sportId=1`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   const splits = json.stats?.[0]?.splits ?? []
@@ -747,7 +747,7 @@ export const DIVISIONS: Record<string, number[]> = {
 }
 
 async function getTeamWinProgression(teamId: number, season: number): Promise<{ gameIndex: number; wins: number }[]> {
-  const res = await fetch(`${MLB_API}/schedule?teamId=${teamId}&season=${season}&gameType=R&sportId=1`)
+  const res = await fetch(`${MLB_API}/schedule?teamId=${teamId}&season=${season}&gameType=R&sportId=1`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   const games = (json.dates ?? []).flatMap((d: any) => d.games ?? [])
@@ -827,7 +827,7 @@ export async function getBatterCareerTable(id: number): Promise<CareerSeasonRow[
 // existed before this. Mirrors a proven-working pattern exactly, not a
 // new guess.
 async function fetchYearByYearPitching(id: number): Promise<any[]> {
-  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=pitching`)
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=yearByYear&group=pitching`, { next: { revalidate: 3600 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return (json.stats?.[0]?.splits ?? []).filter((s: any) => s.season)
@@ -849,7 +849,7 @@ export async function getPlayerSeasonStats(
   subjectType: 'pitcher' | 'batter', id: number, season: number
 ): Promise<SeasonStatRow[]> {
   const group = subjectType === 'pitcher' ? 'pitching' : 'hitting'
-  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=season&group=${group}&season=${season}`)
+  const res = await fetch(`${MLB_API}/people/${id}/stats?stats=season&group=${group}&season=${season}`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   const stat = json.stats?.[0]?.splits?.[0]?.stat ?? {}
@@ -862,7 +862,7 @@ export async function getPlayerSeasonStats(
 export type RosterPlayer = { id: number; fullName: string; primaryPosition: string }
 
 export async function getTeamRoster(teamId: number): Promise<RosterPlayer[]> {
-  const res = await fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=active`)
+  const res = await fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=active`, { next: { revalidate: 300 } })
   if (!res.ok) throw new Error(`MLB API ${res.status}`)
   const json = await res.json()
   return (json.roster ?? [])

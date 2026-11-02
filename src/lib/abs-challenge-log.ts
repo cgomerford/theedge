@@ -17,6 +17,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { MLB_TEAMS as MLB_TEAMS_BY_ID } from '@/lib/mlb-assets'
+import { log } from '@/lib/log'
 
 // Supabase-js runs on the runtime's global fetch, which Next.js patches
 // with its own Data Cache — so a plain createAdminClient() call here would
@@ -162,9 +163,9 @@ async function pullAllChallengeRows(): Promise<{ rows: RawRow[]; complete: boole
       // function already handles gracefully (falls through to []). Anything
       // else is a real, unexpected failure and stays loud.
       if (error.code === 'PGRST205') {
-        console.warn('abs_challenge_log: table not created yet (run scripts/sql/create_abs_challenge_log.sql) — showing empty state.')
+        log.warn('abs-challenge-log', 'abs_challenge_log: table not created yet (run scripts/sql/create_abs_challenge_log.sql) — showing empty state.')
       } else {
-        console.error('[pullAllChallengeRows] Supabase error:', error.message)
+        log.error('pullAllChallengeRows', 'Supabase error', error.message)
       }
       return { rows, complete: false } // partial on a mid-pull failure — shown, but not cached
     }

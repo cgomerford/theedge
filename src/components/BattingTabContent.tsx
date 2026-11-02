@@ -14,6 +14,7 @@ import type {
   BatterSplits,
   BatterVsPitcher,
 } from '@/lib/batter-stats'
+import { log } from '@/lib/log'
 
 
 // =====================================================
@@ -160,7 +161,7 @@ function LineChart({ opsValues }: { opsValues: (number | null)[] }) {
           },
         },
       })
-    }).catch(err => console.error('LineChart import failed:', err))
+    }).catch(err => log.error('BattingTabContent', 'LineChart import failed', err))
 
     return () => { if (chartInstance) chartInstance.destroy() }
   }, [opsValues])
@@ -176,7 +177,6 @@ function RadarChart({ values, labels }: { values: number[]; labels: string[] }) 
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    console.log('RadarChart useEffect fired', { valuesLength: values.length, hasCanvas: !!canvasRef.current })
     if (!canvasRef.current || values.length === 0) return
 
     let chartInstance: any = null
@@ -187,7 +187,6 @@ function RadarChart({ values, labels }: { values: number[]; labels: string[] }) 
       const existing = Chart.getChart(ctx)
       if (existing) existing.destroy()
 
-      console.log('Creating radar with values:', values)
 
       chartInstance = new Chart(ctx, {
         type: 'radar',
@@ -222,7 +221,7 @@ function RadarChart({ values, labels }: { values: number[]; labels: string[] }) 
           },
         },
       })
-    }).catch(err => console.error('RadarChart import failed:', err))
+    }).catch(err => log.error('BattingTabContent', 'RadarChart import failed', err))
 
     return () => { if (chartInstance) chartInstance.destroy() }
   }, [values, labels])

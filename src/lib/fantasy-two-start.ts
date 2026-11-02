@@ -7,6 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB_SCHEDULE = 'https://statsapi.mlb.com/api/v1/schedule'
 
@@ -102,7 +103,7 @@ export async function getTwoStartPitchers(): Promise<TwoStartPitcher[]> {
       }
     }
   } catch (e) {
-    console.error('two-start: schedule fetch failed', e)
+    log.error('fantasy-two-start', 'two-start: schedule fetch failed', e)
     return []
   }
 

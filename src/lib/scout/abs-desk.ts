@@ -25,6 +25,7 @@ const MLB = 'https://statsapi.mlb.com/api/v1'
 const PAGE = 1000
 const ROWS_TTL_MS = 10 * 60 * 1000
 import { MIN_ABS_N, MIN_RANK_CHALLENGES } from './abs-consts'
+import { log } from '@/lib/log'
 export { MIN_ABS_N, MIN_RANK_CHALLENGES }
 const RECENT_GAMES = 15
 const BASE_COLS = 'game_pk, game_date, inning, challenging_team_id, challenge_side, challenger_player_id, challenger_player_name, is_overturned'
@@ -103,7 +104,7 @@ export async function getAbsRows(): Promise<Row[]> {
       withSituation = false; rows.length = 0; offset = -PAGE
       continue
     }
-    if (error) { console.error('[scout] abs_challenge_log query failed:', error.message); break }
+    if (error) { log.error('scout', 'abs_challenge_log query failed', error.message); break }
     rows.push(...((data ?? []) as Row[]))
     if (!data || data.length < PAGE) break
   }
@@ -225,7 +226,7 @@ export async function getAbsDesk(teamId: number, abbr: string, gameDate: string)
       profile: buildProfile(abbr, season_, recent, league, rank),
     }
   } catch (err) {
-    console.error('[scout] abs desk failed:', abbr, err)
+    log.error('scout', 'abs desk failed', [abbr, err].join(' '))
     return null
   }
 }

@@ -1,6 +1,7 @@
 // lib/articles.ts
 
 import { createAdminClient } from '@/lib/supabase';
+import { logOnce } from '@/lib/log'
 
 // SERVER-ONLY FILE — uses the service-role key via createAdminClient().
 // Never import this into a 'use client' component.
@@ -21,7 +22,7 @@ export async function getArticleById(id: string): Promise<Article | null> {
     .maybeSingle();
 
   if (error) {
-    console.error('[getArticleById] Supabase error:', error.message);
+    logOnce('getArticleById:' + 'Supabase error', 'getArticleById', 'Supabase error', error.message);
     return null;
   }
 
@@ -77,7 +78,7 @@ export async function getLatestArticles(limit = 6): Promise<ArticleSummary[]> {
     .limit(limit);
 
   if (error) {
-    console.error('[getLatestArticles] Supabase error:', error.message);
+    logOnce('getLatestArticles:' + 'Supabase error', 'getLatestArticles', 'Supabase error', error.message);
     return [];
   }
 
@@ -103,7 +104,7 @@ export async function getArticlesByTeam(
     .limit(limit);
 
   if (error) {
-    console.error('[getArticlesByTeam] Supabase error:', error.message);
+    logOnce('getArticlesByTeam:' + 'Supabase error', 'getArticlesByTeam', 'Supabase error', error.message);
     return [];
   }
 
@@ -126,7 +127,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     .maybeSingle();
 
   if (error) {
-    console.error('[getArticleBySlug] Supabase error:', error.message);
+    logOnce('getArticleBySlug:' + 'Supabase error', 'getArticleBySlug', 'Supabase error', error.message);
     return null;
   }
 
@@ -146,7 +147,7 @@ export async function getArticleBySlugForAdmin(slug: string): Promise<Article | 
     .maybeSingle();
 
   if (error) {
-    console.error('[getArticleBySlugForAdmin] Supabase error:', error.message);
+    logOnce('getArticleBySlugForAdmin:' + 'Supabase error', 'getArticleBySlugForAdmin', 'Supabase error', error.message);
     return null;
   }
 
@@ -198,7 +199,7 @@ export async function createArticle(input: CreateArticleInput): Promise<Article 
     .single();
 
   if (error) {
-    console.error('[createArticle] Supabase error:', error.message);
+    logOnce('createArticle:' + 'Supabase error', 'createArticle', 'Supabase error', error.message);
     return null;
   }
 
@@ -252,7 +253,7 @@ export async function updateArticle(input: UpdateArticleInput): Promise<Article 
     .single();
 
   if (error) {
-    console.error('[updateArticle] Supabase error:', error.message);
+    logOnce('updateArticle:' + 'Supabase error', 'updateArticle', 'Supabase error', error.message);
     return null;
   }
 
@@ -280,7 +281,7 @@ export async function publishArticle(id: string, at?: string | null): Promise<Ar
     .single();
 
   if (error) {
-    console.error('[publishArticle] Supabase error:', error.message);
+    logOnce('publishArticle:' + 'Supabase error', 'publishArticle', 'Supabase error', error.message);
     return null;
   }
 
@@ -297,7 +298,7 @@ export async function unpublishArticle(id: string): Promise<Article | null> {
     .single();
 
   if (error) {
-    console.error('[unpublishArticle] Supabase error:', error.message);
+    logOnce('unpublishArticle:' + 'Supabase error', 'unpublishArticle', 'Supabase error', error.message);
     return null;
   }
 
@@ -321,7 +322,7 @@ export async function saveRevision(articleId: string, title: string, body: Tipta
   const supabase = createAdminClient();
   const { error } = await supabase.from('article_revisions').insert({ article_id: articleId, title, body, meta, kind });
   if (error) {
-    console.error('[saveRevision] Supabase error:', error.message);
+    logOnce('saveRevision:' + 'Supabase error', 'saveRevision', 'Supabase error', error.message);
     return;
   }
   const { data } = await supabase.from('article_revisions').select('id').eq('article_id', articleId).order('saved_at', { ascending: false }).range(MAX_REVISIONS, MAX_REVISIONS + 200);
@@ -333,7 +334,7 @@ export async function listRevisions(articleId: string): Promise<ArticleRevision[
   const supabase = createAdminClient();
   const { data, error } = await supabase.from('article_revisions').select('id, article_id, title, kind, saved_at').eq('article_id', articleId).order('saved_at', { ascending: false }).limit(MAX_REVISIONS);
   if (error) {
-    console.error('[listRevisions] Supabase error:', error.message);
+    logOnce('listRevisions:' + 'Supabase error', 'listRevisions', 'Supabase error', error.message);
     return [];
   }
   return (data ?? []) as ArticleRevision[];
@@ -343,7 +344,7 @@ export async function getRevision(id: string): Promise<{ title: string; body: Ti
   const supabase = createAdminClient();
   const { data, error } = await supabase.from('article_revisions').select('title, body, meta').eq('id', id).maybeSingle();
   if (error) {
-    console.error('[getRevision] Supabase error:', error.message);
+    logOnce('getRevision:' + 'Supabase error', 'getRevision', 'Supabase error', error.message);
     return null;
   }
   return data as { title: string; body: TiptapDoc; meta: Record<string, unknown> } | null;

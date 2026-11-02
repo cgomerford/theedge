@@ -15,6 +15,7 @@
 
 import { getPitcherCountTendency, getPitcherSequencing } from '@/lib/pitcher-sequencing'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
+import { log } from '@/lib/log'
 
 export type SplitKey = 'all' | 'vs_lhb' | 'vs_rhb'
 export const COUNTS = ['0-0', '0-1', '0-2', '1-0', '1-1', '1-2', '2-0', '2-1', '2-2', '3-0', '3-1', '3-2']
@@ -77,7 +78,7 @@ export async function getPitcherAttack(pitcherId: number, name: string): Promise
     const order = Object.keys(pitchNames).sort((a, b) => (base.mix[b] ?? 0) - (base.mix[a] ?? 0))
     return { id: pitcherId, name, pitchNames, order, splits }
   } catch (err) {
-    console.error('[scout] pitcher attack failed:', pitcherId, err)
+    log.error('scout', 'pitcher attack failed', [pitcherId, err].join(' '))
     return null
   }
 }

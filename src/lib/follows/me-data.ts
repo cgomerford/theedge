@@ -11,6 +11,7 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import { slugifyGame } from '@/lib/mlb'
 import type { MLBGame } from '@/lib/mlb'
 import { MLB_TEAMS, type Team } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const iso = (d: Date) => d.toISOString().slice(0, 10)
@@ -18,11 +19,11 @@ const shift = (days: number) => new Date(Date.now() + days * 86400000)
 
 async function get<T>(path: string, name: string): Promise<T | null> {
   try {
-    const res = await throttledMlbFetch(`${MLB}${path}`, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
-    if (!res.ok) { console.error(`[${name}] MLB API HTTP`, res.status, path); return null }
+    const res = await throttledMlbFetch(`${MLB}${path}`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(10000) })
+    if (!res.ok) { log.error(`${name}`, `MLB API HTTP`, [res.status, path].join(' ')); return null }
     return (await res.json()) as T
   } catch (err) {
-    console.error(`[${name}] failed:`, err instanceof Error ? err.message : err)
+    log.error(`${name}`, `failed`, err instanceof Error ? err.message : err)
     return null
   }
 }

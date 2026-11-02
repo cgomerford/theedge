@@ -3,6 +3,7 @@
 // put_away, usage, all per pitch type per pitcher. Replaces the Python
 // cron → Supabase pipeline which had accuracy issues per user feedback.
 import { NextRequest, NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url, {
-      cache: 'no-store',
+      next: { revalidate: 3600 },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/csv,*/*',
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
     rows.sort((a, b) => b.usage - a.usage)
     return NextResponse.json({ rows })
   } catch (err) {
-    console.error('[pitcher-arsenal] fetch failed:', err)
+    log.error('pitcher-arsenal', 'fetch failed', err)
     return NextResponse.json({ error: 'Failed to fetch arsenal data' }, { status: 500 })
   }
 }

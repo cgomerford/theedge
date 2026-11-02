@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { MLB_TEAMS } from '@/lib/teams'
 import { resolveViewer, checkLookup, chargeLookup, anonCookie, perDayFor } from '@/lib/ask-lookups'
+import { log } from '@/lib/log'
 
 type Stat = Record<string, string | number | undefined>
 type Split = { season?: string; stat: Stat }
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
     if (c) res.cookies.set(c.name, c.value, c.options)
     return res
   } catch (e) {
-    console.error('[stats/vs-team] failed:', (e as Error).message)
+    log.error('stats/vs-team', 'failed', (e as Error).message)
     return NextResponse.json({ error: 'MLB Stats API did not respond. Try again in a moment.' }, { status: 502 })
   }
 }

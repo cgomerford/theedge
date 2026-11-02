@@ -29,6 +29,7 @@
 // concurrency to avoid hammering statsapi.mlb.com.
 
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
+import { log, logOnce } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -134,7 +135,7 @@ async function getGamePksForWindow(sportId: number, lookbackDays: number): Promi
   try {
     const res = await fetch(url, { next: { revalidate: 1800 } })
     if (!res.ok) {
-      console.error(`[trending] schedule fetch failed for sportId ${sportId}: ${res.status}`)
+      logOnce('trending:schedule fetch failed for sportId #: #', 'trending', `schedule fetch failed for sportId ${sportId}: ${res.status}`)
       return []
     }
     const data = await res.json()
@@ -154,10 +155,10 @@ async function getGamePksForWindow(sportId: number, lookbackDays: number): Promi
         })
       }
     }
-    console.log(`[trending] sportId ${sportId}: ${out.length} final games in window ${start}..${end}`)
+    log.debug('trending', `sportId ${sportId}: ${out.length} final games in window ${start}..${end}`)
     return out
   } catch (e) {
-    console.error(`[trending] schedule fetch threw for sportId ${sportId}:`, e)
+    logOnce('trending:schedule fetch threw for sportId #', 'trending', `schedule fetch threw for sportId ${sportId}`, e)
     return []
   }
 }
@@ -169,7 +170,7 @@ async function getBoxscore(gamePk: number): Promise<any | null> {
     if (!res.ok) return null
     return await res.json()
   } catch (e) {
-    console.error(`[trending] boxscore(${gamePk}) threw:`, e)
+    logOnce('trending:boxscore(#) threw', 'trending', `boxscore(${gamePk}) threw`, e)
     return null
   }
 }
@@ -192,7 +193,7 @@ async function fetchLevelWindow(sportId: number, days: number): Promise<{ games:
   if (games.length === 0) return { games: [], boxByGamePk: new Map() }
   const results = await mapWithConcurrency(games, 12, async (g) => ({ g, box: await getBoxscore(g.gamePk) }))
   const missing = results.filter((r) => !r.box).length
-  if (missing > 0) console.warn(`[trending] ${missing}/${games.length} boxscore fetches failed for a ${days}-day window (sportId ${sportId})`)
+  if (missing > 0) log.warn('trending', `${missing}/${games.length} boxscore fetches failed for a ${days}-day window (sportId ${sportId})`)
   const boxByGamePk = new Map<number, any>()
   for (const { g, box } of results) if (box) boxByGamePk.set(g.gamePk, box)
   return { games, boxByGamePk }
@@ -289,7 +290,7 @@ function aggregateBatters(games: GameDescriptor[], boxByGamePk: Map<number, any>
     })
   }
 
-  console.log(`[trending] level ${level} batters: ${aggregates.length} players with >= ${MIN_GAMES_ELIGIBLE} games in window`)
+  log.debug('trending', `level ${level} batters: ${aggregates.length} players with >= ${MIN_GAMES_ELIGIBLE} games in window`)
   if (aggregates.length === 0) return []
 
   const zAvg = zScoreFn(aggregates.map((a) => a.avg))
@@ -401,7 +402,7 @@ function aggregatePitcherGroup(
     })
   }
 
-  console.log(`[trending] level ${level} ${role}s: ${aggregates.length} players with >= ${minEligible} ${role === 'starter' ? 'starts' : 'appearances'} in window`)
+  log.debug('trending', `level ${level} ${role}s: ${aggregates.length} players with >= ${minEligible} ${role === 'starter' ? 'starts' : 'appearances'} in window`)
   if (aggregates.length === 0) return []
 
   // ERA/WHIP/BB are "lower is better" — the opposite direction from
@@ -442,7 +443,7 @@ export async function getAllTrendingForLevel(level: Level, count = 5): Promise<L
   const { games, boxByGamePk } = await fetchLevelWindow(sportId, SHARED_WINDOW_DAYS)
 
   if (games.length === 0) {
-    console.warn(`[trending] no games found for level ${level} in ${SHARED_WINDOW_DAYS}-day window — returning empty`)
+    log.warn('trending', `no games found for level ${level} in ${SHARED_WINDOW_DAYS}-day window — returning empty`)
     return { batters: [], startingPitchers: [], reliefPitchers: [] }
   }
 

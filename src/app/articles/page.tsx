@@ -5,6 +5,7 @@ import SiteHeader from '@/components/SiteHeader';
 import { createAdminClient } from '@/lib/supabase';
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
+import { log } from '@/lib/log'
 
 export const metadata = pageMeta({
   title: 'Articles',
@@ -39,7 +40,7 @@ async function getAllPublishedArticles(): Promise<ArticleListItem[]> {
     .limit(50); // simple cap — swap for real pagination once volume warrants it
 
   if (error) {
-    console.error('[getAllPublishedArticles] Supabase error:', error.message);
+    log.error('getAllPublishedArticles', 'Supabase error', error.message);
     return [];
   }
 

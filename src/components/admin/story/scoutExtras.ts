@@ -24,6 +24,7 @@ import {
   type AbsLogRow, type FrvRow,
 } from './scoutReduce'
 import type { Pair, RunCard, ScoutExtras, SeriesState } from './types'
+import { log } from '@/lib/log'
 
 type Req = {
   gamePk: number; gameDate: string
@@ -39,7 +40,7 @@ async function arsenalRows(pitcherId: number | null, season: number): Promise<Re
     .from('pitch_arsenals')
     .select('pitch_type, pitch_name, percentage, count, avg_velocity, whiff_percent, put_away_percent, hard_hit_percent')
     .eq('player_id', pitcherId).eq('season', season)
-  if (error) { console.error('[loadScoutExtras] pitch_arsenals error:', error.message); return null }
+  if (error) { log.error('loadScoutExtras', 'pitch_arsenals error', error.message); return null }
   return (data ?? []) as Record<string, unknown>[]
 }
 
@@ -48,7 +49,7 @@ async function frvRows(season: number): Promise<FrvRow[] | null> {
     .from('player_fielding_run_value')
     .select('player_id, framing_runs, blocking_runs, throwing_runs, outs_2, updated_at')
     .eq('season', season)
-  if (error) { console.error('[loadScoutExtras] player_fielding_run_value error:', error.message); return null }
+  if (error) { log.error('loadScoutExtras', 'player_fielding_run_value error', error.message); return null }
   return (data ?? []) as FrvRow[]
 }
 
@@ -60,7 +61,7 @@ async function absLog(): Promise<AbsLogRow[] | null> {
     const { data, error } = await supa.from('abs_challenge_log')
       .select('game_pk, game_date, challenging_team_id, challenge_side, challenger_player_id, challenger_player_name, batter_id, pitcher_id, is_overturned, plate_x, plate_z, sz_top, sz_bot, sz_width_in')
       .order('play_id').range(offset, offset + PAGE - 1)
-    if (error) { console.error('[loadScoutExtras] abs_challenge_log error:', error.message); return out.length ? out : null }
+    if (error) { log.error('loadScoutExtras', 'abs_challenge_log error', error.message); return out.length ? out : null }
     const rows = (data ?? []) as AbsLogRow[]
     out.push(...rows)
     if (rows.length < PAGE) break
@@ -70,7 +71,7 @@ async function absLog(): Promise<AbsLogRow[] | null> {
 
 async function seriesState(gamePk: number): Promise<SeriesState | null> {
   const res = await fetch(`https://statsapi.mlb.com/api/v1/schedule?gamePk=${gamePk}&hydrate=seriesStatus`, { next: { revalidate: 300 } })
-  if (!res.ok) { console.error('[loadScoutExtras] seriesStatus HTTP', res.status); return null }
+  if (!res.ok) { log.error('loadScoutExtras', 'seriesStatus HTTP', res.status); return null }
   const g = (await res.json())?.dates?.[0]?.games?.[0]
   const s = g?.seriesStatus
   if (!s || typeof s.wins !== 'number') return null
@@ -78,7 +79,7 @@ async function seriesState(gamePk: number): Promise<SeriesState | null> {
 }
 
 async function safe<T>(name: string, fn: () => Promise<T>): Promise<T | null> {
-  try { return await fn() } catch (err) { console.error(`[loadScoutExtras] ${name} failed:`, err); return null }
+  try { return await fn() } catch (err) { log.error('loadScoutExtras', `${name} failed`, err); return null }
 }
 
 export async function loadScoutExtras(r: Req): Promise<ScoutExtras> {

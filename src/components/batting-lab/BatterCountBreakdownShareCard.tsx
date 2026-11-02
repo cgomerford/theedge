@@ -19,6 +19,7 @@ import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import { ZONE_LABELS } from '@/lib/hot-zones'
 import { CORE_KEYS, CHASE_KEYS, CHASE_SET } from '@/components/pitching-lab/ZoneGrid'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -212,7 +213,7 @@ export default function BatterCountBreakdownShareCard(props: Props) {
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('BatterCountBreakdownShareCard: PNG export failed', e)
+      log.error('BatterCountBreakdownShareCard', 'BatterCountBreakdownShareCard: PNG export failed', e)
     } finally {
       setExporting(false)
     }
@@ -225,7 +226,7 @@ export default function BatterCountBreakdownShareCard(props: Props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (e) {
-      console.error('BatterCountBreakdownShareCard: clipboard copy failed', e)
+      log.error('BatterCountBreakdownShareCard', 'BatterCountBreakdownShareCard: clipboard copy failed', e)
     }
   }
 

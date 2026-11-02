@@ -1,5 +1,6 @@
 import { cache } from 'react'
 import { createAdminClient } from './supabase'
+import { log } from '@/lib/log'
 
 export type TeamTransaction = {
   transaction_id: number
@@ -56,7 +57,7 @@ export async function getTeamTransactions(
     .limit(20)
 
   if (error) {
-    console.error('getTeamTransactions error:', error.message)
+    log.error('team-transactions', 'getTeamTransactions error', error.message)
     return []
   }
 
@@ -113,7 +114,7 @@ export async function getAllRecentTransactions(
     .limit(60)
 
   if (error) {
-    console.error('getAllRecentTransactions error:', error.message)
+    log.error('team-transactions', 'getAllRecentTransactions error', error.message)
     return []
   }
 

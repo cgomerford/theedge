@@ -56,6 +56,7 @@ import { Column as SplitsColumn, VIEWS, tonightKeys } from '@/components/scout/S
 import { getLeverage } from '@/lib/scout/leverage'
 import { getLateInnings } from '@/lib/scout/late-innings'
 import { CloseLate, BullpenLeverage, Aggression, LateInningsPanel } from '@/components/scout/LeverageSection'
+import { log } from '@/lib/log'
 
 export type DeskCtx = {
   club: ScoutClub
@@ -99,7 +100,7 @@ export async function NextGameDesk({ c }: { c: DeskCtx }) {
   if (!g || !ctx || !c.opp) return <NoGame club={c.club} what="the next-game watch-fors" />
 
   const cards = await getManagerCards(ctx).catch((err) => {
-    console.error('[NextGameDesk] getManagerCards failed:', err instanceof Error ? err.message : err)
+    log.error('NextGameDesk', 'getManagerCards failed', err instanceof Error ? err.message : err)
     return null
   })
   const when = new Date(g.gameTime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })

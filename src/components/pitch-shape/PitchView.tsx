@@ -21,6 +21,7 @@ import PitchRecap from './PitchRecap'
 import ReleaseReference from './ReleaseReference'
 import { GATES, GOLD, METRICS, aggregateSeason, isThinWeak, overallStandout, periodLabel, periodValues, standout, type Metric } from './monthStats'
 import { MIN_N, PRESET_NAMES, createPitchViewScene, monthColor, type CamName, type SceneApi, type Tab } from './pitchViewScene'
+import { log } from '@/lib/log'
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const mname = (m: number) => (m >= 1000 ? String(m) : MON[m - 1] ?? String(m))   // 2025 -> '2025' (a whole-season point)
@@ -69,7 +70,7 @@ export default function PitchView({ seasons, pitchName, hand, isPro }: { seasons
     try {
       a = createPitchViewScene({ canvas: canvasRef.current, labels: labelsRef.current, months, hand, monthLabel: mname, goldIndex: goldIdx, onCamName: setCam, onNote: setNote })
     } catch (e) {
-      console.error('[PitchView] 3D scene failed to load:', e instanceof Error ? e.message : e)
+      log.error('PitchView', '3D scene failed to load', e instanceof Error ? e.message : e)
       setFailed(true)
       return
     }

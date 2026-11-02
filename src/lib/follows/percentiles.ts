@@ -8,6 +8,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { MIN_SAMPLE } from '@/lib/min-sample'
+import { log } from '@/lib/log'
 
 type Meta = { label: string; skill: string; stat: 'bb' | 'hr' | 'avg' | 'sb' | 'ops' | 'k' | 'era' }
 const BATTER: Record<string, Meta> = {
@@ -46,7 +47,7 @@ export async function getPercentileBlocks(players: { id: number; isPitcher: bool
   if (players.length === 0) return out
   const supa = createAdminClient()
   const { data, error } = await supa.from('player_percentiles').select('player_id, kind, ranks').eq('season', season).in('player_id', players.map(p => p.id))
-  if (error) console.error('[getPercentileBlocks] Supabase error:', error.message)
+  if (error) log.error('getPercentileBlocks', 'Supabase error', error.message)
   const byKey = new Map<string, Record<string, number | null>>()
   for (const r of (data ?? []) as unknown as { player_id: number; kind: string; ranks: Record<string, number | null> }[]) byKey.set(`${r.player_id}-${r.kind}`, r.ranks)
   // batted balls, only where Hard-hit% could be shown
@@ -54,7 +55,7 @@ export async function getPercentileBlocks(players: { id: number; isPitcher: bool
   await Promise.all(players.map(async p => {
     if (!(byKey.get(`${p.id}-${p.isPitcher ? 'pitcher' : 'batter'}`)?.hard_hit_percent != null)) return
     const { count, error: e } = await supa.from('batted_ball_events').select('id', { count: 'exact', head: true }).eq(p.isPitcher ? 'pitcher_id' : 'batter_id', p.id).gte('game_date', `${season}-01-01`).lt('game_date', `${season + 1}-01-01`)
-    if (e) console.error('[getPercentileBlocks] batted balls:', e.message)
+    if (e) log.error('getPercentileBlocks', 'batted balls', e.message)
     else bbe.set(p.id, count ?? 0)
   }))
   for (const p of players) {

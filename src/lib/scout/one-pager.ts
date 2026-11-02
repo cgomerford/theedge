@@ -9,6 +9,7 @@ import { getProjectedLineup, type ProjectedLineup } from '@/lib/lineups'
 import { getBullpenDesk, type BullpenDesk } from '@/lib/scout/bullpen-desk'
 import type { HitterLine, PitcherLine } from '@/lib/team-profile'
 import type { ScoutClub, ScoutContext } from '@/components/scout/types'
+import { log } from '@/lib/log'
 
 export type RankItem = { group: string; label: string; display: string; rank: number; of: number; leagueDisplay: string }
 export type ClubOnePager = {
@@ -38,7 +39,7 @@ function pick(list: RankItem[], n: number): RankItem[] {
 }
 
 async function safe<T>(label: string, p: Promise<T>): Promise<T | null> {
-  try { return await p } catch (e) { console.error(`[onePager] ${label} failed:`, (e as Error).message); return null }
+  try { return await p } catch (e) { log.error('onePager', `${label} failed`, (e as Error).message); return null }
 }
 
 export async function getClubOnePager(club: ScoutClub, ctx: ScoutContext): Promise<ClubOnePager> {

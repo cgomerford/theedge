@@ -20,6 +20,7 @@
 
 import { cache } from 'react'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const REVALIDATE = 1800
@@ -44,12 +45,12 @@ export async function mlbJson(url: string, tag: string): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: REVALIDATE }, signal: AbortSignal.timeout(12000) })
     if (!res.ok) {
-      console.error(`[${tag}] MLB API error:`, res.status)
+      log.error(`${tag}`, `MLB API error`, res.status)
       return null
     }
     return await res.json()
   } catch (err) {
-    console.error(`[${tag}]`, err instanceof Error ? err.message : err)
+    log.error(`${tag}`, `failed`, err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -155,7 +156,7 @@ export const getLeagueTables = cache(async (season: number): Promise<LeagueTable
     mlbJson(`${MLB}/teams/stats?stats=season&group=fielding&${q}`, 'getLeagueTables:fielding'),
   ])
   if (!standings || !hit || !pit) {
-    console.error('[getLeagueTables] missing a required table (standings/hitting/pitching)')
+    log.error('getLeagueTables', 'missing a required table (standings/hitting/pitching)')
     return null
   }
 

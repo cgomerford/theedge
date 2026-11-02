@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
+import { log } from '@/lib/log'
 
 export type ResultClass = 'K' | 'BB' | 'HIT' | 'OUT_IN_PLAY'
 export const RESULT_CLASSES: ResultClass[] = ['K', 'BB', 'HIT', 'OUT_IN_PLAY']
@@ -40,9 +41,9 @@ async function namesOf(ids: number[]): Promise<Record<number, string>> {
   if (uniq.length === 0) return out
   try {
     const res = await throttledMlbFetch(`https://statsapi.mlb.com/api/v1/people?personIds=${uniq.join(',')}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
-    if (!res.ok) { console.error('[second-look] names HTTP', res.status); return out }
+    if (!res.ok) { log.error('second-look', 'names HTTP', res.status); return out }
     for (const p of ((await res.json()).people ?? []) as { id: number; fullName: string }[]) out[p.id] = p.fullName
-  } catch (err) { console.error('[second-look] names failed:', err instanceof Error ? err.message : err) }
+  } catch (err) { log.error('second-look', 'names failed', err instanceof Error ? err.message : err) }
   return out
 }
 
@@ -74,8 +75,8 @@ export async function getSecondLook(f: SlFilters, season = new Date().getFullYea
   const scopeQ = f.scope === 'league' || scopeId == null ? Promise.resolve({ data: null, error: null })
     : (() => { let q = supa.from('second_look_summary').select(SUM_COLS).eq('season', season).eq('scope_type', f.scope).eq('scope_id', scopeId).eq('p_throws', f.hand).eq('stand', f.stand).eq('look_number', 0); if (!all) q = q.eq('ab1_result_class', f.result); return q })()
   const [league, base, openersRes, scoped] = await Promise.all([leagueQ, baseQ, openersQ, scopeQ])
-  if (league.error || base.error || scoped.error) { console.error('[getSecondLook] Supabase error:', league.error?.message ?? base.error?.message ?? scoped.error?.message); return null }
-  if (openersRes.error) console.error('[getSecondLook] opening-pitch table not available:', openersRes.error.message)
+  if (league.error || base.error || scoped.error) { log.error('getSecondLook', 'Supabase error', league.error?.message ?? base.error?.message ?? scoped.error?.message); return null }
+  if (openersRes.error) log.error('getSecondLook', 'opening-pitch table not available', openersRes.error.message)
   const om = new Map<string, number>()
   for (const r of ((openersRes.error ? [] : openersRes.data) ?? []) as { ab1_first_pitch_type: string; n_pairs: number }[]) om.set(r.ab1_first_pitch_type, (om.get(r.ab1_first_pitch_type) ?? 0) + Number(r.n_pairs))
   const openers = [...om.entries()].map(([t, n]) => ({ t, n })).sort((a, b) => b.n - a.n)
@@ -111,7 +112,7 @@ async function pairsPage(f: SlFilters, season: number, offset: number, limit: nu
   if (f.scope === 'pitcher' && f.id) q = q.eq('pitcher_id', f.id)
   if (f.scope === 'batter' && f.id) q = q.eq('batter_id', f.id)
   const { data, error } = await q.order('game_date', { ascending: false }).order('game_pk', { ascending: false }).order('ab1_at_bat_number', { ascending: false }).range(offset, offset + limit - 1)
-  if (error) { console.error('[getSecondLook] pairs Supabase error:', error.message); return null }
+  if (error) { log.error('getSecondLook', 'pairs Supabase error', error.message); return null }
   return ((data ?? []) as PairDb[]).map(p => ({ date: p.game_date, pitcherId: p.pitcher_id, batterId: p.batter_id, firstClass: p.ab1_result_class, first: p.ab1_pitches, second: p.ab2_pitches, ended: p.ab2_event }))
 }
 

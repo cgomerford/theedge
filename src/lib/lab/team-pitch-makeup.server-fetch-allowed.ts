@@ -49,6 +49,7 @@
 
 import { MLB_TEAMS } from '@/lib/teams'
 import { withSavantCache } from '@/lib/savant-cache'
+import { log } from '@/lib/log'
 
 const SAVANT = 'https://baseballsavant.mlb.com/statcast_search/csv'
 const MLB = 'https://statsapi.mlb.com/api/v1'
@@ -348,7 +349,7 @@ export async function getTeamMakeup(teamId: number, season: number): Promise<Tea
   try {
     return await withSavantCache(`lab:team-makeup:${CACHE_VERSION}:${season}:${teamId}`, TTL_SECONDS, () => computeTeamMakeup(teamId, season))
   } catch (e) {
-    console.error('[getTeamMakeup] failed:', teamId, e instanceof Error ? e.message : e)
+    log.error('getTeamMakeup', 'failed', [teamId, e instanceof Error ? e.message : e].join(' '))
     return null
   }
 }
@@ -383,7 +384,7 @@ export async function getTeamRuns(season: number): Promise<Record<number, TeamRu
       }
     }
   } catch (e) {
-    console.error('[getTeamRuns] failed:', e instanceof Error ? e.message : e)
+    log.error('getTeamRuns', 'failed', e instanceof Error ? e.message : e)
   }
   return out
 }

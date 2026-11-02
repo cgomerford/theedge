@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { toPng } from 'html-to-image'
+import { log } from '@/lib/log'
 
 export default function ExportPng({ targetId, filename }: { targetId: string; filename: string }) {
   const [busy, setBusy] = useState(false)
@@ -18,7 +19,7 @@ export default function ExportPng({ targetId, filename }: { targetId: string; fi
       const a = document.createElement('a')
       a.href = url; a.download = filename; a.click()
     } catch (e) {
-      console.error('[ExportPng]', e)
+      log.error('ExportPng', 'failed', e)
       setErr(true)
     } finally { setBusy(false) }
   }

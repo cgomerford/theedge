@@ -10,6 +10,7 @@ import type { BatterSpray } from '@/lib/batter-spray'
 import type { PitcherHotZones } from '@/lib/hot-zones'
 import type { PitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { captureStoryToMp4 } from '@/lib/story-video'
+import { log } from '@/lib/log'
 
 export type GameWithReport = {
   game_pk: number
@@ -310,7 +311,7 @@ const AllGamesStorySlideshow = forwardRef<StorySlideshowHandle, Props>(function 
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      console.error('Story export failed:', err)
+      log.error('AllGamesStorySlideshow', 'Story export failed', err)
       setExportError(
         err instanceof Error && /tainted|cross-origin|CORS/i.test(err.message)
           ? 'A logo or headshot image in one of the chart cards blocked capture (CORS). Check crossOrigin on <img> tags in PitchLocationCard/TeamHotZoneCard/LineupSprayChart/TTOFatigueChart.'

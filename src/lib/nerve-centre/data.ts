@@ -6,6 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { TTO_MIN_PA, type SwingMonthRow, type TtoRow } from './model'
+import { log } from '@/lib/log'
 
 const num = (v: string | number | null) => (v == null ? null : Number(v)) // numeric columns come back as strings
 
@@ -17,7 +18,7 @@ export async function getSwingMonthly(batterId: number, season: number): Promise
   const { data, error } = await createAdminClient().from('batter_swing_monthly')
     .select('batter_id,season,month,n_swings,n_contact,n_bbe,bat_speed_mean,attack_angle_mean,squared_up_n,stance_angle_mean,stance_width_mean')
     .in('batter_id', [batterId, 0]).eq('season', season).order('month').limit(100)
-  if (error) { console.error('[getSwingMonthly] Supabase error:', error.message); return null }
+  if (error) { log.error('getSwingMonthly', 'Supabase error', error.message); return null }
   const rows = ((data ?? []) as unknown as SwingDb[]).map(r => ({
     ...r, bat_speed_mean: num(r.bat_speed_mean), attack_angle_mean: num(r.attack_angle_mean), stance_angle_mean: num(r.stance_angle_mean), stance_width_mean: num(r.stance_width_mean),
   }))
@@ -35,8 +36,8 @@ export async function getTtoLeaders(season: number): Promise<{ rows: TtoRow[]; l
     supa.from('batter_tto').select(TTO_COLS).eq('season', season).gt('batter_id', 0).gte('pa', TTO_MIN_PA).limit(1000),
     supa.from('batter_tto').select(TTO_COLS).eq('season', season).eq('batter_id', 0).maybeSingle(),
   ])
-  if (rows.error) { console.error('[getTtoLeaders] Supabase error:', rows.error.message); return null }
-  if (lg.error) { console.error('[getTtoLeaders] Supabase error (league):', lg.error.message); return null }
+  if (rows.error) { log.error('getTtoLeaders', 'Supabase error', rows.error.message); return null }
+  if (lg.error) { log.error('getTtoLeaders', 'Supabase error (league)', lg.error.message); return null }
   const list = ((rows.data ?? []) as unknown as TtoDb[]).map(toTto).filter(r => r.name)
   if (list.length === 0) return null
   return { rows: list, league: lg.data ? toTto(lg.data as unknown as TtoDb) : null }
@@ -45,6 +46,6 @@ export async function getTtoLeaders(season: number): Promise<{ rows: TtoRow[]; l
 /** One hitter's TTO row for a season (any plate-appearance count, so the page can say how few he has). null when he has none. */
 export async function getTtoProfile(batterId: number, season: number): Promise<TtoRow | null> {
   const { data, error } = await createAdminClient().from('batter_tto').select(TTO_COLS).eq('batter_id', batterId).eq('season', season).maybeSingle()
-  if (error) { console.error('[getTtoProfile] Supabase error:', error.message); return null }
+  if (error) { log.error('getTtoProfile', 'Supabase error', error.message); return null }
   return data ? toTto(data as unknown as TtoDb) : null
 }

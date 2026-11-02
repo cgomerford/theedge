@@ -14,7 +14,7 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 async function safeFetchJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return null
     return (await res.json()) as T
   } catch {

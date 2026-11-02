@@ -159,7 +159,7 @@ type RosterEntry = { person: { id: number; fullName: string; stats?: StatBlock[]
 
 export async function getTeamRosterBreakdown(teamId: number, season: number, cFIP: number): Promise<{ pitchers: RadarPlayerLine[]; batters: RadarPlayerLine[] }> {
   const hydrate = encodeURIComponent(`person(stats(group=[hitting,pitching],type=season,season=${season}))`)
-  const res = await fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=fullSeason&season=${season}&hydrate=${hydrate}`)
+  const res = await fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=fullSeason&season=${season}&hydrate=${hydrate}`, { next: { revalidate: 300 } })
   if (!res.ok) return { pitchers: [], batters: [] }
   const data = await res.json()
   const roster: RosterEntry[] = data.roster ?? []

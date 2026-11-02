@@ -10,6 +10,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { cache } from 'react'
+import { log } from '@/lib/log'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ async function flushBatterZones(batch: PendingBatterZones[]): Promise<void> {
       .eq('season', season)
 
     if (error || !data) {
-      console.error('[getBatterHotZones] Supabase error:', error?.message)
+      log.error('getBatterHotZones', 'Supabase error', error?.message)
       continue // this chunk's batters resolve to {} below
     }
     for (const row of data as BatterHotZones[]) {
@@ -129,7 +130,7 @@ export const getBatterHotZones = cache(function getBatterHotZones(playerId: numb
       const batch = pendingBatterZones
       pendingBatterZones = []
       flushBatterZones(batch).catch((e) => {
-        console.error('[getBatterHotZones] flush failed:', e instanceof Error ? e.message : e)
+        log.error('getBatterHotZones', 'flush failed', e instanceof Error ? e.message : e)
         for (const p of batch) p.resolve({})
       })
     }, 0)

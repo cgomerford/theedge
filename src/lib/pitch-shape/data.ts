@@ -25,6 +25,7 @@ import {
 } from './model'
 
 import { LOC_COLS, type LocationPayload, type LocationWindow } from './location'
+import { logOnce } from '@/lib/log'
 
 export const LEAGUE_SPAN = '2024-2026'
 export const LEAGUE_COORD_ERA = '2026'
@@ -72,7 +73,7 @@ export async function getLeagueBins(pitchType: string, hand: Hand): Promise<Shap
   // Page 1 also returns the total row count, so the remaining pages can be fetched in parallel.
   const first = await page(0)
   if (first.error) {
-    console.error('[getLeagueBins] Supabase error:', first.error.message)
+    logOnce('getLeagueBins:' + 'Supabase error', 'getLeagueBins', 'Supabase error', first.error.message)
     return []
   }
   const out = ((first.data ?? []) as unknown as BinRow[]).map(toBin)
@@ -83,7 +84,7 @@ export async function getLeagueBins(pitchType: string, hand: Hand): Promise<Shap
     const results = await Promise.all(offsets.slice(i, i + PARALLEL_PAGES).map(page))
     for (const r of results) {
       if (r.error) {
-        console.error('[getLeagueBins] Supabase error:', r.error.message)
+        logOnce('getLeagueBins:' + 'Supabase error', 'getLeagueBins', 'Supabase error', r.error.message)
         return [] // a missing page would silently skew every rate: fail to the empty state
       }
       for (const row of (r.data ?? []) as unknown as BinRow[]) out.push(toBin(row))
@@ -103,7 +104,7 @@ export async function getAvailablePitchTypes(): Promise<string[]> {
       .from('pitch_shape_bins')
       .select('pitch_type', { count: 'exact', head: true })
       .eq('span', LEAGUE_SPAN).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', t).gt('n_pitches', 0)
-    if (error) console.error('[getAvailablePitchTypes] Supabase error:', error.message)
+    if (error) logOnce('getAvailablePitchTypes:' + 'Supabase error', 'getAvailablePitchTypes', 'Supabase error', error.message)
     return error ? 0 : count ?? 0
   }))
   const order = ['FF', 'ST', 'SL', 'SI', 'FC', 'CH', 'CU', 'KC', 'FS', 'SV']
@@ -155,7 +156,7 @@ async function getAbsByMonth(pitcherId: number, season: number): Promise<Record<
     .lte('game_date', `${season}-12-31`)
     .limit(1000)   // one row per challenge on his pitches: far under the 1,000-row PostgREST cap
   if (error) {
-    console.error('[getAbsByMonth] Supabase error:', error.message)
+    logOnce('getAbsByMonth:' + 'Supabase error', 'getAbsByMonth', 'Supabase error', error.message)
     return {}
   }
   const out: Record<string, { n: number; upheld: number }> = {}
@@ -177,15 +178,15 @@ export async function getPitchViewMonths(pitcherId: number, season: number): Pro
   // Newest columns first; each tier drops what the database does not have yet so the shape story always loads.
   let { data, error } = await query(`${BASE},n_swings,n_whiffs,n_csw,n_bbe,xwoba_con_sum,n_weak`)
   if (error?.code === '42703') {
-    console.error('[getPitchViewMonths] n_weak missing, run migration 20261020120000:', error.message)
+    logOnce('getPitchViewMonths:' + 'n_weak missing, run migration 20261020120000', 'getPitchViewMonths', 'n_weak missing, run migration 20261020120000', error.message)
     ;({ data, error } = await query(`${BASE},n_swings,n_whiffs,n_csw,n_bbe,xwoba_con_sum`))
   }
   if (error?.code === '42703') {
-    console.error('[getPitchViewMonths] outcome columns missing, run migration 20261019210000:', error.message)
+    logOnce('getPitchViewMonths:' + 'outcome columns missing, run migration 20261019210000', 'getPitchViewMonths', 'outcome columns missing, run migration 20261019210000', error.message)
     ;({ data, error } = await query(BASE))
   }
   if (error) {
-    console.error('[getPitchViewMonths] Supabase error:', error.message)
+    logOnce('getPitchViewMonths:' + 'Supabase error', 'getPitchViewMonths', 'Supabase error', error.message)
     return {}
   }
   const abs = await getAbsByMonth(pitcherId, season)   // separate await, not a slot in a positional Promise.all
@@ -231,10 +232,10 @@ export async function getPitchCompare(pitcherId: number, season: number, hand: H
     const q = (cols: string) => supa.from('pitch_shape_pitcher').select(cols).eq('season', season).eq('pitch_type', t).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES).limit(1000)
     let { data, error } = await q(`${BASE},n_taken,n_gift,n_miss,setup`)
     if (error?.code === '42703') {
-      console.error('[getPitchCompare] call/setup columns missing, run migration 20261020180000:', error.message)
+      logOnce('getPitchCompare:' + 'call/setup columns missing, run migration 20261020180000', 'getPitchCompare', 'call/setup columns missing, run migration 20261020180000', error.message)
       ;({ data, error } = await q(BASE))
     }
-    if (error) { console.error('[getPitchCompare] Supabase error:', error.message); return }
+    if (error) { logOnce('getPitchCompare:' + 'Supabase error', 'getPitchCompare', 'Supabase error', error.message); return }
     const rows = (data ?? []) as unknown as CompareRow[]
     const me = rows.find(r => r.pitcher_id === pitcherId)
     if (!me) return
@@ -254,7 +255,7 @@ export async function getPitchCompare(pitcherId: number, season: number, hand: H
     // each one's whole-season flight path (from his monthly rows) and ABS record on this pitch; separate awaits
     const mres = await supa.from('pitch_shape_monthly').select('pitcher_id,pitch_type,month,n_pitches,release_pos_x,release_pos_y,release_pos_z,release_extension,release_speed,release_spin_rate,vx0,vy0,vz0,ax,ay,az,plate_x,plate_z,sz_top,sz_bot,ivb,hb')
       .eq('season', season).eq('pitch_type', t).in('pitcher_id', ids).limit(1000)
-    if (mres.error) console.error('[getPitchCompare] monthly Supabase error:', mres.error.message)
+    if (mres.error) logOnce('getPitchCompare:' + 'monthly Supabase error', 'getPitchCompare', 'monthly Supabase error', mres.error.message)
     const byP = new Map<number, PitchViewMonth[]>()
     for (const r of (mres.data ?? []) as unknown as MonthlyRow[]) {
       const pid = r.pitcher_id as number
@@ -262,7 +263,7 @@ export async function getPitchCompare(pitcherId: number, season: number, hand: H
     }
     const ares = await supa.from('abs_challenge_log').select('pitcher_id,is_overturned').eq('pitch_type', t).in('pitcher_id', ids)
       .gte('game_date', `${season}-01-01`).lte('game_date', `${season}-12-31`).limit(1000)
-    if (ares.error) console.error('[getPitchCompare] abs Supabase error:', ares.error.message)
+    if (ares.error) logOnce('getPitchCompare:' + 'abs Supabase error', 'getPitchCompare', 'abs Supabase error', ares.error.message)
     const abs = new Map<number, { n: number; over: number }>()
     for (const r of (ares.data ?? []) as unknown as { pitcher_id: number; is_overturned: boolean }[]) {
       const o = abs.get(r.pitcher_id) ?? { n: 0, over: 0 }
@@ -328,7 +329,7 @@ export async function getMovementCells(type: string, hand: Hand, hb0In: number |
     const { data, error } = await supa
       .from('pitch_shape_cells').select('span,n_pitches,n_swings,n_whiffs,cells')
       .in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', type).eq('p_throws', hand)
-    if (error) { console.error('[getMovementCells] Supabase error:', error.message); return null }
+    if (error) { logOnce('getMovementCells:' + 'Supabase error', 'getMovementCells', 'Supabase error', error.message); return null }
     for (const d of (data ?? []) as unknown as { span: string; n_pitches: number; n_swings: number; n_whiffs: number; cells: number[] }[]) {
       const row = { at: Date.now(), n_pitches: d.n_pitches, n_swings: d.n_swings, n_whiffs: d.n_whiffs, cells: d.cells }
       cellsCache.set(`${d.span}|${LEAGUE_COORD_ERA}|${type}|${hand}`, row)
@@ -370,7 +371,7 @@ async function getPooledMovementCells(type: string, hand: Hand, hb0In: number | 
   const { data, error } = await supa
     .from('pitch_shape_cells').select('n_pitches,n_swings,n_whiffs,cells')
     .eq('span', POOLED_SPAN).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', type).eq('p_throws', hand).maybeSingle()
-  if (error) { console.error('[getPooledMovementCells] Supabase error:', error.message); return null }
+  if (error) { logOnce('getPooledMovementCells:' + 'Supabase error', 'getPooledMovementCells', 'Supabase error', error.message); return null }
   if (!data) return null
   const d = data as unknown as { n_pitches: number; n_swings: number; n_whiffs: number; cells: number[] }
   const [hb0, ivb0] = hb0In != null && ivb0In != null ? [hb0In, ivb0In] : leagueCenter([{ cells: d.cells }])
@@ -437,7 +438,7 @@ export async function getThrowersDetailed(type: string, hand: Hand, hb: number, 
     .limit(1000)
   let { data, error } = await ask(THROWER_BASE_COLS + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(THROWER_BASE_COLS))
-  if (error) { console.error('[getThrowers] Supabase error:', error.message); return { throwers: [], league: leagueOf([]) } }
+  if (error) { logOnce('getThrowers:' + 'Supabase error', 'getThrowers', 'Supabase error', error.message); return { throwers: [], league: leagueOf([]) } }
   type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number; points: { hb: number; ivb: number }[] | null }
   const rows = (data ?? []) as unknown as Row[]
   const out: Thrower[] = []
@@ -477,7 +478,7 @@ export async function getPitcherDots(type: string, hand: Hand, season: number): 
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES).limit(1000)
   let { data, error } = await ask(cols + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
-  if (error) { console.error('[getPitcherDots] Supabase error:', error.message); return { dots: [], league: leagueOf([]) } }
+  if (error) { logOnce('getPitcherDots:' + 'Supabase error', 'getPitcherDots', 'Supabase error', error.message); return { dots: [], league: leagueOf([]) } }
   type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number }
   const rows = (data ?? []) as unknown as Row[]
   const dots: PitcherDot[] = rows.map(r => ({
@@ -504,7 +505,7 @@ export async function getPitcherRepertoire(pitcherId: number, season: number, pr
   const ask = (c: string) => supa.from('pitch_shape_pitcher').select(c).eq('pitcher_id', pitcherId).eq('season', season).order('n_pitches', { ascending: false }).limit(20)
   let { data, error } = await ask(cols + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
-  if (error) { console.error('[getPitcherRepertoire] Supabase error:', error.message); return null }
+  if (error) { logOnce('getPitcherRepertoire:' + 'Supabase error', 'getPitcherRepertoire', 'Supabase error', error.message); return null }
   type Row = DiagRow & { pitcher_id: number; pitcher_name: string; team_abbr: string | null; p_throws: string; pitch_type: string; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number; n_whiffs: number }
   const all = (data ?? []) as unknown as Row[]
   if (all.length === 0) return null
@@ -520,7 +521,7 @@ export async function getPitcherRepertoire(pitcherId: number, season: number, pr
 export async function getPitcherPoints(type: string, hand: Hand, season: number, pitcherId: number): Promise<[number, number][]> {
   const { data, error } = await createAdminClient().from('pitch_shape_pitcher').select('points')
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).eq('pitcher_id', pitcherId).maybeSingle()
-  if (error) { console.error('[getPitcherPoints] Supabase error:', error.message); return [] }
+  if (error) { logOnce('getPitcherPoints:' + 'Supabase error', 'getPitcherPoints', 'Supabase error', error.message); return [] }
   const pts = ((data as unknown as { points: { hb: number; ivb: number }[] | null } | null)?.points ?? [])
   return pts.map(p => [Math.round(p.hb * 10) / 10, Math.round(p.ivb * 10) / 10] as [number, number])
 }
@@ -535,7 +536,7 @@ export async function getShapeLabData(pitcherId: number): Promise<ShapeLabData |
     .eq('pitcher_id', pitcherId)
     .order('season', { ascending: false })
   if (error) {
-    console.error('[getShapeLabData] Supabase error:', error.message)
+    logOnce('getShapeLabData:' + 'Supabase error', 'getShapeLabData', 'Supabase error', error.message)
     return null
   }
   const rows = (data ?? []) as unknown as PitcherRow[]
@@ -618,7 +619,7 @@ export async function searchPitchers(q: string, proTypes: boolean): Promise<Pitc
   if (!proTypes) query = query.in('pitch_type', [...FREE_SANDBOX_TYPES])
   const { data, error } = await query
   if (error) {
-    console.error('[searchPitchers] Supabase error:', error.message)
+    logOnce('searchPitchers:' + 'Supabase error', 'searchPitchers', 'Supabase error', error.message)
     return []
   }
   type R = { season: number; pitcher_id: number; pitch_type: string; pitcher_name: string; team_abbr: string | null; p_throws: string; n_pitches: number; velo: string | number; ivb: string | number; hb: string | number; slot: string | number }
@@ -664,7 +665,7 @@ export async function getLocationWindow(type: string, hand: Hand, hb: number, iv
     const { data, error } = await createAdminClient()
       .from('pitch_shape_locations').select('span,bins')
       .in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', type).eq('p_throws', hand)
-    if (error) { console.error('[getLocationWindow] Supabase error:', error.message); return null }
+    if (error) { logOnce('getLocationWindow:' + 'Supabase error', 'getLocationWindow', 'Supabase error', error.message); return null }
     for (const d of (data ?? []) as unknown as { span: string; bins: number[] }[]) {
       const row = { at: Date.now(), bins: d.bins }
       locCache.set(`${d.span}|${LEAGUE_COORD_ERA}|${type}|${hand}`, row)

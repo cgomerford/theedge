@@ -26,6 +26,7 @@
 
 import type { MissWindow } from '@/lib/pitcher-statcast-profile'
 import { withSavantCache } from '@/lib/savant-cache'
+import { log, logOnce } from '@/lib/log'
 
 const SEASON = 2026
 
@@ -88,7 +89,7 @@ async function fetchBatterBatSpeedProfile(batterId: number): Promise<BatterBatSp
     if (!res.ok) return null
     text = await res.text()
   } catch (err) {
-    console.error(`getBatterBatSpeedProfile fetch failed (${batterId}):`, err)
+    logOnce('batter-bat-speed:getBatterBatSpeedProfile fetch failed (#)', 'batter-bat-speed', `getBatterBatSpeedProfile fetch failed (${batterId})`, err)
     return null
   }
 

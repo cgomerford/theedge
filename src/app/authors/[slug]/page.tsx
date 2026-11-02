@@ -14,6 +14,7 @@ import { excerptOf, iso, sectionLabel } from '@/lib/seo/news'
 import { pageMeta } from '@/lib/seo'
 import { SITE_URL } from '@/lib/site'
 import type { Article } from '@/lib/articles'
+import { log } from '@/lib/log'
 
 export const revalidate = 300
 
@@ -27,7 +28,7 @@ async function articlesBy(slug: string): Promise<Row[]> {
     .lte('published_at', new Date().toISOString())
     .order('published_at', { ascending: false })
     .limit(500)
-  if (error) { console.error('[authors/[slug]] Supabase error:', error.message); return [] }
+  if (error) { log.error('authors/[slug', '] Supabase error', error.message); return [] }
   return ((data ?? []) as unknown as Row[]).filter(r => authorSlug(r.author) === slug)
 }
 

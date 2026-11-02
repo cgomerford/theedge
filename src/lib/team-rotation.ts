@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/team-rotation.ts
 //
 // HONESTY FLAG: still an inference, not confirmed MLB data, for any game
@@ -41,7 +42,7 @@ export async function getRecentStarters(mlbTeamId: number, lookbackDays = 20) {
     starters.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     return starters
   } catch (e) {
-    console.error('getRecentStarters error:', e)
+    log.error('team-rotation', 'getRecentStarters error', e)
     return []
   }
 }

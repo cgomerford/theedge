@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/edge-coverage-stats.ts
 //
 // 2026-08-23: new. Computes a real "games analyzed this season" count
@@ -31,7 +32,7 @@ export async function getGamesAnalyzedCount(season: number): Promise<number> {
     }
     return count
   } catch (err) {
-    console.error('Games analyzed count fetch failed:', err)
+    log.error('edge-coverage-stats', 'Games analyzed count fetch failed', err)
     return 0
   }
 }

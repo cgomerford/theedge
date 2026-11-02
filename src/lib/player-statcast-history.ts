@@ -1,3 +1,4 @@
+import { log, logOnce } from '@/lib/log'
   // src/lib/player-statcast-history.ts
   //
   // On-demand, cached year-on-year Statcast history — pitches seen, barrels,
@@ -114,7 +115,7 @@
         isFinal: season < new Date().getFullYear(),
       }
     } catch (err) {
-      console.error(`[player-statcast-history] Savant fetch failed for ${playerId}/${season}:`, err)
+      logOnce('player-statcast-history:Savant fetch failed for #/#', 'player-statcast-history', `Savant fetch failed for ${playerId}/${season}`, err)
       return null
     }
   }
@@ -130,7 +131,7 @@
       is_final: row.isFinal,
       fetched_at: new Date().toISOString(),
     }, { onConflict: 'player_id,season' })
-    if (error) console.error(`[player-statcast-history] upsert failed for player ${playerId}, season ${row.season}:`, error.message)
+    if (error) logOnce('player-statcast-history:upsert failed for player #, season #', 'player-statcast-history', `upsert failed for player ${playerId}, season ${row.season}`, error.message)
   }
 
   // Small concurrency window rather than one big Promise.all across ~11

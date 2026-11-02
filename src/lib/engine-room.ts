@@ -44,8 +44,8 @@ type Split = { stat: Record<string, string | number | undefined> }
 
 async function getLeagueBaselines(season: number): Promise<{ leagueRCPerPA: number; leagueERA: number }> {
   const [hitRes, pitRes] = await Promise.all([
-    fetch(`${MLB_API}/teams/stats?stats=season&group=hitting&sportId=1&season=${season}`),
-    fetch(`${MLB_API}/teams/stats?stats=season&group=pitching&sportId=1&season=${season}`),
+    fetch(`${MLB_API}/teams/stats?stats=season&group=hitting&sportId=1&season=${season}`, { next: { revalidate: 300 } }),
+    fetch(`${MLB_API}/teams/stats?stats=season&group=pitching&sportId=1&season=${season}`, { next: { revalidate: 300 } }),
   ])
   if (!hitRes.ok || !pitRes.ok) return { leagueRCPerPA: 0, leagueERA: 4.0 }
   const [hitData, pitData] = await Promise.all([hitRes.json(), pitRes.json()])
@@ -96,7 +96,7 @@ export async function getEngineRoom(teamId: number, season: number): Promise<Eng
   const hydrate = encodeURIComponent(`person(stats(group=[hitting,pitching],type=season,season=${season}))`)
   const [{ leagueRCPerPA, leagueERA }, rosterRes, transactions] = await Promise.all([
     getLeagueBaselines(season),
-    fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=fullSeason&season=${season}&hydrate=${hydrate}`),
+    fetch(`${MLB_API}/teams/${teamId}/roster?rosterType=fullSeason&season=${season}&hydrate=${hydrate}`, { next: { revalidate: 300 } }),
     getTeamSeasonTransactions(teamId, season),
   ])
   if (!rosterRes.ok) return []

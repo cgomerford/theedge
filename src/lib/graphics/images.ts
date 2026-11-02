@@ -8,6 +8,7 @@ import { headshot, teamLogo } from '@/components/team/ui'
 import { X9_MARK_URL } from './constants'
 import { teamId } from './teams'
 import type { GraphicImages } from './types'
+import { log } from '@/lib/log'
 
 const CACHE = new Map<string, string | null>()
 
@@ -32,11 +33,11 @@ async function load(key: string): Promise<string | null> {
   if (!url) return null
   try {
     const res = await fetch(url, { mode: 'cors', signal: AbortSignal.timeout(10000) })
-    if (!res.ok) { console.warn(`[loadGraphicImage] ${key} HTTP ${res.status}`); return null }
+    if (!res.ok) { log.warn('loadGraphicImage', `${key} HTTP ${res.status}`); return null }
     const blob = await res.blob()
     return blob.type.startsWith('image/') ? await toDataUrl(blob) : null
   } catch (err) {
-    console.warn(`[loadGraphicImage] ${key} failed:`, err)
+    log.warn('loadGraphicImage', `${key} failed`, err)
     return null
   }
 }

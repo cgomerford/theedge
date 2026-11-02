@@ -28,6 +28,7 @@ import { shortName } from '../names'
 import { pitchColor } from '../pitchColors'
 import { hitsAllowed, pitchDots, ipToOuts, nextStart, per9, throughTheOrder, whip, type FutureGame } from './calc'
 import type { PitcherReelData, ReelPitch, ReelSeasonRow } from './types'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -47,7 +48,7 @@ export async function listReelPitchers(date: string): Promise<ReelPitcherOption[
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
   try {
     const res = await fetch(`${MLB_API}/schedule?sportId=1&date=${date}`, { cache: 'no-store' })
-    if (!res.ok) { console.error('[listReelPitchers] schedule HTTP', res.status); return [] }
+    if (!res.ok) { log.error('listReelPitchers', 'schedule HTTP', res.status); return [] }
     const data = await res.json()
     const finals: number[] = (data.dates?.[0]?.games ?? [])
       .filter((g: { status?: { abstractGameState?: string } }) => g.status?.abstractGameState === 'Final')
@@ -69,7 +70,7 @@ export async function listReelPitchers(date: string): Promise<ReelPitcherOption[
     }
     return out
   } catch (err) {
-    console.error('[listReelPitchers] failed:', err)
+    log.error('listReelPitchers', 'failed', err)
     return []
   }
 }
@@ -81,7 +82,7 @@ async function pitchHand(pitcherId: number): Promise<'L' | 'R' | null> {
     const code = (await res.json()).people?.[0]?.pitchHand?.code
     return code === 'L' || code === 'R' ? code : null
   } catch (err) {
-    console.error('[pitchHand] failed:', err)
+    log.error('pitchHand', 'failed', err)
     return null
   }
 }
@@ -92,7 +93,7 @@ async function seasonArsenal(pitcherId: number, season: number): Promise<Map<str
     .from('pitch_arsenals')
     .select('pitch_type, percentage, avg_velocity')
     .eq('player_id', pitcherId).eq('season', season)
-  if (error) { console.error('[loadPitcherReel] pitch_arsenals error:', error.message); return out }
+  if (error) { log.error('loadPitcherReel', 'pitch_arsenals error', error.message); return out }
   for (const r of (data ?? []) as { pitch_type: string; percentage: unknown; avg_velocity: unknown }[]) {
     const num = (v: unknown) => (v == null || Number.isNaN(Number(v)) ? null : Number(v))   // numeric columns arrive as strings
     out.set(String(r.pitch_type).toUpperCase(), { usage: num(r.percentage), velo: num(r.avg_velocity) })
@@ -107,7 +108,7 @@ async function futureGames(teamId: number, from: string): Promise<FutureGame[]> 
   }
   try {
     const res = await fetch(`${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${add(1)}&endDate=${add(12)}&hydrate=probablePitcher,team`, { cache: 'no-store' })
-    if (!res.ok) { console.error('[futureGames] HTTP', res.status); return [] }
+    if (!res.ok) { log.error('futureGames', 'HTTP', res.status); return [] }
     const data = await res.json()
     const out: FutureGame[] = []
     for (const day of data.dates ?? []) {
@@ -121,23 +122,23 @@ async function futureGames(teamId: number, from: string): Promise<FutureGame[]> 
     }
     return out
   } catch (err) {
-    console.error('[futureGames] failed:', err)
+    log.error('futureGames', 'failed', err)
     return []
   }
 }
 
 export async function loadPitcherReel(gamePk: number, pitcherId: number): Promise<PitcherReelData | null> {
   const [box, feed] = await Promise.all([getGameBoxScore(gamePk, { fresh: true }), getLiveFeed(gamePk)])
-  if (!box || !feed) { console.error('[loadPitcherReel] box score or live feed unavailable for', gamePk); return null }
+  if (!box || !feed) { log.error('loadPitcherReel', 'box score or live feed unavailable for', gamePk); return null }
   const agg = aggregateGameFeed(feed, `game-${gamePk}`)
-  if (!agg) { console.error('[loadPitcherReel] feed did not aggregate for', gamePk); return null }
+  if (!agg) { log.error('loadPitcherReel', 'feed did not aggregate for', gamePk); return null }
 
   const line = agg.pitchers.find(p => p.pitcherId === pitcherId)
   const isAway = box.away.pitchers.some(p => p.id === pitcherId)
   const side = isAway ? box.away : box.home
   const oppSide = isAway ? box.home : box.away
   const boxP = side.pitchers.find(p => p.id === pitcherId)
-  if (!line || !boxP) { console.error('[loadPitcherReel] pitcher', pitcherId, 'not in game', gamePk); return null }
+  if (!line || !boxP) { log.error('loadPitcherReel', 'pitcher', [pitcherId, 'not in game', gamePk].join(' ')); return null }
 
   const slateDate = feed.gameData.datetime.officialDate
   const season = Number(slateDate.slice(0, 4))
@@ -146,7 +147,7 @@ export async function loadPitcherReel(gamePk: number, pitcherId: number): Promis
   // Independent sources in one block (no positional destructuring risk across the other fetches).
   const [hand, arm, full, seasonMix, games] = await Promise.all([
     pitchHand(pitcherId),
-    getPitcherGameArmAngle(pitcherId, gamePk, season).catch(err => { console.error('[loadPitcherReel] arm angle failed:', err); return null }),
+    getPitcherGameArmAngle(pitcherId, gamePk, season).catch(err => { log.error('loadPitcherReel', 'arm angle failed', err); return null }),
     getPitcherStatsFull(pitcherId).catch(() => null),
     seasonArsenal(pitcherId, season),
     futureGames(side.teamId, slateDate),

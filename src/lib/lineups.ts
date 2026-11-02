@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { log, logOnce } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -78,7 +79,7 @@ export const getProjectedLineup = cache(async function getProjectedLineup(
       batters,
     }
   } catch (err) {
-    console.error(`Lineup fetch failed for team ${teamId}:`, err)
+    logOnce('lineups:Lineup fetch failed for team #', 'lineups', `Lineup fetch failed for team ${teamId}`, err)
     return {
       source: 'unavailable',
       game_date_used: null,
@@ -217,7 +218,7 @@ export async function getPlayerHands(playerIds: number[]): Promise<Map<number, P
       })
     }
   } catch (err) {
-    console.error('lineups: getPlayerHands failed', err)
+    log.error('lineups', 'lineups: getPlayerHands failed', err)
   }
   return out
 }

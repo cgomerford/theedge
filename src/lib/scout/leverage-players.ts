@@ -11,6 +11,7 @@
 // Read-only, cached an hour, at most 6 requests in flight (throttledMlbFetch). Nothing is written to a table.
 
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 export const CODES = ['lc', 'risp', 'risp2', 'ig07'] as const
@@ -31,7 +32,7 @@ function line(st: Record<string, unknown> | undefined): SitLine {
 export async function getPlayerSits(playerId: number, group: 'hitting' | 'pitching', season: string): Promise<PlayerSits | null> {
   try {
     const res = await throttledMlbFetch(`${MLB}/people/${playerId}/stats?stats=season,statSplits&group=${group}&season=${season}&sitCodes=${CODES.join(',')}&gameType=R`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10000) })
-    if (!res.ok) { console.error('[getPlayerSits] HTTP', res.status, playerId); return null }
+    if (!res.ok) { log.error('getPlayerSits', 'HTTP', [res.status, playerId].join(' ')); return null }
     const blocks = ((await res.json()).stats ?? []) as { type?: { displayName?: string }; splits?: { split?: { code?: string }; stat?: Record<string, unknown> }[] }[]
     const out: PlayerSits = { season: EMPTY, lc: EMPTY, risp: EMPTY, risp2: EMPTY, ig07: EMPTY }
     const best = (rows: { stat?: Record<string, unknown> }[]) => rows.map((r) => line(r.stat)).sort((a, b) => b.pa - a.pa)[0] ?? EMPTY
@@ -40,7 +41,7 @@ export async function getPlayerSits(playerId: number, group: 'hitting' | 'pitchi
     for (const c of CODES) out[c] = best(sp.filter((s) => s.split?.code === c))
     return out
   } catch (err) {
-    console.error('[getPlayerSits] failed:', playerId, err instanceof Error ? err.message : err)
+    log.error('getPlayerSits', 'failed', [playerId, err instanceof Error ? err.message : err].join(' '))
     return null
   }
 }

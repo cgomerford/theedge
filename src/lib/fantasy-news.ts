@@ -9,6 +9,7 @@
  */
 
 import { XMLParser } from 'fast-xml-parser'
+import { log } from '@/lib/log'
 
 export type NewsItem = {
   title: string
@@ -75,7 +76,7 @@ async function fetchFeed(url: string, category: NewsItem['category']): Promise<N
       }
     })
   } catch (e) {
-    console.error('news feed fetch failed', url, e)
+    log.error('fantasy-news', 'news feed fetch failed', [url, e].join(' '))
     return []
   }
 }

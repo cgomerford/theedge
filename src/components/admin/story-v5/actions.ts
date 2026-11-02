@@ -8,6 +8,7 @@
 import { buildPreviewData, type PreviewProps } from './preview-data.server-fetch-allowed'
 import type { PreviewData } from './types'
 import { PreviewDataError } from './validate'
+import { log } from '@/lib/log'
 
 export type PreviewResult = { ok: true; data: PreviewData } | { ok: false; problems: string[] }
 
@@ -15,7 +16,7 @@ export async function runPreviewData(gamePk: number, props: PreviewProps = {}): 
   try { return { ok: true, data: await buildPreviewData(gamePk, props) } }
   catch (e) {
     if (e instanceof PreviewDataError) return { ok: false, problems: e.problems }
-    console.error('[runPreviewData] failed:', (e as Error).message)
+    log.error('runPreviewData', 'failed', (e as Error).message)
     return { ok: false, problems: [`unexpected error: ${(e as Error).message}`] }
   }
 }

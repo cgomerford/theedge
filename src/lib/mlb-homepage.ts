@@ -140,7 +140,7 @@ function buildSlug(awayName: string, homeName: string, officialDate: string): st
 export async function getMLBStandings(): Promise<MLBDivisionStandings[]> {
   try {
     const url = `${MLB_API}/standings?leagueId=103,104&season=${SEASON}&hydrate=team,division,record`
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) return []
     const data = await res.json()
 
@@ -182,7 +182,7 @@ export async function getMLBStandings(): Promise<MLBDivisionStandings[]> {
     divisions.sort((a, b) => ORDER.indexOf(a.division) - ORDER.indexOf(b.division))
     return divisions
   } catch (e) {
-    console.error('MLB standings error:', e)
+    logOnce('mlb-homepage:' + 'MLB standings error', 'mlb-homepage', 'MLB standings error', e)
     return []
   }
 }
@@ -197,16 +197,16 @@ export async function getMLBStatLeaders(
     const statGroup = group === 'batting' ? 'hitting' : group === 'pitching' ? 'pitching' : ''
     const groupParam = statGroup ? `&statGroup=${statGroup}` : ''
     const url = `${MLB_API}/stats/leaders?leaderCategories=${category}&season=${SEASON}&limit=${limit}&sportId=1${groupParam}`
-    const res = await fetch(url, { next: { revalidate: 3600 } })
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) {
-      console.error(`MLB leaders ${category}: HTTP ${res.status}`)
+      logOnce('mlb-homepage:' + `MLB leaders ${category}: HTTP ${res.status}`, 'mlb-homepage', `MLB leaders ${category}: HTTP ${res.status}`)
       return []
     }
     const data = await res.json()
     const leaders = data.leagueLeaders?.[0]?.leaders ?? []
 
     if (leaders.length === 0) {
-      console.error(`MLB leaders ${category}: empty response`)
+      logOnce('mlb-homepage:' + `MLB leaders ${category}: empty response`, 'mlb-homepage', `MLB leaders ${category}: empty response`)
       return []
     }
 
@@ -222,7 +222,7 @@ export async function getMLBStatLeaders(
       }
     })
   } catch (e) {
-    console.error(`MLB stat leaders error (${category}):`, e)
+    logOnce('mlb-homepage:' + `MLB stat leaders error (${category})`, 'mlb-homepage', `MLB stat leaders error (${category})`, e)
     return []
   }
 }
@@ -235,7 +235,7 @@ export async function getMLBTeamLeaders(mlbTeamId: number): Promise<MLBTeamLeade
         // statGroup separates hitters from pitchers — prevents pitchers showing as AVG leader
         const statGroup = group === 'batting' ? 'hitting' : 'pitching'
         const url = `${MLB_API}/stats/leaders?leaderCategories=${cat}&teamId=${mlbTeamId}&season=${SEASON}&limit=1&hydrate=person&sportId=1&statGroup=${statGroup}`
-        const res = await fetch(url, { next: { revalidate: 3600 } })
+        const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
         if (!res.ok) return null
         const data = await res.json()
         const leader = data.leagueLeaders?.[0]?.leaders?.[0]
@@ -259,7 +259,7 @@ export async function getMLBTeamLeaders(mlbTeamId: number): Promise<MLBTeamLeade
 
 export async function getMLBNews(): Promise<MLBNewsItem[]> {
   try {
-    const res = await fetch(`${ESPN}/news?limit=12`, { next: { revalidate: 1800 } })
+    const res = await fetch(`${ESPN}/news?limit=12`, { next: { revalidate: 1800 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) return []
     const data = await res.json()
     const raw = data.articles ?? data.items ?? []
@@ -272,7 +272,7 @@ export async function getMLBNews(): Promise<MLBNewsItem[]> {
       image: a.images?.[0]?.url ?? undefined,
     }))
   } catch (e) {
-    console.error('MLB news error:', e)
+    logOnce('mlb-homepage:' + 'MLB news error', 'mlb-homepage', 'MLB news error', e)
     return []
   }
 }
@@ -336,6 +336,7 @@ async function fetchRSS(url: string): Promise<MLBNewsItem[]> {
   try {
     const res = await fetch(url, {
       next: { revalidate: 1800 },
+      signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TheEdge/1.0)' },
     })
     if (!res.ok) return []
@@ -429,6 +430,7 @@ async function fetchGoogleNewsForTeam(teamName: string): Promise<MLBNewsItem[]> 
     const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`
     const res = await fetch(url, {
       next: { revalidate: 1800 },
+      signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TheEdge/1.0)' },
     })
     if (!res.ok) return []
@@ -542,7 +544,7 @@ export async function getMLBTeamNextGame(mlbTeamId: number): Promise<MLBNextGame
     const today = new Date().toISOString().split('T')[0]
     const end = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const url = `${MLB_API}/schedule?sportId=1&teamId=${mlbTeamId}&startDate=${today}&endDate=${end}&hydrate=team&limit=5`
-    const res = await fetch(url, { next: { revalidate: 1800 } })
+    const res = await fetch(url, { next: { revalidate: 1800 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     const data = await res.json()
     const game = data.dates?.[0]?.games?.[0]
@@ -585,6 +587,7 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import { getProjectedLineup } from '@/lib/lineups'
 import { getPitchViewMonths } from '@/lib/pitch-shape/data'
 import { pathFor, type P3 } from '@/components/admin/story-v5/trajectory'
+import { logOnce } from '@/lib/log'
 
 type RawTeamSide = {
   team: { id: number; name: string; abbreviation?: string }
@@ -606,15 +609,15 @@ const HYDRATE = 'team,probablePitcher,linescore,venue'
 
 async function fetchRange(start: string, end: string): Promise<{ date: string; games: RawGame[] }[]> {
   try {
-    const res = await fetch(`${MLB_API}/schedule?sportId=1&startDate=${start}&endDate=${end}&hydrate=${HYDRATE}`, { next: { revalidate: 600 } })
+    const res = await fetch(`${MLB_API}/schedule?sportId=1&startDate=${start}&endDate=${end}&hydrate=${HYDRATE}`, { next: { revalidate: 600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) {
-      console.error('[fetchRange] MLB API status', res.status)
+      logOnce('fetchRange:' + 'MLB API status', 'fetchRange', 'MLB API status', res.status)
       return []
     }
     const json = await res.json()
     return (json.dates ?? []).map((d: { date: string; games: RawGame[] }) => ({ date: d.date, games: d.games }))
   } catch (e) {
-    console.error('[fetchRange] failed:', e instanceof Error ? e.message : e)
+    logOnce('fetchRange:' + 'failed', 'fetchRange', 'failed', e instanceof Error ? e.message : e)
     return []
   }
 }
@@ -665,11 +668,14 @@ export async function getHomeSlate(): Promise<HomeSlate | null> {
     const game = pickNotable(next.games)
     if (game) return { game, date: next.date, isToday: false, mode: 'next', dayGames: next.games }
   }
-  const back = await fetchRange(isoDay(addDays(now, -60)), isoDay(addDays(now, -1)))
-  for (const d of back.slice().reverse()) {
-    const finals = d.games.filter(g => g.status?.abstractGameState === 'Final')
-    const game = pickNotable(finals)
-    if (game) return { game, date: d.date, isToday: false, mode: 'last', dayGames: finals }
+  // Look back 14 days first; a 60-day schedule is about 3 MB, over Next's 2 MB fetch-cache limit, so it was re-downloaded on every regeneration.
+  for (const days of [14, 60]) {
+    const back = await fetchRange(isoDay(addDays(now, -days)), isoDay(addDays(now, -1)))
+    for (const d of back.slice().reverse()) {
+      const finals = d.games.filter(g => g.status?.abstractGameState === 'Final')
+      const game = pickNotable(finals)
+      if (game) return { game, date: d.date, isToday: false, mode: 'last', dayGames: finals }
+    }
   }
   return null
 }
@@ -850,25 +856,25 @@ export type FeaturedStarter = {
 
 async function getSeasonLine(pitcherId: number, postseason: boolean): Promise<SeasonLine | null> {
   try {
-    const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}&gameType=${postseason ? 'P' : 'R'}`, { next: { revalidate: 3600 } })
+    const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}&gameType=${postseason ? 'P' : 'R'}`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     const st = (await res.json()).stats?.[0]?.splits?.[0]?.stat
     if (!st) return null
     return { postseason, wins: num(st.wins), losses: num(st.losses), era: num(st.era), ip: st.inningsPitched != null ? String(st.inningsPitched) : null }
   } catch (e) {
-    console.error('[getSeasonLine] failed:', e instanceof Error ? e.message : e)
+    logOnce('getSeasonLine:' + 'failed', 'getSeasonLine', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }
 
 export async function getBattersFaced(pitcherId: number): Promise<number | null> {
   try {
-    const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}`, { next: { revalidate: 3600 } })
+    const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=season&group=pitching&season=${SEASON}`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) return null
     const json = await res.json()
     return num(json.stats?.[0]?.splits?.[0]?.stat?.battersFaced)
   } catch (e) {
-    console.error('[getBattersFaced] failed:', e instanceof Error ? e.message : e)
+    logOnce('getBattersFaced:' + 'failed', 'getBattersFaced', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -883,7 +889,7 @@ async function getLastGame(pitcherId: number, preferPostseason: boolean): Promis
   try {
     const rows: { postseason: boolean; slug: string | null; date: string; opp: string; home: boolean; ip: string; er: number; k: number; bb: number; h: number }[] = []
     for (const gt of ['R', 'P']) {
-      const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}&gameType=${gt}`, { next: { revalidate: 3600 } })
+      const res = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${SEASON}&gameType=${gt}`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
       if (!res.ok) continue
       const splits = (await res.json()).stats?.[0]?.splits ?? []
       for (const sp of splits) {
@@ -898,7 +904,7 @@ async function getLastGame(pitcherId: number, preferPostseason: boolean): Promis
     pool.sort((a, b) => a.date.localeCompare(b.date))
     return pool[pool.length - 1] ?? null
   } catch (e) {
-    console.error('[getLastGame] failed:', e instanceof Error ? e.message : e)
+    logOnce('getLastGame:' + 'failed', 'getLastGame', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -975,8 +981,8 @@ export async function getFeaturedStarter(pitcherId: number, name: string, teamId
     supa.from('pitcher_stats').select('era, wins, losses, innings_pitched, xwoba_allowed').eq('player_id', pitcherId).eq('season', SEASON).limit(1),
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', pitcherId).eq('season', SEASON).order('updated_at', { ascending: false }).limit(1),
   ])
-  if (statsRes.error) console.error('[getFeaturedStarter] pitcher_stats error:', statsRes.error.message)
-  if (throughRes.error) console.error('[getFeaturedStarter] arsenal date error:', throughRes.error.message)
+  if (statsRes.error) logOnce('getFeaturedStarter:' + 'pitcher_stats error', 'getFeaturedStarter', 'pitcher_stats error', statsRes.error.message)
+  if (throughRes.error) logOnce('getFeaturedStarter:' + 'arsenal date error', 'getFeaturedStarter', 'arsenal date error', throughRes.error.message)
 
   const all = arsenalBySplit['all']
   const mix: MixRow[] = Object.entries(all?.arsenal ?? {})
@@ -1018,7 +1024,7 @@ export type H2H = { teamShort: string; name: string; pa: number; avg: string | n
 
 export async function getMostPaAgainst(pitcherId: number, opposingTeamId: number, teamShort: string): Promise<H2H> {
   try {
-    const rosterRes = await fetch(`${MLB_API}/teams/${opposingTeamId}/roster?rosterType=active`, { next: { revalidate: 86400 } })
+    const rosterRes = await fetch(`${MLB_API}/teams/${opposingTeamId}/roster?rosterType=active`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
     if (!rosterRes.ok) return null
     const roster = ((await rosterRes.json()).roster ?? []) as { person: { id: number; fullName: string }; position?: { type?: string } }[]
     const hitters = roster.filter(r => r.position?.type !== 'Pitcher')
@@ -1029,7 +1035,7 @@ export async function getMostPaAgainst(pitcherId: number, opposingTeamId: number
       const batch = hitters.slice(i, i + 6)
       const results = await Promise.all(batch.map(async h => {
         try {
-          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${h.person.id}`, { next: { revalidate: 86400 } })
+          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${h.person.id}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
           if (!r.ok) return null
           const split = (await r.json()).stats?.find((s: { type?: { displayName?: string } }) => s.type?.displayName === 'vsPlayerTotal')?.splits?.[0]?.stat
           const pa = num(split?.plateAppearances) ?? num(split?.battersFaced)
@@ -1042,7 +1048,7 @@ export async function getMostPaAgainst(pitcherId: number, opposingTeamId: number
     }
     return best
   } catch (e) {
-    console.error('[getMostPaAgainst] failed:', e instanceof Error ? e.message : e)
+    logOnce('getMostPaAgainst:' + 'failed', 'getMostPaAgainst', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -1063,7 +1069,7 @@ export async function getH2HTable(pitcherId: number, opposingTeamId: number, dat
       const part = await Promise.all(batch.map(async b => {
         const base: H2HRow = { id: b.player_id, name: b.player_name, order: b.batting_order, pa: 0, avg: null, ops: null, hr: null, k: null }
         try {
-          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${b.player_id}`, { next: { revalidate: 86400 } })
+          const r = await fetch(`${MLB_API}/people/${pitcherId}/stats?stats=vsPlayer&group=pitching&opposingPlayerId=${b.player_id}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
           if (!r.ok) return base
           const st = (await r.json()).stats?.find((x: { type?: { displayName?: string } }) => x.type?.displayName === 'vsPlayerTotal')?.splits?.[0]?.stat
           if (!st) return base
@@ -1076,7 +1082,7 @@ export async function getH2HTable(pitcherId: number, opposingTeamId: number, dat
     }
     return { rows: rows.sort((a, b) => a.order - b.order), source: lineup.source === 'confirmed' ? 'confirmed' : 'projected' }
   } catch (e) {
-    console.error('[getH2HTable] failed:', e instanceof Error ? e.message : e)
+    logOnce('getH2HTable:' + 'failed', 'getH2HTable', 'failed', e instanceof Error ? e.message : e)
     return { rows: [], source: 'unavailable' }
   }
 }

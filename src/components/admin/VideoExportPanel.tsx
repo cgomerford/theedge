@@ -26,6 +26,7 @@ import {
 } from '@/lib/video-export'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { Top3StatsPayload } from '@/types/live-tracker'
+import { log } from '@/lib/log'
 
 const COLORS = { orange: '#FF5722', stone: '#1A1A1A', gray: '#A3A3A3', line: '#E2DCCF', cream: '#FAF8F3' } as const
 
@@ -171,7 +172,7 @@ export default function VideoExportPanel({ payload }: { payload: Top3StatsPayloa
 
       setStage('done')
     } catch (err) {
-      console.error('Video export failed:', err)
+      log.error('VideoExportPanel', 'Video export failed', err)
       setErrorMsg(
         err instanceof Error && /captureStream|MediaRecorder/.test(err.message)
           ? 'This browser doesn\u2019t support canvas video recording. Try Chrome or Edge.'

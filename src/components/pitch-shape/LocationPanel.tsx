@@ -19,6 +19,7 @@ import { describeLocation } from '@/lib/pitch-shape/location-describe'
 import { ramp as smoothRamp } from '@/components/pitching-lab/ArsenalExtras'
 import { RAMP } from './parts'
 import { hexToRgb } from './heatGrid'
+import { log } from '@/lib/log'
 
 const CELL = 10 // svg / canvas units per location cell
 // smooth view (same look as the Pitching Lab's location heatmap): feet, batter's view, inside on the left
@@ -51,7 +52,7 @@ export default function LocationPanel({ pitchType, hand, probe, radius, span, sc
       fetch(`/api/mlb/pitch-shape/location?type=${pitchType}&hand=${hand}&hb=${probe.hb.toFixed(1)}&ivb=${probe.ivb.toFixed(1)}&radius=${radius}&scope=${scope}`, { signal: ctl.signal })
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((j: { payload: LocationPayload | null }) => { cache.set(key, j.payload); setPayload(j.payload) })
-        .catch(e => { if (e?.name !== 'AbortError') { console.error('[LocationPanel] fetch failed:', e instanceof Error ? e.message : e); setFailed(true) } })
+        .catch(e => { if (e?.name !== 'AbortError') { log.error('LocationPanel', 'fetch failed', e instanceof Error ? e.message : e); setFailed(true) } })
     }, 140)
     return () => { clearTimeout(t); ctl.abort() }
   }, [key, pitchType, hand, probe.hb, probe.ivb, radius, scope])

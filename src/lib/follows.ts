@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase'
 import type { AuthSubscriber } from '@/lib/auth'
 import { FREE_LIMITS } from '@/lib/follows/config'
 import { getDevView } from '@/lib/dev-view'
+import { log } from '@/lib/log'
 
 export const FOLLOW_LIMITS = FREE_LIMITS
 export type FollowKind = 'player' | 'team'
@@ -28,7 +29,7 @@ export async function getPlayerFollows(subscriberId: string): Promise<PlayerFoll
     .order('created_at', { ascending: false })
     .range(0, 999)
   if (error) {
-    console.error('[getPlayerFollows] Supabase error:', error.message)
+    log.error('getPlayerFollows', 'Supabase error', error.message)
     return []
   }
   const rows = ((data ?? []) as { player_id: number | string; player_name: string }[]).map(r => ({
@@ -62,7 +63,7 @@ export async function toggleFollow(sub: AuthSubscriber, kind: FollowKind, ref: s
     const teams = has ? sub.teams.filter(t => t !== ref) : [...sub.teams, ref]
     const { error } = await supa.from('subscribers').update({ teams }).eq('id', sub.id)
     if (error) {
-      console.error('[toggleFollow] team update error:', error.message)
+      log.error('toggleFollow', 'team update error', error.message)
       return { ok: false, error: 'unavailable' }
     }
     return { ok: true, following: !has }
@@ -78,14 +79,14 @@ export async function toggleFollow(sub: AuthSubscriber, kind: FollowKind, ref: s
     .eq('player_id', playerId)
     .maybeSingle()
   if (readError) {
-    console.error('[toggleFollow] read error:', readError.message)
+    log.error('toggleFollow', 'read error', readError.message)
     return { ok: false, error: 'unavailable' }
   }
 
   if (existing) {
     const { error } = await supa.from('player_follows').delete().eq('subscriber_id', sub.id).eq('player_id', playerId)
     if (error) {
-      console.error('[toggleFollow] delete error:', error.message)
+      log.error('toggleFollow', 'delete error', error.message)
       return { ok: false, error: 'unavailable' }
     }
     return { ok: true, following: false }
@@ -94,7 +95,7 @@ export async function toggleFollow(sub: AuthSubscriber, kind: FollowKind, ref: s
   if (!sub.is_pro) {
     const { count, error } = await supa.from('player_follows').select('player_id', { count: 'exact', head: true }).eq('subscriber_id', sub.id)
     if (error) {
-      console.error('[toggleFollow] count error:', error.message)
+      log.error('toggleFollow', 'count error', error.message)
       return { ok: false, error: 'unavailable' }
     }
     if ((count ?? 0) >= FOLLOW_LIMITS.player) return { ok: false, error: 'limit' }
@@ -102,7 +103,7 @@ export async function toggleFollow(sub: AuthSubscriber, kind: FollowKind, ref: s
 
   const { error } = await supa.from('player_follows').insert({ subscriber_id: sub.id, player_id: playerId, player_name: name.slice(0, 120) })
   if (error) {
-    console.error('[toggleFollow] insert error:', error.message)
+    log.error('toggleFollow', 'insert error', error.message)
     return { ok: false, error: 'unavailable' }
   }
   return { ok: true, following: true }

@@ -12,6 +12,7 @@
 // instead of fabricating numbers.
 
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 export const MIN_SITUATION_N = 8       // cells/rows under this are drawn faded and not read into
 
@@ -114,7 +115,7 @@ export async function getSbRows(): Promise<SbRow[] | null> {
       continue
     }
     if (error) {
-      if (error.code !== 'PGRST205') console.error('[getSbRows] Supabase error:', error.message)
+      if (error.code !== 'PGRST205') log.error('getSbRows', 'Supabase error', error.message)
       sbCache = { at: Date.now(), rows: null }
       return null
     }
@@ -167,7 +168,7 @@ async function getOpportunities(teamId: number): Promise<{ id: number; name: str
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supa.from('sb_opportunity_log').select('batter_id, batter_name, opps').eq('batting_team_id', teamId).order('game_pk').range(offset, offset + 999)
     if (error) {
-      if (error.code !== 'PGRST205') console.error('[getOpportunities] Supabase error:', error.message)
+      if (error.code !== 'PGRST205') log.error('getOpportunities', 'Supabase error', error.message)
       return null
     }
     for (const r of (data ?? []) as { batter_id: number; batter_name: string | null; opps: number | string }[]) {

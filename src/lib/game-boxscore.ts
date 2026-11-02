@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/game-boxscore.ts
 // Fetches full box score for a completed MLB game from the free MLB Stats API.
 // Endpoint: https://statsapi.mlb.com/api/v1/game/{gamePk}/boxscore
@@ -85,7 +86,7 @@ export async function getGameBoxScore(gamePk: number, opts: { fresh?: boolean } 
       home,
     }
   } catch (err) {
-    console.error('[getGameBoxScore]', gamePk, err)
+    log.error('getGameBoxScore', 'failed', [gamePk, err].join(' '))
     return null
   }
 }

@@ -23,6 +23,7 @@ import { CANVAS_FONTS } from '@/lib/canvas-font'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { Top3Entry } from '@/types/live-tracker'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export interface VideoStatItem extends Top3Entry {
   categoryLabel: string
@@ -401,7 +402,7 @@ export async function loadFFmpegInstance() {
 export async function transcodeWebmToMp4(webmBlob: Blob, onProgress?: (pct: number) => void): Promise<Blob> {
   const { ffmpeg, fetchFile } = await loadFFmpegInstance()
 
-  ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message))
+  ffmpeg.on('log', ({ message }) => log.debug('ffmpeg', message))
 
   if (onProgress) {
     ffmpeg.on('progress', ({ progress }) => onProgress(Math.min(100, Math.round(progress * 100))))

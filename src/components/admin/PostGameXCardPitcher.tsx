@@ -14,6 +14,7 @@ import type { PitcherGameLine, PitchRecord } from '@/types/postgame'
 import type { GameInfo } from '@/lib/postgame'
 import { buildArsenalCard, computeStrikePct, computeOverallWhiffPct } from '@/lib/pitcher-arsenal-card'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 type Props = {
   pitcher: PitcherGameLine
@@ -86,7 +87,7 @@ export default function PostGameXCardPitcher({ pitcher, pitches, teamColor, team
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Pitcher X card export failed:', err)
+      log.error('PostGameXCardPitcher', 'Pitcher X card export failed', err)
     } finally {
       setIsExporting(false)
     }

@@ -17,6 +17,7 @@ import type { Top3Batter } from '@/lib/series-matchup'
 import type { Top3Pitcher } from '@/lib/pitcher-series-edge'
 import { pickDrivingPitch, bestBatterLine, buildBatterNarrative, buildPitcherNarrative, buildStarterSummarySentence, type RecentFormContext } from '@/lib/key-players-narrative'
 import type { MatchupFactor } from '@/lib/key-player-factors'
+import { log } from '@/lib/log'
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type KeyPlayerCandidate =
@@ -179,7 +180,7 @@ export async function writeKeyPlayersSnapshot(rows: KeyPlayerSnapshotRow[]): Pro
       },
       { onConflict: 'game_pk,team_id,rank' },
     )
-    if (error) { console.error('key-players snapshot upsert failed', error); failed++ }
+    if (error) { log.error('key-players', 'key-players snapshot upsert failed', error); failed++ }
     else written++
   }
   return { written, failed }

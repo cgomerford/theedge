@@ -27,6 +27,7 @@ import { getPitcherMinorsProfile } from '@/lib/pitcher-minors-profile'
 import { createAdminClient } from '@/lib/supabase'
 import SlateDatePicker from '@/components/admin/SlateDatePicker'
 import { css } from '@/app/admin/admin-css'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,7 @@ async function getRosterBatters(teamId: number | null): Promise<BuilderRosterBat
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=Active`, { next: { revalidate: 3600 } })
     if (!res.ok) {
-      console.error(`[getRosterBatters] MLB roster HTTP ${res.status} for team ${teamId}`)
+      log.error('getRosterBatters', `MLB roster HTTP ${res.status} for team ${teamId}`)
       return []
     }
     const data = await res.json()
@@ -43,7 +44,7 @@ async function getRosterBatters(teamId: number | null): Promise<BuilderRosterBat
       .filter((p: any) => p.position?.abbreviation !== 'P')
       .map((p: any) => ({ id: p.person.id as number, name: p.person.fullName as string }))
   } catch (err) {
-    console.error(`[getRosterBatters] fetch failed for team ${teamId}:`, err)
+    log.error('getRosterBatters', `fetch failed for team ${teamId}`, err)
     return []
   }
 }
@@ -63,7 +64,7 @@ async function getRichArsenal(pitcherId: number | null): Promise<RichArsenalPitc
     .eq('player_id', pitcherId)
     .eq('season', new Date().getFullYear())
   if (error) {
-    console.error('[getRichArsenal] Supabase error:', error.message)
+    log.error('getRichArsenal', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as Record<string, any>[]).map(r => ({

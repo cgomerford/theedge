@@ -28,6 +28,7 @@ import { headshotUrl, teamInfo } from './teams'
 import { pathFor, tunnel, type StatcastPitch } from './trajectory'
 import type { BullpenL3Arm, DefenseSide, HookPitch, PreviewData, Side, Starter, TeamInfo } from './types'
 import { PreviewDataError, checkImages, checkRoster, isNum } from './validate'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const SAVANT = 'https://baseballsavant.mlb.com'
@@ -244,7 +245,7 @@ export async function buildPreviewData(gamePk: number, props: PreviewProps = {})
   const scout = await loadScoutExtras({
     gamePk, gameDate: slateDate, awayTeamId: away.id, homeTeamId: home.id, awayAbbr: away.abbr, homeAbbr: home.abbr,
     awayPitcherId: g.teams.away.probablePitcher?.id ?? null, homePitcherId: g.teams.home.probablePitcher?.id ?? null,
-  }).then(x => buildScout(x as never, { away: away.id, home: home.id })).catch(e => { console.error('[buildPreviewData] scout desks failed:', (e as Error).message); return buildScout(null, { away: away.id, home: home.id }) })
+  }).then(x => buildScout(x as never, { away: away.id, home: home.id })).catch(e => { log.error('buildPreviewData', 'scout desks failed', (e as Error).message); return buildScout(null, { away: away.id, home: home.id }) })
 
   // Roster check: everyone shown with a headshot except the historical beat players
   if (starters) { checkRoster(`${away.abbr} starter`, [{ id: starters.away.id, name: starters.away.name }], roster.away, problems); checkRoster(`${home.abbr} starter`, [{ id: starters.home.id, name: starters.home.name }], roster.home, problems) }

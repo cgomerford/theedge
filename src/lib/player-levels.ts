@@ -44,7 +44,7 @@ export async function getPlayerLevelStats(
       try {
         const res = await fetch(
           `${MLB_API}/people/${playerId}/stats?stats=season&group=${group}&sportId=${lvl.sportId}&season=${season}`,
-          { cache: 'no-store' }
+          { next: { revalidate: 3600 } }
         )
         if (!res.ok) return null
         const data = await res.json()

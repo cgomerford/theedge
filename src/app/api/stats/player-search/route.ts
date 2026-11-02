@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   const q = (new URL(req.url).searchParams.get('q') ?? '').trim().slice(0, 40)
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     }))
     return NextResponse.json({ players }, { headers: { 'Cache-Control': 'private, max-age=60' } })
   } catch (e) {
-    console.error('[stats/player-search] failed:', (e as Error).message)
+    log.error('stats/player-search', 'failed', (e as Error).message)
     return NextResponse.json({ error: 'Player search did not respond.' }, { status: 502 })
   }
 }

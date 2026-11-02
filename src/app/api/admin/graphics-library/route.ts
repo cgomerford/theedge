@@ -10,6 +10,7 @@ import { isAdminRequest } from '@/lib/admin-auth'
 import { parseDoc } from '@/lib/graphics/creator'
 import { validateSpec } from '@/lib/graphics/schema'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   if (!(await isAdminRequest(req))) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
@@ -17,13 +18,13 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (id) {
     const { data, error } = await supabase.from('graphics_library').select('id, name, template, spec, caption, post_at, updated_at').eq('id', id).maybeSingle()
-    if (error) { console.error('[GET /api/admin/graphics-library] Supabase error:', error.message); return NextResponse.json({ error: 'Could not load it' }, { status: 500 }) }
+    if (error) { log.error('GET /api/admin/graphics-library', 'Supabase error', error.message); return NextResponse.json({ error: 'Could not load it' }, { status: 500 }) }
     return data ? NextResponse.json(data) : NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   const kind = req.nextUrl.searchParams.get('kind') === 'creator' ? 'creator' : 'blocks'
   const { data, error } = await supabase.from('graphics_library').select('id, name, template, caption, post_at, updated_at').eq('kind', kind).order('updated_at', { ascending: false }).limit(60)
   if (error) {
-    console.error('[GET /api/admin/graphics-library] Supabase error:', error.message)
+    log.error('GET /api/admin/graphics-library', 'Supabase error', error.message)
     return NextResponse.json({ items: [], missingTable: /graphics_library/.test(error.message) })
   }
   return NextResponse.json({ items: data ?? [] })
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   const q = body.id ? supabase.from('graphics_library').update(row).eq('id', body.id) : supabase.from('graphics_library').insert(row)
   const { data, error } = await q.select('id, name, template, caption, post_at, updated_at').single()
   if (error) {
-    console.error('[POST /api/admin/graphics-library] Supabase error:', error.message)
+    log.error('POST /api/admin/graphics-library', 'Supabase error', error.message)
     return NextResponse.json({ error: 'Save failed. The graphics library SQL may not have been run yet.' }, { status: 500 })
   }
   return NextResponse.json(data)
@@ -61,6 +62,6 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Pass id' }, { status: 400 })
   const { error } = await createAdminClient().from('graphics_library').delete().eq('id', id)
-  if (error) { console.error('[DELETE /api/admin/graphics-library] Supabase error:', error.message); return NextResponse.json({ error: 'Delete failed' }, { status: 500 }) }
+  if (error) { log.error('DELETE /api/admin/graphics-library', 'Supabase error', error.message); return NextResponse.json({ error: 'Delete failed' }, { status: 500 }) }
   return NextResponse.json({ ok: true })
 }

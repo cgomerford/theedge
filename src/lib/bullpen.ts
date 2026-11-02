@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { cache } from 'react'
 import type { BullpenArm, BullpenData, PitchDay } from '@/components/BullpenPanel'
+import { log } from '@/lib/log'
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,7 +76,7 @@ export const getBullpenData = cache(async (
       away: awayRow ? toTeamData(awayTeamId, awayRow.team_name) : null,
     }
   } catch (err) {
-    console.error('getBullpenData failed:', err)
+    log.error('bullpen', 'getBullpenData failed', err)
     return { home: null, away: null }
   }
 })
@@ -102,7 +103,7 @@ export async function getBullpenPitches3dTotals(gameDate: string): Promise<Map<n
     }
     return totals
   } catch (err) {
-    console.error('getBullpenPitches3dTotals failed:', err)
+    log.error('bullpen', 'getBullpenPitches3dTotals failed', err)
     return new Map()
   }
 }

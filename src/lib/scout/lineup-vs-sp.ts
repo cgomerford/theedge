@@ -19,6 +19,7 @@ import { getLineupZoneArsenal } from '@/lib/batter-zone-arsenal'
 import { getLineupSpray, computePullProfile } from '@/lib/batter-spray'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
 import { batterZoneFit, type ZoneFitCell } from '@/lib/series-matchup'
+import { log } from '@/lib/log'
 
 export const MIN_CLASH_PITCHES = 150     // a hitter's pitches on the split before his zone map is read
 export const MIN_ZONE_PITCHES = 12       // a single zone cell's pitches before it is coloured
@@ -126,7 +127,7 @@ export async function getLineupVsSp(offenseId: number, spId: number, spName: str
       source: lineup.source,
     }
   } catch (err) {
-    console.error('[scout] lineup vs sp failed:', offenseId, err)
+    log.error('scout', 'lineup vs sp failed', [offenseId, err].join(' '))
     return null
   }
 }

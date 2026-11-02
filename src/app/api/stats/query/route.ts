@@ -14,6 +14,7 @@ import {
   GAME_TYPES, CURRENT_SEASON, isStandardMetric, defaultMetric, deepSupports, FIRST_SEASON, DEFAULT_QUERY, isValidSplit, familyFor, metricByKey,
   isDeepMetric, DEEP_GROUP_BY, type DeepFilters, type Group, type HitFilter, type QueryState, type ViewMode, type Who,
 } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 export const maxDuration = 60
 
@@ -150,7 +151,7 @@ export async function GET(req: NextRequest) {
     if (c) res.cookies.set(c.name, c.value, c.options)
     return res
   } catch (e) {
-    console.error('[stats/query] failed:', (e as Error).message)
+    log.error('stats/query', 'failed', (e as Error).message)
     // Stacked filters pull Baseball Savant, so say which source failed.
     const msg = deep ? `${(e as Error).message} Try again in a moment.` : 'MLB Stats API did not respond. Try again in a moment.'
     return NextResponse.json({ error: msg }, { status: 502 })

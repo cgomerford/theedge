@@ -13,6 +13,7 @@
 
 import { getLeagueTables, metric, fmt, hitLine, pitLine, mlbJson, splitsOf, ipToDecimal, type LeagueTables, type LeagueTeamRow, type Split } from '@/lib/team-profile/league'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 export type SnapshotMetric = { label: string; display: string; rank: number | null; of: number }
 export type SnapshotGroup = { title: string; metrics: SnapshotMetric[] }
@@ -108,7 +109,7 @@ function build(tables: LeagueTables, mode: SnapshotMode): TeamSnapshotData[] {
 export async function getTeamSnapshots(season: number): Promise<TeamSnapshotData[]> {
   const tables = await getLeagueTables(season)
   if (!tables) {
-    console.error('[getTeamSnapshots] league tables unavailable for', season)
+    log.error('getTeamSnapshots', 'league tables unavailable for', season)
     return []
   }
   return build(tables, 'regular')
@@ -124,7 +125,7 @@ export async function getPostseasonSnapshots(season: number): Promise<TeamSnapsh
     mlbJson(`${MLB}/teams/stats?stats=statSplits&group=pitching&sitCodes=rp&${q}`, 'getPostseasonSnapshots:rp'),
   ])
   if (!hit || !pit) {
-    console.error('[getPostseasonSnapshots] missing hitting/pitching table')
+    log.error('getPostseasonSnapshots', 'missing hitting/pitching table')
     return []
   }
   const pitSplits = splitsOf(pit)

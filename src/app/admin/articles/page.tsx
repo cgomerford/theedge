@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase';
+import { log } from '@/lib/log'
 
 interface ArticleListRow {
   id: string;
@@ -22,7 +23,7 @@ async function getAllArticlesForAdmin(): Promise<ArticleListRow[]> {
     .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error('[getAllArticlesForAdmin] Supabase error:', error.message);
+    log.error('getAllArticlesForAdmin', 'Supabase error', error.message);
     return [];
   }
 

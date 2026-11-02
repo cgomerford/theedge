@@ -12,6 +12,7 @@
 import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import PlayerSnipCard from '@/components/player/PlayerSnipCard'
+import { log } from '@/lib/log'
 
 const EXPORT_WIDTH = 560
 
@@ -39,7 +40,7 @@ export default function PlayerBioExportButton(props: Props) {
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('PlayerBioExportButton: PNG export failed', e)
+      log.error('PlayerBioExportButton', 'PlayerBioExportButton: PNG export failed', e)
     } finally {
       setExporting(false)
     }

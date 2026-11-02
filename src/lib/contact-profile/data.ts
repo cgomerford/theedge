@@ -6,6 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { MIN_LEADERBOARD, toLeader, type ContactLeaders, type ContactProfile, type ContactRow } from './model'
+import { log } from '@/lib/log'
 
 const COLS = 'batter_id,season,period,month,name,team,n_bbe,weak,topped,under,flare_burner,solid,barrel,gb,air,pull_gb,straight_gb,oppo_gb,pull_air,straight_air,oppo_air'
 const PAGE = 1000 // PostgREST caps a response at 1,000 rows
@@ -15,7 +16,7 @@ export async function getContactProfile(batterId: number): Promise<ContactProfil
   if (!Number.isFinite(batterId) || batterId <= 0) return null
   const { data, error } = await createAdminClient()
     .from('batter_contact_profile').select(COLS).in('batter_id', [batterId, 0]).order('season').order('month').limit(PAGE)
-  if (error) { console.error('[getContactProfile] Supabase error:', error.message); return null }
+  if (error) { log.error('getContactProfile', 'Supabase error', error.message); return null }
   const rows = (data ?? []) as unknown as ContactRow[]
   const mine = rows.filter(r => r.batter_id === batterId), lg = rows.filter(r => r.batter_id === 0)
   const seasons = mine.filter(r => r.period === 'season')
@@ -32,7 +33,7 @@ export async function getContactProfile(batterId: number): Promise<ContactProfil
 export async function getContactLeaders(seasonWanted?: number): Promise<ContactLeaders | null> {
   const supa = createAdminClient()
   const lgRes = await supa.from('batter_contact_profile').select(COLS).eq('batter_id', 0).eq('period', 'season').order('season')
-  if (lgRes.error) { console.error('[getContactLeaders] Supabase error (league):', lgRes.error.message); return null }
+  if (lgRes.error) { log.error('getContactLeaders', 'Supabase error (league)', lgRes.error.message); return null }
   const lg = (lgRes.data ?? []) as unknown as ContactRow[]
   if (lg.length === 0) return null
   const seasons = lg.map(r => r.season)
@@ -41,7 +42,7 @@ export async function getContactLeaders(seasonWanted?: number): Promise<ContactL
   for (let from = 0; ; from += PAGE) { // one season is ~500 qualified rows today; page anyway
     const { data, error } = await supa.from('batter_contact_profile').select(COLS)
       .eq('period', 'season').eq('season', season).gt('batter_id', 0).gte('n_bbe', MIN_LEADERBOARD).range(from, from + PAGE - 1)
-    if (error) { console.error('[getContactLeaders] Supabase error:', error.message); return null }
+    if (error) { log.error('getContactLeaders', 'Supabase error', error.message); return null }
     out.push(...((data ?? []) as unknown as ContactRow[]))
     if (!data || data.length < PAGE) break
   }

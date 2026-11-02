@@ -23,6 +23,7 @@ import type { PitcherGameLog } from '@/lib/mlb'
 import type { ScoutMatchup } from '@/lib/scout-matchup'
 import ScoutGraphicCard, { type CardPitcher } from './ScoutGraphicCard'
 import { METRIC_LABELS, draftRead, effectiveStands, splitForPitcher, type ZoneMetric } from './zone-utils'
+import { log } from '@/lib/log'
 
 export type BuilderRosterBatter = { id: number; name: string }
 
@@ -124,7 +125,7 @@ export default function ScoutGraphicBuilder({ games, slateDate }: { games: Build
       .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json() })
       .then((data: ScoutMatchup) => { if (!cancelled) setMatchup(data) })
       .catch(err => {
-        console.error('[ScoutGraphicBuilder] matchup fetch failed:', err)
+        log.error('ScoutGraphicBuilder', 'matchup fetch failed', err)
         if (!cancelled) setFetchError('Could not load matchup data — try re-selecting the batter.')
       })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -196,7 +197,7 @@ export default function ScoutGraphicBuilder({ games, slateDate }: { games: Build
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[ScoutGraphicBuilder] export failed:', err)
+      log.error('ScoutGraphicBuilder', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setIsExporting(false)

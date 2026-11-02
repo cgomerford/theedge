@@ -8,6 +8,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { metricFromValues, num } from '@/lib/team-profile/league'
+import { log } from '@/lib/log'
 
 export type DnaAxis = {
   key: string; label: string; display: string; leagueDisplay: string
@@ -32,7 +33,7 @@ export async function getTeamDna(teamId: number, season: number): Promise<DnaAxi
     .select('team_id, k_pct, iso, sprint_speed, oaa, chase_rate, bullpen_era')
     .eq('season', season)
   if (error) {
-    console.error('[getTeamDna] Supabase error:', error.message)
+    log.error('getTeamDna', 'Supabase error', error.message)
     return null
   }
   const rows = (data ?? []) as Record<string, unknown>[]

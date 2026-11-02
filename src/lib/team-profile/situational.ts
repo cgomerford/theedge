@@ -13,6 +13,7 @@
 // Read-only. Failure → null + prefixed log; the panel shows an empty state.
 
 import { metricFromValues, fmt, num, type Metric } from './league'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -32,7 +33,7 @@ export async function getSituational(teamId: number, season: number): Promise<Si
     const url = `${MLB}/teams/stats?stats=statSplits&group=hitting&season=${season}&sportIds=1&limit=2000&sitCodes=${codes.join(',')}`
     const res = await fetch(url, { next: { revalidate: 1800 }, signal: AbortSignal.timeout(15000) })
     if (!res.ok) {
-      console.error('[getSituational] MLB API error:', res.status)
+      log.error('getSituational', 'MLB API error', res.status)
       return null
     }
     const json = await res.json()
@@ -53,7 +54,7 @@ export async function getSituational(teamId: number, season: number): Promise<Si
     if (counts.every(c => c.ops == null) && groups.every(g => g.metrics.every(m => m.value == null))) return null
     return { groups, counts }
   } catch (err) {
-    console.error('[getSituational]', err instanceof Error ? err.message : err)
+    log.error('getSituational', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

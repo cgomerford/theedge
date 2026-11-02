@@ -7,6 +7,7 @@ import { signupLimit, getClientIp } from '@/lib/ratelimit'
 import crypto from 'crypto'
 import { isLikelyDisposable } from '@/lib/disposable-email'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const SignupSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -19,7 +20,7 @@ const SignupSchema = z.object({
 // Calls Cloudflare's siteverify endpoint to confirm the token from the form is real.
 async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
   if (!process.env.TURNSTILE_SECRET_KEY) {
-    console.error('TURNSTILE_SECRET_KEY not set — failing closed')
+    log.error('subscribe', 'TURNSTILE_SECRET_KEY not set — failing closed')
     return false
   }
 
@@ -35,11 +36,11 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
     })
     const data = await res.json()
     if (!data.success) {
-      console.warn('Turnstile verification failed:', data['error-codes'])
+      log.warn('subscribe', 'Turnstile verification failed', data['error-codes'])
     }
     return data.success === true
   } catch (err) {
-    console.error('Turnstile fetch error:', err)
+    log.error('subscribe', 'Turnstile fetch error', err)
     return false
   }
 }
@@ -71,7 +72,7 @@ let fanType: string = 'casual'
 
   // === Gate 1: Turnstile token must be present and valid ===
   if (!turnstileToken) {
-    console.warn('Signup rejected: missing Turnstile token')
+    log.warn('subscribe', 'Signup rejected: missing Turnstile token')
     return NextResponse.redirect(new URL('/?error=verify-failed', req.url), { status: 303 })
   }
 
@@ -94,7 +95,7 @@ let fanType: string = 'casual'
 
   // === Gate 4: Disposable-domain check ===
   if (isLikelyDisposable(parsed.data.email)) {
-    console.warn('Signup rejected: disposable email domain', parsed.data.email)
+    log.warn('subscribe', 'Signup rejected: disposable email domain', parsed.data.email)
     // Pretend it succeeded — don't tell bots which domains we block
     return NextResponse.redirect(new URL('/?check-email=1', req.url), { status: 303 })
   }
@@ -131,7 +132,7 @@ let fanType: string = 'casual'
   )
 
   if (dbError) {
-    console.error('Subscribe DB error:', dbError)
+    log.error('subscribe', 'Subscribe DB error', dbError)
     return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
 
@@ -148,9 +149,9 @@ let fanType: string = 'casual'
         html: content.html,
         text: content.text,
       })
-      if (sendError) console.error('[Subscribe email] Resend rejected the send:', sendError.name, sendError.message)
+      if (sendError) log.error('Subscribe email', 'Resend rejected the send', [sendError.name, sendError.message].join(' '))
     } catch (emailError) {
-      console.error('Verification email failed:', emailError)
+      log.error('subscribe', 'Verification email failed', emailError)
     }
   }
 

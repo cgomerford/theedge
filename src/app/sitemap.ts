@@ -18,6 +18,7 @@ import { LABS_MENU } from '@/lib/nav/labsMenu'
 import { getLatestArticles } from '@/lib/articles'
 import { authorFor } from '@/lib/authors'
 import { SITE_URL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export const revalidate = 86400 // 24h: the roster section makes 30 MLB API calls, rosters barely change day to day
 
@@ -78,7 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .gte('game_date', since.toISOString().split('T')[0])
       .order('game_date', { ascending: false })
       .range(0, 999)
-    if (error) console.error('[sitemap] games Supabase error:', error.message)
+    if (error) log.error('sitemap', 'games Supabase error', error.message)
     const seen = new Set<string>()
     for (const p of (data ?? []) as { game_date: string; home_team: string | null; away_team: string | null }[]) {
       if (!p.home_team || !p.away_team) continue
@@ -88,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       gamePages.push({ url: url(path), lastModified: new Date(p.game_date), changeFrequency: 'hourly', priority: 0.6 })
     }
   } catch (e) {
-    console.error('[sitemap] game pages failed', e)
+    log.error('sitemap', 'game pages failed', e)
   }
 
   // Players: active rosters, one clean URL each.
@@ -100,7 +101,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const r of rosters) for (const p of r) ids.add(p.id)
     for (const id of ids) playerPages.push({ url: url(`/mlb/players/${id}`), lastModified: now, changeFrequency: 'daily', priority: 0.5 })
   } catch (e) {
-    console.error('[sitemap] player pages failed', e)
+    log.error('sitemap', 'player pages failed', e)
   }
 
   const articlePages: MetadataRoute.Sitemap = []
@@ -114,7 +115,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
     for (const [slug, when] of authors) articlePages.push({ url: url(`/authors/${slug}`), lastModified: when, changeFrequency: 'weekly', priority: 0.4 })
   } catch (e) {
-    console.error('[sitemap] articles failed', e)
+    log.error('sitemap', 'articles failed', e)
   }
 
   return [...staticPages, ...labPages, ...teamPages, ...gamePages, ...playerPages, ...articlePages].filter(

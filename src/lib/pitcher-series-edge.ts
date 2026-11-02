@@ -25,6 +25,7 @@ import {
   type PitchTypeFitLine,
   type PitchZoneFit,
 } from '@/lib/series-matchup'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -160,7 +161,7 @@ export async function getPitcherGameResult(
       bb: parseInt(stat.baseOnBalls ?? '0'),
     }
   } catch (e) {
-    console.error('pitcher-series-edge: getPitcherGameResult failed', e)
+    log.error('pitcher-series-edge', 'pitcher-series-edge: getPitcherGameResult failed', e)
     return null
   }
 }

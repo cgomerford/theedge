@@ -6,6 +6,7 @@
 // in the projected 5-man cycle, not the same repeated guess.
 
 import { getRecentStarters, projectRotation } from './team-rotation'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -79,7 +80,7 @@ export async function getTeamUpcomingSchedule(mlbTeamId: number, days = 10): Pro
       }
     })
   } catch (e) {
-    console.error('getTeamUpcomingSchedule error:', e)
+    log.error('team-schedule', 'getTeamUpcomingSchedule error', e)
     return []
   }
 }

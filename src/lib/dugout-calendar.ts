@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -51,7 +52,7 @@ export async function getCalendarMonth(
   try {
     const res = await fetch(url, { next: { revalidate: 1800 } })
     if (!res.ok) {
-      console.error('Calendar: schedule fetch failed', res.status)
+      log.error('dugout-calendar', 'Calendar: schedule fetch failed', res.status)
       return []
     }
     const data = await res.json()
@@ -61,7 +62,7 @@ export async function getCalendarMonth(
       }
     }
   } catch (err) {
-    console.error('Calendar: schedule fetch error', err)
+    log.error('dugout-calendar', 'Calendar: schedule fetch error', err)
     return []
   }
 

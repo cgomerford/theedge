@@ -6,6 +6,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { CALL_MIN_PA, DEF, handName, paOf, platoonCall, statOf, type Hand, type PlatoonHitter, type PlatoonRow } from './model'
 import type { Bucket, LeagueDot } from '@/components/platoon-lab/PlatoonView'
+import { log } from '@/lib/log'
 
 const COLS = 'batter_id,season,coord_era,bat_side,p_throws,metric,n,value_sum,value_sq_sum,updated_at'
 const PAGE = 1000 // PostgREST caps a response at 1,000 rows
@@ -19,7 +20,7 @@ export async function getPlatoonHitter(batterId: number): Promise<{ hitter: Plat
   if (!Number.isFinite(batterId) || batterId <= 0) return null
   const supa = createAdminClient()
   const latest = await supa.from('batter_platoon_process').select('season').eq('batter_id', batterId).order('season', { ascending: false }).limit(1)
-  if (latest.error) { console.error('[getPlatoonHitter] Supabase error (season):', latest.error.message); return null }
+  if (latest.error) { log.error('getPlatoonHitter', 'Supabase error (season)', latest.error.message); return null }
   const season = latest.data?.[0]?.season as number | undefined
   if (!season) return null
   const [rows, lgRows, who] = await Promise.all([
@@ -27,7 +28,7 @@ export async function getPlatoonHitter(batterId: number): Promise<{ hitter: Plat
     supa.from('batter_platoon_process').select(COLS).eq('batter_id', 0).eq('season', season).not('metric', 'like', 'cp_%').limit(PAGE), // the league's contact-point cells are not needed on a hitter page
     supa.from('batter_tto').select('name,team').eq('batter_id', batterId).order('season', { ascending: false }).limit(1),
   ])
-  if (rows.error || lgRows.error) { console.error('[getPlatoonHitter] Supabase error:', (rows.error ?? lgRows.error)?.message); return null }
+  if (rows.error || lgRows.error) { log.error('getPlatoonHitter', 'Supabase error', (rows.error ?? lgRows.error)?.message); return null }
   const all = [...(rows.data ?? []), ...(lgRows.data ?? [])] as unknown as Db[]
   const mine = all.filter(r => r.batter_id === batterId).map(toRow), lg = all.filter(r => r.batter_id === 0).map(toRow)
   const bySide: Record<Hand, PlatoonRow[]> = { L: mine.filter(r => r.bat_side === 'L'), R: mine.filter(r => r.bat_side === 'R') }
@@ -55,11 +56,11 @@ async function fetchAll(seasons: number[], metrics: string[] | null = METRICS): 
   const page = (from: number) => supa.from('batter_platoon_process').select(COLS, from === 0 ? { count: 'exact' } : undefined)
     .gt('batter_id', 0).in('season', seasons).filter('metric', 'in', `(${(metrics ?? ALL_NON_CP).join(',')})`).order('batter_id').order('season').order('bat_side').order('p_throws').order('metric').range(from, from + PAGE - 1)
   const first = await page(0)
-  if (first.error) { console.error('[getPlatoonLeague] Supabase error:', first.error.message); return null }
+  if (first.error) { log.error('getPlatoonLeague', 'Supabase error', first.error.message); return null }
   const total = first.count ?? 0
   const rest = await Promise.all(Array.from({ length: Math.max(0, Math.ceil(total / PAGE) - 1) }, (_, i) => page((i + 1) * PAGE)))
   const out = [...(first.data ?? [])]
-  for (const r of rest) { if (r.error) { console.error('[getPlatoonLeague] Supabase error:', r.error.message); return null } out.push(...(r.data ?? [])) }
+  for (const r of rest) { if (r.error) { log.error('getPlatoonLeague', 'Supabase error', r.error.message); return null } out.push(...(r.data ?? [])) }
   return (out as unknown as Db[]).map(toRow)
 }
 
@@ -129,7 +130,7 @@ export async function getPlatoonLeague(): Promise<{ single: LeagueDot[]; pooled:
   if (process.env.NODE_ENV === 'production' && leagueCache && Date.now() - leagueCache.at < TTL_MS) return leagueCache.sets   // cached for an hour in production only: in dev a half-written rebuild would otherwise linger
   const supa = createAdminClient()
   const seasonsRes = await supa.from('batter_platoon_process').select('season').eq('batter_id', 0).eq('metric', 'woba').limit(20)
-  if (seasonsRes.error) { console.error('[getPlatoonLeague] Supabase error (seasons):', seasonsRes.error.message); return null }
+  if (seasonsRes.error) { log.error('getPlatoonLeague', 'Supabase error (seasons)', seasonsRes.error.message); return null }
   const seasons = [...new Set((seasonsRes.data ?? []).map(r => r.season as number))].sort((a, b) => a - b)
   if (seasons.length === 0) return null
   const latest = seasons[seasons.length - 1]
@@ -138,7 +139,7 @@ export async function getPlatoonLeague(): Promise<{ single: LeagueDot[]; pooled:
     supa.from('batter_platoon_process').select(COLS).eq('batter_id', 0).eq('season', latest).not('metric', 'like', 'cp_%').limit(PAGE),
     supa.from('batter_tto').select('batter_id,name').eq('season', latest).limit(PAGE),
   ])
-  if (!rows || !full || lgRes.error) { if (lgRes.error) console.error('[getPlatoonLeague] Supabase error (league rows):', lgRes.error.message); return null }
+  if (!rows || !full || lgRes.error) { if (lgRes.error) log.error('getPlatoonLeague', 'Supabase error (league rows)', lgRes.error.message); return null }
   const lgRows = ((lgRes.data ?? []) as unknown as Db[]).map(toRow)
   // the call for every hitter on one side (switch hitters are left out), then the three lists
   const info = new Map<number, { bucket: Bucket; note: string }>()

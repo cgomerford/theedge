@@ -25,6 +25,7 @@ import {
   SUM_FIELDS, SAMPLE, SAMPLE_FIELD, FIELD_POSITIONS, CURRENT_SEASON, FIRST_SEASON, FREE_FIELDS, familyFor, familySplits, splitLabel,
   type Group, type QueryState, type Totals,
 } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -82,7 +83,7 @@ async function fetchTeamRows(group: Group, gameType: string, season: number, cod
     try {
       data = await getJson(url, 30_000)
     } catch (e) {
-      console.error('[fetchTeamRows] MLB API error:', (e as Error).message, { group, gameType, season })
+      log.error('fetchTeamRows', 'MLB API error', [(e as Error).message, { group, gameType, season }].join(' '))
       throw e
     }
     const splits: any[] = data?.stats?.[0]?.splits ?? []
@@ -315,7 +316,7 @@ async function fetchPlayerRows(group: Group, gameType: string, season: number, s
     try {
       data = await getJson(url, 60_000)
     } catch (e) {
-      console.error('[fetchPlayerRows] MLB API error:', (e as Error).message, { group, gameType, season, split })
+      log.error('fetchPlayerRows', 'MLB API error', [(e as Error).message, { group, gameType, season, split }].join(' '))
       throw e
     }
     const splits: any[] = data?.stats?.[0]?.splits ?? []

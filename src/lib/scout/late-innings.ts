@@ -18,6 +18,7 @@
 // `arms` is null and the UI shows a "not loaded yet" state instead of invented numbers.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 export const MIN_LATE_APPS = 3          // a reliever needs this many late appearances (season) to be listed
@@ -67,7 +68,7 @@ type SchedGame = {
 async function getScoring(teamId: number, oppId: number, season: string): Promise<{ season: Scoring; vsOpp: Scoring } | null> {
   try {
     const res = await fetch(`${MLB}/schedule?sportId=1&teamId=${teamId}&season=${season}&gameType=R&hydrate=linescore`, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) })
-    if (!res.ok) { console.error('[getScoring] schedule HTTP', res.status); return null }
+    if (!res.ok) { log.error('getScoring', 'schedule HTTP', res.status); return null }
     const dates = ((await res.json()).dates ?? []) as { games?: SchedGame[] }[]
     const out = { season: emptyScoring(), vsOpp: emptyScoring() }
     for (const g of dates.flatMap((d) => d.games ?? [])) {
@@ -86,7 +87,7 @@ async function getScoring(teamId: number, oppId: number, season: string): Promis
     }
     return out
   } catch (err) {
-    console.error('[getScoring] failed:', err instanceof Error ? err.message : err)
+    log.error('getScoring', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -128,7 +129,7 @@ async function getLog(teamId: number, season: string): Promise<LogRow[] | null> 
       .select('game_pk, game_date, pitcher_id, pitcher_name, pitching_team_id, batting_team_id, entry_margin, inn7, inn8, inn9, inn10p, bf, outs, hits, bb, k, hr, runs')
       .eq('pitching_team_id', teamId).gte('game_date', `${season}-01-01`).order('game_pk').order('pitcher_id').range(offset, offset + 999)
     if (error) {
-      if (error.code !== 'PGRST205') console.error('[getLateLog] Supabase error:', error.message)
+      if (error.code !== 'PGRST205') log.error('getLateLog', 'Supabase error', error.message)
       return null
     }
     rows.push(...((data ?? []) as unknown as LogRow[]))

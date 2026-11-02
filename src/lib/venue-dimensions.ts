@@ -11,6 +11,7 @@
 // are rare, off-season events).
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB_API_V1 = 'https://statsapi.mlb.com/api/v1'
 
@@ -50,7 +51,7 @@ export async function getVenueFieldDimensions(venueId: number): Promise<VenueFie
       rightLine: fi.rightLine ?? null,
     }
   } catch (err) {
-    console.error(`Venue field dimensions fetch failed for venue ${venueId}:`, err)
+    log.error('venue-dimensions', `Venue field dimensions fetch failed for venue ${venueId}`, err)
     return null
   }
 }

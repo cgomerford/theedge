@@ -30,6 +30,7 @@ import {
   buildRolling, ratio, sumOf, withFallbackBaselines,
   type ExplorerClub, type ExplorerStat, type StatFns,
 } from './stat-explorer'
+import { log } from '@/lib/log'
 
 const SAVANT = 'https://baseballsavant.mlb.com'
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
@@ -361,7 +362,7 @@ export async function getTeamTrend(teamId: number, abbr: string, gameDate: strin
       },
     }
   } catch (err) {
-    console.error('[scout] team trend failed:', abbr, err)
+    log.error('scout', 'team trend failed', [abbr, err].join(' '))
     return null
   }
 }

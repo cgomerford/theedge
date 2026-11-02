@@ -10,6 +10,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { getPostData } from '@/lib/postgame/data'
 import { buildCard, CARD_KINDS, type CardKind } from '@/lib/postgame/cards/cards'
 import { loadFonts, W, H } from '@/lib/postgame/cards/frame'
+import { log } from '@/lib/log'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -30,7 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ gamePk: 
 
   let element
   try { element = await buildCard(kind, data, gameDate) } catch (err) {
-    console.error(`[postgame-card] ${kind} failed:`, err instanceof Error ? err.message : err)
+    log.error('postgame-card', `${kind} failed`, err instanceof Error ? err.message : err)
     return new Response('Card failed to build', { status: 500 })
   }
   if (!element) return new Response('Not enough data for this card', { status: 404 })

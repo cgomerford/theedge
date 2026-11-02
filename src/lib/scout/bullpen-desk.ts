@@ -21,6 +21,7 @@ import { getLast7DaysPitcherWorkloadFromDB } from '@/lib/pitcher-workload'
 import { getBullpenReportFromDB } from '@/lib/bullpen-usage'
 import { workloadFlag } from './workload'
 import { getRecentWork, type RecentWork } from './recent-work'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -123,7 +124,7 @@ async function getActivePitchers(teamId: number, season: number): Promise<Active
       const era = st?.era != null ? Number(st.era) : null
       return { id: x.person.id, name: x.person.fullName, gs: Number(st?.gamesStarted ?? 0), g: Number(st?.gamesPlayed ?? 0), era: Number.isFinite(era as number) ? era : null }
     })
-  } catch (e) { console.error('[bullpenDesk] active pitchers failed:', (e as Error).message); return [] }
+  } catch (e) { log.error('bullpenDesk', 'active pitchers failed', (e as Error).message); return [] }
 }
 
 /** `excludeIds`: pitchers who are not in the pen tonight (the probable starter). Everyone else on the active roster who is not a starter is listed. */

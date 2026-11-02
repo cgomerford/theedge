@@ -8,6 +8,7 @@ import { isSignedIn } from '@/lib/require-signup'
 import { loadAbIndex, loadClusterMap } from '@/lib/sequencing-lab/ab-load'
 import { matchSequence, MAX_STACK, type MatchSpec, type PitchSpec, type ResultCode } from '@/lib/sequencing-lab/ab-index'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,8 +45,8 @@ export async function GET(req: Request) {
     try {
       const res = await throttledMlbFetch(`https://statsapi.mlb.com/api/v1/people?personIds=${ids.join(',')}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
       if (res.ok) for (const p of ((await res.json()).people ?? []) as { id: number; fullName: string }[]) names[p.id] = p.fullName
-      else console.error('[sequencing match] names HTTP', res.status)
-    } catch (err) { console.error('[sequencing match] names failed:', err instanceof Error ? err.message : err) }
+      else log.error('sequencing match', 'names HTTP', res.status)
+    } catch (err) { log.error('sequencing match', 'names failed', err instanceof Error ? err.message : err) }
   }
   return NextResponse.json({ ...result, names })
 }

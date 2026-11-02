@@ -11,6 +11,7 @@ import { slugifyGame, type MLBGame } from '@/lib/mlb'
 import { PITCH_NAME } from '@/lib/lab/pitch-meta'
 import { MIN_SAMPLE } from '@/lib/min-sample'
 import { findTeamByName } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 const API = 'https://statsapi.mlb.com/api/v1'
 const REVALIDATE = 300
@@ -18,11 +19,11 @@ const num = (v: unknown): number | null => (v == null || v === '' || !Number.isF
 
 async function getJson(url: string, label: string, revalidate: number | false = REVALIDATE): Promise<any | null> {
   try {
-    const res = await fetch(url, revalidate === false ? { cache: 'no-store' } : { next: { revalidate } })
-    if (!res.ok) { console.error(`[${label}] HTTP ${res.status}`); return null }
+    const res = await fetch(url, revalidate === false ? { cache: 'no-store', signal: AbortSignal.timeout(8000) } : { next: { revalidate }, signal: AbortSignal.timeout(8000) })
+    if (!res.ok) { log.error(`${label}`, `HTTP ${res.status}`); return null }
     return await res.json()
   } catch (e) {
-    console.error(`[${label}] failed:`, e instanceof Error ? e.message : e)
+    log.error(`${label}`, `failed`, e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -138,7 +139,7 @@ async function starter(id: number, name: string, season: number, postseason: boo
     supa.from('pitcher_zone_arsenal').select('updated_at').eq('player_id', id).eq('season', season).order('updated_at', { ascending: false }).limit(1),
     getSpinByPitch(id).catch(() => ({})),
   ])
-  if (ps.error) console.error('[dash starter] pitcher_stats error:', ps.error.message)
+  if (ps.error) log.error('dash starter', 'pitcher_stats error', ps.error.message)
   const all = (arsenal as any)?.all?.arsenal as Record<string, { usage_pct: number | null }> | undefined
   const mix = Object.entries(all ?? {}).map(([code, p]) => ({ code, label: PITCH_NAME[code] ?? code, pct: Number(p.usage_pct ?? 0) })).filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct)
   return {

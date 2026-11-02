@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // Per-play win-probability swings across a series' completed games — the
 // same math MLB's own in-game win-probability graph is built from, not a
 // home-grown cumulative run differential. Confirmed live against
@@ -43,7 +44,7 @@ export async function getSeriesInningMomentum(
           }))
         return { gamePk: g.gamePk, gameNumber: g.gameNumber, points }
       } catch (err) {
-        console.error('[series-momentum] fetch failed:', g.gamePk, err)
+        log.error('series-momentum', 'fetch failed', [g.gamePk, err].join(' '))
         return { gamePk: g.gamePk, gameNumber: g.gameNumber, points: [] }
       }
     })

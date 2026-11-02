@@ -7,6 +7,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 // The Front Office is locked to one club for now. Change here to point it elsewhere.
 export const FO_TEAM = MLB_TEAMS.find(t => t.slug === 'phillies')!
@@ -50,7 +51,7 @@ export async function getTeamSnapshot(teamId: number): Promise<TeamSnapshot | nu
     .order('season', { ascending: false })
     .limit(1)
   if (error) {
-    console.error('[getTeamSnapshot] Supabase error:', error.message)
+    log.error('getTeamSnapshot', 'Supabase error', error.message)
     return null
   }
   const r = ((data ?? []) as any[])[0]
@@ -82,7 +83,7 @@ export async function getContracts(playerIds: number[], fromSeason: number): Pro
     .order('season', { ascending: true })
     .limit(1000)
   if (error) {
-    console.error('[getContracts] Supabase error:', error.message)
+    log.error('getContracts', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as any[]).map(r => ({

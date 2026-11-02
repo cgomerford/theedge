@@ -15,6 +15,7 @@ import { MIN_COMPARE_PITCHES, MIN_SETUP, MIN_TAKEN, giftPct, missPct, swingPct, 
 import { GOLD } from './monthStats'
 import { PV_CSS } from './pvCss'
 import { createPitchViewScene, type SceneApi } from './pitchViewScene'
+import { log } from '@/lib/log'
 
 const last = (name: string) => name.split(' ').slice(-1)[0]
 
@@ -28,7 +29,7 @@ function MiniPitch({ p, hand, register }: { p: ComparePitcher; hand: 'L' | 'R'; 
     try {
       api = createPitchViewScene({ canvas: canvasRef.current, labels: labelsRef.current, months: [p.flight], hand, monthLabel: () => last(p.name), goldIndex: null, onCamName: () => {}, onNote: () => {} })
     } catch (e) {
-      console.error('[PitchCompare] 3D scene failed to load:', e instanceof Error ? e.message : e)
+      log.error('PitchCompare', '3D scene failed to load', e instanceof Error ? e.message : e)
       setFailed(true)
       return
     }

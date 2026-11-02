@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { log } from '@/lib/log'
 
 type Props = {
   tweetText: string
@@ -22,7 +23,7 @@ export default function ShareButton({ tweetText, replyText, imageUrl }: Props) {
         setOpen(false)
       }, 1500)
     } catch (err) {
-      console.error('Clipboard failed:', err)
+      log.error('ShareButton', 'Clipboard failed', err)
       alert('Copy failed — your browser may not support clipboard API. Text:\n\n' + text)
     }
   }

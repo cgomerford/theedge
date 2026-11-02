@@ -15,6 +15,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS } from '@/lib/mlb-assets'
+import { log } from '@/lib/log'
 
 export type ABSChallengeRecord = {
   team_abbr: string
@@ -88,7 +89,7 @@ export async function getABSChallengeRecord(teamAbbr: string): Promise<ABSChalle
     .maybeSingle()
 
   if (error) {
-    if (error.code !== 'PGRST205') console.error('[getABSChallengeRecord] Supabase error:', error.message)
+    if (error.code !== 'PGRST205') log.error('getABSChallengeRecord', 'Supabase error', error.message)
     return null
   }
   if (!data) return null
@@ -111,7 +112,7 @@ export async function getABSChallengeLeaderboard(): Promise<ABSChallengeRecord[]
     .maybeSingle()
 
   if (latestError) {
-    if (latestError.code !== 'PGRST205') console.error('[getABSChallengeLeaderboard] Supabase error:', latestError.message)
+    if (latestError.code !== 'PGRST205') log.error('getABSChallengeLeaderboard', 'Supabase error', latestError.message)
     return []
   }
   if (!latest) return []
@@ -122,7 +123,7 @@ export async function getABSChallengeLeaderboard(): Promise<ABSChallengeRecord[]
     .eq('season', latest.season)
 
   if (error) {
-    console.error('[getABSChallengeLeaderboard] Supabase error:', error.message)
+    log.error('getABSChallengeLeaderboard', 'Supabase error', error.message)
     return []
   }
   if (!data) return []

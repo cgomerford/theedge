@@ -12,6 +12,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS } from '@/lib/teams'
 import { buildSequence, type EventRow, type SeqPitch } from './sequence'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const TTL_MS = 30 * 60 * 1000
@@ -95,7 +96,7 @@ async function pageAll<T>(table: string, cols: string, season: number): Promise<
   const out: T[] = []
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supa.from(table).select(cols).eq('season', season).order('player_id').order('split').range(offset, offset + 999)
-    if (error) { console.error(`[sequencing-lab] ${table} Supabase error:`, error.message); return null }
+    if (error) { log.error('sequencing-lab', `${table} Supabase error`, error.message); return null }
     out.push(...((data ?? []) as unknown as T[]))
     if (!data || data.length < 1000) break
   }
@@ -107,9 +108,9 @@ async function handsOf(ids: number[]): Promise<Map<number, 'L' | 'R'>> {
   for (let i = 0; i < ids.length; i += 100) {
     try {
       const res = await fetch(`${MLB}/people?personIds=${ids.slice(i, i + 100).join(',')}&fields=people,id,pitchHand,code`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(12000) })
-      if (!res.ok) { console.error('[sequencing-lab] hands HTTP', res.status); continue }
+      if (!res.ok) { log.error('sequencing-lab', 'hands HTTP', res.status); continue }
       for (const p of (await res.json()).people ?? []) if (p.pitchHand?.code === 'L' || p.pitchHand?.code === 'R') out.set(p.id, p.pitchHand.code)
-    } catch (err) { console.error('[sequencing-lab] hands failed:', err instanceof Error ? err.message : err) }
+    } catch (err) { log.error('sequencing-lab', 'hands failed', err instanceof Error ? err.message : err) }
   }
   return out
 }
@@ -171,7 +172,7 @@ export async function getSeqDetail(id: number, season = new Date().getFullYear()
     supa.from('pitcher_pitch_sequencing').select('player_name, split, transitions').eq('player_id', id).eq('season', season),
     supa.from('pitcher_count_tendency').select('split, counts').eq('player_id', id).eq('season', season),
   ])
-  if (a.error || b.error) { console.error('[getSeqDetail] Supabase error:', a.error?.message ?? b.error?.message); return null }
+  if (a.error || b.error) { log.error('getSeqDetail', 'Supabase error', a.error?.message ?? b.error?.message); return null }
   const seq = (a.data ?? []) as unknown as { player_name: string; split: SeqSplit; transitions: RawTrans | null }[]
   if (seq.length === 0) return null
   const d: Detail = { id, name: seq[0].player_name, transitions: { all: {}, vs_lhb: {}, vs_rhb: {} }, counts: { all: {}, vs_lhb: {}, vs_rhb: {} } }
@@ -201,7 +202,7 @@ async function leagueSpinUncached(season: number): Promise<Record<string, SpinAv
     const shape: ShapeRow[] = []
     for (let o = 0; ; o += 1000) {
       const { data, error } = await supa.from('pitch_shape_pitcher').select('pitch_type, n_pitches, ivb, hb').eq('season', season).order('pitcher_id').order('pitch_type').range(o, o + 999)
-      if (error) { console.error('[leagueSpin] shape Supabase error:', error.message); break }
+      if (error) { log.error('leagueSpin', 'shape Supabase error', error.message); break }
       shape.push(...((data ?? []) as unknown as ShapeRow[]))
       if (!data || data.length < 1000) break
     }
@@ -210,7 +211,7 @@ async function leagueSpinUncached(season: number): Promise<Record<string, SpinAv
     const mon: MonthRow[] = []
     if (month != null) for (let o = 0; ; o += 1000) {
       const { data, error } = await supa.from('pitch_shape_monthly').select('pitch_type, n_pitches, release_spin_rate').eq('season', season).eq('month', month).order('pitcher_id').order('pitch_type').range(o, o + 999)
-      if (error) { console.error('[leagueSpin] monthly Supabase error:', error.message); break }
+      if (error) { log.error('leagueSpin', 'monthly Supabase error', error.message); break }
       mon.push(...((data ?? []) as unknown as MonthRow[]))
       if (!data || data.length < 1000) break
     }
@@ -221,7 +222,7 @@ async function leagueSpinUncached(season: number): Promise<Record<string, SpinAv
         rpm: wmean(m.map(r => ({ w: Number(r.n_pitches), v: r.release_spin_rate == null ? null : Number(r.release_spin_rate) }))),
       }
     }
-  } catch (err) { console.error('[leagueSpin] failed:', err instanceof Error ? err.message : err) }
+  } catch (err) { log.error('leagueSpin', 'failed', err instanceof Error ? err.message : err) }
   return out
 }
 
@@ -234,7 +235,7 @@ export async function getPitcherShape(id: number, season = new Date().getFullYea
     supa.from('pitch_shape_pitcher').select('pitch_type, n_pitches, velo, ivb, hb, points').eq('pitcher_id', id).eq('season', season),
     supa.from('pitch_shape_monthly').select('pitch_type, n_pitches, release_spin_rate').eq('pitcher_id', id).eq('season', season),
   ])
-  if (a.error || b.error) { console.error('[getPitcherShape] Supabase error:', a.error?.message ?? b.error?.message); return {} }
+  if (a.error || b.error) { log.error('getPitcherShape', 'Supabase error', a.error?.message ?? b.error?.message); return {} }
   const out: PitcherShape = {}
   const mon = (b.data ?? []) as unknown as MonthRow[]
   for (const r of (a.data ?? []) as unknown as (ShapeRow & { velo: number | string | null; points: { hb: number; ivb: number }[] | null })[]) {
@@ -255,7 +256,7 @@ export async function getSeqEvents(id: number, season = new Date().getFullYear()
   const rows: EventRow[] = []
   for (let o = 0; ; o += 1000) {
     const { data, error } = await supa.from('pitch_events').select('game_pk, at_bat_number, pitch_number, pitch_type, description, events, zone').eq('pitcher_id', id).gte('game_date', `${season}-01-01`).order('game_pk').order('at_bat_number').order('pitch_number').range(o, o + 999)
-    if (error) { console.error('[getSeqEvents] Supabase error:', error.message); return [] }
+    if (error) { log.error('getSeqEvents', 'Supabase error', error.message); return [] }
     rows.push(...((data ?? []) as unknown as EventRow[]))
     if (!data || data.length < 1000) break
   }

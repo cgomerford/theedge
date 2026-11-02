@@ -5,6 +5,7 @@
 // (pitcher_k_structure, written by scripts/build_pitcher_k_structure.py from the at-bat index). null when the table is not there or the pitcher has no rows; nothing is estimated.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type KLook = { look: 1 | 2 | 3; pas: number; ks: number; swinging: number; looking: number; kPitches: number; finishers: Record<string, number>; openers: Record<string, number> }
 export type KStructure = { pitcherId: number; looks: KLook[]; league: KLook[] }
@@ -14,7 +15,7 @@ const shape = (r: Row): KLook => ({ look: r.look as 1 | 2 | 3, pas: Number(r.pas
 
 export async function getKStructure(pitcherId: number, season = new Date().getFullYear()): Promise<KStructure | null> {
   const { data, error } = await createAdminClient().from('pitcher_k_structure').select('pitcher_id, look, pas, ks, swinging_ks, looking_ks, k_pitches, finishers, openers').eq('season', season).in('pitcher_id', [pitcherId, 0])
-  if (error) { console.error('[getKStructure] Supabase error:', error.message); return null }
+  if (error) { log.error('getKStructure', 'Supabase error', error.message); return null }
   const rows = (data ?? []) as unknown as Row[]
   const mine = rows.filter(r => Number(r.pitcher_id) === pitcherId).map(shape).sort((a, b) => a.look - b.look)
   const league = rows.filter(r => Number(r.pitcher_id) === 0).map(shape).sort((a, b) => a.look - b.look)

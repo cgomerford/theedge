@@ -21,6 +21,7 @@ import { BLOCKS, TEMPLATE_NAMES } from './index'
 import OtdForm from './otd/OtdForm'
 import StudioExtras, { type BatchState } from './StudioExtras'
 import { fillSnapshot } from '@/lib/graphics/checks'
+import { log } from '@/lib/log'
 
 type Mode = 'form' | 'json'
 
@@ -241,7 +242,7 @@ export default function GraphicsStudio() {
       a.download = name
       a.click()
     } catch (err) {
-      console.error('[GraphicsStudio] export failed:', err)
+      log.error('GraphicsStudio', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setExporting(null)

@@ -14,6 +14,7 @@ import { slugifyGame, type MLBGame } from '@/lib/mlb'
 import type { PostData } from './data'
 import type { Side } from './recap'
 import { shiftDate } from './bullpen'
+import { log } from '@/lib/log'
 
 type SchedGame = MLBGame & { seriesStatus?: { gameNumber?: number; totalGames?: number; result?: string } }
 export type Teaser = { firstPitch: { name: string; pct: number } | null; twoStrike: { name: string; pct: number } | null }
@@ -37,14 +38,14 @@ async function nextGameFor(teamId: number, currentPk: number, currentStart: stri
   const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamId}&startDate=${gameDate}&endDate=${shiftDate(gameDate, 8)}&hydrate=team,probablePitcher,seriesStatus`
   try {
     const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(15000) })
-    if (!res.ok) { console.error('[nextGameFor] schedule HTTP', res.status); return null }
+    if (!res.ok) { log.error('nextGameFor', 'schedule HTTP', res.status); return null }
     const json = (await res.json()) as { dates?: { games?: SchedGame[] }[] }
     const games = (json.dates ?? []).flatMap((d) => d.games ?? [])
       .filter((g) => g.gamePk !== currentPk && g.gameDate > currentStart)
       .sort((a, b) => (a.gameDate < b.gameDate ? -1 : 1))
     return games[0] ?? null
   } catch (err) {
-    console.error('[nextGameFor] failed:', err instanceof Error ? err.message : err)
+    log.error('nextGameFor', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -52,7 +53,7 @@ async function nextGameFor(teamId: number, currentPk: number, currentStart: stri
 type CountBuckets = Record<string, { pitches?: { pitch_name?: string; count_n?: number }[] }>
 async function getTeaser(pitcherId: number, year: number): Promise<Teaser | null> {
   const { data, error } = await createAdminClient().from('pitcher_count_tendency').select('counts').eq('player_id', pitcherId).eq('season', year).eq('split', 'all').maybeSingle()
-  if (error) { console.error('[getTeaser] Supabase error:', error.message); return null }
+  if (error) { log.error('getTeaser', 'Supabase error', error.message); return null }
   const counts = (data as { counts?: CountBuckets } | null)?.counts
   if (!counts) return null
   const top = (keys: string[]) => {

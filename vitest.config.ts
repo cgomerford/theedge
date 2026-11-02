@@ -9,6 +9,8 @@ export default defineConfig({
       'src/lib/follows/**/*.test.ts',
       'src/lib/article-checks.test.ts',
       'src/lib/comments.test.ts',
+      'src/lib/log.test.ts',
+      'src/lib/proxy-matcher.test.ts',
       'src/lib/team-batting.test.ts',
       'src/lib/seo/**/*.test.ts',
       'src/components/pitch-shape/**/*.test.ts',

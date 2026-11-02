@@ -25,6 +25,7 @@ import {
   type BatterStatcast,
 } from '@/lib/batter-stats'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log, logOnce } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -33,15 +34,15 @@ const MLB_API = 'https://statsapi.mlb.com/api/v1'
 // whole team fetch down with it.
 async function safeFetchJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      console.error(`[stats-data] fetch failed: ${res.status} ${res.statusText} — ${url}`, body.slice(0, 300))
+      logOnce(`stats-data:${res.status}:${url.split('?')[0]}`, 'stats-data', `fetch failed: ${res.status} ${res.statusText} — ${url.split('?')[0]}`, body.slice(0, 300))
       return null
     }
     return (await res.json()) as T
   } catch (err) {
-    console.error(`[stats-data] fetch threw for ${url}:`, err)
+    logOnce(`stats-data:threw:${url.split('?')[0]}`, 'stats-data', `fetch threw for ${url.split('?')[0]}`, err)
     return null
   }
 }
@@ -96,7 +97,7 @@ export async function getPitcherStatsTable(opts: {
 
   const { data, error } = await query
   if (error) {
-    console.error('[stats-data] pitcher_stats query failed:', error)
+    log.error('stats-data', 'pitcher_stats query failed', error)
     return []
   }
 
@@ -168,12 +169,12 @@ export async function getAllBattersSeasonTable(season: number): Promise<StatsRow
   ])
   const splits = json?.stats?.[0]?.splits ?? []
   const totalSplits = json?.stats?.[0]?.totalSplits
-  console.log(`[stats-data] bulk batter fetch: got ${splits.length} rows, totalSplits reports ${totalSplits}`)
+  log.debug('stats-data', `bulk batter fetch: got ${splits.length} rows, totalSplits reports ${totalSplits}`)
   if (typeof totalSplits === 'number' && totalSplits > splits.length) {
-    console.warn(`[stats-data] bulk batter fetch is short by ${totalSplits - splits.length} rows — bump limit further`)
+    log.warn('stats-data', `bulk batter fetch is short by ${totalSplits - splits.length} rows — bump limit further`)
   }
   if (splits.length === 0) {
-    console.warn('[stats-data] bulk batter fetch returned 0 rows — endpoint shape may be wrong, verify against a real response')
+    log.warn('stats-data', 'bulk batter fetch returned 0 rows — endpoint shape may be wrong, verify against a real response')
     return []
   }
 
@@ -280,7 +281,7 @@ async function fetchSavantCSV(url: string): Promise<{ headers: string[]; lines: 
       },
     })
     if (!res.ok) {
-      console.error(`[stats-data] Savant CSV fetch failed: ${res.status} — ${url}`)
+      log.error('stats-data', `Savant CSV fetch failed: ${res.status} — ${url}`)
       return null
     }
     const text = await res.text()
@@ -289,7 +290,7 @@ async function fetchSavantCSV(url: string): Promise<{ headers: string[]; lines: 
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''))
     return { headers, lines }
   } catch (err) {
-    console.error('[stats-data] Savant CSV fetch threw:', err)
+    log.error('stats-data', 'Savant CSV fetch threw', err)
     return null
   }
 }
@@ -307,9 +308,9 @@ const [expected, exitVelo, sprint] = await Promise.all([
     fetchSavantCSV(`https://baseballsavant.mlb.com/leaderboard/sprint_speed?year=${season}&position=&team=&csv=true`),
   ])
 
-  console.log(`[stats-data] Statcast: expected_statistics ${expected ? 'ok, ' + (expected.lines.length - 1) + ' rows' : 'FAILED'}`)
-  console.log(`[stats-data] Statcast: exit velo/barrels ${exitVelo ? 'ok, ' + (exitVelo.lines.length - 1) + ' rows' : 'FAILED'}`)
-  console.log(`[stats-data] Statcast: sprint speed ${sprint ? 'ok, ' + (sprint.lines.length - 1) + ' rows' : 'FAILED'}`)
+  log.debug('stats-data', `Statcast: expected_statistics ${expected ? 'ok, ' + (expected.lines.length - 1) + ' rows' : 'FAILED'}`)
+  log.debug('stats-data', `Statcast: exit velo/barrels ${exitVelo ? 'ok, ' + (exitVelo.lines.length - 1) + ' rows' : 'FAILED'}`)
+  log.debug('stats-data', `Statcast: sprint speed ${sprint ? 'ok, ' + (sprint.lines.length - 1) + ' rows' : 'FAILED'}`)
   if (expected) {
     const idIdx = expected.headers.indexOf('player_id')
     const get = (cells: string[], key: string): number | null => {
@@ -366,7 +367,7 @@ const [expected, exitVelo, sprint] = await Promise.all([
     }
   }
 
-  console.log(`[stats-data] Statcast: merged data for ${out.size} of ${wanted.size} requested players`)
+  log.debug('stats-data', `Statcast: merged data for ${out.size} of ${wanted.size} requested players`)
   return out
 }
 

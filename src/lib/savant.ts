@@ -9,6 +9,7 @@
 //   https://baseballsavant.mlb.com/leaderboard/pitch-arsenals?...&csv=true
 
 import type { ArsenalPitch, PitcherForScout } from './scout'
+import { log } from '@/lib/log'
 
 // ─── Pitch type codes used by Savant ─────────────────────────────────────────
 const PITCH_NAMES: Record<string, string> = {
@@ -321,7 +322,7 @@ export async function hydratePitcherFromSavant(
 ): Promise<PitcherForScout> {
   const pid = asPlayerId(pitcher.player_id)
   if (pid == null) {
-    console.warn('[savant] hydrate skipped — missing player_id for', pitcher.player_name)
+    log.warn('savant', 'hydrate skipped — missing player_id for', pitcher.player_name)
     return pitcher
   }
 
@@ -330,9 +331,7 @@ export async function hydratePitcherFromSavant(
   const pitchCount = data.pitchCounts.get(pid) ?? 0
 
   if (arsenal.length === 0) {
-    console.warn(
-      `[savant] no arsenal rows for player_id=${pid} (${pitcher.player_name}) year=${year}. Keeping prior arsenal.`,
-    )
+    log.warn('savant', `no arsenal rows for player_id=${pid} (${pitcher.player_name}) year=${year}. Keeping prior arsenal.`)
     return pitcher
   }
 
@@ -371,15 +370,9 @@ export async function hydrateMatchupPitchersFromSavant(
   // Sanity log — remove once confirmed in production
   if (home?.arsenal?.length) {
     const top = home.arsenal[0]
-    console.info(
-      `[savant] ${home.player_name}: ${home.arsenal.length} pitches · top ${top.pitch_name} ${top.percentage}% usage, ${top.whiff_percent}% whiff, xwOBA ${top.est_woba}`,
-    )
   }
   if (away?.arsenal?.length) {
     const top = away.arsenal[0]
-    console.info(
-      `[savant] ${away.player_name}: ${away.arsenal.length} pitches · top ${top.pitch_name} ${top.percentage}% usage, ${top.whiff_percent}% whiff, xwOBA ${top.est_woba}`,
-    )
   }
 
   return { homePitcher: home, awayPitcher: away, source: 'baseball-savant', year }

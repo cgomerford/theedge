@@ -6,6 +6,7 @@
 // substitute for modern defensive value stats.
 
 import { withSavantCache } from '@/lib/savant-cache'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -112,7 +113,7 @@ export async function getLeagueOaa(season: number): Promise<Record<string, Field
         }
       }
     } catch (err) {
-      console.error('[batter-fielding] league OAA fetch failed:', err)
+      log.error('batter-fielding', 'league OAA fetch failed', err)
     }
     return out
   })
@@ -143,7 +144,7 @@ export async function getBatterFielding(playerId: number, season: number): Promi
       doublePlays: s.doublePlays ?? 0,
     }
   } catch (err) {
-    console.error('[batter-fielding] fetch failed:', err)
+    log.error('batter-fielding', 'fetch failed', err)
     return null
   }
 }

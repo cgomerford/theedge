@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getPlayerHotZones, type SubjectType } from '@/lib/playerCompare'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     const result = await getPlayerHotZones(id, subjectType)
     return NextResponse.json(result)
   } catch (err) {
-    console.error('[dashboard/hot-zones]', err)
+    log.error('dashboard/hot-zones', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

@@ -14,6 +14,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { getAbsDesk, type AbsClub } from './abs-desk'
 import { BANDS, bandOf, MIN_UMP_GAMES } from './abs-consts'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const PAGE = 1000
@@ -48,7 +49,7 @@ async function getLog(): Promise<Raw[]> {
   const rows: Raw[] = []
   for (let offset = 0; ; offset += PAGE) {
     const { data, error } = await supa.from('abs_challenge_log').select(COLS).order('play_id').range(offset, offset + PAGE - 1)
-    if (error) { console.error('[getAbsLog] Supabase error:', error.message); break }
+    if (error) { log.error('getAbsLog', 'Supabase error', error.message); break }
     rows.push(...((data ?? []) as unknown as Raw[]))
     if (!data || data.length < PAGE) break
   }
@@ -73,7 +74,7 @@ async function getPlateUmpires(season: string, throughDate: string): Promise<Sch
   try {
     const res = await fetch(`${MLB}/schedule?sportId=1&startDate=${season}-03-01&endDate=${throughDate}&hydrate=officials&fields=dates,games,gamePk,status,abstractGameState,officials,official,id,fullName,officialType`,
       { cache: 'no-store', signal: AbortSignal.timeout(25000) })
-    if (!res.ok) { console.error('[getPlateUmpires] schedule HTTP', res.status); return null }
+    if (!res.ok) { log.error('getPlateUmpires', 'schedule HTTP', res.status); return null }
     const hp = new Map<number, { id: number; name: string }>(), games = new Map<number, number>()
     for (const d of (await res.json()).dates ?? []) for (const g of d.games ?? []) {
       const o = (g.officials ?? []).find((x: { officialType?: string }) => x.officialType === 'Home Plate')
@@ -85,7 +86,7 @@ async function getPlateUmpires(season: string, throughDate: string): Promise<Sch
     schedCache = { at: Date.now(), key, v }
     return v
   } catch (err) {
-    console.error('[getPlateUmpires] failed:', err instanceof Error ? err.message : err)
+    log.error('getPlateUmpires', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

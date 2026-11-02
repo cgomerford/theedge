@@ -17,6 +17,7 @@
 // hr_distance   → count of home runs with hit_distance_sc >= threshold.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -51,7 +52,7 @@ async function resolvePlayerInfo(personIds: number[]): Promise<Record<number, { 
     }
     return out
   } catch (e) {
-    console.error('resolvePlayerInfo error:', e)
+    log.error('mlb-buckets', 'resolvePlayerInfo error', e)
     return {}
   }
 }
@@ -73,7 +74,7 @@ async function getAvgAllowedByVelo(threshold: number, limit: number): Promise<Bu
   })
 
   if (error) {
-    console.error('avg_allowed_by_velo RPC error:', error)
+    log.error('mlb-buckets', 'avg_allowed_by_velo RPC error', error)
     return { available: false, reason: 'Database query failed.' }
   }
   if (!data || data.length === 0) {
@@ -108,7 +109,7 @@ async function getHardestHitCount(threshold: number, limit: number): Promise<Buc
   const { data, error } = await supa.rpc('hardest_hit_count', { min_ev: threshold })
 
   if (error) {
-    console.error('hardest_hit_count RPC error:', error)
+    log.error('mlb-buckets', 'hardest_hit_count RPC error', error)
     return { available: false, reason: 'Database query failed.' }
   }
   if (!data || data.length === 0) {
@@ -143,7 +144,7 @@ async function getHrDistanceCount(threshold: number, limit: number): Promise<Buc
   const { data, error } = await supa.rpc('hr_count_by_distance', { min_distance: threshold })
 
   if (error) {
-    console.error('hr_count_by_distance RPC error:', error)
+    log.error('mlb-buckets', 'hr_count_by_distance RPC error', error)
     return { available: false, reason: 'Database query failed.' }
   }
   if (!data || data.length === 0) {

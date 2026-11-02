@@ -9,6 +9,7 @@
  * Powers the Scout Report's combined-lineup spray density heatmap.
  */
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type SprayPlay = {
   x: number                          // Statcast hc_x — 0..250, ~125 = home plate
@@ -46,10 +47,9 @@ export async function getLineupSpray(playerIds: number[]): Promise<BatterSpray[]
     .in('player_id', playerIds)
 
   if (error) {
-    console.error('[batter-spray] query failed:', error.message)
+    log.error('batter-spray', 'query failed', error.message)
     return []
   }
-  console.log('[batter-spray] requested', playerIds.length, 'players:', playerIds, '→ got', (data ?? []).length, 'rows back')
   return (data as BatterSpray[]) ?? []
 }
 

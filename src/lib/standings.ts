@@ -11,6 +11,7 @@
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type DivisionStandingRow = {
   teamId: number
@@ -61,7 +62,7 @@ export async function getLeagueStandings(leagueId: number, season: number): Prom
     }
     return rows.sort((a, b) => (a.wildCardRank ?? 99) - (b.wildCardRank ?? 99))
   } catch (err) {
-    console.error('[standings] league fetch failed:', err)
+    log.error('standings', 'league fetch failed', err)
     return []
   }
 }
@@ -80,9 +81,7 @@ export async function getDivisionStandings(teamId: number, season: number): Prom
       const match = teamRecords.find((t: any) => t.team?.id === teamId)
       if (!match) continue
 
-      console.log('[standings] raw teamRecord shape:', JSON.stringify(match).slice(0, 600))
 
- console.log('[standings] raw record.division shape:', JSON.stringify(record.division))
       return {
         divisionName: record.division?.name ?? '—',
         leagueId: record.league?.id ?? 0,
@@ -104,7 +103,7 @@ export async function getDivisionStandings(teamId: number, season: number): Prom
     }
     return null
   } catch (err) {
-    console.error('[standings] fetch failed:', err)
+    log.error('standings', 'fetch failed', err)
     return null
   }
 }

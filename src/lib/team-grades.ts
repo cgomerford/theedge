@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/team-grades.ts
 //
 // Roster grades: each player's average percentile rank across their core
@@ -38,7 +39,7 @@ async function fetchLeaguePool(group: 'hitting' | 'pitching', season: number): P
     const splits = json.stats?.[0]?.splits ?? []
     return splits.map((s: any) => ({ personId: s.player?.id, stat: s.stat ?? {} })).filter((e: PoolEntry) => e.personId)
   } catch (e) {
-    console.error('team-grades: league pool fetch failed', e)
+    log.error('team-grades', 'team-grades: league pool fetch failed', e)
     return []
   }
 }

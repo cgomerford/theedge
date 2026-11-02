@@ -67,6 +67,7 @@ import ProfileTabs, { type ProfileTab } from '@/components/profile/ProfileTabs'
 import { Card, Foot, Tile, C, MONO, SANS, DISPLAY } from '@/components/team/ui'
 import { MLB_TEAMS } from '@/lib/teams'
 import { SITE_HOST, X_HANDLE } from '@/lib/site'
+import { log } from '@/lib/log'
 
 function headshotUrl(id: number) {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/w_300,q_100/v1/people/${id}/headshot/67/current`
@@ -340,7 +341,7 @@ function SeasonProgressionCard({ playerId, playerName, teamAbbr, subject, color,
 
       imgs.forEach((img, i) => { img.src = originalSrcs[i] })
     } catch (err) {
-      console.error('[SeasonProgressionCard] chart export failed:', err)
+      log.error('SeasonProgressionCard', 'chart export failed', err)
     } finally {
       setDownloadingChart(false)
     }
@@ -830,7 +831,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
 
     setShowReferralPrompt(true)
   } catch (err) {
-    console.error('[PlayerPageClient] card export failed:', err)
+    log.error('PlayerPageClient', 'card export failed', err)
   } finally {
     setDownloading(false)
   }

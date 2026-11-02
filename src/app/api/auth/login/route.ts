@@ -7,6 +7,7 @@ import { signupLimit, getClientIp } from '@/lib/ratelimit'
 import { Resend } from 'resend'
 import { z } from 'zod'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const Schema = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -90,9 +91,9 @@ export async function POST(req: NextRequest) {
         html: content.html,
         text: content.text,
       })
-      if (sendError) console.error('[Login email] Resend rejected the send:', sendError.name, sendError.message)
+      if (sendError) log.error('Login email', 'Resend rejected the send', [sendError.name, sendError.message].join(' '))
     } catch (e) {
-      console.error('Login email failed:', e)
+      log.error('login', 'Login email failed', e)
     }
   }
 

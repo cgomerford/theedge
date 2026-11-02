@@ -20,6 +20,7 @@ import LeverageBoard from '@/components/LeverageBoard'
 import EngineRoom from '@/components/EngineRoom'
 import DeserveToWinWaterfall from '@/components/DeserveToWinWaterfall'
 import PlayerSearch from '@/components/PlayerSearch'
+import { log } from '@/lib/log'
 
 export type Prospect = {
   rank: number
@@ -231,7 +232,7 @@ function Ticker({ games: initialGames, predictions }: { games: MLBGame[]; predic
         const fetchedGames = data.dates?.[0]?.games || []
         setTickerGames(fetchedGames)
       } catch (e) {
-        console.error('Failed to fetch schedule for date:', e)
+        log.error('MLBHomepage', 'Failed to fetch schedule for date', e)
       } finally {
         setLoading(false)
       }

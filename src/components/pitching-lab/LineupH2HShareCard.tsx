@@ -15,6 +15,7 @@ import { useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrl } from '@/lib/mlb'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -197,7 +198,7 @@ export default function LineupH2HShareCard(props: Props) {
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('LineupH2HShareCard: PNG export failed', e)
+      log.error('LineupH2HShareCard', 'LineupH2HShareCard: PNG export failed', e)
     } finally {
       setExporting(false)
     }
@@ -210,7 +211,7 @@ export default function LineupH2HShareCard(props: Props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (e) {
-      console.error('LineupH2HShareCard: clipboard copy failed', e)
+      log.error('LineupH2HShareCard', 'LineupH2HShareCard: clipboard copy failed', e)
     }
   }
 

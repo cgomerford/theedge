@@ -3,6 +3,7 @@
 // A player's career record against one club (the answer to "Juan Soto vs Yankees"): one row with the headshot, then season by season.
 import { useEffect, useState } from 'react'
 import { C, SANS, Card, Empty, teamLogo, headshot } from '@/components/team/ui'
+import { log } from '@/lib/log'
 
 export type VsReq = { playerId: number; team: string; role: 'bat' | 'pitch' }
 type Stat = Record<string, string | number | undefined>
@@ -35,7 +36,7 @@ export default function VsTeamCard({ req, onLookups }: { req: VsReq; onLookups: 
         setOut(j as Out)
         if (typeof j.lookupsLeft === 'number') onLookups(j.lookupsLeft, j.perDay ?? null, false)
       })
-      .catch(e => { if (live) { console.error('[VsTeamCard]', e); setErr((e as Error).message) } })
+      .catch(e => { if (live) { log.error('VsTeamCard', 'failed', e); setErr((e as Error).message) } })
       .finally(() => { if (live) setBusy(false) })
     return () => { live = false }
   }, [req.playerId, req.team, req.role]) // eslint-disable-line react-hooks/exhaustive-deps

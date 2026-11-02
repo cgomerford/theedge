@@ -6,6 +6,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
     })
   } catch (e) {
-    console.error('[mockupRoute] could not read mockup:', slug, (e as Error).message)
+    log.error('mockupRoute', 'could not read mockup', [slug, (e as Error).message].join(' '))
     return new Response('Not found', { status: 404 })
   }
 }

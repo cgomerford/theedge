@@ -17,6 +17,7 @@ import type { ExGame, ExPitch, ExPlay } from '@/lib/game-explorer'
 import { baseText, CALL_COLOR, CALL_LABEL, Diamond, GAMES_CSS, ord, teamColors, zoneWords } from '@/components/games/gamesUi'
 import LastTimePanel from '@/components/games/LastTimePanel'
 import FieldView, { FIELD_CSS } from '@/components/games/FieldView'
+import { useVisibleInterval } from '@/lib/use-visible-interval'
 
 const pad = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, minWidth: 0 } as const
 const kick: React.CSSProperties = { fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: C.orange, textTransform: 'uppercase', margin: '0 0 3px' }
@@ -120,16 +121,12 @@ export default function GameExplorer({ initial, isPro }: { initial: ExGame; isPr
   const live = game.state === 'Live', fin = game.state === 'Final'
 
   // live games re-read every 15 s (and stop on their own once MLB says the game is over)
-  useEffect(() => {
-    if (game.state !== 'Live') return
-    const id = setInterval(async () => {
-      try {
-        const r = await fetch(`/api/stats/game/${game.gamePk}`)
-        if (r.ok) setGame(await r.json() as ExGame)
-      } catch { /* keep the last good data; the next tick tries again */ }
-    }, 15_000)
-    return () => clearInterval(id)
-  }, [game.state, game.gamePk])
+  useVisibleInterval(async () => {
+    try {
+      const r = await fetch(`/api/stats/game/${game.gamePk}`)
+      if (r.ok) setGame(await r.json() as ExGame)
+    } catch { /* keep the last good data; the next tick tries again */ }
+  }, 15_000, game.state === 'Live')
 
   const plays = game.plays
   // default selection: the live at-bat, else the first scoring play, else the first plate appearance

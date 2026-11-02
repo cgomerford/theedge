@@ -14,6 +14,7 @@ import { batterRenderer } from './story/batter/render'
 import { BATTER_SEGMENT_LIST, type BatterReelData, type BatterSegmentId } from './story/batter/types'
 import { listReelGames, type ReelGameOption } from './story/postgame/load'
 import { chipClass, Chips, Msg, ReelDateBar, SlidePicker } from './story/reel/ReelParts'
+import { log } from '@/lib/log'
 
 const DEFAULT_ON: BatterSegmentId[] = ['br-pas', 'br-spray', 'br-contact', 'br-zone']
 
@@ -35,7 +36,7 @@ export default function BatterReel({ slateDate }: { slateDate: string }) {
     setGames(null); setGame(null); setBatters(null); setPick(null); setData(null)
     listReelGames(date)
       .then(g => { if (live) setGames(g) })
-      .catch(err => { console.error('[BatterReel] listReelGames failed:', err); if (live) setGames([]) })
+      .catch(err => { log.error('BatterReel', 'listReelGames failed', err); if (live) setGames([]) })
     return () => { live = false }
   }, [date])
 
@@ -45,7 +46,7 @@ export default function BatterReel({ slateDate }: { slateDate: string }) {
     setBatters(null); setPick(null); setData(null)
     listGameBatters(game)
       .then(b => { if (live) setBatters(b) })
-      .catch(err => { console.error('[BatterReel] listGameBatters failed:', err); if (live) setBatters([]) })
+      .catch(err => { log.error('BatterReel', 'listGameBatters failed', err); if (live) setBatters([]) })
     return () => { live = false }
   }, [game])
 
@@ -55,7 +56,7 @@ export default function BatterReel({ slateDate }: { slateDate: string }) {
     setLoading(true); setFailed(false); setData(null)
     loadBatterReel(game, pick)
       .then(r => { if (live) { setData(r); setFailed(!r) } })
-      .catch(err => { console.error('[BatterReel] loadBatterReel failed:', err); if (live) setFailed(true) })
+      .catch(err => { log.error('BatterReel', 'loadBatterReel failed', err); if (live) setFailed(true) })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [game, pick])

@@ -39,6 +39,7 @@ import type { Top3Pitcher } from '@/lib/pitcher-series-edge'
 import type { LineupBatter, PlayerHands } from '@/lib/lineups'
 import type { FielderOaa } from '@/lib/batter-fielding'
 import type { ParkFactor } from '@/lib/parks'
+import { log } from '@/lib/log'
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ const getPitcherPool = cache(async (season: number): Promise<PoolRow[]> => {
     .select(PITCHER_COLS)
     .eq('season', season)
     .gte('innings_pitched', 40)
-  if (error) console.error('key-player-factors: pitcher pool query failed', error.message)
+  if (error) log.error('key-player-factors', 'key-player-factors: pitcher pool query failed', error.message)
   return (data ?? []) as PoolRow[]
 })
 

@@ -12,6 +12,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { MLB_TEAMS } from '@/lib/teams'
 import PostseasonBracketCard, { EMPTY_TEAM, type BracketMatchup, type BracketTeam, type SlotKey } from './PostseasonBracketCard'
+import { log } from '@/lib/log'
 
 const SLOT_GROUPS: { round: string; slots: { key: SlotKey; label: string }[] }[] = [
   {
@@ -104,7 +105,7 @@ export default function PostseasonBracketBuilder() {
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[PostseasonBracketBuilder] export failed:', err)
+      log.error('PostseasonBracketBuilder', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setIsExporting(false)

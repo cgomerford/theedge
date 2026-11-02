@@ -7,6 +7,7 @@ import {
   getBatterExitVeloLog,
   getBatterHRLog,
 } from '@/lib/pro-lab-batter'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ dayNight, veloLog, hrLog })
   } catch (err) {
-    console.error('[api/pro-lab/batter]', err)
+    log.error('api/pro-lab/batter', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

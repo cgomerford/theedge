@@ -10,6 +10,7 @@ import { fetchPitcherHands } from '@/lib/pitcher-hands'
 import { getProjectedLineup, type ProjectedLineup } from '@/lib/lineups'
 
 import { mlb, REVALIDATE_SECONDS } from '@/lib/mlb-cockpit.server-fetch-allowed'
+import { log } from '@/lib/log'
 
 type StatBlock = { type: { displayName: string }; splits: { date?: string; opponent?: { name?: string; abbreviation?: string }; stat: Record<string, string | number> }[] }
 const num = (v: unknown) => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null)
@@ -195,7 +196,7 @@ export async function getBatterPitchSplits(ids: number[]): Promise<{ rows: Map<n
     .eq('season', new Date().getFullYear())
     .in('player_id', ids)
     .range(0, 999)
-  if (error) { console.error('[getBatterPitchSplits] Supabase error:', error.message); return { rows, through: null } }
+  if (error) { log.error('getBatterPitchSplits', 'Supabase error', error.message); return { rows, through: null } }
   let through: string | null = null
   const sums = new Map<number, { w: number; pa: number }>()
   for (const r of (data ?? []) as { player_id: number; pitch_type: string | null; pa: number | string | null; est_woba: number | string | null; whiff_percent: number | string | null; computed_date: string | null }[]) {

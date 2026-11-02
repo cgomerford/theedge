@@ -10,6 +10,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const PAGE_SIZE = 1000
 
@@ -73,7 +74,7 @@ export function toAvailabilityCopy(row: NhlAvailabilityRow, player?: PlayerLooku
     if (combined.includes(word)) {
       // Defensive guard, not expected to trigger -- availability copy is
       // built entirely from fixed strings above, never free text.
-      console.error(`[toAvailabilityCopy] forbidden word "${word}" in generated copy for player ${row.player_id}`)
+      log.error('toAvailabilityCopy', `forbidden word "${word}" in generated copy for player ${row.player_id}`)
     }
   }
 
@@ -103,7 +104,7 @@ export async function getAvailabilityDesk(teamId: number, season: number): Promi
       .eq('season', season)
       .range(offset, offset + PAGE_SIZE - 1)
     if (error) {
-      console.error('[getAvailabilityDesk] Supabase error:', error.message)
+      log.error('getAvailabilityDesk', 'Supabase error', error.message)
       break
     }
     rows.push(...((data ?? []) as NhlAvailabilityRow[]))
@@ -118,7 +119,7 @@ export async function getAvailabilityDesk(teamId: number, season: number): Promi
     .select('player_id,full_name,position_code')
     .in('player_id', current.map((r) => r.player_id))
   if (playerError) {
-    console.error('[getAvailabilityDesk] Supabase error reading nhl_players:', playerError.message)
+    log.error('getAvailabilityDesk', 'Supabase error reading nhl_players', playerError.message)
   }
   const players = new Map<number, PlayerLookup>((playerRows ?? []).map((p) => [p.player_id as number, p as PlayerLookup]))
 

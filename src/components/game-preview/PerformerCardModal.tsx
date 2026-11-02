@@ -14,6 +14,7 @@ import type { BatterPerformance, PitcherPerformance, Grade } from '@/lib/mlb-rec
 import type { SeriesBatterLine, SeriesPitcherLine } from '@/lib/series-stats'
 import DetailModal from './DetailModal'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 function gradeColor(g: Grade): string {
   if (g.startsWith('A')) return '#15803d'
@@ -97,7 +98,7 @@ export default function PerformerCardModal({ performer, onClose }: { performer: 
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Performer card export failed:', err)
+      log.error('PerformerCardModal', 'Performer card export failed', err)
     } finally {
       setIsExporting(false)
     }

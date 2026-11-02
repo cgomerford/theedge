@@ -19,6 +19,7 @@ import { fmtShortDate } from '../copy'
 import { shortName } from '../names'
 import { flowPoints, hitsOnField, keyPlaysInOrder, linescoreRows, topHitters } from './calc'
 import type { PgPitcher, PgSide, PostgameReelData } from './types'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -28,7 +29,7 @@ export async function listReelGames(date: string): Promise<ReelGameOption[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
   try {
     const res = await fetch(`${MLB_API}/schedule?sportId=1&date=${date}`, { cache: 'no-store' })
-    if (!res.ok) { console.error('[listReelGames] schedule HTTP', res.status); return [] }
+    if (!res.ok) { log.error('listReelGames', 'schedule HTTP', res.status); return [] }
     const data = await res.json()
     return (data.dates?.[0]?.games ?? [])
       .filter((g: { status?: { abstractGameState?: string } }) => g.status?.abstractGameState === 'Final')
@@ -40,7 +41,7 @@ export async function listReelGames(date: string): Promise<ReelGameOption[]> {
         homeScore: g.teams.home.score ?? 0,
       }))
   } catch (err) {
-    console.error('[listReelGames] failed:', err)
+    log.error('listReelGames', 'failed', err)
     return []
   }
 }
@@ -49,9 +50,9 @@ type Decisions = { winner?: { id: number; fullName: string }; loser?: { id: numb
 
 export async function loadPostgameReel(gamePk: number): Promise<PostgameReelData | null> {
   const [box, feed] = await Promise.all([getGameBoxScore(gamePk, { fresh: true }), getLiveFeed(gamePk)])
-  if (!box || !feed) { console.error('[loadPostgameReel] box score or live feed unavailable for', gamePk); return null }
+  if (!box || !feed) { log.error('loadPostgameReel', 'box score or live feed unavailable for', gamePk); return null }
   const agg = aggregateGameFeed(feed, `game-${gamePk}`)
-  if (!agg) { console.error('[loadPostgameReel] feed did not aggregate for', gamePk); return null }
+  if (!agg) { log.error('loadPostgameReel', 'feed did not aggregate for', gamePk); return null }
 
   await attachWinProbability(agg, gamePk)    // separate endpoint; [] when unavailable
   const slateDate = feed.gameData.datetime.officialDate

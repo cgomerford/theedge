@@ -20,6 +20,7 @@ import { getParkFactor } from '@/lib/parks'
 import Top3KeyPlayersTab, { type PostgameResults } from '@/components/Top3KeyPlayersTab'
 import type { RecentFormContext } from '@/lib/key-players-narrative'
 import type { HotStreakPlayer } from '@/lib/scout'
+import { log } from '@/lib/log'
 
 // Key Players is computed from live Savant pitch logs (2MB CSV per batter) and
 // can take minutes on a cold cache. A streamed section must never hang the page,
@@ -32,7 +33,7 @@ function withBudget<T>(p: Promise<T>, ms: number): Promise<T | null> {
     const t = setTimeout(() => resolve(null), ms)
     p.then(
       (v) => { clearTimeout(t); resolve(v) },
-      (e) => { clearTimeout(t); console.error('[KeyPlayersSlotAsync] compute failed:', e instanceof Error ? e.message : e); resolve(null) },
+      (e) => { clearTimeout(t); log.error('KeyPlayersSlotAsync', 'compute failed', e instanceof Error ? e.message : e); resolve(null) },
     )
   })
 }

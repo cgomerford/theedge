@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { preferencesLimit, getClientIp } from '@/lib/ratelimit'
+import { log } from '@/lib/log'
 
 export async function POST(req: NextRequest) {
   // Rate limit
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     .eq('preferences_token', token)
 
   if (error) {
-    console.error('Preferences save error:', error)
+    log.error('primary', 'Preferences save error', error)
     return NextResponse.redirect(new URL('/?error=server', req.url), { status: 303 })
   }
 

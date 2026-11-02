@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { isSignedIn } from '@/lib/require-signup'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
     p_balls: num(q.get('balls'), 0, 3), p_strikes: num(q.get('strikes'), 0, 2),
   })
   if (error) {
-    console.error('[sequencing finder] Supabase error:', error.message)
+    log.error('sequencing finder', 'Supabase error', error.message)
     return NextResponse.json({ error: 'unavailable' }, { status: 503 })
   }
   const n = (v: unknown) => (v == null ? null : Number(v))

@@ -24,6 +24,7 @@
 
 import { getPitcherFullSeasonGameLog, getPitcherHitsFromGameFeed } from '@/lib/mlb'
 import { withSavantCache } from '@/lib/savant-cache'
+import { log, logOnce } from '@/lib/log'
 
 const SEASON = 2026
 // Below this a count bucket's AVERAGED metrics (run value, hard-hit%) are
@@ -131,7 +132,7 @@ async function fetchPitcherStatcastProfile(pitcherId: number): Promise<PitcherSt
     if (!res.ok) return null
     text = await res.text()
   } catch (err) {
-    console.error(`getPitcherStatcastProfile fetch failed (${pitcherId}):`, err)
+    logOnce('pitcher-statcast-profile:getPitcherStatcastProfile fetch failed (#)', 'pitcher-statcast-profile', `getPitcherStatcastProfile fetch failed (${pitcherId})`, err)
     return null
   }
 
@@ -268,7 +269,7 @@ async function fetchPitcherStatcastProfile(pitcherId: number): Promise<PitcherSt
       }
     }
   } catch (err) {
-    console.error(`getPitcherStatcastProfile backfill failed (${pitcherId}):`, err)
+    logOnce('pitcher-statcast-profile:getPitcherStatcastProfile backfill failed (#)', 'pitcher-statcast-profile', `getPitcherStatcastProfile backfill failed (${pitcherId})`, err)
   }
 
   // A bucket clears the bar for display if it has EITHER enough pitches for

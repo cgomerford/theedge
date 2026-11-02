@@ -12,6 +12,7 @@ import { C, SANS } from '@/components/team/ui'
 import { teamLogoUrl } from '@/lib/mlb'
 import type { BoardGame } from '@/lib/game-explorer'
 import { Diamond, GAMES_CSS, Outs } from '@/components/games/gamesUi'
+import { useVisibleInterval } from '@/lib/use-visible-interval'
 
 type Filter = 'all' | 'Live' | 'Final' | 'Preview'
 const POST = new Set(['F', 'D', 'L', 'W'])
@@ -87,18 +88,19 @@ export default function GamesBoard({ date, today, initialGames }: { date: string
   const [filter, setFilter] = useState<Filter>('all')
   const [err, setErr] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (date < today) return                  // a past day is settled; nothing to refresh
-    const id = setInterval(async () => {
-      try {
-        const r = await fetch(`/api/stats/scoreboard?date=${date}`)
-        const j = await r.json()
-        if (!r.ok) throw new Error(j?.error ?? `Request failed (${r.status})`)
-        setGames(j.games as BoardGame[]); setErr(null)
-      } catch (e) { setErr((e as Error).message) }
-    }, 15_000)
-    return () => clearInterval(id)
-  }, [date, today])
+  // Poll only while a game is Live or about to start (within 30 minutes), and only while the tab is showing. `tick` re-checks "about to start" once a minute (no network).
+  const [tick, setTick] = useState(0)
+  const watching = date >= today
+  useVisibleInterval(() => setTick(t => t + 1), 60_000, watching)
+  const needsPolling = watching && games.some(g => g.state === 'Live' || (g.state === 'Preview' && new Date(g.startTime).getTime() - Date.now() < 30 * 60_000 && tick >= 0))
+  useVisibleInterval(async () => {
+    try {
+      const r = await fetch(`/api/stats/scoreboard?date=${date}`)
+      const j = await r.json()
+      if (!r.ok) throw new Error(j?.error ?? `Request failed (${r.status})`)
+      setGames(j.games as BoardGame[]); setErr(null)
+    } catch (e) { setErr((e as Error).message) }
+  }, 15_000, needsPolling)
 
   const go = (d: string) => router.push(`/mlb/stats/games?date=${d}`)
   const count = (s: Filter) => (s === 'all' ? games.length : games.filter(g => g.state === s).length)

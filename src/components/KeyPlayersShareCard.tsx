@@ -24,6 +24,7 @@ import { zoneTiltColor, leanText, leanColor } from '@/components/Top3ShareCard'
 import type { KeyPlayerCandidate } from '@/lib/key-players'
 import type { ZoneFitCell } from '@/lib/series-matchup'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -349,7 +350,7 @@ export default function KeyPlayersShareCard({ candidates, teamName, teamId, seri
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('KeyPlayersShareCard: PNG export failed', e)
+      log.error('KeyPlayersShareCard', 'KeyPlayersShareCard: PNG export failed', e)
     } finally {
       setExporting(false)
     }
@@ -362,7 +363,7 @@ export default function KeyPlayersShareCard({ candidates, teamName, teamId, seri
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (e) {
-      console.error('KeyPlayersShareCard: clipboard copy failed', e)
+      log.error('KeyPlayersShareCard', 'KeyPlayersShareCard: clipboard copy failed', e)
     }
   }
 

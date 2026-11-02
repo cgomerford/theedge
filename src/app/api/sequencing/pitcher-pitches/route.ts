@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { isSignedIn } from '@/lib/require-signup'
 import { getPitcherShape } from '@/lib/sequencing-lab/data'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
   const season = new Date().getFullYear()
   const shape = await getPitcherShape(id, season)
   const { data, error } = await createAdminClient().from('pitch_events').select('p_throws').eq('pitcher_id', id).not('p_throws', 'is', null).limit(1)
-  if (error) console.error('[pitcher-pitches] hand lookup:', error.message)
+  if (error) log.error('pitcher-pitches', 'hand lookup', error.message)
   const hand = (data as { p_throws: string | null }[] | null)?.[0]?.p_throws
   const pitches = Object.entries(shape).filter(([, v]) => v.velo != null && v.hb != null && v.ivb != null).map(([t, v]) => ({ t, n: v.n, velo: v.velo as number, hb: v.hb as number, ivb: v.ivb as number })).sort((a, b) => b.n - a.n)
   return NextResponse.json({ hand: hand === 'L' || hand === 'R' ? hand : null, pitches })

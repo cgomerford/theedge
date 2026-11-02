@@ -1,3 +1,4 @@
+import { log, logOnce } from '@/lib/log'
 // src/lib/mlb-leaders.ts
 //
 // SEASON leaders — /stats/leaders. Live.
@@ -191,8 +192,8 @@ export async function getSeasonLeaders(categorySlug: string, limit = 15): Promis
   const statGroup = cat?.group === 'batting' ? 'hitting' : 'pitching'
   const url = `${MLB_API}/stats/leaders?leaderCategories=${categorySlug}&season=${SEASON}&limit=${limit}&sportId=1&statGroup=${statGroup}`
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })
-    if (!res.ok) { console.error(`MLB leaders ${categorySlug}: HTTP ${res.status}`); return [] }
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
+    if (!res.ok) { logOnce('mlb-leaders:' + `MLB leaders ${categorySlug}: HTTP ${res.status}`, 'mlb-leaders', `MLB leaders ${categorySlug}: HTTP ${res.status}`); return [] }
     const data = await res.json()
     const leaders = data.leagueLeaders?.[0]?.leaders ?? []
     return leaders.map((l: any, i: number) => {
@@ -207,7 +208,7 @@ export async function getSeasonLeaders(categorySlug: string, limit = 15): Promis
       }
     })
   } catch (e) {
-    console.error(`MLB leaders ${categorySlug} error:`, e)
+    logOnce('mlb-leaders:' + `MLB leaders ${categorySlug} error`, 'mlb-leaders', `MLB leaders ${categorySlug} error`, e)
     return []
   }
 }
@@ -217,7 +218,7 @@ export async function getSeasonLeaders(categorySlug: string, limit = 15): Promis
 async function getPitcherStartsLeaders(cat: LeaderCategory, numStarts: number, limit: number): Promise<WindowResult> {
   try {
     const poolUrl = `${MLB_API}/stats/leaders?leaderCategories=gamesStarted&season=${SEASON}&limit=${STARTER_POOL_SIZE}&sportId=1&statGroup=pitching`
-    const poolRes = await fetch(poolUrl, { next: { revalidate: 3600 } })
+    const poolRes = await fetch(poolUrl, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!poolRes.ok) return { available: false, reason: `MLB API returned HTTP ${poolRes.status} building the starter pool.` }
     const poolData = await poolRes.json()
     const pool: { personId: number; name: string; teamAbbr: string }[] = (poolData.leagueLeaders?.[0]?.leaders ?? []).map((l: any) => ({
@@ -232,15 +233,15 @@ async function getPitcherStartsLeaders(cat: LeaderCategory, numStarts: number, l
     const aggregates = await mapWithConcurrency(pool, 15, async (p): Promise<PitcherAgg | null> => {
       try {
         const logUrl = `${MLB_API}/people/${p.personId}/stats?stats=gameLog&group=pitching&season=${SEASON}`
-        const res = await fetch(logUrl, { next: { revalidate: 3600 } })
+        const res = await fetch(logUrl, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
         if (!res.ok) { dHttpFail++; return null }
         const data = await res.json()
         const splits: any[] = data.stats?.[0]?.splits ?? []
 
         if (!loggedShape && splits.length > 0) {
           loggedShape = true
-          console.warn('[DIAG:starts] first split keys:', Object.keys(splits[0]))
-          console.warn('[DIAG:starts] date-like fields:', {
+          log.warn('DIAG:starts', 'first split keys', Object.keys(splits[0]))
+          log.warn('DIAG:starts', 'date-like fields', {
             date: splits[0].date, gameDate: splits[0].gameDate,
             game: splits[0].game, officialDate: splits[0].officialDate,
           })
@@ -271,12 +272,12 @@ async function getPitcherStartsLeaders(cat: LeaderCategory, numStarts: number, l
         return agg
       } catch (e) {
         dException++
-        console.warn('[DIAG:starts] per-pitcher exception:', p.personId, e)
+        log.warn('DIAG:starts', 'per-pitcher exception', [p.personId, e].join(' '))
         return null
       }
     })
 
-    console.warn(`[DIAG:starts] pool=${pool.length} ok=${dOk} httpFail=${dHttpFail} notEnough=${dNotEnough} exception=${dException}`)
+    log.warn('DIAG:starts', `pool=${pool.length} ok=${dOk} httpFail=${dHttpFail} notEnough=${dNotEnough} exception=${dException}`)
 
     const qualified = aggregates.filter((a): a is PitcherAgg => a !== null)
     const ranked = qualified
@@ -295,7 +296,7 @@ async function getPitcherStartsLeaders(cat: LeaderCategory, numStarts: number, l
 
     return { available: true, rows }
   } catch (e) {
-    console.error(`Pitcher starts leaders error (${cat.slug}, last ${numStarts} starts):`, e)
+    logOnce('mlb-leaders:' + `Pitcher starts leaders error (${cat.slug}, last ${numStarts} starts)`, 'mlb-leaders', `Pitcher starts leaders error (${cat.slug}, last ${numStarts} starts)`, e)
     return { available: false, reason: 'MLB API request failed building the starts-based leaderboard.' }
   }
 }
@@ -305,7 +306,7 @@ async function getPitcherStartsLeaders(cat: LeaderCategory, numStarts: number, l
 async function getRelieverAppearanceLeaders(cat: LeaderCategory, numAppearances: number, minIP: number, limit: number): Promise<WindowResult> {
   try {
     const poolUrl = `${MLB_API}/stats/leaders?leaderCategories=${RELIEVER_POOL_LEADER_CATEGORY}&season=${SEASON}&limit=${RELIEVER_POOL_SIZE}&sportId=1&statGroup=pitching`
-    const poolRes = await fetch(poolUrl, { next: { revalidate: 3600 } })
+    const poolRes = await fetch(poolUrl, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!poolRes.ok) return { available: false, reason: `MLB API returned HTTP ${poolRes.status} building the reliever pool.` }
     const poolData = await poolRes.json()
     const pool: { personId: number; name: string; teamAbbr: string }[] = (poolData.leagueLeaders?.[0]?.leaders ?? []).map((l: any) => ({
@@ -319,7 +320,7 @@ async function getRelieverAppearanceLeaders(cat: LeaderCategory, numAppearances:
     const aggregates = await mapWithConcurrency(pool, 15, async (p): Promise<PitcherAgg | null> => {
       try {
         const logUrl = `${MLB_API}/people/${p.personId}/stats?stats=gameLog&group=pitching&season=${SEASON}`
-        const res = await fetch(logUrl, { next: { revalidate: 3600 } })
+        const res = await fetch(logUrl, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
         if (!res.ok) { dHttpFail++; return null }
         const data = await res.json()
         const splits: any[] = data.stats?.[0]?.splits ?? []
@@ -355,12 +356,12 @@ async function getRelieverAppearanceLeaders(cat: LeaderCategory, numAppearances:
         return agg
       } catch (e) {
         dException++
-        console.warn('[DIAG:relief] per-pitcher exception:', p.personId, e)
+        log.warn('DIAG:relief', 'per-pitcher exception', [p.personId, e].join(' '))
         return null
       }
     })
 
-    console.warn(`[DIAG:relief] pool=${pool.length} ok=${dOk} httpFail=${dHttpFail} notEnoughApps=${dNotEnoughApps} notEnoughIP=${dNotEnoughIP} exception=${dException}`)
+    log.warn('DIAG:relief', `pool=${pool.length} ok=${dOk} httpFail=${dHttpFail} notEnoughApps=${dNotEnoughApps} notEnoughIP=${dNotEnoughIP} exception=${dException}`)
 
     const qualified = aggregates.filter((a): a is PitcherAgg => a !== null)
     const ranked = qualified
@@ -379,7 +380,7 @@ async function getRelieverAppearanceLeaders(cat: LeaderCategory, numAppearances:
 
     return { available: true, rows }
   } catch (e) {
-    console.error(`Reliever appearance leaders error (${cat.slug}, last ${numAppearances} appearances, min ${minIP} IP):`, e)
+    logOnce('mlb-leaders:' + `Reliever appearance leaders error (${cat.slug}, last ${numAppearances} appearances, min ${minIP} IP)`, 'mlb-leaders', `Reliever appearance leaders error (${cat.slug}, last ${numAppearances} appearances, min ${minIP} IP)`, e)
     return { available: false, reason: 'MLB API request failed building the reliever leaderboard.' }
   }
 }
@@ -421,8 +422,8 @@ export async function getWindowLeaders(
     `&startDate=${startDate}&endDate=${endDate}&sortStat=${cat.sortStat}&order=${cat.order}&limit=100`
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } })
-    if (!res.ok) { console.error(`MLB window leaders ${categorySlug}/${window}: HTTP ${res.status}`); return { available: false, reason: `MLB API returned HTTP ${res.status}.` } }
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
+    if (!res.ok) { logOnce('mlb-leaders:' + `MLB window leaders ${categorySlug}/${window}: HTTP ${res.status}`, 'mlb-leaders', `MLB window leaders ${categorySlug}/${window}: HTTP ${res.status}`); return { available: false, reason: `MLB API returned HTTP ${res.status}.` } }
     const data = await res.json()
     const splits: any[] = data.stats?.[0]?.splits ?? []
 
@@ -446,7 +447,7 @@ export async function getWindowLeaders(
 
     return { available: true, rows }
   } catch (e) {
-    console.error(`MLB window leaders ${categorySlug}/${window} error:`, e)
+    logOnce('mlb-leaders:' + `MLB window leaders ${categorySlug}/${window} error`, 'mlb-leaders', `MLB window leaders ${categorySlug}/${window} error`, e)
     return { available: false, reason: 'MLB API request failed.' }
   }
 }

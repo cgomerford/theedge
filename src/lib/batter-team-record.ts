@@ -8,6 +8,7 @@
 // MLB debut year through the current season instead of just this season.
 
 import { getDebutYear } from '@/lib/venue-schedule'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -47,7 +48,7 @@ async function getHittingSplitsForSeason(playerId: number, season: number, cache
     const json = await res.json()
     return json.stats?.[0]?.splits ?? []
   } catch (err) {
-    console.error('[getHittingSplitsForSeason] MLB API error:', err instanceof Error ? err.message : err)
+    log.error('getHittingSplitsForSeason', 'MLB API error', err instanceof Error ? err.message : err)
     return []
   }
 }
@@ -110,7 +111,7 @@ export async function getBatterTeamRecord(playerId: number, season: number, rang
       })
       .sort((a, b) => b.games - a.games)
   } catch (err) {
-    console.error('[getBatterTeamRecord] error:', err instanceof Error ? err.message : err)
+    log.error('getBatterTeamRecord', 'error', err instanceof Error ? err.message : err)
     return []
   }
 }

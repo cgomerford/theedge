@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getAllTeamsRollingSeries, type TeamMetric } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 const VALID_METRICS: TeamMetric[] = ['runs_per_game', 'team_era', 'errors_per_game', 'team_ops']
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const series = await getAllTeamsRollingSeries(metric, season, window)
     return NextResponse.json({ series })
   } catch (err) {
-    console.error('[lab/teams-rolling]', err)
+    log.error('lab/teams-rolling', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

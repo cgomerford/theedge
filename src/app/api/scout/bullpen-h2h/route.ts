@@ -4,6 +4,7 @@
 // The Scout Report's Bullpen tab calls it only when its "against the lineup" views are opened, never while the page renders.
 // At most 12 arms and 12 hitters per call, fetched 8 at a time.
 import { NextRequest, NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 const MLB = 'https://statsapi.mlb.com/api/v1'
@@ -20,7 +21,7 @@ async function one(arm: number, hitter: number): Promise<H2HCell> {
     const st = (await r.json())?.stats?.[0]?.splits?.[0]?.stat
     if (!st) return blank
     return { arm, hitter, pa: num(st.plateAppearances) ?? ((num(st.atBats) ?? 0) + (num(st.baseOnBalls) ?? 0) + (num(st.hitByPitch) ?? 0)), ab: num(st.atBats) ?? 0, h: num(st.hits) ?? 0, hr: num(st.homeRuns) ?? 0, bb: num(st.baseOnBalls) ?? 0, k: num(st.strikeOuts) ?? 0, avg: num(st.avg), ops: num(st.ops) }
-  } catch (e) { console.error('[bullpen-h2h] failed:', arm, hitter, (e as Error).message); return blank }
+  } catch (e) { log.error('bullpen-h2h', 'failed', [arm, hitter, (e as Error).message].join(' ')); return blank }
 }
 
 export async function GET(req: NextRequest) {

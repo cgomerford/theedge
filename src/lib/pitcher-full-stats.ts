@@ -30,6 +30,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { cache } from 'react'
+import { log } from '@/lib/log'
 
 export type PitcherStatsFull = {
   era: number | null
@@ -64,7 +65,7 @@ export const getPitcherStatsFull = cache(async function getPitcherStatsFull(play
     .select('era, whip, fip, k_per_9, bb_per_9, l3_era, tto1_woba, tto2_woba, tto3_woba, tto1_avg, tto2_avg, tto3_avg, tto1_pa, tto2_pa, tto3_pa, tto_verified_at')    .eq('player_id', playerId)
     .single()
   if (error || !data) {
-    console.error('[pitcher-full-stats] query failed:', error?.message)
+    log.error('pitcher-full-stats', 'query failed', error?.message)
     return null
   }
 
@@ -107,11 +108,11 @@ export async function getPitchMovementFromDB(playerId: number, season: number): 
     .eq('season', season)
 
   if (error) {
-    console.error('[pitcher-full-stats] movement query failed:', error.message)
+    log.error('pitcher-full-stats', 'movement query failed', error.message)
     return []
   }
   if (!Array.isArray(data)) {
-    console.error('[pitcher-full-stats] movement query returned non-array data:', JSON.stringify(data)?.slice(0, 300))
+    log.error('pitcher-full-stats', 'movement query returned non-array data', `got ${typeof data}`)
     return []
   }
   return data.map((r: any) => ({

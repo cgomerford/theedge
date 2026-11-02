@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
 import { gameDetail, playerGames, teamPlayers } from '@/lib/stats-drill'
 import { CURRENT_SEASON, FIRST_SEASON, GAME_TYPES, isValidSplit, type Group } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 export const maxDuration = 60
 
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'unknown level' }, { status: 400 })
     }
   } catch (e) {
-    console.error('[stats/drill] failed:', (e as Error).message)
+    log.error('stats/drill', 'failed', (e as Error).message)
     return NextResponse.json({ error: 'MLB Stats API did not respond. Try again in a moment.' }, { status: 502 })
   }
 }

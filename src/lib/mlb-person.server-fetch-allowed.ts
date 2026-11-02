@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // Allowed render-path fetch (see scripts/checks/guard.sh check 5): one small cached lookup per player id, only to title the lab pages and 404 unknown ids.
 // Name lookup for page titles and 404s on player routes (labs). One small MLB Stats API call, cached for a day.
 // Returns null when the id is not a real player, so callers can notFound().
@@ -10,7 +11,7 @@ export async function getMlbPerson(id: number): Promise<MlbPerson | null> {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${id}`, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(8000) })
     if (res.status === 404) return null
     if (!res.ok) {
-      console.error('[getMlbPerson] MLB API status', res.status, 'for', id)
+      log.error('getMlbPerson', 'MLB API status', [res.status, 'for', id].join(' '))
       return null
     }
     const json = (await res.json()) as { people?: { id: number; fullName: string; primaryPosition?: { code?: string } }[] }
@@ -18,7 +19,7 @@ export async function getMlbPerson(id: number): Promise<MlbPerson | null> {
     if (!p) return null
     return { id: p.id, fullName: p.fullName, isPitcher: p.primaryPosition?.code === '1' }
   } catch (e) {
-    console.error('[getMlbPerson] fetch failed:', e instanceof Error ? e.message : e)
+    log.error('getMlbPerson', 'fetch failed', e instanceof Error ? e.message : e)
     return null
   }
 }

@@ -79,6 +79,7 @@ import { getPitcherVenueRecord } from '@/lib/pitcher-venue-record'
 import { fetchPitchingSplit } from '@/lib/player-splits'
 import { getTeamSeasonStats, getTeamVenueRecord } from '@/lib/team-season-stats'
 import { SITE_URL } from '@/lib/site'
+import { log, logOnce } from '@/lib/log'
 
 export const revalidate = 300 // lineups + probables refresh every 5 minutes
 export const maxDuration = 60 // was 15; a brief Supabase stall (pitcher_stats took 7.8s) turned into a hard timeout
@@ -206,7 +207,7 @@ async function safe<T>(name: string, p: Promise<T>, empty: T): Promise<T> {
   try {
     return await p
   } catch (e) {
-    console.error(`[game-page:${name}] failed:`, e instanceof Error ? e.message : e)
+    logOnce(`game-page:${name}`, 'game-page', `${name} failed`, e instanceof Error ? e.message : e)
     return empty
   }
 }
@@ -392,7 +393,7 @@ export default async function GamePreview({ params, searchParams }: Props) {
   if (!game) {
     // Only hit the cache table when the live schedule didn't have the game.
     const { data: cached, error } = await supa.from('game_previews').select('raw_data').eq('slug', slug).maybeSingle()
-    if (error) console.error('[game-page] game_previews lookup failed:', error.message)
+    if (error) log.error('game-page', 'game_previews lookup failed', error.message)
     if (cached?.raw_data) game = cached.raw_data as MLBGame
   }
   if (!game) notFound()

@@ -17,6 +17,7 @@ import {
 } from '@/lib/graphics/creator'
 import { uploadImage } from '@/components/admin/article-writer/upload'
 import CanvasView, { bgColor, pictureKeys, type PictureMap } from './CanvasView'
+import { log } from '@/lib/log'
 
 const C = { line: '#e7e2d8', soft: '#f1eee6', mute: '#8a8275', orange: ORANGE, good: '#1D9E75', cream: '#FAF8F3' }
 const inp: React.CSSProperties = { width: '100%', border: `1px solid ${C.line}`, borderRadius: 8, padding: '7px 9px', fontSize: 13, background: C.cream, fontFamily: 'inherit' }
@@ -38,7 +39,7 @@ async function fetchDataUrl(url: string): Promise<string | null> {
     dataCache.set(url, out)
     return out
   } catch (e) {
-    console.warn('[GraphicCreator] picture failed to load:', url, e)
+    log.warn('GraphicCreator', 'picture failed to load', [url, e].join(' '))
     dataCache.set(url, null)
     return null
   }
@@ -244,7 +245,7 @@ export default function GraphicCreator() {
         await exportNow(d, tag)
         await new Promise(r => setTimeout(r, 400))
       }
-    } catch (e) { console.error('[GraphicCreator] export failed:', e); setMsg('Export failed. Check the console.') }
+    } catch (e) { log.error('GraphicCreator', 'export failed', e); setMsg('Export failed. Check the console.') }
     setExportDoc(null); setBusy(false)
   }
 

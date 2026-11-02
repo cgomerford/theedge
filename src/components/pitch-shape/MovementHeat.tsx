@@ -17,6 +17,7 @@ import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { RAMP } from './parts'
 import { hexToRgb, makeGrid, stats, type Grid, type Span } from './heatGrid'
 import LocationPanel from './LocationPanel'
+import { log } from '@/lib/log'
 
 const MIN_WINDOW_SWINGS = 40
 const RADII = [0.5, 1, 2] as const
@@ -55,7 +56,7 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
     fetch(`/api/mlb/pitch-shape/cells?type=${pitchType}&hand=${hand}&hb=${avg.hb.toFixed(2)}&ivb=${avg.ivb.toFixed(2)}&half=${half}&pitcherId=${pitcherId}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cache.set(key, j.payload); if (live) setPayload(j.payload) })
-      .catch(e => { console.error('[MovementHeat] cells fetch failed:', e instanceof Error ? e.message : e); if (live) setPayload(null) })
+      .catch(e => { log.error('MovementHeat', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setPayload(null) })
     return () => { live = false }
   }, [isPro, key, pitchType, hand, avg.hb, avg.ivb, half, pitcherId])
 

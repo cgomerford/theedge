@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { GameWeather, TeamForm } from '@/lib/mlb'
 import type { EdgeScoreResult } from './edge'
 import type { GameStreaks } from './streaks'
+import { log } from '@/lib/log'
 
 // Initialize the Gemini Client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -250,7 +251,7 @@ export async function runWithConcurrency<T>(
 
 export async function generateNarrative(inputs: NarrativeInputs): Promise<NarrativeResult | null> {
   if (process.env.DRY_RUN === 'true') {
-    console.log('DRY_RUN: skipping narrative LLM call')
+    log.debug('narrative', 'DRY_RUN: skipping narrative LLM call')
     return null
   }
   try {
@@ -292,7 +293,7 @@ const outputCost = outputTokens * 0.00000040
       cost_usd:       inputCost + outputCost,
     }
   } catch (err) {
-    console.error('Gemini narrative generation failed:', err)
+    log.error('narrative', 'Gemini narrative generation failed', err)
     return null
   }
 }

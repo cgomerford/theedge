@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAnyDeepLook } from '@/lib/deep-look'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'  // per-viewer: guarded by the deep look
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     const bbIdx    = headers.indexOf('bb_type')
     const xwobaIdx = headers.indexOf('estimated_woba_using_speedangle')
 
-    console.log(`hot-zones: zone=${zoneIdx} evt=${evtIdx} bb=${bbIdx} xwoba=${xwobaIdx}`)
+    log.debug('hot-zones', `zone=${zoneIdx} evt=${evtIdx} bb=${bbIdx} xwoba=${xwobaIdx}`)
 
     if (zoneIdx === -1) return NextResponse.json({ zones: [] })
 
@@ -100,10 +101,10 @@ const map: Record<number, {
       bip:    d.bip,
     }))
 
-    console.log(`hot-zones: zones with data: ${zones.filter(z => z.pa > 0).length}`)
+    log.debug('hot-zones', `zones with data: ${zones.filter(z => z.pa > 0).length}`)
     return NextResponse.json({ zones })
   } catch (err) {
-    console.error('hot-zones failed:', err)
+    log.error('hot-zones', 'hot-zones failed', err)
     return NextResponse.json({ zones: [] })
   }
 }

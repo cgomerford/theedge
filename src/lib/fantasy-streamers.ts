@@ -7,6 +7,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import type { FantasyPick } from '@/lib/fantasy'
+import { log } from '@/lib/log'
 
 export type StreamerDay = {
   date: string          // 'YYYY-MM-DD'
@@ -40,7 +41,7 @@ export async function getStreamersWeek(days: number = 7): Promise<StreamerDay[]>
     .order('rank', { ascending: true })
 
   if (error) {
-    console.error('getStreamersWeek error:', error)
+    log.error('fantasy-streamers', 'getStreamersWeek error', error)
     return []
   }
 

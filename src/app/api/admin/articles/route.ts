@@ -24,6 +24,7 @@ import {
   type ArticleLayout,
   type TiptapDoc,
 } from '@/lib/articles';
+import { log } from '@/lib/log'
 
 interface SaveArticleRequest {
   id: string | null;
@@ -143,14 +144,14 @@ export async function POST(req: NextRequest) {
       }
       // Publishing should show on the live site at once: the Articles index, the homepage list, the article, its author page and the sitemap are all cached for minutes.
       for (const path of ['/articles', '/', `/articles/${published.slug}`, `/authors/${published.author ? authorFor(published.author).slug : 'george'}`, '/sitemap.xml']) {
-        try { revalidatePath(path); } catch (e) { console.error('[POST /api/admin/articles] revalidate failed for', path, e instanceof Error ? e.message : e); }
+        try { revalidatePath(path); } catch (e) { log.error('POST /api/admin/articles', 'revalidate failed for', [path, e instanceof Error ? e.message : e].join(' ')); }
       }
       return NextResponse.json(published, { status: 200 });
     }
 
     return NextResponse.json(saved, { status: 200 });
   } catch (err) {
-    console.error('[POST /api/admin/articles] Unexpected error:', err);
+    log.error('POST /api/admin/articles', 'Unexpected error', err);
     return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
   }
 }

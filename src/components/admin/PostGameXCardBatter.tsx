@@ -11,6 +11,7 @@ import type { BatterGameLine, BattedBallRecord, PitchRecord } from '@/types/post
 import type { GameInfo } from '@/lib/postgame'
 import { batterExitVeloSummary, buildZonesForBatter } from '@/lib/postgame-batter-adapt'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 type Props = {
   batter: BatterGameLine
@@ -49,7 +50,7 @@ export default function PostGameXCardBatter({ batter, battedBalls, pitchLog, tea
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Batter X card export failed:', err)
+      log.error('PostGameXCardBatter', 'Batter X card export failed', err)
     } finally {
       setIsExporting(false)
     }

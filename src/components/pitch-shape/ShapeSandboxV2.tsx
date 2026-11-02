@@ -24,6 +24,7 @@ import type { LoadBins, SearchPitchers } from './ShapeSandbox'
 import { makeGrid, stats } from './heatGrid'
 import { MAP_BG, boxColour } from './finder-math'
 import { SHAPE_CSS } from './parts'
+import { log } from '@/lib/log'
 
 const ORANGE_TEXT = '#B83A0E'
 const HALF = 12
@@ -151,7 +152,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cellsCache.set(k, j.payload); if (live) setCells(j.payload) })
-      .catch(e => { console.error('[ShapeSandboxV2] cells fetch failed:', e instanceof Error ? e.message : e); if (live) setCells(null) })
+      .catch(e => { log.error('ShapeSandboxV2', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setCells(null) })
     return () => { live = false }
   }, [type, hand]) // eslint-disable-line react-hooks/exhaustive-deps
   const grid = useMemo(() => (cells ? makeGrid(cells, 'latest') : null), [cells])
@@ -181,7 +182,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
       fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${A.hb.toFixed(1)}&ivb=${A.ivb.toFixed(1)}&radius=3&season=${cells.latest}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((j: { throwers: Thrower[] }) => { if (live) setNear(j.throwers) })
-        .catch(e => { console.error('[ShapeSandboxV2] nearby pitchers fetch failed:', e instanceof Error ? e.message : e); if (live) setNear(null) })
+        .catch(e => { log.error('ShapeSandboxV2', 'nearby pitchers fetch failed', e instanceof Error ? e.message : e); if (live) setNear(null) })
     }, 300)
     return () => { live = false; clearTimeout(t) }
   }, [A, cells, type, hand]) // eslint-disable-line react-hooks/exhaustive-deps

@@ -18,27 +18,28 @@ import { fmtShortDate } from '../copy'
 import { shortName } from '../names'
 import { ballsInPlay, contactSummary, pitchesSeen, plateAppearances } from './calc'
 import type { BatterReelData } from './types'
+import { log } from '@/lib/log'
 
 export type ReelBatterOption = { batterId: number; name: string; teamAbbr: string; pos: string; line: string }
 
 export async function listGameBatters(gamePk: number): Promise<ReelBatterOption[]> {
   const box = await getGameBoxScore(gamePk, { fresh: true })
-  if (!box) { console.error('[listGameBatters] box score unavailable for', gamePk); return [] }
+  if (!box) { log.error('listGameBatters', 'box score unavailable for', gamePk); return [] }
   return [box.away, box.home].flatMap(t =>
     t.batters.filter(b => b.ab + b.bb > 0).map(b => ({ batterId: b.id, name: b.name, teamAbbr: t.abbr, pos: b.position, line: `${b.h}-${b.ab}` })))
 }
 
 export async function loadBatterReel(gamePk: number, batterId: number): Promise<BatterReelData | null> {
   const [box, feed] = await Promise.all([getGameBoxScore(gamePk, { fresh: true }), getLiveFeed(gamePk)])
-  if (!box || !feed) { console.error('[loadBatterReel] box score or live feed unavailable for', gamePk); return null }
+  if (!box || !feed) { log.error('loadBatterReel', 'box score or live feed unavailable for', gamePk); return null }
   const agg = aggregateGameFeed(feed, `game-${gamePk}`)
-  if (!agg) { console.error('[loadBatterReel] feed did not aggregate for', gamePk); return null }
+  if (!agg) { log.error('loadBatterReel', 'feed did not aggregate for', gamePk); return null }
 
   const isAway = box.away.batters.some(b => b.id === batterId)
   const side = isAway ? box.away : box.home
   const oppSide = isAway ? box.home : box.away
   const b = side.batters.find(x => x.id === batterId)
-  if (!b) { console.error('[loadBatterReel] batter', batterId, 'not in game', gamePk); return null }
+  if (!b) { log.error('loadBatterReel', 'batter', [batterId, 'not in game', gamePk].join(' ')); return null }
   const l = (isAway ? agg.batters.away : agg.batters.home).find(x => x.batterId === batterId)
 
   const slateDate = feed.gameData.datetime.officialDate

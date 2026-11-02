@@ -5,6 +5,7 @@
 // Source: MLB Stats API team game logs, with the schedule's series names. Read-only; returns null when the API does not answer.
 
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 export type BatCounts = { g: number; w: number; pa: number; ab: number; h: number; d2: number; d3: number; hr: number; bb: number; hbp: number; sf: number; so: number; r: number; rbi: number; sb: number; tb: number }
 export type BatLine = { g: number; w: number; r: number; hr: number; sb: number; rPerG: number | null; avg: number | null; obp: number | null; slg: number | null; ops: number | null; kPct: number | null; bbPct: number | null; pa: number }
@@ -44,10 +45,10 @@ const ORDER = ['Wild Card', 'ALDS', 'NLDS', 'ALCS', 'NLCS', 'World Series']
 async function getJson(url: string): Promise<unknown | null> {
   try {
     const res = await fetch(url, { cache: 'no-store' })
-    if (!res.ok) { console.error('[team-batting] MLB API status', res.status); return null }
+    if (!res.ok) { log.error('team-batting', 'MLB API status', res.status); return null }
     return await res.json()
   } catch (e) {
-    console.error('[team-batting] failed:', e instanceof Error ? e.message : e)
+    log.error('team-batting', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }

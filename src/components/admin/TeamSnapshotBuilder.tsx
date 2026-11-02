@@ -9,6 +9,7 @@
 import { useRef, useState } from 'react'
 import TeamSnapshotCard from './TeamSnapshotCard'
 import type { TeamSnapshotData, SnapshotMode } from '@/lib/admin-team-card'
+import { log } from '@/lib/log'
 
 export default function TeamSnapshotBuilder({ regular, postseason }: { regular: TeamSnapshotData[]; postseason: TeamSnapshotData[] }) {
   const [mode, setMode] = useState<SnapshotMode>('regular')
@@ -37,7 +38,7 @@ export default function TeamSnapshotBuilder({ regular, postseason }: { regular: 
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[TeamSnapshotBuilder] export failed:', err)
+      log.error('TeamSnapshotBuilder', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setIsExporting(false)

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MLB_TEAMS } from '@/lib/teams'
 import { loadTeamMakeup } from '@/lib/lab/load-team-makeup.server-fetch-allowed'
 import type { TeamMakeup } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
+import { log } from '@/lib/log'
 
 const CONCURRENCY = 3
 
@@ -30,7 +31,7 @@ export function useTeamMakeups(season: number) {
             ok = true
           } catch (e) {
             if (attempt === 1) {
-              console.error('[useTeamMakeups] club failed', id, e)
+              log.error('useTeamMakeups', 'club failed', [id, e].join(' '))
               setFailed(prev => [...prev, id])
             }
           }

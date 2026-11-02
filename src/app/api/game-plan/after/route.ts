@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { isSignedIn } from '@/lib/require-signup'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
   const { data, error } = await createAdminClient().from('pitch_events')
     .select('at_bat_number, pitch_number, batter_id, pitch_type, zone, description, events, balls, strikes, release_speed, stand, estimated_woba')
     .eq('game_pk', gamePk).eq('pitcher_id', pitcherId).order('at_bat_number').order('pitch_number').limit(1000)
-  if (error) { console.error('[game-plan after] Supabase error:', error.message); return NextResponse.json({ error: 'unavailable' }, { status: 503 }) }
+  if (error) { log.error('game-plan after', 'Supabase error', error.message); return NextResponse.json({ error: 'unavailable' }, { status: 503 }) }
   const num = (v: unknown) => (v == null ? null : Number(v))
   const pas = new Map<number, AfterPa>()
   for (const r of (data ?? []) as Record<string, unknown>[]) {

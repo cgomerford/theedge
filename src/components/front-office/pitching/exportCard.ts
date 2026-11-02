@@ -6,6 +6,7 @@
 
 import { toPng } from 'html-to-image'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const slug = (v: string) => v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
@@ -31,7 +32,7 @@ export async function exportCard(node: HTMLElement, filename: string, addFooter:
     a.href = url; a.download = filename; a.click()
     return true
   } catch (e) {
-    console.error('[exportCard]', filename, e)
+    log.error('exportCard', 'failed', [filename, e].join(' '))
     return false
   } finally {
     footer?.remove()

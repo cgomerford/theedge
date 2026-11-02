@@ -20,6 +20,7 @@ import { getScheduleForDate } from '@/lib/mlb'
 import { css } from '@/app/admin/admin-css'
 import PostGameXCardSection from '@/components/admin/PostGameXCardSection'
 import InGameXCardSection from '@/components/admin/InGameXCardSection'
+import { log } from '@/lib/log'
 export const dynamic = 'force-dynamic'
 
 async function getFinalGamePks(date: string): Promise<number[]> {
@@ -32,7 +33,7 @@ async function getFinalGamePks(date: string): Promise<number[]> {
       .filter((g: any) => g.status?.abstractGameState === 'Final')
       .map((g: any) => g.gamePk as number)
   } catch (err) {
-    console.error(`getFinalGamePks failed for ${date}:`, err)
+    log.error('archive', `getFinalGamePks failed for ${date}`, err)
     return []
   }
 }

@@ -16,6 +16,7 @@
 //   gameData.game.type  ('R' regular; 'F','D','L','W' postseason)
 
 import { buildPenTeam, windowDates, type FeedArm, type FeedGame, type PenTeam } from './bullpenModel'
+import { log } from '@/lib/log'
 
 const MLB_V1 = 'https://statsapi.mlb.com/api/v1'
 const MLB_V11 = 'https://statsapi.mlb.com/api/v1.1'
@@ -27,10 +28,10 @@ type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-exp
 async function getJson(url: string): Promise<Json | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 1800 } })
-    if (!res.ok) { console.error('[bullpenGrid] HTTP', res.status, url); return null }
+    if (!res.ok) { log.error('bullpenGrid', 'HTTP', [res.status, url].join(' ')); return null }
     return await res.json()
   } catch (err) {
-    console.error('[bullpenGrid] fetch failed:', url, err)
+    log.error('bullpenGrid', 'fetch failed', [url, err].join(' '))
     return null
   }
 }

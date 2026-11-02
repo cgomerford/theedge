@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
     const cur = JSON.parse(await fs.readFile(file, 'utf8').catch(() => '{}') || '{}') as Record<string, unknown>
     cur[key] = body
     await fs.writeFile(file, JSON.stringify(cur))
-  }).catch(e => console.error('[lab-demo-record]', e))
+  }).catch(e => log.error('lab-demo-record', 'failed', e))
   await queue
   return NextResponse.json({ ok: true })
 }

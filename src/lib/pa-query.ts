@@ -16,6 +16,7 @@ import {
   CURRENT_SEASON, DEEP_GROUP_BY, deepGroupLabel, deepToParams,
   type Group, type QueryState, type Totals,
 } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 type PaRow = PaAgg
 
@@ -47,7 +48,7 @@ async function playerNames(ids: number[]): Promise<Map<number, string>> {
         const j = await res.json()
         return (j.people ?? []).map((p: { id: number; fullName: string }) => [p.id, p.fullName] as const)
       } catch (e) {
-        console.error('[playerNames] failed:', (e as Error).message)
+        log.error('playerNames', 'failed', (e as Error).message)
         return [] as (readonly [number, string])[]
       }
     })

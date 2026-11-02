@@ -48,6 +48,7 @@ import { buildPostgameEmail } from '@/lib/email/postgame-report'
 import { MLB_TEAMS } from '@/lib/teams'
 import { Resend } from 'resend'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export const maxDuration = 300
 
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
   // already restricted it to.
   const forceSend = request.nextUrl.searchParams.get('force_send') === 'true' && !!process.env.TEST_EMAIL
 
-  console.log(`[check-finished-games] Checking ${today}${dryRun ? ' [DRY RUN]' : ''}${forceSend ? ' [FORCE_SEND]' : ''}`)
+  log.debug('check-finished-games', `Checking ${today}${dryRun ? ' [DRY RUN]' : ''}${forceSend ? ' [FORCE_SEND]' : ''}`)
 
   // 2. Pull today's schedule, find real Final games
   const allGames = await getScheduleForDate(today)
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     .in('game_pk', finishedGames.map(g => g.gamePk))
 
   if (logError) {
-    console.error('[check-finished-games] postgame_email_log read error', logError)
+    log.error('check-finished-games', 'postgame_email_log read error', logError)
     return NextResponse.json({ error: logError.message }, { status: 500 })
   }
 
@@ -149,7 +150,7 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  console.log(`[check-finished-games] ${newlyFinished.length} newly finished game(s)`)
+  log.debug('check-finished-games', `${newlyFinished.length} newly finished game(s)`)
 
   // 4. Fetch active subscribers once (same filter as send-daily-brief)
   const { data: subscribers, error: subError } = await supa
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
     .not('teams', 'is', null)
 
   if (subError) {
-    console.error('[check-finished-games] subscriber fetch error', subError)
+    log.error('check-finished-games', 'subscriber fetch error', subError)
     return NextResponse.json({ error: subError.message }, { status: 500 })
   }
 
@@ -264,7 +265,7 @@ export async function GET(request: NextRequest) {
           // Throttle — Resend free tier is 10 req/sec
           await new Promise(r => setTimeout(r, 150))
         } catch (err) {
-          console.error(`[check-finished-games] send error for ${sub.email}:`, err)
+          log.error('check-finished-games', `send error for ${sub.email}`, err)
           errors.push(`${sub.email} (game ${game.gamePk}): ${err instanceof Error ? err.message : 'unknown'}`)
         }
       }
@@ -290,7 +291,7 @@ export async function GET(request: NextRequest) {
       // Deliberately NOT writing to postgame_email_log here — a failure at
       // the report-build stage (live feed unavailable, etc.) should retry
       // on the next poll rather than being permanently skipped.
-      console.error(`[check-finished-games] game ${game.gamePk} failed:`, err)
+      log.error('check-finished-games', `game ${game.gamePk} failed`, err)
       errors.push(`Game ${game.gamePk}: ${err instanceof Error ? err.message : 'unknown'}`)
     }
   }

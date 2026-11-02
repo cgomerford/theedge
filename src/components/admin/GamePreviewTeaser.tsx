@@ -18,6 +18,7 @@ import { loadScoutExtras } from './story/scoutExtras'
 import { MAX_PART_S, splitStory, total as totalOf } from './story/split'
 import StoryPlayer from './story/StoryPlayer'
 import { DEFAULT_ON, SEGMENT_LIST, type ScoutExtras, type SegmentId, type StoryExtras, type StoryInputGame } from './story/types'
+import { log } from '@/lib/log'
 
 type Props = {
   games: StoryInputGame[]
@@ -94,10 +95,10 @@ export default function GamePreviewTeaser({ games, slateDate, storyExtras, story
       awayPitcherId: ids.awayPitcherId, homePitcherId: ids.homePitcherId,
     })
       .then(data => { if (live) setScout({ pk: current.game_pk, data, done: true }) })
-      .catch(err => { console.error('[GamePreviewTeaser] loadScoutExtras failed:', err); if (live) setScout({ pk: current.game_pk, data: null, done: true }) })
+      .catch(err => { log.error('GamePreviewTeaser', 'loadScoutExtras failed', err); if (live) setScout({ pk: current.game_pk, data: null, done: true }) })
     loadBullpenGrid({ slateDate, awayTeamId: ids.awayTeamId, homeTeamId: ids.homeTeamId, awayPitcherId: ids.awayPitcherId, homePitcherId: ids.homePitcherId })
       .then(data => { if (live) setPens({ pk: current.game_pk, data, done: true }) })
-      .catch(err => { console.error('[GamePreviewTeaser] loadBullpenGrid failed:', err); if (live) setPens({ pk: current.game_pk, data: null, done: true }) })
+      .catch(err => { log.error('GamePreviewTeaser', 'loadBullpenGrid failed', err); if (live) setPens({ pk: current.game_pk, data: null, done: true }) })
     return () => { live = false }
   }, [current, extras.ids, slateDate])
 

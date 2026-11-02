@@ -18,6 +18,7 @@ import { getDeploymentStrip } from './deployment'
 import { getAvailabilityDesk } from './availability'
 import type { StripData } from '@/lib/usage-strip/types'
 import type { AvailabilityEntry } from './availability'
+import { log } from '@/lib/log'
 
 const CACHE_TTL_MS = 15 * 60 * 1000
 const cache = new Map<string, { at: number; data: NhlPreview | null }>()
@@ -118,7 +119,7 @@ async function buildNhlPreview(slug: string): Promise<NhlPreview | null> {
     .from('nhl_teams')
     .select('team_id,abbrev,full_name,color_hex,text_on_hex')
   if (teamError) {
-    console.error('[getNhlPreview] Supabase error reading nhl_teams:', teamError.message)
+    log.error('getNhlPreview', 'Supabase error reading nhl_teams', teamError.message)
     return null
   }
 
@@ -134,7 +135,7 @@ async function buildNhlPreview(slug: string): Promise<NhlPreview | null> {
     .eq('home_team_id', homeTeamRow.team_id)
     .maybeSingle()
   if (gameError) {
-    console.error('[getNhlPreview] Supabase error reading nhl_games:', gameError.message)
+    log.error('getNhlPreview', 'Supabase error reading nhl_games', gameError.message)
     return null
   }
   if (!gameRow) return null
@@ -203,7 +204,7 @@ async function getRecentForm(
     .order('game_date', { ascending: false })
     .limit(windowSize)
   if (error) {
-    console.error('[getRecentForm] Supabase error:', error.message)
+    log.error('getRecentForm', 'Supabase error', error.message)
   }
   const recent = games ?? []
   if (recent.length === 0) {
@@ -232,7 +233,7 @@ async function getRecentForm(
     .select('game_id,team_id,pp_opps,pp_goals,sh_goals_against')
     .eq('team_id', teamId)
     .in('game_id', gameIds)
-  if (stateError) console.error('[getRecentForm] Supabase error reading nhl_team_game_state:', stateError.message)
+  if (stateError) log.error('getRecentForm', 'Supabase error reading nhl_team_game_state', stateError.message)
 
   let ppOpps = 0, ppGoals = 0, pkOpps = 0, pkGoalsAgainst = 0
   for (const s of stateRows ?? []) {
@@ -283,7 +284,7 @@ async function get5v5ShotAttemptShare(
       supa.from('nhl_strength_timeline').select('start_sec,end_sec,home_skaters,away_skaters').eq('game_id', gameId),
     ])
     if (playsError || timelineError) {
-      console.error('[get5v5ShotAttemptShare] Supabase error:', playsError?.message, timelineError?.message)
+      log.error('get5v5ShotAttemptShare', 'Supabase error', [playsError?.message, timelineError?.message].join(' '))
       continue
     }
     const fiveOnFive = (timeline ?? []).filter((t) => t.home_skaters === 5 && t.away_skaters === 5)
@@ -310,7 +311,7 @@ async function getRecentGoalieStarts(
     .eq('team_id', teamId)
     .eq('starter', true)
   if (error) {
-    console.error('[getRecentGoalieStarts] Supabase error:', error.message)
+    log.error('getRecentGoalieStarts', 'Supabase error', error.message)
     return []
   }
 
@@ -384,7 +385,7 @@ async function getSeasonSeries(
     )
     .order('game_date', { ascending: true })
   if (error) {
-    console.error('[getSeasonSeries] Supabase error:', error.message)
+    log.error('getSeasonSeries', 'Supabase error', error.message)
     return []
   }
   return (data ?? []).map((g) => ({ gameId: g.game_id, gameDate: g.game_date, awayScore: g.away_score, homeScore: g.home_score }))

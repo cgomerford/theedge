@@ -1,6 +1,7 @@
 // x9Lab park index (see supabase/migrations/20261028100000_park_index.sql).
 // Returns null until the table exists and has a row for the venue; callers show PendingBlock("Park index").
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type ParkIndex = {
   venueId: number
@@ -22,7 +23,7 @@ export async function getParkIndex(venueId: number | null | undefined): Promise<
     .maybeSingle()
   if (error) {
     // Missing table is expected until the migration is run.
-    console.error('[getParkIndex] Supabase error:', error.message)
+    log.error('getParkIndex', 'Supabase error', error.message)
     return null
   }
   if (!data) return null
@@ -55,7 +56,7 @@ export async function getParkHitSummary(venueId: number | null | undefined): Pro
   const { data, error } = await createAdminClient()
     .from('park_hit_map')
     .select('venue_id, seasons, through, n_hits, n_games, n_single, n_double, n_triple, n_hr, n_left, n_center, n_right')
-  if (error) { console.error('[getParkHitSummary] Supabase error:', error.message); return null }
+  if (error) { log.error('getParkHitSummary', 'Supabase error', error.message); return null }
   type R = { venue_id: number; seasons: string; through: string; n_hits: number; n_games: number | null; n_single: number | null; n_double: number | null; n_triple: number | null; n_hr: number | null; n_left: number | null; n_center: number | null; n_right: number | null }
   const rows = ((data ?? []) as R[]).filter(r => Number(r.n_games) > 0)
   const mine = rows.find(r => Number(r.venue_id) === venueId)

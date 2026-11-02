@@ -23,6 +23,7 @@ import { C, SANS, MONO } from '@/components/team/ui'
 import { ProBadge } from '@/components/profile/ProPanel'
 import { CHART_TYPES, type ChartType } from '@/lib/stats-query-catalog'
 import UpgradePrompt from '@/components/pro/UpgradePrompt'
+import { log } from '@/lib/log'
 
 // ── styles ──────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export function PngButton({ isPro, target, filename }: { isPro: boolean; target:
       onClick={async () => {
         if (!target.current) return
         setBusy(true); setErr(false)
-        try { await exportPng(target.current, filename) } catch (e) { console.error('[PngButton] export failed:', e); setErr(true) } finally { setBusy(false) }
+        try { await exportPng(target.current, filename) } catch (e) { log.error('PngButton', 'export failed', e); setErr(true) } finally { setBusy(false) }
       }}>
       {busy ? 'Rendering…' : err ? 'Export failed — retry' : 'Export PNG'}
     </button>

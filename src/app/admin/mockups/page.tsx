@@ -10,6 +10,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import Link from 'next/link'
 import { C, SANS } from '@/components/team/ui'
+import { log } from '@/lib/log'
 
 export const metadata = { title: 'Mockups - x9Lab', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
@@ -28,7 +29,7 @@ function listMockups(): { slug: string; title: string }[] {
         return { slug, title: m ? m[1].trim() : slug }
       })
   } catch (e) {
-    console.error('[listMockups] could not read /mockups:', (e as Error).message)
+    log.error('listMockups', 'could not read /mockups', (e as Error).message)
     return []
   }
 }

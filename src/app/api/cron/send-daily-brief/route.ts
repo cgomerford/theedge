@@ -25,6 +25,7 @@ import { getPredictionsForDate } from '@/lib/edge-fetch'
 import { buildDailyBrief, type BriefGameContext } from '@/lib/email/daily-brief'
 import { Resend } from 'resend'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export const maxDuration = 300
 
@@ -141,11 +142,11 @@ export async function GET(request: NextRequest) {
   const dateParam = request.nextUrl.searchParams.get('date')
   const today = dateParam ?? new Date().toISOString().split('T')[0]
 
-  console.log(`[daily-brief] Starting for ${today}`)
+  log.debug('daily-brief', `Starting for ${today}`)
 
   // 2. Fetch today's games
   const allGames = await getScheduleForDate(today)
-  console.log(`[daily-brief] ${allGames.length} games found`)
+  log.debug('daily-brief', `${allGames.length} games found`)
 
   if (allGames.length === 0) {
     return NextResponse.json({ message: 'No games today, nothing to send' })
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
 
   // 3. Fetch predictions
   const predictions = await getPredictionsForDate(today)
-  console.log(`[daily-brief] ${predictions.size} predictions loaded`)
+  log.debug('daily-brief', `${predictions.size} predictions loaded`)
 
   // 4. Build game contexts (pitcher stats + weather + prediction) — once for all subscribers
   const gameContexts = await Promise.all(
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest) {
     .not('teams', 'is', null)
 
   if (subError) {
-    console.error('[daily-brief] subscriber fetch error', subError)
+    log.error('daily-brief', 'subscriber fetch error', subError)
     return NextResponse.json({ error: subError.message }, { status: 500 })
   }
 
@@ -226,7 +227,7 @@ export async function GET(request: NextRequest) {
       // Throttle — Resend free tier is 10 req/sec
       await new Promise(r => setTimeout(r, 150))
     } catch (err) {
-      console.error(`[daily-brief] error for ${sub.email}:`, err)
+      log.error('daily-brief', `error for ${sub.email}`, err)
       errors.push(`${sub.email}: ${err instanceof Error ? err.message : 'unknown'}`)
     }
   }

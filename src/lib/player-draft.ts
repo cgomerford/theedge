@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/player-draft.ts
 //
 // Draft round/pick isn't available via /people/{id} hydration — confirmed
@@ -47,7 +48,7 @@ export async function getDraftPickDetail(
     }
     return null
   } catch (err) {
-    console.error('[getDraftPickDetail]', err)
+    log.error('getDraftPickDetail', 'failed', err)
     return null
   }
 }

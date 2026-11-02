@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase'
 import type { PostData } from './data'
 import type { Side } from './recap'
 import { buildPitchLog } from './pitchlog'
+import { log } from '@/lib/log'
 
 const n = (v: unknown): number => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
 
@@ -54,7 +55,7 @@ async function getPriorWorkload(teamIds: number[], gameDate: string): Promise<Wo
     .select('team_id, player_id, game_date, pitches')
     .in('team_id', teamIds)
     .in('game_date', [shiftDate(gameDate, -1), shiftDate(gameDate, -2)])
-  if (error) { console.error('[getPriorWorkload] Supabase error:', error.message); return out }
+  if (error) { log.error('getPriorWorkload', 'Supabase error', error.message); return out }
   for (const r of (data ?? []) as { team_id: number; player_id: number; game_date: string; pitches: number | string }[]) {
     const pid = Number(r.player_id)
     out.clubDays.add(`${Number(r.team_id)}|${r.game_date}`)

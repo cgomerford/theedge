@@ -20,6 +20,7 @@ import ScoutReportGraphicCard from '@/components/admin/ScoutReportGraphicCard'
 import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import type { BatterZoneArsenal } from '@/lib/batter-zone-arsenal'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export type RosterBatter = {
   id: number
@@ -93,7 +94,7 @@ function useHighlightBatter(rosterBatters: RosterBatter[]) {
         if (!cancelled) setZoneArsenal(data.arsenal ?? {})
       })
       .catch(err => {
-        console.error('Failed to fetch batter zone arsenal:', err)
+        log.error('ScoutReportGraphicSection', 'Failed to fetch batter zone arsenal', err)
         if (!cancelled) setZoneArsenal({})
       })
       .finally(() => {

@@ -28,6 +28,7 @@ import {
 } from '@/lib/scout-video'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { ScoutReport, ScoutRow, ScoutSection } from '@/lib/scout'
+import { log } from '@/lib/log'
 
 const COLORS = { orange: '#FF5722', stone: '#1A1A1A', gray: '#A3A3A3', line: '#E2DCCF', cream: '#FAF8F3' } as const
 
@@ -171,7 +172,7 @@ export default function ScoutReelPanel({ report, context }: { report: ScoutRepor
 
       setStage('done')
     } catch (err) {
-      console.error('Scout reel export failed:', err)
+      log.error('ScoutReelPanel', 'Scout reel export failed', err)
       setErrorMsg(
         err instanceof Error && /captureStream|MediaRecorder/.test(err.message)
           ? 'This browser doesn\u2019t support canvas video recording. Try Chrome or Edge.'

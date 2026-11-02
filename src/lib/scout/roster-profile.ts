@@ -21,6 +21,7 @@
 // One batched MLB Stats API call per club; cached six hours.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 export const MIN_TYPE_PA = 100
@@ -73,7 +74,7 @@ function archetypeOf(h: PlayerProfile['hit']): Archetype | null {
 async function getContracts(ids: number[]): Promise<Map<number, number> | null> {
   const { data, error } = await createAdminClient().from('player_contracts').select('player_id, expires_after_season').in('player_id', ids)
   if (error) {
-    if (error.code !== 'PGRST205') console.error('[getContracts] Supabase error:', error.message)
+    if (error.code !== 'PGRST205') log.error('getContracts', 'Supabase error', error.message)
     return null
   }
   const rows = (data ?? []) as { player_id: number | string; expires_after_season: number | string | null }[]
@@ -89,7 +90,7 @@ export async function getRosterProfiles(teamId: number, playerIds: number[], gam
       fetch(`${MLB}/people?personIds=${playerIds.join(',')}&hydrate=draft,stats(group=%5Bhitting%5D,type=%5Bseason%5D,season=${season})`, { next: { revalidate: 21600 }, signal: AbortSignal.timeout(10000) }),
       getContracts(playerIds),
     ])
-    if (!res.ok) { console.error('[getRosterProfiles] MLB HTTP', res.status); return null }
+    if (!res.ok) { log.error('getRosterProfiles', 'MLB HTTP', res.status); return null }
     const people = ((await res.json()).people ?? []) as Person[]
     const byId = new Map<number, PlayerProfile>()
     for (const p of people) {
@@ -111,7 +112,7 @@ export async function getRosterProfiles(teamId: number, playerIds: number[], gam
     }
     return { byId, contractsLoaded: contracts != null }
   } catch (err) {
-    console.error('[getRosterProfiles] failed:', err instanceof Error ? err.message : err)
+    log.error('getRosterProfiles', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { requireAnyDeepLook } from '@/lib/deep-look'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     const arsenal = await getPitcherZoneArsenal(Number(playerId))
     return NextResponse.json({ arsenal })
   } catch (err) {
-    console.error('zone-arsenal route failed:', err)
+    log.error('zone-arsenal', 'zone-arsenal route failed', err)
     return NextResponse.json({ arsenal: {} }, { status: 500 })
   }
 }

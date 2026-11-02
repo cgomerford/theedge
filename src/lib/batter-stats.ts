@@ -1,4 +1,5 @@
 import { MLB_TEAMS } from '@/lib/mlb-assets'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -99,7 +100,7 @@ export async function getBatterSeasonStats(
       iso,
     }
   } catch (err) {
-    console.error('Batter season stats fetch failed:', err)
+    log.error('batter-stats', 'Batter season stats fetch failed', err)
     return null
   }
 }
@@ -218,7 +219,7 @@ export async function getBatterVsPitcher(
       walks:      s.baseOnBalls ?? 0,
     }
   } catch (err) {
-    console.error('Batter vs pitcher fetch failed:', err)
+    log.error('batter-stats', 'Batter vs pitcher fetch failed', err)
     return null
   }
 }
@@ -350,7 +351,7 @@ export async function getTopBattersByPlateAppearances(limit = 100): Promise<TopB
       }
     }).filter((r): r is TopBatter => r !== null)
   } catch (err) {
-    console.error('getTopBattersByPlateAppearances fetch failed:', err)
+    log.error('batter-stats', 'getTopBattersByPlateAppearances fetch failed', err)
     return []
   }
 }

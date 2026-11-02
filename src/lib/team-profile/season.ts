@@ -17,6 +17,7 @@
 
 import { MLB_TEAMS } from '@/lib/teams'
 import type { LeagueTables } from './league'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -94,7 +95,7 @@ export async function getSeasonStory(teamId: number, season: number, tables: Lea
       next: { revalidate: 900 }, signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) {
-      console.error('[getSeasonStory] MLB schedule error:', res.status)
+      log.error('getSeasonStory', 'MLB schedule error', res.status)
       return null
     }
     const json = await res.json()
@@ -237,7 +238,7 @@ export async function getSeasonStory(teamId: number, season: number, tables: Lea
       advanced: { margins, runsScored, vsTier: tables ? tiers : [], series },
     }
   } catch (err) {
-    console.error('[getSeasonStory]', err instanceof Error ? err.message : err)
+    log.error('getSeasonStory', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { normalizeName } from '@/lib/fantasy-ownership'
+import { log } from '@/lib/log'
 
 export const maxDuration = 300
 
@@ -71,18 +72,18 @@ async function fetchEspnPlayersForYear(year: number): Promise<EspnPlayer[]> {
 }
 
 async function fetchEspnPlayers(): Promise<EspnPlayer[]> {
-  console.log(`[fantasy-ownership] Fetching ESPN ownership (${CURRENT_YEAR})...`)
+  log.debug('fantasy-ownership', `Fetching ESPN ownership (${CURRENT_YEAR})...`)
 
   let players: EspnPlayer[] = []
   try {
     players = await fetchEspnPlayersForYear(CURRENT_YEAR)
   } catch (e) {
-    console.error(`[fantasy-ownership] Current year fetch failed:`, e)
+    log.error('fantasy-ownership', `Current year fetch failed`, e)
   }
 
   // Fallback to previous year if current is empty (early offseason)
   if (players.length === 0) {
-    console.log(`[fantasy-ownership] Empty — falling back to ${CURRENT_YEAR - 1}`)
+    log.debug('fantasy-ownership', `Empty — falling back to ${CURRENT_YEAR - 1}`)
     players = await fetchEspnPlayersForYear(CURRENT_YEAR - 1)
   }
 
@@ -91,7 +92,7 @@ async function fetchEspnPlayers(): Promise<EspnPlayer[]> {
   players.sort((a, b) => (b.ownership?.percentOwned ?? 0) - (a.ownership?.percentOwned ?? 0))
   players = players.slice(0, 3000)
 
-  console.log(`[fantasy-ownership] Received ${players.length} players (Enforced limit)`)
+  log.debug('fantasy-ownership', `Received ${players.length} players (Enforced limit)`)
   return players
 }
 
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest) {
   const players = await fetchEspnPlayers()
 
   // 2. Load existing ESPN→MLB mappings (avoid re-looking up known IDs)
-  console.log('[fantasy-ownership] Loading existing ESPN→MLB mappings...')
+  log.debug('fantasy-ownership', 'Loading existing ESPN→MLB mappings...')
   const { data: existingRows } = await supa
     .from('fantasy_ownership')
     .select('espn_player_id, mlb_player_id')
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
   for (const row of existingRows ?? []) {
     known.set(row.espn_player_id, row.mlb_player_id)
   }
-  console.log(`[fantasy-ownership] ${known.size} existing mappings`)
+  log.debug('fantasy-ownership', `${known.size} existing mappings`)
 
   // 3. Find players that need new MLB lookups
   const needsLookup: Array<{ espnId: number; fullName: string }> = []
@@ -176,7 +177,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log(`[fantasy-ownership] ${needsLookup.length} new lookups needed`)
+  log.debug('fantasy-ownership', `${needsLookup.length} new lookups needed`)
   const newMatches = needsLookup.length > 0 ? await batchLookup(needsLookup) : new Map()
 
   // 4. Build upsert + history arrays
@@ -208,20 +209,20 @@ export async function GET(request: NextRequest) {
   }
 
   // 5. Write to Supabase in batches
-  console.log(`[fantasy-ownership] Writing ${upserts.length} ownership rows...`)
+  log.debug('fantasy-ownership', `Writing ${upserts.length} ownership rows...`)
   for (let i = 0; i < upserts.length; i += BATCH_SIZE) {
     const { error } = await supa
       .from('fantasy_ownership')
       .upsert(upserts.slice(i, i + BATCH_SIZE), { onConflict: 'espn_player_id' })
-    if (error) console.error('[fantasy-ownership] upsert error:', error.message)
+    if (error) log.error('fantasy-ownership', 'upsert error', error.message)
   }
 
-  console.log(`[fantasy-ownership] Writing ${history.length} history rows for ${today}...`)
+  log.debug('fantasy-ownership', `Writing ${history.length} history rows for ${today}...`)
   for (let i = 0; i < history.length; i += BATCH_SIZE) {
     const { error } = await supa
       .from('fantasy_ownership_history')
       .upsert(history.slice(i, i + BATCH_SIZE), { onConflict: 'espn_player_id,snapshot_date' })
-    if (error) console.error('[fantasy-ownership] history upsert error:', error.message)
+    if (error) log.error('fantasy-ownership', 'history upsert error', error.message)
   }
 
   const elapsedMs = Date.now() - startedAt

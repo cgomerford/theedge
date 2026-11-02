@@ -43,6 +43,7 @@ import type { VenueFieldDimensions } from '@/lib/venue-dimensions'
 import type { GameWeather, RainOutlook } from '@/lib/mlb'
 import PitchSequencingSnippet from '@/components/PitchSequencingSnippet'
 import type { PitcherCountTendency, PitcherPitchSequencing } from '@/lib/pitcher-sequencing'
+import { log } from '@/lib/log'
 
 type TTOData = {
   tto1_woba: number | null; tto2_woba: number | null; tto3_woba: number | null
@@ -463,7 +464,7 @@ venueDimensions = null,
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Failed to export scout report as PNG:', err)
+      log.error('ScoutReportTab', 'Failed to export scout report as PNG', err)
     } finally {
       setIsExporting(false)
     }

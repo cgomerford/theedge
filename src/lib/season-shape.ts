@@ -48,7 +48,7 @@ type ScheduleGame = {
 type ScheduleResponse = { dates?: { games: ScheduleGame[] }[] }
 
 export async function getTeamGameLog(teamId: number, season: number): Promise<SeasonGame[]> {
-  const res = await fetch(`${MLB_API}/schedule?teamId=${teamId}&season=${season}&gameType=R&sportId=1&hydrate=team,linescore`)
+  const res = await fetch(`${MLB_API}/schedule?teamId=${teamId}&season=${season}&gameType=R&sportId=1&hydrate=team,linescore`, { next: { revalidate: 300 } })
   if (!res.ok) return []
   const data: ScheduleResponse = await res.json()
 
@@ -146,7 +146,7 @@ export type MlbTransaction = {
 }
 
 export async function getTeamSeasonTransactions(teamId: number, season: number): Promise<MlbTransaction[]> {
-  const res = await fetch(`${MLB_API}/transactions?teamId=${teamId}&startDate=${season}-01-01&endDate=${season}-12-01`)
+  const res = await fetch(`${MLB_API}/transactions?teamId=${teamId}&startDate=${season}-01-01&endDate=${season}-12-01`, { next: { revalidate: 300 } })
   if (!res.ok) return []
   const data = await res.json()
   return data.transactions ?? []

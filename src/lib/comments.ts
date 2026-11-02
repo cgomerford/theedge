@@ -4,6 +4,7 @@
 // (supabase/migrations/20261101100000_article_comments.sql). Signed-in readers only; plain text; no links.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export const MAX_BODY = 1000
 export const MAX_NAME = 30
@@ -36,7 +37,7 @@ export async function getComments(articleId: string): Promise<Comment[]> {
     .eq('status', 'visible')
     .order('created_at', { ascending: true })
     .limit(300)
-  if (error) { console.error('[getComments] Supabase error:', error.message); return [] }
+  if (error) { log.error('getComments', 'Supabase error', error.message); return [] }
   return (data ?? []) as Comment[]
 }
 
@@ -50,14 +51,14 @@ export async function addComment(articleId: string, subscriberId: string, nameIn
 
   const since = new Date(Date.now() - 3600_000).toISOString()
   const { count, error: cErr } = await supa.from('article_comments').select('id', { count: 'exact', head: true }).eq('subscriber_id', subscriberId).gte('created_at', since)
-  if (cErr) { console.error('[addComment] count error:', cErr.message); return { ok: false, error: 'Could not post. Try again.' } }
+  if (cErr) { log.error('addComment', 'count error', cErr.message); return { ok: false, error: 'Could not post. Try again.' } }
   if ((count ?? 0) >= PER_HOUR) return { ok: false, error: 'You have posted a few comments already. Try again in an hour.' }
 
   const { data: dupe } = await supa.from('article_comments').select('id').eq('subscriber_id', subscriberId).eq('article_id', articleId).eq('body', checked.body).maybeSingle()
   if (dupe) return { ok: false, error: 'You already posted that.' }
 
   const { data, error } = await supa.from('article_comments').insert({ article_id: articleId, subscriber_id: subscriberId, author_name: checked.name, body: checked.body }).select('id, author_name, body, created_at').single()
-  if (error || !data) { console.error('[addComment] Supabase error:', error?.message); return { ok: false, error: 'Could not post. Try again.' } }
+  if (error || !data) { log.error('addComment', 'Supabase error', error?.message); return { ok: false, error: 'Could not post. Try again.' } }
   return { ok: true, comment: data as Comment }
 }
 
@@ -65,7 +66,7 @@ export async function addComment(articleId: string, subscriberId: string, nameIn
 export async function reportComment(commentId: string, subscriberId: string): Promise<boolean> {
   const supa = createAdminClient()
   const { error } = await supa.from('article_comment_reports').upsert({ comment_id: commentId, subscriber_id: subscriberId }, { onConflict: 'comment_id,subscriber_id', ignoreDuplicates: true })
-  if (error) { console.error('[reportComment] Supabase error:', error.message); return false }
+  if (error) { log.error('reportComment', 'Supabase error', error.message); return false }
   const { count } = await supa.from('article_comment_reports').select('comment_id', { count: 'exact', head: true }).eq('comment_id', commentId)
   if ((count ?? 0) >= REPORTS_TO_HIDE) await supa.from('article_comments').update({ status: 'hidden' }).eq('id', commentId)
   return true
@@ -75,7 +76,7 @@ export async function reportComment(commentId: string, subscriberId: string): Pr
 export async function listAllComments(limit = 200): Promise<AdminComment[]> {
   const supa = createAdminClient()
   const { data, error } = await supa.from('article_comments').select('id, article_id, author_name, body, status, created_at, articles(title, slug)').order('created_at', { ascending: false }).limit(limit)
-  if (error) { console.error('[listAllComments] Supabase error:', error.message); return [] }
+  if (error) { log.error('listAllComments', 'Supabase error', error.message); return [] }
   type Row = { id: string; article_id: string; author_name: string; body: string; status: string; created_at: string; articles: { title: string; slug: string } | { title: string; slug: string }[] | null }
   const rows = (data ?? []) as unknown as Row[]
   const ids = rows.map(r => r.id)
@@ -93,6 +94,6 @@ export async function listAllComments(limit = 200): Promise<AdminComment[]> {
 export async function setCommentStatus(id: string, status: 'visible' | 'hidden' | 'delete'): Promise<boolean> {
   const supa = createAdminClient()
   const { error } = status === 'delete' ? await supa.from('article_comments').delete().eq('id', id) : await supa.from('article_comments').update({ status }).eq('id', id)
-  if (error) console.error('[setCommentStatus] Supabase error:', error.message)
+  if (error) log.error('setCommentStatus', 'Supabase error', error.message)
   return !error
 }

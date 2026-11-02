@@ -1,5 +1,6 @@
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
+import { log, logOnce } from '@/lib/log'
 
 // ============================================================
 // TYPES
@@ -46,7 +47,7 @@ export async function getPitcherTrend(pitcherId: number, pitcherName: string): P
   try {
     // Fetch last 5 game logs (we'll use last 3)
     const url = `${MLB_API}/people/${pitcherId}/stats?stats=gameLog&group=pitching&season=${new Date().getFullYear()}`
-    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(8000), cache: 'no-store' })
+    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 300 } })
     if (!res.ok) return null
     const data = await res.json()
     
@@ -115,7 +116,7 @@ export async function getPitcherTrend(pitcherId: number, pitcherName: string): P
       trend_label,
     }
   } catch (err) {
-    console.error(`Pitcher trend fetch failed for ${pitcherId}:`, err)
+    logOnce('streaks:Pitcher trend fetch failed for #', 'streaks', `Pitcher trend fetch failed for ${pitcherId}`, err)
     return null
   }
 }
@@ -171,7 +172,7 @@ export async function getTopBatterStreaks(teamId: number): Promise<{
     // at all.
     return { hot, cold, all: streaks }
   } catch (err) {
-    console.error(`Team streak fetch failed for ${teamId}:`, err)
+    logOnce('streaks:Team streak fetch failed for #', 'streaks', `Team streak fetch failed for ${teamId}`, err)
     return { hot: [], cold: [], all: [] }
   }
 }
@@ -183,7 +184,7 @@ async function getBatterStreak(
 ): Promise<BatterStreak | null> {
   try {
         const url = `${MLB_API}/people/${playerId}/stats?stats=gameLog&group=hitting&season=${new Date().getFullYear()}`
-    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(6000), cache: 'no-store' })
+    const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(6000), next: { revalidate: 300 } })
     if (!res.ok) return null
     const data = await res.json()
 

@@ -24,6 +24,7 @@ import { MLB_TEAMS, type Team } from '@/lib/teams'
 import type { BatLine, TeamBatting } from '@/lib/team-batting'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
+import { log } from '@/lib/log'
 
 /** Animation progress for the chart on show: 0 at the start, 1 when finished. Charts read it through useEase(); 1 means fully drawn (the normal still picture). */
 const ProgressCtx = createContext(1)
@@ -554,7 +555,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
       onInsert(((await res.json()) as { url: string }).url)
       onClose()
     } catch (e) {
-      console.error('[ChartPickerModal] animated insert failed:', e instanceof Error ? e.message : e)
+      log.error('ChartPickerModal', 'animated insert failed', e instanceof Error ? e.message : e)
       setError(e instanceof Error ? e.message : 'Animation failed')
     } finally { setBusy(false); setStatus(''); setT(1) }
   }
@@ -572,7 +573,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
       onInsert(((await res.json()) as { url: string }).url)
       onClose()
     } catch (e) {
-      console.error('[ChartPickerModal] insert failed:', e instanceof Error ? e.message : e)
+      log.error('ChartPickerModal', 'insert failed', e instanceof Error ? e.message : e)
       setError(e instanceof Error ? e.message : 'Capture failed')
     } finally { setBusy(false) }
   }

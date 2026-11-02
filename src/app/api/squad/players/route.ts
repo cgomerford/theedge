@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 // ============================================================
 // GET /api/squad/players?position=SS&search=turner
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query
 
   if (error) {
-    console.error('Player pool fetch failed:', error)
+    log.error('players', 'Player pool fetch failed', error)
     return NextResponse.json({ error: 'Fetch failed' }, { status: 500 })
   }
 

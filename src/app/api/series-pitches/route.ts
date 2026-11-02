@@ -9,6 +9,7 @@
 // caller already knows precisely which games make up the series.
 import { NextRequest, NextResponse } from 'next/server'
 import { getBatterPitchesFromGames } from '@/lib/series-pitches'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,6 @@ export async function GET(req: NextRequest) {
   }
 
   const pitches = await getBatterPitchesFromGames(gamePks, batterId)
-  console.log(`[series-pitches] batter ${batterId}, games [${gamePks.join(',')}]: ${pitches.length} pitches`)
+  log.debug('series-pitches', `batter ${batterId}, games [${gamePks.join(',')}]: ${pitches.length} pitches`)
   return NextResponse.json({ pitches })
 }

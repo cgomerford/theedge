@@ -4,6 +4,7 @@ import { useState, useRef, useTransition } from 'react'
 import Link from 'next/link'
 import type { CalendarGame } from '@/lib/dugout-calendar'
 import { cellIntensity, summarizeMonth } from '@/lib/dugout-calendar'
+import { log } from '@/lib/log'
 
 type Props = {
   games: CalendarGame[]
@@ -204,7 +205,7 @@ export default function DugoutCalendar({
       // Scroll calendar into view — no page jump
       sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch (e) {
-      console.error('Calendar fetch failed', e)
+      log.error('DugoutCalendar', 'Calendar fetch failed', e)
     } finally {
       setLoading(false)
     }

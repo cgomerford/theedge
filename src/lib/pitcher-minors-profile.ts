@@ -22,6 +22,7 @@ import type { RichArsenalPitch } from '@/components/PitchLocationCard'
 import type { PitcherHotZones } from '@/lib/hot-zones'
 import type { PitcherGameLog } from '@/lib/mlb'
 import { classifySwingCall, isSwingCall } from '@/lib/batter-pitch-log'
+import { log, logOnce } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const LEVELS: { id: number; label: string }[] = [
@@ -46,12 +47,12 @@ async function mlbJson(url: string): Promise<any | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) })
     if (!res.ok) {
-      console.error(`[getPitcherMinorsProfile] MLB HTTP ${res.status}: ${url}`)
+      logOnce('getPitcherMinorsProfile:MLB HTTP #: #', 'getPitcherMinorsProfile', `MLB HTTP ${res.status}: ${url}`)
       return null
     }
     return await res.json()
   } catch (err) {
-    console.error('[getPitcherMinorsProfile] MLB fetch failed:', err)
+    log.error('getPitcherMinorsProfile', 'MLB fetch failed', err)
     return null
   }
 }
@@ -83,7 +84,7 @@ async function getMinorsPitches(pitcherId: number, season: number): Promise<Mino
       signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) {
-      console.error(`[getPitcherMinorsProfile] Savant minors HTTP ${res.status} for ${pitcherId}`)
+      logOnce('getPitcherMinorsProfile:Savant minors HTTP # for #', 'getPitcherMinorsProfile', `Savant minors HTTP ${res.status} for ${pitcherId}`)
       return []
     }
     // Savant CSVs can start with a UTF-8 BOM that corrupts the first header.
@@ -93,7 +94,7 @@ async function getMinorsPitches(pitcherId: number, season: number): Promise<Mino
     const ix = (n: string) => head.indexOf(n)
     const [iCode, iName, iVelo, iZone, iDesc] = ['pitch_type', 'pitch_name', 'release_speed', 'zone', 'description'].map(ix)
     if ([iCode, iName, iVelo, iZone, iDesc].some(i => i < 0)) {
-      console.error('[getPitcherMinorsProfile] Savant minors CSV is missing an expected column')
+      log.error('getPitcherMinorsProfile', 'Savant minors CSV is missing an expected column')
       return []
     }
     const out: MinorsPitch[] = []
@@ -114,7 +115,7 @@ async function getMinorsPitches(pitcherId: number, season: number): Promise<Mino
     }
     return out
   } catch (err) {
-    console.error('[getPitcherMinorsProfile] Savant minors fetch failed:', err)
+    log.error('getPitcherMinorsProfile', 'Savant minors fetch failed', err)
     return []
   }
 }

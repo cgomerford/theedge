@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/team-composition.ts
 //
 // Real roster composition data — age distribution and nationality mix.
@@ -97,7 +98,7 @@ export async function getTeamComposition(mlbTeamId: number): Promise<TeamComposi
 
     return { ageGroups, nationality, rosterSize: people.length }
   } catch (e) {
-    console.error('getTeamComposition error:', e)
+    log.error('team-composition', 'getTeamComposition error', e)
     return null
   }
 }

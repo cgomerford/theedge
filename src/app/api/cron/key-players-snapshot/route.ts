@@ -30,6 +30,7 @@ import { buildKeyPlayersSnapshotRows, writeKeyPlayersSnapshot } from '@/lib/key-
 import { computeTeamKeyPlayers } from '@/lib/key-players-pipeline'
 import { getParkFactor } from '@/lib/parks'
 import type { RecentFormContext } from '@/lib/key-players-narrative'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 800
@@ -56,7 +57,7 @@ async function fetchLoggedPairs(date: string): Promise<Set<string>> {
     // recompute (and possibly overwrite) than silently skip every game.
     // A schema mismatch will show up as a full recompute + a loud console
     // error rather than a silent no-op, which is easier to notice.
-    console.error('key-players-snapshot cron: idempotency check failed, will recompute all', error)
+    log.error('key-players-snapshot', 'key-players-snapshot cron: idempotency check failed, will recompute all', error)
     return new Set()
   }
 
@@ -100,7 +101,7 @@ async function deleteLoggedPair(gamePk: number, teamId: number, date: string) {
     .eq('game_pk', gamePk)
     .eq('team_id', teamId)
     .eq('game_date', date)
-  if (error) console.error(`key-players-snapshot: force-delete failed for ${gamePk}/${teamId}`, error)
+  if (error) log.error('key-players-snapshot', `key-players-snapshot: force-delete failed for ${gamePk}/${teamId}`, error)
 }
 
 export async function GET(req: NextRequest) {
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
   try {
     games = await getScheduleForDate(targetDate)
   } catch (e) {
-    console.error('key-players-snapshot cron: schedule fetch failed', e)
+    log.error('key-players-snapshot', 'key-players-snapshot cron: schedule fetch failed', e)
     return NextResponse.json({ error: 'schedule fetch failed' }, { status: 500 })
   }
 
@@ -198,7 +199,7 @@ export async function GET(req: NextRequest) {
         written += result.written
         failed += result.failed
       } catch (e) {
-        console.error(`key-players-snapshot cron: failed for team ${teamId}, game ${game.gamePk}`, e)
+        log.error('key-players-snapshot', `key-players-snapshot cron: failed for team ${teamId}, game ${game.gamePk}`, e)
         failed++
       }
     }

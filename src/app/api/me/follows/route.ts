@@ -6,6 +6,7 @@ import { getMLBTeamNextGame } from '@/lib/mlb-homepage'
 import { initialsOf } from '@/components/ui/InitialsChip'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import { teamLogoUrl } from '@/lib/mlb'
+import { log } from '@/lib/log'
 
 // Private: who the signed-in person follows (up to 6 players and teams) with each one's next game.
 // Loaded by the homepage's "Your follows" island so the homepage HTML itself stays cacheable for everyone.
@@ -24,7 +25,7 @@ async function playerTeamId(playerId: number): Promise<number | null> {
     const id = Number(json.people?.[0]?.currentTeam?.id)
     return Number.isFinite(id) && id > 0 ? id : null
   } catch (e) {
-    console.error('[api/me/follows] playerTeamId failed:', e instanceof Error ? e.message : e)
+    log.error('api/me/follows', 'playerTeamId failed', e instanceof Error ? e.message : e)
     return null
   }
 }

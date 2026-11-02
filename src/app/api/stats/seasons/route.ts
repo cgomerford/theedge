@@ -10,6 +10,7 @@
 // already used in spray-chart/route.ts for the same class of problem.
 
 import { NextRequest, NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -24,15 +25,15 @@ export async function GET(request: NextRequest) {
     if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
 
     const group = subject === 'pitcher' ? 'pitching' : 'hitting'
-    const res = await fetch(`${MLB_API}/people/${playerId}/stats?stats=yearByYear&group=${group}`, { cache: 'no-store' })
+    const res = await fetch(`${MLB_API}/people/${playerId}/stats?stats=yearByYear&group=${group}`, { next: { revalidate: 3600 } })
 
-    console.log(`[stats/seasons] playerId=${playerId} subject=${subject} MLB API status=${res.status}`)
+    log.debug('stats/seasons', `playerId=${playerId} subject=${subject} MLB API status=${res.status}`)
 
     if (!res.ok) throw new Error(`MLB API ${res.status}`)
     const json = await res.json()
     const splits = (json.stats?.[0]?.splits ?? []) as any[]
 
-    console.log(`[stats/seasons] playerId=${playerId} raw splits=${splits.length}`)
+    log.debug('stats/seasons', `playerId=${playerId} raw splits=${splits.length}`)
 
     const seasons = Array.from(new Set(
       splits
@@ -41,11 +42,10 @@ export async function GET(request: NextRequest) {
         .filter((n: number) => !Number.isNaN(n))
     )).sort((a, b) => b - a)
 
-    console.log(`[stats/seasons] playerId=${playerId} resolved seasons=${JSON.stringify(seasons)}`)
 
     return NextResponse.json({ seasons })
   } catch (err) {
-    console.error('[stats/seasons] ERROR:', err)
+    log.error('stats/seasons', 'ERROR', err)
     return NextResponse.json({ seasons: [], error: err instanceof Error ? err.message : 'Unknown error' }, { status: 200 })
   }
 }

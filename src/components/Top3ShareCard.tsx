@@ -21,6 +21,7 @@ import type {
   ZoneFitCell,
 } from '@/lib/series-matchup'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const CARD_WIDTH = 1080
 const CARD_HEIGHT = 1350
@@ -592,7 +593,7 @@ export default function Top3ShareCard({
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('Top3ShareCard: PNG export failed', e)
+      log.error('Top3ShareCard', 'Top3ShareCard: PNG export failed', e)
     } finally {
       setExporting(false)
     }
@@ -605,7 +606,7 @@ export default function Top3ShareCard({
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (e) {
-      console.error('Top3ShareCard: clipboard copy failed', e)
+      log.error('Top3ShareCard', 'Top3ShareCard: clipboard copy failed', e)
     }
   }
 

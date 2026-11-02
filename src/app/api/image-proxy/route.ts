@@ -11,6 +11,7 @@
 // Allowlisted hosts only — this must never become an open proxy.
 
 import { NextRequest, NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 const ALLOWED_HOSTS = ['img.mlbstatic.com', 'www.mlbstatic.com']
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     const buffer = Buffer.from(await res.arrayBuffer())
     return NextResponse.json({ dataUri: `data:${contentType};base64,${buffer.toString('base64')}` })
   } catch (err) {
-    console.error('[image-proxy]', err)
+    log.error('image-proxy', 'failed', err)
     return NextResponse.json({ error: 'proxy failed' }, { status: 500 })
   }
 }

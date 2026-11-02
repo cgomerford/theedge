@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 /**
  * src/lib/fantasy-yesterday.ts
  *
@@ -192,9 +193,9 @@ export async function getYesterdaysSignals(): Promise<YesterdaysSignals> {
   const date = getYesterdayDateStr()
 
   const [hitting, pitching, exitVelo] = await Promise.all([
-    fetchHittingLeaders(date).catch(err => { console.error('[fantasy-yesterday] hitting:', err); return [] }),
-    fetchPitchingLeaders(date).catch(err => { console.error('[fantasy-yesterday] pitching:', err); return [] }),
-    fetchExitVeloLeaders(date).catch(err => { console.error('[fantasy-yesterday] exit velo:', err); return [] }),
+    fetchHittingLeaders(date).catch(err => { log.error('fantasy-yesterday', 'hitting', err); return [] }),
+    fetchPitchingLeaders(date).catch(err => { log.error('fantasy-yesterday', 'pitching', err); return [] }),
+    fetchExitVeloLeaders(date).catch(err => { log.error('fantasy-yesterday', 'exit velo', err); return [] }),
   ])
 
   return {

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getLeaders, LEADER_METRICS } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const leaders = await getLeaders(metric, season, limit)
     return NextResponse.json({ leaders, label: LEADER_METRICS[metric].label })
   } catch (err) {
-    console.error('[lab/leaders]', err)
+    log.error('lab/leaders', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

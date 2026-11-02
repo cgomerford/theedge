@@ -13,6 +13,7 @@ import { availableSlides, buildReelSegments } from './story/pitcher/build'
 import { listReelPitchers, loadPitcherReel, type ReelPitcherOption } from './story/pitcher/load'
 import { reelRenderer } from './story/pitcher/render'
 import { REEL_SEGMENT_LIST, type PitcherReelData, type ReelSegmentId } from './story/pitcher/types'
+import { log } from '@/lib/log'
 
 const DEFAULT_ON: ReelSegmentId[] = ['pr-arsenal', 'pr-counts', 'pr-arm', 'pr-hits', 'pr-tto', 'pr-season', 'pr-next']
 
@@ -40,7 +41,7 @@ export default function PitcherReel({ slateDate }: { slateDate: string }) {
     setOptions(null); setPick(null); setData(null)
     listReelPitchers(date)
       .then(o => { if (live) setOptions(o) })
-      .catch(err => { console.error('[PitcherReel] listReelPitchers failed:', err); if (live) setOptions([]) })
+      .catch(err => { log.error('PitcherReel', 'listReelPitchers failed', err); if (live) setOptions([]) })
     return () => { live = false }
   }, [date])
 
@@ -50,7 +51,7 @@ export default function PitcherReel({ slateDate }: { slateDate: string }) {
     setLoading(true); setFailed(false); setData(null)
     loadPitcherReel(pick.gamePk, pick.pitcherId)
       .then(r => { if (live) { setData(r); setFailed(!r) } })
-      .catch(err => { console.error('[PitcherReel] loadPitcherReel failed:', err); if (live) setFailed(true) })
+      .catch(err => { log.error('PitcherReel', 'loadPitcherReel failed', err); if (live) setFailed(true) })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [pick])

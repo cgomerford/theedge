@@ -10,6 +10,7 @@ import { generateFantasyCards } from '@/lib/fantasy-cards'
 import type { FantasyCards } from '@/lib/fantasy-cards'
 import { getVenueInfo, classifyWindDirection } from '@/lib/venues'
 import { getGameWeather } from '@/lib/mlb'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -111,7 +112,7 @@ export async function GET(request: Request) {
               }
             }
           } catch (err) {
-            console.error(`Weather fetch failed for game ${game.gamePk}:`, err)
+            log.error('log-predictions', `Weather fetch failed for game ${game.gamePk}`, err)
           }
         }
 
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
             game.teams.away.probablePitcher?.fullName ?? null,
           )
         } catch (err) {
-          console.error(`Streak fetch failed for game ${game.gamePk}:`, err)
+          log.error('log-predictions', `Streak fetch failed for game ${game.gamePk}`, err)
         }
 
         const gameDate = game.officialDate ?? game.gameDate?.split('T')[0] ?? today
@@ -182,11 +183,6 @@ const hasExistingNarrative = !forceRegen && !!(existing?.summary && existing?.na
           !existing?.fantasy_cards ||
           (!existing?.fantasy_cards?.lineups_used && lineupsConfirmed)
 
-        console.log(
-          `Game ${game.gamePk}: shouldRegenerate=${shouldRegenerate}, ` +
-          `locked=${narrativeLocked}, hasExisting=${hasExistingNarrative}, ` +
-          `scoreSwing=${scoreSwing.toFixed(1)}, lineupsConfirmed=${lineupsConfirmed}`
-        )
 
         // ── Narrative regeneration ────────────────────────────────────
         if (shouldRegenerate) {
@@ -296,7 +292,7 @@ if (generated) {
   contrarian    = generated.contrarian
   pro_takeaways = generated.pro_takeaways
   narratives_regenerated++
-  console.log(`Game ${game.gamePk}: narrative generated (cost $${generated.cost_usd.toFixed(4)})`)
+  log.debug('log-predictions', `Game ${game.gamePk}: narrative generated (cost $${generated.cost_usd.toFixed(4)})`)
 }
         } else {
           narratives_kept++
@@ -304,11 +300,9 @@ if (generated) {
 
         // ── Fantasy cards ─────────────────────────────────────────────
         // Paused for now — set PAUSE_FANTASY_CARDS=false in env to bring back.
-        console.log(`Game ${game.gamePk}: shouldGenerateFantasy=${shouldGenerateFantasy}, paused=${PAUSE_FANTASY_CARDS}, existing=${!!existing?.fantasy_cards}`)
 
         if (shouldGenerateFantasy && !PAUSE_FANTASY_CARDS) {
           if (lineupsConfirmed && homeLineup) {
-            console.log(`Game ${game.gamePk} passing to LLM:`, JSON.stringify(formatLineup(homeLineup)))
           }
 
           const generatedFantasy = await generateFantasyCards({
@@ -328,9 +322,9 @@ if (generated) {
 
           if (generatedFantasy) {
             fantasy_cards = generatedFantasy
-            console.log(`Game ${game.gamePk}: fantasy cards generated — lineups_used=${generatedFantasy.lineups_used}`)
+            log.debug('log-predictions', `Game ${game.gamePk}: fantasy cards generated — lineups_used=${generatedFantasy.lineups_used}`)
           } else {
-            console.error(`Game ${game.gamePk}: fantasy cards generation failed`)
+            log.error('log-predictions', `Game ${game.gamePk}: fantasy cards generation failed`)
           }
         }
 
@@ -375,7 +369,7 @@ if (generated) {
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {
-    console.error('Prediction logging failed:', err)
+    log.error('log-predictions', 'Prediction logging failed', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }

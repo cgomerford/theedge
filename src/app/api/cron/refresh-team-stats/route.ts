@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
@@ -131,7 +132,7 @@ export async function GET(request: Request) {
       teams_stored: rows.length,
     })
   } catch (err) {
-    console.error('Team stats refresh failed:', err)
+    log.error('refresh-team-stats', 'Team stats refresh failed', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
@@ -382,7 +383,7 @@ async function fetchTeamStats(teamId: number, teamName: string) {
       updated_at: new Date().toISOString(),
     }
   } catch (err) {
-    console.error(`Team stats fetch failed for ${teamName}:`, err)
+    log.error('refresh-team-stats', `Team stats fetch failed for ${teamName}`, err)
     return null
   }
 }
@@ -414,7 +415,7 @@ async function fetchRispStats(teamId: number): Promise<{
       risp_ops: stat.ops ? parseFloat(stat.ops) : null,
     }
   } catch (err) {
-    console.error(`RISP stats fetch failed for team ${teamId}:`, err)
+    log.error('refresh-team-stats', `RISP stats fetch failed for team ${teamId}`, err)
     return { risp_avg: null, risp_ops: null }
   }
 }
@@ -451,7 +452,7 @@ async function fetchDefensiveEfficiency(teamId: number): Promise<number | null> 
     const der = 1 - (hits - homeRuns) / ballsInPlay
     return Math.round(der * 1000) / 1000
   } catch (err) {
-    console.error(`Defensive efficiency fetch failed for team ${teamId}:`, err)
+    log.error('refresh-team-stats', `Defensive efficiency fetch failed for team ${teamId}`, err)
     return null
   }
 }
@@ -561,7 +562,7 @@ async function fetchBullpenQuality(teamId: number): Promise<{
       bullpen_hr_per_9: parseFloat(((totalHR * 9) / ip).toFixed(2)),
     }
   } catch (err) {
-    console.error(`Bullpen quality fetch failed for team ${teamId}:`, err)
+    log.error('refresh-team-stats', `Bullpen quality fetch failed for team ${teamId}`, err)
     return { bullpen_era: null, bullpen_k_per_9: null, bullpen_hr_per_9: null }
   }
 }
@@ -618,7 +619,7 @@ async function fetchBullpenInnings(teamId: number, gamePk: number): Promise<{
       setup2_available: !setup2Usage || (setup2Usage.pitches <= 20 && setup2Usage.ip < 2),
     }
   } catch (err) {
-    console.error(`Bullpen fetch failed for game ${gamePk}:`, err)
+    log.error('refresh-team-stats', `Bullpen fetch failed for game ${gamePk}`, err)
     return { bullpen_ip: 0, closer_available: true, setup1_available: true, setup2_available: true }
   }
 }

@@ -32,6 +32,7 @@ import PitcherWorkloadCard from '@/components/PitcherWorkloadCard'
 import ProPanel from '@/components/profile/ProPanel'
 import { Card, Empty, Foot, RankBars, RankChip, Tile, C, MONO, SANS } from './ui'
 import { AgeScatter } from './charts'
+import { log } from '@/lib/log'
 
 const f3 = (v: number | null) => (v == null ? '—' : v.toFixed(3).replace(/^0/, ''))
 const pct1 = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
@@ -178,7 +179,7 @@ function AdvTable({ rows, title }: { rows: PitcherLine[]; title: string }) {
 }
 
 async function WorkloadBody({ team, ids }: { team: Team; ids: number[] }) {
-  const w = await getLast7DaysPitcherWorkloadFromDB(team.id, new Set(ids)).catch((e) => { console.error('[WorkloadBody]', e instanceof Error ? e.message : e); return null })
+  const w = await getLast7DaysPitcherWorkloadFromDB(team.id, new Set(ids)).catch((e) => { log.error('WorkloadBody', 'failed', e instanceof Error ? e.message : e); return null })
   if (!w || w.pitchers.length === 0) return <Empty>No pitcher workload has been logged for the last 7 days.</Empty>
   return <PitcherWorkloadCard workload={w} teamColor={team.primary_color} teamAbbr={team.abbrev} />
 }

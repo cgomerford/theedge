@@ -29,6 +29,7 @@ import { createAdminClient } from '@/lib/supabase'
 import type { PostData } from './data'
 import { buildPitchLog, startersOf, type PitchRec } from './pitchlog'
 import type { Side } from './recap'
+import { log } from '@/lib/log'
 
 const n = (v: unknown): number => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
@@ -69,8 +70,8 @@ async function getSeason(ids: number[], year: number): Promise<Map<number, Seaso
     supa.from('pitcher_zone_arsenal').select('player_id, total_pitches, arsenal').in('player_id', ids).eq('season', year).eq('split', 'all'),
     supa.from('pitcher_stats').select('player_id, first_pitch_strike_pct, tto1_woba, tto2_woba, tto3_woba, tto1_pa, tto2_pa, tto3_pa').in('player_id', ids).eq('season', year),
   ])
-  if (ars.error) console.error('[getSeason] pitcher_zone_arsenal error:', ars.error.message)
-  if (sts.error) console.error('[getSeason] pitcher_stats error:', sts.error.message)
+  if (ars.error) log.error('getSeason', 'pitcher_zone_arsenal error', ars.error.message)
+  if (sts.error) log.error('getSeason', 'pitcher_stats error', sts.error.message)
   const stats = new Map((sts.data as StatsRow[] | null ?? []).map((r) => [Number(r.player_id), r]))
   for (const r of (ars.data as ArsenalRow[] | null ?? [])) {
     const byPitch = new Map<string, SeasonPitch>()
@@ -98,12 +99,12 @@ async function getSeason(ids: number[], year: number): Promise<Map<number, Seaso
 async function getStarts(id: number, year: number, before: string): Promise<StartLine[]> {
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=gameLog&group=pitching&season=${year}`, { next: { revalidate: 21600 }, signal: AbortSignal.timeout(15000) })
-    if (!res.ok) { console.error('[getStarts] HTTP', res.status); return [] }
+    if (!res.ok) { log.error('getStarts', 'HTTP', res.status); return [] }
     const j = (await res.json()) as { stats?: { splits?: { date?: string; stat: Record<string, string | number> }[] }[] }
     const outs = (ip: unknown) => { const [w, f = '0'] = String(ip ?? '0.0').split('.'); return n(w) + n(f) / 3 }
     return (j.stats?.[0]?.splits ?? []).filter((s) => n(s.stat.gamesStarted) === 1 && (s.date ?? '') < before)
       .map((s) => ({ date: s.date ?? '', pitches: n(s.stat.numberOfPitches), ip: outs(s.stat.inningsPitched), k: n(s.stat.strikeOuts), bb: n(s.stat.baseOnBalls), er: n(s.stat.earnedRuns) }))
-  } catch (err) { console.error('[getStarts] failed:', err instanceof Error ? err.message : err); return [] }
+  } catch (err) { log.error('getStarts', 'failed', err instanceof Error ? err.message : err); return [] }
 }
 
 function build(side: Side, id: number, name: string, log: PitchRec[], d: PostData, season: Season | undefined, starts: StartLine[]): PitcherCheck {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 export const dynamic    = 'force-dynamic'
 export const revalidate = 0
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     const evtIdx  = headers.indexOf('events')
     const bbIdx   = headers.indexOf('bb_type')
 
-    console.log(`spray-chart: hcx=${hcxIdx} hcy=${hcyIdx} evt=${evtIdx} bb=${bbIdx}`)
+    log.debug('spray-chart', `hcx=${hcxIdx} hcy=${hcyIdx} evt=${evtIdx} bb=${bbIdx}`)
 
     if (hcxIdx === -1 || hcyIdx === -1) return NextResponse.json({ balls: [] })
 
@@ -67,10 +68,10 @@ export async function GET(request: Request) {
       balls.push({ x: hc_x, y: hc_y, events: cells[evtIdx] ?? '', bb_type })
     }
 
-    console.log(`spray-chart: ${balls.length} balls parsed for player ${playerId}`)
+    log.debug('spray-chart', `${balls.length} balls parsed for player ${playerId}`)
     return NextResponse.json({ balls })
   } catch (err) {
-    console.error('spray-chart failed:', err)
+    log.error('spray-chart', 'spray-chart failed', err)
     return NextResponse.json({ balls: [] })
   }
 }

@@ -24,6 +24,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { getScheduleForDate, slugifyGame } from '@/lib/mlb'
 import { getSeriesTop3 } from '@/lib/series-matchup'
 import { buildSnapshotRow } from '@/lib/series-top3-snapshot'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 800
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   try {
     games = await getScheduleForDate(today)
   } catch (e) {
-    console.error('series-top3-snapshot cron: schedule fetch failed', e)
+    log.error('series-top3-snapshot', 'series-top3-snapshot cron: schedule fetch failed', e)
     return NextResponse.json({ error: 'schedule fetch failed' }, { status: 500 })
   }
 
@@ -72,13 +73,13 @@ export async function GET(req: NextRequest) {
           { onConflict: 'game_date,team_id' },
         )
         if (error) {
-          console.error(`series-top3-snapshot cron: upsert failed for team ${teamId}`, error)
+          log.error('series-top3-snapshot', `series-top3-snapshot cron: upsert failed for team ${teamId}`, error)
           failed++
         } else {
           written++
         }
       } catch (e) {
-        console.error(`series-top3-snapshot cron: getSeriesTop3 failed for team ${teamId}`, e)
+        log.error('series-top3-snapshot', `series-top3-snapshot cron: getSeriesTop3 failed for team ${teamId}`, e)
         failed++
       }
     }

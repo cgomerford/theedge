@@ -12,6 +12,7 @@
 // read pattern — same nested paths, not a separate team_stats call).
 
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,7 +89,7 @@ export async function getBoardSlate(gameDate: string): Promise<BoardGame[]> {
       .order('edge_score', { ascending: false })
 
     if (error || !data) {
-      console.error('getBoardSlate error:', error?.message)
+      log.error('trading-floor-board', 'getBoardSlate error', error?.message)
       return []
     }
 
@@ -115,7 +116,7 @@ export async function getBoardSlate(gameDate: string): Promise<BoardGame[]> {
       }
     })
   } catch (err) {
-    console.error('getBoardSlate failed:', err)
+    log.error('trading-floor-board', 'getBoardSlate failed', err)
     return []
   }
 }

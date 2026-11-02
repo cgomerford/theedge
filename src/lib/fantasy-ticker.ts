@@ -7,6 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type TickerPitcher = {
   name: string
@@ -51,7 +52,7 @@ export async function getTonightAllPitchers(): Promise<TickerPitcher[]> {
       }
     }
   } catch (e) {
-    console.error('Ticker: schedule fetch failed', e)
+    log.error('fantasy-ticker', 'Ticker: schedule fetch failed', e)
   }
 
   if (games.length === 0) return []

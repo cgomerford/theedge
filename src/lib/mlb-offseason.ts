@@ -10,6 +10,7 @@
 // stopping work) is possible. The page says only that it is possible; it does not say one will happen.
 
 import type { SeasonState } from '@/lib/mlb-home-dashboard'
+import { log } from '@/lib/log'
 
 const API = 'https://statsapi.mlb.com/api/v1'
 export const LABOR_DEAL_EXPIRES = '2026-12-01'
@@ -36,7 +37,7 @@ export async function getOffseasonCalendar(season: SeasonState): Promise<CalItem
       if (s?.springStartDate) items.push({ date: s.springStartDate, label: 'Spring training games begin' })
       if (s?.regularSeasonStartDate) items.push({ date: s.regularSeasonStartDate, label: 'Opening Day' })
       if (s?.allStarDate) items.push({ date: s.allStarDate, label: 'All-Star Game' })
-    } else console.error('[getOffseasonCalendar] season HTTP', res.status)
-  } catch (err) { console.error('[getOffseasonCalendar] failed:', err instanceof Error ? err.message : err) }
+    } else log.error('getOffseasonCalendar', 'season HTTP', res.status)
+  } catch (err) { log.error('getOffseasonCalendar', 'failed', err instanceof Error ? err.message : err) }
   return items.sort((a, b) => a.date.localeCompare(b.date))
 }

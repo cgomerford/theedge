@@ -5,6 +5,7 @@
 // (empty state over a guessed threshold).
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type Stabilisation = { metricKey: string; label: string; threshold: number; unit: string; sourceUrl: string | null }
 export type SignalState = 'early' | 'settling' | 'reliable'
@@ -13,7 +14,7 @@ export async function getStabilisation(): Promise<Record<string, Stabilisation>>
   const { data, error } = await createAdminClient()
     .from('stat_stabilisation').select('metric_key, label, threshold, unit, source_url')
   if (error) {
-    console.error('[getStabilisation] Supabase error:', error.message)
+    log.error('getStabilisation', 'Supabase error', error.message)
     return {}
   }
   const out: Record<string, Stabilisation> = {}

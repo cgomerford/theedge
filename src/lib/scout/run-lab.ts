@@ -12,6 +12,7 @@
 import { withSavantCache } from '@/lib/savant-cache'
 import { getRunGame, getSprintMap, type RunGame } from './run-game'
 import { getSbSituations, type SbSituations, type Situations } from './situations'
+import { log } from '@/lib/log'
 
 const SAVANT = 'https://baseballsavant.mlb.com'
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0'
@@ -45,9 +46,9 @@ const mean = (xs: number[]) => (xs.length ? Math.round((xs.reduce((a, b) => a + 
 async function csv(path: string): Promise<Record<string, string>[]> {
   try {
     const res = await fetch(`${SAVANT}/${path}`, { cache: 'no-store', headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) })
-    if (!res.ok) { console.error('[run-lab] Savant HTTP', res.status, path); return [] }
+    if (!res.ok) { log.error('run-lab', 'Savant HTTP', [res.status, path].join(' ')); return [] }
     return parseCsv(await res.text())
-  } catch (err) { console.error('[run-lab] Savant fetch failed:', path, err instanceof Error ? err.message : err); return [] }
+  } catch (err) { log.error('run-lab', 'Savant fetch failed', [path, err instanceof Error ? err.message : err].join(' ')); return [] }
 }
 
 export async function getRunBoards(season: string): Promise<RunBoards | null> {

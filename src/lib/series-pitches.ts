@@ -1,3 +1,4 @@
+import { log, logOnce } from '@/lib/log'
 // Pitch-level data for one batter across a set of specific games.
 //
 // 2026-08-09: added getBatterPitchesFromGames — replaces the Savant CSV
@@ -61,7 +62,7 @@ async function fetchGamePitchesForBatter(gamePk: number, batterId: number): Prom
   try {
     const res = await fetch(`${MLB_API_LIVE}/game/${gamePk}/feed/live`, { cache: 'no-store' })
     if (!res.ok) {
-      console.error(`[series-pitches] live feed fetch failed for game ${gamePk}: ${res.status}`)
+      logOnce('series-pitches:live feed fetch failed for game #: #', 'series-pitches', `live feed fetch failed for game ${gamePk}: ${res.status}`)
       return []
     }
     const data = await res.json()
@@ -93,7 +94,7 @@ async function fetchGamePitchesForBatter(gamePk: number, batterId: number): Prom
     }
     return rows
   } catch (err) {
-    console.error(`[series-pitches] live feed fetch threw for game ${gamePk}:`, err)
+    logOnce('series-pitches:live feed fetch threw for game #', 'series-pitches', `live feed fetch threw for game ${gamePk}`, err)
     return []
   }
 }
@@ -153,7 +154,7 @@ export async function getBatterPitchesInWindow(
       },
     })
     if (!res.ok) {
-      console.error(`[series-pitches] fetch failed: ${res.status}`)
+      logOnce('series-pitches:fetch failed: #', 'series-pitches', `fetch failed: ${res.status}`)
       return []
     }
     const text = await res.text()
@@ -183,7 +184,7 @@ export async function getBatterPitchesInWindow(
     }
     return rows.filter(r => r.plateX !== null && r.plateZ !== null)
   } catch (err) {
-    console.error('[series-pitches] fetch threw:', err)
+    log.error('series-pitches', 'fetch threw', err)
     return []
   }
 }

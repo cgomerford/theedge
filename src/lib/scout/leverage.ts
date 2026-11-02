@@ -20,6 +20,7 @@ import { getBullpenDesk, type BullpenArm } from './bullpen-desk'
 import { getBullpenTrends, type ArmUsage } from './bullpen-trends'
 import { getAbsRows } from './abs-desk'
 import { getSbRows } from './situations'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 export const MIN_LEV_PA = 60
@@ -116,7 +117,7 @@ export async function getLeverage(teamId: number, gameDate: string): Promise<Lev
       },
     }
   } catch (err) {
-    console.error('[scout] leverage failed:', teamId, err)
+    log.error('scout', 'leverage failed', [teamId, err].join(' '))
     return null
   }
 }

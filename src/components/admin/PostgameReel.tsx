@@ -13,6 +13,7 @@ import { listReelGames, loadPostgameReel, type ReelGameOption } from './story/po
 import { postgameRenderer } from './story/postgame/render'
 import { POSTGAME_SEGMENT_LIST, type PostgameReelData, type PostgameSegmentId } from './story/postgame/types'
 import { chipClass, Chips, Msg, ReelDateBar, SlidePicker } from './story/reel/ReelParts'
+import { log } from '@/lib/log'
 
 const DEFAULT_ON: PostgameSegmentId[] = ['pg-flow', 'pg-plays', 'pg-hitters', 'pg-pitching', 'pg-spray']
 
@@ -32,7 +33,7 @@ export default function PostgameReel({ slateDate }: { slateDate: string }) {
     setGames(null); setPick(null); setData(null)
     listReelGames(date)
       .then(g => { if (live) setGames(g) })
-      .catch(err => { console.error('[PostgameReel] listReelGames failed:', err); if (live) setGames([]) })
+      .catch(err => { log.error('PostgameReel', 'listReelGames failed', err); if (live) setGames([]) })
     return () => { live = false }
   }, [date])
 
@@ -42,7 +43,7 @@ export default function PostgameReel({ slateDate }: { slateDate: string }) {
     setLoading(true); setFailed(false); setData(null)
     loadPostgameReel(pick)
       .then(r => { if (live) { setData(r); setFailed(!r) } })
-      .catch(err => { console.error('[PostgameReel] loadPostgameReel failed:', err); if (live) setFailed(true) })
+      .catch(err => { log.error('PostgameReel', 'loadPostgameReel failed', err); if (live) setFailed(true) })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [pick])

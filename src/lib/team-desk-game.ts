@@ -14,6 +14,7 @@
 // getScheduleForDate / getTeamUpcomingSchedule already parse in this repo.
 
 import { teamSlug } from '@/lib/mlb'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -56,7 +57,7 @@ export async function getTeamDeskGame(teamId: number): Promise<DeskGame | null> 
     const url = `${MLB_API}/schedule?sportId=1&teamId=${teamId}&startDate=${today}&endDate=${end}&hydrate=team,probablePitcher,venue`
     const res = await fetch(url, { next: { revalidate: 900 }, signal: AbortSignal.timeout(10000) })
     if (!res.ok) {
-      console.error('[getTeamDeskGame] MLB schedule error:', res.status)
+      log.error('getTeamDeskGame', 'MLB schedule error', res.status)
       return null
     }
     const json = await res.json()
@@ -86,7 +87,7 @@ export async function getTeamDeskGame(teamId: number): Promise<DeskGame | null> 
       opp: theirs,
     }
   } catch (err) {
-    console.error('[getTeamDeskGame]', err instanceof Error ? err.message : err)
+    log.error('getTeamDeskGame', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

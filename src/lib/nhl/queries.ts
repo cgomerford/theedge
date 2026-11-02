@@ -17,6 +17,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import type { NhlIngestValidationRow, NhlPlayerGameRow, NhlGameRow } from './types'
+import { log } from '@/lib/log'
 
 const PAGE_SIZE = 1000
 const CACHE_TTL_MS = 60 * 1000
@@ -75,7 +76,7 @@ async function paginate<T>(
       const query = build(base) ?? base
       return query.range(offset, offset + limit - 1)
     },
-    (message) => console.error(`[nhl/queries] Supabase error reading ${table}:`, message),
+    (message) => log.error('nhl/queries', `Supabase error reading ${table}`, message),
   )
 }
 
@@ -88,7 +89,7 @@ export async function getRecentValidation(limit = 50): Promise<NhlIngestValidati
       .order('computed_at', { ascending: false })
       .limit(limit)
     if (error) {
-      console.error('[getRecentValidation] Supabase error:', error.message)
+      log.error('getRecentValidation', 'Supabase error', error.message)
       return []
     }
     return (data ?? []) as NhlIngestValidationRow[]
@@ -104,7 +105,7 @@ export async function getGamesByIds(gameIds: number[]): Promise<Map<number, NhlG
       .select('game_id,season,game_type,game_date,home_team_id,away_team_id,home_score,away_score,game_state,ingest_status,ingest_error')
       .in('game_id', gameIds)
     if (error) {
-      console.error('[getGamesByIds] Supabase error:', error.message)
+      log.error('getGamesByIds', 'Supabase error', error.message)
       return new Map()
     }
     return new Map((data ?? []).map((row) => [row.game_id as number, row as NhlGameRow]))

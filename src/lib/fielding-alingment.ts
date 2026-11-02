@@ -19,6 +19,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import type { LineupBatter } from '@/lib/lineups'
 import type { FielderPosition, FielderAlignmentEntry } from '@/components/FieldingAlignmentDiamond'
+import { log } from '@/lib/log'
 
 const POSITION_MAP: Record<string, FielderPosition> = {
   'C': 'C',
@@ -59,7 +60,7 @@ export async function getFieldingAlignment(
     .eq('season', season)
 
   if (error) {
-    console.error('getFieldingAlignment: player_fielding_run_value query failed:', error)
+    log.error('fielding-alingment', 'getFieldingAlignment: player_fielding_run_value query failed', error)
   }
 
   // Supabase numeric columns return as strings — explicit Number()

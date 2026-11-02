@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 const BUCKET = 'article-images'
 
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase.storage.from(BUCKET).list('', { limit: 60, sortBy: { column: 'created_at', order: 'desc' } })
   if (error) {
-    console.error('[GET /api/admin/article-images] Supabase storage error:', error.message)
+    log.error('GET /api/admin/article-images', 'Supabase storage error', error.message)
     return NextResponse.json({ images: [] })
   }
   const images = (data ?? [])

@@ -12,6 +12,7 @@
 import { getBatterZoneArsenal, type BatterZoneArsenal } from '@/lib/batter-zone-arsenal'
 import { getBatterSeasonStats, getBatterVsPitcher, type BatterSeasonStats, type BatterVsPitcher } from '@/lib/batter-stats'
 import { getBatterVenueRecord, type BatterVenueRecordRow } from '@/lib/batter-venue-record'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -35,7 +36,7 @@ async function getBatterBio(batterId: number): Promise<{ batSide: 'L' | 'R' | 'S
       position: p?.primaryPosition?.abbreviation ?? null,
     }
   } catch (err) {
-    console.error('[getBatterBio] fetch failed:', err)
+    log.error('getBatterBio', 'fetch failed', err)
     return { batSide: null, position: null }
   }
 }

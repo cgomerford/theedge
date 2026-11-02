@@ -4,6 +4,7 @@
 // One read of the stored table, last 30 days, newest first. Returns [] on failure with a logged reason; nothing is invented.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type FeedRow = { date: string; text: string; who: string; kind: 'team' | 'player' }
 const CATS = ['IL', 'ACTIVATION', 'CALLUP', 'OPTION', 'DFA', 'RELEASE', 'OUTRIGHTED', 'TRADE', 'SIGNING', 'SUSPENSION']
@@ -14,7 +15,7 @@ export async function getFollowFeed(teamIds: { id: number; short: string }[], pl
   const supa = createAdminClient()
   const ors = [teamIds.length ? `team_id.in.(${teamIds.map(t => t.id).join(',')})` : '', playerIds.length ? `player_id.in.(${playerIds.map(p => p.id).join(',')})` : ''].filter(Boolean).join(',')
   const { data, error } = await supa.from('team_transactions').select('transaction_id, team_id, player_id, player_name, category, description, transaction_date').or(ors).in('category', CATS).gte('transaction_date', since).order('transaction_date', { ascending: false }).limit(60)
-  if (error) { console.error('[getFollowFeed] Supabase error:', error.message); return [] }
+  if (error) { log.error('getFollowFeed', 'Supabase error', error.message); return [] }
   const seen = new Set<number>()
   const out: FeedRow[] = []
   for (const r of (data ?? []) as { transaction_id: number; team_id: number | null; player_id: number; player_name: string; description: string; transaction_date: string }[]) {

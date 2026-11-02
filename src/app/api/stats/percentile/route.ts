@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getMetricPercentile } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 const BATTER_METRICS = ['ops', 'avg', 'obp', 'slg', 'homeRuns', 'rbi', 'stolenBases', 'hits', 'totalBases', 'baseOnBalls'] as const
 const PITCHER_METRICS = ['era', 'whip', 'k9'] as const
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
     )
     return NextResponse.json({ percentiles: results })
   } catch (err) {
-    console.error('percentile route failed:', err)
+    log.error('percentile', 'percentile route failed', err)
     return NextResponse.json({ percentiles: metrics.map(m => ({ key: m, label: LABELS[m], percentile: null })) }, { status: 200 })
   }
 }

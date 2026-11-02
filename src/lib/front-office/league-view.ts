@@ -11,6 +11,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getLeagueTables } from '@/lib/team-profile/league'
+import { log } from '@/lib/log'
 
 export type ClubRow = {
   id: number
@@ -27,7 +28,7 @@ const ratio = (n: number, d: number) => (d > 0 ? n / d : null)
 export async function getLeagueView(season: number): Promise<LeagueView | null> {
   const tables = await getLeagueTables(season)
   if (!tables) {
-    console.error('[getLeagueView] league tables unavailable')
+    log.error('getLeagueView', 'league tables unavailable')
     return null
   }
   const t = tables
@@ -66,7 +67,7 @@ export async function getHiddenPitchers(season: number, limit = 5): Promise<Hidd
     .gte('innings_pitched', 90)
     .limit(1000)
   if (error) {
-    console.error('[getHiddenPitchers] Supabase error:', error.message)
+    log.error('getHiddenPitchers', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as Record<string, unknown>[])
@@ -85,7 +86,7 @@ export async function getHiddenHitters(limit = 5): Promise<HiddenValueRow[]> {
   const supa = createAdminClient()
   const latest = await supa.from('regression_watch').select('game_date').eq('player_type', 'batter').order('game_date', { ascending: false }).limit(1)
   if (latest.error) {
-    console.error('[getHiddenHitters] Supabase error:', latest.error.message)
+    log.error('getHiddenHitters', 'Supabase error', latest.error.message)
     return []
   }
   const date = (latest.data as { game_date?: string }[] | null)?.[0]?.game_date
@@ -96,7 +97,7 @@ export async function getHiddenHitters(limit = 5): Promise<HiddenValueRow[]> {
     .eq('player_type', 'batter').eq('direction', 'rise').eq('game_date', date)
     .order('rank', { ascending: true }).limit(limit)
   if (error) {
-    console.error('[getHiddenHitters] Supabase error:', error.message)
+    log.error('getHiddenHitters', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as Record<string, unknown>[]).map(r => ({

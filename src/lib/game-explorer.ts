@@ -14,6 +14,7 @@
 // the same rule stats-live.ts uses (momentsFromPlays), kept consistent so the "last time" search lines up.
 
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
+import { log } from '@/lib/log'
 
 const API = 'https://statsapi.mlb.com/api'
 
@@ -225,7 +226,7 @@ export async function getGameExplorer(gamePk: number): Promise<ExGame | null> {
       } as ExGame
     })
   } catch (e) {
-    console.error('[getGameExplorer] failed:', gamePk, (e as Error).message)
+    log.error('getGameExplorer', 'failed', [gamePk, (e as Error).message].join(' '))
     return null
   }
 }
@@ -260,7 +261,7 @@ export async function getScoreboard(date: string): Promise<BoardGame[]> {
       })
     })
   } catch (e) {
-    console.error('[getScoreboard] failed:', date, (e as Error).message)
+    log.error('getScoreboard', 'failed', [date, (e as Error).message].join(' '))
     return []
   }
 }

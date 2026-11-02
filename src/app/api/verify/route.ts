@@ -4,6 +4,7 @@ import { welcomeEmail } from '@/lib/email/auth'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 import { CONTACT_EMAIL } from '@/lib/site'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
@@ -50,9 +51,9 @@ export async function GET(req: NextRequest) {
         html: content.html,
         text: content.text,
       })
-      if (sendError) console.error('[Verify email] Resend rejected the send:', sendError.name, sendError.message)
+      if (sendError) log.error('Verify email', 'Resend rejected the send', [sendError.name, sendError.message].join(' '))
     } catch (e) {
-      console.error('Welcome email failed:', e)
+      log.error('verify', 'Welcome email failed', e)
     }
   }
 

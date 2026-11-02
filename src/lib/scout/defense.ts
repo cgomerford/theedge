@@ -28,6 +28,7 @@ import { getProjectedLineup, type LineupBatter } from '@/lib/lineups'
 import { getLineupSpray, computePullProfile } from '@/lib/batter-spray'
 import { getLeagueOaa } from '@/lib/batter-fielding'
 import { fetchPitcherHands } from '@/lib/pitcher-hands'
+import { log } from '@/lib/log'
 
 const SAVANT = 'https://baseballsavant.mlb.com'
 const LOOKBACK_DAYS = 40
@@ -161,7 +162,7 @@ export async function getDefenseDesk(defenseId: number, defenseAbbr: string, off
       lineupSource: offLineup.source,
     }
   } catch (err) {
-    console.error('[scout] defense desk failed:', defenseAbbr, err)
+    log.error('scout', 'defense desk failed', [defenseAbbr, err].join(' '))
     return null
   }
 }

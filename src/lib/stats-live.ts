@@ -13,6 +13,7 @@
 
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 import { deepGroupLabel, type PaParams } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 const API = 'https://statsapi.mlb.com/api'
 
@@ -171,7 +172,7 @@ export function evaluate(s: LiveSnapshot, p: PaParams): Condition[] {
 
 export async function checkLive(p: PaParams): Promise<LiveResult> {
   const pks = await liveGamePks()
-  const snaps = (await Promise.all(pks.map(pk => snapshot(pk).catch(e => { console.error('[checkLive] feed failed:', pk, (e as Error).message); return null })))).filter((s): s is LiveSnapshot => !!s)
+  const snaps = (await Promise.all(pks.map(pk => snapshot(pk).catch(e => { log.error('checkLive', 'feed failed', [pk, (e as Error).message].join(' ')); return null })))).filter((s): s is LiveSnapshot => !!s)
   const games: LiveGame[] = snaps.map(s => {
     const conditions = evaluate(s, p)
     return {

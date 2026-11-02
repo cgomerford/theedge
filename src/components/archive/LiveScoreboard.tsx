@@ -10,8 +10,8 @@
  * Auto-refreshes every 30 seconds via router.refresh().
  */
 
-import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useVisibleInterval } from '@/lib/use-visible-interval'
 
 type Props = {
   awayTeam: string
@@ -45,11 +45,7 @@ export default function LiveScoreboard({
   const router = useRouter()
 
   // Auto-refresh every 30s when live
-  useEffect(() => {
-    if (!isLive) return
-    const interval = setInterval(() => router.refresh(), 30_000)
-    return () => clearInterval(interval)
-  }, [isLive, router])
+  useVisibleInterval(() => router.refresh(), 30_000, isLive)
 
   if (!isLive && !isFinal) return null
 

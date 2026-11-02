@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/scout/recent-work.ts
 //
 // What a club's pitchers have thrown lately, read straight from the box scores of the games themselves, so it covers every kind of game.
@@ -40,7 +41,7 @@ async function schedule(url: string): Promise<Game[]> {
     const j = await r.json()
     return (j.dates ?? []).flatMap((d: { games?: { gamePk: number; officialDate?: string; gameType: string; status?: { abstractGameState?: string } }[] }) =>
       (d.games ?? []).filter(g => g.status?.abstractGameState === 'Final').map(g => ({ pk: g.gamePk, date: g.officialDate ?? '', type: g.gameType })))
-  } catch (e) { console.error('[recentWork] schedule failed:', (e as Error).message); return [] }
+  } catch (e) { log.error('recentWork', 'schedule failed', (e as Error).message); return [] }
 }
 
 type Line = { pid: number; name: string; pitches: number; outs: number; er: number; bf: number; started: boolean }
@@ -57,7 +58,7 @@ async function box(pk: number, teamId: number): Promise<Line[]> {
       if (!p || !s) return []
       return [{ pid, name: p.person?.fullName ?? `#${pid}`, pitches: Number(s.numberOfPitches ?? 0), outs: Number(s.outs ?? outsOf(s.inningsPitched)), er: Number(s.earnedRuns ?? 0), bf: Number(s.battersFaced ?? 0), started: i === 0 }]
     })
-  } catch (e) { console.error('[recentWork] boxscore failed:', pk, (e as Error).message); return [] }
+  } catch (e) { log.error('recentWork', 'boxscore failed', [pk, (e as Error).message].join(' ')); return [] }
 }
 
 export async function getRecentWork(teamId: number, gameDate: string): Promise<RecentWork> {

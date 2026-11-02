@@ -9,6 +9,7 @@
 
 import { MLB_TEAMS } from './teams'
 import { getDraftPickDetail } from './player-draft'
+import { log } from '@/lib/log'
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -239,7 +240,7 @@ const draft: PlayerDraft | null = draftDetail ? {
       yearByYearPitching,
     }
   } catch (err) {
-    console.error('[getPlayerPageData]', err)
+    log.error('getPlayerPageData', 'failed', err)
     return null
   }
 }

@@ -20,6 +20,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
 import type { QueryResult } from '@/lib/stats-query'
 import type { QueryState } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 export const ASK_LOOKUPS_PER_DAY = 5              // signed-out visitors
 export const ASK_LOOKUPS_PER_DAY_SIGNED_IN = 10   // signed-in Free accounts (Pro is unlimited and never counted)
@@ -36,7 +37,7 @@ const warned = new Set<string>()
 function warnOnce(what: string, code?: string) {
   if (warned.has(what)) return
   warned.add(what)
-  console.warn(`[ask-lookups] ${what}`, code ?? '')
+  log.warn('ask-lookups', `${what}`, code ?? '')
 }
 
 const b64 = (b: Buffer) => b.toString('base64url')

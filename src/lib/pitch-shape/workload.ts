@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/pitch-shape/workload.ts
 //
 // One pitcher's season workload (innings, batters faced, strikeouts, ERA) from the free MLB Stats API, for converting a shape change to per-nine figures. Cached six hours.
@@ -25,11 +26,11 @@ const innings = (s: string) => { const [w, f] = String(s).split('.'); return Num
 export async function getWorkload(pitcherId: number, season: number): Promise<Workload | null> {
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/people/${pitcherId}/stats?stats=season&group=pitching&season=${season}&gameType=R`, { next: { revalidate: 21600 } })
-    if (!res.ok) { console.error('[getWorkload] MLB Stats API HTTP', res.status); return null }
+    if (!res.ok) { log.error('getWorkload', 'MLB Stats API HTTP', res.status); return null }
     const splits = ((await res.json()) as { stats?: { splits?: Split[] }[] }).stats?.[0]?.splits ?? []
     return combineSplits(splits)
   } catch (e) {
-    console.error('[getWorkload] failed:', e instanceof Error ? e.message : e)
+    log.error('getWorkload', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }

@@ -21,6 +21,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { num } from './league'
+import { log } from '@/lib/log'
 
 export type TeamStatsRow = {
   id: number
@@ -46,9 +47,9 @@ export async function getPrecomputed(season: number): Promise<Precomputed> {
     supa.from('team_defense').select('*').eq('season', season),
     supa.from('team_platoon_splits').select('team_id, pull_pct_lhb, pull_pct_rhb').eq('season', season),
   ])
-  if (s.error) console.error('[getPrecomputed] team_stats Supabase error:', s.error.message)
-  if (d.error) console.error('[getPrecomputed] team_defense Supabase error:', d.error.message)
-  if (p.error) console.error('[getPrecomputed] team_platoon_splits Supabase error:', p.error.message)
+  if (s.error) log.error('getPrecomputed', 'team_stats Supabase error', s.error.message)
+  if (d.error) log.error('getPrecomputed', 'team_defense Supabase error', d.error.message)
+  if (p.error) log.error('getPrecomputed', 'team_platoon_splits Supabase error', p.error.message)
 
   const stats: TeamStatsRow[] = ((s.data ?? []) as Record<string, unknown>[]).map(r => ({
     id: Number(r.team_id),

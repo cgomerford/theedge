@@ -9,6 +9,7 @@
 import { withSavantCache } from '@/lib/savant-cache'
 import { throttledMlbFetch } from '@/lib/mlb-fetch-limiter'
 import type { GameLine, H2HLine, History, PitcherRef, PlayerLog, TeamPlayers } from '@/lib/lab/player-streaks'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 const n = (v: unknown) => Number(v) || 0
@@ -34,7 +35,7 @@ async function postseasonLogs(teamId: number, rosterSeason: number, year: number
   const out: Record<number, GameLine[]> = {}
   try {
     const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(20000), cache: 'no-store' })
-    if (!res.ok) { console.error('[postseasonLogs] MLB API status', res.status); return out }
+    if (!res.ok) { log.error('postseasonLogs', 'MLB API status', res.status); return out }
     for (const r of ((await res.json()) as RosterJson).roster ?? []) {
       const p = r.person
       if (!p?.id) continue
@@ -42,7 +43,7 @@ async function postseasonLogs(teamId: number, rosterSeason: number, year: number
       out[p.id] = splits.map(toLine).filter((g): g is GameLine => g !== null).map(g => ({ ...g, ps: true }))
     }
   } catch (e) {
-    console.error('[postseasonLogs] fetch failed:', (e as Error).message)
+    log.error('postseasonLogs', 'fetch failed', (e as Error).message)
   }
   return out
 }
@@ -51,7 +52,7 @@ async function pullTeam(teamId: number, season: number): Promise<TeamPlayers | n
   const url = `${MLB}/teams/${teamId}/roster?rosterType=active&season=${season}&hydrate=person(stats(type=gameLog,group=hitting,season=${season}))`
   try {
     const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(20000), cache: 'no-store' })
-    if (!res.ok) { console.error('[getTeamPlayers] MLB API status', res.status); return null }
+    if (!res.ok) { log.error('getTeamPlayers', 'MLB API status', res.status); return null }
     const data = await res.json()
     const hitters: PlayerLog[] = []
     const pitchers: PitcherRef[] = []
@@ -70,7 +71,7 @@ async function pullTeam(teamId: number, season: number): Promise<TeamPlayers | n
     for (const h of hitters) h.games = [...h.games, ...(post[h.id] ?? [])]
     return { teamId, season, hitters, pitchers }
   } catch (e) {
-    console.error('[getTeamPlayers] fetch failed:', (e as Error).message)
+    log.error('getTeamPlayers', 'fetch failed', (e as Error).message)
     return null
   }
 }
@@ -93,7 +94,7 @@ export async function getH2H(pitcherId: number, batterIds: number[]): Promise<Re
           ? { pa: n(s.plateAppearances), ab: n(s.atBats), h: n(s.hits), hr: n(s.homeRuns), rbi: n(s.rbi), bb: n(s.baseOnBalls), k: n(s.strikeOuts), avg: String(s.avg ?? ''), ops: String(s.ops ?? '') }
           : null
       } catch (e) {
-        console.error('[getH2H] fetch failed:', (e as Error).message)
+        log.error('getH2H', 'fetch failed', (e as Error).message)
         out[id] = null
       }
     }
@@ -107,7 +108,7 @@ async function pullHistory(teamId: number, currentSeason: number, year: number):
   const url = `${MLB}/teams/${teamId}/roster?rosterType=active&season=${currentSeason}&hydrate=person(stats(type=gameLog,group=hitting,season=${year}))`
   try {
     const res = await throttledMlbFetch(url, { signal: AbortSignal.timeout(20000), cache: 'no-store' })
-    if (!res.ok) { console.error('[getTeamHistory] MLB API status', res.status); return null }
+    if (!res.ok) { log.error('getTeamHistory', 'MLB API status', res.status); return null }
     const out: History = {}
     for (const r of (await res.json()).roster ?? []) {
       const p = r.person ?? {}
@@ -118,7 +119,7 @@ async function pullHistory(teamId: number, currentSeason: number, year: number):
     for (const id of Object.keys(out)) out[Number(id)] = [...out[Number(id)], ...(post[Number(id)] ?? [])]
     return out
   } catch (e) {
-    console.error('[getTeamHistory] fetch failed:', (e as Error).message)
+    log.error('getTeamHistory', 'fetch failed', (e as Error).message)
     return null
   }
 }

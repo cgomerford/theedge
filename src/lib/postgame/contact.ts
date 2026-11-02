@@ -17,6 +17,7 @@ import type { PostData } from './data'
 import type { Side } from './recap'
 import { pitchContexts } from './pitchlog'
 import { whenOf, type Tip } from './tip'
+import { log } from '@/lib/log'
 
 const n = (v: unknown): number => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
 
@@ -51,19 +52,19 @@ async function getTeamSeason(year: number): Promise<Map<string, { hard: number; 
   const out = new Map<string, { hard: number; barrel: number }>()
   try {
     const res = await fetch(`https://baseballsavant.mlb.com/leaderboard/statcast?type=batter-team&year=${year}&position=&team=&min=1&csv=true`, { next: { revalidate: 43200 }, signal: AbortSignal.timeout(10000) })
-    if (!res.ok) { console.error('[getTeamSeason] Savant HTTP', res.status); return out }
+    if (!res.ok) { log.error('getTeamSeason', 'Savant HTTP', res.status); return out }
     const text = (await res.text()).replace(/^﻿/, '')
     const [head, ...rows] = text.trim().split(/\r?\n/)
     const cols = head.split(',').map((c) => c.replace(/"/g, '').trim())
     const iTeam = cols.indexOf('team_id'), iHard = cols.indexOf('ev95percent'), iBrl = cols.indexOf('brl_percent')
-    if (iTeam < 0 || iHard < 0 || iBrl < 0) { console.error('[getTeamSeason] expected columns missing:', cols.join(',')); return out }
+    if (iTeam < 0 || iHard < 0 || iBrl < 0) { log.error('getTeamSeason', 'expected columns missing', cols.join(',')); return out }
     for (const r of rows) {
       const cells = r.split(',').map((c) => c.replace(/"/g, '').trim())
       const hard = parseFloat(cells[iHard]), barrel = parseFloat(cells[iBrl])
       if (cells[iTeam] && Number.isFinite(hard) && Number.isFinite(barrel)) out.set(cells[iTeam], { hard, barrel })
     }
   } catch (err) {
-    console.error('[getTeamSeason] failed:', err instanceof Error ? err.message : err)
+    log.error('getTeamSeason', 'failed', err instanceof Error ? err.message : err)
   }
   return out
 }

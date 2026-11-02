@@ -2,6 +2,7 @@
 
 import Script from 'next/script'
 import { useEffect, useRef } from 'react'
+import { log } from '@/lib/log'
 
 declare global {
  interface Window {
@@ -34,7 +35,7 @@ export default function TurnstileWidget({ className = 'my-3', theme = 'dark', ap
 
       const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
       if (!siteKey) {
-        console.error('NEXT_PUBLIC_TURNSTILE_SITE_KEY not set')
+        log.error('TurnstileWidget', 'NEXT_PUBLIC_TURNSTILE_SITE_KEY not set')
         return
       }
 

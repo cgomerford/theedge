@@ -5,6 +5,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { NEWS_SITEMAP_MAX, NEWS_WINDOW_HOURS, newsSitemapXml } from '@/lib/seo/news'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export async function GET() {
     .lte('published_at', new Date(now).toISOString())
     .order('published_at', { ascending: false })
     .limit(NEWS_SITEMAP_MAX)
-  if (error) console.error('[news-sitemap] Supabase error:', error.message)   // an empty, valid sitemap is better than an error page for the crawler
+  if (error) log.error('news-sitemap', 'Supabase error', error.message)   // an empty, valid sitemap is better than an error page for the crawler
   const xml = newsSitemapXml((data ?? []) as { slug: string; title: string; published_at: string }[], now)
   return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=600' } })
 }

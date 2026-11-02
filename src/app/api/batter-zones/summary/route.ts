@@ -5,6 +5,7 @@
 // velocity, other splits) lives on the guarded /api/batter-zones.
 import { NextRequest, NextResponse } from 'next/server'
 import { getBatterHotZones } from '@/lib/hot-zones'
+import { log } from '@/lib/log'
 
 export const revalidate = 3600
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     const zones = Object.fromEntries(Object.entries(all.zones).map(([z, c]) => [z, { xwoba: c.xwoba ?? null, pitches: c.pitches ?? 0 }]))
     return NextResponse.json({ zones: { all: { player_id: all.player_id, player_name: all.player_name, total_pitches: all.total_pitches, zones } } })
   } catch (err) {
-    console.error('[batter-zones/summary] failed:', err)
+    log.error('batter-zones/summary', 'failed', err)
     return NextResponse.json({ zones: {} }, { status: 500 })
   }
 }

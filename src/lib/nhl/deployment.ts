@@ -22,6 +22,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { METRIC_SPECS, type NhlDeploymentMetric, type StripData, type StripRow } from '@/lib/usage-strip/types'
+import { log } from '@/lib/log'
 
 const PAGE_SIZE = 1000
 
@@ -118,7 +119,7 @@ export async function getDeploymentStrip(
       .eq('metric', metric)
       .range(offset, offset + PAGE_SIZE - 1)
     if (error) {
-      console.error('[getDeploymentStrip] Supabase error:', error.message)
+      log.error('getDeploymentStrip', 'Supabase error', error.message)
       break
     }
     rows.push(...((data ?? []) as NhlDeploymentStripRow[]))
@@ -136,7 +137,7 @@ export async function getDeploymentStrip(
     .select('player_id,full_name,position_code,sweater_number')
     .in('player_id', playerIds)
   if (playerError) {
-    console.error('[getDeploymentStrip] Supabase error reading nhl_players:', playerError.message)
+    log.error('getDeploymentStrip', 'Supabase error reading nhl_players', playerError.message)
   }
   const players = new Map<number, PlayerLookup>(
     (playerRows ?? []).map((p) => [p.player_id as number, p as PlayerLookup]),

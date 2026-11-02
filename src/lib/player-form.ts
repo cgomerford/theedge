@@ -19,6 +19,7 @@
 // rather than guess at a name-to-abbreviation mapping that might not exist.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type FormSignalRow = {
   playerId: number
@@ -46,7 +47,7 @@ async function fetchSignals(playerType: 'batter' | 'pitcher' | 'milb_batter'): P
     .order('magnitude', { ascending: false })
 
   if (error || !data) {
-    console.error(`[player-form] query failed for ${playerType}:`, error)
+    log.error('player-form', `query failed for ${playerType}`, error)
     return []
   }
 

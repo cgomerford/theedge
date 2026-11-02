@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -41,7 +42,7 @@ if (!isValid) {
 
     if (fetchError) throw fetchError
 
-    console.log(`Found ${predictions?.length ?? 0} ungraded predictions`)
+    log.debug('grade-predictions', `Found ${predictions?.length ?? 0} ungraded predictions`)
 
     if (!predictions || predictions.length === 0) {
       return NextResponse.json({
@@ -82,7 +83,7 @@ if (!isValid) {
       }
     }
 
-    console.log(`Fetched results for ${Object.keys(gameResults).length} games`)
+    log.debug('grade-predictions', `Fetched results for ${Object.keys(gameResults).length} games`)
 
     // Grade each prediction
     let predictions_graded = 0
@@ -133,7 +134,7 @@ for (const update of updates) {
 
 console.log(`Successfully updated ${actually_updated} of ${updates.length} predictions`)
 if (updateErrors.length > 0) {
-  console.error('Update errors:', updateErrors)
+  log.error('grade-predictions', 'Update errors', updateErrors)
 }
     // Compute quick accuracy stats
     const accuracy = predictions_graded > 0
@@ -149,7 +150,7 @@ if (updateErrors.length > 0) {
   errors: updateErrors.length > 0 ? updateErrors : undefined,
 })
   } catch (err) {
-    console.error('Grading failed:', err)
+    log.error('grade-predictions', 'Grading failed', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }

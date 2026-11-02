@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/team-season-stats.ts
 //
 // Standard team-level season stats (AVG/OBP/SLG/OPS/RBI/ERA/WHIP) and a
@@ -67,7 +68,7 @@ export async function getTeamSeasonStats(teamId: number, season: number): Promis
       saves: Number(p?.saves ?? 0),
     }
   } catch (err) {
-    console.error('getTeamSeasonStats failed:', err)
+    log.error('team-season-stats', 'getTeamSeasonStats failed', err)
     return null
   }
 }
@@ -98,7 +99,7 @@ export async function getTeamVenueRecord(teamId: number, season: number, venueNa
     }
     return games > 0 ? { wins, losses, games } : null
   } catch (err) {
-    console.error('getTeamVenueRecord failed:', err)
+    log.error('team-season-stats', 'getTeamVenueRecord failed', err)
     return null
   }
 }

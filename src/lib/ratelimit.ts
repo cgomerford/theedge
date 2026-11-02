@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { log } from '@/lib/log'
 
 const redis = Redis.fromEnv()
 
@@ -14,7 +15,7 @@ function failOpen(name: string, limiter: Ratelimit): Pick<Ratelimit, 'limit'> {
       try {
         return await limiter.limit(identifier)
       } catch (e) {
-        console.error(`[ratelimit:${name}] Redis unavailable, allowing request:`, e instanceof Error ? e.message : e)
+        log.error(`ratelimit:${name}`, `Redis unavailable, allowing request`, e instanceof Error ? e.message : e)
         return { success: true, limit: 0, remaining: 0, reset: 0, pending: Promise.resolve() }
       }
     },

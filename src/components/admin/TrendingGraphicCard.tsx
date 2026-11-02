@@ -18,6 +18,7 @@ import { toPng } from 'html-to-image'
 import { teamLogoUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { TrendingBatter, TrendingPitcher, Level } from '@/lib/trending-players'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const LEVEL_LABEL: Record<Level, string> = { mlb: 'MLB', aaa: 'AAA', aa: 'AA' }
 
@@ -83,7 +84,7 @@ export default function TrendingGraphicCard({
       link.href = dataUrl
       link.click()
     } catch (e) {
-      console.error('[trending-graphic] export failed:', e)
+      log.error('trending-graphic', 'export failed', e)
     } finally {
       setExporting(false)
     }

@@ -16,6 +16,7 @@ import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
 import { getPitcherStatsFull } from '@/lib/pitcher-full-stats'
 import { createAdminClient } from '@/lib/supabase'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -28,7 +29,7 @@ export async function loadSlate(date: string): Promise<SlateGame[]> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
   try {
     const res = await fetch(`${MLB}/schedule?sportId=1&date=${date}&hydrate=team,probablePitcher`, { signal: AbortSignal.timeout(10000), cache: 'no-store' })
-    if (!res.ok) { console.error('[loadSlate] HTTP', res.status); return [] }
+    if (!res.ok) { log.error('loadSlate', 'HTTP', res.status); return [] }
     const data = await res.json()
     const games = (data.dates?.[0]?.games ?? []) as Array<{ gamePk: number; teams: Record<'away' | 'home', { team: { id: number; abbreviation?: string }; probablePitcher?: { id: number; fullName: string } }> }>
     return games.map(g => {
@@ -42,7 +43,7 @@ export async function loadSlate(date: string): Promise<SlateGame[]> {
       return { gamePk: g.gamePk, label: `${away.abbr} @ ${home.abbr}`, away, home }
     })
   } catch (err) {
-    console.error('[loadSlate] failed:', err)
+    log.error('loadSlate', 'failed', err)
     return []
   }
 }
@@ -54,7 +55,7 @@ async function throwsOf(id: number): Promise<'L' | 'R' | null> {
     const code = (await res.json()).people?.[0]?.pitchHand?.code
     return code === 'L' || code === 'R' ? code : null
   } catch (err) {
-    console.error('[throwsOf] failed:', err)
+    log.error('throwsOf', 'failed', err)
     return null
   }
 }
@@ -66,7 +67,7 @@ async function scoutArsenalOf(playerId: number, season: number): Promise<Arsenal
     .select('pitch_type, pitch_name, percentage, count, avg_velocity, whiff_percent, put_away_percent, est_woba, hard_hit_percent, ba_against')
     .eq('player_id', playerId).eq('season', season)
     .order('percentage', { ascending: false })
-  if (error) { console.error('[scoutArsenalOf] Supabase error:', error.message); return [] }
+  if (error) { log.error('scoutArsenalOf', 'Supabase error', error.message); return [] }
   return ((data ?? []) as Array<Record<string, unknown>>).map(r => ({
     pitch_type: String(r.pitch_type), pitch_name: String(r.pitch_name ?? r.pitch_type),
     percentage: r.percentage == null ? null : Number(r.percentage), count: r.count == null ? null : Number(r.count),
@@ -84,7 +85,7 @@ async function pitcherInput(side: SlateSide, oppAbbr: string, season: number): P
 
 async function absFor(side: SlateSide): Promise<AbsInput | null> {
   const { data, error } = await createAdminClient().from('abs_challenge_team_leaderboard').select('team_id, total_challenges, total_overturns, season').eq('team_id', side.teamId).order('season', { ascending: false }).limit(1).maybeSingle()
-  if (error) { if (error.code !== 'PGRST205') console.error('[absFor] Supabase error:', error.message); return null }
+  if (error) { if (error.code !== 'PGRST205') log.error('absFor', 'Supabase error', error.message); return null }
   if (!data) return null
   const d = data as { total_challenges: unknown; total_overturns: unknown }
   return { teamAbbr: side.abbr, overturns: Number(d.total_overturns), total: Number(d.total_challenges) }
@@ -107,7 +108,7 @@ async function pool<T, R>(items: T[], fn: (x: T) => Promise<R>): Promise<R[]> {
 async function sbOf(id: number, group: 'hitting' | 'pitching' | 'fielding', year: number): Promise<Sb | null> {
   try {
     const res = await fetch(`${MLB}/people/${id}/stats?stats=season&group=${group}&season=${year}`, { signal: AbortSignal.timeout(8000), cache: 'no-store' })
-    if (!res.ok) { console.error('[sbOf] HTTP', res.status, id, group); return null }
+    if (!res.ok) { log.error('sbOf', 'HTTP', [res.status, id, group].join(' ')); return null }
     const splits = ((await res.json()).stats?.[0]?.splits ?? []) as Array<{ team?: unknown; position?: { abbreviation?: string }; stat: { stolenBases?: number; caughtStealing?: number } }>
     const mine = group === 'fielding' ? splits.filter(x => x.position?.abbreviation === 'C') : splits
     // A traded player comes back as one combined row (no team) plus one row per club: use the combined row, never the sum.
@@ -115,7 +116,7 @@ async function sbOf(id: number, group: 'hitting' | 'pitching' | 'fielding', year
     if (!row) return null
     return { sb: Number(row.stat.stolenBases ?? 0), cs: Number(row.stat.caughtStealing ?? 0) }
   } catch (err) {
-    console.error('[sbOf] failed:', err)
+    log.error('sbOf', 'failed', err)
     return null
   }
 }
@@ -132,7 +133,7 @@ async function attackTeam(side: SlateSide, opp: SlateSide, game: SlateGame, date
     ids.length ? createAdminClient().from('batter_pitch_type_splits').select('player_id, pitch_type, pitch_name, pa, whiff_percent, est_woba').in('player_id', ids) : Promise.resolve({ data: [], error: null }),
     getFieldingAlignment(lineup.batters, season),
   ])
-  if (error) console.error('[attackTeam] Supabase error:', error.message)
+  if (error) log.error('attackTeam', 'Supabase error', error.message)
   const splits: Record<number, BatterSplit[]> = {}
   for (const r of (data ?? []) as Array<Record<string, unknown>>) {
     const id = Number(r.player_id)
@@ -186,7 +187,7 @@ export async function autofillGraphic(args: AutofillArgs): Promise<AutofillResul
     if (!away || !home) return { error: 'Both teams need a probable pitcher listed.' }
     return buildCollisionSpec(away, home, teams, kicker)
   } catch (err) {
-    console.error('[autofillGraphic] failed:', err)
+    log.error('autofillGraphic', 'failed', err)
     return { error: 'Auto-fill failed. Check the server log.' }
   }
 }
@@ -199,11 +200,11 @@ export async function searchPlayers(name: string): Promise<PlayerHit[]> {
   if (q.length < 3) return []
   try {
     const res = await fetch(`${MLB}/people/search?names=${encodeURIComponent(q)}&sportIds=1`, { signal: AbortSignal.timeout(8000), cache: 'no-store' })
-    if (!res.ok) { console.error('[searchPlayers] HTTP', res.status); return [] }
+    if (!res.ok) { log.error('searchPlayers', 'HTTP', res.status); return [] }
     const people = ((await res.json()).people ?? []) as Array<{ id: number; fullName: string; active?: boolean; primaryPosition?: { abbreviation?: string } }>
     return people.map(p => ({ id: p.id, name: p.fullName, pos: p.primaryPosition?.abbreviation ?? '', active: !!p.active })).sort((a, b) => Number(b.active) - Number(a.active)).slice(0, 12)
   } catch (err) {
-    console.error('[searchPlayers] failed:', err)
+    log.error('searchPlayers', 'failed', err)
     return []
   }
 }

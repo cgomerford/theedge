@@ -10,6 +10,7 @@
 // `seriesStatus.result` ("CLE leads 1-0").
 
 import { cache } from 'react'
+import { log } from '@/lib/log'
 
 const V1 = 'https://statsapi.mlb.com/api/v1'
 const V11 = 'https://statsapi.mlb.com/api/v1.1'
@@ -80,10 +81,10 @@ export type PostData = { feed: PFFeed; wp: WpEntry[]; series: SeriesText }
 async function getJson<T>(url: string, label: string): Promise<T | null> {
   try {
     const res = await fetch(url, { next: { revalidate: 21600 }, signal: AbortSignal.timeout(20000) })
-    if (!res.ok) { console.error(`[getPostData] ${label} HTTP ${res.status}`); return null }
+    if (!res.ok) { log.error('getPostData', `${label} HTTP ${res.status}`); return null }
     return (await res.json()) as T
   } catch (err) {
-    console.error(`[getPostData] ${label} failed:`, err instanceof Error ? err.message : err)
+    log.error('getPostData', `${label} failed`, err instanceof Error ? err.message : err)
     return null
   }
 }

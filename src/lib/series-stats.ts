@@ -9,6 +9,7 @@
 // verified, same convention as the rest of this build.
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawBoxscorePlayer = any
@@ -43,7 +44,6 @@ export async function getSeriesBattingStats(gamePks: number[], teamId: number): 
 
       const players = Object.values(teamData.players ?? {}) as RawBoxscorePlayer[]
       if (!logged && players[0]) {
-        console.log('[series-stats] raw player.stats.batting shape:', JSON.stringify(players[0]?.stats?.batting))
         logged = true
       }
 
@@ -67,7 +67,7 @@ export async function getSeriesBattingStats(gamePks: number[], teamId: number): 
         totals.set(id, existing)
       }
     } catch (err) {
-      console.error('[series-stats] boxscore fetch failed:', gamePk, err)
+      log.error('series-stats', 'boxscore fetch failed', [gamePk, err].join(' '))
     }
   }
 
@@ -131,7 +131,7 @@ export async function getSeriesPitchingStats(gamePks: number[], teamId: number):
         totals.set(id, existing)
       }
     } catch (err) {
-      console.error('[series-stats] pitching boxscore fetch failed:', gamePk, err)
+      log.error('series-stats', 'pitching boxscore fetch failed', [gamePk, err].join(' '))
     }
   }
 
@@ -251,7 +251,7 @@ export async function getSeriesTeamBoxscoreStats(gamePks: number[], teamId: numb
 
       totals.gamesCounted += 1
     } catch (err) {
-      console.error('[series-stats] boxscore team-stats fetch failed:', gamePk, err)
+      log.error('series-stats', 'boxscore team-stats fetch failed', [gamePk, err].join(' '))
     }
   }))
 
@@ -315,7 +315,7 @@ export async function getSeriesRispStats(
         else { homeAb += 1; if (isHit) homeHits += 1 }
       }
     } catch (err) {
-      console.error('[series-stats] RISP winProbability fetch failed:', gamePk, err)
+      log.error('series-stats', 'RISP winProbability fetch failed', [gamePk, err].join(' '))
     }
   }))
 

@@ -36,6 +36,7 @@ import { toPng } from 'html-to-image'
 import { playerHeadshotUrl, teamLogoUrlPng } from '@/lib/mlb'
 import type { Top3StatsPayload, Top3Category, Top3Entry } from '@/types/live-tracker'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 const COLORS = {
   cream: '#FAF8F3',
@@ -261,7 +262,7 @@ export default function Top3StatsSheet({ payload, levelLabel }: Top3StatsSheetPr
       pdf.addImage(dataUrl, 'PNG', 0, 0, A4.w, A4.h)
       pdf.save(`the-edge-yesterday-stats-${payload.date}.pdf`)
     } catch (err) {
-      console.error('Top3 sheet PDF export failed:', err)
+      log.error('Top3StatsSheet', 'Top3 sheet PDF export failed', err)
       setError('Export failed — check the console. A CORS-tainted canvas from a headshot/logo image is the most likely cause.')
     } finally {
       setExporting(false)

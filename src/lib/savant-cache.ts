@@ -11,6 +11,7 @@
 // built-in cache can't hold. See scripts/sql/create_savant_fetch_cache.sql.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export async function withSavantCache<T>(
   cacheKey: string,
@@ -25,7 +26,7 @@ export async function withSavantCache<T>(
     .eq('cache_key', cacheKey)
     .maybeSingle()
 
-  if (readError) console.error(`savant-cache read failed (${cacheKey}):`, readError.message)
+  if (readError) log.error('savant-cache', `savant-cache read failed (${cacheKey})`, readError.message)
 
   if (data && Date.now() - new Date(data.fetched_at).getTime() < ttlSeconds * 1000) {
     return data.payload as T
@@ -47,7 +48,7 @@ export async function withSavantCache<T>(
       payload: fresh as unknown as Record<string, unknown>,
       fetched_at: new Date().toISOString(),
     })
-    if (writeError) console.error(`savant-cache write failed (${cacheKey}):`, writeError.message)
+    if (writeError) log.error('savant-cache', `savant-cache write failed (${cacheKey})`, writeError.message)
   }
 
   return fresh

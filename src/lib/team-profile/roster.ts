@@ -29,6 +29,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { ipToDecimal, num } from './league'
+import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
 
@@ -63,7 +64,7 @@ export async function getRosterProfile(teamId: number, season: number, cFIP: num
     const url = `${MLB}/teams/${teamId}/roster?rosterType=active&season=${season}&hydrate=${encodeURIComponent(hydrate)}`
     const res = await fetch(url, { next: { revalidate: 1800 }, signal: AbortSignal.timeout(12000) })
     if (!res.ok) {
-      console.error('[getRosterProfile] MLB API error:', res.status)
+      log.error('getRosterProfile', 'MLB API error', res.status)
       return null
     }
     const json = await res.json()
@@ -114,7 +115,7 @@ export async function getRosterProfile(teamId: number, season: number, cFIP: num
     }
     return { pitchers, hitters }
   } catch (err) {
-    console.error('[getRosterProfile]', err instanceof Error ? err.message : err)
+    log.error('getRosterProfile', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -198,7 +199,7 @@ async function getLeagueArsenal(season: number): Promise<Map<string, Agg> | null
       .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (error) {
-      console.error('[getLeagueArsenal] Supabase error:', error.message)
+      log.error('getLeagueArsenal', 'Supabase error', error.message)
       return null
     }
     for (const r of (data ?? []) as unknown as ArsenalRow[]) addRow(map, r)
@@ -216,7 +217,7 @@ export async function getStaffArsenal(pitcherIds: number[], season: number): Pro
     getLeagueArsenal(season),
   ])
   if (teamRes.error) {
-    console.error('[getStaffArsenal] Supabase error:', teamRes.error.message)
+    log.error('getStaffArsenal', 'Supabase error', teamRes.error.message)
     return null
   }
   if (!league) return null

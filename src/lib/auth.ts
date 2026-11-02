@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import type { Attribution } from '@/lib/attribution'
+import { log } from '@/lib/log'
 
 const SESSION_COOKIE_NAME = 'edge_session'
 const SESSION_DURATION_DAYS = 30
@@ -45,7 +46,7 @@ export async function createLoginLink(
       preferences_token: crypto.randomUUID().replace(/-/g, ''),
     })
     if (insertError) {
-      console.error('[createLoginLink] subscriber insert error:', insertError.message)
+      log.error('createLoginLink', 'subscriber insert error', insertError.message)
       return null
     }
   } else if (!sub || (!sub.email_verified && !opts.createIfMissing)) {
@@ -66,12 +67,12 @@ export async function createLoginLink(
 
   // If the attribution migration isn't applied yet, don't lock everyone out of signing in: log it and retry plain.
   if (error && Object.keys(attribution).length > 0) {
-    console.error('[createLoginLink] attribution insert failed, retrying without it:', error.message)
+    log.error('createLoginLink', 'attribution insert failed, retrying without it', error.message)
     ;({ error } = await supa.from('login_links').insert(base))
   }
 
   if (error) {
-    console.error('[createLoginLink] Supabase error:', error.message)
+    log.error('createLoginLink', 'Supabase error', error.message)
     return null
   }
 
@@ -106,7 +107,7 @@ export async function consumeLoginLink(
 
   // Using the link proves the person controls this inbox, so the address is verified from here on.
   const { error: verifyError } = await supa.from('subscribers').update({ email_verified: true }).eq('email', link.email)
-  if (verifyError) console.error('[consumeLoginLink] verify update error:', verifyError.message)
+  if (verifyError) log.error('consumeLoginLink', 'verify update error', verifyError.message)
 
   // Fetch the subscriber
   const { data: sub } = await supa

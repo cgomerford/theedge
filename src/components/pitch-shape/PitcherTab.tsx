@@ -24,6 +24,7 @@ import { band, buildDist, changeBetween, goodness, leagueAverages, sliderRange, 
 import { ABOUT_LEVEL_PTS, MIN_OWN_SWINGS, verdictOf } from './finder-math'
 import { IMPACT_CONSTANTS, LARGE_EFFECT, translateChange } from '@/lib/pitch-shape/impact'
 import type { Workload } from '@/lib/pitch-shape/workload'
+import { log } from '@/lib/log'
 
 const ORANGE_TEXT = '#B83A0E'
 const R = 6
@@ -49,7 +50,7 @@ async function loadType(type: string, hand: 'R' | 'L'): Promise<Loaded> {
     binsCache.set(key, out)
     return out
   } catch (e) {
-    console.error('[PitcherTab] bins fetch failed:', e instanceof Error ? e.message : e)
+    log.error('PitcherTab', 'bins fetch failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -67,7 +68,7 @@ export default function PitcherTab({ pitcherId, season, isPro, onClose }: { pitc
     fetch(`/api/mlb/pitch-shape/pitcher?id=${pitcherId}&season=${season}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { repertoire: Repertoire | null; workload?: Workload | null }) => { if (live) { setRep(j.repertoire); setWorkload(j.workload ?? null); setSel(j.repertoire?.rows[0]?.pitchType ?? null) } })
-      .catch(e => { console.error('[PitcherTab] repertoire fetch failed:', e instanceof Error ? e.message : e); if (live) setRep(null) })
+      .catch(e => { log.error('PitcherTab', 'repertoire fetch failed', e instanceof Error ? e.message : e); if (live) setRep(null) })
     return () => { live = false }
   }, [pitcherId, season])
 

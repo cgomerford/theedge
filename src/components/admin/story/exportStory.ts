@@ -12,6 +12,7 @@
 import { getFontEmbedCSS, toJpeg } from 'html-to-image'
 import { loadFFmpegInstance } from '@/lib/video-export'
 import { STORY_FPS, holdKey, type Timeline } from './timeline'
+import { log } from '@/lib/log'
 
 export type ExportOptions = {
   /** the unscaled 1080x1920 node (outer element of StoryCanvas) */
@@ -83,8 +84,8 @@ export async function exportStoryMp4(o: ExportOptions): Promise<{ blob: Blob; re
   new Uint8Array(buf).set(data)
   o.onProgress?.(100, 'Done')
   const encodedFrames = clips.reduce((s, c) => s + c.frames, 0)
-  if (encodedFrames !== totalFrames) console.warn('[exportStoryMp4] frame count mismatch', { encodedFrames, totalFrames })
+  if (encodedFrames !== totalFrames) log.warn('exportStoryMp4', 'frame count mismatch', { encodedFrames, totalFrames })
   const report: ExportReport = { captures: clips.length, frames: totalFrames, storySeconds: tl.total, encodedFrames, captureSeconds, encodeSeconds, bytes: data.byteLength }
-  console.info('[exportStoryMp4]', report)
+  log.debug('exportStoryMp4', 'exported')
   return { blob: new Blob([buf], { type: 'video/mp4' }), report }
 }

@@ -11,6 +11,7 @@ import { getLeagueTables } from '@/lib/team-profile/league'
 import { getTeamBatting } from '@/lib/team-batting'
 import { findTeamByName } from '@/lib/teams'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ async function sampleOf(playerId: number, season: number, isPitcher: boolean): P
     const n = Number(isPitcher ? stat?.battersFaced : stat?.plateAppearances)
     return Number.isFinite(n) ? n : null
   } catch (e) {
-    console.error('[chart-data sampleOf]', e instanceof Error ? e.message : e)
+    log.error('chart-data sampleOf', 'failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
       if (!res.ok) return NextResponse.json({ pitches: [], error: `Baseball Savant answered ${res.status}` })
       return NextResponse.json({ pitches: buildArsenal(parseCsv(await res.text()), 4) })
     } catch (e) {
-      console.error('[chart-data pitch-paths]', e instanceof Error ? e.message : e)
+      log.error('chart-data pitch-paths', 'failed', e instanceof Error ? e.message : e)
       return NextResponse.json({ pitches: [], error: 'Baseball Savant did not answer' })
     }
   }
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
       }))
       return NextResponse.json({ games })
     } catch (e) {
-      console.error('[chart-data game-log]', e instanceof Error ? e.message : e)
+      log.error('chart-data game-log', 'failed', e instanceof Error ? e.message : e)
       return NextResponse.json({ games: [], error: 'The MLB Stats API did not answer' })
     }
   }
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       }
       return NextResponse.json({ pitches: buildArsenal(rows, 8, 5), total: rows.filter(r => r.pitch_type).length })
     } catch (e) {
-      console.error('[chart-data game-pitches]', e instanceof Error ? e.message : e)
+      log.error('chart-data game-pitches', 'failed', e instanceof Error ? e.message : e)
       return NextResponse.json({ pitches: [], balls: [], error: 'Baseball Savant did not answer' })
     }
   }

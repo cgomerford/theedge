@@ -8,6 +8,7 @@
 // caught errors never throw to the calling page.
 
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,7 +85,7 @@ export async function getRegressionWatch(
 
     return isEmpty ? null : result
   } catch (err) {
-    console.error('getRegressionWatch failed:', err)
+    log.error('regression-watch', 'getRegressionWatch failed', err)
     return null
   }
 }

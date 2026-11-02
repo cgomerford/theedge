@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/player-statcast-full.ts
 //
 // Extended Savant fetchers. Pulls the RAW-value leaderboards (not just the
@@ -49,7 +50,7 @@ async function fetchCsv(url: string): Promise<{ headers: string[]; rows: string[
     const rows = lines.slice(1).map(parseCsvLine)
     return { headers, rows }
   } catch (err) {
-    console.error('[fetchCsv]', url, err)
+    log.error('fetchCsv', 'failed', [url, err].join(' '))
     return null
   }
 }

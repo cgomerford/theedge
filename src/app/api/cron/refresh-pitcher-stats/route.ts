@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const SEASON = 2026
@@ -32,7 +33,7 @@ if (!isValid) {
 
   try {
     // Step 1: Get EVERY active player for the season, filter for Pitchers
-    console.log(`Fetching all active players for season ${SEASON}...`)
+    log.debug('refresh-pitcher-stats', `Fetching all active players for season ${SEASON}...`)
     const playersUrl = `${MLB_API}/sports/1/players?season=${SEASON}`
     const playersRes = await fetch(playersUrl)
     const playersData = await playersRes.json()
@@ -45,7 +46,7 @@ if (!isValid) {
       }
     }
 
-    console.log(`Found ${pitcherIds.size} total pitchers in the league. Fetching stats...`)
+    log.debug('refresh-pitcher-stats', `Found ${pitcherIds.size} total pitchers in the league. Fetching stats...`)
 
     // Step 2: Fetch advanced stats in batches to avoid timeouts
     const rows = []
@@ -59,7 +60,7 @@ if (!isValid) {
       for (const stats of results) {
         if (stats) rows.push(stats)
       }
-      console.log(`Processed ${Math.min(i + BATCH_SIZE, idsArray.length)} / ${idsArray.length} pitchers...`)
+      log.debug('refresh-pitcher-stats', `Processed ${Math.min(i + BATCH_SIZE, idsArray.length)} / ${idsArray.length} pitchers...`)
     }
 
     console.log(`Successfully compiled data for ${rows.length} active pitchers`)
@@ -79,7 +80,7 @@ if (!isValid) {
       pitchers_with_data_stored: rows.length,
     })
   } catch (err) {
-    console.error('Pitcher stats refresh failed:', err)
+    log.error('refresh-pitcher-stats', 'Pitcher stats refresh failed', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }
@@ -284,7 +285,7 @@ bb_per_9: basic.walksPer9Inn ? parseFloat(basic.walksPer9Inn) : null,
       updated_at: new Date().toISOString(),
     }
   } catch (err) {
-    console.error(`Failed to fetch pitcher ${pitcherId}:`, err)
+    log.error('refresh-pitcher-stats', `Failed to fetch pitcher ${pitcherId}`, err)
     return null
   }
 }

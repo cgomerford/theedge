@@ -6,6 +6,7 @@ import {
   type LeaguePlatform,
   type RosterEntryIn,
 } from '@/lib/fantasy-league'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     const result = await gradeRoster({ entries, platform, includeRos: isPro })
     return NextResponse.json({ ...result, isPro })
   } catch (err) {
-    console.error('[fantasy-league] grade failed', err)
+    log.error('fantasy-league', 'grade failed', err)
     return NextResponse.json({ error: 'Grade failed. Try a smaller roster.' }, { status: 500 })
   }
 }

@@ -15,6 +15,7 @@ import { COLORS, FONTS, SITE_URL } from '../layout'
 import { matchupTiltBlock } from './matchup-tilt'
 import { pitcherCardBlock, type PitcherInfo } from './pitcher-card'
 import { weatherCardBlock, type WeatherInfo } from './weather-card'
+import { log } from '@/lib/log'
 
 export interface BriefGameContext {
   game: MLBGame
@@ -108,7 +109,7 @@ function buildTilt(ctx: BriefGameContext): MatchupTiltData | null {
       gameTime,
     )
   } catch (e) {
-    console.error('[game-card] buildMatchupTiltData failed:', e)
+    log.error('game-card', 'buildMatchupTiltData failed', e)
     return null
   }
 }

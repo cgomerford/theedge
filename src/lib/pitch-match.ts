@@ -9,6 +9,7 @@
 // Nothing is estimated — a window with no match returns an empty list.
 
 import { getBatterPitchLog, type RawBatterPitch } from '@/lib/batter-pitch-log'
+import { log } from '@/lib/log'
 
 export type PitchMatchQuery = {
   batterId: number
@@ -38,7 +39,7 @@ const SPEED_MPH = 3       // how far off in speed
 export async function matchPitches(q: PitchMatchQuery): Promise<PitchMatchResult> {
   const seasons: number[] = []
   for (let y = q.toSeason; y >= q.fromSeason; y--) seasons.push(y)
-  const logs = await Promise.all(seasons.map(async y => ({ y, log: await getBatterPitchLog(q.batterId, y).catch(e => { console.error('[matchPitches] log failed:', q.batterId, y, (e as Error).message); return null }) })))
+  const logs = await Promise.all(seasons.map(async y => ({ y, log: await getBatterPitchLog(q.batterId, y).catch(e => { log.error('matchPitches', 'log failed', [q.batterId, y, (e as Error).message].join(' ')); return null }) })))
   const missingSeasons = logs.filter(l => !l.log).map(l => l.y)
   const hits: PitchMatchRow[] = []
   for (const { log } of logs) {

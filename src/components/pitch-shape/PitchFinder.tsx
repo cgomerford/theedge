@@ -23,6 +23,7 @@ import { GOLD } from './monthStats'
 import { hexToRgb, makeGrid, stats, type Grid, type Span } from './heatGrid'
 import LocationPanel from './LocationPanel'
 import UpgradePrompt from '@/components/pro/UpgradePrompt'
+import { log } from '@/lib/log'
 
 const MIN_WINDOW_SWINGS = 40
 const SPOT_MIN_SWINGS = 200      // a "most effective spot" needs a real sample, more than a blank-or-not map box
@@ -76,7 +77,7 @@ export default function PitchFinder({ isPro, lookLeft = false, pitchTypes }: { i
     fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cells.set(key, j.payload); if (live) setPayload(j.payload) })
-      .catch(e => { console.error('[PitchFinder] cells fetch failed:', e instanceof Error ? e.message : e); if (live) setPayload(null) })
+      .catch(e => { log.error('PitchFinder', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setPayload(null) })
     return () => { live = false }
   }, [key, type, hand, locked])
 
@@ -98,7 +99,7 @@ export default function PitchFinder({ isPro, lookLeft = false, pitchTypes }: { i
     fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${target.hb.toFixed(1)}&ivb=${target.ivb.toFixed(1)}&radius=1&season=${latest}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { throwers: Thrower[] }) => { if (live) setThrowers(j.throwers) })
-      .catch(e => { console.error('[PitchFinder] throwers fetch failed:', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
+      .catch(e => { log.error('PitchFinder', 'throwers fetch failed', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
     return () => { live = false }
   }, [target, payload, type, hand, latest, locked])
 

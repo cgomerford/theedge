@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio'
 import { NextResponse } from 'next/server'
+import { log } from '@/lib/log'
 
 export const revalidate = 21600 // 6 hours
 
@@ -74,7 +75,7 @@ export async function GET() {
       prospects: unique,
     })
   } catch (err) {
-    console.error('Prospects scrape error:', err)
+    log.error('top100', 'Prospects scrape error', err)
     return NextResponse.json({ count: 0, prospects: [] })
   }
 }

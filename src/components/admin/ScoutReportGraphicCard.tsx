@@ -23,6 +23,7 @@ import type { BatterZoneArsenal } from '@/lib/batter-zone-arsenal'
 import type { PitcherGameLog } from '@/lib/mlb'
 import { playerHeadshotUrl } from '@/lib/mlb'
 import { SITE_HOST } from '@/lib/site'
+import { log } from '@/lib/log'
 
 type TeamRollingSnapshot = {
   sp_era: number | null
@@ -208,7 +209,7 @@ export default function ScoutReportGraphicCard(props: Props) {
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Scout report graphic export failed:', err)
+      log.error('ScoutReportGraphicCard', 'Scout report graphic export failed', err)
     } finally {
       setIsExporting(false)
     }

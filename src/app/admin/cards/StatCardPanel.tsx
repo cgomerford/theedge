@@ -23,6 +23,7 @@ import {
   type AspectRatio,
   type CardTypeId,
 } from '@/app/admin/cards/StatCard'
+import { log } from '@/lib/log'
 
 export type StatCardSourceData = {
   date_label: string
@@ -98,7 +99,7 @@ export default function StatCardPanel({ data }: Props) {
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('Card export failed:', err)
+      log.error('StatCardPanel', 'Card export failed', err)
       alert('Export failed — check the console. The card is still visible above, you can right-click → save image as a fallback.')
     } finally {
       setExporting(false)

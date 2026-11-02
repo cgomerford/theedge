@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
 import { matchPitches } from '@/lib/pitch-match'
 import { CURRENT_SEASON } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 export const maxDuration = 60
 
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     })
     return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (e) {
-    console.error('[stats/pitch-match] failed:', (e as Error).message)
+    log.error('stats/pitch-match', 'failed', (e as Error).message)
     return NextResponse.json({ error: 'Could not search that batter\'s pitches. Try again in a moment.' }, { status: 502 })
   }
 }

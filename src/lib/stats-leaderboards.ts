@@ -4,6 +4,7 @@ import { mlb } from '@/lib/mlb-cockpit.server-fetch-allowed'
 import { createAdminClient } from '@/lib/supabase'
 import { getAllBattersSeasonTable } from '@/lib/stats-data'
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 export type BoardRow = { id: number; name: string; team: string; teamId: number | null; n: number; qualified: boolean; v: Record<string, number | null> }
 export type BoardCol = { key: string; label: string; digits?: number; pct?: boolean; lead?: boolean; asc?: boolean; tip?: string; signed?: boolean }
@@ -45,7 +46,7 @@ async function pitcherRows(season: number): Promise<Record<string, unknown>[]> {
   const supa = createAdminClient(), all: Record<string, unknown>[] = []
   for (let from = 0; ; from += 1000) {   // PostgREST caps a request at 1,000 rows: page through
     const { data, error } = await supa.from('pitcher_stats').select('*').eq('season', season).range(from, from + 999)
-    if (error) { console.error('[pitcherRows] Supabase error:', error.message); break }
+    if (error) { log.error('pitcherRows', 'Supabase error', error.message); break }
     all.push(...(data ?? []))
     if (!data || data.length < 1000) break
   }

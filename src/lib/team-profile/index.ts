@@ -24,6 +24,7 @@ import { getLeagueTables, metric, metricFromValues, fmt, type LeagueTables, type
 import { getSeasonStory, type SeasonStory } from './season'
 import { getRosterProfile, getStaffArsenal, type RosterProfile, type StaffArsenal } from './roster'
 import { getPrecomputed, type Precomputed } from './precomputed'
+import { log } from '@/lib/log'
 
 export type { Metric } from './league'
 export type { SeasonStory } from './season'
@@ -88,7 +89,7 @@ export async function getTeamProfile(teamId: number, season: number, todayET: st
   const [story, roster, pre] = await Promise.all([
     getSeasonStory(teamId, season, tables),
     getRosterProfile(teamId, season, tables.cFIP),
-    getPrecomputed(season).catch((e): Precomputed => { console.error('[getTeamProfile] precomputed', e); return { stats: [], defense: [], pull: [] } }),
+    getPrecomputed(season).catch((e): Precomputed => { log.error('getTeamProfile', 'precomputed', e); return { stats: [], defense: [], pull: [] } }),
   ])
 
   type Def = Parameters<typeof metric>[2]
@@ -303,7 +304,7 @@ export async function getTeamAbs(teamId: number, todayET: string): Promise<AbsCl
   try {
     return await getAbsDesk(teamId, abbr, todayET)
   } catch (err) {
-    console.error('[getTeamAbs]', err instanceof Error ? err.message : err)
+    log.error('getTeamAbs', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -313,7 +314,7 @@ export async function getTeamArsenal(pitcherIds: number[], season: number): Prom
   try {
     return await getStaffArsenal(pitcherIds, season)
   } catch (err) {
-    console.error('[getTeamArsenal]', err instanceof Error ? err.message : err)
+    log.error('getTeamArsenal', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

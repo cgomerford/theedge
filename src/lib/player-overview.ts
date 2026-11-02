@@ -10,6 +10,7 @@ import { getPitcherPercentiles, type PercentileStat } from '@/lib/pitcher-percen
 import { slugifyGame } from '@/lib/mlb'
 import { getMetricPercentile, LEADER_METRICS } from '@/lib/lab'
 import type { PlayerPageData } from '@/lib/player-page'
+import { log } from '@/lib/log'
 
 type Splits = { split?: { code?: string }; date?: string; gameType?: string; opponent?: { name?: string; abbreviation?: string }; team?: { name?: string }; isHome?: boolean; game?: { gamePk?: number; gameNumber?: number }; stat: Record<string, string | number> }[]
 type StatsResp = { stats?: { type?: { displayName: string }; splits: Splits }[] }
@@ -28,7 +29,7 @@ export async function getLeagueSpin(season: number, codes: string[]): Promise<Re
     const hit = leagueSpin.get(key)
     if (hit && Date.now() - hit.at < 6 * 3600_000) { out[code] = hit.v; return }
     const { data, error } = await createAdminClient().from('pitch_shape_monthly').select('n_pitches, release_spin_rate, ivb, hb').eq('season', season).eq('pitch_type', code).order('n_pitches', { ascending: false }).limit(400)
-    if (error) { console.error('[getLeagueSpin] Supabase error:', error.message); return }
+    if (error) { log.error('getLeagueSpin', 'Supabase error', error.message); return }
     const wavg = (f: string) => { let sum = 0, n = 0; for (const r of (data ?? []) as Record<string, unknown>[]) { const v = r[f] == null ? NaN : Number(r[f]), w = Number(r.n_pitches ?? 0); if (Number.isFinite(v) && w > 0) { sum += v * w; n += w } } return n >= 100 ? sum / n : null }
     const v = { rpm: wavg('release_spin_rate'), ivb: wavg('ivb'), hb: wavg('hb') }
     leagueSpin.set(key, { at: Date.now(), v }); out[code] = v

@@ -20,6 +20,7 @@
 // Negative summed OAA means the outfield is costing outs/runs — "given".
 
 import { MLB_TEAMS } from '@/lib/mlb-assets'
+import { log } from '@/lib/log'
 
 const SEASON = 2026
 
@@ -61,7 +62,7 @@ async function fetchCSV(url: string): Promise<{ headers: string[]; rows: string[
     const rows = lines.slice(1).map(line => parseCSVLine(line).map(c => c.replace(/^"|"$/g, '')))
     return { headers, rows }
   } catch (err) {
-    console.error('extra-bases fetchCSV failed:', err)
+    log.error('extra-bases', 'extra-bases fetchCSV failed', err)
     return null
   }
 }

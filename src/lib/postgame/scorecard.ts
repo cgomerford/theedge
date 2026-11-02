@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/postgame/scorecard.ts
 //
 // Postgame — the hand-scored scorecard. Turns one final game's MLB live feed into what a
@@ -353,10 +354,10 @@ export function buildScorecard(feed: RawFeed): Scorecard {
 export async function getScorecard(gamePk: number): Promise<Scorecard | null> {
   try {
     const res = await fetch(`${MLB}/game/${gamePk}/feed/live`, { next: { revalidate: 21600 }, signal: AbortSignal.timeout(20000) })
-    if (!res.ok) { console.error('[getScorecard] feed HTTP', res.status); return null }
+    if (!res.ok) { log.error('getScorecard', 'feed HTTP', res.status); return null }
     return buildScorecard((await res.json()) as RawFeed)
   } catch (err) {
-    console.error('[getScorecard] failed:', err instanceof Error ? err.message : err)
+    log.error('getScorecard', 'failed', err instanceof Error ? err.message : err)
     return null
   }
 }

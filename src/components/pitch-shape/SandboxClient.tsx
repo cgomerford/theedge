@@ -6,6 +6,7 @@
 import ShapeSandbox, { type LoadBins, type SearchPitchers } from './ShapeSandbox'
 import ShapeSandboxV2 from './ShapeSandboxV2'
 import type { PitcherHit, ShapeBin } from '@/lib/pitch-shape/model'
+import { log } from '@/lib/log'
 
 const loadBins: LoadBins = async (pitchType, hand) => {
   try {
@@ -14,7 +15,7 @@ const loadBins: LoadBins = async (pitchType, hand) => {
     const json = (await res.json()) as { bins?: ShapeBin[] }
     return json.bins ?? null
   } catch (e) {
-    console.error('[SandboxClient] bins fetch failed:', e instanceof Error ? e.message : e)
+    log.error('SandboxClient', 'bins fetch failed', e instanceof Error ? e.message : e)
     return null
   }
 }
@@ -26,7 +27,7 @@ const searchPitchers: SearchPitchers = async q => {
     const json = (await res.json()) as { pitchers?: PitcherHit[] }
     return json.pitchers ?? []
   } catch (e) {
-    console.error('[SandboxClient] pitcher search failed:', e instanceof Error ? e.message : e)
+    log.error('SandboxClient', 'pitcher search failed', e instanceof Error ? e.message : e)
     return []
   }
 }

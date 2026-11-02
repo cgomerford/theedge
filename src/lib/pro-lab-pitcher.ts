@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/lib/pro-lab-pitcher.ts
 //
 // Pro Lab — pitcher advanced tab, tier 1 (data already reachable, no new
@@ -50,7 +51,7 @@ export async function getPitcherDayNightSplit(
       { cache: 'no-store' }
     )
     if (!logRes.ok) {
-      console.error('[pro-lab] pitcher game log fetch failed:', logRes.status)
+      log.error('pro-lab', 'pitcher game log fetch failed', logRes.status)
       return null
     }
     const logJson = await logRes.json()
@@ -112,7 +113,7 @@ export async function getPitcherDayNightSplit(
 
     return { day: toSplit(buckets.day), night: toSplit(buckets.night) }
   } catch (err) {
-    console.error('[pro-lab] getPitcherDayNightSplit failed:', err)
+    log.error('pro-lab', 'getPitcherDayNightSplit failed', err)
     return null
   }
 }
@@ -214,7 +215,7 @@ async function fetchStatcastPitcherRows(
       },
     })
     if (!res.ok) {
-      console.error('[pro-lab] statcast_search fetch failed:', res.status)
+      log.error('pro-lab', 'statcast_search fetch failed', res.status)
       return null
     }
     const text = await res.text()
@@ -222,7 +223,6 @@ async function fetchStatcastPitcherRows(
     if (lines.length < 2) return null
 
     const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-    console.log('[pro-lab] statcast_search headers (verify these):', headers)
 
     const rows: Record<string, string>[] = []
     for (let i = 1; i < lines.length; i++) {
@@ -233,7 +233,7 @@ async function fetchStatcastPitcherRows(
     }
     return rows
   } catch (err) {
-    console.error('[pro-lab] fetchStatcastPitcherRows failed:', err)
+    log.error('pro-lab', 'fetchStatcastPitcherRows failed', err)
     return null
   }
 }

@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
       if (scheme === 'Basic' && encoded) {
         const [u, p] = atob(encoded).split(':');
         if (u === user && p === pass) {
-          // Remember the sign-in for the admin's own API routes (the matcher below skips /api, so they check this cookie themselves).
+          // Remember the sign-in for the admin's own API routes (the matcher below does not cover /api, so they check this cookie themselves).
           const res = NextResponse.next();
           res.cookies.set(ADMIN_COOKIE, await adminToken(user, pass), { httpOnly: true, sameSite: 'strict', secure: process.env.NODE_ENV === 'production', path: '/' });
           return res;
@@ -81,8 +81,12 @@ export async function proxy(request: NextRequest) {
   return maintenanceRewrite(request, pathname);
 }
 
+// The proxy only does real work for /admin (basic auth) and the maintenance-gated sections; every other path just continued, yet ran this
+// function on ~87% of requests (every page view, navigation and prefetch). So the matcher lists only those paths.
+// Must mirror MAINTENANCE_GATED_PREFIXES plus /admin (src/lib/proxy-matcher.test.ts fails if they drift). If you add a gated prefix, add '<prefix>/:path*' here too.
+// If MAINTENANCE_MODE is ever set to true, restore the broad matcher:
+//   '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)'
+// (':path*' matches zero or more segments, so '/admin' and '/nhl' themselves are covered.)
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)',
-  ],
+  matcher: ['/admin/:path*', '/nhl/:path*', '/preview/nhl/:path*'],
 };

@@ -23,6 +23,7 @@ import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 're
 import type { TrendingBatter, Level } from '@/lib/trending-players'
 import { teamLogoUrl, teamLogoUrlPng } from '@/lib/mlb'
 import { captureStoryToMp4 } from '@/lib/story-video'
+import { log } from '@/lib/log'
 
 type Props = {
   trending: Record<Level, TrendingBatter[]>
@@ -168,7 +169,7 @@ const TrendingReelSlideshow = forwardRef<TrendingReelHandle, Props>(function Tre
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
-      console.error('Trending reel export failed:', err)
+      log.error('TrendingReelSlideshow', 'Trending reel export failed', err)
       setExportError(
         err instanceof Error && /tainted|cross-origin|CORS/i.test(err.message)
           ? 'A headshot or team logo blocked capture (CORS). crossOrigin is already set on both — check which specific image URL failed in the console.'

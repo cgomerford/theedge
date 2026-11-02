@@ -2,6 +2,7 @@
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type SeriesGameResult = {
   gamePk: number
@@ -53,8 +54,6 @@ export async function getSeriesGames(
       }
     }
 
-    console.log('[series-games] found', allGames.length, 'games between teams', homeTeamId, awayTeamId)
-    console.log('[series-games] gamePks:', allGames.map(g => g.gamePk))
 
     if (allGames.length === 0) return []
 
@@ -68,7 +67,6 @@ export async function getSeriesGames(
 
     // Find tonight's game
     const tonightIdx = allGames.findIndex(g => g.gamePk === tonightGamePk)
-    console.log('[series-games] tonightIdx:', tonightIdx, 'for gamePk:', tonightGamePk)
 
     if (tonightIdx === -1) {
       // tonightGamePk not found — just return all games sorted, mark none as tonight
@@ -91,7 +89,6 @@ const tonightRaw = allGames[tonightIdx]
     const seriesTotal: number | null = tonightRaw.seriesStatus?.totalGames ?? null
     const tonightGameNum: number | null = tonightRaw.seriesStatus?.gameNumber ?? null
 
-    console.log('[series-games] seriesTotal (from API):', seriesTotal, 'tonightGameNum:', tonightGameNum)
 
     let seriesSlice: any[]
     if (seriesTotal !== null && tonightGameNum !== null) {
@@ -105,12 +102,12 @@ const tonightRaw = allGames[tonightIdx]
       let end = tonightIdx
       while (end < allGames.length - 1 && daysBetween(allGames[end].officialDate, allGames[end + 1].officialDate) <= 2) end++
   seriesSlice = allGames.slice(start, end + 1)
-      console.log('[series-games] no seriesStatus — inferred', seriesSlice.length, 'games via consecutive-date walk')
+      log.debug('series-games', `no seriesStatus — inferred ${seriesSlice.length} games via consecutive-date walk`)
     }
 
     return seriesSlice.map((g, i) => buildResult(g, i + 1, tonightGamePk, awayTeamId))
   } catch (err) {
-    console.error('[getSeriesGames]', err)
+    log.error('getSeriesGames', 'failed', err)
     return []
   }
 }

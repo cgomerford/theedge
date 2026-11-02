@@ -13,6 +13,7 @@ import StoryCanvas, { STORY_H, STORY_W, gameRenderer, type RenderSegment } from 
 import { buildTimeline, type Timeline } from './timeline'
 import { useStoryClock } from './useStoryClock'
 import type { AnySegmentId, Segment, StoryGame } from './types'
+import { log } from '@/lib/log'
 
 const PREVIEW_W = 360
 const SCALE = PREVIEW_W / STORY_W
@@ -92,7 +93,7 @@ export default function StoryPlayer({ game, render: renderProp, playerIds, fileS
       for (let i = 0; i < parts.length; i++) lines.push(await exportOne(parts[i], parts.length > 1 ? `-part${i + 1}` : ''))
       setExportMsg(`Exported · fonts verified · ${lines.join(' | ')}`)
     } catch (err) {
-      console.error('[StoryPlayer] export failed:', err)
+      log.error('StoryPlayer', 'export failed', err)
       setExportMsg(err instanceof Error ? err.message : 'Export failed — see the console.')
     } finally {
       flushSync(() => setExportTl(null)); setProgress(null)

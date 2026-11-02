@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPlayerStatcastHistory } from '@/lib/player-statcast-history'
 import { requireAnyDeepLook } from '@/lib/deep-look'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Pro-only data (Statcast trends tab). Enforced server-side — the UI lock is not the gate.
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const seasons = await getPlayerStatcastHistory(playerId, subject)
     return NextResponse.json({ seasons })
   } catch (err) {
-    console.error('statcast-history route failed:', err)
+    log.error('[id]', 'statcast-history route failed', err)
     return NextResponse.json({ seasons: [] }, { status: 200 })
   }
 }

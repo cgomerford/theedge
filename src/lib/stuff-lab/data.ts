@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getPitcherShape, leagueSpin, type PitcherShape, type SpinAvg } from '@/lib/sequencing-lab/data'
+import { log } from '@/lib/log'
 
 export const MIN_STUFF_PITCHES = 100        // under this a grade is shown as "Small sample"
 export const MIN_LEADERBOARD = 250          // default minimum for the leaderboard
@@ -41,7 +42,7 @@ export async function getStuffBoard(season = new Date().getFullYear()): Promise<
   const rows: Raw[] = []
   for (let o = 0; ; o += 1000) {
     const { data, error } = await supa.from('stuff_lab_pitcher_grades').select('*').eq('season', season).order('pitcher_id').range(o, o + 999)
-    if (error) { if (error.code !== 'PGRST205' && error.code !== '42P01') console.error('[getStuffBoard] Supabase error:', error.message); return null }
+    if (error) { if (error.code !== 'PGRST205' && error.code !== '42P01') log.error('getStuffBoard', 'Supabase error', error.message); return null }
     rows.push(...((data ?? []) as Raw[]))
     if (!data || data.length < 1000) break
   }
@@ -115,11 +116,11 @@ export async function getStuffDetail(id: number, season = new Date().getFullYear
     getPitcherShape(id, season), leagueSpin(season),
     supa.from('pitch_shape_pitcher').select('p_throws').eq('season', season).eq('pitcher_id', id).limit(1),
   ])
-  if (pg.error) { console.error('[getStuffDetail] Supabase error:', pg.error.message); return null }
+  if (pg.error) { log.error('getStuffDetail', 'Supabase error', pg.error.message); return null }
   const outcomes: Record<string, Outcomes> = {}
   for (let o = 0; ; o += 1000) {
     const { data, error } = await supa.from('pitch_events').select('pitch_type, description, bb_type, launch_speed, launch_angle').eq('pitcher_id', id).gte('game_date', `${season}-01-01`).order('game_pk').order('at_bat_number').order('pitch_number').range(o, o + 999)
-    if (error) { console.error('[getStuffDetail] pitch_events error:', error.message); break }
+    if (error) { log.error('getStuffDetail', 'pitch_events error', error.message); break }
     for (const r of (data ?? []) as unknown as EventRow[]) if (r.pitch_type) addOutcome((outcomes[r.pitch_type] ??= emptyOutcomes()), r)
     if (!data || data.length < 1000) break
   }

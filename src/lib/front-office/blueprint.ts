@@ -5,6 +5,7 @@
 // queried when the caller has already established isPro.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export const ACQ_TYPES = ['draft', 'international', 'trade', 'mlb_fa', 'milb_fa', 'waiver', 'rule5'] as const
 export type AcqType = (typeof ACQ_TYPES)[number]
@@ -51,7 +52,7 @@ export async function getBlueprint(season: number): Promise<BlueprintTeam[]> {
     .select('team_id, as_of, war_by_type, counts_by_type, payroll_rank')
     .eq('season', season)
   if (error) {
-    console.error('[getBlueprint] Supabase error:', error.message)
+    log.error('getBlueprint', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as any[]).map(r => {
@@ -77,7 +78,7 @@ export async function getBlueprintPlayers(teamId: number, season: number): Promi
     .order('war', { ascending: false })
     .limit(1000)
   if (error) {
-    console.error('[getBlueprintPlayers] Supabase error:', error.message)
+    log.error('getBlueprintPlayers', 'Supabase error', error.message)
     return []
   }
   return ((data ?? []) as any[]).map(r => ({

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getLeagueRadar } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const axes = await getLeagueRadar(season)
     return NextResponse.json({ axes })
   } catch (err) {
-    console.error('[lab/league-radar]', err)
+    log.error('lab/league-radar', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

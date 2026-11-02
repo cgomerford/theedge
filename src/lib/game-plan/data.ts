@@ -4,6 +4,7 @@
 // counted live. A game with no stored card returns an empty list and the page says the card has not been built.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export type Src = 'own' | 'cluster' | null
 export type ClusterRef = { id: number; label: string | null } | null
@@ -37,7 +38,7 @@ const shape = (r: Row): StoredCard => ({ gamePk: Number(r.game_pk), date: r.game
 /** The stored cards for one game (one per probable starter). [] when none are built or the read fails. */
 export async function getCardsForGame(gamePk: number): Promise<StoredCard[]> {
   const { data, error } = await createAdminClient().from('game_plan_cards').select('game_pk, game_date, pitcher_id, built_at, card').eq('game_pk', gamePk).order('pitcher_id')
-  if (error) { console.error('[getCardsForGame] Supabase error:', error.message); return [] }
+  if (error) { log.error('getCardsForGame', 'Supabase error', error.message); return [] }
   return ((data ?? []) as unknown as Row[]).map(shape)
 }
 
@@ -47,19 +48,19 @@ export async function getLatestCards(date?: string): Promise<{ date: string | nu
   let d = date ?? null
   if (!d) {
     const { data, error } = await supa.from('game_plan_cards').select('game_date').order('game_date', { ascending: false }).limit(1)
-    if (error) { console.error('[getLatestCards] Supabase error:', error.message); return { date: null, cards: [] } }
+    if (error) { log.error('getLatestCards', 'Supabase error', error.message); return { date: null, cards: [] } }
     d = (data as { game_date: string }[] | null)?.[0]?.game_date ?? null
   }
   if (!d) return { date: null, cards: [] }
   const { data, error } = await supa.from('game_plan_cards').select('game_pk, game_date, pitcher_id, built_at, card').eq('game_date', d).order('game_pk')
-  if (error) { console.error('[getLatestCards] Supabase error:', error.message); return { date: d, cards: [] } }
+  if (error) { log.error('getLatestCards', 'Supabase error', error.message); return { date: d, cards: [] } }
   return { date: d, cards: ((data ?? []) as unknown as Row[]).map(shape) }
 }
 
 /** The dates that have stored cards (newest first) with how many each has, for the date picker. [] on failure. */
 export async function getCardDates(limit = 400): Promise<{ date: string; n: number }[]> {
   const { data, error } = await createAdminClient().from('game_plan_cards').select('game_date').order('game_date', { ascending: false }).limit(limit)
-  if (error) { console.error('[getCardDates] Supabase error:', error.message); return [] }
+  if (error) { log.error('getCardDates', 'Supabase error', error.message); return [] }
   const m = new Map<string, number>()
   for (const r of (data ?? []) as { game_date: string }[]) m.set(r.game_date, (m.get(r.game_date) ?? 0) + 1)
   return [...m.entries()].map(([date, n]) => ({ date, n }))

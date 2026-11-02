@@ -8,6 +8,7 @@ import {
   getPitcherBreakLog,
   getPitcherHRAllowedLog,
 } from '@/lib/pro-lab-pitcher'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ dayNight, veloLog, breakLog, hrLog })
   } catch (err) {
-    console.error('[api/pro-lab/pitcher]', err)
+    log.error('api/pro-lab/pitcher', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

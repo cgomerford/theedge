@@ -49,6 +49,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { aggregateGameStreaks } from '@/lib/streaks'
 import { getYesterdaysPerformers, type BatterPerformance, type PitcherPerformance, type RecapResult } from '@/lib/mlb-recap'
 import type { StatCardSourceData } from '@/app/admin/cards/StatCardPanel'
+import { log } from '@/lib/log'
 
 const supa = createAdminClient()
 
@@ -145,7 +146,7 @@ export async function getTodaysStatCardData(date: string): Promise<StatCardSourc
   const yesterdayStr = yesterday.toISOString().split('T')[0]
 
   const { batters: yesterdayBatters, pitchers: yesterdayPitchers } = await getYesterdaysPerformers(yesterdayStr).catch((err) => {
-    console.error('getTodaysStatCardData: getYesterdaysPerformers failed', err)
+    log.error('admin-dashboard-cards', 'getTodaysStatCardData: getYesterdaysPerformers failed', err)
     return {
       batters: { available: false as const, reason: 'Fetch failed.' },
       pitchers: { available: false as const, reason: 'Fetch failed.' },
@@ -172,7 +173,7 @@ export async function getTodaysStatCardData(date: string): Promise<StatCardSourc
     .eq('game_date', date)
 
   if (error) {
-    console.error('getTodaysStatCardData: fetch failed', error)
+    log.error('admin-dashboard-cards', 'getTodaysStatCardData: fetch failed', error)
     return empty
   }
 
@@ -199,7 +200,7 @@ export async function getTodaysStatCardData(date: string): Promise<StatCardSourc
       row.away_pitcher_id,
       row.away_pitcher_name,
     ).catch((err) => {
-      console.error(`getTodaysStatCardData: streaks failed for game ${row.game_pk}`, err)
+      log.error('admin-dashboard-cards', `getTodaysStatCardData: streaks failed for game ${row.game_pk}`, err)
       return null
     })
 

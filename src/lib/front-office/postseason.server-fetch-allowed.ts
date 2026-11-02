@@ -6,6 +6,7 @@
 // to a cron + table like the rest of the hub. Returns [] on any failure.
 
 import { MLB_TEAMS } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 export type FinalFourSeries = { label: 'ALCS' | 'NLCS'; teamIds: number[] }
 
@@ -14,7 +15,7 @@ export async function getFinalFour(season: number): Promise<FinalFourSeries[]> {
   try {
     const res = await fetch(`https://statsapi.mlb.com/api/v1/schedule/postseason/series?season=${season}`, { next: { revalidate: 900 } })
     if (!res.ok) {
-      console.error('[getFinalFour] MLB Stats API status:', res.status)
+      log.error('getFinalFour', 'MLB Stats API status', res.status)
       return []
     }
     const json = (await res.json()) as { series?: { series?: { id?: string }; games?: { teams?: { away?: { team?: { id?: number } }; home?: { team?: { id?: number } } } }[] }[] }
@@ -29,7 +30,7 @@ export async function getFinalFour(season: number): Promise<FinalFourSeries[]> {
     }
     return out.sort((a, b) => a.label.localeCompare(b.label))
   } catch (e) {
-    console.error('[getFinalFour] fetch failed:', e instanceof Error ? e.message : e)
+    log.error('getFinalFour', 'fetch failed', e instanceof Error ? e.message : e)
     return []
   }
 }

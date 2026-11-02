@@ -17,6 +17,7 @@ import type { PitcherGameArmAngle } from '@/lib/pitcher-game-arm-angle'
 import type { BatterSeasonStats, BatterStatcast } from '@/lib/batter-stats'
 import InGamePitcherCard from './InGamePitcherCard'
 import InGameBatterCard from './InGameBatterCard'
+import { log } from '@/lib/log'
 
 export type LiveGameOption = {
   gamePk: number
@@ -123,7 +124,7 @@ export default function InGameXCardSection({ games }: Props) {
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[InGameXCardSection] export failed:', err)
+      log.error('InGameXCardSection', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setIsExporting(false)

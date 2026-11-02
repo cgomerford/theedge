@@ -33,6 +33,7 @@ import {
   ABOUT_LEVEL_PTS, MAP_BG, MIN_OWN_SWINGS, MIN_WINDOW_SWINGS, SPOT_MIN_SWINGS, STRONG_SWINGS,
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
+import { log } from '@/lib/log'
 
 const HALF = 12
 const RADII = [0.5, 1, 2] as const
@@ -106,7 +107,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cache.set(key, j.payload); if (live) setPayload(j.payload) })
-      .catch(e => { console.error('[PitchFinderV2] cells fetch failed:', e instanceof Error ? e.message : e); if (live) setPayload(null) })
+      .catch(e => { log.error('PitchFinderV2', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setPayload(null) })
     return () => { live = false }
   }, [key, type, hand, locked])
 
@@ -129,7 +130,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { dots: PitcherDot[]; league?: Diag }) => { if (live) { setDots(j.dots ?? []); if (j.league) setLeagueAll(j.league) } })
-      .catch(e => { console.error('[PitchFinderV2] pitcher dots fetch failed:', e instanceof Error ? e.message : e); if (live) setDots([]) })
+      .catch(e => { log.error('PitchFinderV2', 'pitcher dots fetch failed', e instanceof Error ? e.message : e); if (live) setDots([]) })
     return () => { live = false }
   }, [payload, type, hand, locked])
 
@@ -142,7 +143,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}&pitcher=${focus}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { points: [number, number][] }) => { if (live) setFocusPts(j.points ?? []) })
-      .catch(e => { console.error('[PitchFinderV2] pitcher points fetch failed:', e instanceof Error ? e.message : e); if (live) setFocusPts([]) })
+      .catch(e => { log.error('PitchFinderV2', 'pitcher points fetch failed', e instanceof Error ? e.message : e); if (live) setFocusPts([]) })
     return () => { live = false }
   }, [focus, payload, type, hand, throwers])
 
@@ -160,7 +161,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${place.hb.toFixed(1)}&ivb=${place.ivb.toFixed(1)}&radius=${radius}&season=${latest}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { throwers: ApiThrower[]; league?: Diag }) => { if (live) { setThrowers(j.throwers); setLeague(j.league ?? null) } })
-      .catch(e => { console.error('[PitchFinderV2] throwers fetch failed:', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
+      .catch(e => { log.error('PitchFinderV2', 'throwers fetch failed', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
     return () => { live = false }
   }, [place, payload, type, hand, latest, locked, radius])
 
@@ -229,7 +230,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       fetch(`/api/mlb/pitch-shape/pitchers?q=${encodeURIComponent(term)}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((j: { pitchers: PitcherHit[] }) => { if (live) setHits(j.pitchers ?? []) })
-        .catch(e => { console.error('[PitchFinderV2] pitcher search failed:', e instanceof Error ? e.message : e); if (live) setHits([]) })
+        .catch(e => { log.error('PitchFinderV2', 'pitcher search failed', e instanceof Error ? e.message : e); if (live) setHits([]) })
     }, 250)
     return () => { live = false; clearTimeout(t) }
   }, [q])

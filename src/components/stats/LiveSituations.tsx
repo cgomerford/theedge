@@ -27,6 +27,7 @@ import {
   BASE_CHIP, CURRENT_SEASON, eventKeyFromMlb, FIRST_SEASON, GAME_TYPES, deepGroupLabel, describeDeep, gameTypeForSearch,
   type DeepFilters, type HitRef, type Who,
 } from '@/lib/stats-query-catalog'
+import { useVisibleInterval } from '@/lib/use-visible-interval'
 
 const ord = (n: number) => (n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`)
 const SEASONS = Array.from({ length: CURRENT_SEASON - FIRST_SEASON + 1 }, (_, i) => CURRENT_SEASON - i)
@@ -94,12 +95,8 @@ export default function LiveSituations({ isPro, signedIn }: { isPro: boolean; si
       setLive(j as LiveResult); setLiveErr(null)
     } catch (e) { setLiveErr((e as Error).message) }
   }, [])
-  useEffect(() => {
-    refresh()
-    if (!auto) return
-    const id = setInterval(refresh, 30_000)
-    return () => clearInterval(id)
-  }, [auto, refresh])
+  useEffect(() => { refresh() }, [refresh])
+  useVisibleInterval(refresh, 30_000, auto)
 
   const game: LiveGame | null = useMemo(() => live?.games.find(g => g.gamePk === picked) ?? null, [live, picked])
 

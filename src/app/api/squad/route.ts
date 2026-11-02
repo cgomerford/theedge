@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase'
 import type { SquadLineup } from '@/lib/ultimate-team-types'
+import { log } from '@/lib/log'
 
 // ============================================================
 // GET /api/squad — load the current user's squad
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'subscriber_id' })
 
   if (error) {
-    console.error('Squad save failed:', error)
+    log.error('squad', 'Squad save failed', error)
     return NextResponse.json({ error: 'Save failed' }, { status: 500 })
   }
 

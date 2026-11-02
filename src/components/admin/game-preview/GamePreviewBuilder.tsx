@@ -14,6 +14,7 @@ import type { BuilderGame, BuilderPitcherSide } from '@/components/admin/scout-g
 import type { CardPitcher } from '@/components/admin/scout-graphic/ScoutGraphicCard'
 import GamePreviewCard, { PREVIEW_CARD_HEIGHT, type GamePreviewShow } from './GamePreviewCard'
 import { draftPreviewRead } from './preview-utils'
+import { log } from '@/lib/log'
 
 const selectCls = 'font-mono text-xs border border-stone-300 rounded px-2 py-1.5 bg-white min-w-[200px]'
 const labelCls = 'block font-mono text-[9px] uppercase tracking-widest text-stone-400 mb-1'
@@ -85,7 +86,7 @@ export default function GamePreviewBuilder({ games, slateDate }: { games: Builde
       link.href = dataUrl
       link.click()
     } catch (err) {
-      console.error('[GamePreviewBuilder] export failed:', err)
+      log.error('GamePreviewBuilder', 'export failed', err)
       setExportError('Export failed — check the console.')
     } finally {
       setIsExporting(false)

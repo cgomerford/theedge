@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { findTeamByName } from '@/lib/teams'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
@@ -169,7 +170,7 @@ export async function GET(request: Request) {
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {
-    console.error('Lineup refresh failed:', err)
+    log.error('refresh-lineups', 'Lineup refresh failed', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }

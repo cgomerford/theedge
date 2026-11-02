@@ -63,6 +63,7 @@ import {
 import { getBatterHotZones, type BatterHotZones } from '@/lib/hot-zones'
 import { getBatterPitchLog } from '@/lib/batter-pitch-log'
 import { getBatterVsPitcher, type BatterVsPitcher } from '@/lib/batter-stats'
+import { log } from '@/lib/log'
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // Pitch-type fit tuning constants — kept separate and named so these are
@@ -223,7 +224,7 @@ export async function getSeriesGames(
       for (const g of d.games ?? []) rawGames.push(g)
     }
   } catch (e) {
-    console.error('series-matchup: schedule fetch failed', e)
+    log.error('series-matchup', 'series-matchup: schedule fetch failed', e)
     return []
   }
 
@@ -714,7 +715,7 @@ export async function getBatterPitchByPitchResult(
 
     return results
   } catch (e) {
-    console.error('series-matchup: getBatterPitchByPitchResult failed', e)
+    log.error('series-matchup', 'series-matchup: getBatterPitchByPitchResult failed', e)
     return null
   }
 }
@@ -764,7 +765,7 @@ export async function getBatterGameResult(
       strikeouts: parseInt(stat.strikeOuts ?? '0'),
     }
   } catch (e) {
-    console.error('series-matchup: getBatterGameResult failed', e)
+    log.error('series-matchup', 'series-matchup: getBatterGameResult failed', e)
     return null
   }
 }

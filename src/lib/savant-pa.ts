@@ -24,6 +24,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { CURRENT_SEASON, type PaParams } from '@/lib/stats-query-catalog'
+import { log } from '@/lib/log'
 
 // ── plate-appearance rows ───────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ async function fetchDay(day: string): Promise<PaRow[]> {
       return rows
     } catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 800)) }
   }
-  console.error('[fetchDay] Savant error:', day, (lastErr as Error)?.message)
+  log.error('fetchDay', 'Savant error', [day, (lastErr as Error)?.message].join(' '))
   throw new Error(`Baseball Savant did not respond for ${day}.`)
 }
 

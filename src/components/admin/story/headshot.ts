@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // src/components/admin/story/headshot.ts
 //
 // The ONLY place the story touches img.mlbstatic.com. Same URL the old teaser
@@ -29,7 +30,7 @@ export async function loadHeadshot(playerId: number, width = 180): Promise<strin
     if (!blob.type.startsWith('image/')) return null
     return await blobToDataUrl(blob)
   } catch (err) {
-    console.warn(`[loadHeadshot] ${playerId} failed:`, err)
+    log.warn('loadHeadshot', `${playerId} failed`, err)
     return null
   }
 }

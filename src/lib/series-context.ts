@@ -1,4 +1,5 @@
 import { createAdminClient } from './supabase'
+import { log } from '@/lib/log'
 
 export type SeriesContextData = {
 series_game_number: number
@@ -31,7 +32,7 @@ export async function getSeriesContext(
     .maybeSingle()
 
   if (error) {
-    console.error('getSeriesContext error:', error.message)
+    log.error('series-context', 'getSeriesContext error', error.message)
     return null
   }
   return data as SeriesContextData | null

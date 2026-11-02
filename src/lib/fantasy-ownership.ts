@@ -5,6 +5,7 @@
 // and the name-based fallback lookup below. No Python duplicate.
 
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 /**
  * Normalize a player name for fuzzy matching:
@@ -50,7 +51,7 @@ export async function getOwnershipIndex(): Promise<{
     .select('espn_player_id, mlb_player_id, full_name, percent_owned')
 
   if (error) {
-    console.error('[fantasy-ownership] getOwnershipIndex error:', error.message)
+    log.error('fantasy-ownership', 'getOwnershipIndex error', error.message)
     return { byMlbId, byName, byEspnId }
   }
 
@@ -95,7 +96,7 @@ export async function getOwnershipByMlbIds(
     .in('mlb_player_id', mlbIds)
 
   if (error) {
-    console.error('[fantasy-ownership] getOwnershipByMlbIds error:', error.message)
+    log.error('fantasy-ownership', 'getOwnershipByMlbIds error', error.message)
     return result
   }
 
@@ -130,7 +131,7 @@ export async function getOwnershipByNames(
     .select('full_name, percent_owned')
 
   if (error) {
-    console.error('[fantasy-ownership] getOwnershipByNames error:', error.message)
+    log.error('fantasy-ownership', 'getOwnershipByNames error', error.message)
     return result
   }
 

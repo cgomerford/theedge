@@ -2,6 +2,7 @@
 // 30 seconds while a game is live. Public data from the MLB Stats API.
 import { NextRequest, NextResponse } from 'next/server'
 import { etDate, gameState } from '@/lib/mlb-home-dashboard'
+import { log } from '@/lib/log'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     })
     return NextResponse.json({ games }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {
-    console.error('[api/mlb/live] failed:', e instanceof Error ? e.message : e)
+    log.error('api/mlb/live', 'failed', e instanceof Error ? e.message : e)
     return NextResponse.json({ error: 'Could not reach the MLB Stats API' }, { status: 502, headers: { 'Cache-Control': 'no-store' } })
   }
 }

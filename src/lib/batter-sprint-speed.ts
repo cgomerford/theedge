@@ -1,3 +1,4 @@
+import { log } from '@/lib/log'
 // Sprint Speed — confirmed real endpoint, header row verified earlier this
 // session: "player_id","team_id","team","position","age",
 // "competitive_runs","bolts","hp_to_1b","sprint_speed". Never wired into
@@ -44,7 +45,7 @@ export async function getBatterSprintSpeed(playerId: number, season: number): Pr
     }
     return null
   } catch (err) {
-    console.error('[batter-sprint-speed] fetch failed:', err)
+    log.error('batter-sprint-speed', 'fetch failed', err)
     return null
   }
 }

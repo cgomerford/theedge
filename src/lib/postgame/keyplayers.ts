@@ -15,6 +15,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import type { PFPlayer, PostData } from './data'
 import { batLine, pitchLine, playerWpa, SOLID, type Side } from './recap'
+import { log } from '@/lib/log'
 
 export type KeyVerdict = 'Showed up' | 'Stayed quiet' | 'Missed' | "Didn't play"
 export type KeyPlayerRow = {
@@ -53,7 +54,7 @@ export async function getKeyPlayersNight(d: PostData): Promise<KeyPlayerRow[]> {
     .select('team_id, rank, player_type, player_id, player_name, lean, summary:reason_summary->>starter_summary, driving_pitch:reason_summary->>driving_pitch')
     .eq('game_pk', d.feed.gamePk)
     .order('team_id', { ascending: true }).order('rank', { ascending: true })
-  if (error) { console.error('[getKeyPlayersNight] Supabase error:', error.message); return [] }
+  if (error) { log.error('getKeyPlayersNight', 'Supabase error', error.message); return [] }
   const rows = (data ?? []) as unknown as SnapRow[]
   if (rows.length === 0) return []
 

@@ -13,6 +13,7 @@ import {
   COORD_ERA, GATE, SEASON, expandCells, expandCounts, leagueIndex,
   type CountGroup, type Family, type Hand, type LeaderRow, type LeagueCell, type LeagueCountRow, type SwingLabData, type SwingLeaders,
 } from './model'
+import { log } from '@/lib/log'
 
 type LeagueDbRow = {
   count_group: CountGroup; family: Family; p_throws: Hand; zone_r: number; zone_c: number
@@ -36,8 +37,8 @@ async function getLeague(): Promise<{ league: LeagueCell[]; counts: LeagueCountR
       .select('balls,strikes,family,p_throws,n,n_swing')
       .eq('coord_era', COORD_ERA).limit(1000),
   ])
-  if (lg.error) { console.error('[getSwingLeague] Supabase error (swing_decision_league):', lg.error.message); return null }
-  if (ct.error) { console.error('[getSwingLeague] Supabase error (swing_decision_league_count):', ct.error.message); return null }
+  if (lg.error) { log.error('getSwingLeague', 'Supabase error (swing_decision_league)', lg.error.message); return null }
+  if (ct.error) { log.error('getSwingLeague', 'Supabase error (swing_decision_league_count)', ct.error.message); return null }
   const league: LeagueCell[] = ((lg.data ?? []) as unknown as LeagueDbRow[]).map(r => ({
     count_group: r.count_group, family: r.family, p_throws: r.p_throws, zone_r: r.zone_r, zone_c: r.zone_c, n: r.n,
     swing_rate: Number(r.swing_rate),  // numeric columns come back as strings
@@ -62,7 +63,7 @@ export async function getSwingLabData(batterId: number): Promise<SwingLabData | 
     .from('batter_swing_decisions')
     .select('win,n_pitches,cells,counts')
     .eq('batter_id', batterId).eq('season', SEASON).eq('coord_era', COORD_ERA)
-  if (error) { console.error('[getSwingLabData] Supabase error:', error.message); return null }
+  if (error) { log.error('getSwingLabData', 'Supabase error', error.message); return null }
   const rows = (data ?? []) as unknown as BatterDbRow[]
   const season = rows.find(r => r.win === 'season')
   if (!season) return null
@@ -95,7 +96,7 @@ export async function getSwingLeaders(): Promise<{ leaders: SwingLeaders; league
     .select('batter_id,win,name,team,n_pitches,selection,aggression,decision_runs_per100')
     .eq('season', SEASON).eq('coord_era', COORD_ERA).gte('n_pitches', GATE.season).not('name', 'is', null)
     .limit(1000) // one season has ~500 + ~200 qualified rows; PostgREST caps a response at 1,000
-  if (error) { console.error('[getSwingLeaders] Supabase error:', error.message); return null }
+  if (error) { log.error('getSwingLeaders', 'Supabase error', error.message); return null }
   const rows = ((data ?? []) as unknown as LeaderDbRow[]).map(r => ({
     win: r.win,
     row: {

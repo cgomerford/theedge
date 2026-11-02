@@ -13,6 +13,7 @@ import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase'
 import type { PostData } from './data'
 import type { Side } from './recap'
+import { log } from '@/lib/log'
 
 const n = (v: unknown): number => { const x = Number(v); return Number.isFinite(x) ? x : 0 }
 const surname = (full: string) => full.trim().split(/\s+/).slice(-1)[0]
@@ -55,7 +56,7 @@ export async function getUsualArsenals(ids: number[], year: number): Promise<Map
     .from('pitcher_zone_arsenal')
     .select('player_id, total_pitches, arsenal')
     .in('player_id', ids).eq('season', year).eq('split', 'all')
-  if (error) { console.error('[getUsualArsenals] Supabase error:', error.message); return out }
+  if (error) { log.error('getUsualArsenals', 'Supabase error', error.message); return out }
   for (const r of (data ?? []) as ArsenalRow[]) out.set(Number(r.player_id), r)
   return out
 }

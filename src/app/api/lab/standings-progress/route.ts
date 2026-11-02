@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { getStandingsProgression, DIVISIONS } from '@/lib/lab'
+import { log } from '@/lib/log'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const series = await getStandingsProgression(season, teamIds)
     return NextResponse.json({ series })
   } catch (err) {
-    console.error('[lab/standings-progress]', err)
+    log.error('lab/standings-progress', 'failed', err)
     const detail = process.env.NODE_ENV !== 'production'
       ? (err instanceof Error ? err.message : String(err))
       : undefined

@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import type { TrendingBatter, TrendingPitcher, Level, LevelTrendingResult } from '@/lib/trending-players'
 import TrendingGraphicCard from './TrendingGraphicCard'
+import { log } from '@/lib/log'
 
 type Props = {
   trending: Record<Level, LevelTrendingResult>
@@ -39,7 +40,7 @@ function CopyTweetButton({ text }: { text: string }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     } catch (e) {
-      console.error('[trending] clipboard write failed:', e)
+      log.error('trending', 'clipboard write failed', e)
     }
   }
 

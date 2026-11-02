@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { isSignedIn } from '@/lib/require-signup'
 import { getBattingBoardFor, getPitchingBoardFor, LEVELS, GAME_TYPES, type StatsCtx } from '@/lib/stats-leaderboards'
+import { log } from '@/lib/log'
 
 export async function GET(req: Request) {
   if (!(await isSignedIn())) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
     for (const r of board.rows) out[r.id] = { ...r.v, __n: r.n }
     return NextResponse.json({ rows: out })
   } catch (e) {
-    console.error('[stats/compare] failed:', e instanceof Error ? e.message : e)
+    log.error('stats/compare', 'failed', e instanceof Error ? e.message : e)
     return NextResponse.json({ error: 'failed' }, { status: 500 })
   }
 }

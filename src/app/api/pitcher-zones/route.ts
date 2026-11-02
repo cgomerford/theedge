@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherHotZones } from '@/lib/hot-zones'
 import { requireAnyDeepLook } from '@/lib/deep-look'
+import { log } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   // Guard: Pro, or today's free deep look for this player (lib/deep-look.ts). The UI lock is not the gate.
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
     const zones = await getPitcherHotZones(Number(playerId))
     return NextResponse.json({ zones })
   } catch (err) {
-    console.error('pitcher-zones route failed:', err)
+    log.error('pitcher-zones', 'pitcher-zones route failed', err)
     return NextResponse.json({ zones: {} }, { status: 500 })
   }
 }

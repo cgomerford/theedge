@@ -5,6 +5,7 @@
 // lives on the guarded /api/zone-arsenal.
 import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherZoneArsenal } from '@/lib/pitcher-arsenal'
+import { log } from '@/lib/log'
 
 export const revalidate = 3600
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
     }]))
     return NextResponse.json({ arsenal: { all: { player_id: all.player_id, player_name: all.player_name, total_pitches: all.total_pitches, arsenal: pitches } } })
   } catch (err) {
-    console.error('[zone-arsenal/summary] failed:', err)
+    log.error('zone-arsenal/summary', 'failed', err)
     return NextResponse.json({ arsenal: {} }, { status: 500 })
   }
 }

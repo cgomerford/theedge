@@ -22,6 +22,7 @@ import crypto from 'crypto'
 import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase'
 import { getStripe, PRO_STATUSES } from '@/lib/stripe'
+import { log } from '@/lib/log'
 
 export const runtime = 'nodejs'
 
@@ -35,7 +36,7 @@ async function applyPatch(subscriberId: string, patch: Patch): Promise<void> {
   if (!error) return
   // Undefined column / stale schema cache → migration not run. Grant/revoke Pro anyway.
   if (error.code === '42703' || error.code === 'PGRST204') {
-    console.error('[stripe/webhook] billing columns missing — run scripts/sql/add_stripe_columns.sql. Applying is_pro only.')
+    log.error('stripe/webhook', 'billing columns missing — run scripts/sql/add_stripe_columns.sql. Applying is_pro only.')
     const { error: e2 } = await supa.from('subscribers').update({ is_pro: patch.is_pro }).eq('id', subscriberId)
     if (e2) throw new Error(e2.message)
     return
@@ -51,7 +52,7 @@ async function findSubscriberId(opts: { subscriberId?: string; customerId?: stri
   }
   if (opts.customerId) {
     const { data, error } = await supa.from('subscribers').select('id').eq('stripe_customer_id', opts.customerId).maybeSingle()
-    if (error && error.code !== '42703') console.error('[stripe/webhook] customer lookup:', error.message)
+    if (error && error.code !== '42703') log.error('stripe/webhook', 'customer lookup', error.message)
     if (data) return (data as { id: string }).id
   }
   if (opts.email) {
@@ -83,7 +84,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
 
 async function onSubscriptionChanged(sub: Stripe.Subscription) {
   const id = await findSubscriberId({ subscriberId: sub.metadata?.subscriber_id, customerId: idOf(sub.customer) })
-  if (!id) { console.error('[stripe/webhook] subscription event for an unknown customer', idOf(sub.customer)); return }
+  if (!id) { log.error('stripe/webhook', 'subscription event for an unknown customer', idOf(sub.customer)); return }
   await applyPatch(id, { is_pro: PRO_STATUSES.has(sub.status), pro_status: sub.status, stripe_subscription_id: sub.id, pro_updated_at: new Date().toISOString() })
 }
 
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(await req.text(), sig, secret)
   } catch (err) {
-    console.error('[stripe/webhook] bad signature:', err instanceof Error ? err.message : err)
+    log.error('stripe/webhook', 'bad signature', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'bad_signature' }, { status: 400 })
   }
 
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
     else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') await onSubscriptionChanged(event.data.object as Stripe.Subscription)
     return NextResponse.json({ received: true })
   } catch (err) {
-    console.error(`[stripe/webhook] ${event.type} failed:`, err instanceof Error ? err.message : err)
+    log.error('stripe/webhook', `${event.type} failed`, err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'handler_failed' }, { status: 500 })
   }
 }

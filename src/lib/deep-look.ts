@@ -8,6 +8,7 @@ import 'server-only'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { isProViewer } from '@/lib/require-pro'
 import { createAdminClient } from '@/lib/supabase'
+import { log } from '@/lib/log'
 
 export const DEEP_LOOKS_PER_DAY = 1
 
@@ -16,7 +17,7 @@ export type DeepLookState = 'pro' | 'signed_out' | 'look_left' | 'this_look' | '
 
 let warned = false
 function unavailable(code: string | undefined): 'unavailable' {
-  if (!warned) { warned = true; console.warn('[deep-look] unavailable', code ?? 'error') }
+  if (!warned) { warned = true; log.warn('deep-look', 'unavailable', code ?? 'error') }
   return 'unavailable'
 }
 

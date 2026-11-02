@@ -15,12 +15,13 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { getBatterGameLog, aggregateBatting } from '@/lib/stats-gamelog'
+import { log } from '@/lib/log'
 
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 async function safeFetchJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { cache: 'no-store' })
+    const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return null
     return (await res.json()) as T
   } catch {
@@ -60,7 +61,7 @@ export async function getPitchingTrends(minL3Innings = 3): Promise<{ improving: 
     .not('era', 'is', null)
 
   if (error || !data) {
-    console.error('[fantasy-trends] pitcher_stats query failed:', error)
+    log.error('fantasy-trends', 'pitcher_stats query failed', error)
     return { improving: [], declining: [] }
   }
 
@@ -102,7 +103,7 @@ export async function getBattingTrends(): Promise<{ improving: BattingTrendRow[]
     .gte('games_played', 15) // small-sample guard for the season side of the comparison
 
   if (error || !data) {
-    console.error('[fantasy-trends] ultimate_team_players query failed:', error)
+    log.error('fantasy-trends', 'ultimate_team_players query failed', error)
     return { improving: [], declining: [] }
   }
 

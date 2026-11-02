@@ -47,6 +47,7 @@ import {
 } from '@/lib/scout'
 import { getPitcherHandedness } from '@/lib/mlb'
 import type { MLBGame } from '@/lib/mlb'
+import { log, logOnce } from '@/lib/log'
 
 // ── same helper as the module-scope one in page.tsx ─────────────────────
 async function getActiveRosterIds(teamId: number): Promise<Set<number>> {
@@ -573,7 +574,7 @@ export async function getScoutReportBundle(gamePk: number): Promise<ScoutReportB
       homeLineupBatters: homeLineup?.batters ?? [],
     }
   } catch (err) {
-    console.error(`getScoutReportBundle failed for gamePk ${gamePk}:`, err)
+    logOnce('scout-bundle:getScoutReportBundle failed for gamePk #', 'scout-bundle', `getScoutReportBundle failed for gamePk ${gamePk}`, err)
     return null
   }
 }
