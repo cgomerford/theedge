@@ -22,6 +22,7 @@ import PitchPathsPlayer from '@/components/admin/story-v5/remotion/scenes/paths'
 import type { ArsenalPitch } from '@/components/admin/story-v5/types'
 import { MLB_TEAMS, type Team } from '@/lib/teams'
 import type { BatLine, TeamBatting } from '@/lib/team-batting'
+import type { DefenseProfile } from '@/lib/defense-chart'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
 import { log } from '@/lib/log'
@@ -32,7 +33,7 @@ const useEase = () => { const t = useContext(ProgressCtx); return 1 - Math.pow(1
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
 type Person = { id: number; fullName: string; primaryPosition: string }
-type Who = 'pitcher' | 'batter' | 'team'
+type Who = 'pitcher' | 'batter' | 'fielder' | 'team'
 interface Props { onInsert: (url: string) => void; onClose: () => void }
 
 const SEASON = new Date().getFullYear()
@@ -455,6 +456,144 @@ function BattingRounds(c: Ctx) {
   )
 }
 
+// ── Defense: Savant outs above average, arm strength, catcher pop time and framing, and traditional MLB fielding ──
+const useDefense = (c: Ctx) => useJson<DefenseProfile>(`/api/admin/chart-data?kind=defense&playerId=${c.playerId}&season=${SEASON}`)
+const sg = (v: number, d = 0) => { const t = Math.abs(v).toFixed(d); return Number(t) === 0 ? t : `${v > 0 ? '+' : '−'}${t}` }
+const tone = (v: number) => (v > 0 ? C.good : v < 0 ? C.bad : C.ink)
+const DTile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) => (
+  <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px' }}>
+    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}>{label}</div>
+    <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: color ?? C.ink }}>{value}</div>
+    {sub && <div style={{ fontSize: 11.5, color: '#5B5347' }}>{sub}</div>}
+  </div>
+)
+function DefOaa(c: Ctx) {
+  const { data, state } = useDefense(c)
+  const e = useEase()
+  if (state === 'loading') return <Note text="Loading…" />
+  const o = data?.oaa
+  if (!o) return <Note text="No outs above average on record for this player yet (he needs fielding plays this season)." />
+  return (
+    <>
+      <Head title="Defense: outs above average" name={c.name} sub={`${o.pos} · plays made compared with an average fielder`} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: tone(o.oaa) }}>{sg(Math.round(o.oaa * e))}</span>
+        <span style={{ fontSize: 14, fontWeight: 800, color: rankTone(o.rank, o.of) }}>{ord(o.rank)} of {o.of} fielders</span>
+        <span style={{ fontSize: 12, color: '#5B5347' }}>{ord(o.posRank)} of {o.posOf} at {o.pos}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, opacity: clamp01((e - 0.3) / 0.7) }}>
+        <DTile label="Runs prevented" value={sg(o.frp)} sub="Savant, from those plays" color={tone(o.frp)} />
+        <DTile label="Success rate on plays" value={o.actual} sub={`Expected ${o.estimated} · ${o.diff} vs expected`} />
+      </div>
+      <Foot text={`Outs above average counts the plays a fielder made against what an average fielder makes from the same spot. Rank is among every fielder on Savant's table (minimum one play), so read it with the play count in mind. ${sourceLine('Source: Baseball Savant outs above average')}`} />
+    </>
+  )
+}
+function DefDirections(c: Ctx) {
+  const { data, state } = useDefense(c)
+  const e = useEase()
+  if (state === 'loading') return <Note text="Loading…" />
+  const o = data?.oaa
+  if (!o) return <Note text="No outs above average on record for this player yet." />
+  const rows = [
+    { name: 'In front of him', v: o.inFront }, { name: 'Toward third base', v: o.toward3B }, { name: 'Toward first base', v: o.toward1B }, { name: 'Behind him', v: o.behind },
+    { name: 'Vs right-handed hitters', v: o.vsRHH }, { name: 'Vs left-handed hitters', v: o.vsLHH },
+  ].map(r => ({ ...r, shown: r.v * e }))
+  const m = Math.max(1, ...rows.map(r => Math.abs(r.v)))
+  return (
+    <>
+      <Head title="Defense: where the plays are" name={c.name} sub={`${o.pos} · outs above average by direction and by batter side`} />
+      <div style={{ display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr) 44px', gap: '10px 10px', alignItems: 'center', marginTop: 10 }}>
+        {rows.map(r => (
+          <div key={r.name} style={{ display: 'contents' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700 }}>{r.name}</span>
+            <div style={{ position: 'relative', height: 20, background: '#F1EEE6', borderRadius: 3 }}>
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, background: '#8A8275' }} />
+              <div style={{ position: 'absolute', top: 2, bottom: 2, borderRadius: 2, background: r.v < 0 ? C.bad : C.good, ...(r.v < 0 ? { right: '50%' } : { left: '50%' }), width: `${(Math.abs(r.shown) / m) * 50}%` }} />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 800, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.v === 0 ? C.mute : tone(r.v) }}>{r.v === 0 ? '0' : sg(r.v)}</span>
+          </div>
+        ))}
+      </div>
+      <Foot text={`Green is plays above an average fielder, red below; the line is average. Directions are relative to the fielder; total ${sg(o.oaa)}. ${sourceLine('Source: Baseball Savant outs above average')}`} />
+    </>
+  )
+}
+function DefArm(c: Ctx) {
+  const { data, state } = useDefense(c)
+  const e = useEase()
+  if (state === 'loading') return <Note text="Loading…" />
+  const a = data?.arm
+  if (!a || a.overall == null) return <Note text="No arm strength on record for this player (he needs 50 or more throws this season)." />
+  const bars = a.byPos.map(p => ({ name: p.pos, mph: p.mph, n: p.throws, shown: p.mph * e }))
+  return (
+    <>
+      <Head title="Defense: arm strength" name={c.name} sub={`Average speed of his throws · ${a.throws.toLocaleString()} throws`} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 12px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{(a.overall * e).toFixed(1)}</span>
+        <span style={{ fontSize: 18, fontWeight: 800, color: '#5B5347' }}>mph</span>
+        {a.rank != null && <span style={{ fontSize: 14, fontWeight: 800, color: rankTone(a.rank, a.of) }}>{ord(a.rank)} of {a.of}</span>}
+        {a.max != null && <span style={{ fontSize: 12, color: '#5B5347' }}>Hardest throw {a.max.toFixed(1)} mph</span>}
+      </div>
+      {bars.length > 0 && (
+        <div style={{ height: bars.length * 40 + 16 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={bars} layout="vertical" margin={{ left: 8, right: 64, top: 0, bottom: 0 }}>
+              <XAxis type="number" hide domain={[0, Math.max(...bars.map(b => b.mph)) * 1.05]} />
+              <YAxis type="category" dataKey="name" width={44} axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: '#1A1A1A', fontFamily: SANS }} />
+              <Bar dataKey="shown" barSize={18} fill="#FF5722" isAnimationActive={false}>
+                <LabelList dataKey="shown" position="right" formatter={(v: unknown) => `${Number(v).toFixed(1)} mph`} style={{ fontSize: 12, fontWeight: 800, fill: '#1A1A1A', fontFamily: SANS }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <Foot text={`Rank is among ${a.of} players with 50 or more throws. Bars are his average at each position he threw from (${bars.map(b => `${b.name} n = ${b.n}`).join(', ')}). ${sourceLine('Source: Baseball Savant arm strength')}`} />
+    </>
+  )
+}
+function DefFielding(c: Ctx) {
+  const { data, state } = useDefense(c)
+  if (state === 'loading') return <Note text="Loading…" />
+  const rows = data?.fielding ?? []
+  if (!rows.length) return <Note text="No fielding chances on record for this player yet." />
+  const cols = '.8fr .6fr .9fr .7fr .9fr .9fr .9fr .6fr'
+  const head = ['Pos', 'G', 'Chances', 'Errors', 'Fld%', 'Assists', 'Putouts', 'DP']
+  return (
+    <>
+      <Head title="Defense: fielding record" name={c.name} sub="Traditional fielding by position" />
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: '0 6px', marginTop: 8, fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+        {head.map((h, i) => <span key={h} style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute, padding: '4px 0', borderBottom: `2px solid ${C.ink}`, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>)}
+        {rows.map(r => (
+          <div key={r.pos} style={{ display: 'contents' }}>
+            {[r.pos, r.g, r.chances, r.errors, r.pct, r.assists, r.putOuts, r.dp].map((v, i) => <span key={i} style={{ padding: '7px 0', borderBottom: `1px solid ${C.line}`, fontWeight: i === 0 ? 800 : 600, textAlign: i === 0 ? 'left' : 'right' }}>{v}</span>)}
+          </div>
+        ))}
+      </div>
+      <Foot text={`Counting stats from the MLB Stats API. Errors and fielding percentage are traditional measures and say little about range; outs above average is the better guide. ${sourceLine('Source: MLB Stats API fielding')}`} />
+    </>
+  )
+}
+function DefCatcher(c: Ctx) {
+  const { data, state } = useDefense(c)
+  const e = useEase()
+  if (state === 'loading') return <Note text="Loading…" />
+  const k = data?.catcher
+  if (!k) return <Note text="No catcher data on record for this player (pop time needs a steal attempt at second this season)." />
+  return (
+    <>
+      <Head title="Defense: catcher" name={c.name} sub="Pop time, throwing arm and pitch framing" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8, opacity: clamp01(e * 1.6) }}>
+        {k.pop2b != null && <DTile label="Pop time to second" value={`${k.pop2b.toFixed(2)} s`} sub={k.popRank != null ? `${ord(k.popRank)} of ${k.popOf} (lower is faster) · ${k.attempts} attempts` : undefined} color={k.popRank != null ? rankTone(k.popRank, k.popOf) : undefined} />}
+        {k.exchange != null && <DTile label="Exchange" value={`${k.exchange.toFixed(2)} s`} sub="Glove to hand on throws to second" />}
+        {k.armMax != null && <DTile label="Arm strength" value={`${k.armMax.toFixed(0)} mph`} sub="Throws to second and third" />}
+        {k.framingRuns != null && <DTile label="Framing total" value={sg(k.framingRuns, 1)} sub={`${k.framingRank != null ? `${ord(k.framingRank)} of ${k.framingOf} · ` : ''}${(k.framingPitches ?? 0).toLocaleString()} pitches`} color={tone(k.framingRuns)} />}
+      </div>
+      <Foot text={`Pop time is from the catcher's glove to the fielder's at second on steal attempts. Framing total is the figure on Savant's catcher-framing leaderboard; ranks are among catchers on each table. ${sourceLine('Source: Baseball Savant')}`} />
+    </>
+  )
+}
+
 type Kind = { id: string; label: string; blurb: string; who: Who[]; render: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }>; /** can show one past game instead of the season */ game?: boolean; /** how it animates: its own bars and numbers move ('own'), or it is revealed left to right ('wipe') */ anim: 'own' | 'wipe'; /** the one-club 'where it fits' version of this chart, when it has one */ fit?: React.ComponentType<Ctx & { who: Who; metric: Metric; fm: FitMetric }> }
 const KINDS: Kind[] = [
   { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe', game: true },
@@ -462,6 +601,11 @@ const KINDS: Kind[] = [
   { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own', game: true },
   { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe', game: true },
   { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe', game: true },
+  { id: 'def-oaa', label: 'Defense: outs above average', blurb: 'Plays made vs an average fielder, with rank', who: ['fielder'], render: DefOaa, anim: 'own' },
+  { id: 'def-dir', label: 'Defense: where the plays are', blurb: 'Outs above average by direction and batter side', who: ['fielder'], render: DefDirections, anim: 'own' },
+  { id: 'def-arm', label: 'Defense: arm strength', blurb: 'Average throw speed, rank, by position', who: ['fielder'], render: DefArm, anim: 'own' },
+  { id: 'def-catch', label: 'Defense: catcher', blurb: 'Pop time, arm and framing runs', who: ['fielder'], render: DefCatcher, anim: 'own' },
+  { id: 'def-field', label: 'Defense: fielding record', blurb: 'Errors, fielding %, assists, putouts by position', who: ['fielder'], render: DefFielding, anim: 'wipe' },
   { id: 'pct-b', label: 'Percentile ranks (hitter)', blurb: 'Savant percentiles vs MLB', who: ['batter'], render: c => <Percentiles {...c} who="batter" /> , anim: 'own' },
   { id: 'team-era', label: 'Team ERA, where it fits', blurb: 'One club: the number, its rank, and where it sits', who: ['team'], render: c => <TeamFit {...c} fm={FIT_METRICS[0]} />, anim: 'own' },
   { id: 'bat-split', label: 'Batting: regular season vs postseason', blurb: 'AVG, OBP, SLG, OPS, runs, K% and BB% side by side', who: ['team'], render: BattingSplit, anim: 'own' },
@@ -581,6 +725,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const groups: { title: string; ids: string[] }[] = [
     { title: 'Pitchers', ids: KINDS.filter(k => k.who[0] === 'pitcher').map(k => k.id) },
     { title: 'Hitters', ids: KINDS.filter(k => k.who[0] === 'batter').map(k => k.id) },
+    { title: 'Defense', ids: KINDS.filter(k => k.who[0] === 'fielder').map(k => k.id) },
     { title: 'Teams', ids: KINDS.filter(k => k.who[0] === 'team').map(k => k.id) },
   ]
   const inp: React.CSSProperties = { width: '100%', padding: '9px 10px', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff', fontFamily: SANS, fontSize: 14, boxSizing: 'border-box' }
@@ -631,7 +776,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
               </>
             ) : (
               <>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{who === 'pitcher' ? 'Pitcher' : 'Hitter'}</label>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{who === 'pitcher' ? 'Pitcher' : who === 'fielder' ? 'Player' : 'Hitter'}</label>
                 <input style={inp} value={query} placeholder="Search by name" onChange={e => search(e.target.value)} />
                 {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setGamePk(null); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
                 {kind.game && player && (

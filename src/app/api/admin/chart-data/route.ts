@@ -8,6 +8,7 @@ import { getPitchMovementFromDB } from '@/lib/pitcher-full-stats'
 import { buildArsenal } from '@/components/admin/story-v5/arsenal'
 import { parseCsv } from '@/components/admin/story-v5/csv'
 import { getLeagueTables } from '@/lib/team-profile/league'
+import { getDefenseProfile } from '@/lib/defense-chart'
 import { getTeamBatting } from '@/lib/team-batting'
 import { findTeamByName } from '@/lib/teams'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
@@ -90,6 +91,10 @@ export async function GET(req: NextRequest) {
       log.error('chart-data game-pitches', 'failed', e instanceof Error ? e.message : e)
       return NextResponse.json({ pitches: [], balls: [], error: 'Baseball Savant did not answer' })
     }
+  }
+  if (kind === 'defense') {
+    if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
+    return NextResponse.json(await getDefenseProfile(playerId, season))
   }
   if (kind === 'team-batting') {
     const b = await getTeamBatting(Number(q.get('teamId')), season)
