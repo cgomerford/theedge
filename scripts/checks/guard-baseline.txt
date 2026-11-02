@@ -114,3 +114,4 @@ fetch	src/components/article/Comments.tsx
 fetch	src/lib/team-batting.ts
 fetch	src/components/SprayChart.tsx
 fetch	src/lib/defense-chart.ts
+fetch	src/lib/scatter-data.ts
