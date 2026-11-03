@@ -250,6 +250,8 @@ export const DATASET_CHOICES: DatasetChoice[] = [
   { id: 'mlb-hit', group: 'MLB stats (all players)', label: 'Hitters, traditional stats', blurb: 'AVG, OBP, SLG, OPS, HR, RBI, SB, K and BB totals for every player', seasons: true },
   { id: 'mlb-pit', group: 'MLB stats (all players)', label: 'Pitchers, traditional stats', blurb: 'ERA, WHIP, K/9, BB/9, innings, saves and more for every pitcher', seasons: true },
   { id: 'mlb-field', group: 'MLB stats (all players)', label: 'Fielding, traditional stats', blurb: 'Errors, fielding %, assists, putouts, double plays', seasons: true },
+  { id: 'tsit-bat', group: 'Team situations (Savant)', label: 'Team batting in a situation', blurb: 'Choose the count, outs, runners, pitch type and more: wOBA, xwOBA, OBP, K%, whiffs, barrels for all 30 clubs', seasons: true },
+  { id: 'tsit-pit', group: 'Team situations (Savant)', label: 'Team pitching in a situation', blurb: 'The same for the pitching staff: what each club allowed in that situation', seasons: true },
   { id: 'mlb-team-hit', group: 'MLB stats (teams)', label: 'Team batting', blurb: 'All 30 clubs: AVG, OBP, SLG, OPS, runs, HR, K and BB', seasons: true },
   { id: 'mlb-team-pit', group: 'MLB stats (teams)', label: 'Team pitching', blurb: 'All 30 clubs: ERA, WHIP, K/9, BB/9, HR/9 and more', seasons: true },
   { id: 'mlb-team-field', group: 'MLB stats (teams)', label: 'Team fielding', blurb: 'All 30 clubs: errors, fielding %, double plays', seasons: true },

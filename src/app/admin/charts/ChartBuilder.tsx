@@ -18,6 +18,7 @@ import {
   DATASET_CHOICES, checkScatter, fmt, joinDataset, mergeColumn, nameKey, parsePasted, pickHighlights,
   type HighlightMode, type PastedColumn, type ScatterDataset,
 } from '@/lib/graphics/scatter'
+import { SIT_DEFAULT, SIT_OPTIONS, SIT_PRESETS, describeSit, type SitFilters } from '@/lib/graphics/situations'
 import { BarPlot, BoxPlot, ComparePlot, DonutPlot, HistPlot, LinePlot, RadarPlot, ScatterPlot, TablePlot, type BarItem } from './plots'
 
 const SEASON = new Date().getFullYear()
@@ -34,12 +35,14 @@ type Saved = {
   onlyNames: boolean; extra: string[]; compareKeys: string[]
   /** a colour the editor chose for one player, by name key */
   pcolors: Record<string, string>; refAvg: boolean; refMedian: boolean; area: boolean; heat: boolean
+  /** the situation for the team tables (count, outs, runners, pitch type...) */
+  sit: SitFilters
 }
 const DEFAULTS: Saved = {
   datasetId: 'frv', chart: 'scatter', xKey: 'range_runs', yKey: 'total_runs', sizeKey: '', colorBy: '', valueKey: 'total_runs', groupKey: '', agg: 'sum', topN: 15, dir: 'desc', bins: 20,
   fromYear: SEASON - 7, slices: 8, leagueLine: true, tableCols: [], filterKey: 'innings', filterMin: '700', catKey: '', catValue: '',
   xLabel: '', yLabel: '', title: '', subtitle: '', kicker: '', diagonal: true, diagLabel: '', zeroLines: false, equal: true, signedX: null, signedY: null,
-  mode: 'gap', count: 12, names: [], off: [], size: 'landscape', onlyNames: false, extra: [], compareKeys: [], pcolors: {}, refAvg: false, refMedian: false, area: false, heat: false,
+  mode: 'gap', count: 12, names: [], off: [], size: 'landscape', onlyNames: false, extra: [], compareKeys: [], pcolors: {}, refAvg: false, refMedian: false, area: false, heat: false, sit: { ...SIT_DEFAULT, count: '2k' },
 }
 const load = (): Saved => { try { const r = localStorage.getItem(STORE); return r ? { ...DEFAULTS, ...(JSON.parse(r) as Partial<Saved>) } : DEFAULTS } catch { return DEFAULTS } }
 type StoredPaste = { key: string; label: string; entries: [string, number][] }
@@ -51,6 +54,10 @@ const btn: React.CSSProperties = { padding: '11px 18px', border: 'none', borderR
 const btnLite: React.CSSProperties = { padding: '6px 12px', border: `1px solid ${C.line}`, borderRadius: 999, background: '#fff', fontFamily: SANS, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', color: C.ink }
 const chk: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, margin: '5px 0', cursor: 'pointer' }
 const short = (t: string) => t.replace(/\s*\(.*\)/, '')
+
+/** The tables that take a situation, and the query that carries it. */
+const takesSit = (id: string) => id.startsWith('tsit')
+const sitQuery = (id: string, sit: SitFilters) => (takesSit(id) ? `&sit=${encodeURIComponent(JSON.stringify(sit))}` : '')
 
 export default function ChartBuilder() {
   const [s, setS] = useState<Saved>(DEFAULTS)
@@ -89,19 +96,21 @@ export default function ChartBuilder() {
     if (!ready) return
     let live = true
     setState('loading'); setErr('')
-    fetch(`/api/admin/scatter-data?dataset=${s.datasetId}&season=${SEASON}`)
+    fetch(`/api/admin/scatter-data?dataset=${s.datasetId}&season=${SEASON}${sitQuery(s.datasetId, s.sit)}`)
       .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j?.error ?? `Request failed (${r.status})`); return j as ScatterDataset })
       .then(d => {
         if (!live) return
-        cache.current.set(`${s.datasetId}:${SEASON}`, d)
+        cache.current.set(`${s.datasetId}:${SEASON}:${takesSit(s.datasetId) ? JSON.stringify(s.sit) : ''}`, d)
         setBase(d); setState('idle'); setHistory(new Map())
         setS(p => {
           const keys = d.columns.map(c => c.key), cats = d.cats.map(c => c.key)
           // keys from a pasted column (p<id>_<n>) or a joined table (<table>__<key>) are not in the base table
           const ok = (k: string, alt: string) => (keys.includes(k) || /^p[a-z0-9]+_\d+$/.test(k) || k.includes('__')) ? k : alt
-          const x = ok(p.xKey, keys[0]), y = ok(p.yKey, keys.find(k => k !== x) ?? x)
+          // team situation tables start on expected against actual wOBA, so the diagonal shows who is over- or under-performing
+          const pref = (want: string, alt: string) => (takesSit(s.datasetId) && keys.includes(want) ? want : alt)
+          const x = ok(p.xKey, pref('xwoba', keys[0])), y = ok(p.yKey, pref('woba', keys.find(k => k !== x) ?? x))
           return {
-            ...p, xKey: x, yKey: y, valueKey: ok(p.valueKey, keys[0]), sizeKey: p.sizeKey && keys.includes(p.sizeKey) ? p.sizeKey : '', filterKey: keys.includes(p.filterKey) ? p.filterKey : keys[0], filterMin: keys.includes(p.filterKey) ? p.filterMin : '',
+            ...p, xKey: x, yKey: y, valueKey: ok(p.valueKey, pref('woba', keys[0])), sizeKey: p.sizeKey && keys.includes(p.sizeKey) ? p.sizeKey : '', filterKey: keys.includes(p.filterKey) ? p.filterKey : keys[0], filterMin: keys.includes(p.filterKey) ? p.filterMin : '',
             colorBy: cats.includes(p.colorBy) ? p.colorBy : '', groupKey: cats.includes(p.groupKey) ? p.groupKey : '', catKey: cats.includes(p.catKey) ? p.catKey : '', catValue: cats.includes(p.catKey) ? p.catValue : '',
             tableCols: p.tableCols.filter(k => keys.includes(k)),
           }
@@ -109,17 +118,17 @@ export default function ChartBuilder() {
       })
       .catch(e => { if (live) { setState('error'); setErr(e instanceof Error ? e.message : 'Could not load'); setBase(null) } })
     return () => { live = false }
-  }, [s.datasetId, ready])
+  }, [s.datasetId, ready, takesSit(s.datasetId) ? JSON.stringify(s.sit) : ''])
 
   // Other tables joined on by player name (stats from one table set against stats from another).
   useEffect(() => {
     if (!ready) return
     let live = true
     Promise.all(s.extra.filter(id => id !== s.datasetId).map(async id => {
-      const k = `${id}:${SEASON}`
+      const k = `${id}:${SEASON}:${takesSit(id) ? JSON.stringify(s.sit) : ''}`
       if (cache.current.has(k)) return [id, cache.current.get(k)!] as const
       try {
-        const r = await fetch(`/api/admin/scatter-data?dataset=${id}&season=${SEASON}`)
+        const r = await fetch(`/api/admin/scatter-data?dataset=${id}&season=${SEASON}${sitQuery(id, s.sit)}`)
         if (!r.ok) return [id, null] as const
         const d = (await r.json()) as ScatterDataset
         cache.current.set(k, d)
@@ -127,7 +136,7 @@ export default function ChartBuilder() {
       } catch { return [id, null] as const }
     })).then(res => { if (live) setExtras(new Map(res.filter((x): x is readonly [string, ScatterDataset] => !!x[1]))) })
     return () => { live = false }
-  }, [ready, s.extra, s.datasetId])
+  }, [ready, s.extra, s.datasetId, JSON.stringify(s.sit)])
 
   // Season-by-season tables, only while a line chart is on screen.
   const wantsLine = s.chart === 'line'
@@ -139,11 +148,11 @@ export default function ChartBuilder() {
     const years = Array.from({ length: SEASON - from + 1 }, (_, i) => from + i)
     setHistState('loading')
     Promise.all(years.map(async y => {
-      const k = `${s.datasetId}:${y}`
+      const k = `${s.datasetId}:${y}:${takesSit(s.datasetId) ? JSON.stringify(s.sit) : ''}`
       // the current season is already loaded in full; past seasons come without the roster join
       if (cache.current.has(k)) return [y, cache.current.get(k)!] as const
       try {
-        const r = await fetch(`/api/admin/scatter-data?dataset=${s.datasetId}&season=${y}&lite=1`)
+        const r = await fetch(`/api/admin/scatter-data?dataset=${s.datasetId}&season=${y}&lite=1${sitQuery(s.datasetId, s.sit)}`)
         if (!r.ok) return [y, null] as const
         const d = (await r.json()) as ScatterDataset
         cache.current.set(k, d)
@@ -244,14 +253,16 @@ export default function ChartBuilder() {
 
   const isPoints = s.chart === 'scatter' || s.chart === 'bubble'
   const plotted = isPoints ? pts.length : s.chart === 'donut' || (s.chart === 'bar' && s.groupKey) ? groups.length : s.chart === 'histogram' ? hist.n : s.chart === 'line' ? series.length : s.chart === 'compare' || s.chart === 'radar' ? cmpPlayers.length : s.chart === 'box' ? boxGroups.length : topList.length
+  const sitText = takesSit(s.datasetId) ? describeSit(s.sit) : ''
+  const unit = (base?.rows.length ?? 99) <= 40 ? 'clubs' : 'players'
   const kicker = s.kicker || autoKicker()
   function autoKicker() {
-    if (isPoints) return xc && yc ? `${xLabel} vs ${yLabel}, ${SEASON}`.toUpperCase() : ''
+    if (isPoints) return xc && yc ? `${xLabel} vs ${yLabel}${sitText ? ` ${sitText}` : ''}, ${SEASON}`.toUpperCase() : ''
     if (s.chart === 'compare' || s.chart === 'radar') return `Player comparison, ${SEASON}`.toUpperCase()
     if (s.chart === 'box') return `${short(vc?.label ?? '')} by ${ds?.cats.find(c => c.key === s.groupKey)?.label ?? 'group'}, ${SEASON}`.toUpperCase()
     if (s.chart === 'line') return `${short(vc?.label ?? '')} by season`.toUpperCase()
     if (s.chart === 'histogram') return `Distribution of ${short(vc?.label ?? '')}, ${SEASON}`.toUpperCase()
-    return `${vc?.label ?? ''}, ${SEASON}`.toUpperCase()
+    return `${vc?.label ?? ''}${sitText ? ` ${sitText}` : ''}, ${SEASON}`.toUpperCase()
   }
   const diagLabel = s.diagLabel || `${short(xLabel)} = ${short(yLabel)}`
   const warnings = checkScatter({ title: s.title, subtitle: s.subtitle, xKey: isPoints ? s.xKey : 'a', yKey: isPoints ? s.yKey : 'b', points: s.chart === 'line' || s.chart === 'donut' || s.chart === 'table' || s.chart === 'bar' || s.chart === 'column' || s.chart === 'compare' || s.chart === 'radar' || s.chart === 'box' || only ? 99 : plotted, missing: isPoints ? picks.missing : [], unmatched: merged?.unmatched ?? [] })
@@ -281,13 +292,13 @@ export default function ChartBuilder() {
     const g = s.catKey && s.catValue ? ` in the ${s.catValue}` : ''
     if (isPoints) {
       const diag = s.diagonal ? ` Below the line: ${short(xLabel)} is higher. Above: ${short(yLabel)} is higher.` : ''
-      set('subtitle', `${pts.length} players${f}${g}.${diag}`)
+      set('subtitle', `${pts.length} ${unit}${sitText ? ` ${sitText}` : ''}${f}${g}.${diag}`)
     } else if (s.chart === 'box') set('subtitle', `The middle half of players is the box, the line inside is the median, whiskers reach the rest and circles are outliers${f}${g}.`)
     else if (s.chart === 'compare' || s.chart === 'radar') set('subtitle', `Each bar is where the player ranks among ${pool.length} players${f}${g}. The number beside it is his figure.`)
-    else if (s.chart === 'histogram') set('subtitle', `${hist.n} players${f}${g}. Orange bars hold the players named.`)
+    else if (s.chart === 'histogram') set('subtitle', `${hist.n} ${unit}${sitText ? ` ${sitText}` : ''}${f}${g}. Orange bars hold the ones named.`)
     else if (s.chart === 'line') set('subtitle', `${short(vc?.label ?? '')} each season, ${s.fromYear} to ${SEASON}${s.leagueLine ? '. Dashed line: league average' : ''}.`)
     else if (s.chart === 'donut') set('subtitle', `Share of ${s.agg === 'count' ? 'players' : short(vc?.label ?? '').toLowerCase()} by ${ds?.cats.find(c => c.key === s.groupKey)?.label.toLowerCase() ?? 'group'}${f}.`)
-    else set('subtitle', `${s.groupKey ? `${AGGS.find(a => a.id === s.agg)?.label.toLowerCase()} by ${ds?.cats.find(c => c.key === s.groupKey)?.label.toLowerCase()}` : `${s.dir === 'desc' ? 'Top' : 'Bottom'} ${s.topN} players${f}${g}`}.`)
+    else set('subtitle', `${s.groupKey ? `${AGGS.find(a => a.id === s.agg)?.label.toLowerCase()} by ${ds?.cats.find(c => c.key === s.groupKey)?.label.toLowerCase()}` : `${s.dir === 'desc' ? 'Top' : 'Bottom'} ${s.topN} ${unit}${sitText ? ` ${sitText}` : ''}${f}${g}`}.`)
   }
 
   function toggle(name: string) {
@@ -403,12 +414,33 @@ export default function ChartBuilder() {
         <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>{CHART_TYPES.find(t => t.id === s.chart)?.blurb}</div>
 
         <label style={lab}>Table</label>
-        <select style={inp} value={s.datasetId} onChange={e => setS(p => ({ ...p, datasetId: e.target.value, kicker: '' }))}>
+        <select style={inp} value={s.datasetId} onChange={e => setS(p => ({ ...p, datasetId: e.target.value, kicker: '', xLabel: '', yLabel: '', diagLabel: '', signedX: null, signedY: null, extra: [], groupKey: '' }))}>
           {Object.entries(groups2).map(([g, list]) => <optgroup key={g} label={g}>{list.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}</optgroup>)}
         </select>
         <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>{meta?.blurb} · {SEASON}</div>
         {state === 'loading' && <div style={{ fontSize: 12.5, color: C.mute, marginTop: 8 }}>Loading the table…</div>}
         {state === 'error' && <div role="alert" style={{ fontSize: 12.5, color: C.bad, marginTop: 8 }}>{err}</div>}
+
+        {takesSit(s.datasetId) && (
+          <>
+            <label style={lab}>Situation</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {SIT_PRESETS.map(p => <button key={p.label} type="button" onClick={() => setS(q => ({ ...q, sit: { ...SIT_DEFAULT, gt: q.sit.gt, ...p.set } }))} style={{ ...btnLite, padding: '4px 10px', fontSize: 12 }}>{p.label}</button>)}
+              <button type="button" onClick={() => setS(q => ({ ...q, sit: { ...SIT_DEFAULT, gt: q.sit.gt } }))} style={{ ...btnLite, padding: '4px 10px', fontSize: 12 }}>All pitches</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 8px', marginTop: 8 }}>
+              {(Object.keys(SIT_OPTIONS) as (keyof SitFilters)[]).map(k => (
+                <label key={k} style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute }}>
+                  {SIT_OPTIONS[k].label}
+                  <select style={{ ...inp, marginTop: 3, padding: '6px 8px', fontSize: 12.5, textTransform: 'none', letterSpacing: 0, fontWeight: 500 }} value={s.sit[k]} onChange={e => setS(q => ({ ...q, sit: { ...q.sit, [k]: e.target.value } }))}>
+                    {SIT_OPTIONS[k].options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: 11.5, color: '#5B5347', marginTop: 6 }}>Showing every club {describeSit(s.sit) || 'on all pitches'}. A rate is the result of plate appearances that ended in this situation.</div>
+          </>
+        )}
 
         {ds && (
           <>
@@ -444,7 +476,7 @@ export default function ChartBuilder() {
             {(s.chart === 'bar' || s.chart === 'column' || s.chart === 'donut') && (
               <>
                 <label style={lab}>{s.chart === 'donut' ? 'Slice by' : 'One bar per'}</label>
-                {sel('groupKey', catOpts, s.chart === 'donut' ? 'Choose a group' : 'Player')}
+                {sel('groupKey', catOpts, s.chart === 'donut' ? 'Choose a group' : unit === 'clubs' ? 'Club' : 'Player')}
                 {s.groupKey && (<div style={{ marginTop: 6 }}>{sel('agg', AGGS.filter(a => s.chart !== 'donut' || a.id === 'sum' || a.id === 'count').map(a => <option key={a.id} value={a.id}>{a.label}</option>))}</div>)}
               </>
             )}

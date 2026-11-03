@@ -9,6 +9,7 @@ import { parseCsv } from '@/components/admin/story-v5/csv'
 import { logOnce } from '@/lib/log'
 import { MLB_TEAMS, findTeamByName } from '@/lib/teams'
 import { getDrs, type DrsRow } from '@/lib/fielding-bible'
+import { SIT_DEFAULT, savantParams, type SitFilters } from '@/lib/graphics/situations'
 import { decimalsFor, displayName, nameKey, type CatColumn, type ScatterColumn, type ScatterDataset, type ScatterRow } from '@/lib/graphics/scatter'
 
 type Raw = Record<string, string>
@@ -78,6 +79,49 @@ const LABELS: Record<string, string> = {
   p_caught_stealing_2b: 'Caught stealing at second', pitcher_run_exp: 'Pitcher runs', ff_avg_speed: 'Four-seam speed (mph)', ff_avg_spin: 'Four-seam spin (rpm)', ff_avg_break_x: 'Four-seam horizontal break (in)',
   ff_avg_break_z: 'Four-seam vertical break (in)', sl_avg_speed: 'Slider speed (mph)', cu_avg_speed: 'Curveball speed (mph)', ch_avg_speed: 'Changeup speed (mph)', si_avg_speed: 'Sinker speed (mph)', fc_avg_speed: 'Cutter speed (mph)',
   fs_avg_speed: 'Splitter speed (mph)', kn_avg_speed: 'Knuckleball speed (mph)', st_avg_speed: 'Sweeper speed (mph)', sv_avg_speed: 'Slurve speed (mph)', release_extension: 'Extension (ft)', arm_angle: 'Arm angle (°)',
+  // team situation tables (Savant search grouped by team)
+  iso: 'ISO', babip: 'BABIP',
+  pitch_percent: 'Share of the team\'s pitches (%)',
+  total_pitches: 'All pitches (the team)',
+  hardhit_percent: 'Hard-hit%',
+  barrels_per_bbe_percent: 'Barrel% (per batted ball)',
+  barrels_per_pa_percent: 'Barrels per PA (%)',
+  barrels_total: 'Barrels',
+  batter_run_value_per_100: 'Batting runs per 100 pitches',
+  pitcher_run_value_per_100: 'Pitching runs per 100 pitches',
+  run_exp: 'Run expectancy change (batting)',
+  xbadiff: 'xBA minus BA',
+  xobpdiff: 'xOBP minus OBP',
+  xslgdiff: 'xSLG minus SLG',
+  wobadiff: 'xwOBA minus wOBA',
+  whiff_rate: 'Whiff% (whiffs per swing)',
+  swing_rate: 'Swing% (swings per pitch)',
+  velocity: 'Pitch speed (mph)',
+  spin_rate: 'Spin rate (rpm)',
+  effective_speed: 'Effective speed (mph)',
+  launch_speed: 'Average exit velocity (mph)',
+  launch_angle: 'Average launch angle',
+  hrs: 'Home runs',
+  so: 'Strikeouts',
+  bb: 'Walks',
+  takes: 'Takes',
+  swings: 'Swings',
+  abs: 'At-bats',
+  hits: 'Hits',
+  singles: 'Singles',
+  doubles: 'Doubles',
+  triples: 'Triples',
+  attack_angle: 'Attack angle',
+  attack_direction: 'Attack direction',
+  swing_path_tilt: 'Swing path tilt',
+  hyper_speed: 'Fastest-swings bat speed (mph)',
+  api_break_z_with_gravity: 'Vertical break with gravity (in)',
+  api_break_z_induced: 'Induced vertical break (in)',
+  api_break_x_arm: 'Arm-side break (in)',
+  api_break_x_batter_in: 'Break toward the batter (in)',
+  bbdist: 'Average batted-ball distance (ft)',
+  rate_ideal_attack_angle: 'Ideal attack angle rate',
+  miss_distance: 'Miss distance (in)',
   // Defensive Runs Saved, from The Fielding Bible (Sports Info Solutions)
   drs: 'DRS (runs saved)', drs_part: 'DRS: range and positioning', drs_sb: 'DRS: stolen bases', drs_bunts: 'DRS: bunts', drs_gfp: 'DRS: good plays and misplays', drs_adj_er: 'DRS: adjusted earned runs saved',
   drs_strike_zone: 'DRS: strike zone (framing)', drs_gdp: 'DRS: double plays', drs_of_arm: 'DRS: outfield arm', drs_innings: 'Innings (Fielding Bible)',
@@ -208,7 +252,40 @@ async function drsDataset(season: number, lite: boolean): Promise<ScatterDataset
   return finish('drs', rows, ['drs_innings', ...DRS_COLS.map(([, k]) => k)], cats, false, 0)
 }
 
-export async function getScatterDataset(id: string, season: number, lite = false): Promise<ScatterDataset | null> {
+const SEARCH = 'https://baseballsavant.mlb.com/statcast_search/csv'
+const TSIT_SKIP = new Set(['player_id', 'player_name', 'eff_min_vel', 'release_pos_z', 'release_pos_x', 'plate_x', 'plate_z', 'intercept_ball_minus_batter_pos_x_inches', 'intercept_ball_minus_batter_pos_y_inches'])
+
+/** Every club's batting (or the batting it faced) in one situation, from Savant's search grouped by team. The count, outs, runners, pitch type and the rest come from the validated filters. */
+async function teamSituation(id: string, season: number, f: SitFilters): Promise<ScatterDataset | null> {
+  const side = id === 'tsit-pit' ? 'pitcher' : 'batter'
+  const url = `${SEARCH}?all=true&hfSea=${season}%7C&player_type=${side}&group_by=team&sort_col=pitches&sort_order=desc&min_pitches=0&min_results=0&min_pas=0${savantParams(f)}`
+  try {
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(30000), headers: { 'User-Agent': UA, Accept: 'text/csv,*/*' } })
+    if (!res.ok) { logOnce(`scatter:${id}:${res.status}`, 'scatter-data', `${id} HTTP ${res.status}`); return null }
+    const raw: Raw[] = parseCsv(await res.text())
+    if (!raw.length || !('woba' in raw[0])) return null
+    const keys = Object.keys(raw[0]).filter(k => !TSIT_SKIP.has(k) && !/^pos\d_int_start_distance$/.test(k))
+    const rows: ScatterRow[] = raw.flatMap(r => {
+      const t = MLB_TEAMS.find(x => x.id === Number(r.player_id)) ?? MLB_TEAMS.find(x => x.abbrev === r.player_name)
+      if (!t) return []
+      const v: Record<string, number | null> = {}
+      for (const k of keys) v[k] = num(r[k])
+      const sw = num(r.swings), wh = num(r.whiffs), pi = num(r.pitches)
+      v.whiff_rate = sw && wh != null ? Math.round((wh / sw) * 1000) / 10 : null
+      v.swing_rate = pi && sw != null ? Math.round((sw / pi) * 1000) / 10 : null
+      return [{ id: t.id, name: t.abbrev, team: t.abbrev, v, c: { team: t.abbrev, league: t.league, division: `${t.league} ${t.division}` } }]
+    })
+    if (!rows.length) return null
+    const cats: CatColumn[] = [{ key: 'team', label: 'Team' }, { key: 'league', label: 'League' }, { key: 'division', label: 'Division' }]
+    return finish(id, rows, [...keys, 'whiff_rate', 'swing_rate'], cats, false, 0.5)
+  } catch (e) {
+    logOnce(`scatter:${id}:threw`, 'scatter-data', `${id} fetch failed`, e)
+    return null
+  }
+}
+
+export async function getScatterDataset(id: string, season: number, lite = false, sit: SitFilters = SIT_DEFAULT): Promise<ScatterDataset | null> {
+  if (id === 'tsit-bat' || id === 'tsit-pit') return teamSituation(id, season, sit)
   if (MLB_SOURCES[id]) return mlbDataset(id, season)
   if (id === 'drs') return drsDataset(season, lite)
   const src = SOURCES[id]
