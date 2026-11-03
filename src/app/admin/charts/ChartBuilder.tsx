@@ -18,7 +18,8 @@ import {
   DATASET_CHOICES, checkScatter, fmt, joinDataset, mergeColumn, nameKey, parsePasted, pickHighlights,
   type HighlightMode, type PastedColumn, type ScatterDataset,
 } from '@/lib/graphics/scatter'
-import { SIT_DEFAULT, SIT_OPTIONS, SIT_PRESETS, describeSit, type SitFilters } from '@/lib/graphics/situations'
+import { SIT_DEFAULT, SIT_OPTIONS, SIT_PRESETS, describeSit, splitExtra, type SitFilters } from '@/lib/graphics/situations'
+import { TEMPLATES, TEMPLATE_GROUPS, type Template } from '@/lib/graphics/templates'
 import { BarPlot, BoxPlot, ComparePlot, DonutPlot, HistPlot, LinePlot, RadarPlot, ScatterPlot, TablePlot, type BarItem } from './plots'
 
 const SEASON = new Date().getFullYear()
@@ -57,6 +58,8 @@ const short = (t: string) => t.replace(/\s*\(.*\)/, '')
 
 /** The tables that take a situation, and the query that carries it. */
 const takesSit = (id: string) => id.startsWith('tsit')
+/** The name a joined table goes by in the stat lists: its table, plus its own situation when it has one. */
+const extraLabel = (id: string) => { const x = splitExtra(id); const base = DATASET_CHOICES.find(d => d.id === x.dataset)?.label.replace(/,.*$/, '') ?? id; return x.sit ? `${base} (${describeSit(x.sit) || 'all pitches'})` : base }
 const sitQuery = (id: string, sit: SitFilters) => (takesSit(id) ? `&sit=${encodeURIComponent(JSON.stringify(sit))}` : '')
 
 export default function ChartBuilder() {
@@ -125,10 +128,12 @@ export default function ChartBuilder() {
     if (!ready) return
     let live = true
     Promise.all(s.extra.filter(id => id !== s.datasetId).map(async id => {
-      const k = `${id}:${SEASON}:${takesSit(id) ? JSON.stringify(s.sit) : ''}`
+      const x = splitExtra(id)
+      const sit = x.sit ?? s.sit            // a joined table with its own situation uses that; otherwise the current one
+      const k = `${x.dataset}:${SEASON}:${takesSit(x.dataset) ? JSON.stringify(sit) : ''}`
       if (cache.current.has(k)) return [id, cache.current.get(k)!] as const
       try {
-        const r = await fetch(`/api/admin/scatter-data?dataset=${id}&season=${SEASON}${sitQuery(id, s.sit)}`)
+        const r = await fetch(`/api/admin/scatter-data?dataset=${x.dataset}&season=${SEASON}${sitQuery(x.dataset, sit)}`)
         if (!r.ok) return [id, null] as const
         const d = (await r.json()) as ScatterDataset
         cache.current.set(k, d)
@@ -169,7 +174,7 @@ export default function ChartBuilder() {
     for (const id of s.extra) {
       const other = extras.get(id)
       if (!other || id === base.id) continue
-      const r = joinDataset(ds, { ...other, id }, DATASET_CHOICES.find(d => d.id === id)?.label.replace(/,.*$/, '') ?? id)
+      const r = joinDataset(ds, { ...other, id }, extraLabel(id))
       ds = r.dataset; joined.push({ id, matched: r.matched })
     }
     for (const c of pastes) { const r = mergeColumn(ds, c); ds = r.dataset; unmatched.push(...r.unmatched) }
@@ -255,7 +260,9 @@ export default function ChartBuilder() {
   const plotted = isPoints ? pts.length : s.chart === 'donut' || (s.chart === 'bar' && s.groupKey) ? groups.length : s.chart === 'histogram' ? hist.n : s.chart === 'line' ? series.length : s.chart === 'compare' || s.chart === 'radar' ? cmpPlayers.length : s.chart === 'box' ? boxGroups.length : topList.length
   const sitText = takesSit(s.datasetId) ? describeSit(s.sit) : ''
   const unit = (base?.rows.length ?? 99) <= 40 ? 'clubs' : 'players'
-  const kicker = s.kicker || autoKicker()
+  const rawKicker = s.kicker || autoKicker()
+  // the label in the corner must stay short, or it crowds the wordmark
+  const kicker = rawKicker.length > 60 ? `${rawKicker.slice(0, 57).trimEnd()}…` : rawKicker
   function autoKicker() {
     if (isPoints) return xc && yc ? `${xLabel} vs ${yLabel}${sitText ? ` ${sitText}` : ''}, ${SEASON}`.toUpperCase() : ''
     if (s.chart === 'compare' || s.chart === 'radar') return `Player comparison, ${SEASON}`.toUpperCase()
@@ -323,6 +330,18 @@ export default function ChartBuilder() {
     setPastes(p => [...p.filter(q => !r.columns.some(c => c.label.toLowerCase() === q.label.toLowerCase())), ...r.columns])
     setPasteMsg(`${r.columns.map(c => c.label).join(', ')} saved: ${r.names} names read. Choose the new stat in the lists above.`)
     setPasteText('')
+  }
+
+  /** One click: table, situation, chart, stats, headline, subtitle and reference lines all set from a template. Named players and colours are kept. */
+  function applyTemplate(t: Template) {
+    const q = t.patch
+    pendingSub.current = false
+    setS(p => ({
+      ...p, datasetId: q.datasetId, chart: q.chart, title: q.title, subtitle: q.subtitle, kicker: `${t.label}, ${SEASON}`.toUpperCase(), sit: { ...SIT_DEFAULT, gt: p.sit.gt, ...q.sit }, extra: q.extra ?? [],
+      xKey: q.xKey ?? p.xKey, yKey: q.yKey ?? p.yKey, valueKey: q.valueKey ?? p.valueKey, dir: q.dir ?? 'desc', topN: q.topN ?? p.topN, colorBy: q.colorBy ?? '', groupKey: '', agg: 'sum',
+      xLabel: q.xLabel ?? '', yLabel: q.yLabel ?? '', diagonal: q.diagonal ?? false, diagLabel: q.diagLabel ?? '', equal: q.equal ?? true, refAvg: q.refAvg ?? false, refMedian: q.refMedian ?? false,
+      mode: q.mode ?? 'none', count: q.count ?? 0, names: [], off: [], onlyNames: false, filterKey: 'pa', filterMin: '', catKey: '', catValue: '', signedX: null, signedY: null, zeroLines: false, size: q.size ?? 'landscape',
+    }))
   }
 
   function drsPreset() {
@@ -407,6 +426,16 @@ export default function ChartBuilder() {
       <style>{'@media (max-width: 980px){.sb-grid{grid-template-columns:1fr !important}} .cb, .cb *{font-family:var(--font-redhat), system-ui, sans-serif !important}'}</style>
 
       <aside style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 12, padding: '4px 16px 16px' }}>
+        <label style={lab}>Ready-made charts</label>
+        {TEMPLATE_GROUPS.map(g => (
+          <div key={g}>
+            <div style={{ fontSize: 11, color: C.mute, margin: '2px 0 6px' }}>{g}: one click sets the table, situation, stats and headline.</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {TEMPLATES.filter(t => t.group === g).map(t => <button key={t.id} type="button" title={t.blurb} onClick={() => applyTemplate(t)} style={{ ...btnLite, padding: '5px 10px', fontSize: 12 }}>{t.label}</button>)}
+            </div>
+          </div>
+        ))}
+        <div style={{ fontSize: 11, color: C.mute, margin: '8px 0 0' }}>Fielding: <button type="button" onClick={drsPreset} style={{ all: 'unset', cursor: 'pointer', textDecoration: 'underline' }}>DRS vs FRV</button>. Everything below stays editable.</div>
         <label style={lab}>Chart type</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {CHART_TYPES.map(t => <button key={t.id} type="button" title={t.blurb} onClick={() => setS(p => ({ ...p, chart: t.id, kicker: '' }))} style={{ ...btnLite, borderRadius: 8, textAlign: 'left', borderColor: s.chart === t.id ? C.orange : C.line, background: s.chart === t.id ? '#FFF1EA' : '#fff' }}>{t.label}</button>)}
@@ -451,7 +480,7 @@ export default function ChartBuilder() {
             </select>
             {s.extra.filter(id => id !== s.datasetId).length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                {s.extra.filter(id => id !== s.datasetId).map(id => { const j = merged?.joined.find(q => q.id === id); return <button key={id} type="button" onClick={() => set('extra', s.extra.filter(x => x !== id))} style={{ ...btnLite, padding: '3px 10px' }} aria-label={`Remove ${id}`}>{DATASET_CHOICES.find(d => d.id === id)?.label.replace(/,.*$/, '') ?? id}{j ? ` (${j.matched} matched)` : ' (loading)'} ×</button> })}
+                {s.extra.filter(id => id !== s.datasetId).map(id => { const j = merged?.joined.find(q => q.id === id); return <button key={id} type="button" onClick={() => set('extra', s.extra.filter(x => x !== id))} style={{ ...btnLite, padding: '3px 10px' }} aria-label={`Remove ${id}`}>{extraLabel(id)}{j ? ` (${j.matched} matched)` : ' (loading)'} ×</button> })}
               </div>
             )}
             {s.extra.filter(id => id !== s.datasetId).length > 0 && <div style={{ fontSize: 11.5, color: C.mute, marginTop: 4 }}>Its stats now appear in every stat list below, labelled with the table name. Current season only.</div>}
@@ -634,7 +663,7 @@ export default function ChartBuilder() {
               <div ref={frame} style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: 'top left', background: GT.paper, color: GT.ink, fontFamily: SANS, boxSizing: 'border-box', padding: '36px 40px 0', position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: SANS }}>
                   <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em' }}>x9<span style={{ color: GT.accent }}>Lab</span></div>
-                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.12em', color: GT.muted, textTransform: 'uppercase' }}>{kicker}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.12em', color: GT.muted, textTransform: 'uppercase', maxWidth: '68%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kicker}</div>
                 </div>
                 <div style={{ height: size.head - 62, overflow: 'hidden', marginTop: 8, fontFamily: SANS }}>
                   <div style={{ fontSize: s.size === 'landscape' ? 38 : 44, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.08 }}>{s.title || 'Your headline here'}</div>

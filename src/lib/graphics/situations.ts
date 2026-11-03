@@ -93,3 +93,12 @@ export const SIT_PRESETS: { label: string; set: Partial<SitFilters> }[] = [
   { label: 'Two strikes, scoring position', set: { count: '2k', runners: 'risp' } },
   { label: 'Two strikes vs breaking balls', set: { count: '2k', pitch: 'brk' } },
 ]
+
+/** A joined table can carry its own situation: `tsit-bat@count=2k;pitch=brk` is team batting with two strikes against breaking balls. A plain id has none. */
+export function splitExtra(id: string): { dataset: string; sit: SitFilters | null } {
+  const [dataset, spec] = id.split('@')
+  if (!spec) return { dataset, sit: null }
+  const o: Record<string, string> = {}
+  for (const kv of spec.split(';')) { const [k, v] = kv.split('='); if (k && v) o[k] = v }
+  return { dataset, sit: cleanSit(o) }
+}

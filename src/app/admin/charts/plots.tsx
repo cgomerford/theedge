@@ -101,7 +101,8 @@ export function BarPlot({ W, H, fs, items, horizontal, fmtV, valueLabel, onToggl
   const vmin = Math.min(0, ...items.map(i => i.value)), vmax = Math.max(0, ...items.map(i => i.value))
   const span = vmax - vmin || 1
   if (horizontal) {
-    const L = Math.min(W * 0.34, Math.max(100, Math.max(...items.map(i => i.label.length)) * fs * 0.6)), R = 74, T = 6, B = 26
+    // reference lines get their own strip above the bars so their labels never sit on a bar
+    const L = Math.min(W * 0.34, Math.max(100, Math.max(...items.map(i => i.label.length)) * fs * 0.6)), R = 74, T = refLines.length ? 8 + refLines.length * 15 : 6, B = 26
     const pw = W - L - R, rowH = (H - T - B) / items.length, bh = Math.min(34, rowH * 0.7)
     const x = (v: number) => L + ((v - vmin) / span) * pw
     return (
@@ -120,7 +121,7 @@ export function BarPlot({ W, H, fs, items, horizontal, fmtV, valueLabel, onToggl
             </g>
           )
         })}
-        {refLines.map((r, i) => r.value >= vmin && r.value <= vmax && <g key={r.label}><line x1={x(r.value)} x2={x(r.value)} y1={T} y2={H - B} stroke="#5B5347" strokeWidth={1.5} strokeDasharray={r.dash} /><text x={x(r.value) + 5} y={T + 12 + i * 15} fontSize={12} fontWeight={700} fill="#5B5347" stroke={GT.paper} strokeWidth={3} paintOrder="stroke" {...txt()}>{r.label}</text></g>)}
+        {refLines.map((r, i) => r.value >= vmin && r.value <= vmax && <g key={r.label}><line x1={x(r.value)} x2={x(r.value)} y1={T - 4} y2={H - B} stroke="#5B5347" strokeWidth={1.5} strokeDasharray={r.dash} /><text x={x(r.value) + 5} y={14 + i * 15} fontSize={12} fontWeight={700} fill="#5B5347" stroke={GT.paper} strokeWidth={3} paintOrder="stroke" {...txt()}>{r.label}</text></g>)}
         <text x={L + pw / 2} y={H - 6} textAnchor="middle" fontSize={14} fontWeight={800} fill={GT.ink} {...txt()}>{valueLabel}</text>
         {key}
       </svg>
