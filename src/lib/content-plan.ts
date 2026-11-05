@@ -51,16 +51,16 @@ const fail = (e: { code?: string; message: string }): Result => (isMissing(e) ? 
 
 const NEEDS_SQL = 'The brief columns have not been created yet. Run supabase/migrations/20261106100000_content_plan_briefs.sql in Supabase.'
 
-export async function createItems(items: NewItem[]): Promise<Result> {
+export async function createItems(items: NewItem[]): Promise<Result & { ids?: string[] }> {
   const supa = createAdminClient()
-  let { error } = await supa.from('content_plan').insert(items)
+  let { data, error } = await supa.from('content_plan').insert(items).select('id')
   if (isMissingColumn(error)) {
     // old table: save without the new fields rather than refuse (a brief typed now would be lost, so say so)
     if (items.some(i => i.brief)) return { ok: false, missing: true, error: NEEDS_SQL }
-    ;({ error } = await supa.from('content_plan').insert(items.map(i => { const o: Record<string, unknown> = { ...i }; for (const f of NEW_FIELDS) delete o[f]; return o })))
+    ;({ data, error } = await supa.from('content_plan').insert(items.map(i => { const o: Record<string, unknown> = { ...i }; for (const f of NEW_FIELDS) delete o[f]; return o })).select('id'))
   }
   if (error) { log.error('createItems', 'Supabase error', error.message); return fail(error) }
-  return { ok: true }
+  return { ok: true, ids: ((data ?? []) as { id: string }[]).map(r => r.id) }
 }
 export async function updateItem(id: string, patch: Partial<NewItem>): Promise<Result> {
   const { error } = await createAdminClient().from('content_plan').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
@@ -161,4 +161,19 @@ export async function getItem(id: string): Promise<{ id: string; plan_date: stri
   if (isMissing(error)) return 'missing'
   if (error) { log.error('getItem', 'Supabase error', error.message); return null }
   return data as never
+}
+
+/** What each assistant has uploaded lately: how many items in the last 30 days and when the latest one arrived. */
+export async function sourceActivity(): Promise<{ missing: boolean; by: Record<string, { count: number; last: string | null }> }> {
+  const { data, error } = await createAdminClient().from('content_plan').select('source, updated_at').neq('source', 'george').order('updated_at', { ascending: false }).limit(1000)
+  if (isMissingColumn(error) || isMissing(error)) return { missing: true, by: {} }
+  if (error) { log.error('sourceActivity', 'Supabase error', error.message); return { missing: false, by: {} } }
+  const cutoff = Date.now() - 30 * 86_400_000
+  const by: Record<string, { count: number; last: string | null }> = {}
+  for (const r of (data ?? []) as { source: string; updated_at: string }[]) {
+    const e = (by[r.source] ??= { count: 0, last: null })
+    if (new Date(r.updated_at).getTime() >= cutoff) e.count++
+    if (!e.last) e.last = r.updated_at
+  }
+  return { missing: false, by }
 }

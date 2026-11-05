@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cleanAgentItem, cleanItem, cleanTargets, repeatDays, DEFAULT_TARGETS, addDays, daysBetween, effectiveStatus, entriesFor, etDay, isDay, monthGrid, roadmap, shiftMonth, weekStart, type ArticleRef, type Entry, type PlanItem } from './content-plan-core'
+import { assistantInstructions, cleanAgentItem, cleanItem, cleanTargets, repeatDays, DEFAULT_TARGETS, addDays, daysBetween, effectiveStatus, entriesFor, etDay, isDay, monthGrid, roadmap, shiftMonth, weekStart, type ArticleRef, type Entry, type PlanItem } from './content-plan-core'
 
 const item = (o: Partial<PlanItem>): PlanItem => ({ id: 'i' + Math.random(), plan_date: '2026-11-05', kind: 'article', title: 't', notes: '', status: 'planned', article_id: null, url: '', brief: '', source: 'george', external_key: null, assets: [], ...o })
 const NOW = new Date('2026-11-05T15:00:00Z')
@@ -95,5 +95,16 @@ describe('briefs, sources and assistant uploads', () => {
     expect(cleanAgentItem({ ...base, status: 'drafted' }, 'x')!.status).toBe('drafted')
     expect(cleanAgentItem({ ...base, article_id: '123e4567-e89b-12d3-a456-426614174000' }, 'mlb_analysis')!.article_id).toBeNull()
     expect(cleanAgentItem({ plan_date: 'bad', title: 'x' }, 'x')).toBeNull()
+  })
+})
+
+describe('assistant instructions', () => {
+  it('give the endpoint, the rules and the right kind for each assistant, and no token', () => {
+    for (const [src, kind] of [['mlb_analysis', 'article'], ['x', 'x_post'], ['youtube', 'video']] as const) {
+      const t = assistantInstructions(src, 'https://xlab9.com/')
+      expect(t).toContain('https://xlab9.com/api/admin/content-plan/ingest'); expect(t).toContain('/assets'); expect(t).toContain(`"kind": "${kind}"`)
+      expect(t).toContain('"planned" or "drafted"'); expect(t).toContain('locked'); expect(t).toContain('<YOUR TOKEN>'); expect(t).not.toMatch(/Bearer [A-Za-z0-9]{20,}/)
+      expect(t).not.toMatch(/\b(will win|lock of|guarantee|bet on)\b/i)
+    }
   })
 })

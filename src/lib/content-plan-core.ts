@@ -163,3 +163,38 @@ export function repeatDays(from: string, every: 'none' | 'day' | 'week', count: 
   const n = every === 'none' ? 1 : Math.max(1, Math.min(60, Math.floor(count) || 1))
   return Array.from({ length: n }, (_, i) => addDays(from, i * (every === 'week' ? 7 : 1)))
 }
+
+// ── Instructions to paste into a content assistant ────────────────────────────────────────
+
+export type AgentSource = Exclude<Source, 'george'>
+const AGENT: Record<AgentSource, { kinds: string; what: string; key: string; brief: string }> = {
+  mlb_analysis: { kinds: '"article" (a brief for an article) or "graphic"', what: 'the analysis briefs', key: 'mlb-2026-11-12-brewers-bullpen', brief: 'the full article brief: the question, the numbers with their sample sizes, the sections in order, and the sources' },
+  x: { kinds: '"x_post" or "graphic"', what: 'the X posts', key: 'x-2026-11-12-schlittler-cy', brief: 'the post copy exactly as it should go out, the self-reply, the link, and a note of which graphic goes with it' },
+  youtube: { kinds: '"video"', what: 'the YouTube scripts', key: 'yt-2026-11-12-myth-2', brief: 'the full script: hook, scenes in order, numbers with their samples, and the thumbnail text' },
+}
+/** Plain-text instructions for one assistant on how to upload to the content calendar. No token appears in it; the assistant is given its token separately. */
+export function assistantInstructions(source: AgentSource, siteUrl: string): string {
+  const a = AGENT[source]
+  const base = `${siteUrl.replace(/\/$/, '')}/api/admin/content-plan`
+  return [
+    `You upload ${a.what} to the x9Lab content calendar.`,
+    '',
+    `AUTH  Send the header  Authorization: Bearer <YOUR TOKEN>  on every call. Your token is private: never print it, store it in a file, or put it in a post.`,
+    '',
+    `UPLOAD ITEMS  POST ${base}/ingest   (JSON, up to 30 items per call)`,
+    `{ "items": [ { "plan_date": "2026-11-12", "kind": "${source === 'x' ? 'x_post' : source === 'youtube' ? 'video' : 'article'}", "title": "short title", "notes": "angle in one or two lines", "brief": "...", "url": "", "status": "drafted", "external_key": "${a.key}" } ] }`,
+    `- plan_date is the day it should go out (YYYY-MM-DD). kind is ${a.kinds}.`,
+    `- brief is ${a.brief}. Plain text, up to 50,000 characters.`,
+    '- status can only be "planned" or "drafted". Anything else is stored as planned. You can never publish, schedule, skip or delete.',
+    '- external_key is your own id for the item (letters, numbers, - _ . up to 80). Send the same key again to update the item instead of duplicating it. Once George has scheduled, published or skipped an item it is locked: the reply says "locked" and nothing changes.',
+    '- The reply is { "ok": true, "results": [ { "external_key", "id", "outcome": "created" | "updated" | "locked" } ] }. Keep the id: you need it for images.',
+    '',
+    `SEE WHAT YOU SENT  GET ${base}/ingest?from=2026-11-01&to=2026-11-30   (at most 31 days; your own items only, with the brief length, not the brief)`,
+    '',
+    `UPLOAD AN IMAGE  POST ${base}/assets   (multipart form: id, file, label, role)`,
+    '- id is the item id from the reply above. file is a PNG, JPEG or WebP up to 8 MB. role is "thumbnail", "graphic" or "other". label is a short caption.',
+    '- At most 12 images per item. Images are private: they appear in the calendar for George through links that expire.',
+    '',
+    'RULES  Describe what the data shows; no predictions or betting language. Keep every number with its sample size. Do not call any other route.',
+  ].join('\n')
+}

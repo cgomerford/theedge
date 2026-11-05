@@ -11,8 +11,8 @@ import { useRouter } from 'next/navigation'
 import { C, SANS } from '@/components/team/ui'
 import ItemDrawer from './ItemDrawer'
 import {
-  KINDS, OPEN, STATUSES, addDays, kindOf, repeatDays, shiftMonth,
-  type ArticleRef, type Entry, type Kind, type Roadmap, type Status, type Targets,
+  KINDS, OPEN, STATUSES, addDays, assistantInstructions, kindOf, repeatDays, shiftMonth, sourceLabel,
+  type AgentSource, type ArticleRef, type Entry, type Kind, type Roadmap, type Status, type Targets,
 } from '@/lib/content-plan-core'
 
 const lab: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, margin: '12px 0 4px' }
@@ -26,10 +26,11 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const dayLabel = (d: string, o: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' }) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { ...o, timeZone: 'UTC' })
 const monthLabel = (ym: string) => new Date(`${ym}-01T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
-type Form = { id: string | null; kind: Kind; title: string; notes: string; status: Status; article_id: string; url: string; every: 'none' | 'day' | 'week'; count: number }
-const blank = (): Form => ({ id: null, kind: 'article', title: '', notes: '', status: 'planned', article_id: '', url: '', every: 'none', count: 5 })
+type Form = { id: string | null; kind: Kind; title: string; notes: string; brief: string; status: Status; article_id: string; url: string; every: 'none' | 'day' | 'week'; count: number }
+const blank = (): Form => ({ id: null, kind: 'article', title: '', notes: '', brief: '', status: 'planned', article_id: '', url: '', every: 'none', count: 5 })
+type Assistant = { source: AgentSource; enabled: boolean; count: number; last: string | null }
 
-export default function CalendarBoard(p: { ym: string; today: string; selected: string; grid: { day: string; inMonth: boolean }[][]; entries: Entry[]; report: Roadmap; targets: Targets; linkable: ArticleRef[]; missing: boolean }) {
+export default function CalendarBoard(p: { ym: string; today: string; selected: string; grid: { day: string; inMonth: boolean }[][]; entries: Entry[]; report: Roadmap; targets: Targets; linkable: ArticleRef[]; missing: boolean; assistants: Assistant[]; siteUrl: string; columnsReady: boolean }) {
   const router = useRouter()
   const [sel, setSel] = useState(p.selected)
   const [form, setForm] = useState<Form>(blank())
@@ -43,25 +44,29 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
   const dayEntries = byDay.get(sel) ?? []
   const r = p.report
 
-  async function call(method: string, url: string, body?: unknown): Promise<boolean> {
+  async function call(method: string, url: string, body?: unknown): Promise<{ ids?: string[] } | null> {
     setBusy(true); setErr('')
     try {
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
-      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
-      if (!res.ok || !j.ok) { setErr(j.error ?? 'Could not save. Try again.'); return false }
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; ids?: string[] }
+      if (!res.ok || !j.ok) { setErr(j.error ?? 'Could not save. Try again.'); return null }
       router.refresh()
-      return true
-    } catch { setErr('Could not reach the server. Try again.'); return false } finally { setBusy(false) }
+      return j
+    } catch { setErr('Could not reach the server. Try again.'); return null } finally { setBusy(false) }
   }
 
   async function save() {
     if (!form.title.trim()) { setErr('A title is needed.'); return }
     const base = { kind: form.kind, title: form.title, notes: form.notes, status: form.status, article_id: form.article_id || null, url: form.url }
-    const ok = form.id ? await call('PATCH', '/api/admin/content-plan', { id: form.id, plan_date: sel, ...base }) : await call('POST', '/api/admin/content-plan', { items: repeatDays(sel, form.every, form.count).map(d => ({ plan_date: d, ...base })) })
-    if (ok) setForm(blank())
+    // Editing keeps the brief as it is (this form does not hold it); a new item can start with one.
+    const r = form.id ? await call('PATCH', '/api/admin/content-plan', { id: form.id, plan_date: sel, ...base }) : await call('POST', '/api/admin/content-plan', { items: repeatDays(sel, form.every, form.count).map(d => ({ plan_date: d, ...base, brief: form.brief })) })
+    if (!r) return
+    const single = !form.id && form.every === 'none' && r.ids?.length === 1
+    if (single) setOpen({ key: `p${r.ids![0]}`, day: sel, kind: form.kind, title: form.title, status: form.status, source: 'plan', itemId: r.ids![0], notes: form.notes, from: 'george' }) // straight on to the script and thumbnails
+    setForm(blank())
   }
   const setStatus = (e: Entry, status: Status) => e.itemId && call('PATCH', '/api/admin/content-plan', { id: e.itemId, status })
-  const edit = (e: Entry) => e.itemId && setForm({ id: e.itemId, kind: e.kind, title: e.title, notes: e.notes ?? '', status: e.status === 'published' && !e.articleId ? 'published' : e.status, article_id: e.articleId ?? '', url: e.url ?? '', every: 'none', count: 1 })
+  const edit = (e: Entry) => e.itemId && setForm({ id: e.itemId, kind: e.kind, title: e.title, notes: e.notes ?? '', brief: '', status: e.status === 'published' && !e.articleId ? 'published' : e.status, article_id: e.articleId ?? '', url: e.url ?? '', every: 'none', count: 1 })
   async function saveTargets() { if (await call('PUT', '/api/admin/content-plan', { targets: draft })) setMsg('Targets saved.') }
 
   /** "Brief" and the image count, shown on an item that has them. */
@@ -158,6 +163,33 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
         </details>
       </section>
 
+      {/* ── Assistant uploads ──────────────────────────────────────────── */}
+      <section style={{ ...card, marginBottom: 18 }} aria-label="Assistant uploads">
+        <details>
+          <summary style={{ cursor: 'pointer', fontSize: 15, fontWeight: 800 }}>Assistant uploads: MLB Analysis, X and YouTube send their briefs here</summary>
+          <p style={{ fontSize: 13, color: '#5B5347', margin: '10px 0', lineHeight: 1.5 }}>Each assistant uploads its own briefs, scripts and images with its own token. Uploads arrive as planned or drafted, never published, and appear on the calendar like your own items, marked with their source. Give an assistant its instructions and its token; the token is set in Vercel and never shown here.</p>
+          {!p.columnsReady && <div role="note" style={{ fontSize: 13, background: '#FEF9C3', border: '1px solid #e8dc7a', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>Uploads switch on once <code>supabase/migrations/20261106100000_content_plan_briefs.sql</code> has been run in Supabase.</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+            {p.assistants.map(a => (
+              <div key={a.source} style={{ border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <b style={{ fontSize: 14 }}>{sourceLabel(a.source)}</b>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, padding: '2px 10px', borderRadius: 999, background: a.enabled ? '#E3F5EC' : '#FBE4DF', color: a.enabled ? '#12714F' : '#B23A24' }}>{a.enabled ? 'Token set' : 'Token not set'}</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: '#5B5347', margin: '6px 0 8px' }}>{a.count} item{a.count === 1 ? '' : 's'} in the last 30 days{a.last ? ` · latest ${new Date(a.last).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}` : ''}</div>
+                {!a.enabled && <div style={{ fontSize: 11.5, color: '#B23A24', marginBottom: 6 }}>Set CONTENT_TOKEN_{a.source.toUpperCase()} in Vercel (a random string of 20 or more characters).</div>}
+                <button type="button" style={lite} onClick={async () => { try { await navigator.clipboard.writeText(assistantInstructions(a.source, p.siteUrl)); setMsg(`${sourceLabel(a.source)} instructions copied.`) } catch { setErr('Could not copy. Open the instructions and select them.') } }}>Copy instructions</button>
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Read the instructions</summary>
+                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: SANS, fontSize: 12, lineHeight: 1.5, background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 8, padding: 10, margin: '6px 0 0', overflowX: 'auto' }}>{assistantInstructions(a.source, p.siteUrl)}</pre>
+                </details>
+              </div>
+            ))}
+          </div>
+          {msg && <div style={{ fontSize: 12, color: '#12714F', marginTop: 8 }}>{msg}</div>}
+        </details>
+      </section>
+
       <div className="cal-cols" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 18, alignItems: 'start' }}>
         {/* ── Month grid ─────────────────────────────────────────────── */}
         <section aria-label="Month">
@@ -225,6 +257,7 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
             </div>
             <input style={{ ...inp, marginTop: 6 }} placeholder="Title (what goes out)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} maxLength={200} />
             <textarea style={{ ...inp, marginTop: 6, minHeight: 56, resize: 'vertical' }} placeholder="Notes (angle, data, who does what)" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+            {!form.id && <textarea style={{ ...inp, marginTop: 6, minHeight: 90, resize: 'vertical', lineHeight: 1.5 }} placeholder="Brief or script (optional). Paste it here, then attach thumbnails on the next screen." value={form.brief} onChange={e => setForm(f => ({ ...f, brief: e.target.value.slice(0, 50_000) }))} aria-label="Brief or script" />}
             {form.kind === 'article' && (
               <select style={{ ...inp, marginTop: 6 }} value={form.article_id} onChange={e => setForm(f => ({ ...f, article_id: e.target.value, title: f.title || p.linkable.find(a => a.id === e.target.value)?.title || '' }))} aria-label="Link to an article">
                 <option value="">Not linked to an article yet</option>

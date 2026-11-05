@@ -36,3 +36,10 @@ export async function ingestSource(req: NextRequest): Promise<Source | null> {
   }
   return found
 }
+
+/** Whether each assistant's token is set (long enough to be accepted). Only yes or no: the token itself never leaves this file. */
+export function tokensReady(): Record<Source, boolean> {
+  const out: Record<Source, boolean> = { george: false, mlb_analysis: false, x: false, youtube: false }
+  for (const [source, name] of VARS) out[source] = (process.env[name]?.length ?? 0) >= MIN_TOKEN
+  return out
+}

@@ -6,7 +6,7 @@ import { createItems, deleteItem, getItem, saveTargets, updateItem } from '@/lib
 
 export const dynamic = 'force-dynamic'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const reply = (r: { ok: boolean; missing?: boolean; error?: string }) => NextResponse.json(r, { status: r.ok ? 200 : r.missing ? 503 : 500 })
+const reply = (r: { ok: boolean; missing?: boolean; error?: string; ids?: string[] }) => NextResponse.json(r, { status: r.ok ? 200 : r.missing ? 503 : 500 })
 const body = async (req: NextRequest) => (await req.json().catch(() => ({}))) as Record<string, unknown>
 
 // GET ?id=... returns one item in full, brief included (read when its drawer opens).

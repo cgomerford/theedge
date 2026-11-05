@@ -5,7 +5,9 @@
 
 import Link from 'next/link'
 import { addDays, entriesFor, etDay, isDay, monthGrid, roadmap } from '@/lib/content-plan-core'
-import { getTargets, listLinkableArticles, listPlan, listPublishedArticles } from '@/lib/content-plan'
+import { getTargets, listLinkableArticles, listPlan, listPublishedArticles, sourceActivity } from '@/lib/content-plan'
+import { tokensReady } from '@/lib/content-ingest-auth'
+import { SITE_URL } from '@/lib/site'
 import CalendarBoard from './CalendarBoard'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +22,9 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const first = grid[0][0].day, last = grid[grid.length - 1][6].day
   // the report looks back five weeks and forward a week, wherever the month on screen is
   const from = [first, addDays(today, -40)].sort()[0], to = [last, addDays(today, 10)].sort().reverse()[0]
-  const [plan, articles, linkable, targets] = await Promise.all([listPlan(from, to), listPublishedArticles(from, to), listLinkableArticles(), getTargets()])
+  const [plan, articles, linkable, targets, activity] = await Promise.all([listPlan(from, to), listPublishedArticles(from, to), listLinkableArticles(), getTargets(), sourceActivity()])
+  const ready = tokensReady()
+  const assistants = (['mlb_analysis', 'x', 'youtube'] as const).map(source => ({ source, enabled: ready[source], count: activity.by[source]?.count ?? 0, last: activity.by[source]?.last ?? null }))
   const entries = entriesFor(plan.items, [...articles, ...linkable.filter(a => !articles.some(x => x.id === a.id))], now)
   const report = roadmap(entries, targets, today)
   const selected = isDay(sp.d) ? sp.d : today.slice(0, 7) === ym ? today : `${ym}-01`
@@ -34,7 +38,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <p style={{ margin: '0 0 18px', color: '#5B5347', fontSize: 14, maxWidth: 820, lineHeight: 1.5 }}>
         Plan each day&apos;s articles and posts, mark them published as they go out, and see whether the week is on pace. Articles you publish on the site appear on their day automatically.
       </p>
-      <CalendarBoard ym={ym} today={today} selected={selected} grid={grid} entries={entries} report={report} targets={targets} linkable={linkable} missing={plan.missing} />
+      <CalendarBoard ym={ym} today={today} selected={selected} grid={grid} entries={entries} report={report} targets={targets} linkable={linkable} missing={plan.missing} assistants={assistants} siteUrl={SITE_URL} columnsReady={!activity.missing} />
     </div>
   )
 }
