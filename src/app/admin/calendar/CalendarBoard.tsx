@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { C, SANS } from '@/components/team/ui'
+import ItemDrawer from './ItemDrawer'
 import {
   KINDS, OPEN, STATUSES, addDays, kindOf, repeatDays, shiftMonth,
   type ArticleRef, type Entry, type Kind, type Roadmap, type Status, type Targets,
@@ -36,6 +37,7 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
   const [err, setErr] = useState('')
   const [draft, setDraft] = useState<Targets>(p.targets)
   const [msg, setMsg] = useState('')
+  const [open, setOpen] = useState<Entry | null>(null)
 
   const byDay = useMemo(() => { const m = new Map<string, Entry[]>(); for (const e of p.entries) (m.get(e.day) ?? m.set(e.day, []).get(e.day)!).push(e); return m }, [p.entries])
   const dayEntries = byDay.get(sel) ?? []
@@ -61,6 +63,10 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
   const setStatus = (e: Entry, status: Status) => e.itemId && call('PATCH', '/api/admin/content-plan', { id: e.itemId, status })
   const edit = (e: Entry) => e.itemId && setForm({ id: e.itemId, kind: e.kind, title: e.title, notes: e.notes ?? '', status: e.status === 'published' && !e.articleId ? 'published' : e.status, article_id: e.articleId ?? '', url: e.url ?? '', every: 'none', count: 1 })
   async function saveTargets() { if (await call('PUT', '/api/admin/content-plan', { targets: draft })) setMsg('Targets saved.') }
+
+  /** "Brief" and the image count, shown on an item that has them. */
+  const tags = (e: Entry) => (e.hasBrief || (e.assetCount ?? 0) > 0) ? <span style={{ fontWeight: 800, opacity: 0.85 }}>{e.hasBrief ? ' · Brief' : ''}{(e.assetCount ?? 0) > 0 ? ` · ${e.assetCount} img` : ''}</span> : null
+  const openItem = (e: Entry, ev: React.SyntheticEvent) => { ev.stopPropagation(); if (e.itemId) setOpen(e); else setSel(e.day) }
 
   const chip = (e: Entry, small = false): React.CSSProperties => {
     const k = kindOf(e.kind)
@@ -172,7 +178,7 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
                   style={{ minHeight: 104, padding: 5, borderRadius: 8, cursor: 'pointer', background: inMonth ? '#fff' : '#F7F4EC', border: `${isSel ? 2 : 1}px solid ${isSel ? C.orange : isToday ? C.ink : C.line}`, opacity: inMonth ? 1 : 0.65, boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 800, marginBottom: 3, color: isToday ? C.orange : C.ink }}><span>{Number(day.slice(8))}</span>{list.length > 0 && <span style={{ fontSize: 10.5, color: C.mute, fontWeight: 700 }}>{list.filter(e => e.status === 'published').length}/{list.length}</span>}</div>
                   <div style={{ display: 'grid', gap: 2 }}>
-                    {list.slice(0, 3).map(e => <span key={e.key} className="cal-chip-text" style={chip(e, true)} title={`${kindOf(e.kind).label}: ${e.title} (${e.status})`}>{e.title}</span>)}
+                    {list.slice(0, 3).map(e => <span key={e.key} className="cal-chip-text" role="button" tabIndex={0} onClick={ev => openItem(e, ev)} onKeyDown={ev => { if (ev.key === 'Enter') openItem(e, ev) }} style={chip(e, true)} title={`${kindOf(e.kind).label}: ${e.title} (${e.status}). Click to open.`}>{e.title}{tags(e)}</span>)}
                     {list.length > 3 && <span style={{ fontSize: 10.5, color: C.mute, fontWeight: 700 }}>+{list.length - 3} more</span>}
                     <span style={{ display: 'none' }} className="cal-dots" />
                   </div>
@@ -195,13 +201,14 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
             {dayEntries.map(e => (
               <div key={e.key} style={{ border: `1px solid ${C.line}`, borderLeft: `4px solid ${kindOf(e.kind).color}`, borderRadius: 8, padding: '8px 10px' }}>
                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute }}>{kindOf(e.kind).label} · {STATUSES.find(s => s.id === e.status)?.label}{e.source === 'article' ? ' · from the site' : ''}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, margin: '2px 0', textDecoration: e.status === 'skipped' ? 'line-through' : undefined }}>{e.href ? <Link href={e.href} style={{ color: C.ink }} target={e.href.startsWith('http') ? '_blank' : undefined}>{e.title}</Link> : e.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, margin: '2px 0', textDecoration: e.status === 'skipped' ? 'line-through' : undefined }}>{e.source === 'plan' ? <button type="button" onClick={ev => openItem(e, ev)} style={{ all: 'unset', cursor: 'pointer' }} title="Open the brief and images">{e.title}</button> : e.href ? <Link href={e.href} style={{ color: C.ink }} target={e.href.startsWith('http') ? '_blank' : undefined}>{e.title}</Link> : e.title}{tags(e)}</div>
                 {e.notes && <div style={{ fontSize: 12.5, color: '#5B5347', whiteSpace: 'pre-wrap' }}>{e.notes}</div>}
                 {e.source === 'plan' && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {OPEN.includes(e.status) && <button type="button" style={lite} onClick={() => setStatus(e, 'published')} disabled={busy}>Mark published</button>}
                     {OPEN.includes(e.status) && <button type="button" style={lite} onClick={() => setStatus(e, 'skipped')} disabled={busy}>Skip</button>}
                     {!OPEN.includes(e.status) && <button type="button" style={lite} onClick={() => setStatus(e, 'planned')} disabled={busy}>Back to planned</button>}
+                    <button type="button" style={lite} onClick={ev => openItem(e, ev)}>Open</button>
                     <button type="button" style={lite} onClick={() => edit(e)}>Edit</button>
                     <button type="button" style={{ ...lite, color: '#B23A24' }} onClick={() => { if (e.itemId && window.confirm('Delete this item from the plan?')) call('DELETE', `/api/admin/content-plan?id=${e.itemId}`) }} disabled={busy}>Delete</button>
                   </div>
@@ -239,6 +246,7 @@ export default function CalendarBoard(p: { ym: string; today: string; selected: 
           </div>
         </aside>
       </div>
+      {open && <ItemDrawer key={open.itemId} entry={open} onClose={() => setOpen(null)} onChanged={() => router.refresh()} />}
     </div>
   )
 }

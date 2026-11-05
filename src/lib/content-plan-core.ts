@@ -16,7 +16,17 @@ export const STATUSES: { id: Status; label: string }[] = [
 export const OPEN: Status[] = ['planned', 'drafted', 'scheduled']
 export const kindOf = (k: string) => KINDS.find(x => x.id === k) ?? KINDS[5]
 
-export type PlanItem = { id: string; plan_date: string; kind: Kind; title: string; notes: string; status: Status; article_id: string | null; url: string }
+/** Who put an item on the calendar. The three assistants upload through token-protected routes; an item keeps its source for good. */
+export type Source = 'george' | 'mlb_analysis' | 'x' | 'youtube'
+export const SOURCES: { id: Source; label: string }[] = [{ id: 'george', label: 'George' }, { id: 'mlb_analysis', label: 'MLB Analysis' }, { id: 'x', label: 'X' }, { id: 'youtube', label: 'YouTube' }]
+export const sourceLabel = (s: string) => SOURCES.find(x => x.id === s)?.label ?? 'George'
+/** One image on an item, kept in the private content-assets bucket. */
+export type Asset = { path: string; label: string; role: 'thumbnail' | 'graphic' | 'other' }
+export const ASSET_ROLES: Asset['role'][] = ['thumbnail', 'graphic', 'other']
+export const MAX_ASSETS = 12
+export const MAX_BRIEF = 50_000
+
+export type PlanItem = { id: string; plan_date: string; kind: Kind; title: string; notes: string; status: Status; article_id: string | null; url: string; brief: string; source: Source; external_key: string | null; assets: Asset[] }
 export type ArticleRef = { id: string; title: string; slug?: string; status: 'draft' | 'published'; published_at: string | null; updated_at?: string }
 export type Targets = Record<Kind, number>
 // Only articles start with a target: nothing records X posts or graphics until they are planned here, so a target for them would read as behind from day one.
@@ -47,7 +57,7 @@ export const shiftMonth = (ym: string, n: number) => { const [y, m] = ym.split('
 
 // ── What a day holds ──────────────────────────────────────────────────────────────────────
 
-export type Entry = { key: string; day: string; kind: Kind; title: string; status: Status; source: 'plan' | 'article'; itemId?: string; articleId?: string | null; notes?: string; url?: string; /** where the piece lives, for a link */ href?: string }
+export type Entry = { key: string; day: string; kind: Kind; title: string; status: Status; source: 'plan' | 'article'; itemId?: string; articleId?: string | null; notes?: string; url?: string; /** where the piece lives, for a link */ href?: string; hasBrief?: boolean; assetCount?: number; from?: Source }
 
 /** A plan item's status once its linked article is taken into account: a published article means published, an unpublished one means at least drafted. */
 export function effectiveStatus(item: PlanItem, article: ArticleRef | undefined, now: Date): Status {
@@ -61,7 +71,7 @@ export function effectiveStatus(item: PlanItem, article: ArticleRef | undefined,
 export function entriesFor(items: PlanItem[], articles: ArticleRef[], now: Date): Entry[] {
   const byId = new Map(articles.map(a => [a.id, a]))
   const linked = new Set(items.map(i => i.article_id).filter((x): x is string => !!x))
-  const out: Entry[] = items.map(i => ({ key: `p${i.id}`, day: i.plan_date, kind: i.kind, title: i.title, status: effectiveStatus(i, i.article_id ? byId.get(i.article_id) : undefined, now), source: 'plan', itemId: i.id, articleId: i.article_id, notes: i.notes, url: i.url, href: i.url || (i.article_id && byId.get(i.article_id)?.slug ? `/articles/${byId.get(i.article_id)!.slug}` : undefined) }))
+  const out: Entry[] = items.map(i => ({ key: `p${i.id}`, day: i.plan_date, kind: i.kind, title: i.title, status: effectiveStatus(i, i.article_id ? byId.get(i.article_id) : undefined, now), source: 'plan', itemId: i.id, articleId: i.article_id, notes: i.notes, url: i.url, hasBrief: !!i.brief, assetCount: i.assets?.length ?? 0, from: i.source, href: i.url || (i.article_id && byId.get(i.article_id)?.slug ? `/articles/${byId.get(i.article_id)!.slug}` : undefined) }))
   for (const a of articles) {
     if (linked.has(a.id) || a.status !== 'published' || !a.published_at) continue
     out.push({ key: `a${a.id}`, day: etDay(a.published_at), kind: 'article', title: a.title, status: new Date(a.published_at) <= now ? 'published' : 'scheduled', source: 'article', articleId: a.id, href: a.slug ? `/articles/${a.slug}` : undefined })
@@ -116,7 +126,7 @@ export function roadmap(entries: Entry[], targets: Targets, today: string): Road
 
 // ── What the admin form may send (everything is checked here before it reaches the database) ──
 
-export type NewItem = Omit<PlanItem, 'id'>
+export type NewItem = Omit<PlanItem, 'id' | 'assets'>
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** A clean plan item, or null when the date or title is unusable. Unknown kinds and statuses fall back to Other / Planned; links must be http(s) or a site path. */
 export function cleanItem(x: unknown): NewItem | null {
@@ -128,7 +138,18 @@ export function cleanItem(x: unknown): NewItem | null {
     plan_date: o.plan_date, title, kind: KINDS.some(k => k.id === o.kind) ? (o.kind as Kind) : 'other', status: STATUSES.some(s => s.id === o.status) ? (o.status as Status) : 'planned',
     notes: typeof o.notes === 'string' ? o.notes.slice(0, 2000) : '', article_id: typeof o.article_id === 'string' && UUID.test(o.article_id) ? o.article_id : null,
     url: /^(https?:\/\/|\/)/.test(url) ? url : '',
+    brief: typeof o.brief === 'string' ? o.brief.replace(/\r\n/g, '\n').trim().slice(0, MAX_BRIEF) : '',
+    source: SOURCES.some(x => x.id === o.source) ? (o.source as Source) : 'george',
+    external_key: typeof o.external_key === 'string' && /^[a-z0-9][a-z0-9\-_.]{0,79}$/i.test(o.external_key) ? o.external_key : null,
+    // images are never taken from a body: only the asset route writes them
   }
+}
+
+/** An item uploaded by an assistant: the same checks, but the source is the token's, it can only arrive as planned or drafted (never published, scheduled or skipped), and it cannot link an article. */
+export function cleanAgentItem(x: unknown, source: Source): NewItem | null {
+  const item = cleanItem(x)
+  if (!item) return null
+  return { ...item, source, status: item.status === 'drafted' ? 'drafted' : 'planned', article_id: null }
 }
 /** Weekly targets: whole numbers from 0 to 50 for every kind; anything else becomes the default. */
 export function cleanTargets(x: unknown): Targets {

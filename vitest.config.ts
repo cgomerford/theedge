@@ -11,6 +11,8 @@ export default defineConfig({
       'src/lib/comments.test.ts',
       'src/lib/log.test.ts',
       'src/lib/content-plan-core.test.ts',
+      'src/lib/content-plan.test.ts',
+      'src/lib/content-assets.test.ts',
       'src/lib/fielding-bible.test.ts',
       'src/lib/proxy-matcher.test.ts',
       'src/lib/team-batting.test.ts',
