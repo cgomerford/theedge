@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+"""
+sim_engine.py: step 7. Expected runs for any batting order, computed exactly.
+
+How it works
+  A half-inning is a chain over (bases, outs, which batter is up). For each batter the engine knows
+  how often each result happens (1B, 2B, 3B, HR, BB, K, reached-on-error, and the kinds of ball in
+  play that are outs: ground ball, pop-up, line drive, fly ball by distance) and, for each result in
+  each base/out state, what really happened to runners in 2023-2026 (data/bcaa/transitions.csv).
+  Solving the chain gives expected runs per inning from each starting batter and who leads off the
+  next inning; stringing nine innings together gives expected runs per 9 innings for the order.
+  No random draws, so two orders can be compared with no noise.
+
+What differs between hitters in this version
+  result rates (shrunk toward league average), vs left- and right-handed pitching, ball-in-play mix
+  (ground ball vs fly ball by depth), and double-play tendency (how often a ground-ball out with a
+  runner on first and fewer than two outs becomes a double play).
+What does NOT differ yet: runner speed and runner-batter pairing (Tandem+), pitcher quality,
+  park, defense. Every opponent is a league-average pitcher of the stated handedness.
+
+Reads  data/bcaa/transitions.csv, data/bcaa/all_pa_<year>.csv, data/bcaa/re24_pooled.csv (self-test)
+Usage (from the theedge folder):
+  python3 scripts/bcaa/sim_engine.py --selftest
+Other scripts import it:  from sim_engine import Model
+"""
+import csv
+import glob
+import itertools
+import os
+import random
+import sys
+import time
+from collections import Counter, defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from transition_tables import klass  # same result classes as the tables
+
+OUT_DIR = "data/bcaa"
+PRIMARY = ["1B", "2B", "3B", "HR", "BB", "K", "ROE"]
+IPSUB = ["GB", "POP", "LD", "FB_short", "FB_med", "FB_deep", "FB_vdeep"]
+GROUP = {"GB_DP": "GB", "GB_other": "GB", "POP": "POP", "LD": "LD", "FB_short": "FB_short",
+         "FB_med": "FB_med", "FB_deep": "FB_deep", "FB_vdeep": "FB_vdeep"}
+MIN_N = 30
+# Starting values for how far to pull a hitter toward league average (in plate appearances of
+# league-average prior). Published regression points; the backtest is where these get tuned.
+K_RATE = {"K": 60, "BB": 120, "1B": 290, "2B": 1000, "3B": 1500, "HR": 170, "ROE": 4000}
+HAND_MULT = 2.0      # platoon splits are trusted half as much as the overall rate
+K_IP = 150           # ball-in-play out mix
+K_DP = 60            # double-play share of ground-ball outs with a runner on first
+
+
+def mask_of(bs):
+    return (1 if bs[0] != "_" else 0) | (2 if bs[1] != "_" else 0) | (4 if bs[2] != "_" else 0)
+
+
+def popcount(x):
+    return bin(x).count("1")
+
+
+def parse_sig(sig):
+    runners, be = sig.split("|B")
+    runs = outs = m = 0
+    if runners:
+        for part in runners.split(","):
+            _, e = part.split(">")
+            if e == "4":
+                runs += 1
+            elif e == "out":
+                outs += 1
+            else:
+                bit = 1 << (int(e) - 1)
+                if m & bit:
+                    return None
+                m |= bit
+    if be == "4":
+        runs += 1
+    elif be == "out":
+        outs += 1
+    else:
+        bit = 1 << (int(be) - 1)
+        if m & bit:
+            return None
+        m |= bit
+    return m, outs, runs
+
+
+def force(m):
+    if not m & 1:
+        return m | 1, 0
+    if not m & 2:
+        return m | 3, 0
+    if not m & 4:
+        return 7, 0
+    return 7, 1
+
+
+def standard(cls, m):
+    """Textbook fallback for a state the data never shows."""
+    if cls == "1B":
+        return [(1.0, ((m << 1) & 7) | 1, 0, 1 if m & 4 else 0)]
+    if cls == "2B":
+        return [(1.0, ((m << 2) & 7) | 2, 0, popcount(m & 6))]
+    if cls == "3B":
+        return [(1.0, 4, 0, popcount(m))]
+    if cls == "HR":
+        return [(1.0, 0, 0, popcount(m) + 1)]
+    if cls in ("BB", "ROE"):
+        m2, r = force(m)
+        return [(1.0, m2, 0, r)]
+    return [(1.0, m, 1, 0)]
+
+
+class Model:
+    def __init__(self, seasons=None, verbose=True):
+        self.verbose = verbose
+        self._load_transitions()
+        self._load_hitters(seasons)
+        self._tcache = {}
+
+    # ---------------------------------------------------------------- transitions
+    def _load_transitions(self):
+        agg = defaultdict(Counter)
+        path = os.path.join(OUT_DIR, "transitions.csv")
+        with open(path) as f:
+            for r in csv.DictReader(f):
+                d = parse_sig(r["signature"])
+                if d is None:
+                    continue
+                agg[(r["class"], int(r["outs"]), mask_of(r["base_state"]))][d] += int(r["count"])
+        self.agg = agg
+        self._ocache = {}
+        self.between = {}
+        bp = os.path.join(OUT_DIR, "between.csv")
+        if os.path.exists(bp):
+            cnt = defaultdict(Counter)
+            with open(bp) as f:
+                for r in csv.DictReader(f):
+                    cnt[(int(r["post_mask"]), int(r["post_outs"]))][
+                        (int(r["next_mask"]), int(r["next_outs"]), int(r["runs"]))] += int(r["count"])
+            for k, c in cnt.items():
+                tot = sum(c.values())
+                if tot >= MIN_N:
+                    self.between[k] = [(n / tot, m, o, ru) for (m, o, ru), n in c.items()]
+
+    def outcomes(self, cls, o, m):
+        """List of (probability, new_mask, outs_added, runs) for a result class in a state."""
+        key = (cls, o, m)
+        if key in self._ocache:
+            return self._ocache[key]
+        c = self.agg.get(key)
+        if not c or sum(c.values()) < MIN_N:
+            pooled = Counter()
+            for oo in (0, 1, 2):
+                pooled.update(self.agg.get((cls, oo, m), {}))
+            c = pooled if sum(pooled.values()) >= MIN_N else None
+        if c:
+            tot = sum(c.values())
+            res = [(n / tot, m2, oa, ru) for (m2, oa, ru), n in c.items()]
+        else:
+            res = standard(cls, m)
+        self._ocache[key] = res
+        return res
+
+    def gb_outcomes(self, o, m, f):
+        """Ground-ball out outcomes, with double plays reweighted by the hitter's odds ratio f."""
+        dp = self.outcomes("GB_DP", o, m) if self.agg.get(("GB_DP", o, m)) else []
+        ot = self.outcomes("GB_other", o, m)
+        nd = sum(self.agg.get(("GB_DP", o, m), {}).values())
+        no = sum(self.agg.get(("GB_other", o, m), {}).values())
+        if nd + no < MIN_N or nd == 0:
+            return ot if nd == 0 else (dp if no == 0 else ot)
+        odds = (nd / no) * f if no else float("inf")
+        p = odds / (1 + odds) if odds != float("inf") else 1.0
+        return [(p * x[0],) + x[1:] for x in dp] + [((1 - p) * x[0],) + x[1:] for x in ot]
+
+    # ---------------------------------------------------------------- hitters
+    def _load_hitters(self, seasons):
+        H = defaultdict(lambda: {"n": Counter(), "R": Counter(), "L": Counter(), "ip": Counter(),
+                                 "dp": 0, "gbe": 0})
+        names = {}
+        for p in sorted(glob.glob(os.path.join(OUT_DIR, "all_pa_*.csv"))):
+            year = int(os.path.basename(p)[7:11])
+            if seasons and year not in seasons:
+                continue
+            with open(p) as f:
+                for r in csv.DictReader(f):
+                    k = klass(r["event"], r["bb_type"], r["hit_distance_sc"])
+                    if k is None or k in ("BUNT", "IP_other"):
+                        continue
+                    g = GROUP.get(k)
+                    prim = "IPOUT" if g else k
+                    d = H[r["batter"]]
+                    names[r["batter"]] = r["batter_name"]
+                    d["n"][prim] += 1
+                    d[r["p_throws"]][prim] += 1
+                    if g:
+                        d["ip"][g] += 1
+                    if k in ("GB_DP", "GB_other") and r["base_state"][0] != "_" and int(r["outs"]) < 2:
+                        d["gbe"] += 1
+                        d["dp"] += k == "GB_DP"
+        self.H, self.names = H, names
+        lg = {"all": Counter(), "R": Counter(), "L": Counter()}
+        lip, ldp, lgbe = Counter(), 0, 0
+        for d in H.values():
+            lg["all"].update(d["n"]); lg["R"].update(d["R"]); lg["L"].update(d["L"])
+            lip.update(d["ip"]); ldp += d["dp"]; lgbe += d["gbe"]
+        self.lg = {h: {c: lg[h][c] / max(sum(lg[h].values()), 1) for c in PRIMARY + ["IPOUT"]} for h in lg}
+        nip = max(sum(lip.values()), 1)
+        self.lg_ip = {c: lip[c] / nip for c in IPSUB}
+        self.lg_dp = ldp / max(lgbe, 1)
+        if self.verbose:
+            print(f"Model: {len(H):,} hitters, {sum(sum(d['n'].values()) for d in H.values()):,} plate appearances; "
+                  f"league double-play share of eligible ground-ball outs {self.lg_dp:.1%}")
+
+    def probs(self, hid, hand):
+        """(class -> probability, double-play odds factor) for a hitter against a pitcher hand."""
+        d = self.H.get(hid)
+        lgh = self.lg[hand]
+        if d is None or sum(d["n"].values()) == 0:
+            p = {c: lgh[c] for c in PRIMARY}
+            ip = 1 - sum(p.values())
+            return {**p, **{c: ip * self.lg_ip[c] for c in IPSUB}}, 1.0
+        pa_all = sum(d["n"].values()); pa_h = sum(d[hand].values())
+        p = {}
+        for c in PRIMARY:
+            r_all = (d["n"][c] + K_RATE[c] * self.lg["all"][c]) / (pa_all + K_RATE[c])
+            kh = K_RATE[c] * HAND_MULT
+            p[c] = (d[hand][c] + kh * r_all) / (pa_h + kh)
+        ip = max(1 - sum(p.values()), 0.02)
+        scale = (1 - ip) / max(sum(p.values()), 1e-9)
+        p = {c: v * scale for c, v in p.items()}
+        nip = sum(d["ip"].values())
+        for c in IPSUB:
+            p[c] = ip * (d["ip"][c] + K_IP * self.lg_ip[c]) / (nip + K_IP)
+        pdp = (d["dp"] + K_DP * self.lg_dp) / (d["gbe"] + K_DP)
+        f = (pdp / (1 - pdp)) / (self.lg_dp / (1 - self.lg_dp))
+        return p, f
+
+    def table(self, hid, hand):
+        """T[state] -> list of (p, new_mask, new_outs, runs); state = outs*8 + mask."""
+        key = (hid, hand)
+        if key in self._tcache:
+            return self._tcache[key]
+        p, f = self.probs(hid, hand)
+        T = []
+        for o in (0, 1, 2):
+            for m in range(8):
+                acc = defaultdict(float)
+                for c, pc in p.items():
+                    if pc <= 0:
+                        continue
+                    outs = self.gb_outcomes(o, m, f) if c == "GB" else self.outcomes(c, o, m)
+                    for q, m2, oa, ru in outs:
+                        acc[(m2, o + oa, ru)] += pc * q
+                if self.between:
+                    acc2 = defaultdict(float)
+                    for (m2, o2, ru), q in acc.items():
+                        if o2 >= 3 or (m2, o2) not in self.between:
+                            acc2[(m2, o2, ru)] += q
+                        else:
+                            for p3, m3, o3, rb in self.between[(m2, o2)]:
+                                acc2[(m3, o3, ru + rb)] += q * p3
+                    acc = acc2
+                T.append([(q, m2, o2, ru) for (m2, o2, ru), q in acc.items()])
+        self._tcache[key] = T
+        return T
+
+    # ---------------------------------------------------------------- solving
+    @staticmethod
+    def _inning(Ts):
+        R = [0.0] * 9
+        N = [[0.0] * 9 for _ in range(9)]
+        for b in range(9):
+            cur = {b * 24: 1.0}
+            er = 0.0
+            for _ in range(60):
+                new = defaultdict(float)
+                for idx, pr in cur.items():
+                    k, s = divmod(idx, 24)
+                    k2 = k + 1 if k < 8 else 0
+                    for q, m2, o2, ru in Ts[k][s]:
+                        w = pr * q
+                        er += w * ru
+                        if o2 >= 3:
+                            N[b][k2] += w
+                        else:
+                            new[k2 * 24 + o2 * 8 + m2] += w
+                cur = new
+                if sum(cur.values()) < 1e-8:
+                    break
+            R[b] = er
+            tot = sum(N[b])
+            if tot > 0:
+                N[b] = [x / tot for x in N[b]]
+        return R, N
+
+    def runs_per_9(self, order, hand):
+        Ts = [self.table(h, hand) for h in order]
+        R, N = self._inning(Ts)
+        S = [1.0] + [0.0] * 8
+        total = 0.0
+        for _ in range(9):
+            total += sum(S[b] * R[b] for b in range(9))
+            S = [sum(S[b] * N[b][j] for b in range(9)) for j in range(9)]
+        return total
+
+    def lineup_runs(self, order, pL=0.0):
+        """Expected runs per 9 innings against a mix of pitchers: pL = share of left-handed pitching."""
+        v = (1 - pL) * self.runs_per_9(order, "R")
+        if pL > 0:
+            v += pL * self.runs_per_9(order, "L")
+        return v
+
+    def optimize(self, ids, pL=0.0, start=None, max_passes=8):
+        """Best batting order by repeated swaps from a starting order."""
+        best = list(start or ids)
+        val = self.lineup_runs(best, pL)
+        for _ in range(max_passes):
+            improved = False
+            for i, j in itertools.combinations(range(9), 2):
+                trial = best[:]
+                trial[i], trial[j] = trial[j], trial[i]
+                v = self.lineup_runs(trial, pL)
+                if v > val + 1e-9:
+                    best, val, improved = trial, v, True
+            if not improved:
+                break
+        return best, val
+
+
+def selftest():
+    t0 = time.time()
+    M = Model()
+    # a league-average hitter
+    M.H["LG"] = {"n": Counter(), "R": Counter(), "L": Counter(), "ip": Counter(), "dp": 0, "gbe": 0}
+    re = {}
+    with open(os.path.join(OUT_DIR, "re24_pooled.csv")) as f:
+        for r in csv.DictReader(f):
+            if r["runs_rest_of_inning"]:
+                re[(r["bases"], int(r["outs"]))] = float(r["runs_rest_of_inning"])
+    lgline = ["LG"] * 9
+    t1 = time.time()
+    r9 = M.runs_per_9(lgline, "R")
+    dt = time.time() - t1
+    print(f"\nCHECK 1: nine league-average hitters")
+    print(f"  expected runs per inning from the model: {r9 / 9:.3f}   (run-expectancy table says {re[('___', 0)]:.3f})")
+    print(f"  expected runs per 9 innings: {r9:.2f}   time per order: {dt:.2f}s")
+
+    # the nine hitters with the most plate appearances, best to worst by a simple on-base+power value
+    top = sorted(M.H, key=lambda h: -sum(M.H[h]["n"].values()) if h != "LG" else 0)[:200]
+    def val(h):
+        n = M.H[h]["n"]; pa = max(sum(n.values()), 1)
+        return (0.47 * n["1B"] + 0.76 * n["2B"] + 1.04 * n["3B"] + 1.40 * n["HR"] + 0.33 * n["BB"] - 0.27 * (n["K"] + n["IPOUT"])) / pa
+    nine = sorted(top[:60], key=val, reverse=True)[:9]
+    print("\nCHECK 2: does batting order move expected runs sensibly? Nine strong hitters, three orders")
+    print("  " + ", ".join(M.names[h].split(",")[0] for h in nine))
+    good = M.lineup_runs(nine, 0.3)
+    rev = M.lineup_runs(nine[::-1], 0.3)
+    random.seed(1)
+    rs = []
+    for _ in range(20):
+        o = nine[:]; random.shuffle(o); rs.append(M.lineup_runs(o, 0.3))
+    print(f"  best hitter first, descending value: {good:.3f} runs/9   worst first (reversed): {rev:.3f}")
+    print(f"  20 random orders: average {sum(rs) / 20:.3f}, lowest {min(rs):.3f}, highest {max(rs):.3f}")
+    print(f"  reversed-to-descending gap: {(good - rev) * 162:.0f} runs per 162 games")
+    t2 = time.time()
+    best, bv = M.optimize(nine, 0.3, start=nine)
+    print(f"  optimizer from descending: {bv:.3f} runs/9  (+{(bv - good) * 162:.1f} runs/162)  in {time.time() - t2:.0f}s")
+    print("  order: " + " > ".join(M.names[h].split(",")[0] for h in best))
+    print(f"\nTotal time {time.time() - t0:.0f}s\nPaste this whole output back.")
+
+
+if __name__ == "__main__":
+    if "--selftest" in sys.argv or len(sys.argv) == 1:
+        selftest()

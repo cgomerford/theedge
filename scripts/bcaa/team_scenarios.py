@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""
+team_scenarios.py: what a club's lineup is worth, where each hitter fits, and what a swap does.
+
+For each of the 30 clubs, using the latest season's measured hitter rates (nothing is forecast):
+  - core nine: the nine hitters who started the most games, in the order they usually bat
+  - lineup value: expected runs per 162 games for that order against the club's real mix of left- and
+    right-handed pitching
+  - best order: the best batting order the swap search finds, and Lineup Lift = best minus usual
+  - slot values: for each hitter, the runs per 162 if he swaps places with whoever bats in each
+    other slot, everyone else fixed (so the cost or gain of moving him)
+  - double-play runs: for each hitter and for the lineup, runs per 162 from his double-play tendency
+    compared with a league-average one (a hitter who grounds into more than average shows as negative)
+  - ranges: 90% interval from resampling each hitter's plate appearances 100 times and re-valuing the
+    SAME recommended order against the usual one (so the range is for the change itself)
+Runs only; wins use 10 runs per win. Hitter rates are last season's measured rates; if a hitter changes
+team, his rates come with him. Opponents are league-average pitchers of the right handedness.
+
+Reads  data/bcaa/all_pa_<year>.csv, transitions.csv, between.csv; imports sim_engine.py
+Writes data/bcaa/team_lineups.csv   (one row per club)
+       data/bcaa/slot_values.csv    (one row per hitter and slot)
+
+Usage (from the theedge folder):
+  python3 scripts/bcaa/team_scenarios.py                         all 30 clubs, detail for seven
+  python3 scripts/bcaa/team_scenarios.py --detail PHI,LAD        choose clubs to print in detail
+  python3 scripts/bcaa/team_scenarios.py --boot 200              more resamples (slower, tighter ranges)
+  python3 scripts/bcaa/team_scenarios.py --swap PHI Bohm "Eugenio Suárez"
+                                                                 replace a hitter in the usual slot and
+                                                                 report the change in runs per 162
+"""
+import csv
+import glob
+import itertools
+import os
+import random
+import sys
+import time
+from collections import Counter, defaultdict
+from itertools import groupby
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sim_engine as se
+
+OUT_DIR = "data/bcaa"
+PL_STARTER = 0.6
+GAMES = 162
+RUNS_PER_WIN = 10.0
+DEFAULT_DETAIL = ["PHI", "MIL", "TB", "LAD", "CHC", "CIN", "LAA"]
+
+
+# ------------------------------------------------------------------ data
+def read_teams(year):
+    """Per club: starts and average slot for each hitter, and the share of games against left-handed starters."""
+    starts = defaultdict(lambda: defaultdict(list))
+    left_games = Counter(); games = Counter()
+    bp_n = bp_l = 0
+    with open(os.path.join(OUT_DIR, f"all_pa_{year}.csv")) as f:
+        for pk, grp in groupby(csv.DictReader(f), key=lambda r: r["game_pk"]):
+            by_team = defaultdict(list)
+            for r in grp:
+                by_team[r["bat_team"]].append(r)
+                if r["sp_flag"] == "0":
+                    bp_n += 1; bp_l += r["p_throws"] == "L"
+            for team, rows in by_team.items():
+                rows.sort(key=lambda r: int(r["team_pa_n"]))
+                first9 = [r["batter"] for r in rows[:9]]
+                if len(rows) < 9 or len(set(first9)) < 9:
+                    continue
+                games[team] += 1
+                left_games[team] += rows[0]["p_throws"] == "L"
+                for i, h in enumerate(first9):
+                    starts[team][h].append(i + 1)
+    return starts, left_games, games, bp_l / max(bp_n, 1)
+
+
+def core_nine(starts_for_team):
+    top = sorted(starts_for_team.items(), key=lambda kv: -len(kv[1]))[:9]
+    return [h for h, v in sorted(top, key=lambda kv: (sum(kv[1]) / len(kv[1]), -len(kv[1])))]
+
+
+# ------------------------------------------------------------------ resampling
+def resample(c, rng):
+    keys = list(c)
+    if not keys:
+        return Counter()
+    return Counter(rng.choices(keys, weights=[c[k] for k in keys], k=sum(c.values())))
+
+
+def perturb(M, ids, rng):
+    saved = {}
+    for h in set(ids):
+        d = M.H.get(h)
+        if d is None:
+            continue
+        saved[h] = d
+        p = d["dp"] / d["gbe"] if d["gbe"] else 0.0
+        M.H[h] = {"n": resample(d["n"], rng), "R": resample(d["R"], rng), "L": resample(d["L"], rng),
+                  "ip": resample(d["ip"], rng), "gbe": d["gbe"],
+                  "dp": sum(rng.random() < p for _ in range(d["gbe"]))}
+        M._tcache.pop((h, "R"), None); M._tcache.pop((h, "L"), None)
+    return saved
+
+
+def restore(M, saved):
+    for h, d in saved.items():
+        M.H[h] = d
+        M._tcache.pop((h, "R"), None); M._tcache.pop((h, "L"), None)
+
+
+def delta_ci(M, order_a, order_b, pL, boot, seed=1):
+    """Point change (b minus a) in runs per 162 on the measured rates, plus a 90% interval and the median
+    from resampling the hitters involved. The interval shows how much the answer moves with sampling noise in
+    the hitters' rates. It is not a forecast, and the median can sit above or below the point change."""
+    pt = (M.lineup_runs(order_b, pL) - M.lineup_runs(order_a, pL)) * GAMES
+    if boot <= 0:
+        return pt, pt, pt, pt
+    rng = random.Random(seed)
+    ids = list(set(order_a) | set(order_b))
+    vals = []
+    for _ in range(boot):
+        saved = perturb(M, ids, rng)
+        vals.append((M.lineup_runs(order_b, pL) - M.lineup_runs(order_a, pL)) * GAMES)
+        restore(M, saved)
+    vals.sort()
+    return pt, vals[int(0.05 * boot)], vals[min(int(0.95 * boot), boot - 1)], vals[boot // 2]
+
+
+def best_order(M, ids, pL, start):
+    best, val = M.optimize(ids, pL, start=start)
+    rng = random.Random(7)
+    for _ in range(3):
+        o = ids[:]; rng.shuffle(o)
+        b, v = M.optimize(ids, pL, start=o)
+        if v > val + 1e-9:
+            best, val = b, v
+    return best, val
+
+
+def neutral_table(M0, x, hand):
+    """Hitter x's table with his double-play tendency replaced by the league average. The setting has to be
+    switched on while the table is BUILT (tables are built lazily and then cached), not just when M0 is created."""
+    saved = se.K_DP
+    se.K_DP = 1e12
+    try:
+        return M0.table(x, hand)
+    finally:
+        se.K_DP = saved
+
+
+def runs_with_neutral_dp(M, M0, order, h, pL):
+    """Runs per 9 with hitter h's double-play tendency replaced by the league average one."""
+    tot = 0.0
+    for hand, w in (("R", 1 - pL), ("L", pL)):
+        if w <= 0:
+            continue
+        Ts = [neutral_table(M0, x, hand) if x == h else M.table(x, hand) for x in order]
+        R, N = M._inning(Ts)
+        S = [1.0] + [0.0] * 8
+        t = 0.0
+        for _ in range(9):
+            t += sum(S[b] * R[b] for b in range(9))
+            S = [sum(S[b] * N[b][j] for b in range(9)) for j in range(9)]
+        tot += w * t
+    return tot
+
+
+def short(M, h):
+    return M.names.get(h, h)
+
+
+def find_hitter(M, text):
+    t = text.lower()
+    hits = [h for h, n in M.names.items() if t in n.lower()]
+    return hits
+
+
+# ------------------------------------------------------------------ main
+def main():
+    args = sys.argv[1:]
+    boot = 100
+    detail = DEFAULT_DETAIL
+    swap = None
+    for i, a in enumerate(args):
+        if a == "--boot":
+            boot = int(args[i + 1])
+        if a == "--detail":
+            detail = args[i + 1].split(",")
+        if a == "--swap":
+            swap = (args[i + 1].upper(), args[i + 2], args[i + 3])
+    years = sorted(int(os.path.basename(p)[7:11]) for p in glob.glob(os.path.join(OUT_DIR, "all_pa_*.csv")))
+    Y = years[-1]
+    t0 = time.time()
+    starts, left_games, games, bp_left = read_teams(Y)
+    M = se.Model(seasons=[Y], verbose=False)
+    saved_k = se.K_DP
+    se.K_DP = 1e12
+    M0 = se.Model(seasons=[Y], verbose=False)       # same hitters, every one with a league-average double-play tendency
+    se.K_DP = saved_k
+    print(f"{Y} season: {len(starts)} clubs, model ready ({time.time() - t0:.0f}s). Between-plate-appearance layer "
+          f"{'on' if getattr(M, 'between', None) else 'OFF (run between_pa.py and patch_sim_engine.py)'}.")
+
+    if swap:
+        team, out_txt, in_txt = swap
+        order = core_nine(starts[team])
+        pL = PL_STARTER * left_games[team] / max(games[team], 1) + (1 - PL_STARTER) * bp_left
+        outs = [h for h in order if out_txt.lower() in short(M, h).lower()]
+        ins = find_hitter(M, in_txt)
+        if len(outs) != 1:
+            print(f"Could not pick one hitter matching '{out_txt}' in {team}'s core nine: "
+                  f"{[short(M, h) for h in order]}"); return
+        if len(ins) != 1:
+            print(f"'{in_txt}' matches {len(ins)} hitters: {[short(M, h) for h in ins][:8]}. Be more specific."); return
+        new = [ins[0] if h == outs[0] else h for h in order]
+        print(f"\n{team}: {short(M, outs[0])}  ->  {short(M, ins[0])}, same batting slot")
+        for label, b in (("same slot", new), ("re-optimised order", best_order(M, new, pL, new)[0])):
+            pt, lo, hi, med = delta_ci(M, order, b, pL, boot)
+            print(f"  {label:20s} {pt:+6.1f} runs per 162 as measured; median {med:+.1f} (90% range {lo:+.1f} to {hi:+.1f})   = {med / RUNS_PER_WIN:+.2f} wins at the median")
+        print("  This treats the new hitter as repeating his measured rates from the same season.")
+        return
+
+    rows, slot_rows, summary = [], [], []
+    for team in sorted(starts):
+        order = core_nine(starts[team])
+        if len(order) < 9:
+            continue
+        pL = PL_STARTER * left_games[team] / max(games[team], 1) + (1 - PL_STARTER) * bp_left
+        base = M.lineup_runs(order, pL) * GAMES
+        best, bval = best_order(M, order, pL, order)
+        lift, lo, hi, med = delta_ci(M, order, best, pL, boot)
+        # per-hitter double-play runs: the lineup as it is, minus the lineup with his tendency replaced by average
+        dp_each = {h: (M.lineup_runs(order, pL) - runs_with_neutral_dp(M, M0, order, h, pL)) * GAMES for h in order}
+        slotvals = {}
+        for i, h in enumerate(order):
+            for j in range(9):
+                o = order[:]; o[i], o[j] = o[j], o[i]
+                slotvals[(h, j + 1)] = (M.lineup_runs(o, pL) * GAMES) - base
+                slot_rows.append([team, short(M, h), i + 1, j + 1, round(slotvals[(h, j + 1)], 2)])
+        rows.append([team, round(pL, 3), round(base, 1), round(bval * GAMES, 1), round(lift, 2), round(med, 2),
+                     round(lo, 2), round(hi, 2), round(med / RUNS_PER_WIN, 2), round(sum(dp_each.values()), 2)])
+        summary.append((team, base, lift, med, lo, hi, sum(dp_each.values())))
+        if team in detail:
+            print(f"\n{'=' * 78}\n{team}   usual order value {base:.0f} runs per 162; best order {bval * GAMES:.0f}; "
+                  f"Lineup Lift {lift:+.1f} as measured, typical {med:+.1f} (90% range {lo:+.1f} to {hi:+.1f}) = {med / RUNS_PER_WIN:+.2f} wins")
+            print("  usual slot  hitter                     best slot   gain if moved   double-play runs/162")
+            for i, h in enumerate(order):
+                bj = max(range(1, 10), key=lambda j: slotvals[(h, j)])
+                print(f"     {i + 1}        {short(M, h):26s}   {bj}         {slotvals[(h, bj)]:+6.1f}          {dp_each[h]:+6.1f}")
+            print("  recommended order: " + " > ".join(short(M, h).split(",")[0] for h in best))
+            print("  usual order:       " + " > ".join(short(M, h).split(",")[0] for h in order))
+        print(f"  [{team} done {time.time() - t0:.0f}s]", end="\r")
+
+    with open(os.path.join(OUT_DIR, "team_lineups.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["team", "share_left_pitching", "usual_order_runs162", "best_order_runs162", "lineup_lift_as_measured",
+                    "lineup_lift_typical", "lift_low90", "lift_high90", "lift_wins_typical", "double_play_runs_total"])
+        w.writerows(rows)
+    with open(os.path.join(OUT_DIR, "slot_values.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["team", "hitter", "usual_slot", "slot", "runs162_vs_usual_order"])
+        w.writerows(slot_rows)
+
+    print(f"\n{'=' * 78}\nLINEUP LIFT LEADERBOARD ({Y}, runs per 162 games)")
+    print("  'as measured' is the lift on the measured rates; 'typical' is the median over the resamples; the range is")
+    print("  the 90% interval across them (sampling noise in each hitter's rates, not a forecast).")
+    print("  team   usual    best   as measured   typical    90% range         wins(typical)   lineup double-play runs")
+    for team, base, lift, med, lo, hi, dp in sorted(summary, key=lambda x: -x[3]):
+        print(f"  {team:5s} {base:6.0f}  {base + lift:6.0f}     {lift:+5.1f}       {med:+5.1f}    {lo:+5.1f} to {hi:+5.1f}      {med / RUNS_PER_WIN:+5.2f}        {dp:+6.1f}")
+    avg = sum(s_[3] for s_ in summary) / len(summary)
+    print(f"\n  average typical Lineup Lift across {len(summary)} clubs: {avg:+.1f} runs per 162 games ({avg / RUNS_PER_WIN:+.2f} wins)")
+    print(f"  total time {time.time() - t0:.0f}s")
+    print("\nPaste this whole output back.")
+
+
+if __name__ == "__main__":
+    main()

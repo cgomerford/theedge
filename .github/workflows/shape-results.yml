@@ -1,0 +1,28 @@
+name: shape-results
+
+# Single writer of pitch_shape_results and pitch_shape_results_pitcher (scripts/build_pitch_shape_results.py).
+# Depends on nothing else: it reads Baseball Savant directly, one game day per request (2024 to today, ~700 days).
+# Saturday 06:00 UTC, the day after shape-cells (Fri), so the Savant-heavy shape jobs (Tue bins, Wed pitcher, Thu monthly, Fri cells) never overlap.
+# Python crons live only in GitHub Actions (Vercel cannot run them), so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '0 6 * * 6'
+  workflow_dispatch:
+
+jobs:
+  build-shape-results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build pitch shape results
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_pitch_shape_results.py

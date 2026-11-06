@@ -12,6 +12,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import SandboxClient from '@/components/pitch-shape/SandboxClient'
 import PitchFinder from '@/components/pitch-shape/PitchFinder'
 import PitchFinderV2 from '@/components/pitch-shape/PitchFinderV2'
+import ShapeResultsLab from '@/components/pitch-shape/ShapeResultsLab'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -54,7 +55,15 @@ export default async function ShapeSandboxPage({ searchParams }: { searchParams:
             <>
               <PitchFinderV2 isPro={isPro} pitchTypes={pitchTypes} />
               <div style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
-                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 02 · DIAL IN A SHAPE</div>
+                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 02 · WHAT SHAPES HAVE PRODUCED</div>
+                <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(26px,4vw,38px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>Which shapes save runs, and who is not getting them?</h2>
+                <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 14px', lineHeight: 1.5 }}>
+                  The same map, coloured by what pitches shaped like each spot have produced: runs saved, wOBA, xwOBA, average, slugging and whiffs. One Shape Score ranks every shape, and the board lists pitchers whose results trail or beat the shape they throw.
+                </p>
+              </div>
+              <ShapeResultsLab isPro={isPro} pitchTypes={pitchTypes} />
+              <div style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
+                <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 03 · DIAL IN A SHAPE</div>
                 <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(26px,4vw,38px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>What have pitches shaped like this produced?</h2>
                 <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 14px', lineHeight: 1.5 }}>
                   Build a pitch, or load a real one, and see how the league’s pitches with the same shape have done. Change one thing and see what moves. The shaded part of each slider is where real pitches live.
