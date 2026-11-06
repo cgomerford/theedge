@@ -35,8 +35,9 @@ const GROUPS: Record<TemplateId, { group: string; title: string }[]> = {
   textlist: [{ group: 'item', title: 'N triggers' }],
   otd: [],
   sotd: [],
+  headline: [],
 }
-const DEFAULT_PASTE_GROUP: Record<TemplateId, string> = { collision: 'tile', arsenal: 'pitch', contrast: 'contrast', attack: 'TB', scoreboard: 'run', textlist: 'item', otd: '', sotd: '' }
+const DEFAULT_PASTE_GROUP: Record<TemplateId, string> = { collision: 'tile', arsenal: 'pitch', contrast: 'contrast', attack: 'TB', scoreboard: 'run', textlist: 'item', otd: '', sotd: '', headline: '' }
 const TEAMS: TeamKey[] = ['neutral', ...[...MLB_TEAMS].map(t => t.abbrev).sort()]
 const input = 'rounded-md border border-stone-300 bg-white px-2 py-1 text-sm'
 const lab = 'text-[11px] uppercase tracking-widest text-stone-500'
@@ -87,7 +88,8 @@ export default function GraphicsStudio() {
   const check = useMemo(() => validateSpec(spec), [spec])
   const errors = [...jsonErrors, ...(check.ok ? [] : check.errors)]
   const isOtd = spec.template === 'otd' || spec.template === 'sotd'
-  const canExport = errors.length === 0 && (isOtd || spec.stats.length > 0)
+  const isHeadline = spec.template === 'headline'
+  const canExport = errors.length === 0 && (isOtd || isHeadline || spec.stats.length > 0)
   const [overflow, setOverflow] = useState<string[]>([])
 
   // Measures the preview column so the full-size node can be scaled to fit (an external DOM sync, hence an effect).
@@ -188,6 +190,8 @@ export default function GraphicsStudio() {
     setPasteMsg([])
   }
   function setTemplate(t: TemplateId) {
+    if (t === 'headline') { commit({ id: spec.id, template: 'headline', kicker: '', title: 'Paul Skenes\nlost his *99 mph*\nfastball.', subtitle: 'But what really went wrong this year?', chips: [], stats: [] }); return }
+    if (isHeadline) { commit({ ...clone(PRESETS[0]), template: t }); setPasteGroup(DEFAULT_PASTE_GROUP[t]); return }
     const toOtd = t === 'otd' || t === 'sotd'
     if (toOtd && !spec.otd) {
       commit({ id: spec.id, template: t, kicker: '', title: 'Headline', subtitle: '', chips: [], stats: [], otd: { date: '', body: { sections: [{ type: 'kv', label: 'Label', rows: [{ label: '', value: '' }] }] } } })
@@ -334,7 +338,7 @@ export default function GraphicsStudio() {
           </label>
         </div>
 
-        {!isOtd && <div className={box}>
+        {!isOtd && !isHeadline && <div className={box}>
           <p className={`mb-2 ${lab}`}>Auto-fill from the data · choose a game</p>
           <div className="grid gap-2 sm:grid-cols-3">
             <input type="date" className={input} value={slateDate} onChange={e => e.target.value && setSlateDate(e.target.value)} style={{ minHeight: 40 }} />
@@ -371,6 +375,17 @@ export default function GraphicsStudio() {
           <div className={box}>
             <p className={`mb-2 ${lab}`}>Full spec · validated as you type</p>
             <textarea className={`${input} w-full`} rows={22} value={jsonText} onChange={e => onJson(e.target.value)} spellCheck={false} />
+          </div>
+        ) : isHeadline ? (
+          <div className={box}>
+            <p className={`mb-2 ${lab}`}>Headline card</p>
+            <label className="flex flex-col gap-1"><span className={lab}>Headline · Enter starts a new line, *asterisks* make a phrase orange</span>
+              <textarea className={`${input} font-bold`} rows={4} value={spec.title} onChange={e => patch({ title: e.target.value })} style={{ fontSize: 16 }} /></label>
+            <label className="mt-2 flex flex-col gap-1"><span className={lab}>Line under it</span>
+              <input className={input} value={spec.subtitle ?? ''} onChange={e => patch({ subtitle: e.target.value || undefined })} placeholder="A question or one plain sentence" /></label>
+            <label className="mt-2 flex flex-col gap-1"><span className={lab}>File name id</span>
+              <input className={input} value={spec.id} onChange={e => patch({ id: e.target.value.replace(/[^a-z0-9-]+/gi, '-').toLowerCase() })} /></label>
+            <p className="mt-2 text-[11px] text-stone-500">The headline is set as large as it fits. Keep each line short (under about 16 characters) so the type stays big. The footer and handle are fixed. Say what happened, not what will happen.</p>
           </div>
         ) : isOtd ? (
           <OtdForm spec={spec} onChange={commit} />

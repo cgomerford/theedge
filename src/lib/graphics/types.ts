@@ -9,7 +9,7 @@ import type { OtdBody } from './otd-types'
 
 export type TeamKey = string
 export type SizeKey = 'landscape' | 'portrait' // 1200x675 | 1080x1350
-export type TemplateId = 'collision' | 'arsenal' | 'contrast' | 'attack' | 'scoreboard' | 'textlist' | 'otd' | 'sotd'
+export type TemplateId = 'collision' | 'arsenal' | 'contrast' | 'attack' | 'scoreboard' | 'textlist' | 'otd' | 'sotd' | 'headline'
 
 /** Text pill only, e.g. "TB", "MIL", "PROJECTED". */
 export interface Chip { text: string; team: TeamKey }

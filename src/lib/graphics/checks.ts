@@ -46,7 +46,7 @@ export function checkGraphic(spec: GraphicSpec, caption: string, snapshot: Recor
     const empty = spec.stats.filter(s => !(s.value ?? '').trim() && !(s.cells ?? []).length).length
     if (empty) out.push({ id: 'empty', level: 'warn', text: `${empty} row${empty === 1 ? ' has' : 's have'} no number` })
   }
-  if (spec.title.length > 48) out.push({ id: 'long', level: 'warn', text: `Headline is ${spec.title.length} characters`, detail: 'Long headlines shrink on a phone. Under 48 reads cleanly.' })
+  if (spec.template !== 'headline' && spec.title.length > 48) out.push({ id: 'long', level: 'warn', text: `Headline is ${spec.title.length} characters`, detail: 'Long headlines shrink on a phone. Under 48 reads cleanly.' })
   if (caption.length > 280) out.push({ id: 'cap', level: 'warn', text: `Caption is ${caption.length} characters`, detail: 'X shows 280 on a standard post.' })
   return out
 }

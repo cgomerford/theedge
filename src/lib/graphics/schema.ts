@@ -38,7 +38,7 @@ const stat = z.object({
 export const graphicSpecSchema = z
   .object({
     id: z.string().min(1).max(60),
-    template: z.enum(['collision', 'arsenal', 'contrast', 'attack', 'scoreboard', 'textlist', 'otd', 'sotd']),
+    template: z.enum(['collision', 'arsenal', 'contrast', 'attack', 'scoreboard', 'textlist', 'otd', 'sotd', 'headline']),
     kicker: z.string().max(60),
     title: z.string().min(1, 'title is required').max(80),
     subtitle: z.string().max(200).optional(),
@@ -57,6 +57,7 @@ export const graphicSpecSchema = z
       else if (s.otd.body.sections.length === 0 && !(s.otd.body.tiles?.length)) ctx.addIssue({ code: 'custom', path: ['otd', 'body'], message: 'include at least one section or tile' })
       return
     }
+    if (s.template === 'headline') return   // a title graphic: title and subtitle only
     if (s.stats.length === 0) ctx.addIssue({ code: 'custom', path: ['stats'], message: 'include at least one stat' })
     if (s.template === 'textlist') return
     s.stats.forEach((st, i) => {
