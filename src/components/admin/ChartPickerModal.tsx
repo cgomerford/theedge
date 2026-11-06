@@ -25,7 +25,7 @@ import type { BatLine, TeamBatting } from '@/lib/team-batting'
 import type { DefenseProfile } from '@/lib/defense-chart'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
-import type { Repertoire } from '@/lib/pitch-shape/data'
+import ShapeCard, { type ShapeCardData } from '@/components/pitch-shape/ShapeCard'
 import { PITCH_NAMES } from '@/lib/pitch-shape/model'
 import { log } from '@/lib/log'
 
@@ -64,7 +64,7 @@ const Head = ({ title, name, sub }: { title: string; name: string; sub?: string 
 const Foot = ({ text }: { text: string }) => <div style={{ fontSize: 9.5, color: '#8A8275', marginTop: 10 }}>{text}</div>
 
 type GameSel = { gamePk: number; date: string; label: string }
-type Ctx = { playerId: number; name: string; team: Team; /** one past game instead of the season (pitch charts and the spray chart) */ game: GameSel | null }
+type Ctx = { /** the pitch shape card's data, fetched by the modal so it can offer a pitch chooser */ shape?: { data: ShapeCardData | null; state: string }; playerId: number; name: string; team: Team; /** one past game instead of the season (pitch charts and the spray chart) */ game: GameSel | null }
 type GameData = { pitches?: ArsenalPitch[]; balls?: BattedBall[]; total?: number; pitchesSeen?: number; error?: string }
 const MIN_GAME = 5
 /** One game's Savant pitches (pitcher) or balls in play (hitter); idle when the chart is showing the season. */
@@ -141,45 +141,47 @@ function Movement(c: Ctx) {
   if (!pitches.length) return <Note text={(c.game ? g.data?.error : data?.error) ?? (c.game ? 'No pitch tracking on record for that game.' : 'No pitch with 20 or more tracked pitches on record for this pitcher yet.')} />
   return <><PitchPathsPlayer name={c.name} season={c.game ? c.game.label.toUpperCase() : SEASON} pitches={pitches} t={t} /><Foot text={`Average path of each pitch type with ${c.game ? MIN_GAME : 20} or more pitches${c.game ? ' in that game' : ''}, from Statcast tracking. ${sourceLine('Source: Baseball Savant')}`} /></>
 }
-const MIN_SHAPE_SWINGS = 25
-/** The pitch shape card: where each of his pitches sits on the movement map (ride up, run across) with speed, arm angle and whiff rate. Links to his Shape page when inserted. */
-function ShapeCard(c: Ctx) {
-  const { data, state } = useJson<{ repertoire: Repertoire | null }>(`/api/admin/chart-data?kind=pitch-shape&playerId=${c.playerId}&season=${SEASON}`)
-  if (state === 'loading') return <Note text="Loading his pitch shape…" />
-  const rep = data?.repertoire
-  if (!rep || !rep.rows.length) return <Note text="No pitch shape on record for this pitcher this season yet." />
-  const total = rep.rows.reduce((s, r) => s + r.nPitches, 0)
-  const rows = rep.rows.map(r => ({ ...r, name: PITCH_NAMES[r.pitchType] ?? r.pitchType, share: total ? (r.nPitches / total) * 100 : 0, whiff: r.nSwings >= MIN_SHAPE_SWINGS ? (r.nWhiffs / r.nSwings) * 100 : null }))
-  const lim = Math.max(24, ...rows.map(r => Math.max(Math.abs(r.hb), Math.abs(r.ivb)))) + 4
-  const lh = rep.hand === 'L' ? 'left' : 'right'
+function ShapeCardChart(c: Ctx) {
+  if (c.shape?.state === 'loading') return <Note text="Loading his pitch shape and the league map…" />
+  const d = c.shape?.data
+  if (!d || !d.pitches.length) return <Note text="No pitch shape on record for this pitcher yet." />
+  return <ShapeCard d={d} />
+}
+
+const MIN_YOY = 50
+/** Each pitch's expected wOBA allowed last season and this one, joined by a line: the year-over-year dumbbell. Needs MIN_YOY pitches in both years. */
+function XwobaChange(c: Ctx) {
+  const now = useJson<{ rows: ArsenalRow[] }>(`/api/pitcher-arsenal?pitcherId=${c.playerId}&season=${SEASON}`)
+  const prev = useJson<{ rows: ArsenalRow[] }>(`/api/pitcher-arsenal?pitcherId=${c.playerId}&season=${SEASON - 1}`)
+  if (now.state === 'loading' || prev.state === 'loading') return <Note text="Loading both seasons…" />
+  const before = new Map((prev.data?.rows ?? []).map(r => [r.pitchType, r]))
+  const rows = (now.data?.rows ?? []).flatMap(r => {
+    const b = before.get(r.pitchType)
+    if (!b || r.estWoba == null || b.estWoba == null || r.pitches < MIN_YOY || b.pitches < MIN_YOY) return []
+    return [{ name: r.pitchName, a: Number(b.estWoba), b: Number(r.estWoba), nA: b.pitches, nB: r.pitches }]
+  }).sort((x, y) => (y.nB) - (x.nB)).slice(0, 7)
+  if (!rows.length) return <Note text={`No pitch with ${MIN_YOY} or more pitches in both ${SEASON - 1} and ${SEASON} on record for this pitcher.`} />
+  const all = rows.flatMap(r => [r.a, r.b])
+  const lo = Math.floor((Math.min(...all) - 0.03) * 20) / 20, hi = Math.ceil((Math.max(...all) + 0.03) * 20) / 20
+  const pts = rows.map((r, i) => ({ ...r, y: rows.length - i }))
+  const fmt = (v: number) => v.toFixed(3).replace(/^0/, '')
+  const dot = (color: string) => ({ cx = 0, cy = 0 }: { cx?: number; cy?: number }) => <circle cx={cx} cy={cy} r={7} fill={color} stroke="#fff" strokeWidth={1.5} />
   return (
     <>
-      <Head title="Pitch shape" name={c.name} sub={`${lh}-handed · ${total.toLocaleString()} pitches in ${rep.season}`} />
-      <div style={{ display: 'grid', gridTemplateColumns: '250px minmax(0,1fr)', gap: 14, alignItems: 'center' }}>
-        <div style={{ height: 250, background: '#fff', border: `1px solid ${C.line}`, borderRadius: 10 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart margin={{ top: 14, right: 14, bottom: 22, left: 8 }}>
-              <XAxis type="number" dataKey="hb" domain={[-lim, lim]} tickCount={5} tick={{ fontSize: 10, fill: C.mute, fontFamily: SANS }} label={{ value: 'Run (in, catcher view)', position: 'insideBottom', offset: -10, fontSize: 10, fill: C.mute, fontFamily: SANS }} />
-              <YAxis type="number" dataKey="ivb" domain={[-lim, lim]} tickCount={5} width={34} tick={{ fontSize: 10, fill: C.mute, fontFamily: SANS }} label={{ value: 'Ride (in)', angle: -90, position: 'insideLeft', fontSize: 10, fill: C.mute, fontFamily: SANS }} />
-              <ZAxis type="number" dataKey="nPitches" range={[70, 420]} />
-              {rows.map(r => <Scatter key={r.pitchType} data={[r]} fill={pitchColor(r.pitchType)} fillOpacity={0.9} isAnimationActive={false}><LabelList dataKey="pitchType" position="top" style={{ fontSize: 10, fontWeight: 800, fill: C.ink, fontFamily: SANS }} /></Scatter>)}
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr .7fr .8fr .8fr .8fr .8fr', gap: '0 6px', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-          {['Pitch', 'Use', 'Mph', 'Ride', 'Run', 'Whiff'].map((h, i) => <span key={h} style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute, padding: '3px 0', borderBottom: `2px solid ${C.ink}`, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>)}
-          {rows.map(r => (
-            <div key={r.pitchType} style={{ display: 'contents' }}>
-              {[r.name, `${r.share.toFixed(0)}%`, r.velo.toFixed(1), `${r.ivb.toFixed(1)}"`, `${r.hb.toFixed(1)}"`, r.whiff == null ? '—' : `${r.whiff.toFixed(0)}%`].map((v, i) => (
-                <span key={i} style={{ padding: '6px 0', borderBottom: `1px solid ${C.line}`, fontWeight: i === 0 ? 800 : 600, textAlign: i === 0 ? 'left' : 'right', display: 'flex', alignItems: 'center', justifyContent: i === 0 ? 'flex-start' : 'flex-end', gap: 5 }}>
-                  {i === 0 && <i style={{ width: 8, height: 8, borderRadius: 4, background: pitchColor(r.pitchType), display: 'inline-block' }} />}{v}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
+      <Head title="Expected wOBA allowed by pitch" name={c.name} sub={`${SEASON - 1} (dark) and ${SEASON} (orange), plate appearances ending with each pitch`} />
+      <div style={{ height: rows.length * 52 + 50 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 6, right: 24, bottom: 18, left: 4 }}>
+            <XAxis type="number" dataKey="x" domain={[lo, hi]} tickCount={5} tickFormatter={fmt} tick={{ fontSize: 11, fill: C.mute, fontFamily: SANS }} label={{ value: 'Expected wOBA allowed (higher is worse for the pitcher)', position: 'insideBottom', offset: -10, fontSize: 11, fill: '#5b5347', fontFamily: SANS }} />
+            <YAxis type="number" dataKey="y" domain={[0.4, rows.length + 0.6]} ticks={pts.map(p => p.y)} width={96} tickLine={false} axisLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: C.ink, fontFamily: SANS }} tickFormatter={(v: number) => pts.find(p => p.y === v)?.name ?? ''} />
+            <ZAxis range={[60, 60]} />
+            {pts.map(p => <Scatter key={p.name} data={[{ x: p.a, y: p.y }, { x: p.b, y: p.y }]} line={{ stroke: '#D3CCBF', strokeWidth: 4 }} shape={() => <g />} isAnimationActive={false} />)}
+            <Scatter data={pts.map(p => ({ x: p.a, y: p.y }))} shape={dot(C.ink)} isAnimationActive={false}><LabelList dataKey="x" position="bottom" formatter={(v: unknown) => fmt(Number(v))} style={{ fontSize: 10.5, fontWeight: 700, fill: C.ink, fontFamily: SANS }} /></Scatter>
+            <Scatter data={pts.map(p => ({ x: p.b, y: p.y }))} shape={dot(C.orange)} isAnimationActive={false}><LabelList dataKey="x" position="top" formatter={(v: unknown) => fmt(Number(v))} style={{ fontSize: 10.5, fontWeight: 700, fill: '#B83A0E', fontFamily: SANS }} /></Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
       </div>
-      <Foot text={`Dot size is how often he throws it. Ride is induced vertical break and run is horizontal break, in inches, as the catcher sees it. Arm angle ${rows.map(r => `${r.name} ${r.slot.toFixed(0)}°`).join(', ')}. Whiff% needs ${MIN_SHAPE_SWINGS} swings. ${sourceLine('Source: Statcast pitch tracking, x9Lab Pitch Shape Lab')} Full shape: xlab9.com/mlb/lab/pitching-lab/${c.playerId}/shape`} />
+      <Foot text={`Pitches with ${MIN_YOY} or more in both years. ${rows.map(r => `${r.name} n = ${r.nA.toLocaleString()} then ${r.nB.toLocaleString()}`).join(' · ')}. ${sourceLine('Source: Baseball Savant pitch arsenal')}`} />
     </>
   )
 }
@@ -644,7 +646,8 @@ const KINDS: Kind[] = [
   { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe', game: true },
   ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own', game: m.key === 'whiffPct' })),
   { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own', game: true },
-  { id: 'shape', label: 'Pitch shape card', blurb: 'Every pitch on the movement map, linked to his Pitch Shape page', who: ['pitcher'], render: ShapeCard, anim: 'wipe' },
+  { id: 'shape', label: 'Pitch shape card', blurb: 'The Pitch Shape Lab map for one of his pitches, linked to his Shape page', who: ['pitcher'], render: ShapeCardChart, anim: 'wipe' },
+  { id: 'xwoba-yoy', label: 'Expected wOBA by pitch, year over year', blurb: 'Last season and this one for each pitch, joined by a line', who: ['pitcher'], render: XwobaChange, anim: 'wipe' },
   { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe', game: true },
   { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe', game: true },
   { id: 'def-oaa', label: 'Defense: outs above average', blurb: 'Plays made vs an average fielder, with rank', who: ['fielder'], render: DefOaa, anim: 'own' },
@@ -674,6 +677,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const [fitId, setFitId] = useState('sp-era')
   const [fitView, setFitView] = useState(false)
   const [gamePk, setGamePk] = useState<number | null>(null)
+  const [shapeType, setShapeType] = useState('')
   const [t, setT] = useState(1)
   const [playing, setPlaying] = useState(false)
   const [status, setStatus] = useState('')
@@ -692,7 +696,8 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   const picked = gameLog.data?.games.find(g => g.gamePk === gamePk) ?? null
   const dayText = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
   const game: GameSel | null = kind.game && picked ? { gamePk: picked.gamePk, date: picked.date, label: `${dayText(picked.date)} ${picked.home ? 'vs' : 'at'} ${picked.opp}${picked.postseason ? ' (postseason)' : ''}` } : null
-  const ctx: Ctx = { playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team, game }
+  const shapeRes = useJson<{ shape: ShapeCardData | null }>(kindId === 'shape' && player ? `/api/admin/chart-data?kind=pitch-shape&playerId=${player.playerId}&season=${SEASON}&pitchType=${shapeType}` : null)
+  const ctx: Ctx = { shape: { data: shapeRes.data?.shape ?? null, state: shapeRes.state }, playerId: player?.playerId ?? 0, name: who === 'team' ? team.name : player?.name ?? '', team, game }
   const fm = FIT_METRICS.find(m => m.id === fitId) ?? FIT_METRICS[0]
   const metric = METRICS.find(m => kind.id === `res-${m.key}`) ?? METRICS[0]
 
@@ -827,19 +832,27 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
               <>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: C.mute, marginBottom: 5 }}>{who === 'pitcher' ? 'Pitcher' : who === 'fielder' ? 'Player' : 'Hitter'}</label>
                 <input style={inp} value={query} placeholder="Search by name" onChange={e => search(e.target.value)} />
-                {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setGamePk(null); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
+                {found.map(p => <button key={p.id} onClick={() => { setPlayer({ playerId: p.id, name: p.fullName }); setGamePk(null); setShapeType(''); setQuery(p.fullName); setFound([]) }} style={{ display: 'block', margin: '5px 0 0', padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.line}`, background: '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 13 }}>{p.fullName} · {p.primaryPosition}</button>)}
                 {kind.game && player && (
                   <select style={{ ...inp, marginTop: 8 }} value={gamePk ?? ''} onChange={e => setGamePk(e.target.value ? Number(e.target.value) : null)} aria-label="Season or one game">
                     <option value="">{`Whole ${SEASON} season`}</option>
                     {(gameLog.data?.games ?? []).map(g => <option key={g.gamePk} value={g.gamePk}>{`${dayText(g.date)} ${g.home ? 'vs' : 'at'} ${g.opp}${g.postseason ? ' (postseason)' : ''} · ${g.summary}`}</option>)}
                   </select>
                 )}
+                {kindId === 'shape' && player && (shapeRes.data?.shape?.pitches.length ?? 0) > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }} role="group" aria-label="Choose a pitch">
+                    {shapeRes.data!.shape!.pitches.map(p => {
+                      const on = p.pitchType === shapeRes.data!.shape!.pitchType
+                      return <button key={p.pitchType} type="button" onClick={() => setShapeType(p.pitchType)} style={{ padding: '6px 10px', borderRadius: 999, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', cursor: 'pointer', fontFamily: SANS, fontSize: 12.5, fontWeight: 800 }}>{PITCH_NAMES[p.pitchType] ?? p.pitchType}</button>
+                    })}
+                  </div>
+                )}
                 {kind.game && player && gameLog.state === 'loading' && <div style={{ fontSize: 11, color: C.mute, marginTop: 4 }}>Loading his games…</div>}
               </>
             )}
             <div style={{ marginTop: 14, border: `1px dashed ${C.line}`, borderRadius: 8, padding: 10, background: '#fff', overflowX: 'auto' }}>
               {ready ? (
-                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && !showFit && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${gamePk}-${showFit}-${fitId}-${ctx.playerId}-${ctx.team.id}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
+                <div ref={stage} style={{ width: 600, padding: 20, background: '#FAF8F3', fontFamily: SANS, color: C.ink }}><ProgressCtx.Provider value={t}><div style={kind.anim === 'wipe' && !showFit && t < 1 ? { clipPath: `inset(0 ${(1 - (1 - Math.pow(1 - t, 3))) * 100}% 0 0)` } : undefined}><Chart key={`${kindId}-${gamePk}-${showFit}-${fitId}-${ctx.playerId}-${ctx.team.id}-${shapeRes.data?.shape?.pitchType ?? ''}`} {...ctx} who={who} metric={metric} fm={fm} /></div></ProgressCtx.Provider></div>
               ) : <Note text={who === 'team' ? 'Choose a team to see the chart here.' : 'Search and choose a player to see the chart here.'} />}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
