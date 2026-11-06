@@ -16,10 +16,11 @@
 import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card, Foot, Tile, C, MONO, SANS } from '@/components/team/ui'
-import { H, HARD, TREND, filterPa, hitterDial, sprayZone, trailing, type BatterTrendsData, type BbePoint, type HitterFilter } from '@/lib/player-trends/rolling'
-import { AXIS, GRID, BASE, Segmented, StackedShare, TrendLines, Verdict, fmt1, fmt3, fmtPct, fmtPct1 } from './parts'
+import { H, HARD, TREND, filterPa, hitTypeLine, hitTypesRanked, hitterDial, sprayZone, trailing, type BatterTrendsData, type BbePoint, type HitterFilter } from '@/lib/player-trends/rolling'
+import { AXIS, GRID, BASE, PITCH_COLOR, PITCH_NAME, Segmented, StackedShare, TrendLines, Verdict, fmt1, fmt3, fmtPct, fmtPct1 } from './parts'
+import BuildYourOwn from './BuildYourOwn'
 
-const WINDOWS = [{ v: 10, label: '10 PA' }, { v: 15, label: '15 PA' }, { v: 25, label: '25 PA' }, { v: 50, label: '50 PA' }]
+const WINDOWS = [{ v: 10, label: '10 PA' }, { v: 15, label: '15 PA' }, { v: 25, label: '25 PA' }, { v: 50, label: '50 PA' }, { v: 100, label: '100 PA' }]
 const FILTERS: { v: HitterFilter; label: string }[] = [{ v: 'all', label: 'All' }, { v: 'L', label: 'vs LHP' }, { v: 'R', label: 'vs RHP' }, { v: 'day', label: 'Day' }, { v: 'night', label: 'Night' }]
 const BIN = 5, LO = 50, HI = 115
 
@@ -40,9 +41,12 @@ export default function HitterTrends({ data, color }: { data: BatterTrendsData; 
   const chart = useMemo(() => {
     const t = (f: Parameters<typeof trailing<(typeof rows)[number]>>[2]) => trailing(rows, win, f)
     const xw = t(H.xwoba), hh = t(H.hardHit), br = t(H.barrel), ch = t(H.chase), wh = t(H.whiff), bb = t(H.bb), k = t(H.k)
-    return rows.map((r, i) => ({ i: i + 1, d: r.d, xw: xw[i], hh: hh[i], br: br[i], ch: ch[i], wh: wh[i], bb: bb[i], k: k[i] }))
+    const ba = t(H.ba), ob = t(H.obp), sl = t(H.slg), op = t(H.ops), is = t(H.iso)
+    return rows.map((r, i) => ({ i: i + 1, d: r.d, xw: xw[i], hh: hh[i], br: br[i], ch: ch[i], wh: wh[i], bb: bb[i], k: k[i], ba: ba[i], ob: ob[i], sl: sl[i], op: op[i], is: is[i] }))
   }, [rows, win])
-  const season = useMemo(() => ({ xw: H.xwoba(rows), hh: H.hardHit(rows), br: H.barrel(rows), ch: H.chase(rows), wh: H.whiff(rows), bb: H.bb(rows), k: H.k(rows) }), [rows])
+  const season = useMemo(() => ({ xw: H.xwoba(rows), hh: H.hardHit(rows), br: H.barrel(rows), ch: H.chase(rows), wh: H.whiff(rows), bb: H.bb(rows), k: H.k(rows), ba: H.ba(rows), ob: H.obp(rows), sl: H.slg(rows), op: H.ops(rows), is: H.iso(rows), babip: H.babip(rows), hr: H.hr(rows) }), [rows])
+  const pitchTypes = useMemo(() => hitTypesRanked(data.games), [data.games])
+  const typeLines = useMemo(() => pitchTypes.map(t => hitTypeLine(data.games, t)), [pitchTypes, data.games])
   const dial = useMemo(() => hitterDial(data.pa), [data.pa])
 
   // spray mix: trailing window over balls in play (same toggles: hand from Statcast p_throws, session via the PA rows)
@@ -125,6 +129,30 @@ export default function HitterTrends({ data, color }: { data: BatterTrendsData; 
         )}
       </Card>
 
+      {/* batting numbers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <Tile label="AVG / OBP / SLG" value={season.ba != null && season.ob != null && season.sl != null ? `${fmt3(season.ba)} / ${fmt3(season.ob)} / ${fmt3(season.sl)}` : '—'} sub={`${rows.length} plate appearances${filterNote}`} />
+        <Tile label="OPS" value={season.op != null ? fmt3(season.op) : '—'} sub={season.is != null ? `ISO ${fmt3(season.is)}` : 'not enough at-bats'} />
+        <Tile label="Home runs" value={season.hr != null ? String(season.hr) : '—'} sub={season.babip != null ? `BABIP ${fmt3(season.babip)}` : 'BABIP needs 20 balls in play'} />
+      </div>
+      <div className="pl-grid-2">
+        <Card title="AVG, OBP and SLG" note="batting line · rolling">
+          {noSample ? empty('Not enough plate appearances in this filter yet.') : (
+            <TrendLines data={chart} fmt={fmt3} height={200}
+              lines={[{ key: 'ba', label: 'AVG', color }, { key: 'ob', label: 'OBP', color: '#1D9E75' }, { key: 'sl', label: 'SLG', color: '#7F77DD' }]}
+              baselines={[{ y: season.ba, color, label: 'Season AVG' }, { y: season.ob, color: '#1D9E75', label: 'Season OBP' }, { y: season.sl, color: '#7F77DD', label: 'Season SLG' }]} />
+          )}
+        </Card>
+        <Card title="OPS and isolated power" note="rolling · ISO = SLG − AVG">
+          {noSample ? empty('Not enough plate appearances in this filter yet.') : (
+            <TrendLines data={chart} fmt={fmt3} height={200}
+              lines={[{ key: 'op', label: 'OPS', color }, { key: 'is', label: 'ISO', color: '#D4533B' }]}
+              baselines={[{ y: season.op, color, label: 'Season OPS' }, { y: season.is, color: '#D4533B', label: 'Season ISO' }]} />
+          )}
+        </Card>
+      </div>
+      <Foot>Counted from his plate appearances: AVG = hits per at-bat, OBP = hits, walks and hit-by-pitch per plate appearance (sacrifice bunts left out), SLG = total bases per at-bat. A window needs 10+ at-bats (20+ plate appearances for OBP) or the line has a gap, so use the 25 and 50 PA windows for these.</Foot>
+
       {/* contact quality */}
       <div className="pl-grid-3">
         {mini('xwOBA', 'rolling', 'xw', fmt3, season.xw)}
@@ -187,6 +215,32 @@ export default function HitterTrends({ data, color }: { data: BatterTrendsData; 
           )}
         </Card>
       </div>
+
+      {/* pitch-specific */}
+      <Card title="By pitch type" note="what he has done against each pitch · this season">
+        {typeLines.length === 0 ? empty('No pitch type has enough pitches yet.') : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: MONO, fontSize: 11, minWidth: 560 }}>
+              <thead><tr style={{ color: C.faint, fontSize: 9, textTransform: 'uppercase', letterSpacing: '.08em', textAlign: 'right' }}>
+                {['Pitch', 'Seen', 'Whiff %', 'Chase %', 'Hard-hit %', 'xwOBA', 'AVG', 'SLG'].map((h, i) => <th key={h} style={{ fontWeight: 400, padding: '4px 6px', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {typeLines.map(l => (
+                  <tr key={l.t} style={{ textAlign: 'right', borderTop: `1px solid ${C.soft}` }}>
+                    <td style={{ textAlign: 'left', padding: '6px', fontFamily: SANS, fontWeight: 700 }}><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: PITCH_COLOR[l.t] ?? '#888', marginRight: 7 }} />{PITCH_NAME[l.t] ?? l.t}</td>
+                    <td style={{ padding: '6px' }}>{l.share != null ? fmtPct1(l.share) : '—'} <span style={{ color: C.faint }}>({l.n})</span></td>
+                    <td>{l.whiff != null ? fmtPct1(l.whiff) : '—'}</td><td>{l.chase != null ? fmtPct1(l.chase) : '—'}</td><td>{l.hardHit != null ? fmtPct1(l.hardHit) : '—'}</td>
+                    <td>{l.xwoba != null ? fmt3(l.xwoba) : '—'}</td><td>{l.ba != null ? fmt3(l.ba) : '—'}</td><td style={{ padding: '6px' }}>{l.slg != null ? fmt3(l.slg) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <Foot>Whiff = misses per swing at the pitch (15+ swings), chase = swings at it outside the zone (15+), hard-hit = 95+ mph per ball in play off it (5+ tracked). xwOBA, AVG and SLG count plate appearances and at-bats that ended on that pitch (10+). A dash means too few to show, not zero. Open Build your own below to see any of these over time.</Foot>
+      </Card>
+
+      <BuildYourOwn subject="batter" data={data} color={color} />
 
       <Foot>
  Day/night is known for {data.dayNightKnown} of {data.pa.length} plate appearances (games for his current club); pitcher hand for {data.handKnown}. Trends describe how he has changed against his own baseline — they are not a forecast.

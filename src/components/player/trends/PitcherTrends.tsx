@@ -18,8 +18,9 @@
 
 import { useMemo, useState } from 'react'
 import { Card, Foot, Tile, C, MONO, SANS } from '@/components/team/ui'
-import { P, TREND, pitcherDial, trailing, typeTotals, type PitcherTrendsData } from '@/lib/player-trends/rolling'
+import { P, PT, TREND, pitcherDial, trailing, typeTotals, type PitcherTrendsData } from '@/lib/player-trends/rolling'
 import { BASE, PITCH_COLOR, PITCH_NAME, Segmented, StackedShare, TrendLines, Verdict, fmt2, fmt3, fmtPct, fmtPct1 } from './parts'
+import BuildYourOwn from './BuildYourOwn'
 
 const WINDOWS = [{ v: 2, label: '2 starts' }, { v: 3, label: '3 starts' }, { v: 5, label: '5 starts' }, { v: 8, label: '8 starts' }]
 
@@ -139,6 +140,35 @@ export default function PitcherTrends({ data, color }: { data: PitcherTrendsData
         </Card>
       </div>
       <Foot>ERA and FIP pool the last {win} outings&apos; box-score innings, earned runs, strikeouts, walks, hit batters and homers (FIP constant {data.cFIP.toFixed(2)}, from this season&apos;s league totals). xwOBA against stands in for xERA: it is the input to it, not Savant&apos;s own xERA number, which we don&apos;t recompute.</Foot>
+
+      {/* pitch-specific */}
+      <Card title="By pitch" note="what each pitch has done · this season">
+        {ranked.length === 0 ? empty('No pitch-level data yet.') : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: MONO, fontSize: 11, minWidth: 600 }}>
+              <thead><tr style={{ color: C.faint, fontSize: 9, textTransform: 'uppercase', letterSpacing: '.08em', textAlign: 'right' }}>
+                {['Pitch', 'Usage', 'Velo', 'Whiff %', 'Zone %', 'Chase %', 'Hard-hit %', 'xwOBA'].map((h, i) => <th key={h} style={{ fontWeight: 400, padding: '4px 6px', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {ranked.filter(t => totals[t].n >= 30).map(t => {
+                  const cell = (v: number | null, f: (x: number) => string) => (v != null ? f(v) : '—')
+                  return (
+                    <tr key={t} style={{ textAlign: 'right', borderTop: `1px solid ${C.soft}` }}>
+                      <td style={{ textAlign: 'left', padding: '6px', fontFamily: SANS, fontWeight: 700 }}><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: PITCH_COLOR[t] ?? '#888', marginRight: 7 }} />{PITCH_NAME[t] ?? t}</td>
+                      <td style={{ padding: '6px' }}>{cell(PT.usage(games, t), fmtPct1)} <span style={{ color: C.faint }}>({totals[t].n})</span></td>
+                      <td>{cell(PT.velo(games, t), v => v.toFixed(1))}</td><td>{cell(PT.whiff(games, t), fmtPct1)}</td><td>{cell(PT.zone(games, t), fmtPct1)}</td>
+                      <td>{cell(PT.chase(games, t), fmtPct1)}</td><td>{cell(PT.hardHit(games, t), fmtPct1)}</td><td style={{ padding: '6px' }}>{cell(PT.xwoba(games, t), fmt3)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <Foot>Usage is the share of all his pitches. Whiff needs 10+ swings, chase 15+, zone 30+, hard-hit 5+ tracked balls in play, and xwOBA 10+ plate appearances that ended on that pitch. A dash means too few to show, not zero. Build your own below puts any of these on a line.</Foot>
+      </Card>
+
+      <BuildYourOwn subject="pitcher" data={data} color={color} />
 
       <Foot>
  Velocity is release speed; whiff counts swinging strikes and foul tips. Extension and spin are not shown — they are not in the stored pitch table. These describe how he has changed against his own baseline — they are not a forecast.

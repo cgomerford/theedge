@@ -15,6 +15,7 @@ export default defineConfig({
       'src/lib/content-assets.test.ts',
       'src/lib/fielding-bible.test.ts',
       'src/lib/proxy-matcher.test.ts',
+      'src/lib/player-trends/**/*.test.ts',
       'src/lib/team-batting.test.ts',
       'src/lib/seo/**/*.test.ts',
       'src/components/pitch-shape/**/*.test.ts',

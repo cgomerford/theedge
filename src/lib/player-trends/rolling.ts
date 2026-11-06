@@ -38,11 +38,17 @@ export type BatterTrendsData = {
   bbe: BbePoint[] | null           // this season's balls in play (Savant), for spray + EV
   bbePrev: BbePoint[] | null       // last season's, for the EV overlay
   prevSeason: number
+  games: HitGame[]                 // pitches faced by game and pitch type (pitch-specific trends)
   dayNightKnown: number            // PAs whose game session is known
   handKnown: number                // PAs whose pitcher hand is known
 }
 
-export type PitTypeGame = { n: number; velo: number | null; sw: number; wh: number }
+export type PitTypeGame = {
+  n: number; velo: number | null; sw: number; wh: number
+  // pitch-specific results (counted on the pitch itself; contact and PA results sit on the PA-ending pitch)
+  zin: number; zn: number; oz: number; ozs: number
+  bbe: number; hh: number; brl: number; xwN: number; xwSum: number
+}
 export type PitGame = {
   pk: number; d: string; n: number
   types: Record<string, PitTypeGame>
@@ -52,6 +58,14 @@ export type PitGame = {
   paN: number; xwSum: number     // PAs with an xwOBA-against value, and their summed value
   ip: number | null; er: number | null; bb: number | null; so: number | null; hr: number | null; hbp: number | null; gs: number | null
 }
+/** One game of a hitter's pitches faced, split by pitch type. Counts only: rates are made in the browser, over a window of games. */
+export type HitTypeGame = {
+  n: number; sw: number; wh: number; oz: number; ozs: number; cs: number
+  bbe: number; hh: number; brl: number; evSum: number
+  xwN: number; xwSum: number            // PA-ending pitches of this type with an xwOBA value, and their sum
+  pa: number; ab: number; h: number; tb: number; bb: number; k: number; hr: number   // PA-ending pitches of this type
+}
+export type HitGame = { pk: number; d: string; types: Record<string, HitTypeGame> }
 export type PitcherTrendsData = { playerId: number; season: number; games: PitGame[]; cFIP: number }
 
 // ── thresholds — PROPOSALS, tune here ─────────────────────────────────────────
@@ -94,6 +108,59 @@ export const H = {
   bb: (s: PaRow[]): number | null => pct(s.filter(r => r.ev === 'walk' || r.ev === 'intent_walk').length, s.length, 1),
   k: (s: PaRow[]): number | null => pct(s.filter(r => r.ev === 'strikeout' || r.ev === 'strikeout_double_play').length, s.length, 1),
   ba: (s: PaRow[]): number | null => { const ab = sum(s.map(r => r.ab)); return ab >= 10 ? sum(s.map(r => r.hit)) / ab : null },
+  obp: (s: PaRow[]): number | null => {
+    const d = s.filter(r => r.ev !== 'catcher_interf' && !isSacBunt(r.ev)).length
+    return d >= 20 ? s.filter(r => r.hit === 1 || r.ev === 'walk' || r.ev === 'intent_walk' || r.ev === 'hit_by_pitch').length / d : null
+  },
+  slg: (s: PaRow[]): number | null => { const ab = sum(s.map(r => r.ab)); return ab >= 10 ? sum(s.map(r => TB[r.ev ?? ''] ?? 0)) / ab : null },
+  ops: (s: PaRow[]): number | null => { const o = H.obp(s), l = H.slg(s); return o != null && l != null ? o + l : null },
+  iso: (s: PaRow[]): number | null => { const l = H.slg(s), b = H.ba(s); return l != null && b != null ? l - b : null },
+  hr: (s: PaRow[]): number | null => (s.length >= 10 ? sum(s.map(r => (r.ev === 'home_run' ? 1 : 0))) : null),
+  babip: (s: PaRow[]): number | null => {
+    const bip = s.filter(r => r.ab === 1 && r.ev !== 'strikeout' && r.ev !== 'strikeout_double_play' && r.ev !== 'home_run')
+    return bip.length >= 20 ? bip.filter(r => r.hit === 1).length / bip.length : null
+  },
+}
+const TB: Record<string, number> = { single: 1, double: 2, triple: 3, home_run: 4 }
+const isSacBunt = (ev: string | null) => ev === 'sac_bunt' || ev === 'sac_bunt_double_play'
+
+// ── pitch-specific hitter metrics over a slice of games, for ONE pitch type (or all when t is null) ─────────
+function typeSum(games: HitGame[], t: string | null): HitTypeGame {
+  const o: HitTypeGame = { n: 0, sw: 0, wh: 0, oz: 0, ozs: 0, cs: 0, bbe: 0, hh: 0, brl: 0, evSum: 0, xwN: 0, xwSum: 0, pa: 0, ab: 0, h: 0, tb: 0, bb: 0, k: 0, hr: 0 }
+  for (const g of games) for (const [k, v] of Object.entries(g.types)) {
+    if (t != null && k !== t) continue
+    for (const f of Object.keys(o) as (keyof HitTypeGame)[]) o[f] += v[f]
+  }
+  return o
+}
+/** Share of all the pitches in the window that were this type (needs 30+ pitches in the window). */
+const hitShare = (games: HitGame[], t: string) => { const all = typeSum(games, null).n; return all >= 30 ? (typeSum(games, t).n / all) * 100 : null }
+export const HP = {
+  usage: hitShare,
+  whiff: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return pct(o.wh, o.sw, 15) },
+  chase: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return pct(o.ozs, o.oz, 15) },
+  hardHit: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return pct(o.hh, o.bbe, 5) },
+  barrel: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return pct(o.brl, o.bbe, 5) },
+  xwoba: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return o.xwN >= 10 ? o.xwSum / o.xwN : null },
+  ba: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return o.ab >= 10 ? o.h / o.ab : null },
+  slg: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return o.ab >= 10 ? o.tb / o.ab : null },
+  ev: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return o.bbe >= 5 ? o.evSum / o.bbe : null },
+  csw: (g: HitGame[], t: string | null) => { const o = typeSum(g, t); return o.n >= 30 ? ((o.cs + o.wh) / o.n) * 100 : null },
+  pitches: (g: HitGame[], t: string | null) => typeSum(g, t).n,
+}
+/** Whole-season line for one pitch type, for the "by pitch type" table. */
+export function hitTypeLine(games: HitGame[], t: string) {
+  const o = typeSum(games, t), all = typeSum(games, null).n
+  return {
+    t, n: o.n, share: all > 0 ? (o.n / all) * 100 : null,
+    whiff: HP.whiff(games, t), chase: HP.chase(games, t), hardHit: HP.hardHit(games, t), xwoba: HP.xwoba(games, t),
+    ba: HP.ba(games, t), slg: HP.slg(games, t), swings: o.sw, bbe: o.bbe, ab: o.ab,
+  }
+}
+export function hitTypesRanked(games: HitGame[]): string[] {
+  const tot = typeSum(games, null)
+  const seen = new Set<string>(); for (const g of games) for (const k of Object.keys(g.types)) seen.add(k)
+  return [...seen].filter(t => t !== 'UN').map(t => [t, typeSum(games, t).n] as const).filter(([, n]) => n >= Math.max(30, tot.n * 0.02)).sort((a, b) => b[1] - a[1]).map(([t]) => t)
 }
 
 export type HitterFilter = 'all' | 'L' | 'R' | 'day' | 'night'
@@ -172,6 +239,26 @@ export function typeTotals(games: PitGame[]): Record<string, { n: number; veloW:
   }
   return out
 }
+/** Pitch-specific pitcher metrics over a slice of games for ONE pitch type. */
+function pType(games: PitGame[], t: string) {
+  const o = { n: 0, sw: 0, wh: 0, zin: 0, zn: 0, oz: 0, ozs: 0, bbe: 0, hh: 0, brl: 0, xwN: 0, xwSum: 0, veloW: 0, veloN: 0 }
+  for (const g of games) { const v = g.types[t]; if (!v) continue
+    o.n += v.n; o.sw += v.sw; o.wh += v.wh; o.zin += v.zin ?? 0; o.zn += v.zn ?? 0; o.oz += v.oz ?? 0; o.ozs += v.ozs ?? 0
+    o.bbe += v.bbe ?? 0; o.hh += v.hh ?? 0; o.brl += v.brl ?? 0; o.xwN += v.xwN ?? 0; o.xwSum += v.xwSum ?? 0
+    if (v.velo != null) { o.veloW += v.velo * v.n; o.veloN += v.n } }
+  return o
+}
+export const PT = {
+  velo: (g: PitGame[], t: string) => { const o = pType(g, t); return o.veloN >= 15 ? o.veloW / o.veloN : null },
+  usage: (g: PitGame[], t: string) => { const all = g.reduce((a, x) => a + x.n, 0); return all >= 30 ? (pType(g, t).n / all) * 100 : null },
+  whiff: (g: PitGame[], t: string) => { const o = pType(g, t); return pct(o.wh, o.sw, 10) },
+  zone: (g: PitGame[], t: string) => { const o = pType(g, t); return pct(o.zin, o.zn, 30) },
+  chase: (g: PitGame[], t: string) => { const o = pType(g, t); return pct(o.ozs, o.oz, 15) },
+  hardHit: (g: PitGame[], t: string) => { const o = pType(g, t); return pct(o.hh, o.bbe, 5) },
+  barrel: (g: PitGame[], t: string) => { const o = pType(g, t); return pct(o.brl, o.bbe, 5) },
+  xwoba: (g: PitGame[], t: string) => { const o = pType(g, t); return o.xwN >= 10 ? o.xwSum / o.xwN : null },
+}
+
 export const P = {
   hardHit: (g: PitGame[]) => pct(sum(g.map(x => x.hh)), sum(g.map(x => x.bbe)), 8),
   barrel: (g: PitGame[]) => pct(sum(g.map(x => x.brl)), sum(g.map(x => x.bbe)), 8),

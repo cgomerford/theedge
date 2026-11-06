@@ -25,7 +25,7 @@
 import { createAdminClient } from '@/lib/supabase'
 import { withSavantCache } from '@/lib/savant-cache'
 import { getLeagueTables, ipToDecimal } from '@/lib/team-profile/league'
-import { BB_WEIGHT, HBP_WEIGHT, type BatterTrendsData, type BbePoint, type PaRow, type PitGame, type PitTypeGame, type PitcherTrendsData } from './rolling'
+import { BB_WEIGHT, HBP_WEIGHT, type BatterTrendsData, type BbePoint, type HitGame, type HitTypeGame, type PaRow, type PitGame, type PitTypeGame, type PitcherTrendsData } from './rolling'
 import { log } from '@/lib/log'
 
 const MLB = 'https://statsapi.mlb.com/api/v1'
@@ -50,6 +50,9 @@ async function fetchAll<T>(table: string, select: string, col: string, id: numbe
   }
   return out
 }
+
+const TOTAL_BASES: Record<string, number> = { single: 1, double: 2, triple: 3, home_run: 4 }
+const newHit = (): HitTypeGame => ({ n: 0, sw: 0, wh: 0, oz: 0, ozs: 0, cs: 0, bbe: 0, hh: 0, brl: 0, evSum: 0, xwN: 0, xwSum: 0, pa: 0, ab: 0, h: 0, tb: 0, bb: 0, k: 0, hr: 0 })
 
 const byPa = (a: PitchRow, b: PitchRow) => a.game_date.localeCompare(b.game_date) || a.game_pk - b.game_pk || a.at_bat_number - b.at_bat_number || a.pitch_number - b.pitch_number
 
@@ -135,6 +138,7 @@ export async function getBatterTrendsData(batterId: number, teamId: number | nul
   for (const p of pitches.sort(byPa)) { const k = `${p.game_pk}:${p.at_bat_number}`; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(p) }
 
   const pa: PaRow[] = []
+  const gameMap = new Map<number, HitGame>()
   for (const [k, ps] of groups) {
     const last = ps[ps.length - 1]
     const ev = last.events
@@ -150,6 +154,30 @@ export async function getBatterTrendsData(batterId: number, teamId: number | nul
     const b = bbeMap.get(k)
     const est = b ? NUM(b.estimated_woba) : null
     const s = b ? NUM(b.launch_speed) : null
+
+    // pitch-specific counts: every pitch of the PA by type, and the PA's result on its last pitch
+    const hg = gameMap.get(last.game_pk) ?? { pk: last.game_pk, d: last.game_date, types: {} }
+    gameMap.set(last.game_pk, hg)
+    for (const p of ps) {
+      const o = (hg.types[p.pitch_type ?? 'UN'] ??= newHit())
+      o.n++
+      const swung = p.description != null && SWING.has(p.description)
+      if (swung) o.sw++
+      if (p.description != null && WHIFF.has(p.description)) o.wh++
+      if (p.description === 'called_strike') o.cs++
+      if (p.zone != null && p.zone >= 11) { o.oz++; if (swung) o.ozs++ }
+    }
+    const lo = hg.types[last.pitch_type ?? 'UN']
+    lo.pa++
+    if (!NOT_AB.has(ev)) lo.ab++
+    if (HITS.has(ev)) lo.h++
+    lo.tb += TOTAL_BASES[ev] ?? 0
+    if (ev === 'walk' || ev === 'intent_walk') lo.bb++
+    if (ev === 'strikeout' || ev === 'strikeout_double_play') lo.k++
+    if (ev === 'home_run') lo.hr++
+    const xv = paValue(ev, est)
+    if (xv != null) { lo.xwN++; lo.xwSum += xv }
+    if (s != null) { lo.bbe++; lo.evSum += s; if (s >= 95) lo.hh++; if (b && b.launch_speed_angle === 6) lo.brl++ }
     pa.push({
       n: pa.length + 1, d: last.game_date, pk: last.game_pk,
       h: hands.get(last.pitcher_id) ?? null, dn: sessions.get(last.game_pk) ?? null, ev,
@@ -160,6 +188,7 @@ export async function getBatterTrendsData(batterId: number, teamId: number | nul
   if (pa.length === 0) return null
   return {
     playerId: batterId, season, pa, bbe, bbePrev, prevSeason: season - 1,
+    games: [...gameMap.values()].sort((a, b) => a.d.localeCompare(b.d) || a.pk - b.pk),
     dayNightKnown: pa.filter(r => r.dn).length, handKnown: pa.filter(r => r.h).length,
   }
 }
@@ -194,13 +223,13 @@ export async function getPitcherTrendsData(pitcherId: number, season: number): P
     let zin = 0, zn = 0, oz = 0, ozs = 0
     for (const p of ps) {
       const t = p.pitch_type ?? 'UN'
-      const o = (types[t] ??= { n: 0, velo: null, sw: 0, wh: 0 })
+      const o = (types[t] ??= { n: 0, velo: null, sw: 0, wh: 0, zin: 0, zn: 0, oz: 0, ozs: 0, bbe: 0, hh: 0, brl: 0, xwN: 0, xwSum: 0 })
       o.n++
       const swung = p.description != null && SWING.has(p.description)
       if (swung) o.sw++
       if (p.description != null && WHIFF.has(p.description)) o.wh++
       const v = NUM(p.release_speed); if (v != null) (velo[t] ??= []).push(v)
-      if (p.zone != null) { zn++; if (p.zone <= 9) zin++; else { oz++; if (swung) ozs++ } }
+      if (p.zone != null) { zn++; o.zn++; if (p.zone <= 9) { zin++; o.zin++ } else { oz++; o.oz++; if (swung) { ozs++; o.ozs++ } } }
     }
     for (const [t, vs] of Object.entries(velo)) types[t].velo = vs.reduce((a, b) => a + b, 0) / vs.length
 
@@ -213,6 +242,12 @@ export async function getPitcherTrendsData(pitcherId: number, season: number): P
       const b = bbeKey.get(`${pk}:${ab}`)
       const v = paValue(last.events, b ? NUM(b.estimated_woba) : null)
       if (v != null) { paN++; xwSum += v }
+      const lt = types[last.pitch_type ?? 'UN']
+      if (lt) {
+        if (v != null) { lt.xwN++; lt.xwSum += v }
+        const ls = b ? NUM(b.launch_speed) : null
+        if (b && ls != null) { lt.bbe++; if (ls >= 95) lt.hh++; if (b.launch_speed_angle === 6) lt.brl++ }
+      }
     }
     const gb = (bbeByGame.get(pk) ?? []).map(b => ({ s: NUM(b.launch_speed), brl: b.launch_speed_angle === 6 })).filter(b => b.s != null)
     const off = official.get(pk)
