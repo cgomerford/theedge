@@ -29,6 +29,13 @@ function renderNodes(nodes: TiptapNode[] | undefined): React.ReactNode {
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
+/** A figure may link only to a page on this site (a path starting with one slash) or an http(s) address; anything else is dropped. */
+function ownLink(v: unknown): string | null {
+  const s = str(v).trim();
+  if (s.startsWith('/') && !s.startsWith('//')) return s;
+  return safeHttpUrl(s);
+}
+
 function Node({ node }: { node: TiptapNode }) {
   const a = node.attrs ?? {};
   switch (node.type) {
@@ -67,12 +74,14 @@ function Node({ node }: { node: TiptapNode }) {
       const width = ['inline', 'wide', 'full'].includes(str(a.width)) ? str(a.width) : 'wide';
       const ratio = str(a.ratio);
       const ar = ratio && ratio !== 'auto' ? ratio.replace(':', '/') : null;
+      const href = ownLink(a.href);
+      // eslint-disable-next-line @next/next/no-img-element
+      const img = <img src={src} alt={str(a.alt)} loading="lazy" style={ar ? { aspectRatio: ar, objectPosition: `${Number(a.focalX ?? 50)}% ${Number(a.focalY ?? 50)}%` } : undefined} />;
       return (
         <figure className={`w-${width}${ar ? ' ar' : ''}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={str(a.alt)} loading="lazy" style={ar ? { aspectRatio: ar, objectPosition: `${Number(a.focalX ?? 50)}% ${Number(a.focalY ?? 50)}%` } : undefined} />
+          {href ? <a href={href} aria-label={str(a.caption) || 'Open the full page'}>{img}</a> : img}
           {(str(a.caption) || str(a.credit)) && (
-            <figcaption>{str(a.caption)}{str(a.caption) && str(a.credit) ? ' ' : ''}{str(a.credit) && <b>{str(a.credit)}</b>}</figcaption>
+            <figcaption>{href ? <a href={href}>{str(a.caption) || 'See the full page'} →</a> : str(a.caption)}{str(a.caption) && str(a.credit) ? ' ' : ''}{str(a.credit) && <b>{str(a.credit)}</b>}</figcaption>
           )}
         </figure>
       );

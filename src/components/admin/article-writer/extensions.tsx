@@ -22,7 +22,7 @@ const frame = (selected: boolean): React.CSSProperties => ({ outline: selected ?
 // ---- Figure --------------------------------------------------------------------------------------------------------------------------
 
 function FigureView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
-  const a = node.attrs as { src: string; alt: string; caption: string; credit: string; width: string; ratio: string; focalX: number; focalY: number }
+  const a = node.attrs as { src: string; href: string; alt: string; caption: string; credit: string; width: string; ratio: string; focalX: number; focalY: number }
   const ar = a.ratio && a.ratio !== 'auto' ? a.ratio.replace(':', '/') : null
   const setFocal = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!ar) return
@@ -39,6 +39,7 @@ function FigureView({ node, updateAttributes, deleteNode, selected }: NodeViewPr
           <input style={small} placeholder="Credit, e.g. MLB / Statcast" value={a.credit} onChange={e => updateAttributes({ credit: e.target.value })} />
           <input style={{ ...small, borderColor: a.alt ? '#e7e2d8' : '#FF5722' }} placeholder="Alt text (describe the image)" value={a.alt} onChange={e => updateAttributes({ alt: e.target.value })} />
         </div>
+        <input style={{ ...small, marginTop: 6 }} placeholder="Link this picture to (e.g. /mlb/lab/pitching-lab/123/shape)" value={a.href ?? ''} onChange={e => updateAttributes({ href: e.target.value })} />
         <div style={bar}>
           <span style={kicker}>Width</span>
           {(['inline', 'wide', 'full'] as const).map(w => <button key={w} type="button" style={chip(a.width === w)} onClick={() => updateAttributes({ width: w })}>{w}</button>)}
@@ -55,7 +56,7 @@ function FigureView({ node, updateAttributes, deleteNode, selected }: NodeViewPr
 export const Figure = Node.create({
   name: 'figure', group: 'block', atom: true, draggable: true, selectable: true,
   addAttributes() {
-    return { src: { default: '' }, alt: { default: '' }, caption: { default: '' }, credit: { default: '' }, width: { default: 'wide' }, ratio: { default: 'auto' }, focalX: { default: 50 }, focalY: { default: 50 } }
+    return { src: { default: '' }, href: { default: '' }, alt: { default: '' }, caption: { default: '' }, credit: { default: '' }, width: { default: 'wide' }, ratio: { default: 'auto' }, focalX: { default: 50 }, focalY: { default: 50 } }
   },
   parseHTML() { return [{ tag: 'figure[data-x9="figure"]' }] },
   renderHTML({ HTMLAttributes }) { return ['figure', mergeAttributes({ 'data-x9': 'figure' }, HTMLAttributes)] },

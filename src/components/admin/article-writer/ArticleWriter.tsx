@@ -138,8 +138,8 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
 
   // ---- Inserting --------------------------------------------------------------------------------------------------------------------
 
-  const insertFigure = useCallback((src: string, alt = '', credit = '', width: 'inline' | 'wide' | 'full' = 'wide') => {
-    editor?.chain().focus().insertContent({ type: 'figure', attrs: { src, alt, credit, width } }).run()
+  const insertFigure = useCallback((src: string, alt = '', credit = '', width: 'inline' | 'wide' | 'full' = 'wide', extra: { href?: string; caption?: string } = {}) => {
+    editor?.chain().focus().insertContent({ type: 'figure', attrs: { src, alt, credit, width, ...extra } }).run()
   }, [editor])
 
   const handleFiles = useCallback(async (files: FileList | File[] | null, asHero: boolean) => {
@@ -372,7 +372,7 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
 
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e => { void handleFiles(e.target.files, false); e.target.value = '' }} />
       {menu && <SlashMenu x={menu.x} y={menu.y} items={items} index={menuIndex} onHover={setMenuIndex} onPick={(i: SlashItem) => runItem(i.id)} />}
-      {chartOpen && <ChartPickerModal onInsert={url => insertFigure(url, 'Chart', 'x9Lab')} onClose={() => setChartOpen(false)} />}
+      {chartOpen && <ChartPickerModal onInsert={(url, o) => insertFigure(url, o?.caption ? `Pitch shape card: ${o.caption}` : 'Chart', 'x9Lab', 'wide', o)} onClose={() => setChartOpen(false)} />}
     </div>
   )
 }

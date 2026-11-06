@@ -11,6 +11,7 @@ import { getLeagueTables } from '@/lib/team-profile/league'
 import { getDefenseProfile } from '@/lib/defense-chart'
 import { getTeamBatting } from '@/lib/team-batting'
 import { findTeamByName } from '@/lib/teams'
+import { getPitcherRepertoire } from '@/lib/pitch-shape/data'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import { log } from '@/lib/log'
 
@@ -114,6 +115,8 @@ export async function GET(req: NextRequest) {
   }
   if (!playerId || !season) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
 
+  // Every pitch type he threw (all types: this route is admin only), from pitch_shape_pitcher, for the article Pitch shape card.
+  if (kind === 'pitch-shape') return NextResponse.json({ repertoire: await getPitcherRepertoire(playerId, season, true) })
   if (kind === 'movement') return NextResponse.json({ rows: await getPitchMovementFromDB(playerId, season) })
 
   if (kind === 'percentiles') {

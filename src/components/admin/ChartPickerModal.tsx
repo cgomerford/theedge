@@ -9,7 +9,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { toPng } from 'html-to-image'
 import { loadFFmpegInstance } from '@/lib/video-export'
-import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis, ZAxis } from 'recharts'
 import { C, SANS } from '@/components/team/ui'
 import { pitchColor } from '@/lib/mlb'
 import type { ArsenalRow } from '@/app/api/pitcher-arsenal/route'
@@ -25,6 +25,8 @@ import type { BatLine, TeamBatting } from '@/lib/team-batting'
 import type { DefenseProfile } from '@/lib/defense-chart'
 import type { PitcherArm } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import type { PitLine } from '@/lib/team-profile/league'
+import type { Repertoire } from '@/lib/pitch-shape/data'
+import { PITCH_NAMES } from '@/lib/pitch-shape/model'
 import { log } from '@/lib/log'
 
 /** Animation progress for the chart on show: 0 at the start, 1 when finished. Charts read it through useEase(); 1 means fully drawn (the normal still picture). */
@@ -34,7 +36,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 
 type Person = { id: number; fullName: string; primaryPosition: string }
 type Who = 'pitcher' | 'batter' | 'fielder' | 'team'
-interface Props { onInsert: (url: string) => void; onClose: () => void }
+interface Props { onInsert: (url: string, opts?: { href?: string; caption?: string }) => void; onClose: () => void }
 
 const SEASON = new Date().getFullYear()
 const sourceLine = (what: string) => `${what}, ${SEASON}. Independent, not affiliated with MLB.`
@@ -139,6 +141,49 @@ function Movement(c: Ctx) {
   if (!pitches.length) return <Note text={(c.game ? g.data?.error : data?.error) ?? (c.game ? 'No pitch tracking on record for that game.' : 'No pitch with 20 or more tracked pitches on record for this pitcher yet.')} />
   return <><PitchPathsPlayer name={c.name} season={c.game ? c.game.label.toUpperCase() : SEASON} pitches={pitches} t={t} /><Foot text={`Average path of each pitch type with ${c.game ? MIN_GAME : 20} or more pitches${c.game ? ' in that game' : ''}, from Statcast tracking. ${sourceLine('Source: Baseball Savant')}`} /></>
 }
+const MIN_SHAPE_SWINGS = 25
+/** The pitch shape card: where each of his pitches sits on the movement map (ride up, run across) with speed, arm angle and whiff rate. Links to his Shape page when inserted. */
+function ShapeCard(c: Ctx) {
+  const { data, state } = useJson<{ repertoire: Repertoire | null }>(`/api/admin/chart-data?kind=pitch-shape&playerId=${c.playerId}&season=${SEASON}`)
+  if (state === 'loading') return <Note text="Loading his pitch shape…" />
+  const rep = data?.repertoire
+  if (!rep || !rep.rows.length) return <Note text="No pitch shape on record for this pitcher this season yet." />
+  const total = rep.rows.reduce((s, r) => s + r.nPitches, 0)
+  const rows = rep.rows.map(r => ({ ...r, name: PITCH_NAMES[r.pitchType] ?? r.pitchType, share: total ? (r.nPitches / total) * 100 : 0, whiff: r.nSwings >= MIN_SHAPE_SWINGS ? (r.nWhiffs / r.nSwings) * 100 : null }))
+  const lim = Math.max(24, ...rows.map(r => Math.max(Math.abs(r.hb), Math.abs(r.ivb)))) + 4
+  const lh = rep.hand === 'L' ? 'left' : 'right'
+  return (
+    <>
+      <Head title="Pitch shape" name={c.name} sub={`${lh}-handed · ${total.toLocaleString()} pitches in ${rep.season}`} />
+      <div style={{ display: 'grid', gridTemplateColumns: '250px minmax(0,1fr)', gap: 14, alignItems: 'center' }}>
+        <div style={{ height: 250, background: '#fff', border: `1px solid ${C.line}`, borderRadius: 10 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 14, right: 14, bottom: 22, left: 8 }}>
+              <XAxis type="number" dataKey="hb" domain={[-lim, lim]} tickCount={5} tick={{ fontSize: 10, fill: C.mute, fontFamily: SANS }} label={{ value: 'Run (in, catcher view)', position: 'insideBottom', offset: -10, fontSize: 10, fill: C.mute, fontFamily: SANS }} />
+              <YAxis type="number" dataKey="ivb" domain={[-lim, lim]} tickCount={5} width={34} tick={{ fontSize: 10, fill: C.mute, fontFamily: SANS }} label={{ value: 'Ride (in)', angle: -90, position: 'insideLeft', fontSize: 10, fill: C.mute, fontFamily: SANS }} />
+              <ZAxis type="number" dataKey="nPitches" range={[70, 420]} />
+              {rows.map(r => <Scatter key={r.pitchType} data={[r]} fill={pitchColor(r.pitchType)} fillOpacity={0.9} isAnimationActive={false}><LabelList dataKey="pitchType" position="top" style={{ fontSize: 10, fontWeight: 800, fill: C.ink, fontFamily: SANS }} /></Scatter>)}
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr .7fr .8fr .8fr .8fr .8fr', gap: '0 6px', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+          {['Pitch', 'Use', 'Mph', 'Ride', 'Run', 'Whiff'].map((h, i) => <span key={h} style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.mute, padding: '3px 0', borderBottom: `2px solid ${C.ink}`, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>)}
+          {rows.map(r => (
+            <div key={r.pitchType} style={{ display: 'contents' }}>
+              {[r.name, `${r.share.toFixed(0)}%`, r.velo.toFixed(1), `${r.ivb.toFixed(1)}"`, `${r.hb.toFixed(1)}"`, r.whiff == null ? '—' : `${r.whiff.toFixed(0)}%`].map((v, i) => (
+                <span key={i} style={{ padding: '6px 0', borderBottom: `1px solid ${C.line}`, fontWeight: i === 0 ? 800 : 600, textAlign: i === 0 ? 'left' : 'right', display: 'flex', alignItems: 'center', justifyContent: i === 0 ? 'flex-start' : 'flex-end', gap: 5 }}>
+                  {i === 0 && <i style={{ width: 8, height: 8, borderRadius: 4, background: pitchColor(r.pitchType), display: 'inline-block' }} />}{v}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <Foot text={`Dot size is how often he throws it. Ride is induced vertical break and run is horizontal break, in inches, as the catcher sees it. Arm angle ${rows.map(r => `${r.name} ${r.slot.toFixed(0)}°`).join(', ')}. Whiff% needs ${MIN_SHAPE_SWINGS} swings. ${sourceLine('Source: Statcast pitch tracking, x9Lab Pitch Shape Lab')} Full shape: xlab9.com/mlb/lab/pitching-lab/${c.playerId}/shape`} />
+    </>
+  )
+}
+
 function Velocity(c: Ctx) {
   const { data, state } = useMovement(c)
   const g = useGame(c, 'pitcher')
@@ -599,6 +644,7 @@ const KINDS: Kind[] = [
   { id: 'mix', label: 'Pitch mix', blurb: 'Donut of how often each pitch is thrown', who: ['pitcher'], render: PitchMix, anim: 'wipe', game: true },
   ...METRICS.map((m): Kind => ({ id: `res-${m.key}`, label: `${m.label} by pitch`, blurb: m.blurb, who: ['pitcher'], render: c => <PitchResults {...c} metric={m} /> , anim: 'own', game: m.key === 'whiffPct' })),
   { id: 'move', label: 'Pitch movement (animated)', blurb: 'Story v5 catcher view: each pitch flies its real average path', who: ['pitcher'], render: Movement, anim: 'own', game: true },
+  { id: 'shape', label: 'Pitch shape card', blurb: 'Every pitch on the movement map, linked to his Pitch Shape page', who: ['pitcher'], render: ShapeCard, anim: 'wipe' },
   { id: 'velo', label: 'Pitch velocity', blurb: 'Average mph of each pitch', who: ['pitcher'], render: Velocity, anim: 'wipe', game: true },
   { id: 'spray', label: 'Spray chart', blurb: 'Where a hitter\'s batted balls went', who: ['batter'], render: Spray, anim: 'wipe', game: true },
   { id: 'def-oaa', label: 'Defense: outs above average', blurb: 'Plays made vs an average fielder, with rank', who: ['fielder'], render: DefOaa, anim: 'own' },
@@ -669,6 +715,9 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
   useEffect(() => () => cancelAnimationFrame(raf.current), [])
 
   /** Draws the chart at 30 points along its animation, then asks ffmpeg.wasm (already used for the story videos) to join the pictures into one looping GIF that holds on the finished chart. */
+  /** The shape card links to the pitcher's Shape page; the other charts insert as plain pictures. */
+  const linkFor = () => (kindId === 'shape' && player ? { href: `/mlb/lab/pitching-lab/${player.playerId}/shape`, caption: `${player.name}'s full pitch shape` } : undefined)
+
   async function insertAnimated() {
     if (!stage.current || !ready) return
     setBusy(true); setError('')
@@ -696,7 +745,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
       const form = new FormData(); form.append('file', blob, 'chart.gif')
       const res = await fetch('/api/admin/upload', { method: 'POST', body: form })
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed')
-      onInsert(((await res.json()) as { url: string }).url)
+      onInsert(((await res.json()) as { url: string }).url, linkFor())
       onClose()
     } catch (e) {
       log.error('ChartPickerModal', 'animated insert failed', e instanceof Error ? e.message : e)
@@ -714,7 +763,7 @@ export default function ChartPickerModal({ onInsert, onClose }: Props) {
       form.append('file', await (await fetch(dataUrl)).blob(), 'chart.png')
       const res = await fetch('/api/admin/upload', { method: 'POST', body: form })
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed')
-      onInsert(((await res.json()) as { url: string }).url)
+      onInsert(((await res.json()) as { url: string }).url, linkFor())
       onClose()
     } catch (e) {
       log.error('ChartPickerModal', 'insert failed', e instanceof Error ? e.message : e)
