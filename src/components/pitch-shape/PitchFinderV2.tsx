@@ -34,6 +34,9 @@ import {
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
+import { BLANK, METRICS, ResultsLegend, ResultsReadout, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
+import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, type ResultsPayload } from '@/lib/pitch-shape/results-math'
+import type { Board } from '@/lib/pitch-shape/results'
 
 const HALF = 12
 const RADII = [0.5, 1, 2] as const
@@ -46,6 +49,8 @@ type Spot = { hb: number; ivb: number; rate: number; swings: number }
 type Place = { hb: number; ivb: number; spot: number | null }
 
 const cache = new Map<string, MovementCellsPayload | null>()
+const resCache = new Map<string, ResultsPayload | null>()
+const boardCache = new Map<string, Board | null>()
 
 /** The most effective places: highest miss rate with 200+ swings in the window, at least 4 in apart. */
 function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4): Spot[] {
@@ -93,6 +98,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
   const [view, setView] = useState<'map' | 'pitcher'>('map')
+  const [measure, setMeasure] = useState<'whiff' | MetricId>('whiff')   // what colours the map: whiffs per swing, or what the shape has produced
+  const [resPayload, setResPayload] = useState<ResultsPayload | null | undefined>(resCache.get(key))
+  const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(key))
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const locked = !isPro && !lookLeft && !isFree(type)
   const name = PITCH_NAMES[type] ?? type
@@ -111,9 +119,27 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     return () => { live = false }
   }, [key, type, hand, locked])
 
+  // what these shapes have produced (runs saved, wOBA, xwOBA, average, slugging) and the Shape Score board: separate tables, so the whiff map never waits on them
+  useEffect(() => {
+    if (locked) { setResPayload(null); setBoard(null); return }
+    let live = true
+    const load = <T,>(url: string, store: Map<string, T | null>, pick: (j: never) => T | null, set: (v: T | null | undefined) => void) => {
+      if (store.has(key)) { set(store.get(key) ?? null); return }
+      set(undefined)
+      fetch(url).then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))).then(j => { const v = pick(j as never); store.set(key, v); if (live) set(v) })
+        .catch(e => { log.error('PitchFinderV2', 'results fetch failed', e instanceof Error ? e.message : e); if (live) set(null) })
+    }
+    load(`/api/mlb/pitch-shape/results?type=${type}&hand=${hand}&half=${HALF}`, resCache, (j: { payload: ResultsPayload | null }) => j.payload, setResPayload)
+    load(`/api/mlb/pitch-shape/board?type=${type}&hand=${hand}`, boardCache, (j: { board: Board | null }) => j.board, setBoard)
+    return () => { live = false }
+  }, [key, type, hand, locked])
+
   const grids = useMemo(() => (payload ? { latest: makeGrid(payload, 'latest'), all: makeGrid(payload, 'all') } : null), [payload])
   const grid = grids ? grids[span] : null
   const N = grid ? 2 * grid.h10 + 1 : 0
+  const rGrid = useMemo(() => (resPayload ? makeResultsGrid(resPayload, span === 'latest' ? 'latest' : 'all') : null), [resPayload, span])
+  const rLeague = useMemo(() => (rGrid ? measuresOf(rGrid.total) : null), [rGrid])
+  const metric = METRICS.find(m => m.id === measure) ?? null
   const r10 = Math.round(radius * 10)
   const leagueRate = grid && grid.swings > 0 ? grid.whiffs / grid.swings : null
   const latest = payload?.latest ?? new Date().getFullYear()
@@ -173,14 +199,22 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     const ctx = cv.getContext('2d')
     if (!ctx) return
     const img = ctx.createImageData(N, N)
+    const useRes = metric != null && rGrid != null && rLeague != null
+    const ref = useRes ? metric.ref(rLeague) : 0
     for (let yy = 0; yy < N; yy++) for (let xx = 0; xx < N; xx++) {
-      const s = stats(grid, grid.gx0 + grid.m10 + xx, grid.gy0 + grid.m10 + yy, r10)
-      const rgb = boxColour(s.swings, s.whiffs, leagueRate) ?? MAP_BG
+      let rgb: [number, number, number]
+      if (useRes) {   // coloured by what the shape has produced: orange better for the pitcher than the league average, blue worse, white too thin
+        const v = metric.get(measuresOf(windowSums(rGrid, grid.gx0 + grid.m10 + xx, grid.gy0 + grid.m10 + yy, r10)), rLeague)
+        rgb = v == null ? BLANK : colourFor(((metric.up ? 1 : -1) * (v - ref)) / metric.span)
+      } else {
+        const s = stats(grid, grid.gx0 + grid.m10 + xx, grid.gy0 + grid.m10 + yy, r10)
+        rgb = boxColour(s.swings, s.whiffs, leagueRate) ?? MAP_BG
+      }
       const o = ((N - 1 - yy) * N + xx) * 4
       img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
-  }, [grid, r10, N, leagueRate])
+  }, [grid, r10, N, leagueRate, metric, rGrid, rLeague])
 
   const win = (hb: number, ivb: number) => {
     if (!grid) return null
@@ -262,7 +296,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         Which {lc}s make hitters miss, and who throws them?
       </h1>
       <p style={{ fontSize: 15.5, lineHeight: 1.55, color: '#5b5347', maxWidth: 780, margin: '0 0 14px' }}>
-        Every {hand === 'L' ? 'left' : 'right'}-handed {lc} from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. Darker orange means hitters missed more often when they swung. It shows what has happened, not a forecast.{' '}
+        Every {hand === 'L' ? 'left' : 'right'}-handed {lc} from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. {measure === 'whiff' ? 'Darker orange means hitters missed more often when they swung. ' : 'Colour shows what pitches shaped like that spot have produced: orange better for the pitcher than the league average, blue worse. '}Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging, and the Shape Score ranks every shape. It shows what has happened, not a forecast.{' '}
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
 
@@ -296,6 +330,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <span className="pv-k" style={{ marginLeft: 10 }}>Thrown by</span>
         <button type="button" className={`pv-pill pf2-pill${hand === 'R' ? ' on' : ''}`} onClick={() => setHand('R')}>Right-handers</button>
         <button type="button" className={`pv-pill pf2-pill${hand === 'L' ? ' on' : ''}`} onClick={() => setHand('L')}>Left-handers</button>
+      </div>
+      <div className="pv-row" style={{ marginTop: 0 }}>
+        <span className="pv-k">Colour by</span>
+        <button type="button" className={`pv-pill pf2-pill${measure === 'whiff' ? ' on' : ''}`} onClick={() => setMeasure('whiff')}>Whiffs per swing</button>
+        {METRICS.map(m => <button key={m.id} type="button" className={`pv-pill pf2-pill${measure === m.id ? ' on' : ''}`} onClick={() => setMeasure(m.id)}>{m.label}</button>)}
       </div>
       <details style={{ margin: '0 0 6px' }}>
         <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#5b5347', minHeight: 32 }}>More filters</summary>
@@ -369,7 +408,14 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   })}
                 </svg>
                 {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
-                {hover && (() => { const w = win(hover.hb, hover.ivb); return w ? (
+                {hover && metric && rGrid && rLeague && (() => {
+                  const m = measuresOf(windowSums(rGrid, Math.round(hover.hb * 10), Math.round(hover.ivb * 10), r10)), v = metric.get(m, rLeague)
+                  return (
+                    <div style={{ position: 'absolute', left: Math.min(hover.x + 12, 9999), top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined }}>
+                      {v == null ? `${m.pitches.toLocaleString()} pitches · too few to show ${metric.label.toLowerCase()}` : `${metric.label}: ${metric.fmt(v)} · ${m.pitches.toLocaleString()} pitches`}
+                    </div>)
+                })()}
+                {hover && !metric && (() => { const w = win(hover.hb, hover.ivb); return w ? (
                   <div style={{ position: 'absolute', left: Math.min(hover.x + 12, 9999), top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined }}>
                     {w.rate != null ? `${(w.rate * 100).toFixed(1)}% of ${w.swings.toLocaleString()} swings miss · ${w.swings >= STRONG_SWINGS ? 'strong' : 'thin'} sample` : `${w.swings} swings · under ${MIN_WINDOW_SWINGS}, not estimated`}
                   </div>) : null })()}
@@ -381,13 +427,14 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: C.mute, margin: '2px 0 8px', paddingLeft: 26 }}><span>↑ RIDE (INDUCED VERTICAL BREAK, IN)</span><span>RUN (ARM-SIDE BREAK, IN) →</span></div>
 
+            {metric && <div style={{ marginBottom: 10 }}>{rGrid ? <ResultsLegend metric={metric} lc={lc} /> : <div style={{ fontSize: 13, color: '#5b5347', padding: '8px 2px' }}>{resPayload === undefined ? 'Loading what these shapes have produced…' : 'What these shapes have produced isn’t built for this pitch yet; it fills after the weekly shape-results job runs.'}</div>}</div>}
             <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', fontSize: 13 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, flexWrap: 'wrap' }}>
+              {!metric && <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, flexWrap: 'wrap' }}>
                 <span>Fewer misses than average</span>
                 <span style={{ flex: 1, minWidth: 120, maxWidth: 340, height: 12, borderRadius: 3, position: 'relative', background: 'linear-gradient(90deg,#5E7A99 0%,#F4EEE3 50%,#FF8A50 75%,#A8300E 100%)' }}><i style={{ position: 'absolute', left: '50%', top: -3, width: 2, height: 18, background: C.ink }} /></span>
                 <span>More misses than average</span>
-              </div>
-              <div style={{ color: '#5b5347', marginTop: 6 }}>League average: <b style={{ color: C.ink }}>{(leagueRate * 100).toFixed(1)}%</b> of swings miss</div>
+              </div>}
+              {!metric && <div style={{ color: '#5b5347', marginTop: 6 }}>League average: <b style={{ color: C.ink }}>{(leagueRate * 100).toFixed(1)}%</b> of swings miss</div>}
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: '#3a352c' }}>
                 {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
                 <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
@@ -484,6 +531,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13.5, fontWeight: 700 }}>
                   <span>Ride {place.ivb.toFixed(1)} in</span><span>Run {place.hb.toFixed(1)} in</span><span>{placeStats.swings.toLocaleString()} swings within ±{radius} in</span>
                 </div>
+                {rGrid && rLeague && (() => {
+                  const here = measuresOf(windowSums(rGrid, Math.round(place.hb * 10), Math.round(place.ivb * 10), r10)), saved = runsSaved(here, rLeague)
+                  const score = saved != null && board && board.dist.length ? percentile(board.dist, saved) : null
+                  return <ResultsReadout here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
+                })()}
                 <a href="#shape-vs-results" style={{ display: 'block', marginTop: 10, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, textDecoration: 'none', minHeight: 32 }}>Who gets more or less than this shape ↓</a>
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>
@@ -520,6 +572,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
           : (league ?? leagueAll) ? <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={openPitcher} shownId={focus} across={across} />
           : null
       )}
+
+      {!locked && payload && grid && <ShapeScoreBoard board={board} lc={lc} hand={hand} onShow={showOnMap} />}
 
       <div className="pf2-foot" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 24, borderTop: `1px solid ${C.line}`, marginTop: 26, paddingTop: 14, fontSize: 13.5, lineHeight: 1.55, color: '#5b5347' }}>
         <style>{'@media(max-width:800px){.pf2-foot{grid-template-columns:1fr !important}}'}</style>
