@@ -26,6 +26,8 @@ export const normalise = (r: Record<string, unknown>): Line => ({
   zone_n: num(r.zone_n), ooz_n: num(r.ooz_n), chase_n: num(r.chase_n), first_n: num(r.first_n), first_strike: num(r.first_strike), prev_n: num(r.prev_n), repeat_n: num(r.repeat_n),
 })
 
+/** Two decimals, with no sign on a value that rounds to zero (so -0.004 reads 0.00, not -0.00). */
+export const r2 = (v: number) => (Math.abs(v) < 0.005 ? '0.00' : v.toFixed(2))
 const rv100 = (s: { rv: number; rv_n: number }) => (s.rv_n > 0 ? (s.rv / s.rv_n) * 100 : null)
 const sum = (ls: Line[]) => ls.reduce((a, l) => ({ ...a, pitches: a.pitches + l.pitches, swings: a.swings + l.swings, whiffs: a.whiffs + l.whiffs, rv_n: a.rv_n + l.rv_n, rv: a.rv + l.rv, pa: a.pa + l.pa, wd: a.wd + l.wd, w: a.w + l.w, x: a.x + l.x, zone_n: a.zone_n + l.zone_n, ooz_n: a.ooz_n + l.ooz_n, chase_n: a.chase_n + l.chase_n, first_n: a.first_n + l.first_n, first_strike: a.first_strike + l.first_strike, prev_n: a.prev_n + l.prev_n, repeat_n: a.repeat_n + l.repeat_n }),
   { pitch_type: '', p_throws: '', stand: '', count_state: '', tto: 0, pitches: 0, swings: 0, whiffs: 0, rv_n: 0, rv: 0, pa: 0, wd: 0, w: 0, x: 0, zone_n: 0, ooz_n: 0, chase_n: 0, first_n: 0, first_strike: 0, prev_n: 0, repeat_n: 0 } as Line)
@@ -131,7 +133,7 @@ export function summarise(arsenal: ArsenalGap[], leaks: Leak[], process: Process
   if (worst) out.push({ tone: 'leak', text: `Most of the shortfall is on his ${nameOf(worst.pitchType).toLowerCase()}: it has saved ${worst.ownSaved == null ? '' : `${worst.ownSaved >= 0 ? '+' : '−'}${Math.abs(worst.ownSaved).toFixed(2)}`} runs per 100 pitches against the ${worst.shapeSaved == null ? '' : `${worst.shapeSaved >= 0 ? '+' : '−'}${Math.abs(worst.shapeSaved).toFixed(2)}`} its shape has produced, and it is ${(worst.share * 100).toFixed(0)}% of his pitches, so it costs about ${worst.cost?.toFixed(2)} runs per 100 pitches overall.${worst.small ? ' Small sample.' : ''}` })
   else if (arsenal.some(a => a.gap != null)) out.push({ tone: 'ok', text: 'No single pitch explains it: none of his pitches is far enough below its shape to account for a gap of about a fifth of a run per 100 pitches.' })
   const l = leaks[0]
-  if (l) out.push({ tone: 'leak', text: `Hitters do more damage than expected against his mix in ${l.label}: ${l.mine100.toFixed(2)} runs per 100 pitches against ${l.expected100.toFixed(2)} for league pitchers with his mix (${l.pitches.toLocaleString()} pitches).` })
+  if (l) out.push({ tone: 'leak', text: `Hitters do more damage than expected against his mix in ${l.label}: ${r2(l.mine100)} runs per 100 pitches against ${r2(l.expected100)} for league pitchers with his mix (${l.pitches.toLocaleString()} pitches).` })
   for (const p of process.filter(x => x.hurts).slice(0, 2)) out.push({ tone: 'leak', text: p.text })
   if (contactGap != null && contactGap >= 0.03) out.push({ tone: 'leak', text: 'His results are worse than the contact quality he allowed (wOBA above xwOBA), which can point to defense or luck rather than to the pitches.' })
   if (contactGap != null && contactGap <= -0.03) out.push({ tone: 'ok', text: 'His results are better than the contact quality he allowed (wOBA below xwOBA), so defense or luck may be helping him.' })

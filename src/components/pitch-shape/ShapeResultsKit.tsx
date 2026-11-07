@@ -14,6 +14,7 @@ import FollowIsland from '@/components/signup/FollowIsland'
 import type { Board, BoardRow } from '@/lib/pitch-shape/results'
 import type { Overall, OverallRank } from '@/lib/pitch-shape/overall'
 import type { DiagnosisResult, WhyResult } from '@/lib/pitch-shape/diagnosis'
+import { r2 } from '@/lib/pitch-shape/diagnose'
 import { EFFECT_NOTICE, EXTENSION_NOTICE_FT, SPEED_NOTICE_MPH, ZONE_LABEL, biggestZoneShift, verdictOf, type Factor } from '@/lib/pitch-shape/decompose'
 import UpgradePrompt from '@/components/pro/UpgradePrompt'
 import { ordinal } from '@/lib/ordinal'
@@ -463,7 +464,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
                     : diagnosis.leaks.slice(0, 4).map(l => (
                       <div key={l.label} style={{ borderBottom: `1px solid ${C.line}`, padding: '7px 0', fontSize: 13, lineHeight: 1.45 }}>
                         <b>{l.label[0].toUpperCase() + l.label.slice(1)}</b> · {l.pitches.toLocaleString()} pitches ({(l.share * 100).toFixed(0)}%)<br />
-                        <span style={{ color: '#5b5347' }}>{l.mine100.toFixed(2)} runs per 100 against {l.expected100.toFixed(2)} expected · costs {l.cost.toFixed(2)} per 100 overall</span>
+                        <span style={{ color: '#5b5347' }}>{r2(l.mine100)} runs per 100 against {r2(l.expected100)} expected · costs {l.cost.toFixed(2)} per 100 overall</span>
                       </div>
                     ))}
                 </div>
@@ -745,7 +746,7 @@ export function buildWhy(sel: BoardRow, lc: string, why: Extract<WhyResult, { hi
   const f = (id: Factor['id']) => why.factors.find(x => x.id === id) as Factor
   const platoon = f('platoon'), location = f('location'), sequencing = f('sequencing')
   const pct = (v: number) => `${(v * 100).toFixed(0)}%`
-  const eff = (v: number | null) => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} runs per 100`)
+  const eff = (v: number | null) => (v == null ? '' : Math.abs(v) < 0.005 ? '0.00 runs per 100' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} runs per 100`)
   const mixStatus = (e: number | null): Status => { const v = verdictOf(e); return v == null ? 'unknown' : v }
 
   const rows: WRow[] = []
