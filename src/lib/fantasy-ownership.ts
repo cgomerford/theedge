@@ -46,16 +46,24 @@ export async function getOwnershipIndex(): Promise<{
   const byName = new Map<string, OwnershipIndexRow>()
   const byEspnId = new Map<number, OwnershipIndexRow>()
   const supa = createAdminClient()
-  const { data, error } = await supa
-    .from('fantasy_ownership')
-    .select('espn_player_id, mlb_player_id, full_name, percent_owned')
-
-  if (error) {
-    log.error('fantasy-ownership', 'getOwnershipIndex error', error.message)
-    return { byMlbId, byName, byEspnId }
+  // PostgREST caps a response at 1,000 rows and the table holds ~3,300, so read it a page at a time
+  const data: { espn_player_id: number; mlb_player_id: number | null; full_name: string; percent_owned: unknown }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error } = await supa
+      .from('fantasy_ownership')
+      .select('espn_player_id, mlb_player_id, full_name, percent_owned')
+      .order('espn_player_id')
+      .range(from, from + 999)
+    if (error) {
+      log.error('fantasy-ownership', 'getOwnershipIndex error', error.message)
+      return { byMlbId, byName, byEspnId }
+    }
+    const got = (page ?? []) as unknown as typeof data
+    data.push(...got)
+    if (got.length < 1000) break
   }
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     const rec: OwnershipIndexRow = {
       espn_player_id: row.espn_player_id,
       mlb_player_id: row.mlb_player_id,

@@ -54,7 +54,7 @@ type Place = { hb: number; ivb: number; spot: number | null }
 const cache = new Map<string, MovementCellsPayload | null>()
 const resCache = new Map<string, ResultsPayload | null>()
 /** Bump when the board's shape changes, so a copy cached in the browser (or kept across a hot reload) is never reused with fields missing. */
-const BOARD_V = 'b4'
+const BOARD_V = 'b5'
 const boardCache = new Map<string, Board | null>()
 const shapeBinsCache = new Map<string, ShapeBin[] | null>()
 

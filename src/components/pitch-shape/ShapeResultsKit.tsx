@@ -26,6 +26,7 @@ import { explainShape, reasons } from '@/lib/pitch-shape/explain'
 import { PITCH_NAMES, type ShapeBin } from '@/lib/pitch-shape/model'
 import { ESTABLISHED_PITCHES, LENSES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
 import { GATE, LEVEL_RUNS, resultsVsShape, runsSaved, type Measures } from '@/lib/pitch-shape/results-math'
+import { useRoster } from './useRoster'
 import { RAMP } from './parts'
 import { hexToRgb } from './heatGrid'
 
@@ -301,7 +302,10 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
               {verdict && <span style={{ background: verdict === 'ahead' ? '#E3F3EC' : verdict === 'behind' ? '#FBE6E1' : C.soft, color: verdict === 'ahead' ? '#13694F' : verdict === 'behind' ? '#A8391F' : '#5b5347', fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>{verdict === 'ahead' ? 'Outperforming his shape' : verdict === 'behind' ? 'Underperforming his shape' : 'In line with his shape'}</span>}
             </div>
           </div>
-          <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score</span></div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <Star id={sel.pitcherId} name={sel.name} />
+            <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score</span></div>
+          </div>
         </div>
         {exportData && (
           <div style={{ margin: '10px 0 0' }}>
@@ -357,14 +361,24 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             { label: 'BB%', v: bp == null ? '—' : `${(bp * 100).toFixed(1)}%` },
             { label: 'IP', v: wl ? wl.ip.toFixed(1) : '—', sub: wl ? `${wl.gs} GS · ${wl.g} G` : undefined },
             { label: 'Wins', v: wl ? String(wl.w) : '—' },
+            { label: 'ESPN owned', v: fmtOwned(sel.owned), sub: 'of ESPN leagues' },
           ]
           const eg = era != null && xera != null ? era - xera : null
+          // look-back: the runs his own pitches gave up beyond what pitches shaped like his have given up, spread over his innings. A re-pricing of the season already played, on this one pitch.
+          const nPitch = sel.ownRaw.n.rv
+          const runsOver = gap != null && nPitch > 0 ? (-gap / 100) * nPitch : null
+          const eraShift = runsOver != null && wl && wl.ip >= 20 ? (runsOver * 9) / wl.ip : null
           return (
             <div style={{ margin: '12px 0 0' }}>
               <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>Fantasy line · {overall?.season ?? season ?? ''}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 6 }}>
                 {tiles.map(t => <div key={t.label} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={{ ...k, color: C.mute }}>{t.label}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{t.v}</b>{t.sub && <div style={{ fontSize: 10.5, color: C.faint }}>{t.sub}</div>}</div>)}
               </div>
+              {runsOver != null && Math.abs(runsOver) >= 1 && eraShift != null && era != null && (
+                <div style={{ background: C.soft, borderRadius: 6, padding: '8px 10px', marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: '#3a352c' }}>
+                  <b>His season at his shape.</b> His {nPitch.toLocaleString()} {lc}s gave up {Math.abs(runsOver).toFixed(1)} runs {runsOver > 0 ? 'more' : 'fewer'} than pitches shaped like his have given up. Over his {wl!.ip.toFixed(0)} innings, that comes to {Math.abs(eraShift).toFixed(2)} runs per nine: an ERA of {Math.max(0, era - eraShift).toFixed(2)} instead of {era.toFixed(2)}. This re-prices the season already played, on this one pitch, and counts run expectancy as runs; it is not a forecast.
+                </div>
+              )}
               {eg != null && Math.abs(eg) >= 0.4 && <div style={{ fontSize: 12.5, color: '#3a352c', lineHeight: 1.5, marginTop: 6 }}>His ERA is {Math.abs(eg).toFixed(2)} runs {eg > 0 ? 'higher' : 'lower'} than his xERA, so the contact he has allowed has been {eg > 0 ? 'better' : 'worse'} than his results. {kp != null && bp != null && kp - bp >= 0.15 ? `He strikes out ${((kp - bp) * 100).toFixed(0)} points more batters than he walks.` : ''}</div>}
             </div>
           )
@@ -623,10 +637,19 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 /** What the finder can be narrowed by. Each is a dropdown with "Any" first. */
 /** Savant's xERA on fewer plate appearances than this is shown but marked thin. */
 const THIN_XERA_PA = 100
+
+/** Star toggle for "My pitchers" (kept in this browser). */
+function Star({ id, name, style }: { id: number; name: string; style?: React.CSSProperties }) {
+  const { has, toggle } = useRoster()
+  const on = has(id)
+  return <button type="button" onClick={e => { e.stopPropagation(); toggle(id) }} aria-pressed={on} aria-label={on ? `Remove ${name} from my pitchers` : `Save ${name} to my pitchers`} title={on ? 'In my pitchers' : 'Save to my pitchers'} style={{ width: 40, height: 40, borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: on ? C.orange : C.mute, fontSize: 20, lineHeight: 1, cursor: 'pointer', fontFamily: 'inherit', ...style }}>{on ? '★' : '☆'}</button>
+}
+const fmtOwned = (v: number | null | undefined) => (v == null ? '—' : v < 10 ? `${v.toFixed(1)}%` : `${Math.round(v)}%`)
 const ERA_MIN = [4.5, 5, 5.5, 6, 7]
 const XERA_MAX = [3, 3.5, 4, 4.5]
 const GAP_MIN = [0.5, 1, 1.5, 2, 3]
 const SCORE_MIN = [50, 70, 80, 90, 95]
+const OWNED_MAX = [1, 5, 10, 25, 50]   // ESPN percent rostered, at most
 const selVal = (v: number | null) => (v == null ? '' : String(v))
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -644,20 +667,24 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
   const [maxXera, setMaxXera] = useState<number | null>(null)
   const [minGap, setMinGap] = useState<number | null>(null)
   const [minScore, setMinScore] = useState<number | null>(null)
+  const [maxOwned, setMaxOwned] = useState<number | null>(null)   // ESPN percent rostered, at most
+  const roster = useRoster()
   const [seed, setSeed] = useState<number | null>(null)   // null = best matches first; a number = a random six for that seed
   const L = LENSES.find(l => l.id === lens) ?? LENSES[0]
-  const rows = board ? board.rows : []
+  const allRows = board ? board.rows : []
+  const rows = maxOwned == null ? allRows : allRows.filter(r => r.owned != null && r.owned <= maxOwned)
+  const mine = allRows.filter(r => roster.ids.includes(r.pitcherId))
   const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore }
   const found = findPitchers(rows, lens, { ...base, limit: 6, seed })
   const total = findPitchers(rows, lens, { ...base, limit: 9999 }).length
   const hiddenKnown = known ? 0 : findPitchers(rows, lens, { ...base, includeKnown: true, limit: 9999 }).length - total
   const noAwards = rows.length > 0 && rows.every(r => r.profile == null)
   const noStats = rows.length > 0 && rows.every(r => r.stats == null)
-  const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null
+  const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null || maxOwned != null
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
   const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 3 }
   const selectStyle: React.CSSProperties = { minHeight: 38, minWidth: 96, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 8px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
-  const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null) }
+  const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null); setMaxOwned(null) }
   const surprise = () => {
     const pool = findPitchers(rows, lens, { ...base, limit: 9999 })
     if (pool.length) onPick(pool[Math.floor(Math.random() * pool.length)])
@@ -693,6 +720,10 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
               <select style={selectStyle} value={selVal(minScore)} onChange={e => setMinScore(num(e.target.value))} aria-label="Shape Score at least">
                 <option value="">Any</option>{SCORE_MIN.map(v => <option key={v} value={v}>{v}+</option>)}
               </select></label>
+            <label style={field}><span className="pv-k">ESPN rostered</span>
+              <select style={selectStyle} value={selVal(maxOwned)} onChange={e => setMaxOwned(num(e.target.value))} aria-label="ESPN percent rostered, at most">
+                <option value="">Any</option>{OWNED_MAX.map(v => <option key={v} value={v}>{v}% or less</option>)}
+              </select></label>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
             {anyFilter && <button type="button" onClick={clear} style={{ ...pill(false), minHeight: 38, marginLeft: 'auto' }}>Clear filters</button>}
@@ -716,13 +747,14 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
                   const w = shapeWord(r.score)
                   const gap = r.stats?.era != null && r.stats?.xera != null ? r.stats.era - r.stats.xera : null
                   return (
-                    <button key={r.pitcherId} type="button" onClick={() => onPick(r)} style={{ textAlign: 'left', background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 8, padding: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'grid', gridTemplateColumns: '76px minmax(0,1fr)', gap: 12, alignItems: 'start' }}>
+                    <div key={r.pitcherId} style={{ position: 'relative' }}>
+                    <button type="button" onClick={() => onPick(r)} style={{ width: '100%', textAlign: 'left', background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 8, padding: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'grid', gridTemplateColumns: '76px minmax(0,1fr)', gap: 12, alignItems: 'start' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={headshot(r.pitcherId)} alt="" width={76} height={76} style={{ width: 76, height: 76, objectFit: 'contain', objectPosition: 'center bottom', background: '#fff', borderRadius: 8, border: `1px solid ${C.line}` }} />
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 17, letterSpacing: '-.01em' }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12.5 }}>{r.teamAbbr}</span></div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, margin: '8px 0 6px' }}>
-                          {([['ERA', f1(r.stats?.era), null, ''], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null, r.stats?.xeraPa != null && r.stats.xeraPa < THIN_XERA_PA ? ` · ${r.stats.xeraPa} PA` : ''], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null, '']] as [string, string, string | null, string][]).map(([a, b, col, note]) => (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 6, margin: '8px 0 6px' }}>
+                          {([['ERA', f1(r.stats?.era), null, ''], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null, r.stats?.xeraPa != null && r.stats.xeraPa < THIN_XERA_PA ? ` · ${r.stats.xeraPa} PA` : ''], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null, ''], ['ESPN', fmtOwned(r.owned), null, '']] as [string, string, string | null, string][]).map(([a, b, col, note]) => (
                             <div key={a} title={note ? `Savant's xERA on only ${r.stats?.xeraPa} plate appearances: shown, but noisy` : undefined} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px', opacity: note ? 0.7 : 1 }}><div style={{ ...k, fontSize: 9 }}>{a}{note}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
                           ))}
                         </div>
@@ -736,11 +768,31 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
                         </div>
                       </div>
                     </button>
+                    <Star id={r.pitcherId} name={r.name} style={{ position: 'absolute', top: 8, right: 8 }} />
+                    </div>
                   )
                 })}
               </div>
             )}
-          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ERA, xERA and innings are this season’s (xERA from Baseball Savant, which carries it for every pitcher; one on under 100 plate appearances is greyed and marked thin, because it is noisy); the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
+          {mine.length > 0 && (
+            <div style={{ marginTop: 14, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
+              <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>My pitchers · {mine.length} on this pitch</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8 }}>
+                {mine.map(r => {
+                  const w = shapeWord(r.score)
+                  return (
+                    <button key={r.pitcherId} type="button" onClick={() => onPick(r)} style={{ textAlign: 'left', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '8px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}><b style={{ fontSize: 14.5 }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12 }}>{r.teamAbbr}</span>{w && <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 10.5, borderRadius: 3, padding: '0 5px' }}>{w.word}</span>}</div>
+                      <div style={{ fontSize: 12.5, color: '#3a352c', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>Shape {r.score ?? '—'} · ERA {f1(r.stats?.era)} · xERA {f1(r.stats?.xera)} · ESPN {fmtOwned(r.owned)}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: r.verdict === 'ahead' ? '#13694F' : r.verdict === 'behind' ? '#A8391F' : '#5b5347', marginTop: 2 }}>{r.verdict === 'ahead' ? 'Outperforming his shape' : r.verdict === 'behind' ? 'Underperforming his shape' : r.verdict === 'level' ? 'In line with his shape' : 'Too few pitches to compare'}</div>
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>Starred pitchers are saved in this browser only. Only those who throw this pitch with this hand show here; change the pitch or hand to see the rest.</div>
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ESPN is the share of ESPN fantasy leagues that roster him, updated daily. ERA, xERA and innings are this season’s (xERA from Baseball Savant, which carries it for every pitcher; one on under 100 plate appearances is greyed and marked thin, because it is noisy); the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
         </>
       )}
     </section>
