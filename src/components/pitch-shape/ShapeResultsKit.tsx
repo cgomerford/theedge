@@ -613,7 +613,6 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
         {tabs.map(t => <button key={t.id} type="button" style={pill(tab === t.id)} onClick={() => { setTab(t.id); setAll(false) }}>{t.label}</button>)}
       </div>
       {shown.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', padding: '6px 0' }}>None here with enough pitches to compare.</div> : shown.map(({ r, rd }) => {
-        const top = [...rd].sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).filter(x => x.tone !== 'level').slice(0, 3)
         return (
           <button key={r.pitcherId} type="button" onClick={() => { onSelect(r.pitcherId); document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#fff', border: 0, borderTop: `1px solid ${C.line}`, padding: '10px 6px', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44, ...(r.pitcherId === selectedId ? { background: '#FFF1EA' } : null) }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -621,11 +620,26 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
               <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 14 }}>{r.score ?? '—'}</b></span>
               <span style={{ fontWeight: 800, fontSize: 13, color: r.verdict === 'ahead' ? C.good : r.verdict === 'behind' ? C.bad : C.ink }}>{r.gap != null ? `${signed(r.gap)} /100` : ''}</span>
             </div>
-            {top.length > 0 && (
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
-                {top.map(x => <span key={x.stat.id} style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontSize: 11.5, fontWeight: 700, borderRadius: 3, padding: '2px 7px' }}>{x.stat.label.replace(' against', '').replace(' per swing', '').replace(' / 100', '')} {x.stat.fmt(x.own)} vs {x.stat.fmt(x.shape)}</span>)}
-              </div>
-            )}
+            {r.gap != null && <div style={{ fontSize: 13, lineHeight: 1.4, marginTop: 4, color: r.verdict === 'ahead' ? '#13694F' : r.verdict === 'behind' ? '#A8391F' : '#5b5347', fontWeight: 700 }}>{r.verdict === 'level' ? `His ${lc} results are in line with what pitches shaped like his have produced.` : `His ${lc} results are ${Math.abs(r.gap).toFixed(2)} runs per 100 pitches ${r.verdict === 'ahead' ? 'better' : 'worse'} than pitches shaped like his have produced.`}</div>}
+            {(() => {
+              const want = ['saved', 'woba', 'xwoba', 'whiff'].map(id => rd.find(x => x.stat.id === id)).filter((x): x is Read => !!x)
+              if (want.length === 0) return null
+              const head: React.CSSProperties = { fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute, fontWeight: 800 }
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr)', gap: '3px 10px', marginTop: 6, fontSize: 13, fontVariantNumeric: 'tabular-nums', alignItems: 'baseline' }}>
+                  <span />
+                  <span style={{ ...head, textAlign: 'right' }}>His {lc}s</span>
+                  <span style={{ ...head, textAlign: 'right' }}>Shape produced</span>
+                  {want.map(x => (
+                    <div key={x.stat.id} style={{ display: 'contents' }}>
+                      <span style={{ color: '#3a352c' }}>{x.stat.label.replace(' against', '').replace(' per swing', '').replace(' / 100', ' per 100')}{x.stat.up ? '' : ' (lower is better)'}</span>
+                      <b style={{ textAlign: 'right', color: toneCol[x.tone].fg }}>{x.stat.fmt(x.own)}</b>
+                      <span style={{ textAlign: 'right', color: '#5b5347' }}>{x.stat.fmt(x.shape)}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </button>
         )
       })}
