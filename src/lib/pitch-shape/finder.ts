@@ -7,7 +7,13 @@
 export type FinderRow = {
   pitcherId: number; name: string; teamAbbr: string; pitches: number
   score: number | null; gap: number | null; verdict: 'behind' | 'level' | 'ahead' | null
-  overall: { pitches: number; runsPct: number | null } | null
+  overall: { pitches: number; runsPct: number | null; careerPitches?: number } | null
+  /** his own sample on this pitch is under the usual minimum (shown, but noisy) */
+  small?: boolean
+  /** his own pitches on this one: the sample behind his gap */
+  ownRaw?: { n: { rv: number } }
+  /** All-Star or major selections, from the MLB Stats API; null when it could not be read */
+  profile?: { allStars: number; major: boolean; debutYear: number | null } | null
 }
 export type LensId = 'hidden' | 'quiet' | 'unexplained'
 export const STRONG_SCORE = 70
@@ -17,18 +23,35 @@ export const SMALL_ROLE_PITCHES = 1100
 /** Overall runs-allowed standing at or below this share of ranked pitchers is middling or worse. */
 export const MIDDLING_PCT = 60
 
+/** Pitches since 2024 at or above which a pitcher has been a full-time pitcher for the whole record we hold (about three full seasons). */
+export const ESTABLISHED_PITCHES = 6500
+
+/**
+ * A household name, as far as the data can tell: an All-Star, Cy Young, MVP or All-MLB selection, or a full-time record across every season we hold. With no award history (the
+ * MLB Stats API could not be read) only the workload test applies.
+ */
+export const isEstablished = (r: FinderRow): boolean =>
+  !!(r.profile && (r.profile.allStars > 0 || r.profile.major)) || (r.overall?.careerPitches ?? 0) >= ESTABLISHED_PITCHES
+
+/** A gap on few pitches is noisy, so lists order by the gap shrunk toward zero by the sample: n / (n + 150) of it (100 pitches count for 40%, 300 for 67%, 1,000 for 87%). */
+export const reliability = (r: FinderRow): number => { const n = r.ownRaw?.n.rv; return n == null ? 1 : n / (n + 150) }
+const weighted = (r: FinderRow) => (r.gap ?? 0) * reliability(r)
+
 export type Lens = { id: LensId; label: string; blurb: string; test: (r: FinderRow) => boolean; sort: (a: FinderRow, b: FinderRow) => number }
 export const LENSES: Lens[] = [
-  { id: 'hidden', label: 'Strong shape, results trail it', blurb: 'The shape has saved runs for league pitchers, his own results have not kept up. Most behind first.',
-    test: r => (r.score ?? 0) >= STRONG_SCORE && r.verdict === 'behind', sort: (a, b) => (a.gap ?? 0) - (b.gap ?? 0) },
+  { id: 'hidden', label: 'Strong shape, results trail it', blurb: 'The shape has saved runs for league pitchers, his own results have not kept up. Most behind first, with small samples counted for less.',
+    test: r => (r.score ?? 0) >= STRONG_SCORE && r.verdict === 'behind', sort: (a, b) => weighted(a) - weighted(b) },
   { id: 'quiet', label: 'Strong shape, quiet line', blurb: 'A strong shape on a pitcher with a small role or a middling overall line, so little has been said about it. Highest Shape Score first.',
     test: r => (r.score ?? 0) >= STRONG_SCORE && r.verdict !== 'ahead' && r.overall != null && (r.overall.pitches < SMALL_ROLE_PITCHES || (r.overall.runsPct != null && r.overall.runsPct <= MIDDLING_PCT)),
     sort: (a, b) => (b.score ?? 0) - (a.score ?? 0) },
-  { id: 'unexplained', label: 'Results the shape does not explain', blurb: 'Good overall results on a weak shape: the shape has not produced this for league pitchers. Biggest gap first.',
-    test: r => r.score != null && r.score <= WEAK_SCORE && r.verdict === 'ahead' && r.overall != null && r.overall.runsPct != null && r.overall.runsPct >= MIDDLING_PCT, sort: (a, b) => (b.gap ?? 0) - (a.gap ?? 0) },
+  { id: 'unexplained', label: 'Results the shape does not explain', blurb: 'Good overall results on a weak shape: the shape has not produced this for league pitchers. Biggest gap first, with small samples counted for less.',
+    test: r => r.score != null && r.score <= WEAK_SCORE && r.verdict === 'ahead' && r.overall != null && r.overall.runsPct != null && r.overall.runsPct >= MIDDLING_PCT, sort: (a, b) => weighted(b) - weighted(a) },
 ]
 
-export function findPitchers<T extends FinderRow>(rows: T[], id: LensId, limit = 6): T[] {
+export type FindOptions = { limit?: number; /** keep All-Stars, award winners and full-time veterans (default: hide them) */ includeKnown?: boolean; /** keep pitchers whose own sample is under the usual minimum (default: keep them) */ includeSmall?: boolean }
+
+export function findPitchers<T extends FinderRow>(rows: T[], id: LensId, opts: FindOptions | number = {}): T[] {
+  const o: FindOptions = typeof opts === 'number' ? { limit: opts } : opts
   const lens = LENSES.find(l => l.id === id) ?? LENSES[0]
-  return rows.filter(lens.test).sort(lens.sort).slice(0, limit)
+  return rows.filter(r => lens.test(r) && (o.includeKnown || !isEstablished(r)) && (o.includeSmall !== false || !r.small)).sort(lens.sort).slice(0, o.limit ?? 6)
 }

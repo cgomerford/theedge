@@ -15,6 +15,7 @@ import {
 } from './results-math'
 import { LEAGUE_COORD_ERA } from './data'
 import { getOverallLines, type OverallLine } from './overall'
+import { getProfiles, type Profile } from './profile'
 import type { Hand } from './model'
 
 const FIRST_SEASON = 2024
@@ -98,13 +99,19 @@ export type BoardRow = {
   ownRaw: Measures & { saved: number | null }
   /** his whole season, all pitch types: total pitches and where his runs allowed, wOBA and xwOBA rank among pitchers (null when the table is empty) */
   overall: OverallLine | null
+  /** how established he is: All-Star and major selections, MLB debut year (null when the MLB Stats API could not be read) */
+  profile: Profile | null
+  /** his own sample on this pitch is under the usual minimum: the comparison is shown, but it is a small sample */
+  small: boolean
   /** 1 to 99: where the shape's runs saved per 100 ranks among the shapes pitchers throw for this pitch type and hand */
   score: number | null
   gap: number | null; verdict: Verdict | null
 }
 export type Board = { type: string; hand: Hand; season: number; league: Measures; rows: BoardRow[]; /** sorted runs saved of every scored shape, for placing any spot on the map */ dist: number[] }
 
-const BOARD_MIN_PITCHES = 200
+/** A pitcher is listed with 100+ pitches of the type; his own results are compared with his shape from 100 pitches, flagged as a small sample under MIN_OWN_PITCHES. */
+const BOARD_MIN_PITCHES = 100
+const SMALL_MIN_PITCHES = 100
 const trim = (m: Measures) => m
 
 /**
@@ -138,12 +145,14 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
     const ssum = windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
     return { p, hb, ivb, sm, om, smRaw: measuresOf(ssum, false), omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
   })
+  const profiles = await getProfiles(list.map(r => r.p.pitcher_id))   // separate await: the MLB Stats API, cached a day
   const savedOf = (m: Measures) => runsSaved(m, league)
   const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
   const out: BoardRow[] = list.map(({ p, hb, ivb, sm, om, smRaw, omRaw }) => {
     const shapeSaved = savedOf(sm)
     const ownSaved = om && om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
-    const cmp = resultsVsShape(ownSaved, shapeSaved)
+    const small = om != null && om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
+    const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
     const tm = MLB_TEAMS.find(t => t.abbrev === p.team_abbr)
     return {
       pitcherId: p.pitcher_id, name: p.pitcher_name, teamAbbr: tm?.abbrev ?? p.team_abbr ?? '', pitches: p.n_pitches, hb, ivb,
@@ -153,6 +162,8 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
       shapeRaw: { ...smRaw, saved: runsSaved(smRaw, { ...league }) },
       ownRaw: { ...omRaw, saved: runsSaved(omRaw, { ...league }) },
       overall: overallLines?.get(p.pitcher_id) ?? null,
+      profile: profiles?.get(p.pitcher_id) ?? null,
+      small,
       score: shapeSaved == null ? null : percentile(dist, shapeSaved),
       gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
     }

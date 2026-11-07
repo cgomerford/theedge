@@ -17,10 +17,11 @@ const MIN_PITCHES = 500            // a pitcher needs this many pitches in the s
 const TTL_MS = 60 * 60 * 1000
 
 type Raw = { season: number; pitcher_id: number; pitch_type: string; n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
-let cached: { at: number; season: number; rows: Raw[] } | null = null
+const cached = new Map<number, { at: number; rows: Raw[] }>()
 
 async function loadSeason(season: number): Promise<Raw[] | null> {
-  if (cached && cached.season === season && Date.now() - cached.at <= TTL_MS) return cached.rows
+  const hit = cached.get(season)
+  if (hit && Date.now() - hit.at <= TTL_MS) return hit.rows
   const supa = createAdminClient()
   const rows: Raw[] = []
   for (let from = 0; ; from += 1000) {
@@ -31,7 +32,7 @@ async function loadSeason(season: number): Promise<Raw[] | null> {
     rows.push(...((data ?? []) as unknown as Raw[]))
     if ((data ?? []).length < 1000) break
   }
-  cached = { at: Date.now(), season, rows }
+  cached.set(season, { at: Date.now(), rows })
   return rows
 }
 
@@ -97,7 +98,7 @@ export async function getPitcherOverall(pitcherId: number, season: number, isPro
   }
 }
 
-export type OverallLine = { pitches: number; /** share (1 to 99) of ranked pitchers he is better than; null under the sample gate or when he is not ranked */ runsPct: number | null; wobaPct: number | null; xwobaPct: number | null }
+export type OverallLine = { pitches: number; /** pitches since 2024 (every season we hold), so a pitcher with a long full-time record can be told from a new or part-time one */ careerPitches: number; /** share (1 to 99) of ranked pitchers he is better than; null under the sample gate or when he is not ranked */ runsPct: number | null; wobaPct: number | null; xwobaPct: number | null }
 
 /** Every pitcher's whole-season standing in one pass, for the finder: total pitches and where runs allowed, wOBA and xwOBA rank among pitchers with 500+ pitches. */
 export async function getOverallLines(season: number): Promise<Map<number, OverallLine> | null> {
@@ -112,10 +113,16 @@ export async function getOverallLines(season: number): Promise<Map<number, Overa
     const better = vals.filter(v => (up ? v > mine : v < mine)).length
     return Math.max(1, Math.min(99, Math.round(((vals.length - better - 1) / Math.max(1, vals.length - 1)) * 100)))
   }
+  // pitches in the earlier seasons we hold, added to this one (separate awaits: each season is its own cached read)
+  const career = new Map<number, number>()
+  for (let y = 2024; y <= season; y++) {
+    const rows = y === season ? all : await loadSeason(y)
+    for (const r of rows ?? []) career.set(r.pitcher_id, (career.get(r.pitcher_id) ?? 0) + r.n_pitches)
+  }
   const out = new Map<number, OverallLine>()
   for (const [id, sums] of by) {
     const m = sums.pitches >= MIN_PITCHES ? measuresOf(sums) : null
-    out.set(id, { pitches: sums.pitches, runsPct: m ? pctOf(x => x.runs100, m.runs100, false) : null, wobaPct: m ? pctOf(x => x.woba, m.woba, false) : null, xwobaPct: m ? pctOf(x => x.xwoba, m.xwoba, false) : null })
+    out.set(id, { pitches: sums.pitches, careerPitches: career.get(id) ?? sums.pitches, runsPct: m ? pctOf(x => x.runs100, m.runs100, false) : null, wobaPct: m ? pctOf(x => x.woba, m.woba, false) : null, xwobaPct: m ? pctOf(x => x.xwoba, m.xwoba, false) : null })
   }
   return out
 }

@@ -16,7 +16,7 @@ import type { Overall, OverallRank } from '@/lib/pitch-shape/overall'
 import { ordinal } from '@/lib/ordinal'
 import { explainShape, reasons } from '@/lib/pitch-shape/explain'
 import type { ShapeBin } from '@/lib/pitch-shape/model'
-import { LENSES, SMALL_ROLE_PITCHES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
+import { ESTABLISHED_PITCHES, LENSES, SMALL_ROLE_PITCHES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
 import { GATE, LEVEL_RUNS, resultsVsShape, runsSaved, type Measures } from '@/lib/pitch-shape/results-math'
 import { RAMP } from './parts'
 import { hexToRgb } from './heatGrid'
@@ -203,7 +203,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, l
     const rx10 = mult == null || sel.sdHb == null ? 10 : clampT(sel.sdHb * mult), ry10 = mult == null || sel.sdIvb == null ? 10 : clampT(sel.sdIvb * mult)
     const win = shapeAt ? shapeAt(sel.hb, sel.ivb, rx10, ry10) : null
     const shapeG: M = win?.gated ?? sel.shape, shapeR: M = win?.raw ?? sel.shapeRaw
-    const cmp = resultsVsShape(sel.own.saved, shapeG.saved)
+    const cmp = resultsVsShape(sel.small ? sel.ownRaw.saved : sel.own.saved, shapeG.saved)
     const verdict = cmp?.verdict ?? null, gap = cmp?.gap ?? null
     const rd = reads(sel, true, shapeR)
     const sw = shapeWord(sel.score)
@@ -241,6 +241,8 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, l
             <div style={{ fontSize: 12.5, color: '#5b5347' }}>His {lc}: {sel.ivb.toFixed(1)} in of ride, {sel.hb.toFixed(1)} in of run · {sel.pitches.toLocaleString()} pitches this season</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 5 }}>
               {sw && <span style={{ background: sw.bg, color: sw.fg, fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>{sw.word}</span>}
+              {sel.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>Small sample · {sel.ownRaw.n.rv.toLocaleString()} {lc}s</span>}
+              {sel.profile && <span style={{ background: C.soft, color: '#5b5347', fontWeight: 700, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>{sel.profile.allStars > 0 ? `${sel.profile.allStars}× All-Star` : 'Never an All-Star'}{sel.profile.debutYear ? ` · debuted ${sel.profile.debutYear}` : ''}</span>}
               {verdict && <span style={{ background: verdict === 'ahead' ? '#E3F3EC' : verdict === 'behind' ? '#FBE6E1' : C.soft, color: verdict === 'ahead' ? '#13694F' : verdict === 'behind' ? '#A8391F' : '#5b5347', fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>{verdict === 'ahead' ? 'Outperforming his shape' : verdict === 'behind' ? 'Underperforming his shape' : 'In line with his shape'}</span>}
             </div>
           </div>
@@ -462,10 +464,14 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; onPick: (r: BoardRow) => void }) {
   const [lens, setLens] = useState<LensId>('hidden')
   const [open, setOpen] = useState(true)
+  const [known, setKnown] = useState(false)    // include All-Stars, award winners and full-time veterans
+  const [small, setSmall] = useState(true)     // include pitchers whose own sample is under the usual minimum
   const L = LENSES.find(l => l.id === lens) ?? LENSES[0]
   const rows = board ? board.rows : []
-  const found = findPitchers(rows, lens, 6)
-  const total = rows.filter(L.test).length
+  const found = findPitchers(rows, lens, { limit: 6, includeKnown: known, includeSmall: small })
+  const total = findPitchers(rows, lens, { limit: 9999, includeKnown: known, includeSmall: small }).length
+  const hiddenKnown = known ? 0 : findPitchers(rows, lens, { limit: 9999, includeKnown: true, includeSmall: small }).length - total
+  const noAwards = rows.length > 0 && rows.every(r => r.profile == null)
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
   return (
     <section id="pf2-find" style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px', margin: '4px 0 12px' }}>
@@ -478,6 +484,11 @@ export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null |
         <>
           <div role="group" aria-label="What to look for" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0 6px' }}>
             {LENSES.map(l => <button key={l.id} type="button" style={pill(l.id === lens)} onClick={() => setLens(l.id)}>{l.label}</button>)}
+          </div>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', fontSize: 12.5, color: '#3a352c', margin: '2px 0 8px' }}>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 32 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 32 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
+            {!known && hiddenKnown > 0 && <span style={{ color: C.mute }}>{hiddenKnown} established name{hiddenKnown === 1 ? '' : 's'} hidden</span>}
           </div>
           <div style={{ fontSize: 12.5, color: '#5b5347', marginBottom: 10 }}>{L.blurb}{board ? ` ${total} found${total > found.length ? `, top ${found.length} shown` : ''}.` : ''}</div>
           {board === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Looking…</div>
@@ -492,10 +503,14 @@ export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null |
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 14.5 }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12 }}>{r.teamAbbr}</span><span style={{ marginLeft: 'auto', fontSize: 12, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 15 }}>{r.score ?? '—'}</b></span></div>
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '5px 0' }}>
                         {w && <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span>}
+                        {r.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>Small sample · {r.ownRaw.n.rv.toLocaleString()} {lc}s</span>}
                         {r.verdict && r.verdict !== 'level' && <span style={{ background: r.verdict === 'ahead' ? '#E3F3EC' : '#FBE6E1', color: r.verdict === 'ahead' ? '#13694F' : '#A8391F', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{r.verdict === 'ahead' ? 'Outperforming' : 'Underperforming'} {r.gap != null ? `${signed(r.gap)} /100` : ''}</span>}
                       </div>
                       <div style={{ fontSize: 12, color: '#5b5347', lineHeight: 1.45 }}>
-                        {r.overall ? `${r.overall.pitches.toLocaleString()} pitches this season${r.overall.runsPct != null ? ` · overall runs allowed ranks in the ${r.overall.runsPct}th percentile` : ' · too few pitches to rank overall'}` : ''}
+                        {r.overall ? `${r.overall.pitches.toLocaleString()} pitches this season${r.overall.runsPct != null ? ` · overall runs allowed ranks in the ${ordinal(r.overall.runsPct)} percentile` : ' · too few pitches to rank overall'}` : ''}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.4 }}>
+                        {r.profile ? `${r.profile.allStars > 0 ? `${r.profile.allStars}× All-Star` : 'Never an All-Star'}${r.profile.major ? ' · major award or All-MLB' : ''}${r.profile.debutYear ? ` · debuted ${r.profile.debutYear}` : ''}` : 'Award history not available'}{r.overall?.careerPitches ? ` · ${r.overall.careerPitches.toLocaleString()} pitches since 2024` : ''}
                       </div>
                       {top.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>{top.map(x => <span key={x.stat.id} style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontSize: 11, fontWeight: 700, borderRadius: 3, padding: '1px 6px' }}>{x.stat.label.replace(' against', '').replace(' per swing', '').replace(' / 100', '')} {x.stat.fmt(x.own)} vs {x.stat.fmt(x.shape)}</span>)}</div>}
                     </button>
@@ -503,7 +518,7 @@ export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null |
                 })}
               </div>
             )}
-          <div style={{ fontSize: 11, color: C.faint, marginTop: 8 }}>Describes what has happened, not a forecast. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less; a small role is under {SMALL_ROLE_PITCHES.toLocaleString()} pitches this season. Click a pitcher for his shape numbers, his season numbers and where they rank.</div>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 8 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: the comparison is shown but is noisy, so check the pitch count. Describes what has happened, not a forecast. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less; a small role is under {SMALL_ROLE_PITCHES.toLocaleString()} pitches this season. Click a pitcher for his shape numbers, his season numbers and where they rank.</div>
         </>
       )}
     </section>
