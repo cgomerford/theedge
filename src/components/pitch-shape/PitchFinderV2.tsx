@@ -53,6 +53,8 @@ type Place = { hb: number; ivb: number; spot: number | null }
 
 const cache = new Map<string, MovementCellsPayload | null>()
 const resCache = new Map<string, ResultsPayload | null>()
+/** Bump when the board's shape changes, so a copy cached in the browser (or kept across a hot reload) is never reused with fields missing. */
+const BOARD_V = 'b4'
 const boardCache = new Map<string, Board | null>()
 const shapeBinsCache = new Map<string, ShapeBin[] | null>()
 
@@ -104,7 +106,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [view, setView] = useState<'map' | 'pitcher'>('map')
   const [measure, setMeasure] = useState<'whiff' | MetricId>('whiff')   // what colours the map: whiffs per swing, or what the shape has produced
   const [resPayload, setResPayload] = useState<ResultsPayload | null | undefined>(resCache.get(key))
-  const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(key))
+  const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(`${key}|${BOARD_V}`))
   const [shapeBins, setShapeBins] = useState<ShapeBin[] | null | undefined>(null)   // the league's speed and arm-angle bins, for the "why" read on a chosen pitcher
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | 'locked' | undefined>(undefined)   // where the chosen pitcher is leaking; 'locked' when the viewer is not Pro
   const [overall, setOverall] = useState<Overall | null | undefined>(null)   // the chosen pitcher's whole-season numbers and ranks; undefined while loading
@@ -130,14 +132,14 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   useEffect(() => {
     if (locked) { setResPayload(null); setBoard(null); return }
     let live = true
-    const load = <T,>(url: string, store: Map<string, T | null>, pick: (j: never) => T | null, set: (v: T | null | undefined) => void) => {
-      if (store.has(key)) { set(store.get(key) ?? null); return }
+    const load = <T,>(url: string, store: Map<string, T | null>, ck: string, pick: (j: never) => T | null, set: (v: T | null | undefined) => void) => {
+      if (store.has(ck)) { set(store.get(ck) ?? null); return }
       set(undefined)
-      fetch(url).then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))).then(j => { const v = pick(j as never); store.set(key, v); if (live) set(v) })
+      fetch(url).then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))).then(j => { const v = pick(j as never); store.set(ck, v); if (live) set(v) })
         .catch(e => { log.error('PitchFinderV2', 'results fetch failed', e instanceof Error ? e.message : e); if (live) set(null) })
     }
-    load(`/api/mlb/pitch-shape/results?type=${type}&hand=${hand}&half=${HALF}`, resCache, (j: { payload: ResultsPayload | null }) => j.payload, setResPayload)
-    load(`/api/mlb/pitch-shape/board?type=${type}&hand=${hand}`, boardCache, (j: { board: Board | null }) => j.board, setBoard)
+    load(`/api/mlb/pitch-shape/results?type=${type}&hand=${hand}&half=${HALF}`, resCache, key, (j: { payload: ResultsPayload | null }) => j.payload, setResPayload)
+    load(`/api/mlb/pitch-shape/board?type=${type}&hand=${hand}`, boardCache, `${key}|${BOARD_V}`, (j: { board: Board | null }) => j.board, setBoard)
     return () => { live = false }
   }, [key, type, hand, locked])
 
