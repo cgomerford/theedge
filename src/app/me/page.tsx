@@ -16,6 +16,8 @@ import PlayerCard from '@/components/me/PlayerCard'
 import RecapPreview from '@/components/me/RecapPreview'
 import StatusStrip from '@/components/me/StatusStrip'
 import TeamPanel from '@/components/me/TeamPanel'
+import Dashboard from '@/components/me/dashboard/Dashboard'
+import { isProViewer } from '@/lib/require-pro'
 import { C, CARD, EYEBROW, GREY, SANS, dateShort } from '@/components/me/ui'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { FREE_LIMITS } from '@/lib/follows/config'
@@ -34,7 +36,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const CSS = `
-.me-wrap{max-width:1180px;margin:0 auto;padding:28px 16px 70px}
+.me-wrap{max-width:1560px;margin:0 auto;padding:28px 16px 70px}
 .me-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:22px 0 22px}
 .me-main{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:20px;align-items:start}
 .me-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
@@ -106,6 +108,13 @@ export default async function MePage() {
 
         <StatusStrip players={players.length} teams={teams.length} isPro={isPro} inSeason={inSeason} teamLine={teamLine} nextGame={nextAny ? `Next: ${dateShort(nextAny.date)} ${nextAny.label}` : null} />
 
+        <Dashboard
+          isPro={await isProViewer()}
+          players={players.map(p => ({ id: p.id, name: p.name, team: p.teamAbbrev, isPitcher: p.isPitcher, stats: p.stats.slice(0, 4), lastGame: p.lastGame ? `${dateShort(p.lastGame.date)} · ${p.lastGame.line}` : null, next: p.next ? `${dateShort(p.next.date)} ${p.next.label}` : null }))}
+          teams={teams.map(t => ({ slug: t.slug, name: t.name, abbrev: t.abbrev, id: t.id, record: t.record, last: t.last?.result ?? null, next: t.next ? `${dateShort(t.next.date)} ${t.next.label}` : null }))}
+        />
+
+        {!empty && <div style={{ ...EYEBROW, margin: '4px 0 10px' }}>Your follows</div>}
         {empty ? <EmptyState items={suggestions} isPro={isPro} /> : (
           <div className="me-main">
             <div style={{ minWidth: 0 }}>

@@ -1,0 +1,27 @@
+name: league-player-stats
+
+# Single writer of league_player_stats (scripts/build_league_player_stats.py). The My x9Lab dashboard reads it.
+# Reads Baseball Savant's custom leaderboards (2 CSVs) and the MLB Stats API roster; depends on nothing else.
+# 09:30 UTC daily, after the overnight Statcast loads have settled. Python crons live only in GitHub Actions, so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-league-player-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas requests supabase python-dotenv
+      - name: Build league player stats
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_league_player_stats.py --wait 0

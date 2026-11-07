@@ -20,7 +20,7 @@ export default defineConfig({
       'src/lib/seo/**/*.test.ts',
       'src/components/pitch-shape/**/*.test.ts',
       'src/lib/pitch-shape/**/*.test.ts',
-      'src/components/me/**/*.test.tsx', 'src/lib/ask-lookups.test.ts', 'src/lib/pricing.test.ts', 'src/lib/pro-offer.test.ts', 'src/lib/stripe.test.ts', 'src/app/api/stripe/**/*.test.ts', 'src/components/graphics/**/*.test.tsx'],
+      'src/components/me/**/*.test.tsx', 'src/lib/ask-lookups.test.ts', 'src/lib/pricing.test.ts', 'src/lib/dashboard/**/*.test.ts', 'src/lib/pro-offer.test.ts', 'src/lib/stripe.test.ts', 'src/app/api/stripe/**/*.test.ts', 'src/components/graphics/**/*.test.tsx'],
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
