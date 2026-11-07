@@ -14,7 +14,6 @@ import PitchFinderV2 from '@/components/pitch-shape/PitchFinderV2'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import { getCurrentSubscriber } from '@/lib/auth'
-import Link from 'next/link'
 import { getAvailablePitchTypes } from '@/lib/pitch-shape/data'
 import { pageMeta } from '@/lib/seo'
 import { BreadcrumbSchema } from '@/components/StructuredData'
@@ -36,15 +35,12 @@ export default async function ShapeSandboxPage() {
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-          <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}>⊕ MLB · LAB · PITCH SHAPE LAB</div>
-        </div>
         {pitchTypes.length === 0
           ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
           : (
             <>
               <PitchFinderV2 isPro={isPro} pitchTypes={pitchTypes} />
-              <div style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14 }}>
+              <div id="dial-in" style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14, scrollMarginTop: 70 }}>
                 <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 02 · DIAL IN A SHAPE</div>
                 <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(26px,4vw,38px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>What have pitches shaped like this produced?</h2>
                 <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 14px', lineHeight: 1.5 }}>
@@ -52,9 +48,6 @@ export default async function ShapeSandboxPage() {
                 </p>
               </div>
               <SandboxClient isPro={isPro} pitchTypes={pitchTypes} />
-              <p style={{ fontSize: 13, margin: '22px 0 0' }}>
-                Looking for one pitcher? <Link href="/mlb/lab/pitching-lab" style={{ color: '#B83A0E', fontWeight: 700 }}>Open the Pitching Lab</Link> and use its Shape tab.
-              </p>
             </>
           )}
       </div>

@@ -25,6 +25,7 @@ import { makeGrid, stats } from './heatGrid'
 import { MAP_BG, boxColour } from './finder-math'
 import { SHAPE_CSS } from './parts'
 import { log } from '@/lib/log'
+import { useSelectedShape } from './shapeSelection'
 
 const ORANGE_TEXT = '#B83A0E'
 const HALF = 12
@@ -67,6 +68,9 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
   const [A, setA] = useState<Shape | null>(null)
   const [from, setFrom] = useState<string | null>(null)
   const [cmp, setCmp] = useState({ dv: 1, di: 2 })
+  // the real pitcher the sliders started from: his shape as thrown is the "before" in the report
+  const [base, setBase] = useState<{ name: string; pitchType: string; hand: Hand; shape: Shape; ownWhiff: number | null; ownSwings: number } | null>(null)
+  const [copied, setCopied] = useState(false)
   const pending = useRef<Shape | null>(null)
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<PitcherHit[] | null>(null)
@@ -84,8 +88,24 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     return () => { cancelled = true; clearTimeout(t) }
   }, [q, searchPitchers])
 
+  // a pitcher chosen in the finder at the top of the page: his pitch and hand load, and the sliders start from his shape
+  const sel = useSelectedShape()
+  const lastSel = useRef('')
+  useEffect(() => {
+    if (!sel) return
+    const k = `${sel.id}|${sel.pitchType}|${sel.hand}`
+    if (lastSel.current === k) return
+    lastSel.current = k
+    pending.current = sel.shape
+    setFrom(`${sel.name} · ${PITCH_NAMES[sel.pitchType] ?? sel.pitchType}`)
+    setBase({ name: sel.name, pitchType: sel.pitchType, hand: sel.hand, shape: sel.shape, ownWhiff: sel.ownWhiff, ownSwings: sel.ownSwings })
+    setCmp({ dv: 1, di: 2 })
+    if (sel.pitchType === type && sel.hand === hand) { setA(sel.shape); pending.current = null } else { setType(sel.pitchType); setHand(sel.hand) }
+  }, [sel]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const choose = (h: PitcherHit, pitchType: string, shape: Shape) => {
     pending.current = shape
+    setBase({ name: h.name, pitchType, hand: h.hand, shape, ownWhiff: null, ownSwings: 0 })
     setFrom(`${h.name} · ${PITCH_NAMES[pitchType] ?? pitchType}`)
     setCmp({ dv: 1, di: 2 })
     if (pitchType === type && h.hand === hand) { setA(shape); pending.current = null } else { setType(pitchType); setHand(h.hand) }
@@ -219,6 +239,28 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     return { B: lookup(index, Bsh), Bsh }
   })()
 
+  // the report: his pitch as thrown against the same pitch with the slider changes, read from what league pitches with each shape have produced
+  const report = (() => {
+    if (!base || base.pitchType !== type || base.hand !== hand || !index || !A || !L) return null
+    const changes = SLIDERS.map(sl => ({ sl, from: base.shape[sl.k], to: A[sl.k] })).filter(c => Math.abs(c.to - c.from) >= (c.sl.k === 'slot' ? 1 : 0.05))
+    const Lb = lookup(index, base.shape)
+    const phrase = changes.map(c => `${c.sl.label.split(' (')[0].toLowerCase()} ${c.to >= c.from ? '+' : '−'}${Math.abs(c.to - c.from).toFixed(c.sl.digits)} ${c.sl.unit}`).join(', ')
+    const rows: { label: string; a: number | null; b: number | null; fmt: (x: number | null) => string; better: 'up' | 'down'; unit: string }[] = [
+      { label: 'Whiffs per swing', a: Lb.whiff.value, b: L.whiff.value, fmt: f1, better: 'up', unit: 'pts' },
+      { label: 'Called + swinging strikes per pitch', a: Lb.csw.value, b: L.csw.value, fmt: f1, better: 'up', unit: 'pts' },
+      { label: 'Ground balls per batted ball', a: Lb.gb.value, b: L.gb.value, fmt: f1, better: 'up', unit: 'pts' },
+      { label: 'Damage on contact (xwOBAcon)', a: Lb.xwobaCon.value, b: L.xwobaCon.value, fmt: w3, better: 'down', unit: '' },
+    ]
+    const diff = (r: (typeof rows)[number]) => (r.a == null || r.b == null ? null : r.unit === 'pts' ? (r.b - r.a) * 100 : r.b - r.a)
+    const diffText = (r: (typeof rows)[number]) => { const d = diff(r); return d == null ? 'not enough pitches' : r.unit === 'pts' ? `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1)} pts` : `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(3).replace(/^0/, '')}` }
+    const w = diff(rows[0])
+    const lead = changes.length === 0 ? null
+      : w == null ? `League ${lc}s shaped like his with these changes (${phrase}) are too few to read a whiff rate.`
+      : `League ${hand === 'L' ? 'left' : 'right'}-handed ${lc}s shaped like his current pitch have produced ${f1(Lb.whiff.value)} whiffs per swing. Shaped like it with these changes (${phrase}), they have produced ${f1(L.whiff.value)}, ${w >= 0 ? '+' : '−'}${Math.abs(w).toFixed(1)} points.`
+    const text = [`${base.name}: ${name}${' '}shape report`, `His shape as thrown: ${base.shape.velo.toFixed(1)} mph, ${base.shape.ivb.toFixed(1)} in ride, ${base.shape.hb.toFixed(1)} in run, ${Math.round(base.shape.slot)}° arm angle.`, changes.length ? `Changes: ${phrase}.` : 'No changes yet.', ...(lead ? [lead] : []), ...rows.map(r => `${r.label}: ${r.fmt(r.a)} as thrown, ${r.fmt(r.b)} with the changes (${diffText(r)}).`), 'This is what league pitches with each shape have produced. It is not a forecast of how he would pitch: command, deception and sequencing stay his own. x9Lab · xlab9.com'].join('\n')
+    return { changes, Lb, rows, diff, diffText, lead, text, phrase }
+  })()
+
   const bar = (k: Metric, v: number | null, lgv: number | null) => {
     const g = v == null ? null : good(k, v), gl = lgv == null ? 0.5 : good(k, lgv)
     return { g, gl }
@@ -291,7 +333,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
               </div>
             )
           })}
-          <button type="button" onClick={() => { if (center) { setA(center); setFrom(null) } }} style={{ marginTop: 16, minHeight: 44, padding: '0 16px', border: `1.5px solid ${C.ink}`, background: '#fff', borderRadius: 4, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Reset to league-average shape</button>
+          <button type="button" onClick={() => { if (center) { setA(center); setFrom(null); setBase(null) } }} style={{ marginTop: 16, minHeight: 44, padding: '0 16px', border: `1.5px solid ${C.ink}`, background: '#fff', borderRadius: 4, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Reset to league-average shape</button>
         </div>
 
         <div style={{ minWidth: 0 }}>
@@ -333,6 +375,45 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
                 </div>
               )}
               {!isPro && from && <div style={{ fontSize: 12, color: C.mute, marginTop: 8 }}>Pro opens a compare for a real pitcher: try adding velocity or ride and see the whiff rate move.</div>}
+              {report && (
+                <div className="ps2-report" style={{ marginTop: 14, border: `1.5px solid ${C.ink}`, borderRadius: 6, padding: 14, background: '#fff' }}>
+                  <style>{'@media print{body *{visibility:hidden}.ps2-report,.ps2-report *{visibility:visible}.ps2-report{position:absolute;left:0;top:0;width:100%;border:0 !important}.ps2-noprint{display:none !important}}'}</style>
+                  <div className="pv-k" style={{ color: ORANGE_TEXT }}>Shape report</div>
+                  <h4 style={{ margin: '4px 0 6px', fontSize: 20, fontWeight: 800 }}>{base!.name}’s {lc}, with changes</h4>
+                  <div style={{ fontSize: 13, color: '#5b5347', marginBottom: 8 }}>As thrown: {base!.shape.velo.toFixed(1)} mph · {base!.shape.ivb.toFixed(1)} in ride · {base!.shape.hb.toFixed(1)} in run · {Math.round(base!.shape.slot)}° arm angle{base!.ownWhiff != null ? <> · his own {lc}s this season: {f1(base!.ownWhiff)} whiffs per swing ({fmtN(base!.ownSwings)} swings)</> : null}</div>
+                  {report.changes.length === 0 ? (
+                    <div style={{ fontSize: 13.5, color: '#3a352c' }}>No changes yet. Move a slider on the left, and this report sets his shape as thrown against the shape you dial in.</div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        {report.changes.map(c => <span key={c.sl.k} style={{ background: '#FFF1EA', color: ORANGE_TEXT, fontWeight: 800, fontSize: 12.5, borderRadius: 3, padding: '3px 8px' }}>{c.sl.label.split(' (')[0]} {c.to >= c.from ? '+' : '−'}{Math.abs(c.to - c.from).toFixed(c.sl.digits)} {c.sl.unit} ({c.from.toFixed(c.sl.digits)} → {c.to.toFixed(c.sl.digits)})</span>)}
+                      </div>
+                      {report.lead && <p style={{ fontSize: 14.5, lineHeight: 1.5, margin: '0 0 10px', fontWeight: 700 }}>{report.lead}</p>}
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, fontVariantNumeric: 'tabular-nums' }}>
+                        <thead><tr>{['Measure', 'As thrown', 'With the changes', 'Difference'].map((h, i) => <th key={h} style={{ textAlign: i ? 'right' : 'left', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute, padding: '4px 4px', borderBottom: `1px solid ${C.line}` }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {report.rows.map(r => {
+                            const d = report.diff(r), good = d == null ? null : r.better === 'up' ? d > 0 : d < 0
+                            return (
+                              <tr key={r.label} style={{ borderBottom: `1px solid ${C.soft}` }}>
+                                <td style={{ padding: '7px 4px', fontWeight: 700 }}>{r.label}</td>
+                                <td style={{ padding: '7px 4px', textAlign: 'right' }}>{r.fmt(r.a)}</td>
+                                <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800 }}>{r.fmt(r.b)}</td>
+                                <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800, color: d == null || Math.abs(d) < (r.unit === 'pts' ? 0.05 : 0.0005) ? C.mute : good ? '#13694F' : '#A8391F' }}>{report.diffText(r)}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                  <div style={{ fontSize: 11.5, color: C.faint, marginTop: 8 }}>This is what league {lc}s with each shape have produced ({fmtN(report.Lb.swings)} swings as thrown, {fmtN(L.swings)} with the changes). It is not a forecast of how he would pitch: command, deception and sequencing stay his own. x9Lab · xlab9.com</div>
+                  <div className="ps2-noprint" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                    <button type="button" onClick={() => window.print()} style={stepBtnWide}>Print report</button>
+                    <button type="button" onClick={() => { navigator.clipboard?.writeText(report.text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => undefined) }} style={stepBtnWide}>{copied ? 'Copied' : 'Copy as text'}</button>
+                  </div>
+                </div>
+              )}
               <Foot>{fmtN(L.swings)} swings · {fmtN(L.pitches)} pitches · {fmtN(L.bbe)} balls in play in the neighbourhood. The verdict is where this shape sits among the league’s shapes for this pitch, weighted by pitches: the lower third reads below average, the middle third about average, the upper third above. It describes what has happened, not what will.</Foot>
             </div>
           )}
@@ -353,7 +434,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
                 <h3 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 800 }}>Pitchers who throw something close</h3>
                 {near === null ? <div style={{ color: C.mute, fontSize: 13 }}>Finding pitchers…</div> : nearest.length === 0 ? <div style={{ color: C.mute, fontSize: 13 }}>No pitcher with 300+ {lc}s moves like this.</div> : nearest.map(p => (
                   <div key={p.pitcherId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderTop: `1px solid ${C.soft}`, fontSize: 13.5 }}>
-                    <button type="button" onClick={() => { pending.current = null; setA({ velo: p.velo, ivb: p.ivb, hb: p.hb, slot: p.slot }); setFrom(`${p.name} · ${name}`); setCmp({ dv: 1, di: 2 }) }} style={{ background: 'none', border: 0, padding: 0, color: ORANGE_TEXT, fontWeight: 800, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, textAlign: 'left', minHeight: 44 }}>{p.name} · {p.teamAbbr}</button>
+                    <button type="button" onClick={() => { pending.current = null; const sh = { velo: p.velo, ivb: p.ivb, hb: p.hb, slot: p.slot }; setA(sh); setBase({ name: p.name, pitchType: type, hand, shape: sh, ownWhiff: null, ownSwings: 0 }); setFrom(`${p.name} · ${name}`); setCmp({ dv: 1, di: 2 }) }} style={{ background: 'none', border: 0, padding: 0, color: ORANGE_TEXT, fontWeight: 800, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, textAlign: 'left', minHeight: 44 }}>{p.name} · {p.teamAbbr}</button>
                     <span style={{ color: '#5b5347', fontSize: 12.5, textAlign: 'right' }}>{p.velo.toFixed(1)} mph · {p.ivb.toFixed(1)} in ride · {p.hb.toFixed(1)} in run</span>
                   </div>
                 ))}
@@ -368,4 +449,5 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
   )
 }
 
+const stepBtnWide: React.CSSProperties = { minHeight: 40, padding: '0 14px', border: `1.5px solid ${C.ink}`, background: '#fff', borderRadius: 4, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }
 const stepBtn: React.CSSProperties = { minHeight: 36, minWidth: 36, border: `1px solid ${C.line}`, background: '#fff', borderRadius: 4, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }

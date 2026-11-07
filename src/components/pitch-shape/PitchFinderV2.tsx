@@ -34,6 +34,7 @@ import {
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
+import { setSelectedShape } from './shapeSelection'
 import { BLANK, METRICS, FindPitcher, ResultsLegend, ResultsReadout, ShapePlayerDetail, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
 import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, windowSumsRect, type ResultsPayload } from '@/lib/pitch-shape/results-math'
 import type { Board } from '@/lib/pitch-shape/results'
@@ -54,7 +55,7 @@ type Place = { hb: number; ivb: number; spot: number | null }
 const cache = new Map<string, MovementCellsPayload | null>()
 const resCache = new Map<string, ResultsPayload | null>()
 /** Bump when the board's shape changes, so a copy cached in the browser (or kept across a hot reload) is never reused with fields missing. */
-const BOARD_V = 'b5'
+const BOARD_V = 'b6'
 const boardCache = new Map<string, Board | null>()
 const shapeBinsCache = new Map<string, ShapeBin[] | null>()
 
@@ -303,6 +304,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const teamOn = team && teams.includes(team) ? team : ''
   const teamDots = useMemo(() => teamOn ? ratedDots.filter(d => d.teamAbbr === teamOn).sort((a, b) => b.nPitches - a.nPitches) : [], [ratedDots, teamOn])
   const surname = (n: string) => n.replace(/\s+(Jr\.?|Sr\.?|II|III)$/, '').split(' ').slice(-1)[0]
+  // the chosen pitcher's own shape goes to "Dial in a shape" below, so its sliders start from it
+  useEffect(() => {
+    const r = board && focus != null ? board.rows.find(x => x.pitcherId === focus) ?? null : null
+    if (!r || r.velo == null || r.slot == null) return
+    setSelectedShape({ id: r.pitcherId, name: r.name, team: r.teamAbbr, pitchType: type, hand, shape: { velo: r.velo, ivb: r.ivb, hb: r.hb, slot: r.slot }, ownWhiff: r.ownRaw.whiff, ownSwings: r.ownRaw.n.swings })
+  }, [focus, board, type, hand])
   const focusDot = focus != null ? ratedDots.find(d => d.pitcherId === focus) ?? null : null
   const focusT = focusDot && focusPts ? { name: focusDot.name, sample: focusPts.length, points: focusPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
@@ -421,7 +428,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null); setTeam('') }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
-      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
+      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
 
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>

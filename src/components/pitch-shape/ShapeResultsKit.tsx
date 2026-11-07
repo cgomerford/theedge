@@ -307,6 +307,9 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score</span></div>
           </div>
         </div>
+        <div style={{ margin: '10px 0 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a href="#dial-in" style={{ ...pill(false), display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: C.ink }}>Dial in his shape ↓</a>
+        </div>
         {exportData && (
           <div style={{ margin: '10px 0 0' }}>
             <button type="button" onClick={() => setExportOpen(o => !o)} aria-expanded={exportOpen} style={{ ...pill(exportOpen), minHeight: 40 }}>{exportOpen ? 'Close export' : 'Export for X'}</button>
@@ -649,7 +652,27 @@ const ERA_MIN = [4.5, 5, 5.5, 6, 7]
 const XERA_MAX = [3, 3.5, 4, 4.5]
 const GAP_MIN = [0.5, 1, 1.5, 2, 3]
 const SCORE_MIN = [50, 70, 80, 90, 95]
-const OWNED_MAX = [1, 5, 10, 25, 50]   // ESPN percent rostered, at most
+const ROLES = [['any', 'Any role'], ['starter', 'Starters'], ['reliever', 'All relievers'], ['closer', 'Closers (5+ saves)'], ['setup', 'Setup men (5+ holds)']] as const
+type RoleFilter = (typeof ROLES)[number][0]
+const EXPERIENCE = [['any', 'Any'], ['0-1', 'Rookie or second year'], ['2-4', '2 to 4 years'], ['5-9', '5 to 9 years'], ['10+', '10+ years']] as const
+type ExpFilter = (typeof EXPERIENCE)[number][0]
+
+/** Two-thumb slider for a low and a high value, 0 to 100. Two native range inputs sit on top of each other so it works with keyboard and touch. */
+function RangeSlider({ lo, hi, onChange, label }: { lo: number; hi: number; onChange: (lo: number, hi: number) => void; label: string }) {
+  const thumb: React.CSSProperties = { position: 'absolute', left: 0, top: 0, width: '100%', height: 28, margin: 0, background: 'none', pointerEvents: 'none', WebkitAppearance: 'none', appearance: 'none', accentColor: C.orange }
+  return (
+    <div style={{ minWidth: 210 }}>
+      <div style={{ position: 'relative', height: 28 }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 12, height: 4, borderRadius: 2, background: C.line }} />
+        <div style={{ position: 'absolute', left: `${lo}%`, right: `${100 - hi}%`, top: 12, height: 4, borderRadius: 2, background: C.orange }} />
+        <style>{'.rs2::-webkit-slider-thumb{pointer-events:auto;cursor:pointer}.rs2::-moz-range-thumb{pointer-events:auto;cursor:pointer}'}</style>
+        <input className="rs2" type="range" min={0} max={100} step={1} value={lo} aria-label={`${label}, lowest`} onChange={e => onChange(Math.min(Number(e.target.value), hi), hi)} style={thumb} />
+        <input className="rs2" type="range" min={0} max={100} step={1} value={hi} aria-label={`${label}, highest`} onChange={e => onChange(lo, Math.max(Number(e.target.value), lo))} style={thumb} />
+      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{lo}% to {hi}%</div>
+    </div>
+  )
+}
 const selVal = (v: number | null) => (v == null ? '' : String(v))
 const num = (v: string) => (v === '' ? null : Number(v))
 
@@ -658,7 +681,7 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * explain, or anyone), then either see the best matches or shuffle a random six, or let it pick one at random. Cards carry a headshot and the numbers that matter; clicking one opens his full read.
  * Established names (All-Stars, award winners, full-time veterans) are hidden unless asked for; small samples are kept and tagged.
  */
-export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void }) {
+export function FindPitcher({ board, lc, hand, headshot, onPick, team }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string }) {
   const [lens, setLens] = useState<LensId>('hidden')
   const [open, setOpen] = useState(true)
   const [known, setKnown] = useState(false)    // include All-Stars, award winners and full-time veterans
@@ -667,12 +690,26 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
   const [maxXera, setMaxXera] = useState<number | null>(null)
   const [minGap, setMinGap] = useState<number | null>(null)
   const [minScore, setMinScore] = useState<number | null>(null)
-  const [maxOwned, setMaxOwned] = useState<number | null>(null)   // ESPN percent rostered, at most
+  const [ownLo, setOwnLo] = useState(0)     // ESPN percent rostered, from
+  const [ownHi, setOwnHi] = useState(100)   // ESPN percent rostered, to
+  const [role, setRole] = useState<RoleFilter>('any')
+  const [exp, setExp] = useState<ExpFilter>('any')
   const roster = useRoster()
   const [seed, setSeed] = useState<number | null>(null)   // null = best matches first; a number = a random six for that seed
   const L = LENSES.find(l => l.id === lens) ?? LENSES[0]
   const allRows = board ? board.rows : []
-  const rows = maxOwned == null ? allRows : allRows.filter(r => r.owned != null && r.owned <= maxOwned)
+  const ownOn = ownLo > 0 || ownHi < 100
+  const yearsIn = (r: BoardRow) => (r.profile?.debutYear != null && board ? board.season - r.profile.debutYear : null)
+  const passes = (r: BoardRow) => {
+    if (ownOn) { const v = r.owned ?? 0; if (v < ownLo || v > ownHi) return false }   // no ESPN match means nobody rosters him: 0%
+    if (role === 'starter' && r.role !== 'starter') return false
+    if (role === 'reliever' && !(r.role === 'reliever' || r.role === 'closer' || r.role === 'setup')) return false
+    if ((role === 'closer' || role === 'setup') && r.role !== role) return false
+    if (exp !== 'any') { const y = yearsIn(r); if (y == null) return false; if (exp === '0-1' ? y > 1 : exp === '2-4' ? y < 2 || y > 4 : exp === '5-9' ? y < 5 || y > 9 : y < 10) return false }
+    if (team && r.teamAbbr !== team) return false
+    return true
+  }
+  const rows = allRows.filter(passes)
   const mine = allRows.filter(r => roster.ids.includes(r.pitcherId))
   const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore }
   const found = findPitchers(rows, lens, { ...base, limit: 6, seed })
@@ -680,11 +717,11 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
   const hiddenKnown = known ? 0 : findPitchers(rows, lens, { ...base, includeKnown: true, limit: 9999 }).length - total
   const noAwards = rows.length > 0 && rows.every(r => r.profile == null)
   const noStats = rows.length > 0 && rows.every(r => r.stats == null)
-  const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null || maxOwned != null
+  const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null || ownOn || role !== 'any' || exp !== 'any'
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
   const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 3 }
   const selectStyle: React.CSSProperties = { minHeight: 38, minWidth: 96, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 8px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
-  const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null); setMaxOwned(null) }
+  const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null); setOwnLo(0); setOwnHi(100); setRole('any'); setExp('any') }
   const surprise = () => {
     const pool = findPitchers(rows, lens, { ...base, limit: 9999 })
     if (pool.length) onPick(pool[Math.floor(Math.random() * pool.length)])
@@ -720,10 +757,16 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
               <select style={selectStyle} value={selVal(minScore)} onChange={e => setMinScore(num(e.target.value))} aria-label="Shape Score at least">
                 <option value="">Any</option>{SCORE_MIN.map(v => <option key={v} value={v}>{v}+</option>)}
               </select></label>
-            <label style={field}><span className="pv-k">ESPN rostered</span>
-              <select style={selectStyle} value={selVal(maxOwned)} onChange={e => setMaxOwned(num(e.target.value))} aria-label="ESPN percent rostered, at most">
-                <option value="">Any</option>{OWNED_MAX.map(v => <option key={v} value={v}>{v}% or less</option>)}
+            <label style={field}><span className="pv-k">Role</span>
+              <select style={selectStyle} value={role} onChange={e => setRole(e.target.value as RoleFilter)} aria-label="Starter or reliever">
+                {ROLES.map(([id, l]) => <option key={id} value={id}>{l}</option>)}
               </select></label>
+            <label style={field}><span className="pv-k">Experience</span>
+              <select style={selectStyle} value={exp} onChange={e => setExp(e.target.value as ExpFilter)} aria-label="Years since MLB debut">
+                {EXPERIENCE.map(([id, l]) => <option key={id} value={id}>{l}</option>)}
+              </select></label>
+            <div style={field}><span className="pv-k">ESPN rostered</span>
+              <RangeSlider lo={ownLo} hi={ownHi} onChange={(a, b) => { setOwnLo(a); setOwnHi(b) }} label="ESPN percent rostered" /></div>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
             {anyFilter && <button type="button" onClick={clear} style={{ ...pill(false), minHeight: 38, marginLeft: 'auto' }}>Clear filters</button>}
@@ -755,12 +798,13 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 17, letterSpacing: '-.01em' }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12.5 }}>{r.teamAbbr}</span></div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 6, margin: '8px 0 6px' }}>
                           {([['ERA', f1(r.stats?.era), null, ''], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null, r.stats?.xeraPa != null && r.stats.xeraPa < THIN_XERA_PA ? ` · ${r.stats.xeraPa} PA` : ''], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null, ''], ['ESPN', fmtOwned(r.owned), null, '']] as [string, string, string | null, string][]).map(([a, b, col, note]) => (
-                            <div key={a} title={note ? `Savant's xERA on only ${r.stats?.xeraPa} plate appearances: shown, but noisy` : undefined} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px', opacity: note ? 0.7 : 1 }}><div style={{ ...k, fontSize: 9 }}>{a}{note}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
+                            <div key={a} title={note ? `Savant's xERA on only ${r.stats?.xeraPa} plate appearances: shown, but noisy` : undefined} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px', opacity: note ? 0.7 : 1 }}><div style={{ ...k, fontSize: 9 }}>{a}{note}</div><b style={{ fontSize: 18, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
                           ))}
                         </div>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           {w && <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span>}
                           {r.verdict && r.verdict !== 'level' && <span style={{ background: r.verdict === 'ahead' ? '#E3F3EC' : '#FBE6E1', color: r.verdict === 'ahead' ? '#13694F' : '#A8391F', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{r.verdict === 'ahead' ? 'Outperforming' : 'Underperforming'}{r.gap != null ? ` ${signed(r.gap)}` : ''}</span>}
+                          {r.role && <span style={{ background: C.soft, color: '#5b5347', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{r.role === 'starter' ? 'SP' : r.role === 'closer' ? 'RP · closer' : r.role === 'setup' ? 'RP · setup' : 'RP'}</span>}
                           {r.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>Small sample · {r.ownRaw.n.rv.toLocaleString()}</span>}
                         </div>
                         <div style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.4, marginTop: 5 }}>
@@ -792,7 +836,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
               <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>Starred pitchers are saved in this browser only. Only those who throw this pitch with this hand show here; change the pitch or hand to see the rest.</div>
             </div>
           )}
-          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ESPN is the share of ESPN fantasy leagues that roster him, updated daily. ERA, xERA and innings are this season’s (xERA from Baseball Savant, which carries it for every pitcher; one on under 100 plate appearances is greyed and marked thin, because it is noisy); the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ESPN is the share of ESPN fantasy leagues that roster him, updated daily. ERA, xERA and innings are this season’s (xERA from Baseball Savant, which carries it for every pitcher; one on under 100 plate appearances is greyed and marked thin, because it is noisy); the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. Role comes from this season’s games: a starter has half or more of his games as starts; a closer 5+ saves; a setup man 5+ holds. Experience is years since his MLB debut. ESPN % counts a pitcher ESPN does not list as 0%. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
         </>
       )}
     </section>

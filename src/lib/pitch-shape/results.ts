@@ -102,6 +102,8 @@ export type BoardRow = {
   overall: OverallLine | null
   /** his season line from pitcher_stats (ERA, xERA, FIP, innings pitched); null when we hold none for him */
   stats: { era: number | null; xera: number | null; fip: number | null; ip: number | null; /** plate appearances behind the xERA (Savant); null when it came from pitcher_stats */ xeraPa: number | null } | null
+  /** how he is used this season, from starts, games, saves and holds: a starter (half or more of his games are starts), a closer (5+ saves), a setup man (5+ holds) or another reliever; null when we hold no games for him */
+  role: 'starter' | 'closer' | 'setup' | 'reliever' | null
   /** ESPN fantasy ownership, percent of leagues that roster him (0 to 100); null when ESPN has no match for him */
   owned: number | null
   /** how established he is: All-Star and major selections, MLB debut year (null when the MLB Stats API could not be read) */
@@ -172,6 +174,7 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
       profile: profiles?.get(p.pitcher_id) ?? null,
       stats: seasonStats?.get(p.pitcher_id) ?? null,
       owned: ownedMap?.get(p.pitcher_id) ?? null,
+      role: roleOf(seasonStats?.get(p.pitcher_id)),
       small,
       score: shapeSaved == null ? null : percentile(dist, shapeSaved),
       gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
@@ -201,7 +204,16 @@ export async function getShapeSavedFor(type: string, hand: Hand, hb: number, ivb
 }
 
 
-type SeasonStat = { era: number | null; xera: number | null; fip: number | null; ip: number | null; xeraPa: number | null }
+type SeasonStat = { starts: number | null; games: number | null; saves: number | null; holds: number | null; era: number | null; xera: number | null; fip: number | null; ip: number | null; xeraPa: number | null }
+/** A starter if half or more of his games are starts; otherwise a closer (5+ saves), a setup man (5+ holds) or another reliever. */
+export function roleOf(s: { starts: number | null; games: number | null; saves: number | null; holds: number | null } | null | undefined): BoardRow['role'] {
+  if (!s || s.games == null || s.games <= 0) return null
+  if ((s.starts ?? 0) / s.games >= 0.5) return 'starter'
+  if ((s.saves ?? 0) >= 5) return 'closer'
+  if ((s.holds ?? 0) >= 5) return 'setup'
+  return 'reliever'
+}
+
 let ownedCache: { at: number; map: Map<number, number> } | null = null
 /** ESPN percent rostered by MLB player id (fantasy_ownership, refreshed daily by its own cron), cached an hour. null on failure (logged). */
 async function getOwnedMap(): Promise<Map<number, number> | null> {
@@ -228,10 +240,10 @@ async function getSeasonStats(season: number): Promise<Map<number, SeasonStat> |
   const supa = createAdminClient()
   const map = new Map<number, SeasonStat>()
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supa.from('pitcher_stats').select('player_id,era,xera,fip,innings_pitched').eq('season', season).order('player_id').range(from, from + 999)
+    const { data, error } = await supa.from('pitcher_stats').select('player_id,era,xera,fip,innings_pitched,starts,games_played,saves,holds').eq('season', season).order('player_id').range(from, from + 999)
     if (error) { logOnce('getSeasonStats', 'getSeasonStats', 'Supabase error', error.message); return null }
-    for (const r of (data ?? []) as unknown as { player_id: number; era: unknown; xera: unknown; fip: unknown; innings_pitched: unknown }[]) {
-      map.set(r.player_id, { era: numOrNull(r.era), xera: numOrNull(r.xera), fip: numOrNull(r.fip), ip: numOrNull(r.innings_pitched), xeraPa: null })
+    for (const r of (data ?? []) as unknown as { player_id: number; era: unknown; xera: unknown; fip: unknown; innings_pitched: unknown; starts: unknown; games_played: unknown; saves: unknown; holds: unknown }[]) {
+      map.set(r.player_id, { starts: numOrNull(r.starts), games: numOrNull(r.games_played), saves: numOrNull(r.saves), holds: numOrNull(r.holds), era: numOrNull(r.era), xera: numOrNull(r.xera), fip: numOrNull(r.fip), ip: numOrNull(r.innings_pitched), xeraPa: null })
     }
     if ((data ?? []).length < 1000) break
   }
@@ -241,7 +253,7 @@ async function getSeasonStats(season: number): Promise<Map<number, SeasonStat> |
     const { data, error } = await supa.from('pitch_shape_pitcher_expected').select('pitcher_id,pa,era,xera').eq('season', season).order('pitcher_id').range(from, from + 999)
     if (error) { logOnce('getSeasonStats:expected', 'getSeasonStats', 'pitch_shape_pitcher_expected', error.message); break }
     for (const r of (data ?? []) as unknown as { pitcher_id: number; pa: number; era: unknown; xera: unknown }[]) {
-      const cur = map.get(r.pitcher_id) ?? { era: null, xera: null, fip: null, ip: null, xeraPa: null }
+      const cur = map.get(r.pitcher_id) ?? { starts: null, games: null, saves: null, holds: null, era: null, xera: null, fip: null, ip: null, xeraPa: null }
       map.set(r.pitcher_id, { ...cur, era: cur.era ?? numOrNull(r.era), xera: numOrNull(r.xera) ?? cur.xera, xeraPa: numOrNull(r.xera) != null ? r.pa : null })
     }
     if ((data ?? []).length < 1000) break
