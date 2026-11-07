@@ -39,6 +39,7 @@ import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, windowS
 import type { Board } from '@/lib/pitch-shape/results'
 import type { Overall } from '@/lib/pitch-shape/overall'
 import type { ShapeBin } from '@/lib/pitch-shape/model'
+import type { DiagnosisResult } from '@/lib/pitch-shape/diagnosis'
 
 const HALF = 12
 const RADII = [0.5, 1, 2] as const
@@ -105,6 +106,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [resPayload, setResPayload] = useState<ResultsPayload | null | undefined>(resCache.get(key))
   const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(key))
   const [shapeBins, setShapeBins] = useState<ShapeBin[] | null | undefined>(null)   // the league's speed and arm-angle bins, for the "why" read on a chosen pitcher
+  const [diagnosis, setDiagnosis] = useState<DiagnosisResult | 'locked' | undefined>(undefined)   // where the chosen pitcher is leaking; 'locked' when the viewer is not Pro
   const [overall, setOverall] = useState<Overall | null | undefined>(null)   // the chosen pitcher's whole-season numbers and ranks; undefined while loading
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const locked = !isPro && !lookLeft && !isFree(type)
@@ -148,6 +150,18 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { overall: Overall | null }) => { if (live) setOverall(j.overall) })
       .catch(e => { log.error('PitchFinderV2', 'overall fetch failed', e instanceof Error ? e.message : e); if (live) setOverall(null) })
+    return () => { live = false }
+  }, [focus, payload, locked])
+
+  // where the chosen pitcher is leaking (Pro): which pitch, situation and process measure
+  useEffect(() => {
+    if (focus == null || locked || !payload) { setDiagnosis(undefined); return }
+    let live = true
+    setDiagnosis(undefined)
+    fetch(`/api/mlb/pitch-shape/diagnosis?id=${focus}&season=${payload.latest}`)
+      .then(async r => { if (r.status === 403) return 'locked' as const; if (!r.ok) throw new Error(`HTTP ${r.status}`); return ((await r.json()) as { diagnosis: DiagnosisResult }).diagnosis })
+      .then(d => { if (live) setDiagnosis(d) })
+      .catch(e => { log.error('PitchFinderV2', 'diagnosis fetch failed', e instanceof Error ? e.message : e); if (live) setDiagnosis(null) })
     return () => { live = false }
   }, [focus, payload, locked])
 
@@ -565,7 +579,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
-            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
             {place && (
               <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
@@ -595,7 +609,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       )}
 
       {!locked && payload && grid && place && focus != null && (
-        <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
+        <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
       {!locked && payload && grid && place && (

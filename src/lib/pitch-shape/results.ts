@@ -170,3 +170,23 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
   })
   return { type, hand, season, league, rows: out, dist }
 }
+
+
+const gridCache = new Map<string, { at: number; grid: ReturnType<typeof makeResultsGrid>; league: Measures }>()
+/**
+ * What league pitches of one type and hand shaped like (hb, ivb) have saved per 100 pitches (all seasons added up, +/-1 in), and the league's runs allowed per 100 for the type,
+ * so a pitcher's own pitch can be set against its shape. null when the results tables hold nothing for the type. Grids are cached for an hour.
+ */
+export async function getShapeSavedFor(type: string, hand: Hand, hb: number, ivb: number): Promise<{ shapeSaved: number | null; leagueRuns100: number | null } | null> {
+  const k = `${type}|${hand}`
+  let hit = gridCache.get(k)
+  if (!hit || Date.now() - hit.at > TTL_MS) {
+    const rows = await loadRows(type, hand)
+    if (!rows) return null
+    const [hb0, ivb0] = centre(rows)
+    hit = { at: Date.now(), grid: makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all'), league: measuresOf(leagueSums(rows)) }
+    gridCache.set(k, hit)
+  }
+  const m = measuresOf(windowSums(hit.grid, Math.round(hb * 10), Math.round(ivb * 10), 10))
+  return { shapeSaved: runsSaved(m, hit.league), leagueRuns100: hit.league.runs100 }
+}

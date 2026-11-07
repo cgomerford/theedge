@@ -13,6 +13,8 @@ import { C, Empty } from '@/components/team/ui'
 import FollowIsland from '@/components/signup/FollowIsland'
 import type { Board, BoardRow } from '@/lib/pitch-shape/results'
 import type { Overall, OverallRank } from '@/lib/pitch-shape/overall'
+import type { DiagnosisResult } from '@/lib/pitch-shape/diagnosis'
+import UpgradePrompt from '@/components/pro/UpgradePrompt'
 import { ordinal } from '@/lib/ordinal'
 import { explainShape, reasons } from '@/lib/pitch-shape/explain'
 import type { ShapeBin } from '@/lib/pitch-shape/model'
@@ -191,7 +193,7 @@ function clue(r: BoardRow): string | null {
 }
 
 /** One pitcher's full read, full width under the map row: his season numbers and where they rank, his shape (with the window widened by his own spread), and what the league has produced at that shape. */
-export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, lc, onSelect, onOpen, headshot }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'lc' | 'onSelect' | 'onOpen' | 'headshot'>) {
+export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, lc, onSelect, onOpen, headshot }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'lc' | 'onSelect' | 'onOpen' | 'headshot'>) {
   const [wide, setWide] = useState<'in1' | 'sd05' | 'sd1' | 'sd2'>('in1')   // how wide the shape window is: a fixed inch, or his own spread times 0.5, 1 or 2
   const sel = board && selectedId != null ? board.rows.find(r => r.pitcherId === selectedId) ?? null : null
   if (!sel) return null
@@ -374,6 +376,66 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, l
 
           </div>
         </div>
+        <div style={{ ...sec, marginTop: 22 }}>4 · Where is it leaking? Another pitch, a situation, or sequencing</div>
+        {diagnosis === 'locked' ? (
+          <div style={{ background: C.soft, borderRadius: 6, padding: 14 }}>
+            <div style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, marginBottom: 8 }}>For a pitcher whose shape has produced more than his results show: which pitch is losing, which batters, counts and times through the order cost him, and whether first-pitch strikes, the zone, chase or repeating pitches point to sequencing.</div>
+            <UpgradePrompt source="pitch_shape" />
+          </div>
+        ) : diagnosis === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Checking his pitches, situations and sequencing…</div>
+          : diagnosis === null ? <div style={{ fontSize: 13, color: '#5b5347' }}>The leak check could not be read for him right now.</div>
+          : 'needsSql' in diagnosis ? <div style={{ fontSize: 13, color: '#5b5347' }}>The leak check fills once the situation data is set up (one SQL file, shape_situation_lines).</div>
+          : (
+            <>
+              {diagnosis.summary.length > 0 && (
+                <div style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+                  {diagnosis.summary.map((x, i) => <div key={i} style={{ background: x.tone === 'leak' ? '#FBE6E1' : '#E3F3EC', color: '#3a352c', fontSize: 13.5, lineHeight: 1.5, borderRadius: 4, padding: '8px 11px' }}>{x.text}</div>)}
+                </div>
+              )}
+              <div className="psd-leak" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, alignItems: 'start' }}>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12 }}>
+                  <div style={{ ...k, marginBottom: 6 }}>By pitch: each against its own shape</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+                    <thead><tr>{['Pitch', 'Use', 'Shape', 'His', 'Cost'].map(th)}</tr></thead>
+                    <tbody>
+                      {diagnosis.arsenal.map(a => (
+                        <tr key={a.pitchType} style={{ borderBottom: `1px solid ${C.line}` }}>
+                          <td style={{ padding: '6px 4px', fontWeight: 700 }}>{a.name}{a.small && <span style={{ color: C.faint, fontWeight: 600 }}> · small</span>}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right' }}>{(a.share * 100).toFixed(0)}%</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right', color: C.mute }}>{a.shapeSaved == null ? '—' : signed(a.shapeSaved)}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 800 }}>{a.ownSaved == null ? '—' : signed(a.ownSaved)}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right' }}>{a.cost == null ? '—' : <span style={{ background: a.cost >= 0.2 ? '#FBE6E1' : a.cost <= -0.2 ? '#E3F3EC' : C.soft, color: a.cost >= 0.2 ? '#A8391F' : a.cost <= -0.2 ? '#13694F' : '#5b5347', fontWeight: 800, borderRadius: 3, padding: '1px 6px' }}>{signed(a.cost)}</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>Runs saved per 100 pitches of that type: what its shape has produced for league pitches, and what his has. Cost is the gap times its share of his pitches (positive costs him), in runs per 100 of all his pitches.</div>
+                </div>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12 }}>
+                  <div style={{ ...k, marginBottom: 6 }}>By situation: against league pitchers with his mix</div>
+                  {diagnosis.leaks.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', lineHeight: 1.5 }}>No batter side, count or time through the order costs him as much as a fifth of a run per 100 pitches more than it would a league pitcher with his mix ({diagnosis.pitches.toLocaleString()} pitches checked).</div>
+                    : diagnosis.leaks.slice(0, 4).map(l => (
+                      <div key={l.label} style={{ borderBottom: `1px solid ${C.line}`, padding: '7px 0', fontSize: 13, lineHeight: 1.45 }}>
+                        <b>{l.label[0].toUpperCase() + l.label.slice(1)}</b> · {l.pitches.toLocaleString()} pitches ({(l.share * 100).toFixed(0)}%)<br />
+                        <span style={{ color: '#5b5347' }}>{l.mine100.toFixed(2)} runs per 100 against {l.expected100.toFixed(2)} expected · costs {l.cost.toFixed(2)} per 100 overall</span>
+                      </div>
+                    ))}
+                </div>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12 }}>
+                  <div style={{ ...k, marginBottom: 6 }}>Sequencing and command</div>
+                  {diagnosis.process.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', lineHeight: 1.5 }}>His first-pitch strikes, pitches in the zone, chase, repeat rate and fastball use when ahead are all close to what league pitchers with his mix show, so none of them points to the gap.</div>
+                    : diagnosis.process.map(p => (
+                      <div key={p.id} style={{ borderBottom: `1px solid ${C.line}`, padding: '7px 0', fontSize: 13, lineHeight: 1.45 }}>
+                        <b style={{ color: p.hurts ? '#A8391F' : '#13694F' }}>{p.label} · {p.hurts ? 'against him' : 'helps him'}</b><br />
+                        <span style={{ color: '#3a352c' }}>{p.text}</span> <span style={{ color: C.faint, fontSize: 11.5 }}>({p.n.toLocaleString()} pitches)</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: C.faint, marginTop: 8 }}>Everything is set against league pitchers throwing the same pitch types to the same kind of batter, {diagnosis.season}, regular season. It cannot see command inside the zone, defense, park or luck beyond the contact-quality check. It describes what has happened and does not predict.</div>
+            </>
+          )}
+
         <div style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>“League at his shape” is what league {lc}s inside the window have produced, all seasons since 2024 added up; outperforming or underperforming compares his own results with that, and describes what has happened. Location, sequencing, deception, defense and luck are not in the shape. Green is better for the pitcher than his shape by more than the usual noise, red is worse.</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
           <FollowIsland kind="player" refId={String(sel.pitcherId)} name={sel.name} />
@@ -394,6 +456,8 @@ export type PanelProps = {
   shapeAt: ((hb: number, ivb: number, rx10: number, ry10: number) => { raw: M; gated: M } | null) | null
   /** the league's shape bins for this pitch and hand (speed and arm angle as well as movement): undefined while loading, null when not available */
   bins: ShapeBin[] | null | undefined
+  /** where he is leaking (which pitch, situation, process measure): undefined while loading, 'locked' for a viewer who is not Pro, null when it could not be read */
+  diagnosis: DiagnosisResult | 'locked' | undefined
   onSelect: (id: number | null) => void
   onOpen: (id: number, name: string) => void
   headshot: (id: number) => string
