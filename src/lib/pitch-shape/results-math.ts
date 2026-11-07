@@ -71,8 +71,13 @@ export function makeResultsGrid(p: ResultsPayload, which: Span): RGrid {
 
 /** League sums inside the square window of half-width r10 (tenths of an inch) around a point given in tenths of an inch. */
 export function windowSums(g: RGrid, hb10: number, ivb10: number, r10: number): Sums {
+  return windowSumsRect(g, hb10, ivb10, r10, r10)
+}
+
+/** The same with a box: half-width rx10 across (arm-side break) and ry10 up (ride), tenths of an inch. Used to size the shape window by a pitcher's own spread. */
+export function windowSumsRect(g: RGrid, hb10: number, ivb10: number, rx10: number, ry10: number): Sums {
   const x = hb10 - g.gx0, y = ivb10 - g.gy0
-  const x0 = Math.max(0, x - r10), x1 = Math.min(g.size - 1, x + r10), y0 = Math.max(0, y - r10), y1 = Math.min(g.size - 1, y + r10)
+  const x0 = Math.max(0, x - rx10), x1 = Math.min(g.size - 1, x + rx10), y0 = Math.max(0, y - ry10), y1 = Math.min(g.size - 1, y + ry10)
   const out = zeroSums()
   if (x1 < x0 || y1 < y0) return out
   for (const f of FIELDS) out[f] = win(g.I[f], g.size, x0, y0, x1, y1)
@@ -89,15 +94,17 @@ export type Measures = {
 }
 
 /** Every measure from a set of sums, each one null under its own sample gate. Sums are in real units (not x1000). */
-export function measuresOf(s: Sums): Measures {
+export function measuresOf(s: Sums, gated = true): Measures {
+  // gated = false shows the number from whatever sample there is (null only when there is nothing at all); the caller then labels it thin
+  const g = gated ? GATE : { rvPitches: 1, ab: 1, den: 1, swings: 1 }
   return {
     pitches: s.pitches,
-    runs100: s.rvN >= GATE.rvPitches ? (s.rv / s.rvN) * 100 : null,
-    woba: s.wd >= GATE.den ? s.w / s.wd : null,
-    xwoba: s.wd >= GATE.den ? s.x / s.wd : null,
-    avg: s.ab >= GATE.ab ? s.hits / s.ab : null,
-    slg: s.ab >= GATE.ab ? s.tb / s.ab : null,
-    whiff: s.swings >= GATE.swings ? s.whiffs / s.swings : null,
+    runs100: s.rvN >= g.rvPitches ? (s.rv / s.rvN) * 100 : null,
+    woba: s.wd >= g.den ? s.w / s.wd : null,
+    xwoba: s.wd >= g.den ? s.x / s.wd : null,
+    avg: s.ab >= g.ab ? s.hits / s.ab : null,
+    slg: s.ab >= g.ab ? s.tb / s.ab : null,
+    whiff: s.swings >= g.swings ? s.whiffs / s.swings : null,
     n: { rv: s.rvN, ab: s.ab, pa: s.pa, swings: s.swings },
   }
 }

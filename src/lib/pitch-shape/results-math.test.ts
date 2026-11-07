@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STRIDE, makeResultsGrid, measuresOf, percentile, resultsVsShape, runsSaved, windowSums, zeroSums } from './results-math'
+import { STRIDE, makeResultsGrid, measuresOf, percentile, resultsVsShape, runsSaved, windowSums, windowSumsRect, zeroSums } from './results-math'
 
 // one cell: hb10, ivb10, pitches, swings, whiffs, rv_n, rv*1000, pa, ab, hits, tb, wd, w*1000, x*1000
 const cell = (hb: number, iv: number, o: Partial<Record<string, number>> = {}) => {
@@ -16,6 +16,12 @@ describe('results grid', () => {
     expect(s.pitches).toBe(400)
     expect(s.rv).toBeCloseTo(4)
     expect(s.w).toBeCloseTo(36)
+  })
+  it('sizes a box by its own width and height', () => {
+    const g = makeResultsGrid(payload([...cell(0, 0), ...cell(20, 0)]), 'latest')
+    expect(windowSumsRect(g, 0, 0, 5, 5).pitches).toBe(400)
+    expect(windowSumsRect(g, 0, 0, 25, 5).pitches).toBe(800)
+    expect(windowSumsRect(g, 0, 0, 25, 5)).toEqual(windowSumsRect(g, 0, 0, 25, 5))
   })
   it('turns sums into measures and gates thin windows', () => {
     const g = makeResultsGrid(payload(cell(0, 0)), 'latest')

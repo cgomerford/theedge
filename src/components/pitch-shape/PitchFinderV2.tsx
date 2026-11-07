@@ -34,9 +34,11 @@ import {
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
-import { BLANK, METRICS, ResultsLegend, ResultsReadout, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
-import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, type ResultsPayload } from '@/lib/pitch-shape/results-math'
+import { BLANK, METRICS, FindPitcher, ResultsLegend, ResultsReadout, ShapePlayerDetail, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
+import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, windowSumsRect, type ResultsPayload } from '@/lib/pitch-shape/results-math'
 import type { Board } from '@/lib/pitch-shape/results'
+import type { Overall } from '@/lib/pitch-shape/overall'
+import type { ShapeBin } from '@/lib/pitch-shape/model'
 
 const HALF = 12
 const RADII = [0.5, 1, 2] as const
@@ -51,6 +53,7 @@ type Place = { hb: number; ivb: number; spot: number | null }
 const cache = new Map<string, MovementCellsPayload | null>()
 const resCache = new Map<string, ResultsPayload | null>()
 const boardCache = new Map<string, Board | null>()
+const shapeBinsCache = new Map<string, ShapeBin[] | null>()
 
 /** The most effective places: highest miss rate with 200+ swings in the window, at least 4 in apart. */
 function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4): Spot[] {
@@ -101,6 +104,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [measure, setMeasure] = useState<'whiff' | MetricId>('whiff')   // what colours the map: whiffs per swing, or what the shape has produced
   const [resPayload, setResPayload] = useState<ResultsPayload | null | undefined>(resCache.get(key))
   const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(key))
+  const [shapeBins, setShapeBins] = useState<ShapeBin[] | null | undefined>(null)   // the league's speed and arm-angle bins, for the "why" read on a chosen pitcher
+  const [overall, setOverall] = useState<Overall | null | undefined>(null)   // the chosen pitcher's whole-season numbers and ranks; undefined while loading
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const locked = !isPro && !lookLeft && !isFree(type)
   const name = PITCH_NAMES[type] ?? type
@@ -134,12 +139,48 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     return () => { live = false }
   }, [key, type, hand, locked])
 
+  // the chosen pitcher's overall numbers and where they rank (all his pitch types, this season)
+  useEffect(() => {
+    if (focus == null || locked || !payload) { setOverall(null); return }
+    let live = true
+    setOverall(undefined)
+    fetch(`/api/mlb/pitch-shape/pitcher-overall?id=${focus}&season=${payload.latest}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j: { overall: Overall | null }) => { if (live) setOverall(j.overall) })
+      .catch(e => { log.error('PitchFinderV2', 'overall fetch failed', e instanceof Error ? e.message : e); if (live) setOverall(null) })
+    return () => { live = false }
+  }, [focus, payload, locked])
+
+  // speed and arm-angle bins, only once a pitcher is chosen
+  useEffect(() => {
+    if (focus == null || locked) { setShapeBins(null); return }
+    if (shapeBinsCache.has(key)) { setShapeBins(shapeBinsCache.get(key) ?? null); return }
+    let live = true
+    setShapeBins(undefined)
+    fetch(`/api/mlb/pitch-shape/bins?type=${type}&hand=${hand}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j: { bins?: ShapeBin[] }) => { const b = j.bins ?? null; shapeBinsCache.set(key, b); if (live) setShapeBins(b) })
+      .catch(e => { log.error('PitchFinderV2', 'bins fetch failed', e instanceof Error ? e.message : e); if (live) setShapeBins(null) })
+    return () => { live = false }
+  }, [focus, key, type, hand, locked])
+
   const grids = useMemo(() => (payload ? { latest: makeGrid(payload, 'latest'), all: makeGrid(payload, 'all') } : null), [payload])
   const grid = grids ? grids[span] : null
   const N = grid ? 2 * grid.h10 + 1 : 0
   const rGrid = useMemo(() => (resPayload ? makeResultsGrid(resPayload, span === 'latest' ? 'latest' : 'all') : null), [resPayload, span])
   const rLeague = useMemo(() => (rGrid ? measuresOf(rGrid.total) : null), [rGrid])
   const metric = METRICS.find(m => m.id === measure) ?? null
+  // the player detail always compares a pitcher with league pitches from every season added up (the same as the Shape Score board), whichever span colours the map
+  const rGridAll = useMemo(() => (resPayload ? makeResultsGrid(resPayload, 'all') : null), [resPayload])
+  const rLeagueAll = useMemo(() => (rGridAll ? measuresOf(rGridAll.total) : null), [rGridAll])
+  const shapeAt = useMemo(() => {
+    if (!rGridAll || !rLeagueAll) return null
+    return (hb: number, ivb: number, rx10: number, ry10: number) => {
+      const s = windowSumsRect(rGridAll, Math.round(hb * 10), Math.round(ivb * 10), rx10, ry10)
+      const g = measuresOf(s), raw = measuresOf(s, false)
+      return { gated: { ...g, saved: runsSaved(g, rLeagueAll) }, raw: { ...raw, saved: runsSaved(raw, rLeagueAll) } }
+    }
+  }, [rGridAll, rLeagueAll])
   const r10 = Math.round(radius * 10)
   const leagueRate = grid && grid.swings > 0 ? grid.whiffs / grid.swings : null
   const latest = payload?.latest ?? new Date().getFullYear()
@@ -347,6 +388,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         </div>
       </details>
 
+      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
+
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
         : payload === null || !grid || leagueRate == null ? <Empty>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</Empty>
@@ -522,7 +565,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
-            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
             {place && (
               <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
@@ -549,6 +592,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             )}
           </div>
         </div>
+      )}
+
+      {!locked && payload && grid && place && focus != null && (
+        <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
       {!locked && payload && grid && place && (

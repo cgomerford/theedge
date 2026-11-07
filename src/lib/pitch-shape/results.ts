@@ -14,6 +14,7 @@ import {
   type Measures, type ResultsPayload, type Sums, type Verdict,
 } from './results-math'
 import { LEAGUE_COORD_ERA } from './data'
+import { getOverallLines, type OverallLine } from './overall'
 import type { Hand } from './model'
 
 const FIRST_SEASON = 2024
@@ -86,10 +87,17 @@ function leagueSums(rows: Map<number, number[]>, only?: number): Sums {
 
 export type BoardRow = {
   pitcherId: number; name: string; teamAbbr: string; pitches: number; hb: number; ivb: number
+  /** his own spread (one standard deviation, inches), average speed and arm angle on this pitch, for sizing the shape window and showing his shape numbers */
+  sdHb: number | null; sdIvb: number | null; velo: number | null; slot: number | null
   /** what league pitches shaped like his have produced (all seasons added up, +/-1 in window) */
   shape: Measures & { saved: number | null }
   /** what his own pitch has produced this season */
   own: Measures & { saved: number | null }
+  /** the same measures with no sample gate (null only when there is nothing), so a detail view can show every stat and label thin ones */
+  shapeRaw: Measures & { saved: number | null }
+  ownRaw: Measures & { saved: number | null }
+  /** his whole season, all pitch types: total pitches and where his runs allowed, wOBA and xwOBA rank among pitchers (null when the table is empty) */
+  overall: OverallLine | null
   /** 1 to 99: where the shape's runs saved per 100 ranks among the shapes pitchers throw for this pitch type and hand */
   score: number | null
   gap: number | null; verdict: Verdict | null
@@ -111,33 +119,40 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
   const grid = makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all')
   const league = measuresOf(leagueSums(rows))
   const supa = createAdminClient()
+  const overallLines = await getOverallLines(season)   // separate await: a cached whole-season pass
   const [shapes, owns] = await Promise.all([
-    supa.from('pitch_shape_pitcher').select('pitcher_id,pitcher_name,team_abbr,n_pitches,hb,ivb').eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
+    supa.from('pitch_shape_pitcher').select('pitcher_id,pitcher_name,team_abbr,n_pitches,hb,ivb,sd_hb,sd_ivb,velo,slot').eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
     supa.from('pitch_shape_results_pitcher').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('season', season).eq('pitch_type', type).eq('p_throws', hand).limit(1000),
   ])
   if (shapes.error) { logOnce('getShapeBoard:shapes', 'getShapeBoard', 'Supabase error', shapes.error.message); return null }
   if (owns.error) { logOnce('getShapeBoard:owns', 'getShapeBoard', 'Supabase error', owns.error.message); return null }
   type Own = { pitcher_id: number; n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
   const ownBy = new Map(((owns.data ?? []) as unknown as Own[]).map(o => [o.pitcher_id, o]))
-  type Sh = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; hb: string | number; ivb: string | number }
+  type Sh = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; hb: string | number; ivb: string | number; sd_hb: string | number | null; sd_ivb: string | number | null; velo: string | number | null; slot: string | number | null }
   const list = ((shapes.data ?? []) as unknown as Sh[]).map(p => {
     const hb = Number(p.hb), ivb = Number(p.ivb)
     const sm = measuresOf(windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10))
     const o = ownBy.get(p.pitcher_id)
-    const om = o ? measuresOf(pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) })) : null
-    return { p, hb, ivb, sm, om }
+    const osum = o ? pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) }) : null
+    const om = osum ? measuresOf(osum) : null
+    const ssum = windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
+    return { p, hb, ivb, sm, om, smRaw: measuresOf(ssum, false), omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
   })
   const savedOf = (m: Measures) => runsSaved(m, league)
   const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
-  const out: BoardRow[] = list.map(({ p, hb, ivb, sm, om }) => {
+  const out: BoardRow[] = list.map(({ p, hb, ivb, sm, om, smRaw, omRaw }) => {
     const shapeSaved = savedOf(sm)
     const ownSaved = om && om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
     const cmp = resultsVsShape(ownSaved, shapeSaved)
     const tm = MLB_TEAMS.find(t => t.abbrev === p.team_abbr)
     return {
       pitcherId: p.pitcher_id, name: p.pitcher_name, teamAbbr: tm?.abbrev ?? p.team_abbr ?? '', pitches: p.n_pitches, hb, ivb,
+      sdHb: p.sd_hb == null ? null : Number(p.sd_hb), sdIvb: p.sd_ivb == null ? null : Number(p.sd_ivb), velo: p.velo == null ? null : Number(p.velo), slot: p.slot == null ? null : Number(p.slot),
       shape: { ...trim(sm), saved: shapeSaved },
       own: { ...(om ?? measuresOf(zeroSums())), saved: ownSaved },
+      shapeRaw: { ...smRaw, saved: runsSaved(smRaw, { ...league }) },
+      ownRaw: { ...omRaw, saved: runsSaved(omRaw, { ...league }) },
+      overall: overallLines?.get(p.pitcher_id) ?? null,
       score: shapeSaved == null ? null : percentile(dist, shapeSaved),
       gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
     }
