@@ -34,7 +34,7 @@ import {
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
-import { BLANK, METRICS, ResultsLegend, ResultsReadout, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
+import { BLANK, METRICS, ResultsLegend, ResultsReadout, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
 import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, type ResultsPayload } from '@/lib/pitch-shape/results-math'
 import type { Board } from '@/lib/pitch-shape/results'
 
@@ -384,7 +384,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
-                  setShowAll(false); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
+                  setShowAll(false); setFocus(null); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
                 }}>
                 <canvas ref={canvasRef} role="img" aria-label={`League ${lc} movement map: each square is a way a pitch moves (ride up, run right), coloured by how often hitters miss. It is not the strike zone.`} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
                 <svg viewBox={`0 0 ${N} ${N}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
@@ -407,7 +407,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     )
                   })}
                 </svg>
-                {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
+                {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setFocus(null); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
                 {hover && metric && rGrid && rLeague && (() => {
                   const m = measuresOf(windowSums(rGrid, Math.round(hover.hb * 10), Math.round(hover.ivb * 10), r10)), v = metric.get(m, rLeague)
                   return (
@@ -447,8 +447,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             </div>
 
             {place && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', fontSize: 13, lineHeight: 1.55, color: '#3a352c', marginTop: 10 }}>
-                <div className="pv-k">What is drawn on the map</div>
+              <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 14px', fontSize: 13, lineHeight: 1.55, color: '#3a352c', marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 700, minHeight: 28 }}>What is drawn on the map</summary>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 6 }}>
                   <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><rect x="3" y="3" width="16" height="16" fill="none" stroke={C.ink} strokeWidth="1.6" strokeDasharray="4 3" /></svg>
                   <span><b>The dashed box</b> is the area you chose: every league {lc} that moves within ±{radius} in of this spot. The rate, the pitchers and the plate view all use that same box.</span>
@@ -465,27 +465,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     </div>
                   </>
                 ) : (
-                  <div style={{ marginTop: 8, color: '#5b5347' }}>Choose “Show on map” beside a pitcher below, and his pitches appear here as dots with a ring at his average.</div>
+                  <div style={{ marginTop: 8, color: '#5b5347' }}>Click a pitcher in the list beside the map, and his pitches appear here as dots with a ring at his average.</div>
                 )}
-              </div>
-            )}
-
-            {focusDot && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', marginTop: 10, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={headshotCutoutUrl(focusDot.pitcherId, 240)} alt="" width={64} height={64} style={{ width: 64, height: 64, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <Link href={`/mlb/players/${focusDot.pitcherId}`} style={{ fontWeight: 800, fontSize: 17, color: ORANGE_TEXT, textDecoration: 'none' }}>{focusDot.name} · {focusDot.teamAbbr}</Link>
-                  <div style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5 }}>
-                    {focusDot.own != null && focusDot.shapeRate != null
-                      ? <>His {lc}: {(focusDot.own * 100).toFixed(1)}% whiffs per swing ({focusDot.nSwings.toLocaleString()} swings). Pitches that move like his get {(focusDot.shapeRate * 100).toFixed(1)}% across the league: <b>{focusDot.verdict === 'ahead' ? 'ahead of his shape' : focusDot.verdict === 'behind' ? 'behind his shape' : 'about level'}{focusDot.gapPts != null ? ` (${pts(focusDot.gapPts)})` : ''}</b>.</>
-                      : <>Too few swings of his own ({focusDot.nSwings}) or too thin a spot on the map to compare.</>}
-                  </div>
-                </div>
-                <div style={{ color: C.ink }}><FollowIsland kind="player" refId={String(focusDot.pitcherId)} name={focusDot.name} /></div>
-                <button type="button" onClick={() => openPitcher(focusDot.pitcherId, focusDot.name)} style={{ minHeight: 44, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Open all his pitches →</button>
-                <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.ink}`, background: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>Clear and show all pitchers</button>
-              </div>
+              </details>
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12, position: 'relative' }}>
@@ -536,14 +518,16 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   const score = saved != null && board && board.dist.length ? percentile(board.dist, saved) : null
                   return <ResultsReadout here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
                 })()}
-                <a href="#shape-vs-results" style={{ display: 'block', marginTop: 10, color: ORANGE_TEXT, fontWeight: 800, fontSize: 14, textDecoration: 'none', minHeight: 32 }}>Who gets more or less than this shape ↓</a>
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
+            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+
             {place && (
-              <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }}>
-                <h3 style={{ margin: '0 0 4px', fontSize: 19, fontWeight: 800 }}>What it looks like on the plate</h3>
+              <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 28 }}>What it looks like on the plate</summary>
+                <h3 style={{ margin: '8px 0 4px', fontSize: 15, fontWeight: 700 }}>Where these pitches cross, and how they travel</h3>
                 <p style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 8px' }}>The map above is movement. This is the other half: where pitches that move like your chosen spot cross the plate, from the batter’s side.</p>
                 <div className="pf2-plate" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16, alignItems: 'start' }}>
                   <LocationPanel pitchType={type} hand={hand} probe={{ hb: place.hb, ivb: place.ivb }} radius={radius} span={span} scope="league" pitchName={name} explainHeight onSummary={setPlate} />
@@ -561,7 +545,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     ) : <p style={{ fontSize: 13, color: '#5b5347' }}>{plate === null ? 'Too few pitches near this spot to draw how it travels.' : 'Drawing…'}</p>}
                   </div>
                 </div>
-              </div>
+              </details>
             )}
           </div>
         </div>
@@ -569,11 +553,20 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
       {!locked && payload && grid && place && (
         throwers === undefined && dots.length === 0 ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
-          : (league ?? leagueAll) ? <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={openPitcher} shownId={focus} across={across} />
+          : (league ?? leagueAll) ? (
+            <details style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 32 }}>More on who throws here: location, contact and call clues, and the most ahead and behind across the map</summary>
+              <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={openPitcher} shownId={focus} across={across} />
+            </details>)
           : null
       )}
 
-      {!locked && payload && grid && <ShapeScoreBoard board={board} lc={lc} hand={hand} onShow={showOnMap} />}
+      {!locked && payload && grid && (
+        <details style={{ marginTop: 14, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 32 }}>Every pitcher: the Shape Score board for {lc}s</summary>
+          <ShapeScoreBoard board={board} lc={lc} hand={hand} onShow={showOnMap} />
+        </details>
+      )}
 
       <div className="pf2-foot" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 24, borderTop: `1px solid ${C.line}`, marginTop: 26, paddingTop: 14, fontSize: 13.5, lineHeight: 1.55, color: '#5b5347' }}>
         <style>{'@media(max-width:800px){.pf2-foot{grid-template-columns:1fr !important}}'}</style>
