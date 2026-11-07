@@ -808,29 +808,39 @@ const STATUS: Record<Status, { word: string; bg: string; fg: string }> = {
 }
 type WRow = { id: string; label: string; status: Status; number: string; text: string; sortKey: number }
 
-/** The catcher's-view 3 x 3 of the strike zone with his share of the pitch in each square against the league's for the same shape, and the share outside the zone. */
+/** The catcher's view of every zone: the nine squares of the strike zone (1 to 9) in the middle and the four outside quadrants around them (11 to 14), each with his share of the pitch against the league's for the same shape. */
 function ZoneGrids({ factor }: { factor: Factor }) {
   const by = new Map(factor.slices.map(s => [s.key, s]))
   const out = (pick: (s: Factor['slices'][number]) => number) => factor.slices.filter(s => Number(s.key) >= 11).reduce((a, s) => a + pick(s), 0)
-  const grid = (pick: (s: Factor['slices'][number]) => number, title: string, ref: (s: Factor['slices'][number]) => number) => (
-    <div>
-      <div style={{ ...k, marginBottom: 4 }}>{title}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, width: 156 }}>
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(z => {
-          const sl = by.get(String(z)), v = sl ? pick(sl) : 0, r = sl ? ref(sl) : 0
-          const over = v - r   // over-used squares darker orange, under-used blue-grey
-          const bg = Math.abs(over) < 0.01 ? '#F1EEE6' : over > 0 ? `rgba(255,87,34,${Math.min(0.85, 0.25 + over * 5)})` : `rgba(94,122,153,${Math.min(0.7, 0.2 + -over * 5)})`
-          return <div key={z} title={ZONE_LABEL[String(z)]} style={{ background: bg, borderRadius: 3, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{(v * 100).toFixed(0)}%</div>
-        })}
+  const OUTER: Record<number, { pts: string; tx: number; ty: number }> = {
+    11: { pts: '0,0 100,0 100,40 40,40 40,100 0,100', tx: 21, ty: 25 }, 12: { pts: '100,0 200,0 200,100 160,100 160,40 100,40', tx: 179, ty: 25 },
+    13: { pts: '0,100 40,100 40,160 100,160 100,200 0,200', tx: 21, ty: 183 }, 14: { pts: '160,100 200,100 200,200 100,200 100,160 160,160', tx: 179, ty: 183 },
+  }
+  const grid = (pick: (s: Factor['slices'][number]) => number, title: string, ref: (s: Factor['slices'][number]) => number) => {
+    const fill = (z: number) => {
+      const sl = by.get(String(z)), over = (sl ? pick(sl) : 0) - (sl ? ref(sl) : 0)   // over-used squares darker orange, under-used blue-grey
+      return Math.abs(over) < 0.01 ? '#F1EEE6' : over > 0 ? `rgba(255,87,34,${Math.min(0.85, 0.25 + over * 5)})` : `rgba(94,122,153,${Math.min(0.7, 0.2 + -over * 5)})`
+    }
+    const pct = (z: number) => `${((by.get(String(z)) ? pick(by.get(String(z))!) : 0) * 100).toFixed(0)}%`
+    return (
+      <div>
+        <div style={{ ...k, marginBottom: 4 }}>{title}</div>
+        <svg viewBox="0 0 200 200" width={200} height={200} role="img" aria-label={`${title}: share of pitches in each of the thirteen zones`} style={{ display: 'block' }}>
+          {[11, 12, 13, 14].map(z => <g key={z}><title>{ZONE_LABEL[String(z)]}</title><polygon points={OUTER[z].pts} fill={fill(z)} stroke="#fff" strokeWidth="2" /><text x={OUTER[z].tx} y={OUTER[z].ty} textAnchor="middle" fontSize="13" fontWeight="800" fill={C.ink}>{pct(z)}</text></g>)}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(z => {
+            const cx = 40 + ((z - 1) % 3) * 40, cy = 40 + Math.floor((z - 1) / 3) * 40
+            return <g key={z}><title>{ZONE_LABEL[String(z)]}</title><rect x={cx} y={cy} width="40" height="40" fill={fill(z)} stroke="#fff" strokeWidth="2" /><text x={cx + 20} y={cy + 25} textAnchor="middle" fontSize="13" fontWeight="800" fill={C.ink}>{pct(z)}</text></g>
+          })}
+        </svg>
+        <div style={{ fontSize: 11.5, color: '#5b5347', marginTop: 4 }}>Outside the zone: <b>{(out(pick) * 100).toFixed(0)}%</b></div>
       </div>
-      <div style={{ fontSize: 11.5, color: '#5b5347', marginTop: 4 }}>Outside the zone: <b>{(out(pick) * 100).toFixed(0)}%</b></div>
-    </div>
-  )
+    )
+  }
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
       {grid(s => s.his, 'His, catcher’s view', s => s.league)}
       {grid(s => s.league, 'League, same shape', s => s.league)}
-      <div style={{ fontSize: 12, color: '#5b5347', maxWidth: 220, lineHeight: 1.5, alignSelf: 'center' }}>Orange squares are where he throws it more than league pitches of the same shape do; blue-grey, less.</div>
+      <div style={{ fontSize: 12, color: '#5b5347', maxWidth: 240, lineHeight: 1.5, alignSelf: 'center' }}>The middle nine squares are the strike zone; the four corners are the pitches outside it (upper and lower, left and right). Orange squares are where he throws it more than league pitches of the same shape do; blue-grey, less.</div>
     </div>
   )
 }
