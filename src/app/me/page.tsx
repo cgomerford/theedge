@@ -17,6 +17,8 @@ import RecapPreview from '@/components/me/RecapPreview'
 import StatusStrip from '@/components/me/StatusStrip'
 import TeamPanel from '@/components/me/TeamPanel'
 import Dashboard from '@/components/me/dashboard/Dashboard'
+import GmCockpit from '@/components/me/gm/Cockpit'
+import { buildCockpit } from '@/lib/gm/cockpit'
 import { isProViewer } from '@/lib/require-pro'
 import { C, CARD, EYEBROW, GREY, SANS, dateShort } from '@/components/me/ui'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -107,6 +109,8 @@ export default async function MePage() {
         </div>
 
         <StatusStrip players={players.length} teams={teams.length} isPro={isPro} inSeason={inSeason} teamLine={teamLine} nextGame={nextAny ? `Next: ${dateShort(nextAny.date)} ${nextAny.label}` : null} />
+
+        {!empty && <GmCockpit cockpit={await buildCockpit(players, blocks, feed, isPro)} isPro={isPro} nextLine={nextAny ? `Next: ${dateShort(nextAny.date)} ${nextAny.label}` : null} />}
 
         <Dashboard
           isPro={await isProViewer()}
