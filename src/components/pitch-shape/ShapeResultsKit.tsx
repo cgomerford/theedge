@@ -7,17 +7,22 @@
 // results payload and the board. Everything describes what has happened; none of it is a forecast.
 // Colour is always "better or worse for the pitcher than the league's average for this pitch": orange better, blue worse, white where the window is too thin.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { C, Empty } from '@/components/team/ui'
 import FollowIsland from '@/components/signup/FollowIsland'
 import type { Board, BoardRow } from '@/lib/pitch-shape/results'
 import type { Overall, OverallRank } from '@/lib/pitch-shape/overall'
-import type { DiagnosisResult } from '@/lib/pitch-shape/diagnosis'
+import type { DiagnosisResult, WhyResult } from '@/lib/pitch-shape/diagnosis'
+import { EFFECT_NOTICE, EXTENSION_NOTICE_FT, SPEED_NOTICE_MPH, ZONE_LABEL, biggestZoneShift, verdictOf, type Factor } from '@/lib/pitch-shape/decompose'
 import UpgradePrompt from '@/components/pro/UpgradePrompt'
 import { ordinal } from '@/lib/ordinal'
+import { log } from '@/lib/log'
+import { renderOtdPng } from '@/lib/graphics/otd-export'
+import ShapeExportCard, { type ExportData } from './ShapeExportCard'
+import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { explainShape, reasons } from '@/lib/pitch-shape/explain'
-import type { ShapeBin } from '@/lib/pitch-shape/model'
+import { PITCH_NAMES, type ShapeBin } from '@/lib/pitch-shape/model'
 import { ESTABLISHED_PITCHES, LENSES, SMALL_ROLE_PITCHES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
 import { GATE, LEVEL_RUNS, resultsVsShape, runsSaved, type Measures } from '@/lib/pitch-shape/results-math'
 import { RAMP } from './parts'
@@ -192,17 +197,36 @@ function clue(r: BoardRow): string | null {
   return null
 }
 
+const PITCH_LABEL = PITCH_NAMES
+
 /** One pitcher's full read, full width under the map row: his season numbers and where they rank, his shape (with the window widened by his own spread), and what the league has produced at that shape. */
-export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, lc, onSelect, onOpen, headshot }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'lc' | 'onSelect' | 'onOpen' | 'headshot'>) {
+export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, pitchType, season, exportMap, lc, onSelect, onOpen, headshot }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'pitchType' | 'season' | 'exportMap' | 'lc' | 'onSelect' | 'onOpen' | 'headshot'>) {
   const [wide, setWide] = useState<'in1' | 'sd05' | 'sd1' | 'sd2'>('in1')   // how wide the shape window is: a fixed inch, or his own spread times 0.5, 1 or 2
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportSize, setExportSize] = useState<'landscape' | 'portrait'>('landscape')
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [why, setWhy] = useState<WhyResult | 'locked' | undefined>(undefined)   // platoon, location, sequencing, speed and extension against league pitches of the same shape; 'locked' when the viewer is not Pro
   const sel = board && selectedId != null ? board.rows.find(r => r.pitcherId === selectedId) ?? null : null
+  // the shape window: a fixed inch, or his own spread (one standard deviation in ride and in run) times 0.5, 1 or 2, floored at half an inch and capped at 8
+  const mult = wide === 'sd05' ? 0.5 : wide === 'sd1' ? 1 : wide === 'sd2' ? 2 : null
+  const clampT = (inches: number) => Math.max(5, Math.min(80, Math.round(inches * 10)))
+  const rx10 = mult == null || sel?.sdHb == null ? 10 : clampT(sel.sdHb * mult), ry10 = mult == null || sel?.sdIvb == null ? 10 : clampT(sel.sdIvb * mult)
+  const selId = sel?.pitcherId ?? null
+  useEffect(() => {
+    if (selId == null || season == null) { setWhy(undefined); return }
+    let live = true
+    setWhy(undefined)
+    fetch(`/api/mlb/pitch-shape/why?id=${selId}&season=${season}&type=${pitchType}&halfHb=${rx10 / 10}&halfIvb=${ry10 / 10}`)
+      .then(async r => { if (r.status === 403) return 'locked' as const; if (!r.ok) throw new Error(`HTTP ${r.status}`); return ((await r.json()) as { why: WhyResult }).why })
+      .then(w => { if (live) setWhy(w) })
+      .catch(e => { log.error('ShapePlayerDetail', 'why fetch failed', e instanceof Error ? e.message : e); if (live) setWhy(null) })
+    return () => { live = false }
+  }, [selId, season, pitchType, rx10, ry10])
   if (!sel) return null
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
   const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }
-    // the shape window: a fixed inch, or his own spread (one standard deviation in ride and in run) times 0.5, 1 or 2, floored at half an inch and capped at 8
-    const mult = wide === 'sd05' ? 0.5 : wide === 'sd1' ? 1 : wide === 'sd2' ? 2 : null
-    const clampT = (inches: number) => Math.max(5, Math.min(80, Math.round(inches * 10)))
-    const rx10 = mult == null || sel.sdHb == null ? 10 : clampT(sel.sdHb * mult), ry10 = mult == null || sel.sdIvb == null ? 10 : clampT(sel.sdIvb * mult)
     const win = shapeAt ? shapeAt(sel.hb, sel.ivb, rx10, ry10) : null
     const shapeG: M = win?.gated ?? sel.shape, shapeR: M = win?.raw ?? sel.shapeRaw
     const cmp = resultsVsShape(sel.small ? sel.ownRaw.saved : sel.own.saved, shapeG.saved)
@@ -230,6 +254,34 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           : `Underperforming his shape: his ${lc} results trail what pitches shaped like his have produced (${signed(gap ?? 0)} runs per 100 pitches).`)
         : `His ${lc} results line up with what pitches shaped like his have produced.`
     const sec: React.CSSProperties = { ...k, margin: '16px 0 6px', color: '#B83A0E' }
+    // X export: what the card says, from what the page already computed
+    const whyLoaded = why !== undefined && why !== 'locked' && why !== null && !('needsSql' in why) ? why : null
+    const built = whyLoaded ? buildWhy(sel, lc, whyLoaded, bins, diagnosis) : null
+    const firstSentences = (t: string, n2: number) => t.split(/(?<=[.!?])\s+(?=[A-Z])/).slice(0, n2).join(' ').trim()
+    const exportData: ExportData | null = exportMap ? {
+      name: sel.name, team: sel.teamAbbr, hand: board?.hand ?? 'R', pitchName: (PITCH_LABEL[pitchType] ?? pitchType), season: season ?? new Date().getFullYear(),
+      score: sel.score, shapeWord: sw?.word ?? null, verdict,
+      headline: built?.lead ? firstSentences(built.lead, 2) : firstSentences(headline, 2),
+      stats: rd.map(x => ({ label: x.stat.label.replace(' against', '').replace(' / 100', ' per 100'), his: x.stat.fmt(x.own), shape: x.stat.fmt(x.shape), tone: x.tone })),
+      factors: built ? built.rows.map(r => ({ label: r.label, status: r.status, number: r.id === 'velo' || r.id === 'ext' || r.id === 'angle' ? r.number : r.status === 'explains' || r.status === 'helps' ? r.number : '' })) : [],
+      map: { payload: exportMap.payload, span: exportMap.span, leagueRate: exportMap.leagueRate, points: exportMap.points, avg: { hb: sel.hb, ivb: sel.ivb } },
+    } : null
+    async function downloadPng() {
+      const node = cardRef.current
+      if (!node) return
+      setExportBusy(true); setExportError('')
+      try {
+        await new Promise(r => setTimeout(r, 250))   // let the map canvas finish drawing
+        const url = await renderOtdPng(node, exportSize)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `x9lab-pitch-shape-${sel!.name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${pitchType.toLowerCase()}-${exportSize === 'landscape' ? '16x9' : '4x5'}.png`
+        a.click()
+      } catch (e) {
+        log.error('ShapePlayerDetail', 'export failed', e instanceof Error ? e.message : e)
+        setExportError(e instanceof Error ? e.message : 'Export failed')
+      } finally { setExportBusy(false) }
+    }
     const th = (h: string, i: number) => <th key={h} style={{ ...k, textAlign: i === 0 ? 'left' : 'right', padding: '5px 4px', borderBottom: `2px solid ${C.ink}` }}>{h}</th>
     const fmtRank = (r: OverallRank) => (r.value == null ? '—' : r.fmt === 'runs' ? r.value.toFixed(2) : r.fmt === 'pct' ? `${(r.value * 100).toFixed(1)}%` : d3(r.value))
     return (
@@ -250,6 +302,28 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           </div>
           <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score</span></div>
         </div>
+        {exportData && (
+          <div style={{ margin: '10px 0 0' }}>
+            <button type="button" onClick={() => setExportOpen(o => !o)} aria-expanded={exportOpen} style={{ ...pill(exportOpen), minHeight: 40 }}>{exportOpen ? 'Close export' : 'Export for X'}</button>
+            {exportOpen && (
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12, marginTop: 8, background: '#FAF8F3' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+                  <button type="button" style={pill(exportSize === 'landscape')} onClick={() => setExportSize('landscape')}>16:9 · 2400×1350</button>
+                  <button type="button" style={pill(exportSize === 'portrait')} onClick={() => setExportSize('portrait')}>4:5 · 1080×1350</button>
+                  <button type="button" disabled={exportBusy} onClick={() => void downloadPng()} style={{ minHeight: 40, padding: '0 16px', borderRadius: 4, border: 'none', background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: exportBusy ? 0.5 : 1 }}>{exportBusy ? 'Exporting…' : 'Download PNG'}</button>
+                  {why === undefined && <span style={{ fontSize: 12, color: C.mute }}>The “why” boxes fill in once the breakdown loads.</span>}
+                </div>
+                <div style={{ width: '100%', maxWidth: 620, aspectRatio: exportSize === 'landscape' ? '16 / 9' : '4 / 5', overflow: 'hidden', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff', position: 'relative' }}>
+                  <div style={{ transformOrigin: 'top left', transform: `scale(${620 / (exportSize === 'landscape' ? 1200 : 1080)})`, position: 'absolute', top: 0, left: 0 }}>
+                    <div ref={cardRef}><ShapeExportCard key={exportSize} d={exportData} size={exportSize} /></div>
+                  </div>
+                </div>
+                {exportError && <div role="alert" style={{ fontSize: 12.5, color: '#A8391F', marginTop: 6 }}>{exportError}</div>}
+                <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>A picture of this pitcher’s read for a post: the map, his Shape Score, his results against his shape and the reasons. It carries the x9Lab footer and handle, and says what has happened, not what comes next.</div>
+              </div>
+            )}
+          </div>
+        )}
         <p style={{ fontSize: 13.5, lineHeight: 1.5, color: '#3a352c', margin: '12px 0 0' }}>{headline}{verdict && better.length ? <> Better than the league at his shape on {better.join(', ')}.</> : null}{verdict && worse.length ? <> Worse on {worse.join(', ')}.</> : null}</p>
 
         <div className="psd-cols" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '0 28px', alignItems: 'start' }}>
@@ -326,36 +400,6 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
         </div>
         <div style={{ fontSize: 12, color: '#5b5347', margin: '6px 0 0', lineHeight: 1.5 }}>Widening the window by how much his own pitches vary takes in league {lc}s that move a little less like his, for a bigger sample. The box is ±{(rx10 / 10).toFixed(1)} in of run by ±{(ry10 / 10).toFixed(1)} in of ride around his average.</div>
 
-        {(() => {
-          const shapeNow = sel.velo != null && sel.slot != null ? { velo: sel.velo, ivb: sel.ivb, hb: sel.hb, slot: sel.slot } : null
-          const ex = bins && shapeNow ? explainShape(bins, shapeNow) : null
-          const rs = ex && shapeNow ? reasons(ex, shapeNow, lc) : []
-          const title = verdict === 'behind' ? 'Why might he trail his movement? Speed and arm angle' : verdict === 'ahead' ? 'What is behind his results? Speed and arm angle' : 'Speed and arm angle'
-          return (
-            <>
-              <div style={sec}>{title}</div>
-              {bins === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Checking speed and arm angle…</div>
-                : !ex || !shapeNow ? <div style={{ fontSize: 13, color: '#5b5347' }}>No league speed and arm-angle data for this movement yet.</div>
-                : (
-                  <>
-                    <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, marginBottom: 6 }}>The map’s shape is movement only. These league {lc}s move like his ({ex.all.pitches.toLocaleString()} pitches, within about ±2 in of ride and run); here they are split by his speed and his arm angle.</div>
-                    {rs.length === 0
-                      ? <div style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5, background: C.soft, borderRadius: 4, padding: '8px 10px' }}>His speed ({shapeNow.velo.toFixed(1)} mph) and arm angle ({shapeNow.slot.toFixed(0)}°) are close to typical for {lc}s that move like his, so they do not explain the gap. What is left is not in the shape data: location, sequencing, deception, defense and luck.</div>
-                      : rs.map(r => (
-                        <div key={r.factor} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '0 0 8px', background: r.lean < 0 ? '#FBE6E1' : r.lean > 0 ? '#E3F3EC' : C.soft, borderRadius: 4, padding: '8px 10px' }}>
-                          <b style={{ flex: 'none', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: r.lean < 0 ? '#A8391F' : r.lean > 0 ? '#13694F' : '#5b5347', paddingTop: 2, minWidth: 74 }}>{r.factor === 'speed' ? 'Speed' : 'Arm angle'} · {r.lean < 0 ? 'hurts' : r.lean > 0 ? 'helps' : 'neutral'}</b>
-                          <span style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5 }}>{r.text}</span>
-                        </div>
-                      ))}
-                    {ex.atBoth.whiff != null && (
-                      <div style={{ fontSize: 12.5, color: '#3a352c', lineHeight: 1.5 }}>At his speed and arm angle together, league {lc}s that move like his get <b>{(ex.atBoth.whiff * 100).toFixed(1)}%</b> whiffs per swing ({ex.atBoth.swings.toLocaleString()} swings), against <b>{ex.all.whiff == null ? '—' : `${(ex.all.whiff * 100).toFixed(1)}%`}</b> at every speed and angle. His own: <b>{sel.ownRaw.whiff == null ? '—' : `${(sel.ownRaw.whiff * 100).toFixed(1)}%`}</b>.</div>
-                    )}
-                  </>
-                )}
-            </>
-          )
-        })()}
-
         <div style={sec}>3 · His {lc} against the league’s {lc}s at his shape</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
           <thead><tr>{['Stat', 'His', 'League at his shape', 'Gap'].map(th)}</tr></thead>
@@ -376,7 +420,9 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
 
           </div>
         </div>
-        <div style={{ ...sec, marginTop: 22 }}>4 · Where is it leaking? Another pitch, a situation, or sequencing</div>
+        <WhySection sel={sel} lc={lc} why={why} bins={bins} verdictGap={gap} diagnosis={diagnosis} sec={sec} pill={pill} />
+
+        <div style={{ ...sec, marginTop: 22 }}>5 · Across his whole arsenal: another pitch, a situation, or sequencing</div>
         {diagnosis === 'locked' ? (
           <div style={{ background: C.soft, borderRadius: 6, padding: 14 }}>
             <div style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, marginBottom: 8 }}>For a pitcher whose shape has produced more than his results show: which pitch is losing, which batters, counts and times through the order cost him, and whether first-pitch strikes, the zone, chase or repeating pitches point to sequencing.</div>
@@ -384,7 +430,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           </div>
         ) : diagnosis === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Checking his pitches, situations and sequencing…</div>
           : diagnosis === null ? <div style={{ fontSize: 13, color: '#5b5347' }}>The leak check could not be read for him right now.</div>
-          : 'needsSql' in diagnosis ? <div style={{ fontSize: 13, color: '#5b5347' }}>The leak check fills once the situation data is set up (one SQL file, shape_situation_lines).</div>
+          : 'needsSql' in diagnosis ? <div style={{ fontSize: 13, color: '#5b5347' }}>The leak check fills once the situation data is set up (one SQL file, shape_diagnosis_functions).</div>
           : (
             <>
               {diagnosis.summary.length > 0 && (
@@ -458,6 +504,11 @@ export type PanelProps = {
   bins: ShapeBin[] | null | undefined
   /** where he is leaking (which pitch, situation, process measure): undefined while loading, 'locked' for a viewer who is not Pro, null when it could not be read */
   diagnosis: DiagnosisResult | 'locked' | undefined
+  /** the pitch the map is showing and the season of the league data, so the detail can ask for platoon, location and sequencing against the same shape */
+  pitchType: string
+  season: number | null
+  /** the league movement map and the chosen pitcher's sampled pitches, so the X export can draw them; null until the map has loaded */
+  exportMap: { payload: MovementCellsPayload; span: 'latest' | 'all'; leagueRate: number; points: [number, number][] } | null
   onSelect: (id: number | null) => void
   onOpen: (id: number, name: string) => void
   headshot: (id: number) => string
@@ -586,5 +637,151 @@ export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null |
         </>
       )}
     </section>
+  )
+}
+
+// ---- Why aren't the results there? ---------------------------------------------------------------------------------------------------------------------
+
+type Status = 'explains' | 'helps' | 'small' | 'note' | 'unknown'
+const STATUS: Record<Status, { word: string; bg: string; fg: string }> = {
+  explains: { word: 'Part of the gap', bg: '#FBE6E1', fg: '#A8391F' }, helps: { word: 'Helping him', bg: '#E3F3EC', fg: '#13694F' },
+  small: { word: 'Not the cause', bg: '#F1EEE6', fg: '#5b5347' }, note: { word: 'Worth noting', bg: '#FFF4CC', fg: '#7A5B00' }, unknown: { word: 'No read', bg: '#F1EEE6', fg: '#8a8275' },
+}
+type WRow = { id: string; label: string; status: Status; number: string; text: string; sortKey: number }
+
+/** The catcher's-view 3 x 3 of the strike zone with his share of the pitch in each square against the league's for the same shape, and the share outside the zone. */
+function ZoneGrids({ factor }: { factor: Factor }) {
+  const by = new Map(factor.slices.map(s => [s.key, s]))
+  const out = (pick: (s: Factor['slices'][number]) => number) => factor.slices.filter(s => Number(s.key) >= 11).reduce((a, s) => a + pick(s), 0)
+  const grid = (pick: (s: Factor['slices'][number]) => number, title: string, ref: (s: Factor['slices'][number]) => number) => (
+    <div>
+      <div style={{ ...k, marginBottom: 4 }}>{title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, width: 156 }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(z => {
+          const sl = by.get(String(z)), v = sl ? pick(sl) : 0, r = sl ? ref(sl) : 0
+          const over = v - r   // over-used squares darker orange, under-used blue-grey
+          const bg = Math.abs(over) < 0.01 ? '#F1EEE6' : over > 0 ? `rgba(255,87,34,${Math.min(0.85, 0.25 + over * 5)})` : `rgba(94,122,153,${Math.min(0.7, 0.2 + -over * 5)})`
+          return <div key={z} title={ZONE_LABEL[String(z)]} style={{ background: bg, borderRadius: 3, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{(v * 100).toFixed(0)}%</div>
+        })}
+      </div>
+      <div style={{ fontSize: 11.5, color: '#5b5347', marginTop: 4 }}>Outside the zone: <b>{(out(pick) * 100).toFixed(0)}%</b></div>
+    </div>
+  )
+  return (
+    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      {grid(s => s.his, 'His, catcher’s view', s => s.league)}
+      {grid(s => s.league, 'League, same shape', s => s.league)}
+      <div style={{ fontSize: 12, color: '#5b5347', maxWidth: 220, lineHeight: 1.5, alignSelf: 'center' }}>Orange squares are where he throws it more than league pitches of the same shape do; blue-grey, less.</div>
+    </div>
+  )
+}
+
+/** The factor rows and the one-line lead for a pitcher's pitch, shared by the detail table and the X export. `why` must be a loaded breakdown. */
+export function buildWhy(sel: BoardRow, lc: string, why: Extract<WhyResult, { hisPitches: number }>, bins: ShapeBin[] | null | undefined, diagnosis: DiagnosisResult | 'locked' | undefined) {
+  const shapeNow = sel.velo != null && sel.slot != null ? { velo: sel.velo, ivb: sel.ivb, hb: sel.hb, slot: sel.slot } : null
+  const ex = bins && shapeNow ? explainShape(bins, shapeNow) : null
+  const f = (id: Factor['id']) => why.factors.find(x => x.id === id) as Factor
+  const platoon = f('platoon'), location = f('location'), sequencing = f('sequencing')
+  const pct = (v: number) => `${(v * 100).toFixed(0)}%`
+  const eff = (v: number | null) => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} runs per 100`)
+  const mixStatus = (e: number | null): Status => { const v = verdictOf(e); return v == null ? 'unknown' : v }
+
+  const rows: WRow[] = []
+  // platoon
+  const lh = platoon.slices.find(x => x.key === 'L')
+  rows.push({ id: 'platoon', label: 'Platoon', status: mixStatus(platoon.effect), number: eff(platoon.effect), sortKey: platoon.effect ?? -9,
+    text: lh ? `He throws ${pct(lh.his)} of his ${lc}s to left-handed batters; league ${lc}s with this shape go ${pct(lh.league)} to them. Priced at what the league got from each side for this shape, his mix ${platoon.effect != null && platoon.effect >= EFFECT_NOTICE ? 'costs' : platoon.effect != null && platoon.effect <= -EFFECT_NOTICE ? 'saves' : 'changes almost nothing'}.` : 'No platoon read.' })
+  // velocity
+  const vd = why.velocity.diff
+  const speedEff = ex?.whiffEffect.speed ?? null, speedCon = ex?.contactEffect.speed ?? null
+  let vStatus: Status = 'small', vText = 'His speed is close to the league’s for this shape.'
+  if (vd != null && Math.abs(vd) >= SPEED_NOTICE_MPH) {
+    const slow = vd < 0
+    const hurts = (speedEff != null && speedEff <= -0.03) || (speedCon != null && speedCon >= 0.015)
+    const aids = (speedEff != null && speedEff >= 0.03) || (speedCon != null && speedCon <= -0.015)
+    vStatus = slow ? (hurts ? 'explains' : 'note') : aids ? 'helps' : 'small'
+    vText = `He throws it ${Math.abs(vd).toFixed(1)} mph ${slow ? 'slower' : 'faster'} than league ${lc}s with this movement.${ex && (speedEff != null || speedCon != null) ? ` League ${lc}s with this movement at his speed get ${ex.atSpeed.whiff == null ? '—' : `${(ex.atSpeed.whiff * 100).toFixed(1)}%`} whiffs per swing against ${ex.all.whiff == null ? '—' : `${(ex.all.whiff * 100).toFixed(1)}%`} at every speed${speedCon != null && ex.atSpeed.xwobaCon != null && ex.all.xwobaCon != null ? `, and ${d3(ex.atSpeed.xwobaCon)} xwOBA on contact against ${d3(ex.all.xwobaCon)}` : ''}.` : ''}`
+  }
+  rows.push({ id: 'velo', label: 'Velocity', status: vStatus, number: why.velocity.his != null && why.velocity.league != null ? `${why.velocity.his.toFixed(1)} vs ${why.velocity.league.toFixed(1)} mph` : '—', sortKey: vStatus === 'explains' ? 5 : vStatus === 'note' ? 1 : -1, text: vText })
+  // extension
+  const ed = why.extension.diff
+  let eStatus: Status = 'small', eText = 'His extension is close to the league’s for this shape.'
+  if (ed != null && Math.abs(ed) >= EXTENSION_NOTICE_FT) eStatus = ed < 0 ? 'note' : 'helps', eText = `He releases it ${Math.abs(ed).toFixed(2)} ft ${ed < 0 ? 'shorter' : 'longer'} than league ${lc}s with this movement. ${ed < 0 ? 'A shorter reach releases the ball farther from the plate, which tends to make a pitch play slower than its radar speed.' : 'A longer reach releases the ball closer to the plate, which tends to make a pitch play faster than its radar speed.'}`
+  rows.push({ id: 'ext', label: 'Extension', status: eStatus, number: why.extension.his != null && why.extension.league != null ? `${why.extension.his.toFixed(2)} vs ${why.extension.league.toFixed(2)} ft` : '—', sortKey: eStatus === 'note' ? 1 : -1, text: eText })
+  // arm angle
+  const sd = ex?.slotDiff ?? null, angEff = ex?.whiffEffect.angle ?? null, angCon = ex?.contactEffect.angle ?? null
+  let aStatus: Status = 'small', aText = bins === undefined ? 'Checking arm angle…' : 'His arm angle is close to the league’s for this shape.'
+  if (ex && sd != null && Math.abs(sd) >= 8) {
+    const hurts = (angEff != null && angEff <= -0.03) || (angCon != null && angCon >= 0.015), aids = (angEff != null && angEff >= 0.03) || (angCon != null && angCon <= -0.015)
+    aStatus = hurts ? 'explains' : aids ? 'helps' : 'small'
+    aText = `His arm angle is ${Math.abs(sd).toFixed(0)}° ${sd < 0 ? 'lower' : 'higher'} than league ${lc}s with this movement. At his angle they get ${ex.atAngle.whiff == null ? '—' : `${(ex.atAngle.whiff * 100).toFixed(1)}%`} whiffs per swing against ${ex.all.whiff == null ? '—' : `${(ex.all.whiff * 100).toFixed(1)}%`} at every angle.`
+  }
+  rows.push({ id: 'angle', label: 'Arm angle', status: aStatus, number: shapeNow && ex?.typicalSlot != null ? `${shapeNow.slot.toFixed(0)}° vs ${ex.typicalSlot.toFixed(0)}°` : '—', sortKey: aStatus === 'explains' ? 4 : -1, text: aText })
+  // location (command)
+  const zs = biggestZoneShift(location)
+  const outHis = location.slices.filter(x => Number(x.key) >= 11).reduce((a, x) => a + x.his, 0), outLg = location.slices.filter(x => Number(x.key) >= 11).reduce((a, x) => a + x.league, 0)
+  rows.push({ id: 'location', label: 'Location (command)', status: mixStatus(location.effect), number: eff(location.effect), sortKey: location.effect ?? -9,
+    text: `${zs && zs.his - zs.league >= 0.01 ? `He throws ${pct(zs.his)} of his ${lc}s to the ${ZONE_LABEL[zs.key].toLowerCase()} square against ${pct(zs.league)} for league ${lc}s with this shape. ` : ''}${pct(outHis)} are outside the zone against ${pct(outLg)}. Priced at the league’s results for this shape in each square, where he puts it ${location.effect != null && location.effect >= EFFECT_NOTICE ? 'costs him' : location.effect != null && location.effect <= -EFFECT_NOTICE ? 'helps him' : 'changes almost nothing'}.` })
+  // sequencing
+  const ah = sequencing.slices.find(x => x.key === 'ahead'), bh = sequencing.slices.find(x => x.key === 'behind')
+  const proc = diagnosis && diagnosis !== 'locked' && diagnosis !== null && !('needsSql' in diagnosis) ? diagnosis.process.filter(p => p.hurts && (p.id === 'repeat' || p.id === 'aheadFb')) : []
+  rows.push({ id: 'sequencing', label: 'Sequencing', status: mixStatus(sequencing.effect), number: eff(sequencing.effect), sortKey: sequencing.effect ?? -9,
+    text: `${ah && bh ? `He throws it ahead in the count ${pct(ah.his)} of the time and behind ${pct(bh.his)}; league ${lc}s with this shape ${pct(ah.league)} and ${pct(bh.league)}. ` : ''}Priced at the league’s results by count for this shape, his counts ${sequencing.effect != null && sequencing.effect >= EFFECT_NOTICE ? 'cost him' : sequencing.effect != null && sequencing.effect <= -EFFECT_NOTICE ? 'help him' : 'change almost nothing'}.${proc.length ? ` Across his whole arsenal: ${proc.map(p => p.text).join(' ')}` : ''}` })
+  // defense and luck
+  const w = sel.ownRaw.woba, x = sel.ownRaw.xwoba
+  const cg = w != null && x != null && sel.ownRaw.n.pa >= 20 ? w - x : null
+  rows.push({ id: 'luck', label: 'Defense and luck', status: cg == null ? 'unknown' : cg >= 0.03 ? 'explains' : cg <= -0.03 ? 'helps' : 'small', number: cg == null ? '—' : `${w != null ? d3(w) : ''} wOBA vs ${x != null ? d3(x) : ''} xwOBA`, sortKey: cg == null ? -9 : cg >= 0.03 ? 2 : -1,
+    text: cg == null ? 'Too few plate appearances on this pitch to compare results with contact quality.' : cg >= 0.03 ? 'His results are worse than the contact quality he allowed on this pitch, which can point to defense or luck.' : cg <= -0.03 ? 'His results are better than the contact quality he allowed on this pitch, so defense or luck may be helping.' : 'His results match the contact quality he allowed on this pitch.' })
+
+  const gap = why.gap
+  const hurting = rows.filter(r => r.status === 'explains').sort((a, b) => b.sortKey - a.sortKey)
+  const lead = gap == null ? null
+    : gap >= EFFECT_NOTICE
+      ? (hurting.length ? `He allows ${gap.toFixed(2)} more runs per 100 ${lc}s than league ${lc}s with this shape. The data points to ${hurting.map(r => `${r.label.toLowerCase()}${r.number && r.id !== 'velo' && r.id !== 'angle' ? ` (${r.number})` : ''}`).join(', ')}.`
+        : `He allows ${gap.toFixed(2)} more runs per 100 ${lc}s than league ${lc}s with this shape, and none of platoon, speed, extension, arm angle, location or sequencing accounts for it. What is left is execution inside those slices (command inside the zone, deception), defense and luck.`)
+      : gap <= -EFFECT_NOTICE ? `He allows ${Math.abs(gap).toFixed(2)} fewer runs per 100 ${lc}s than league ${lc}s with this shape. ${rows.filter(r => r.status === 'helps').length ? `What is helping him: ${rows.filter(r => r.status === 'helps').map(r => r.label.toLowerCase()).join(', ')}.` : 'None of the factors below explains it, so it sits in execution, deception, defense and luck.'}`
+      : `His ${lc} results are in line with league ${lc}s with this shape (${gap >= 0 ? '+' : '−'}${Math.abs(gap).toFixed(2)} runs per 100).`
+  return { rows, lead, hurting, gap, location, ex, shapeNow }
+}
+
+function WhySection({ sel, lc, why, bins, verdictGap, diagnosis, sec, pill }: { sel: BoardRow; lc: string; why: WhyResult | 'locked' | undefined; bins: ShapeBin[] | null | undefined; verdictGap: number | null; diagnosis: DiagnosisResult | 'locked' | undefined; sec: React.CSSProperties; pill: (on: boolean) => React.CSSProperties }) {
+  void pill
+  const title = '4 · Why aren’t the results there? Platoon, speed, extension, arm angle, location, sequencing'
+  if (why === 'locked') {
+    return (
+      <>
+        <div style={{ ...sec, marginTop: 22 }}>{title}</div>
+        <div style={{ background: C.soft, borderRadius: 6, padding: 14 }}>
+          <div style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, marginBottom: 8 }}>For a pitch whose results trail its shape: how much comes from who he throws it to, where it crosses the plate, the counts he throws it in, his speed, extension and arm angle, against league pitches of the same shape.</div>
+          <UpgradePrompt source="pitch_shape" />
+        </div>
+      </>
+    )
+  }
+  if (why === undefined) return <><div style={{ ...sec, marginTop: 22 }}>{title}</div><div style={{ fontSize: 13, color: C.mute }}>Checking platoon, location and sequencing…</div></>
+  if (why === null) return <><div style={{ ...sec, marginTop: 22 }}>{title}</div><div style={{ fontSize: 13, color: '#5b5347' }}>The breakdown could not be read for him right now.</div></>
+  if ('needsSql' in why) return <><div style={{ ...sec, marginTop: 22 }}>{title}</div><div style={{ fontSize: 13, color: '#5b5347' }}>This breakdown fills once the situation data is set up (one SQL file, shape_diagnosis_functions).</div></>
+
+  const { rows, lead, hurting, gap, location } = buildWhy(sel, lc, why, bins, diagnosis)
+  void verdictGap
+  return (
+    <>
+      <div style={{ ...sec, marginTop: 22 }}>{title}</div>
+      <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, marginBottom: 8 }}>His {why.hisPitches.toLocaleString()} {lc}s against {why.leaguePitches.toLocaleString()} league {lc}s within ±{why.halfHb.toFixed(1)} in of run and ±{why.halfIvb.toFixed(1)} in of ride of his shape, {why.season}. Each factor is priced on its own, so they overlap a little and should not be totalled.</div>
+      {lead && <div style={{ background: hurting.length && gap != null && gap > 0 ? '#FBE6E1' : '#F1EEE6', borderRadius: 4, padding: '9px 12px', fontSize: 14, lineHeight: 1.5, color: '#3a352c', marginBottom: 10 }}><b>{lead}</b></div>}
+      <div style={{ display: 'grid', gap: 0 }}>
+        {rows.map(r => (
+          <div key={r.id} className="psd-why" style={{ display: 'grid', gridTemplateColumns: '150px 118px minmax(0,1fr)', gap: '4px 14px', padding: '9px 0', borderTop: `1px solid ${C.line}`, alignItems: 'start' }}>
+            <div><b style={{ fontSize: 13.5 }}>{r.label}</b><div><span style={{ display: 'inline-block', marginTop: 3, background: STATUS[r.status].bg, color: STATUS[r.status].fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 7px' }}>{STATUS[r.status].word}</span></div></div>
+            <div style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1.35 }}>{r.number}</div>
+            <div style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5 }}>{r.text}</div>
+          </div>
+        ))}
+      </div>
+      <style>{'@media(max-width:760px){.psd-why{grid-template-columns:1fr !important}}'}</style>
+      <div style={{ ...sec, margin: '14px 0 6px', color: C.mute }}>Where it crosses the plate</div>
+      <ZoneGrids factor={location} />
+      <div style={{ fontSize: 11, color: C.faint, marginTop: 8 }}>Platoon, location and sequencing are mix effects: his share of the pitch in each slice priced at the league’s runs per 100 in that slice for this shape, minus the league window’s overall figure (positive costs him). Speed and arm angle use the stored shape bins (whiffs and contact quality); extension is a difference only. Slices with under 150 league pitches are priced at the league average. It describes what has happened and does not predict.</div>
+    </>
   )
 }

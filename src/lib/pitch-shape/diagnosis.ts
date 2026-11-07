@@ -8,6 +8,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase'
 import { logOnce } from '@/lib/log'
 import { normalise, processFindings, rankArsenal, situationLeaks, summarise, type ArsenalGap, type Leak, type Line, type Process, type Summary } from './diagnose'
+import { decompose, normaliseWindow, type Why, type WindowLine } from './decompose'
 import { getShapeSavedFor } from './results'
 import { PITCH_NAMES, type Hand } from './model'
 import { MIN_OWN_PITCHES } from './results-math'
@@ -77,4 +78,47 @@ export async function getDiagnosis(pitcherId: number, season: number): Promise<D
   const contactGap = wd >= 100 ? w / wd - x / wd : null
   const pitches = mine.reduce((s, l) => s + l.pitches, 0)
   return { pitcherId, season, arsenal, leaks, process, summary: summarise(arsenal, leaks, process, contactGap, t => PITCH_NAMES[t] ?? t), contactGap, pitches }
+}
+
+// ---- Why this pitch: platoon, location, sequencing, speed and extension, each against league pitches of the same shape ----------------------------------------------------------------------
+
+
+export type WhyResult = (Why & { pitchType: string; hand: Hand; hb: number; ivb: number; halfHb: number; halfIvb: number; season: number }) | { needsSql: true } | null
+const WHY_TTL_MS = 60 * 60 * 1000
+const whyCache = new Map<string, { at: number; lines: WindowLine[] }>()
+
+async function windowLines(season: number, type: string, hand: string, hb: number | null, ivb: number | null, halfHb: number | null, halfIvb: number | null, pitcher: number | null): Promise<WindowLine[] | 'missing' | null> {
+  const key = `${season}|${type}|${hand}|${hb?.toFixed(1)}|${ivb?.toFixed(1)}|${halfHb}|${halfIvb}|${pitcher}`
+  const hit = whyCache.get(key)
+  if (hit && Date.now() - hit.at <= WHY_TTL_MS) return hit.lines
+  const { data, error } = await createAdminClient().rpc('shape_window_lines', { p_season: season, p_type: type, p_hand: hand, p_hb: hb, p_ivb: ivb, p_half_hb: halfHb, p_half_ivb: halfIvb, p_pitcher: pitcher })
+  if (error) {
+    if (missingFn(error.message)) return 'missing'
+    logOnce('why:rpc', 'getWhy', 'Supabase error', error.message)
+    return null
+  }
+  const lines = ((data ?? []) as Record<string, unknown>[]).map(normaliseWindow)
+  whyCache.set(key, { at: Date.now(), lines })
+  return lines
+}
+
+/**
+ * For one pitcher's one pitch: his own pitches of the type, and the league's pitches of the same type and hand inside a movement box around his average shape (half-widths in inches),
+ * decomposed into platoon, location and sequencing effects plus speed and extension differences. { needsSql } until shape_window_lines exists; null on any other failure.
+ */
+export async function getWhy(pitcherId: number, season: number, type: string, halfHb: number, halfIvb: number): Promise<WhyResult> {
+  if (!(type in PITCH_NAMES)) return null
+  const { data, error } = await createAdminClient().from('pitch_shape_pitcher').select('p_throws,hb,ivb').eq('season', season).eq('pitcher_id', pitcherId).eq('pitch_type', type).maybeSingle()
+  if (error) { logOnce('why:shape', 'getWhy', 'Supabase error', error.message); return null }
+  if (!data) return null
+  const row = data as unknown as { p_throws: string; hb: string | number; ivb: string | number }
+  const hand = row.p_throws === 'L' ? 'L' : 'R', hb = Number(row.hb), ivb = Number(row.ivb)
+  const his = await windowLines(season, type, hand, null, null, null, null, pitcherId)
+  if (his === 'missing') return { needsSql: true }
+  if (!his) return null
+  const league = await windowLines(season, type, hand, hb, ivb, halfHb, halfIvb, null)   // separate await: the league window is the slow, cached read
+  if (league === 'missing') return { needsSql: true }
+  if (!league) return null
+  const why = decompose(his, league)
+  return why ? { ...why, pitchType: type, hand: hand as Hand, hb, ivb, halfHb, halfIvb, season } : null
 }

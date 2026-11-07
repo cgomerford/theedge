@@ -355,17 +355,17 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
 
-      <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '14px 16px', marginBottom: 14, display: view === 'map' ? undefined : 'none' }}>
-        <div className="pv-k">How to read this map</div>
+      <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 16px', marginBottom: 12, display: view === 'map' ? undefined : 'none' }}>
+        <summary className="pv-k" style={{ cursor: 'pointer', minHeight: 28 }}>How to read this map</summary>
         <div className="pf2-read" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginTop: 6 }}>
           <style>{'@media(max-width:800px){.pf2-read{grid-template-columns:1fr !important}}'}</style>
           <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>1 · The squares are not the strike zone.</b> Each square is a way a pitch can <i>move</i>: further right means more run toward the pitcher’s arm side, higher means more ride. Where the pitch crosses the plate is the separate plate view on the right.</div>
           <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>2 · The colour is how often hitters miss.</b> For every {lc} that moves like that square, orange means more swings missed than the league average, blue-grey fewer. Blank means too few swings to say.</div>
           <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>3 · Choose a red area.</b> That movement is the most effective shape. Below it are the pitchers who throw it: those getting the results the shape usually gets, and those who are not, which suggests something other than the shape is holding them back.</div>
         </div>
-      </div>
+      </details>
 
-      <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px' }}>
+      {tabPitcher && <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px' }}>
         <button role="tab" aria-selected={view === 'map'} type="button" onClick={() => setView('map')} style={tabStyle(view === 'map')}>League map</button>
         {tabPitcher && (
           <span style={{ display: 'inline-flex', gap: 0 }}>
@@ -373,34 +373,40 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             <button type="button" aria-label={`Close the ${tabPitcher.name} tab`} onClick={() => { setTabPitcher(null); setView('map') }} style={{ ...tabStyle(false), borderRadius: '0 4px 4px 0', borderLeft: 0, minWidth: 44 }}>×</button>
           </span>
         )}
-      </div>
+      </div>}
       {view === 'pitcher' && tabPitcher && <PitcherTab pitcherId={tabPitcher.id} season={latest} isPro={isPro} onClose={() => setView('map')} />}
       <div style={{ display: view === 'map' ? undefined : 'none' }}>
-      <div className="pv-row" style={{ marginTop: 0 }}>
-        <span className="pv-k">Pitch</span>
-        {pitchTypes.map(t => {
-          const lockedT = !isPro && !lookLeft && !isFree(t)
-          return <button key={t} type="button" disabled={lockedT} className={`pv-pill pf2-pill${t === type ? ' on' : ''}`} style={lockedT ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => setType(t)}>{PITCH_NAMES[t] ?? t}{lockedT && <small style={{ marginLeft: 5, fontSize: 10, fontWeight: 800, color: ORANGE_TEXT }}>PRO</small>}</button>
-        })}
-        <span className="pv-k" style={{ marginLeft: 10 }}>Thrown by</span>
-        <button type="button" className={`pv-pill pf2-pill${hand === 'R' ? ' on' : ''}`} onClick={() => setHand('R')}>Right-handers</button>
-        <button type="button" className={`pv-pill pf2-pill${hand === 'L' ? ' on' : ''}`} onClick={() => setHand('L')}>Left-handers</button>
-      </div>
-      <div className="pv-row" style={{ marginTop: 0 }}>
-        <span className="pv-k">Colour by</span>
-        <button type="button" className={`pv-pill pf2-pill${measure === 'whiff' ? ' on' : ''}`} onClick={() => setMeasure('whiff')}>Whiffs per swing</button>
-        {METRICS.map(m => <button key={m.id} type="button" className={`pv-pill pf2-pill${measure === m.id ? ' on' : ''}`} onClick={() => setMeasure(m.id)}>{m.label}</button>)}
-      </div>
-      <details style={{ margin: '0 0 6px' }}>
-        <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#5b5347', minHeight: 32 }}>More filters</summary>
-        <div className="pv-row" style={{ marginTop: 6 }}>
-          <span className="pv-k">League pitches</span>
-          <button type="button" className={`pv-pill${span === 'latest' ? ' on' : ''}`} onClick={() => setSpan('latest')}>{latest} only</button>
-          {payload && payload.seasons.length > 1 && <button type="button" className={`pv-pill${span === 'all' ? ' on' : ''}`} onClick={() => setSpan('all')}>{payload.seasons[0].season}–{latest}</button>}
-          <span className="pv-k" style={{ marginLeft: 10 }}>Window</span>
-          {RADII.map(r => <button key={r} type="button" className={`pv-pill${radius === r ? ' on' : ''}`} onClick={() => setRadius(r)}>±{r} in</button>)}
+      <div className="pf2-filters" role="group" aria-label="Filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', alignItems: 'flex-end', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 14px', margin: '0 0 12px' }}>
+        <label style={fLabel}><span className="pv-k">Pitch</span>
+          <select value={type} onChange={e => setType(e.target.value)} style={fSelect} aria-label="Pitch type">
+            {pitchTypes.map(t => { const lockedT = !isPro && !lookLeft && !isFree(t); return <option key={t} value={t} disabled={lockedT}>{PITCH_NAMES[t] ?? t}{lockedT ? ' (Pro)' : ''}</option> })}
+          </select>
+        </label>
+        <div style={fLabel}><span className="pv-k">Thrown by</span>
+          <span style={{ display: 'inline-flex' }} role="group" aria-label="Thrown by">
+            <button type="button" aria-pressed={hand === 'R'} onClick={() => setHand('R')} style={fSeg(hand === 'R', true)}>Right</button>
+            <button type="button" aria-pressed={hand === 'L'} onClick={() => setHand('L')} style={fSeg(hand === 'L', false)}>Left</button>
+          </span>
         </div>
-      </details>
+        <label style={fLabel}><span className="pv-k">Colour by</span>
+          <select value={measure} onChange={e => setMeasure(e.target.value as 'whiff' | MetricId)} style={fSelect} aria-label="Colour the map by">
+            <option value="whiff">Whiffs per swing</option>
+            {METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </label>
+        <label style={fLabel}><span className="pv-k">League pitches</span>
+          <select value={span} onChange={e => setSpan(e.target.value as Span)} style={fSelect} aria-label="Which seasons of league pitches">
+            <option value="latest">{latest} only</option>
+            {payload && payload.seasons.length > 1 && <option value="all">{payload.seasons[0].season}–{latest}</option>}
+          </select>
+        </label>
+        <label style={fLabel}><span className="pv-k">Window</span>
+          <select value={radius} onChange={e => setRadius(Number(e.target.value) as (typeof RADII)[number])} style={fSelect} aria-label="Size of the window around each box">
+            {RADII.map(r => <option key={r} value={r}>±{r} in</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null) }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
+      </div>
 
       {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
 
@@ -579,7 +585,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
-            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
             {place && (
               <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
@@ -609,7 +615,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       )}
 
       {!locked && payload && grid && place && focus != null && (
-        <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
+        <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={payload && grid && leagueRate != null ? { payload, span, leagueRate, points: focusPts ?? [] } : null} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
       {!locked && payload && grid && place && (
@@ -640,4 +646,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   )
 }
 
+const fLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }
+const fSelect: React.CSSProperties = { minHeight: 40, minWidth: 150, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 10px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
+const fSeg = (on: boolean, first: boolean): React.CSSProperties => ({ minHeight: 40, minWidth: 64, padding: '0 14px', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#FAF8F3' : C.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', borderRadius: first ? '4px 0 0 4px' : '0 4px 4px 0', marginLeft: first ? 0 : -1 })
 const tabStyle = (on: boolean): React.CSSProperties => ({ minHeight: 44, padding: '0 16px', borderRadius: 4, border: `1px solid ${on ? '#1A1A1A' : '#e7e2d8'}`, background: on ? '#1A1A1A' : '#fff', color: on ? '#FAF8F3' : '#1A1A1A', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' })
