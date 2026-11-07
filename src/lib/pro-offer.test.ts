@@ -1,47 +1,61 @@
 import { describe, it, expect } from 'vitest'
-import { decideAnnualOffer, isExpectedAnnualPrice, planFor, type PriceFacts } from './pro-offer'
+import { decideOffer, isExpectedPrice, planFor, PRICE_USD, type PriceFacts } from './pro-offer'
 
 const ok: PriceFacts = { configured: true, verified: 'ok' }
 const none: PriceFacts = { configured: false, verified: null }
 const both = { founding: ok, standard: ok }
-const usdYear = (cents: number, over: Partial<Parameters<typeof isExpectedAnnualPrice>[1]> = {}) => ({ active: true, currency: 'usd', unit_amount: cents, recurring: { interval: 'year', interval_count: 1 }, ...over })
+const usd = (cents: number, interval: 'year' | 'month', over: Partial<Parameters<typeof isExpectedPrice>[2]> = {}) => ({ active: true, currency: 'usd', unit_amount: cents, recurring: { interval, interval_count: 1 }, ...over })
 
-describe('decideAnnualOffer', () => {
-  it('offers Founding at US$45 while spots are open', () => {
-    expect(decideAnnualOffer('open', both)).toEqual({ plan: 'founding', amount: 45, currency: 'USD', interval: 'year' })
+describe('the four prices', () => {
+  it('are US$45/yr, US$60/yr, US$4.50/mo and US$8/mo', () => {
+    expect(PRICE_USD).toEqual({ year: { founding: 45, standard: 60 }, month: { founding: 4.5, standard: 8 } })
   })
-  it('offers Standard at US$60 once founding has closed', () => {
-    expect(decideAnnualOffer('closed', both)).toEqual({ plan: 'standard', amount: 60, currency: 'USD', interval: 'year' })
+})
+
+describe('decideOffer', () => {
+  it('offers Founding while spots are open: US$45 a year, US$4.50 a month', () => {
+    expect(decideOffer('year', 'open', both)).toEqual({ plan: 'founding', amount: 45, currency: 'USD', interval: 'year' })
+    expect(decideOffer('month', 'open', both)).toEqual({ plan: 'founding', amount: 4.5, currency: 'USD', interval: 'month' })
   })
-  it('withholds annual checkout when the founding count cannot be read, rather than guessing a price', () => {
-    expect(decideAnnualOffer('unknown', both)).toEqual({ plan: null, reason: 'founding_count_unavailable' })
+  it('offers Standard once founding has closed: US$60 a year, US$8 a month', () => {
+    expect(decideOffer('year', 'closed', both)).toEqual({ plan: 'standard', amount: 60, currency: 'USD', interval: 'year' })
+    expect(decideOffer('month', 'closed', both)).toEqual({ plan: 'standard', amount: 8, currency: 'USD', interval: 'month' })
+  })
+  it('withholds checkout when the founding count cannot be read, rather than guessing a price', () => {
+    expect(decideOffer('year', 'unknown', both)).toEqual({ plan: null, reason: 'founding_count_unavailable' })
+    expect(decideOffer('month', 'unknown', both)).toEqual({ plan: null, reason: 'founding_count_unavailable' })
   })
   it('never falls back to the standard price when the founding USD price is missing', () => {
-    expect(decideAnnualOffer('open', { founding: none, standard: ok })).toEqual({ plan: null, reason: 'usd_price_not_configured' })
+    expect(decideOffer('year', 'open', { founding: none, standard: ok })).toEqual({ plan: null, reason: 'usd_price_not_configured' })
+    expect(decideOffer('month', 'open', { founding: none, standard: ok })).toEqual({ plan: null, reason: 'usd_price_not_configured' })
   })
   it('reports a missing standard USD price once founding is closed', () => {
-    expect(decideAnnualOffer('closed', { founding: ok, standard: none })).toEqual({ plan: null, reason: 'usd_price_not_configured' })
+    expect(decideOffer('month', 'closed', { founding: ok, standard: none })).toEqual({ plan: null, reason: 'usd_price_not_configured' })
   })
   it('refuses a price Stripe says is wrong, and one it could not check', () => {
-    expect(decideAnnualOffer('open', { founding: { configured: true, verified: 'mismatch' }, standard: ok }).reason).toBe('usd_price_mismatch')
-    expect(decideAnnualOffer('open', { founding: { configured: true, verified: 'unreachable' }, standard: ok }).reason).toBe('stripe_unavailable')
+    expect(decideOffer('year', 'open', { founding: { configured: true, verified: 'mismatch' }, standard: ok }).reason).toBe('usd_price_mismatch')
+    expect(decideOffer('month', 'open', { founding: { configured: true, verified: 'unreachable' }, standard: ok }).reason).toBe('stripe_unavailable')
   })
   it('maps founding state to a plan', () => {
     expect([planFor('open'), planFor('closed'), planFor('unknown')]).toEqual(['founding', 'standard', null])
   })
 })
 
-describe('isExpectedAnnualPrice', () => {
-  it('accepts exactly US$45 and US$60 a year', () => {
-    expect(isExpectedAnnualPrice('founding', usdYear(4500))).toBe(true)
-    expect(isExpectedAnnualPrice('standard', usdYear(6000))).toBe(true)
+describe('isExpectedPrice', () => {
+  it('accepts exactly the four prices, to the cent', () => {
+    expect(isExpectedPrice('year', 'founding', usd(4500, 'year'))).toBe(true)
+    expect(isExpectedPrice('year', 'standard', usd(6000, 'year'))).toBe(true)
+    expect(isExpectedPrice('month', 'founding', usd(450, 'month'))).toBe(true)
+    expect(isExpectedPrice('month', 'standard', usd(800, 'month'))).toBe(true)
   })
-  it('rejects the wrong amount, a non-USD currency, a monthly interval, an inactive price and a swapped plan', () => {
-    expect(isExpectedAnnualPrice('founding', usdYear(4000))).toBe(false)               // the earlier amount
-    expect(isExpectedAnnualPrice('founding', usdYear(4500, { currency: 'eur' }))).toBe(false)
-    expect(isExpectedAnnualPrice('standard', usdYear(6000, { recurring: { interval: 'month', interval_count: 1 } }))).toBe(false)
-    expect(isExpectedAnnualPrice('standard', usdYear(6000, { active: false }))).toBe(false)
-    expect(isExpectedAnnualPrice('standard', usdYear(4500))).toBe(false)
-    expect(isExpectedAnnualPrice('founding', usdYear(4500, { recurring: null }))).toBe(false)
+  it('rejects a wrong amount, a non-USD currency, the wrong period, an inactive price and a swapped plan', () => {
+    expect(isExpectedPrice('year', 'founding', usd(4000, 'year'))).toBe(false)
+    expect(isExpectedPrice('month', 'founding', usd(400, 'month'))).toBe(false)             // US$4, not US$4.50
+    expect(isExpectedPrice('month', 'founding', usd(450, 'month', { currency: 'eur' }))).toBe(false)
+    expect(isExpectedPrice('year', 'standard', usd(6000, 'month'))).toBe(false)              // monthly price in the yearly slot
+    expect(isExpectedPrice('month', 'standard', usd(800, 'year'))).toBe(false)
+    expect(isExpectedPrice('year', 'standard', usd(6000, 'year', { active: false }))).toBe(false)
+    expect(isExpectedPrice('month', 'standard', usd(450, 'month'))).toBe(false)
+    expect(isExpectedPrice('year', 'founding', usd(4500, 'year', { recurring: null }))).toBe(false)
   })
 })

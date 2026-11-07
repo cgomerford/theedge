@@ -2,7 +2,7 @@ import 'server-only'
 // src/lib/pro-offer-server.ts
 //
 // Reads the real state behind the offer: how many founding spots are taken (subscribers.pro_plan = 'founding', is_pro = true) and what
-// Stripe says about the configured USD annual prices. Used by /pricing, GET /api/stripe/offer and POST /api/stripe/checkout.
+// Stripe says about the configured USD prices (yearly and monthly). Used by /pricing, GET /api/stripe/offer and POST /api/stripe/checkout.
 //
 // KNOWN LIMIT: the founding cap is checked when a checkout session is CREATED, not reserved. Two people who start checkout when 99 spots
 // are taken can both finish and the 100 can be exceeded by a few. A cancelled founder frees a spot. Making it exact needs a reservation
@@ -10,7 +10,7 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase'
 import { FOUNDING_LIMIT, getStripe, priceFor } from '@/lib/stripe'
-import { decideAnnualOffer, isExpectedAnnualPrice, type AnnualOffer, type FoundingState, type Plan, type PriceFacts } from '@/lib/pro-offer'
+import { decideOffer, isExpectedPrice, type Offer, type FoundingState, type Interval, type Plan, type PriceFacts } from '@/lib/pro-offer'
 import { log } from '@/lib/log'
 
 export async function getFoundingState(): Promise<FoundingState> {
@@ -43,18 +43,22 @@ export async function describePrice(id: string): Promise<Described | null> {
   }
 }
 
-async function factsFor(plan: Plan): Promise<PriceFacts> {
-  const id = priceFor(plan === 'founding')
+async function factsFor(interval: Interval, plan: Plan): Promise<PriceFacts> {
+  const id = priceFor(interval, plan === 'founding')
   if (!id) return { configured: false, verified: null }
   const d = await describePrice(id)
   if (!d) return { configured: true, verified: 'unreachable' }
-  return { configured: true, verified: isExpectedAnnualPrice(plan, d) ? 'ok' : 'mismatch' }
+  return { configured: true, verified: isExpectedPrice(interval, plan, d) ? 'ok' : 'mismatch' }
 }
 
-export type OfferView = { founding: FoundingState; annual: AnnualOffer }
+export type OfferView = { founding: FoundingState; annual: Offer; monthly: Offer }
 
 export async function getOffer(): Promise<OfferView> {
   const founding = await getFoundingState()
-  const [fFacts, sFacts] = await Promise.all([factsFor('founding'), factsFor('standard')])
-  return { founding, annual: decideAnnualOffer(founding, { founding: fFacts, standard: sFacts }) }
+  const [yf, ys, mf, ms] = await Promise.all([factsFor('year', 'founding'), factsFor('year', 'standard'), factsFor('month', 'founding'), factsFor('month', 'standard')])
+  return {
+    founding,
+    annual: decideOffer('year', founding, { founding: yf, standard: ys }),
+    monthly: decideOffer('month', founding, { founding: mf, standard: ms }),
+  }
 }

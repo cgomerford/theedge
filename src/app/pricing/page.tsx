@@ -4,7 +4,7 @@ import CreateAccountButton from '@/components/pro/CreateAccountButton'
 import ManageSubscriptionButton from '@/components/pro/ManageSubscriptionButton'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import { getViewerTier } from '@/lib/require-pro'
-import { FOUNDING, STANDARD, FOUNDING_LIMIT, formatPrice, formatPriceLong, FREE_FOLLOW_LIMITS, SHOW_PRICE_SIGNED_OUT_ON_PRICING } from '@/lib/pricing'
+import { FOUNDING, STANDARD, FOUNDING_MONTHLY, STANDARD_MONTHLY, FOUNDING_LIMIT, formatPrice, formatPriceLong, FREE_FOLLOW_LIMITS, SHOW_PRICE_SIGNED_OUT_ON_PRICING } from '@/lib/pricing'
 import { getOffer } from '@/lib/pro-offer-server'
 import { pageMeta } from '@/lib/seo'
 
@@ -16,7 +16,7 @@ import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
   title: 'Pricing',
-  description: `Front-office-style breakdowns for fans. Built on public game data. Free account, or Pro at ${formatPriceLong(FOUNDING)} for founding members (${formatPriceLong(STANDARD)} after).`,
+  description: `Front-office-style breakdowns for fans. Built on public game data. Free account, or Pro at ${formatPriceLong(FOUNDING)} or ${formatPriceLong(FOUNDING_MONTHLY)} for founding members (${formatPriceLong(STANDARD)} or ${formatPriceLong(STANDARD_MONTHLY)} after).`,
   path: '/pricing',
 })
 
@@ -48,9 +48,9 @@ const OPENS: { name: string; shows: string; why: string }[] = [
 
 const FAQ: { q: string; a: string }[] = [
   { q: 'Can I cancel anytime?', a: 'Yes, from your account page. You keep Pro until the end of the period you paid for.' },
-  { q: 'What does Founding mean?', a: `The first ${FOUNDING_LIMIT} subscribers pay ${formatPriceLong(FOUNDING)} and keep that price as long as they stay continuously subscribed. After that, annual Pro is ${formatPriceLong(STANDARD)}. Pro is billed in US dollars.` },
+  { q: 'What does Founding mean?', a: `The first ${FOUNDING_LIMIT} subscribers pay ${formatPriceLong(FOUNDING)} or ${formatPriceLong(FOUNDING_MONTHLY)}, and keep that price as long as they stay continuously subscribed. After that, Pro is ${formatPriceLong(STANDARD)} or ${formatPriceLong(STANDARD_MONTHLY)}. Pro is billed in US dollars.` },
   { q: 'I already subscribe. Does anything change for me?', a: 'No. Your current plan, price and renewal terms stay exactly as they are.' },
-  { q: 'Is there a monthly plan?', a: 'No. Pro is billed once a year, in US dollars.' },
+  { q: 'Is there a monthly plan?', a: `Yes. Founding members pay ${formatPriceLong(FOUNDING_MONTHLY)} and it is ${formatPriceLong(STANDARD_MONTHLY)} after founding closes. Yearly is ${formatPriceLong(FOUNDING)} for founding members and ${formatPriceLong(STANDARD)} after. Both are billed in US dollars.` },
   { q: 'What happens in the off-season?', a: 'The labs, player pages and your own page run on the full 2026 season, so you can look back at any player or pitcher. Game-day pages return in spring.' },
   { q: 'Where does the data come from?', a: 'Built on public game data. Independent, not affiliated with MLB.' },
   { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
@@ -66,9 +66,10 @@ const MUTED = '#8a8275'
 export default async function PricingPage() {
   const tier = await getViewerTier()
   const showPrice = tier !== 'anon' || SHOW_PRICE_SIGNED_OUT_ON_PRICING
-  const offer = tier !== 'pro' && showPrice ? await getOffer() : null   // what checkout would charge a new annual subscriber right now
+  const offer = tier !== 'pro' && showPrice ? await getOffer() : null   // what checkout would charge a new subscriber right now
   const closed = offer?.founding === 'closed'
   const annualPlan = offer?.annual.plan ?? null
+  const monthlyPlan = offer?.monthly.plan ?? null
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -139,22 +140,22 @@ export default async function PricingPage() {
             <>
               {closed ? (
                 <>
-                  <div style={{ fontSize: 28, fontWeight: 800 }}>Pro: {formatPriceLong(STANDARD)}.</div>
-                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>Billed in US dollars. Founding Pro, {formatPriceLong(FOUNDING)}, closed after the first {FOUNDING_LIMIT} subscribers; founders keep that price while they stay continuously subscribed.</p>
+                  <div style={{ fontSize: 28, fontWeight: 800 }}>Pro: {formatPriceLong(STANDARD)} or {formatPriceLong(STANDARD_MONTHLY)}.</div>
+                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>Billed in US dollars. Founding Pro, {formatPriceLong(FOUNDING)} or {formatPriceLong(FOUNDING_MONTHLY)}, closed after the first {FOUNDING_LIMIT} subscribers; founders keep that price while they stay continuously subscribed.</p>
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: 28, fontWeight: 800 }}>Founding Pro: {formatPriceLong(FOUNDING)}.</div>
+                  <div style={{ fontSize: 28, fontWeight: 800 }}>Founding Pro: {formatPriceLong(FOUNDING)} or {formatPriceLong(FOUNDING_MONTHLY)}.</div>
                   <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>For the first {FOUNDING_LIMIT} subscribers, billed in US dollars. Your price stays while you stay continuously subscribed.</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>After that, Pro is {formatPriceLong(STANDARD)}.</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>After that, Pro is {formatPriceLong(STANDARD)} or {formatPriceLong(STANDARD_MONTHLY)}.</p>
                 </>
               )}
               <div style={{ height: 10 }} />
               {tier === 'member' ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-                  {annualPlan
-                    ? <ProCheckoutButton expect={annualPlan}>{annualPlan === 'founding' ? `Founding Pro, ${formatPrice(FOUNDING)}` : `Pro, ${formatPrice(STANDARD)}`}</ProCheckoutButton>
-                    : <span style={{ fontSize: 14, color: '#5b5347' }}>Annual checkout is not open right now.</span>}
+                  {annualPlan && <ProCheckoutButton interval="year" expect={annualPlan}>{annualPlan === 'founding' ? `Founding Pro, ${formatPrice(FOUNDING)}` : `Pro, ${formatPrice(STANDARD)}`}</ProCheckoutButton>}
+                  {monthlyPlan && <ProCheckoutButton interval="month" variant="outline" expect={monthlyPlan}>{`Monthly, ${formatPrice(monthlyPlan === 'founding' ? FOUNDING_MONTHLY : STANDARD_MONTHLY)}`}</ProCheckoutButton>}
+                  {!annualPlan && !monthlyPlan && <span style={{ fontSize: 14, color: '#5b5347' }}>Checkout is not open right now.</span>}
                 </div>
               ) : (
                 <CreateAccountButton source="pricing" label="Create an account to upgrade" accent />
