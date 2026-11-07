@@ -23,7 +23,7 @@ import ShapeExportCard, { type ExportData } from './ShapeExportCard'
 import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { explainShape, reasons } from '@/lib/pitch-shape/explain'
 import { PITCH_NAMES, type ShapeBin } from '@/lib/pitch-shape/model'
-import { ESTABLISHED_PITCHES, LENSES, SMALL_ROLE_PITCHES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
+import { ESTABLISHED_PITCHES, LENSES, STRONG_SCORE, WEAK_SCORE, findPitchers, type LensId } from '@/lib/pitch-shape/finder'
 import { GATE, LEVEL_RUNS, resultsVsShape, runsSaved, type Measures } from '@/lib/pitch-shape/results-math'
 import { RAMP } from './parts'
 import { hexToRgb } from './heatGrid'
@@ -575,65 +575,133 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 
 // ---- Find me a pitcher --------------------------------------------------------------------------------------------------------------------------------
 
-/** Lenses that surface pitchers whose shape and results disagree, or whose shape is strong but whose role or overall line keeps them quiet. Picking one opens his full read. */
-export function FindPitcher({ board, lc, hand, onPick }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; onPick: (r: BoardRow) => void }) {
+/** What the finder can be narrowed by. Each is a dropdown with "Any" first. */
+const ERA_MIN = [4.5, 5, 5.5, 6, 7]
+const XERA_MAX = [3, 3.5, 4, 4.5]
+const GAP_MIN = [0.5, 1, 1.5, 2, 3]
+const SCORE_MIN = [50, 70, 80, 90, 95]
+const selVal = (v: number | null) => (v == null ? '' : String(v))
+const num = (v: string) => (v === '' ? null : Number(v))
+
+/**
+ * "Find me a pitcher": narrow the board by ERA, xERA, the gap between them and Shape Score, pick what to look for (strong shape with trailing results, a quiet line, results the shape does not
+ * explain, or anyone), then either see the best matches or shuffle a random six, or let it pick one at random. Cards carry a headshot and the numbers that matter; clicking one opens his full read.
+ * Established names (All-Stars, award winners, full-time veterans) are hidden unless asked for; small samples are kept and tagged.
+ */
+export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void }) {
   const [lens, setLens] = useState<LensId>('hidden')
   const [open, setOpen] = useState(true)
   const [known, setKnown] = useState(false)    // include All-Stars, award winners and full-time veterans
   const [small, setSmall] = useState(true)     // include pitchers whose own sample is under the usual minimum
+  const [minEra, setMinEra] = useState<number | null>(null)
+  const [maxXera, setMaxXera] = useState<number | null>(null)
+  const [minGap, setMinGap] = useState<number | null>(null)
+  const [minScore, setMinScore] = useState<number | null>(null)
+  const [seed, setSeed] = useState<number | null>(null)   // null = best matches first; a number = a random six for that seed
   const L = LENSES.find(l => l.id === lens) ?? LENSES[0]
   const rows = board ? board.rows : []
-  const found = findPitchers(rows, lens, { limit: 6, includeKnown: known, includeSmall: small })
-  const total = findPitchers(rows, lens, { limit: 9999, includeKnown: known, includeSmall: small }).length
-  const hiddenKnown = known ? 0 : findPitchers(rows, lens, { limit: 9999, includeKnown: true, includeSmall: small }).length - total
+  const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore }
+  const found = findPitchers(rows, lens, { ...base, limit: 6, seed })
+  const total = findPitchers(rows, lens, { ...base, limit: 9999 }).length
+  const hiddenKnown = known ? 0 : findPitchers(rows, lens, { ...base, includeKnown: true, limit: 9999 }).length - total
   const noAwards = rows.length > 0 && rows.every(r => r.profile == null)
+  const noStats = rows.length > 0 && rows.every(r => r.stats == null)
+  const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
+  const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 3 }
+  const selectStyle: React.CSSProperties = { minHeight: 38, minWidth: 96, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 8px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
+  const preset = (label: string, set: () => void) => <button key={label} type="button" onClick={set} style={{ ...pill(false), minHeight: 34, fontSize: 12.5, fontWeight: 700 }}>{label}</button>
+  const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null) }
+  const surprise = () => {
+    const pool = findPitchers(rows, lens, { ...base, limit: 9999 })
+    if (pool.length) onPick(pool[Math.floor(Math.random() * pool.length)])
+  }
+  const f1 = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(2))
   return (
-    <section id="pf2-find" style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px', margin: '4px 0 12px' }}>
+    <section id="pf2-find" style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '14px 16px', margin: '4px 0 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <b style={{ fontSize: 16 }}>Find me a pitcher</b>
-        <span style={{ fontSize: 12.5, color: '#5b5347' }}>Under-the-radar {hand === 'R' ? 'right' : 'left'}-handed {lc}s: shape and results that do not match, or a strong shape with a quiet line.</span>
+        <b style={{ fontSize: 18 }}>Find me a pitcher</b>
+        <span style={{ fontSize: 13, color: '#5b5347' }}>{hand === 'R' ? 'Right' : 'Left'}-handed {lc}s. Set what you want, then shuffle or let it choose.</span>
         <button type="button" onClick={() => setOpen(o => !o)} style={{ ...pill(false), marginLeft: 'auto', minHeight: 36 }}>{open ? 'Hide' : 'Show'}</button>
       </div>
       {open && (
         <>
-          <div role="group" aria-label="What to look for" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0 6px' }}>
+          <div role="group" aria-label="What to look for" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0 8px' }}>
             {LENSES.map(l => <button key={l.id} type="button" style={pill(l.id === lens)} onClick={() => setLens(l.id)}>{l.label}</button>)}
           </div>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', fontSize: 12.5, color: '#3a352c', margin: '2px 0 8px' }}>
-            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 32 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
-            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 32 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
-            {!known && hiddenKnown > 0 && <span style={{ color: C.mute }}>{hiddenKnown} established name{hiddenKnown === 1 ? '' : 's'} hidden</span>}
+          <div style={{ fontSize: 12.5, color: '#5b5347', marginBottom: 10 }}>{L.blurb}</div>
+
+          <div style={{ display: 'flex', gap: '10px 16px', flexWrap: 'wrap', alignItems: 'flex-end', background: C.soft, borderRadius: 6, padding: '10px 12px' }}>
+            <label style={field}><span className="pv-k">ERA at least</span>
+              <select style={selectStyle} value={selVal(minEra)} onChange={e => setMinEra(num(e.target.value))} aria-label="ERA at least">
+                <option value="">Any</option>{ERA_MIN.map(v => <option key={v} value={v}>{v.toFixed(1)}</option>)}
+              </select></label>
+            <label style={field}><span className="pv-k">xERA at most</span>
+              <select style={selectStyle} value={selVal(maxXera)} onChange={e => setMaxXera(num(e.target.value))} aria-label="xERA at most">
+                <option value="">Any</option>{XERA_MAX.map(v => <option key={v} value={v}>{v.toFixed(1)}</option>)}
+              </select></label>
+            <label style={field}><span className="pv-k">ERA above xERA by</span>
+              <select style={selectStyle} value={selVal(minGap)} onChange={e => setMinGap(num(e.target.value))} aria-label="ERA above xERA by at least">
+                <option value="">Any</option>{GAP_MIN.map(v => <option key={v} value={v}>{v.toFixed(1)}+</option>)}
+              </select></label>
+            <label style={field}><span className="pv-k">Shape Score</span>
+              <select style={selectStyle} value={selVal(minScore)} onChange={e => setMinScore(num(e.target.value))} aria-label="Shape Score at least">
+                <option value="">Any</option>{SCORE_MIN.map(v => <option key={v} value={v}>{v}+</option>)}
+              </select></label>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
+            {anyFilter && <button type="button" onClick={clear} style={{ ...pill(false), minHeight: 38, marginLeft: 'auto' }}>Clear filters</button>}
           </div>
-          <div style={{ fontSize: 12.5, color: '#5b5347', marginBottom: 10 }}>{L.blurb}{board ? ` ${total} found${total > found.length ? `, top ${found.length} shown` : ''}.` : ''}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '8px 0 12px' }}>
+            <span className="pv-k">Quick sets</span>
+            {preset('Inflated ERA, strong shape', () => { setLens('any'); setMinEra(5); setMinGap(1); setMinScore(70); setSeed(null) })}
+            {preset('ERA 6+, xERA 3.5 or lower, Shape 90+', () => { setLens('any'); setMinEra(6); setMaxXera(3.5); setMinScore(90); setSeed(null) })}
+            {preset('Elite shape, ugly ERA', () => { setLens('any'); setMinEra(5); setMinScore(90); setSeed(null) })}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <button type="button" onClick={surprise} disabled={!board || total === 0} style={{ minHeight: 46, padding: '0 22px', borderRadius: 4, border: 'none', background: C.orange, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit', opacity: !board || total === 0 ? 0.4 : 1 }}>Surprise me</button>
+            <button type="button" onClick={() => setSeed(Math.floor(Math.random() * 1e9))} disabled={!board || total === 0} style={{ ...pill(seed != null), minHeight: 46, opacity: !board || total === 0 ? 0.4 : 1 }}>↻ Shuffle six</button>
+            {seed != null && <button type="button" onClick={() => setSeed(null)} style={{ ...pill(false), minHeight: 46 }}>Best matches first</button>}
+            <span style={{ fontSize: 12.5, color: '#5b5347' }}>
+              {board ? `${total} match${total === 1 ? '' : 'es'}${!known && hiddenKnown > 0 ? ` · ${hiddenKnown} established name${hiddenKnown === 1 ? '' : 's'} hidden` : ''}${seed != null ? ' · a random six' : total > found.length ? ` · best ${found.length} shown` : ''}` : ''}
+            </span>
+          </div>
+
           {board === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Looking…</div>
             : !board ? <div style={{ fontSize: 13, color: '#5b5347' }}>Pitcher results aren’t built for this pitch yet. They fill after the weekly shape-results job runs.</div>
-            : found.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347' }}>Nobody fits this lens for the {hand === 'R' ? 'right' : 'left'}-handed {lc} right now. Try another lens, hand or pitch.</div>
+            : found.length === 0 ? <div style={{ fontSize: 13.5, color: '#5b5347', background: C.soft, borderRadius: 6, padding: '12px 14px' }}>Nobody matches all of that for the {hand === 'R' ? 'right' : 'left'}-handed {lc}. Loosen a filter, try another lens, or switch hand or pitch.{anyFilter && noStats ? ' ERA and xERA are not loaded for this season yet.' : ''}</div>
             : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: 12 }}>
                 {found.map(r => {
-                  const w = shapeWord(r.score), top = [...reads(r)].sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).filter(x => x.tone !== 'level').slice(0, 2)
+                  const w = shapeWord(r.score)
+                  const gap = r.stats?.era != null && r.stats?.xera != null ? r.stats.era - r.stats.xera : null
                   return (
-                    <button key={r.pitcherId} type="button" onClick={() => onPick(r)} style={{ textAlign: 'left', background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 14.5 }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12 }}>{r.teamAbbr}</span><span style={{ marginLeft: 'auto', fontSize: 12, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 15 }}>{r.score ?? '—'}</b></span></div>
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '5px 0' }}>
-                        {w && <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span>}
-                        {r.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>Small sample · {r.ownRaw.n.rv.toLocaleString()} {lc}s</span>}
-                        {r.verdict && r.verdict !== 'level' && <span style={{ background: r.verdict === 'ahead' ? '#E3F3EC' : '#FBE6E1', color: r.verdict === 'ahead' ? '#13694F' : '#A8391F', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{r.verdict === 'ahead' ? 'Outperforming' : 'Underperforming'} {r.gap != null ? `${signed(r.gap)} /100` : ''}</span>}
+                    <button key={r.pitcherId} type="button" onClick={() => onPick(r)} style={{ textAlign: 'left', background: '#FAF8F3', border: `1px solid ${C.line}`, borderRadius: 8, padding: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'grid', gridTemplateColumns: '76px minmax(0,1fr)', gap: 12, alignItems: 'start' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={headshot(r.pitcherId)} alt="" width={76} height={76} style={{ width: 76, height: 76, objectFit: 'contain', objectPosition: 'center bottom', background: '#fff', borderRadius: 8, border: `1px solid ${C.line}` }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 17, letterSpacing: '-.01em' }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12.5 }}>{r.teamAbbr}</span></div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, margin: '8px 0 6px' }}>
+                          {([['ERA', f1(r.stats?.era), null], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null]] as [string, string, string | null][]).map(([a, b, col]) => (
+                            <div key={a} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px' }}><div style={{ ...k, fontSize: 9 }}>{a}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          {w && <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span>}
+                          {r.verdict && r.verdict !== 'level' && <span style={{ background: r.verdict === 'ahead' ? '#E3F3EC' : '#FBE6E1', color: r.verdict === 'ahead' ? '#13694F' : '#A8391F', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{r.verdict === 'ahead' ? 'Outperforming' : 'Underperforming'}{r.gap != null ? ` ${signed(r.gap)}` : ''}</span>}
+                          {r.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>Small sample · {r.ownRaw.n.rv.toLocaleString()}</span>}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.4, marginTop: 5 }}>
+                          {r.profile ? `${r.profile.allStars > 0 ? `${r.profile.allStars}× All-Star` : 'Never an All-Star'}${r.profile.debutYear ? ` · debuted ${r.profile.debutYear}` : ''}` : 'Award history not available'}{r.stats?.ip != null ? ` · ${r.stats.ip.toFixed(1)} IP` : ''}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: '#5b5347', lineHeight: 1.45 }}>
-                        {r.overall ? `${r.overall.pitches.toLocaleString()} pitches this season${r.overall.runsPct != null ? ` · overall runs allowed ranks in the ${ordinal(r.overall.runsPct)} percentile` : ' · too few pitches to rank overall'}` : ''}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.4 }}>
-                        {r.profile ? `${r.profile.allStars > 0 ? `${r.profile.allStars}× All-Star` : 'Never an All-Star'}${r.profile.major ? ' · major award or All-MLB' : ''}${r.profile.debutYear ? ` · debuted ${r.profile.debutYear}` : ''}` : 'Award history not available'}{r.overall?.careerPitches ? ` · ${r.overall.careerPitches.toLocaleString()} pitches since 2024` : ''}
-                      </div>
-                      {top.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>{top.map(x => <span key={x.stat.id} style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontSize: 11, fontWeight: 700, borderRadius: 3, padding: '1px 6px' }}>{x.stat.label.replace(' against', '').replace(' per swing', '').replace(' / 100', '')} {x.stat.fmt(x.own)} vs {x.stat.fmt(x.shape)}</span>)}</div>}
                     </button>
                   )
                 })}
               </div>
             )}
-          <div style={{ fontSize: 11, color: C.faint, marginTop: 8 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: the comparison is shown but is noisy, so check the pitch count. Describes what has happened, not a forecast. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less; a small role is under {SMALL_ROLE_PITCHES.toLocaleString()} pitches this season. Click a pitcher for his shape numbers, his season numbers and where they rank.</div>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ERA, xERA and innings are this season’s from our pitcher stats; the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
         </>
       )}
     </section>

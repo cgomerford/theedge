@@ -12,10 +12,12 @@ export type FinderRow = {
   small?: boolean
   /** his own pitches on this one: the sample behind his gap */
   ownRaw?: { n: { rv: number } }
+  /** his season line: ERA, xERA, FIP, innings pitched (pitcher_stats), null when we hold none */
+  stats?: { era: number | null; xera: number | null; fip: number | null; ip: number | null } | null
   /** All-Star or major selections, from the MLB Stats API; null when it could not be read */
   profile?: { allStars: number; major: boolean; debutYear: number | null } | null
 }
-export type LensId = 'hidden' | 'quiet' | 'unexplained'
+export type LensId = 'any' | 'hidden' | 'quiet' | 'unexplained'
 export const STRONG_SCORE = 70
 export const WEAK_SCORE = 35
 /** Fewer pitches than this across a season is a small role. */
@@ -39,6 +41,7 @@ const weighted = (r: FinderRow) => (r.gap ?? 0) * reliability(r)
 
 export type Lens = { id: LensId; label: string; blurb: string; test: (r: FinderRow) => boolean; sort: (a: FinderRow, b: FinderRow) => number }
 export const LENSES: Lens[] = [
+  { id: 'any', label: 'Anyone', blurb: 'Every pitcher with a Shape Score, highest first. Use the filters to narrow it.', test: r => r.score != null, sort: (a, b) => (b.score ?? 0) - (a.score ?? 0) },
   { id: 'hidden', label: 'Strong shape, results trail it', blurb: 'The shape has saved runs for league pitchers, his own results have not kept up. Most behind first, with small samples counted for less.',
     test: r => (r.score ?? 0) >= STRONG_SCORE && r.verdict === 'behind', sort: (a, b) => weighted(a) - weighted(b) },
   { id: 'quiet', label: 'Strong shape, quiet line', blurb: 'A strong shape on a pitcher with a small role or a middling overall line, so little has been said about it. Highest Shape Score first.',
@@ -48,10 +51,42 @@ export const LENSES: Lens[] = [
     test: r => r.score != null && r.score <= WEAK_SCORE && r.verdict === 'ahead' && r.overall != null && r.overall.runsPct != null && r.overall.runsPct >= MIDDLING_PCT, sort: (a, b) => weighted(b) - weighted(a) },
 ]
 
-export type FindOptions = { limit?: number; /** keep All-Stars, award winners and full-time veterans (default: hide them) */ includeKnown?: boolean; /** keep pitchers whose own sample is under the usual minimum (default: keep them) */ includeSmall?: boolean }
+/** Number filters on his season line and Shape Score. A pitcher without the stat is left out whenever its filter is on. */
+export type NumberFilters = {
+  /** ERA at least this */ minEra?: number | null
+  /** ERA at most this */ maxEra?: number | null
+  /** xERA at most this */ maxXera?: number | null
+  /** xERA at least this */ minXera?: number | null
+  /** ERA minus xERA at least this: an ERA running well above what the contact quality he allowed would give */ minEraGap?: number | null
+  /** Shape Score at least this */ minScore?: number | null
+}
+export const passesNumbers = (r: FinderRow, f: NumberFilters): boolean => {
+  const era = r.stats?.era ?? null, xera = r.stats?.xera ?? null
+  if (f.minEra != null && (era == null || era < f.minEra)) return false
+  if (f.maxEra != null && (era == null || era > f.maxEra)) return false
+  if (f.maxXera != null && (xera == null || xera > f.maxXera)) return false
+  if (f.minXera != null && (xera == null || xera < f.minXera)) return false
+  if (f.minEraGap != null && (era == null || xera == null || era - xera < f.minEraGap)) return false
+  if (f.minScore != null && (r.score == null || r.score < f.minScore)) return false
+  return true
+}
+
+/** A small seeded generator, so a shuffle is repeatable for one seed and different for the next. */
+export function seeded(seed: number): () => number {
+  let a = seed >>> 0
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
+}
+export function shuffled<T>(xs: T[], seed: number): T[] {
+  const out = [...xs], rnd = seeded(seed)
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [out[i], out[j]] = [out[j], out[i]] }
+  return out
+}
+
+export type FindOptions = NumberFilters & { limit?: number; /** keep All-Stars, award winners and full-time veterans (default: hide them) */ includeKnown?: boolean; /** keep pitchers whose own sample is under the usual minimum (default: keep them) */ includeSmall?: boolean; /** a number: show a random sample of the matches for that seed instead of the best first */ seed?: number | null }
 
 export function findPitchers<T extends FinderRow>(rows: T[], id: LensId, opts: FindOptions | number = {}): T[] {
   const o: FindOptions = typeof opts === 'number' ? { limit: opts } : opts
   const lens = LENSES.find(l => l.id === id) ?? LENSES[0]
-  return rows.filter(r => lens.test(r) && (o.includeKnown || !isEstablished(r)) && (o.includeSmall !== false || !r.small)).sort(lens.sort).slice(0, o.limit ?? 6)
+  const pool = rows.filter(r => lens.test(r) && (o.includeKnown || !isEstablished(r)) && (o.includeSmall !== false || !r.small) && passesNumbers(r, o))
+  return (o.seed != null ? shuffled(pool, o.seed) : pool.sort(lens.sort)).slice(0, o.limit ?? 6)
 }

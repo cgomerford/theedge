@@ -99,6 +99,8 @@ export type BoardRow = {
   ownRaw: Measures & { saved: number | null }
   /** his whole season, all pitch types: total pitches and where his runs allowed, wOBA and xwOBA rank among pitchers (null when the table is empty) */
   overall: OverallLine | null
+  /** his season line from pitcher_stats (ERA, xERA, FIP, innings pitched); null when we hold none for him */
+  stats: { era: number | null; xera: number | null; fip: number | null; ip: number | null } | null
   /** how established he is: All-Star and major selections, MLB debut year (null when the MLB Stats API could not be read) */
   profile: Profile | null
   /** his own sample on this pitch is under the usual minimum: the comparison is shown, but it is a small sample */
@@ -145,6 +147,7 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
     const ssum = windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
     return { p, hb, ivb, sm, om, smRaw: measuresOf(ssum, false), omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
   })
+  const seasonStats = await getSeasonStats(season)   // separate await: one cached read of pitcher_stats
   const profiles = await getProfiles(list.map(r => r.p.pitcher_id))   // separate await: the MLB Stats API, cached a day
   const savedOf = (m: Measures) => runsSaved(m, league)
   const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
@@ -163,6 +166,7 @@ export async function getShapeBoard(type: string, hand: Hand): Promise<Board | n
       ownRaw: { ...omRaw, saved: runsSaved(omRaw, { ...league }) },
       overall: overallLines?.get(p.pitcher_id) ?? null,
       profile: profiles?.get(p.pitcher_id) ?? null,
+      stats: seasonStats?.get(p.pitcher_id) ?? null,
       small,
       score: shapeSaved == null ? null : percentile(dist, shapeSaved),
       gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
@@ -189,4 +193,27 @@ export async function getShapeSavedFor(type: string, hand: Hand, hb: number, ivb
   }
   const m = measuresOf(windowSums(hit.grid, Math.round(hb * 10), Math.round(ivb * 10), 10))
   return { shapeSaved: runsSaved(m, hit.league), leagueRuns100: hit.league.runs100 }
+}
+
+
+type SeasonStat = { era: number | null; xera: number | null; fip: number | null; ip: number | null }
+const statsCache = new Map<number, { at: number; map: Map<number, SeasonStat> }>()
+const numOrNull = (v: unknown) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
+
+/** Every pitcher's ERA, xERA, FIP and innings for a season (pitcher_stats), cached an hour. null on failure (logged). */
+async function getSeasonStats(season: number): Promise<Map<number, SeasonStat> | null> {
+  const hit = statsCache.get(season)
+  if (hit && Date.now() - hit.at <= TTL_MS) return hit.map
+  const supa = createAdminClient()
+  const map = new Map<number, SeasonStat>()
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supa.from('pitcher_stats').select('player_id,era,xera,fip,innings_pitched').eq('season', season).order('player_id').range(from, from + 999)
+    if (error) { logOnce('getSeasonStats', 'getSeasonStats', 'Supabase error', error.message); return null }
+    for (const r of (data ?? []) as unknown as { player_id: number; era: unknown; xera: unknown; fip: unknown; innings_pitched: unknown }[]) {
+      map.set(r.player_id, { era: numOrNull(r.era), xera: numOrNull(r.xera), fip: numOrNull(r.fip), ip: numOrNull(r.innings_pitched) })
+    }
+    if ((data ?? []).length < 1000) break
+  }
+  statsCache.set(season, { at: Date.now(), map })
+  return map
 }

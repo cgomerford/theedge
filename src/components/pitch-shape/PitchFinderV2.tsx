@@ -355,7 +355,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
 
-      <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 16px', marginBottom: 12, display: view === 'map' ? undefined : 'none' }}>
+      <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 16px', marginBottom: 12, display: view === 'map' ? undefined : 'none' }}>
         <summary className="pv-k" style={{ cursor: 'pointer', minHeight: 28 }}>How to read this map</summary>
         <div className="pf2-read" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginTop: 6 }}>
           <style>{'@media(max-width:800px){.pf2-read{grid-template-columns:1fr !important}}'}</style>
@@ -408,7 +408,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null) }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
-      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
+      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
 
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>

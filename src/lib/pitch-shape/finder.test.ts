@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ESTABLISHED_PITCHES, findPitchers, isEstablished, type FinderRow } from './finder'
+import { ESTABLISHED_PITCHES, findPitchers, isEstablished, passesNumbers, shuffled, type FinderRow } from './finder'
 
 const row = (o: Partial<FinderRow>): FinderRow => ({ pitcherId: 1, name: 'A', teamAbbr: 'X', pitches: 500, score: 50, gap: 0, verdict: 'level', overall: { pitches: 2000, runsPct: 50 }, ...o })
 
@@ -40,5 +40,25 @@ describe('find me a pitcher', () => {
     const r = [row({ pitcherId: 1, score: 90, verdict: 'behind', gap: -3, small: true }), row({ pitcherId: 2, score: 90, verdict: 'behind', gap: -1 })]
     expect(findPitchers(r, 'hidden').map(x => x.pitcherId)).toEqual([1, 2])
     expect(findPitchers(r, 'hidden', { includeSmall: false }).map(x => x.pitcherId)).toEqual([2])
+  })
+  it('filters on ERA, xERA, the gap between them and Shape Score', () => {
+    const r = [
+      row({ pitcherId: 1, score: 92, stats: { era: 6.4, xera: 3.1, fip: 4, ip: 50 } }),
+      row({ pitcherId: 2, score: 92, stats: { era: 6.4, xera: 4.8, fip: 4, ip: 50 } }),
+      row({ pitcherId: 3, score: 60, stats: { era: 6.4, xera: 3.1, fip: 4, ip: 50 } }),
+      row({ pitcherId: 4, score: 95, stats: null }),
+    ]
+    expect(findPitchers(r, 'any', { minEra: 6, maxXera: 3.5, minScore: 90 }).map(x => x.pitcherId)).toEqual([1])
+    expect(findPitchers(r, 'any', { minEraGap: 3 }).map(x => x.pitcherId)).toEqual([3, 1].sort((a, b) => (r.find(x => x.pitcherId === b)!.score ?? 0) - (r.find(x => x.pitcherId === a)!.score ?? 0)))
+    expect(passesNumbers(r[3], { minEra: 1 })).toBe(false)   // no season line: out whenever an ERA filter is on
+    expect(findPitchers(r, 'any', { minScore: 90 }).map(x => x.pitcherId)).toEqual([4, 1, 2])
+  })
+  it('shuffles repeatably for one seed and differently for another', () => {
+    const xs = Array.from({ length: 20 }, (_, i) => i)
+    expect(shuffled(xs, 7)).toEqual(shuffled(xs, 7))
+    expect(shuffled(xs, 7)).not.toEqual(shuffled(xs, 8))
+    expect([...shuffled(xs, 7)].sort((a, b) => a - b)).toEqual(xs)
+    const rows = Array.from({ length: 12 }, (_, i) => row({ pitcherId: i, score: 80 }))
+    expect(findPitchers(rows, 'any', { seed: 3, limit: 4 })).toHaveLength(4)
   })
 })
