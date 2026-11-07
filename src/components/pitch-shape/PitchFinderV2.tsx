@@ -101,6 +101,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [focus, setFocus] = useState<number | null>(null)   // the chosen pitcher: his sampled pitches drawn as dots, a ring at his average
   const [dots, setDots] = useState<PitcherDot[]>([])
   const [showDots, setShowDots] = useState(true)
+  const [team, setTeam] = useState('')   // a club's abbreviation: only its pitchers are drawn, each with his name; '' = everyone
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
   const [view, setView] = useState<'map' | 'pitcher'>('map')
@@ -298,6 +299,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     const row = (r: (typeof ratedDots)[number]): ResultRow => ({ pitcherId: r.pitcherId, name: r.name, teamAbbr: r.teamAbbr, nPitches: r.nPitches, nSwings: r.nSwings, nWhiffs: r.nWhiffs, estPitches: r.nPitches, share: 1, own: r.own, gapPts: r.gapPts, verdict: r.verdict, diag: r.diag, shapeRate: r.shapeRate })
     return { ahead: e.ahead.map(row), behind: e.behind.map(row) }
   }, [ratedDots])
+  const teams = useMemo(() => Array.from(new Set(ratedDots.map(d => d.teamAbbr).filter(Boolean))).sort(), [ratedDots])
+  const teamOn = team && teams.includes(team) ? team : ''
+  const teamDots = useMemo(() => teamOn ? ratedDots.filter(d => d.teamAbbr === teamOn).sort((a, b) => b.nPitches - a.nPitches) : [], [ratedDots, teamOn])
+  const surname = (n: string) => n.replace(/\s+(Jr\.?|Sr\.?|II|III)$/, '').split(' ').slice(-1)[0]
   const focusDot = focus != null ? ratedDots.find(d => d.pitcherId === focus) ?? null : null
   const focusT = focusDot && focusPts ? { name: focusDot.name, sample: focusPts.length, points: focusPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
@@ -407,7 +412,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             {RADII.map(r => <option key={r} value={r}>±{r} in</option>)}
           </select>
         </label>
-        <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null) }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
+        <label style={fLabel}><span className="pv-k">Team</span>
+          <select value={teamOn} onChange={e => { setTeam(e.target.value); setFocus(null); setShowDots(true) }} style={fSelect} aria-label="Show every pitcher for one team on the map">
+            <option value="">All teams</option>
+            {teams.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null); setTeam('') }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
       {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
@@ -445,8 +456,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   const r = e.currentTarget.getBoundingClientRect()
                   const hb = payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb = payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF
                   if (showDots) {   // a click close to a pitcher's dot chooses him; anywhere else chooses a place
-                    let best: (typeof ratedDots)[number] | null = null, bd = 0.9
-                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
+                    let best: (typeof ratedDots)[number] | null = null, bd = teamOn ? 1.6 : 0.9
+                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
                   setShowAll(false); setFocus(null); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
@@ -457,10 +468,16 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {focusT && focusT.points.map((p, i) => { const b = toBox(p[0], p[1]), inside = inBox(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={inside ? C.orange : C.ink} fillOpacity={inside ? 1 : 0.6} stroke={inside ? C.ink : 'none'} strokeWidth={N / 700} /> })}
                   {focusT && (() => { const b = toBox(focusT.hb, focusT.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
                   {shown && (() => { const b = toBox(shown.hb, shown.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
-                  {showDots && ratedDots.filter(d => focus == null || d.pitcherId === focus).map(d => {   // with a pitcher chosen, only he stays on the map
+                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : !teamOn || d.teamAbbr === teamOn).map(d => {   // with a pitcher chosen, only he stays on the map
                     const b = toBox(d.hb, d.ivb), on = focus === d.pitcherId
                     const fill = d.verdict === 'ahead' ? C.orange : d.verdict === 'behind' ? '#5E7A99' : d.verdict === 'level' ? '#fff' : 'none'
-                    return <circle key={d.pitcherId} cx={b.x} cy={b.y} r={on ? N / 70 : N / 110} fill={fill} stroke={on ? C.ink : d.verdict ? C.ink : C.mute} strokeWidth={on ? N / 150 : N / 330} strokeOpacity={d.verdict ? 0.9 : 0.5} />
+                    const big = teamOn && focus == null
+                    return (
+                      <g key={d.pitcherId}>
+                        <circle cx={b.x} cy={b.y} r={on ? N / 70 : big ? N / 75 : N / 110} fill={fill} stroke={on ? C.ink : d.verdict ? C.ink : C.mute} strokeWidth={on ? N / 150 : big ? N / 200 : N / 330} strokeOpacity={d.verdict ? 0.9 : 0.5} />
+                        {big && <text x={b.x} y={b.y - N / 55} textAnchor="middle" fontSize={N / 42} fontWeight={800} fill={C.ink} stroke="#EDE8DC" strokeWidth={N / 170} paintOrder="stroke">{surname(d.name)}</text>}
+                      </g>
+                    )
                   })}
                   {spots.map((s, i) => {
                     const b = toBox(s.hb, s.ivb), on = place?.spot === i
@@ -503,6 +520,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: '#3a352c' }}>
                 {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
                 <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
+                {teamOn && teamDots.length > 0 && <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <b>{teamOn} {lc} throwers:</b>
+                  {teamDots.map(d => <button key={d.pitcherId} type="button" onClick={() => setFocus(f => (f === d.pitcherId ? null : d.pitcherId))} style={{ minHeight: 34, padding: '0 10px', borderRadius: 4, border: `1px solid ${focus === d.pitcherId ? C.ink : C.line}`, background: focus === d.pitcherId ? C.ink : '#fff', color: focus === d.pitcherId ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{d.name}</button>)}
+                </div>}
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: C.orange, border: `1px solid ${C.ink}`, display: 'inline-block' }} />ahead of his own shape</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: '#5E7A99', border: `1px solid ${C.ink}`, display: 'inline-block' }} />behind it</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', border: `1px solid ${C.ink}`, display: 'inline-block' }} />about level</span>
@@ -516,17 +537,17 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 <summary style={{ cursor: 'pointer', fontWeight: 700, minHeight: 28 }}>What is drawn on the map</summary>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 6 }}>
                   <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><rect x="3" y="3" width="16" height="16" fill="none" stroke={C.ink} strokeWidth="1.6" strokeDasharray="4 3" /></svg>
-                  <span><b>The dashed box</b> is the area you chose: every league {lc} that moves within ±{radius} in of this spot. The rate, the pitchers and the plate view all use that same box.</span>
+                  <span><b>The dashed box</b> is the spot you clicked. Every league {lc} that moves within {radius} inch{radius === 1 ? '' : 'es'} of it, up, down, left or right, counts as “shaped like this”. The miss rate, the list of pitchers and the plate view all use those same pitches.</span>
                 </div>
                 {focusT ? (
                   <>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
                       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><circle cx="7" cy="8" r="3.2" fill={C.orange} stroke={C.ink} strokeWidth="1" /><circle cx="15" cy="14" r="3.2" fill={C.ink} fillOpacity=".6" /></svg>
-                      <span><b>The dots</b> are {focusT.sample} of {focusT.name}’s {lc}s, one dot per pitch, placed by how that pitch moved. <b style={{ color: ORANGE_TEXT }}>Orange dots</b> landed inside the box ({focusT.points.filter(p => inBox(p[0], p[1])).length} of {focusT.sample}); dark dots are his other pitches, so you can see how much his own pitch moves around.</span>
+                      <span><b>Each dot is one of {focusT.name}’s {lc}s</b> (we plot {focusT.sample}), placed by how that pitch moved. <b style={{ color: ORANGE_TEXT }}>Orange</b> dots moved inside the dashed box, like the pitch you picked ({focusT.points.filter(p => inBox(p[0], p[1])).length} of {focusT.sample}). <b>Dark</b> dots moved differently. A tight cluster means he throws it the same way every time; a wide scatter means it moves around.</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
                       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><circle cx="11" cy="11" r="7" fill="none" stroke={C.ink} strokeWidth="2" /></svg>
-                      <span><b>The ring</b> is his average movement: {focusT.ivb.toFixed(1)} in of ride, {focusT.hb.toFixed(1)} in of run, at {focusT.velo.toFixed(1)} mph. The dots are only a sample (up to 60), so counts are approximate.</span>
+                      <span><b>The ring</b> marks his average {lc}: {focusT.ivb.toFixed(1)} in of ride (how much it rises against gravity), {focusT.hb.toFixed(1)} in of run (sideways toward his arm side), at {focusT.velo.toFixed(1)} mph. We plot at most 60 pitches per pitcher, so the counts are a sample, not every pitch.</span>
                     </div>
                   </>
                 ) : (

@@ -12,6 +12,10 @@ describe('combineSplits', () => {
     const w = combineSplits([line('10.0', 40, 8, 4, 'SEA'), line('20.0', 80, 17, 8, 'TB')])
     expect(w!.ip).toBeCloseTo(30, 5); expect(w!.k).toBe(25)
   })
+  it('adds hits, walks, wins and starts for the fantasy line', () => {
+    const w = combineSplits([{ stat: { inningsPitched: '9.0', battersFaced: 36, strikeOuts: 9, earnedRuns: 2, hits: 6, baseOnBalls: 3, wins: 1, gamesStarted: 1, gamesPlayed: 1 } }])
+    expect(w).toMatchObject({ h: 6, bb: 3, w: 1, gs: 1, g: 1 })
+  })
   it('returns null with nothing to use', () => {
     expect(combineSplits([])).toBeNull()
     expect(combineSplits([line('0.0', 0, 0, 0)])).toBeNull()

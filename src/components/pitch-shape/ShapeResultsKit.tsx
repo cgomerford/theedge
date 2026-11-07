@@ -325,6 +325,50 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             )}
           </div>
         )}
+        {(() => {
+          // the reason flag: what the breakdown below found, said first. Only when his results trail his shape (or the breakdown found nothing to blame).
+          if (why === 'locked' || verdict !== 'behind' || !built || built.gap == null || built.gap < EFFECT_NOTICE) return null
+          const names = built.hurting.map(r => r.label)
+          return (
+            <div style={{ margin: '12px 0 0', border: '1.5px solid #A8391F', background: '#FBE6E1', borderRadius: 6, padding: '10px 12px' }}>
+              <div style={{ ...k, color: '#A8391F' }}>Why the results are not there</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0 4px' }}>
+                {names.length ? names.map(n => <span key={n} style={{ background: '#A8391F', color: '#fff', fontWeight: 800, fontSize: 12.5, borderRadius: 3, padding: '3px 9px' }}>{n}</span>)
+                  : <span style={{ background: C.ink, color: C.cream, fontWeight: 800, fontSize: 12.5, borderRadius: 3, padding: '3px 9px' }}>Not platoon, speed, extension, angle, location or sequencing</span>}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#3a352c' }}>{built.lead}</div>
+              <a href="#psd-why" style={{ fontSize: 12.5, fontWeight: 700, color: '#B83A0E' }}>See the numbers behind it</a>
+            </div>
+          )
+        })()}
+        {(() => {
+          // fantasy line: the counting and rate stats a fantasy manager reads, next to the gap between his ERA and the contact he allowed. Description only.
+          const wl = overall?.workload ?? null
+          if (!wl && !sel.stats) return null
+          const era = wl?.era ?? sel.stats?.era ?? null, xera = sel.stats?.xera ?? null, fip = sel.stats?.fip ?? null
+          const whip = wl && wl.ip > 0 ? (wl.h + wl.bb) / wl.ip : null
+          const kp = wl && wl.bf > 0 ? wl.k / wl.bf : null, bp = wl && wl.bf > 0 ? wl.bb / wl.bf : null
+          const tiles: { label: string; v: string; sub?: string }[] = [
+            { label: 'ERA', v: era == null ? '—' : era.toFixed(2) },
+            { label: 'xERA', v: xera == null ? '—' : xera.toFixed(2), sub: sel.stats?.xeraPa != null && sel.stats.xeraPa < 100 ? `${sel.stats.xeraPa} PA` : undefined },
+            { label: 'FIP', v: fip == null ? '—' : fip.toFixed(2) },
+            { label: 'WHIP', v: whip == null ? '—' : whip.toFixed(2) },
+            { label: 'K%', v: kp == null ? '—' : `${(kp * 100).toFixed(1)}%` },
+            { label: 'BB%', v: bp == null ? '—' : `${(bp * 100).toFixed(1)}%` },
+            { label: 'IP', v: wl ? wl.ip.toFixed(1) : '—', sub: wl ? `${wl.gs} GS · ${wl.g} G` : undefined },
+            { label: 'Wins', v: wl ? String(wl.w) : '—' },
+          ]
+          const eg = era != null && xera != null ? era - xera : null
+          return (
+            <div style={{ margin: '12px 0 0' }}>
+              <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>Fantasy line · {overall?.season ?? season ?? ''}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 6 }}>
+                {tiles.map(t => <div key={t.label} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={{ ...k, color: C.mute }}>{t.label}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{t.v}</b>{t.sub && <div style={{ fontSize: 10.5, color: C.faint }}>{t.sub}</div>}</div>)}
+              </div>
+              {eg != null && Math.abs(eg) >= 0.4 && <div style={{ fontSize: 12.5, color: '#3a352c', lineHeight: 1.5, marginTop: 6 }}>His ERA is {Math.abs(eg).toFixed(2)} runs {eg > 0 ? 'higher' : 'lower'} than his xERA, so the contact he has allowed has been {eg > 0 ? 'better' : 'worse'} than his results. {kp != null && bp != null && kp - bp >= 0.15 ? `He strikes out ${((kp - bp) * 100).toFixed(0)} points more batters than he walks.` : ''}</div>}
+            </div>
+          )
+        })()}
         <p style={{ fontSize: 13.5, lineHeight: 1.5, color: '#3a352c', margin: '12px 0 0' }}>{headline}{verdict && better.length ? <> Better than the league at his shape on {better.join(', ')}.</> : null}{verdict && worse.length ? <> Worse on {worse.join(', ')}.</> : null}</p>
 
         <div className="psd-cols" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '0 28px', alignItems: 'start' }}>
@@ -829,7 +873,7 @@ function WhySection({ sel, lc, why, bins, verdictGap, diagnosis, sec, pill }: { 
   void verdictGap
   return (
     <>
-      <div style={{ ...sec, marginTop: 22 }}>{title}</div>
+      <div id="psd-why" style={{ ...sec, marginTop: 22 }}>{title}</div>
       <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, marginBottom: 8 }}>His {why.hisPitches.toLocaleString()} {lc}s against {why.leaguePitches.toLocaleString()} league {lc}s within ±{why.halfHb.toFixed(1)} in of run and ±{why.halfIvb.toFixed(1)} in of ride of his shape, {why.season}. Each factor is priced on its own, so they overlap a little and should not be totalled.</div>
       {lead && <div style={{ background: hurting.length && gap != null && gap > 0 ? '#FBE6E1' : '#F1EEE6', borderRadius: 4, padding: '9px 12px', fontSize: 14, lineHeight: 1.5, color: '#3a352c', marginBottom: 10 }}><b>{lead}</b></div>}
       <div style={{ display: 'grid', gap: 0 }}>

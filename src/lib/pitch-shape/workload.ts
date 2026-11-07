@@ -4,9 +4,9 @@ import { log } from '@/lib/log'
 // One pitcher's season workload (innings, batters faced, strikeouts, ERA) from the free MLB Stats API, for converting a shape change to per-nine figures. Cached six hours.
 // A traded pitcher comes back as one line per club; they are added up. null on any failure (logged), and the page then shows no per-nine figure.
 
-export type Workload = { ip: number; bf: number; k: number; era: number | null }
+export type Workload = { ip: number; bf: number; k: number; era: number | null; /** hits, walks, wins, starts and appearances, for the fantasy tiles */ h: number; bb: number; w: number; gs: number; g: number }
 
-export type Split = { team?: unknown; stat: { inningsPitched: string; battersFaced: number; strikeOuts: number; earnedRuns: number } }
+export type Split = { team?: unknown; stat: { inningsPitched: string; battersFaced: number; strikeOuts: number; earnedRuns: number; hits?: number; baseOnBalls?: number; wins?: number; gamesStarted?: number; gamesPlayed?: number } }
 
 /**
  * A traded pitcher comes back as a combined line (no team) followed by one line per club. Use the combined line when there is one; otherwise add the club lines.
@@ -16,9 +16,9 @@ export function combineSplits(splits: Split[]): Workload | null {
   if (splits.length === 0) return null
   const total = splits.find(s => !s.team)
   const use = total ? [total] : splits
-  let ip = 0, bf = 0, k = 0, er = 0
-  for (const s of use) { ip += innings(s.stat.inningsPitched); bf += s.stat.battersFaced ?? 0; k += s.stat.strikeOuts ?? 0; er += s.stat.earnedRuns ?? 0 }
-  return ip > 0 ? { ip, bf, k, era: (er * 9) / ip } : null
+  let ip = 0, bf = 0, k = 0, er = 0, h = 0, bb = 0, w = 0, gs = 0, g = 0
+  for (const s of use) { ip += innings(s.stat.inningsPitched); bf += s.stat.battersFaced ?? 0; k += s.stat.strikeOuts ?? 0; er += s.stat.earnedRuns ?? 0; h += s.stat.hits ?? 0; bb += s.stat.baseOnBalls ?? 0; w += s.stat.wins ?? 0; gs += s.stat.gamesStarted ?? 0; g += s.stat.gamesPlayed ?? 0 }
+  return ip > 0 ? { ip, bf, k, era: (er * 9) / ip, h, bb, w, gs, g } : null
 }
 
 const innings = (s: string) => { const [w, f] = String(s).split('.'); return Number(w) + (f ? Number(f) / 3 : 0) }
