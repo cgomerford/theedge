@@ -102,6 +102,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [focus, setFocus] = useState<number | null>(null)   // the chosen pitcher: his sampled pitches drawn as dots, a ring at his average
   const [dots, setDots] = useState<PitcherDot[]>([])
   const [showDots, setShowDots] = useState(true)
+  const [mapIds, setMapIds] = useState<Set<number> | null>(null)   // pitchers passing the finder's filters; null = show everyone
   const [team, setTeam] = useState('')   // a club's abbreviation: only its pitchers are drawn, each with his name; '' = everyone
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
@@ -428,7 +429,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null); setTeam('') }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
-      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
+      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} onMatches={setMapIds} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
 
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
@@ -464,7 +465,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   const hb = payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb = payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF
                   if (showDots) {   // a click close to a pitcher's dot chooses him; anywhere else chooses a place
                     let best: (typeof ratedDots)[number] | null = null, bd = teamOn ? 1.6 : 0.9
-                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
+                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; if (mapIds && focus == null && !mapIds.has(d.pitcherId)) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
                   setShowAll(false); setFocus(null); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
@@ -475,7 +476,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {focusT && focusT.points.map((p, i) => { const b = toBox(p[0], p[1]), inside = inBox(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={inside ? C.orange : C.ink} fillOpacity={inside ? 1 : 0.6} stroke={inside ? C.ink : 'none'} strokeWidth={N / 700} /> })}
                   {focusT && (() => { const b = toBox(focusT.hb, focusT.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
                   {shown && (() => { const b = toBox(shown.hb, shown.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
-                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : !teamOn || d.teamAbbr === teamOn).map(d => {   // with a pitcher chosen, only he stays on the map
+                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : (!teamOn || d.teamAbbr === teamOn) && (!mapIds || mapIds.has(d.pitcherId))).map(d => {   // with a pitcher chosen, only he stays on the map
                     const b = toBox(d.hb, d.ivb), on = focus === d.pitcherId
                     const fill = d.verdict === 'ahead' ? C.orange : d.verdict === 'behind' ? '#5E7A99' : d.verdict === 'level' ? '#fff' : 'none'
                     const big = teamOn && focus == null
@@ -527,6 +528,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: '#3a352c' }}>
                 {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
                 <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
+                {mapIds && showDots && <span style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE_TEXT }}>Showing {ratedDots.filter(d => mapIds.has(d.pitcherId) && (!teamOn || d.teamAbbr === teamOn)).length} of {ratedDots.length} pitchers that pass the filters</span>}
                 {teamOn && teamDots.length > 0 && <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <b>{teamOn} {lc} throwers:</b>
                   {teamDots.map(d => <button key={d.pitcherId} type="button" onClick={() => setFocus(f => (f === d.pitcherId ? null : d.pitcherId))} style={{ minHeight: 34, padding: '0 10px', borderRadius: 4, border: `1px solid ${focus === d.pitcherId ? C.ink : C.line}`, background: focus === d.pitcherId ? C.ink : '#fff', color: focus === d.pitcherId ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{d.name}</button>)}

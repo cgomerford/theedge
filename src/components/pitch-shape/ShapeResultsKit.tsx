@@ -681,7 +681,7 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * explain, or anyone), then either see the best matches or shuffle a random six, or let it pick one at random. Cards carry a headshot and the numbers that matter; clicking one opens his full read.
  * Established names (All-Stars, award winners, full-time veterans) are hidden unless asked for; small samples are kept and tagged.
  */
-export function FindPitcher({ board, lc, hand, headshot, onPick, team }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string }) {
+export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string; /** the pitchers that pass every filter here, for the map to show only them; null = the map shows everyone */ onMatches: (ids: Set<number> | null) => void }) {
   const [lens, setLens] = useState<LensId>('hidden')
   const [open, setOpen] = useState(true)
   const [known, setKnown] = useState(false)    // include All-Stars, award winners and full-time veterans
@@ -711,6 +711,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team }: { board
   }
   const rows = allRows.filter(passes)
   const mine = allRows.filter(r => roster.ids.includes(r.pitcherId))
+  const [mapToo, setMapToo] = useState(true)   // the filters also decide which pitchers the map shows
   const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore }
   const found = findPitchers(rows, lens, { ...base, limit: 6, seed })
   const total = findPitchers(rows, lens, { ...base, limit: 9999 }).length
@@ -718,6 +719,11 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team }: { board
   const noAwards = rows.length > 0 && rows.every(r => r.profile == null)
   const noStats = rows.length > 0 && rows.every(r => r.stats == null)
   const anyFilter = minEra != null || maxXera != null || minGap != null || minScore != null || ownOn || role !== 'any' || exp !== 'any'
+  // the map's pitchers: those passing the numbers, role, experience, ESPN and team filters (not the lens, and not the established-name or small-sample screens, which shape the list only)
+  useEffect(() => {
+    if (!mapToo || !anyFilter) { onMatches(null); return }
+    onMatches(new Set(findPitchers(rows, 'any', { ...base, includeKnown: true, includeSmall: true, limit: 9999 }).map(r => r.pitcherId)))
+  }, [board, mapToo, anyFilter, minEra, maxXera, minGap, minScore, ownLo, ownHi, role, exp, team]) // eslint-disable-line react-hooks/exhaustive-deps
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
   const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 3 }
   const selectStyle: React.CSSProperties = { minHeight: 38, minWidth: 96, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 8px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
@@ -769,6 +775,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team }: { board
               <RangeSlider lo={ownLo} hi={ownHi} onChange={(a, b) => { setOwnLo(a); setOwnHi(b) }} label="ESPN percent rostered" /></div>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={!known} onChange={e => setKnown(!e.target.checked)} /> Hide established names</label>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
+            <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={mapToo} onChange={e => setMapToo(e.target.checked)} /> Filter the map too</label>
             {anyFilter && <button type="button" onClick={clear} style={{ ...pill(false), minHeight: 38, marginLeft: 'auto' }}>Clear filters</button>}
           </div>
           <div style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 12px' }}>{L.blurb}</div>
