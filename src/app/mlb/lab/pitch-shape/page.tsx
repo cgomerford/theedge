@@ -34,7 +34,7 @@ export default async function ShapeSandboxPage() {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Pitch Shape Lab', path: '/mlb/lab/pitch-shape' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1560, margin: '0 auto', padding: '22px 24px 100px' }}>
         {pitchTypes.length === 0
           ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
           : (

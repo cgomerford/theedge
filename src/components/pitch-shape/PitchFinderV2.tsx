@@ -102,6 +102,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [focus, setFocus] = useState<number | null>(null)   // the chosen pitcher: his sampled pitches drawn as dots, a ring at his average
   const [dots, setDots] = useState<PitcherDot[]>([])
   const [showDots, setShowDots] = useState(true)
+  const [side, setSide] = useState<'find' | 'shape'>('find')   // the right-hand panel: the finder, or what the chosen shape has produced
   const [pinned, setPinned] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // a legend entry clicked, so it stays on for touch screens
   const [group, setGroup] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // the legend entry hovered or pinned: its pitchers are named and picked out on the map
   const [mapIds, setMapIds] = useState<Set<number> | null>(null)   // pitchers passing the finder's filters; null = show everyone
@@ -374,10 +375,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       <style>{'.pf2-root .pv-pill{border-radius:4px}@media(max-width:960px){.pf2-grid{grid-template-columns:1fr !important}} .pf2-pill{min-height:44px;padding:0 16px;font-size:14px}'}</style>
 
       <div className="pv-k">⊕ MLB · Lab · Pitch shape</div>
-      <h1 style={{ margin: '4px 0 8px', fontWeight: 800, fontSize: 'clamp(28px,4.6vw,46px)', lineHeight: 1.05, letterSpacing: '-.025em', maxWidth: 940 }}>
+      <h1 style={{ margin: '4px 0 8px', fontWeight: 800, fontSize: 'clamp(24px,3.2vw,34px)', lineHeight: 1.1, letterSpacing: '-.02em', maxWidth: 1100 }}>
         Which {lc}s make hitters miss, and who throws them?
       </h1>
-      <p style={{ fontSize: 15.5, lineHeight: 1.55, color: '#5b5347', maxWidth: 780, margin: '0 0 14px' }}>
+      <p style={{ fontSize: 14.5, lineHeight: 1.5, color: '#5b5347', maxWidth: 1000, margin: '0 0 12px' }}>
         Every {hand === 'L' ? 'left' : 'right'}-handed {lc} from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. {measure === 'whiff' ? 'Darker orange means hitters missed more often when they swung. ' : 'Colour shows what pitches shaped like that spot have produced: orange better for the pitcher than the league average, blue worse. '}Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging, and the Shape Score ranks every shape. It shows what has happened, not a forecast.{' '}
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
@@ -441,25 +442,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null); setTeam('') }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
-      {!locked && payload && grid && <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} onMatches={setMapIds} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />}
-
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
         : payload === null || !grid || leagueRate == null ? <Empty>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</Empty>
         : (
-        <div className="pf2-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.25fr) minmax(0,1fr)', gap: 20, alignItems: 'start', marginTop: 8 }}>
+        <div className="pf2-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1fr)', gap: 20, alignItems: 'start', marginTop: 8 }}>
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10, marginBottom: 10 }}>
-              {[
-                ['↑ More ride', 'The ball drops less than the hitter expects, so he swings under it.', 'M4 22 C16 21 28 14 38 6'],
-                ['→ More run', 'The ball moves further toward the pitcher’s arm side than expected.', 'M4 26 C18 26 32 24 40 6'],
-              ].map(([h, t, d]) => (
-                <div key={h} style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '9px 12px', fontSize: 12.5, lineHeight: 1.35, color: '#5b5347' }}>
-                  <svg width="42" height="32" viewBox="0 0 46 34" aria-hidden style={{ flex: 'none' }}><path d={d.replace('21', '22')} fill="none" stroke="#8a8275" strokeWidth="1.6" strokeDasharray="3 3" /><path d={d} fill="none" stroke={ORANGE_TEXT} strokeWidth="2" /></svg>
-                  <div><b style={{ color: C.ink, display: 'block', fontSize: 13.5 }}>{h}</b>{t}</div>
-                </div>
-              ))}
-            </div>
+            <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.4, margin: '0 0 8px' }}><b style={{ color: C.ink }}>↑ More ride:</b> the ball drops less than the hitter expects. <b style={{ color: C.ink }}>→ More run:</b> it moves further toward the pitcher’s arm side.</div>
             {focus != null ? (() => {
               const fr = board?.rows.find(r => r.pitcherId === focus) ?? null
               const nm = fr?.name ?? focusDot?.name ?? 'this pitcher', tm = fr?.teamAbbr ?? focusDot?.teamAbbr ?? ''
@@ -480,7 +469,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '26px minmax(0,1fr)', gridTemplateRows: 'auto 22px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '26px minmax(0,1fr)', gridTemplateRows: 'auto 22px', maxWidth: 'max(420px, min(100%, calc(100vh - 160px)))', margin: '0 auto' }}>
               <div style={{ position: 'relative' }}>
                 {yticks.map(v => <span key={v} style={{ position: 'absolute', right: 4, top: `${((payload.ivb0 + HALF - v) / (2 * HALF)) * 100}%`, transform: 'translateY(-50%)', fontSize: 10.5, color: C.mute }}>{v}</span>)}
               </div>
@@ -495,7 +484,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; if (mapIds && focus == null && !mapIds.has(d.pitcherId)) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
-                  setShowAll(false); setFocus(null); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
+                  setShowAll(false); setFocus(null); setSide('shape'); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
                 }}>
                 <canvas ref={canvasRef} role="img" aria-label={`League ${lc} movement map: each square is a way a pitch moves (ride up, run right), coloured by how often hitters miss. It is not the strike zone.`} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
                 <svg viewBox={`0 0 ${N} ${N}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
@@ -525,7 +514,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                     )
                   })}
                 </svg>
-                {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setFocus(null); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
+                {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setFocus(null); setSide('shape'); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
                 {hoverDot && hover && (
                   <div style={{ position: 'absolute', left: hover.x + 12, top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12.5, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined, zIndex: 3 }}>
                     <b>{hoverDot.name}</b> · {hoverDot.teamAbbr} · {hoverDot.verdict === 'ahead' ? 'ahead of his own shape' : hoverDot.verdict === 'behind' ? 'behind his shape' : hoverDot.verdict === 'level' ? 'about level' : 'too few swings'}
@@ -622,6 +611,14 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
           </div>
 
           <div>
+            <div role="tablist" aria-label="Side panel" style={{ display: 'flex', gap: 6, margin: '0 0 10px' }}>
+              <button role="tab" aria-selected={side === 'find'} type="button" onClick={() => setSide('find')} style={tabStyle(side === 'find')}>Find a pitcher</button>
+              <button role="tab" aria-selected={side === 'shape'} type="button" onClick={() => setSide('shape')} style={tabStyle(side === 'shape')}>This shape{place ? '' : ' (click the map)'}</button>
+            </div>
+            <div style={{ display: side === 'find' ? undefined : 'none' }}>
+              <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} onMatches={setMapIds} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />
+            </div>
+            <div style={{ display: side === 'shape' ? undefined : 'none' }}>
             {place && placeStats && spotName ? (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14 }}>
                 <div className="pv-k" style={{ color: ORANGE_TEXT }}>{place.spot != null ? `Spot ${place.spot + 1} of ${spots.length} · where ${lc}s work best` : 'The place you chose'}</div>
@@ -680,6 +677,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 </div>
               </details>
             )}
+            </div>
           </div>
         </div>
       )}
