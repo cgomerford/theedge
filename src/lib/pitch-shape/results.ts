@@ -100,7 +100,7 @@ export type BoardRow = {
   /** his whole season, all pitch types: total pitches and where his runs allowed, wOBA and xwOBA rank among pitchers (null when the table is empty) */
   overall: OverallLine | null
   /** his season line from pitcher_stats (ERA, xERA, FIP, innings pitched); null when we hold none for him */
-  stats: { era: number | null; xera: number | null; fip: number | null; ip: number | null } | null
+  stats: { era: number | null; xera: number | null; fip: number | null; ip: number | null; /** plate appearances behind the xERA (Savant); null when it came from pitcher_stats */ xeraPa: number | null } | null
   /** how established he is: All-Star and major selections, MLB debut year (null when the MLB Stats API could not be read) */
   profile: Profile | null
   /** his own sample on this pitch is under the usual minimum: the comparison is shown, but it is a small sample */
@@ -196,7 +196,7 @@ export async function getShapeSavedFor(type: string, hand: Hand, hb: number, ivb
 }
 
 
-type SeasonStat = { era: number | null; xera: number | null; fip: number | null; ip: number | null }
+type SeasonStat = { era: number | null; xera: number | null; fip: number | null; ip: number | null; xeraPa: number | null }
 const statsCache = new Map<number, { at: number; map: Map<number, SeasonStat> }>()
 const numOrNull = (v: unknown) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
 
@@ -210,7 +210,18 @@ async function getSeasonStats(season: number): Promise<Map<number, SeasonStat> |
     const { data, error } = await supa.from('pitcher_stats').select('player_id,era,xera,fip,innings_pitched').eq('season', season).order('player_id').range(from, from + 999)
     if (error) { logOnce('getSeasonStats', 'getSeasonStats', 'Supabase error', error.message); return null }
     for (const r of (data ?? []) as unknown as { player_id: number; era: unknown; xera: unknown; fip: unknown; innings_pitched: unknown }[]) {
-      map.set(r.player_id, { era: numOrNull(r.era), xera: numOrNull(r.xera), fip: numOrNull(r.fip), ip: numOrNull(r.innings_pitched) })
+      map.set(r.player_id, { era: numOrNull(r.era), xera: numOrNull(r.xera), fip: numOrNull(r.fip), ip: numOrNull(r.innings_pitched), xeraPa: null })
+    }
+    if ((data ?? []).length < 1000) break
+  }
+  // xERA from Savant's expected-statistics file (pitch_shape_pitcher_expected, written by build_pitch_shape_results.py) fills the pitchers pitcher_stats has none for, and carries the sample behind it.
+  // Until that table exists this is skipped and pitcher_stats alone is used.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supa.from('pitch_shape_pitcher_expected').select('pitcher_id,pa,era,xera').eq('season', season).order('pitcher_id').range(from, from + 999)
+    if (error) { logOnce('getSeasonStats:expected', 'getSeasonStats', 'pitch_shape_pitcher_expected', error.message); break }
+    for (const r of (data ?? []) as unknown as { pitcher_id: number; pa: number; era: unknown; xera: unknown }[]) {
+      const cur = map.get(r.pitcher_id) ?? { era: null, xera: null, fip: null, ip: null, xeraPa: null }
+      map.set(r.pitcher_id, { ...cur, era: cur.era ?? numOrNull(r.era), xera: numOrNull(r.xera) ?? cur.xera, xeraPa: numOrNull(r.xera) != null ? r.pa : null })
     }
     if ((data ?? []).length < 1000) break
   }

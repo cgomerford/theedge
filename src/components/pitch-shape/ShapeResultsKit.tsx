@@ -576,6 +576,8 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 // ---- Find me a pitcher --------------------------------------------------------------------------------------------------------------------------------
 
 /** What the finder can be narrowed by. Each is a dropdown with "Any" first. */
+/** Savant's xERA on fewer plate appearances than this is shown but marked thin. */
+const THIN_XERA_PA = 100
 const ERA_MIN = [4.5, 5, 5.5, 6, 7]
 const XERA_MAX = [3, 3.5, 4, 4.5]
 const GAP_MIN = [0.5, 1, 1.5, 2, 3]
@@ -675,8 +677,8 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}><b style={{ fontSize: 17, letterSpacing: '-.01em' }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12.5 }}>{r.teamAbbr}</span></div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 6, margin: '8px 0 6px' }}>
-                          {([['ERA', f1(r.stats?.era), null], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null]] as [string, string, string | null][]).map(([a, b, col]) => (
-                            <div key={a} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px' }}><div style={{ ...k, fontSize: 9 }}>{a}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
+                          {([['ERA', f1(r.stats?.era), null, ''], ['xERA', f1(r.stats?.xera), gap != null && gap >= 1 ? '#13694F' : null, r.stats?.xeraPa != null && r.stats.xeraPa < THIN_XERA_PA ? ` · ${r.stats.xeraPa} PA` : ''], ['Shape', r.score == null ? '—' : String(r.score), r.score != null && r.score >= 70 ? '#B83A0E' : null, '']] as [string, string, string | null, string][]).map(([a, b, col, note]) => (
+                            <div key={a} title={note ? `Savant's xERA on only ${r.stats?.xeraPa} plate appearances: shown, but noisy` : undefined} style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '4px 8px', opacity: note ? 0.7 : 1 }}><div style={{ ...k, fontSize: 9 }}>{a}{note}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums', color: col ?? C.ink }}>{b}</b></div>
                           ))}
                         </div>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -693,7 +695,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
                 })}
               </div>
             )}
-          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ERA, xERA and innings are this season’s from our pitcher stats; the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
+          <div style={{ fontSize: 11, color: C.faint, marginTop: 10 }}>{noAwards ? 'Award history could not be read from the MLB Stats API, so established names are screened by workload only. ' : ''}ERA, xERA and innings are this season’s (xERA from Baseball Savant, which carries it for every pitcher; one on under 100 plate appearances is greyed and marked thin, because it is noisy); the green xERA marks an ERA at least a run above it. Established means an All-Star, Cy Young, MVP or All-MLB selection, or {ESTABLISHED_PITCHES.toLocaleString()}+ pitches since 2024. A small sample is under 300 of his own {lc}s: shown, but noisy, so check the count. Strong shape means a Shape Score of {STRONG_SCORE} or more, weak {WEAK_SCORE} or less. Describes what has happened, not a forecast. Click a pitcher for his shape, his season and where they rank.</div>
         </>
       )}
     </section>

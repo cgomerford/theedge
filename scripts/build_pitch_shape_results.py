@@ -6,7 +6,7 @@ and `pitch_shape_results_pitcher` (each pitcher's own outcomes on each pitch typ
 results heat map and Shape Score: what pitches at a given shape have produced (runs, wOBA, xwOBA, average, slugging, whiffs), and what a
 pitcher's own pitch has produced against that.
 
-TABLE OWNERSHIP: this script (via .github/workflows/shape-results.yml) is the ONLY writer of both tables.
+TABLE OWNERSHIP: this script (via .github/workflows/shape-results.yml) is the ONLY writer of both tables, and of pitch_shape_pitcher_expected (each pitcher's ERA and xERA).
 
 SOURCE: Baseball Savant statcast_search CSV, one game day per request, regular season, 2024..current, as build_pitch_shape_cells.py.
 Columns checked against a live pull of 2026-09-15: events, woba_value, woba_denom, estimated_woba_using_speedangle, delta_run_exp,
@@ -15,6 +15,7 @@ Definitions (all described in the migration): a plate appearance is a pitch with
 AB_EVENTS (walks, hit by pitch, sacrifices and interference are not at-bats); run value is delta_run_exp summed over pitches that have one.
 
 USAGE
+  python3 scripts/build_pitch_shape_results.py --expected-only        # just ERA / xERA from Savant's expected-statistics file (seconds), writes
   python3 scripts/build_pitch_shape_results.py                       # 2024..current, writes
   python3 scripts/build_pitch_shape_results.py --dry-run --start 2026-09-15 --end 2026-09-15
 """
@@ -80,6 +81,34 @@ def fetch_day(d: date):
     raise RuntimeError(f'could not fetch {d} after 4 tries')  # a silent gap would skew the map
 
 
+EXPECTED_URL = ('https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=pitcher&year={y}&position=&team=&filterType=bip&min=1&csv=true')
+
+
+def fetch_expected(year: int) -> pd.DataFrame:
+    """One season of Savant's expected statistics for pitchers with the minimum at 1 plate appearance (columns checked 2026-11-07: player_id, pa, bip, era, xera, woba, est_woba)."""
+    r = http_get(EXPECTED_URL.format(y=year), total=90)
+    text = r.content.decode('utf-8-sig')   # BOM-safe
+    df = pd.read_csv(io.StringIO(text))
+    need = {'player_id', 'pa', 'bip', 'era', 'xera', 'woba', 'est_woba'}
+    if r.status_code != 200 or not need.issubset(df.columns):
+        raise RuntimeError(f'expected-statistics file for {year} is not as expected (HTTP {r.status_code}, columns {list(df.columns)[:8]})')
+    out = df[['player_id', 'pa', 'bip', 'era', 'xera', 'woba', 'est_woba']].copy()
+    out.insert(0, 'season', year)
+    return out
+
+
+def write_expected(sb, frames: list, started) -> int:
+    rows = []
+    for f in frames:
+        for r in f.itertuples(index=False):
+            nz = lambda v: None if pd.isna(v) else round(float(v), 3)
+            rows.append({'season': int(r.season), 'pitcher_id': int(r.player_id), 'pa': int(r.pa), 'bip': int(r.bip), 'era': nz(r.era), 'xera': nz(r.xera),
+                         'woba': nz(r.woba), 'est_woba': nz(r.est_woba), 'updated_at': started.isoformat()})
+    for i in range(0, len(rows), 500):
+        sb.table('pitch_shape_pitcher_expected').upsert(rows[i:i + 500], on_conflict='season,pitcher_id').execute()
+    return len(rows)
+
+
 def prepare(df: pd.DataFrame) -> pd.DataFrame:
     """One row per pitch with every summable measure; keys hb10 / ivb10 / season added."""
     df = df[df['pitch_type'].isin(PITCH_TYPES) & df['p_throws'].isin(['R', 'L'])]
@@ -116,7 +145,33 @@ def main() -> None:
     ap.add_argument('--end')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--wait', type=int, default=10, help='seconds to abort (Ctrl-C) before the upsert')
+    ap.add_argument('--expected-only', action='store_true', help='only refresh ERA / xERA from Savant\'s expected-statistics file')
     args = ap.parse_args()
+
+    if args.expected_only:
+        year_now = date.today().year
+        frames = [fetch_expected(y) for y in range(FIRST_SEASON, year_now + 1)]
+        allx = pd.concat(frames, ignore_index=True)
+        print(f'{len(allx):,} pitcher x season rows; xERA present on {int(allx["xera"].notna().sum()):,}')
+        print('5-row sample (most PA):')
+        print(allx.sort_values('pa', ascending=False).head(5).to_string(index=False))
+        if args.dry_run:
+            print('\n--dry-run: nothing written.')
+            return
+        from dotenv import load_dotenv
+        from supabase import create_client
+        load_dotenv('.env.local')
+        url = (os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL') or '').strip()
+        key = (os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or '').strip()
+        if not url or not key:
+            print('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY env vars')
+            sys.exit(1)
+        sb = create_client(url, key)
+        print(f'\nWriting {len(allx)} rows to pitch_shape_pitcher_expected in {args.wait}s. Ctrl-C to abort.')
+        time.sleep(args.wait)
+        n_rows = write_expected(sb, frames, datetime.now(timezone.utc))
+        print(f'  wrote {n_rows} rows')
+        return
 
     today = date.today()
     start = date.fromisoformat(args.start) if args.start else date(FIRST_SEASON, 3, 15)
@@ -215,6 +270,8 @@ def main() -> None:
         print(f'REFUSING to delete {stale} stale rows (only {len(rows)} written): something is wrong.')
         sys.exit(1)
     sb.table('pitch_shape_results').delete().in_('span', spans).eq('coord_era', COORD_ERA).lt('updated_at', started.isoformat()).execute()
+    n_exp = write_expected(sb, [fetch_expected(y) for y in range(FIRST_SEASON, date.today().year + 1)], started)
+    print(f'  wrote {n_exp} expected-statistics rows', flush=True)
     sb.table('cron_run_log').insert({
         'job': 'build_pitch_shape_results', 'started_at': started.isoformat(), 'finished_at': datetime.now(timezone.utc).isoformat(),
         'rows_written': len(rows) + len(prow), 'status': 'ok', 'note': f'{n_days} game days, seasons {spans}',

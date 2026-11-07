@@ -115,3 +115,20 @@ $$;
 
 revoke all on function public.shape_window_lines(int, text, text, numeric, numeric, numeric, numeric, bigint) from public, anon, authenticated;
 grant execute on function public.shape_window_lines(int, text, text, numeric, numeric, numeric, numeric, bigint) to service_role;
+
+-- pitch_shape_pitcher_expected: each pitcher's ERA, xERA and expected wOBA for a season from Baseball Savant's expected-statistics leaderboard with the minimum set to 1, so a pitcher with
+-- few plate appearances still has his numbers (the leaderboard page hides them below a minimum; the file does not). The Pitch Shape Lab's "Find me a pitcher" reads ERA and xERA from here first and
+-- from pitcher_stats second. `pa` is the plate-appearance sample behind the xERA: a number on a small sample is shown but labelled thin.
+-- Single writer: scripts/build_pitch_shape_results.py (python3 scripts/build_pitch_shape_results.py --expected-only, or the weekly shape-results job).
+create table if not exists pitch_shape_pitcher_expected (
+  season      int          not null,
+  pitcher_id  int          not null,
+  pa          int          not null,
+  bip         int          not null,
+  era         numeric,
+  xera        numeric,
+  woba        numeric,
+  est_woba    numeric,
+  updated_at  timestamptz  not null default now(),
+  primary key (season, pitcher_id)
+);

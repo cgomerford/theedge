@@ -13,7 +13,7 @@ export type FinderRow = {
   /** his own pitches on this one: the sample behind his gap */
   ownRaw?: { n: { rv: number } }
   /** his season line: ERA, xERA, FIP, innings pitched (pitcher_stats), null when we hold none */
-  stats?: { era: number | null; xera: number | null; fip: number | null; ip: number | null } | null
+  stats?: { era: number | null; xera: number | null; fip: number | null; ip: number | null; xeraPa?: number | null } | null
   /** All-Star or major selections, from the MLB Stats API; null when it could not be read */
   profile?: { allStars: number; major: boolean; debutYear: number | null } | null
 }
