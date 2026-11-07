@@ -49,3 +49,4 @@ models/data/
 models/scratch/
 models/venv/
 story-v5-out/
+.dev-cache/

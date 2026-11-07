@@ -10,6 +10,7 @@ Runs from GitHub Actions (league-player-stats.yml). Depends on nothing else.
 
 Usage:
   python3 scripts/build_league_player_stats.py [--season 2026] [--wait 5] [--dry-run]
+  python3 scripts/build_league_player_stats.py --json .dev-cache/league_player_stats.json   # local dev: write a file instead of the table
 """
 from __future__ import annotations
 
@@ -95,6 +96,7 @@ def main() -> int:
     ap.add_argument('--season', type=int, default=date.today().year)
     ap.add_argument('--wait', type=int, default=5, help='seconds to read the sample before writing')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--json', help='write the rows to this file instead of Supabase (local development; the dev server reads it when the table is missing)')
     a = ap.parse_args()
 
     ros = roster(a.season)
@@ -110,6 +112,13 @@ def main() -> int:
         keys = list(r['stats'].items())[:4]
         print(' ', r['role'], r['player_id'], r['name'], r['team_abbr'], r['position'], keys)
     if a.dry_run:
+        return 0
+    if a.json:
+        import json
+        out = Path(a.json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps({'season': a.season, 'updated': date.today().isoformat(), 'rows': rows}))
+        print(f'wrote {len(rows)} rows to {out}')
         return 0
     print(f'writing in {a.wait}s (Ctrl-C to abort)')
     time.sleep(a.wait)
