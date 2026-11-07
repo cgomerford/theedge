@@ -23,6 +23,7 @@ export default function GraphicsPage() {
             <h2>Graphic Blocks</h2>
             <span className="tag">PNG · 1200x675 / 1080x1350 · type or paste the numbers</span>
           </div>
+          <p style={{ margin: '0 0 14px', fontSize: 14 }}><a href="/admin/graphics/pitch-shape" style={{ fontWeight: 800 }}>Pitch Shape graphics →</a> vs the league, why the results are or are not there, and what if he changed his pitch.</p>
           <GraphicsStudio />
         </section>
       </div>

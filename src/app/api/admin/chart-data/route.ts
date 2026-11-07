@@ -11,7 +11,7 @@ import { getLeagueTables } from '@/lib/team-profile/league'
 import { getDefenseProfile } from '@/lib/defense-chart'
 import { getTeamBatting } from '@/lib/team-batting'
 import { findTeamByName } from '@/lib/teams'
-import { getMovementCells, getShapeLabData } from '@/lib/pitch-shape/data'
+import { getShapeGraphicData } from '@/lib/pitch-shape/graphic-data'
 import { getTeamMakeup, type Role } from '@/lib/lab/team-pitch-makeup.server-fetch-allowed'
 import { log } from '@/lib/log'
 
@@ -115,17 +115,9 @@ export async function GET(req: NextRequest) {
   }
   if (!playerId || !season) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
 
-  // Every pitch type he threw (all types: this route is admin only), from pitch_shape_pitcher, for the article Pitch shape card.
-  if (kind === 'pitch-shape') {
-    const d = await getShapeLabData(playerId)
-    if (!d) return NextResponse.json({ shape: null })
-    const want = q.get('pitchType')
-    const pitchType = d.pitches.find(p => p.pitchType === want)?.pitchType ?? d.pitches[0]?.pitchType ?? ''
-    // The same 0.1 in league cells the Pitch Shape Lab reads, centred on his average and sized like its close view, so the card and the Lab give the same numbers.
-    const cur = d.pitches.find(p => p.pitchType === pitchType)?.current
-    const half = cur ? Math.min(7, Math.max(4, Math.ceil(Math.max(cur.sdHb, cur.sdIvb) * 2))) : 6
-    const cells = cur ? await getMovementCells(pitchType, d.hand, cur.hb, cur.ivb, half) : null
-    return NextResponse.json({ shape: { pitcherId: d.pitcherId, name: d.name, hand: d.hand, teamAbbr: d.teamAbbr, season: d.season, pitches: d.pitches, cells, half, pitchType } })
+    if (kind === 'pitch-shape') {
+    // The same data the admin pitch-shape graphics use (src/lib/pitch-shape/graphic-data.ts), so the article card matches the Lab and those graphics.
+    return NextResponse.json({ shape: await getShapeGraphicData(playerId, q.get('pitchType') || null) })
   }
   if (kind === 'movement') return NextResponse.json({ rows: await getPitchMovementFromDB(playerId, season) })
 

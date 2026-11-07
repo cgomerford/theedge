@@ -31,7 +31,7 @@ const STATUS: Record<ExportData['factors'][number]['status'], { word: string; bg
   small: { word: 'Not the cause', bg: '#F1EEE6', fg: '#5b5347' }, note: { word: 'Worth noting', bg: '#FFF4CC', fg: '#7A5B00' }, unknown: { word: 'No read', bg: '#F1EEE6', fg: '#8a8275' },
 }
 
-function MapCanvas({ m, px }: { m: ExportData['map']; px: number }) {
+export function MapCanvas({ m, px, to }: { m: ExportData['map']; px: number; /** the same pitch with changes: drawn as an arrow from his average to this spot (the "what if" graphic) */ to?: { hb: number; ivb: number } | null }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const grid = makeGrid(m.payload, m.span)
   const N = 2 * grid.h10 + 1
@@ -64,6 +64,7 @@ function MapCanvas({ m, px }: { m: ExportData['map']; px: number }) {
         {m.points.map((p, i) => { const b = box(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={GT.ink} fillOpacity={0.7} stroke="#fff" strokeWidth={N / 500} /> })}
         <circle cx={a.x} cy={a.y} r={N / 38} fill="none" stroke={GT.ink} strokeWidth={N / 140} />
         <circle cx={a.x} cy={a.y} r={N / 120} fill={GT.accent} />
+        {to && (() => { const t = box(to.hb, to.ivb); return (<><line x1={a.x} y1={a.y} x2={t.x} y2={t.y} stroke={GT.accent} strokeWidth={N / 90} strokeDasharray={`${N / 40} ${N / 70}`} /><circle cx={t.x} cy={t.y} r={N / 30} fill={GT.accent} stroke="#fff" strokeWidth={N / 110} /></>) })()}
       </svg>
     </div>
   )

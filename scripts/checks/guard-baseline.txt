@@ -122,3 +122,4 @@ fetch	src/lib/scatter-data.ts
 fetch	src/lib/fielding-bible.ts
 fetch	src/components/me/dashboard/Dashboard.tsx
 fetch	src/components/me/dashboard/useLeagueData.ts
+fetch	src/components/pitch-shape/ShapeGraphicsStudio.tsx
