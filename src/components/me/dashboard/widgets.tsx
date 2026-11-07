@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Widget } from '@/lib/dashboard/layout'
 import { kpi, leagueMean, ranked, scatterPoints, type LeagueRow, type Point } from '@/lib/dashboard/compute'
-import { fmtStat, statDef, type Role } from '@/lib/dashboard/stats'
+import { fmtStat, statDef, type Role, type StatDef } from '@/lib/dashboard/stats'
 import { useRoster } from '@/components/pitch-shape/useRoster'
 import { C, GREY, NUMS, ROWLINE, SANS, dateShort } from '../ui'
 import type { RoleData } from './useLeagueData'
@@ -67,6 +67,12 @@ export function LeadersBody({ w, rows, data, mineIds }: { w: Extract<Widget, { k
   )
 }
 
+type TipProps = { active?: boolean; payload?: { payload: Point }[]; xd: StatDef; yd: StatDef }
+function ScatterTip({ active, payload, xd, yd }: TipProps) {
+  const p = active && payload && payload[0]?.payload
+  return p ? <div style={{ background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, fontFamily: SANS }}><b>{p.name}</b>{p.team ? ` · ${p.team}` : ''}<br />{xd.label} {fmtStat(xd, p.x)} · {yd.label} {fmtStat(yd, p.y)}</div> : null
+}
+
 export function ScatterBody({ w, rows, data, mineIds }: { w: Extract<Widget, { kind: 'scatter' }>; rows: LeagueRow[]; data: RoleData; mineIds: Set<number> }) {
   const miss = dataNote(data, w.role)
   if (miss) return <>{miss}</>
@@ -75,11 +81,6 @@ export function ScatterBody({ w, rows, data, mineIds }: { w: Extract<Widget, { k
   if (!xd || !yd || pts.length === 0) return note('No players pass the slicers.')
   const mine = pts.filter(p => mineIds.has(p.id)), rest = pts.filter(p => !mineIds.has(p.id))
   const mx = leagueMean(rows, w.x), my = leagueMean(rows, w.y)
-  type TipProps = { active?: boolean; payload?: { payload: Point }[] }
-  const Tip = ({ active, payload }: TipProps) => {
-    const p = active && payload && payload[0]?.payload
-    return p ? <div style={{ background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, fontFamily: SANS }}><b>{p.name}</b>{p.team ? ` · ${p.team}` : ''}<br />{xd.label} {fmtStat(xd, p.x)} · {yd.label} {fmtStat(yd, p.y)}</div> : null
-  }
   return (
     <div>
       <div style={{ width: '100%', height: 280 }}>
@@ -88,7 +89,7 @@ export function ScatterBody({ w, rows, data, mineIds }: { w: Extract<Widget, { k
             <CartesianGrid stroke="#ece8de" />
             <XAxis type="number" dataKey="x" name={xd.label} domain={['auto', 'auto']} tick={{ fontSize: 11, fill: GREY }} tickFormatter={(v: number) => fmtStat(xd, v)} label={{ value: xd.label, position: 'insideBottom', offset: -12, fontSize: 11, fill: GREY }} />
             <YAxis type="number" dataKey="y" name={yd.label} domain={['auto', 'auto']} tick={{ fontSize: 11, fill: GREY }} tickFormatter={(v: number) => fmtStat(yd, v)} width={46} />
-            <Tooltip content={<Tip />} cursor={{ strokeDasharray: '3 3' }} />
+            <Tooltip content={<ScatterTip xd={xd} yd={yd} />} cursor={{ strokeDasharray: '3 3' }} />
             {mx != null && <ReferenceLine x={mx} stroke="#9a948a" strokeDasharray="3 3" />}
             {my != null && <ReferenceLine y={my} stroke="#E36A5B" strokeDasharray="3 3" />}
             <Scatter data={rest} fill="#9BB04A" fillOpacity={0.55} isAnimationActive={false} />
