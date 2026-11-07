@@ -610,7 +610,6 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.orange : C.line}`, background: on ? '#FFF1EA' : '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
   const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 3 }
   const selectStyle: React.CSSProperties = { minHeight: 38, minWidth: 96, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 8px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
-  const preset = (label: string, set: () => void) => <button key={label} type="button" onClick={set} style={{ ...pill(false), minHeight: 34, fontSize: 12.5, fontWeight: 700 }}>{label}</button>
   const clear = () => { setMinEra(null); setMaxXera(null); setMinGap(null); setMinScore(null) }
   const surprise = () => {
     const pool = findPitchers(rows, lens, { ...base, limit: 9999 })
@@ -626,12 +625,11 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
       </div>
       {open && (
         <>
-          <div role="group" aria-label="What to look for" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0 8px' }}>
-            {LENSES.map(l => <button key={l.id} type="button" style={pill(l.id === lens)} onClick={() => setLens(l.id)}>{l.label}</button>)}
-          </div>
-          <div style={{ fontSize: 12.5, color: '#5b5347', marginBottom: 10 }}>{L.blurb}</div>
-
-          <div style={{ display: 'flex', gap: '10px 16px', flexWrap: 'wrap', alignItems: 'flex-end', background: C.soft, borderRadius: 6, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', gap: '10px 16px', flexWrap: 'wrap', alignItems: 'flex-end', background: C.soft, borderRadius: 6, padding: '10px 12px', margin: '12px 0 6px' }}>
+            <label style={field}><span className="pv-k">Look for</span>
+              <select style={{ ...selectStyle, minWidth: 230 }} value={lens} onChange={e => setLens(e.target.value as LensId)} aria-label="What to look for">
+                {LENSES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
+              </select></label>
             <label style={field}><span className="pv-k">ERA at least</span>
               <select style={selectStyle} value={selVal(minEra)} onChange={e => setMinEra(num(e.target.value))} aria-label="ERA at least">
                 <option value="">Any</option>{ERA_MIN.map(v => <option key={v} value={v}>{v.toFixed(1)}</option>)}
@@ -652,13 +650,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick }: { board: Boar
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer', minHeight: 38, fontSize: 13 }}><input type="checkbox" checked={small} onChange={e => setSmall(e.target.checked)} /> Include small samples</label>
             {anyFilter && <button type="button" onClick={clear} style={{ ...pill(false), minHeight: 38, marginLeft: 'auto' }}>Clear filters</button>}
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '8px 0 12px' }}>
-            <span className="pv-k">Quick sets</span>
-            {preset('Inflated ERA, strong shape', () => { setLens('any'); setMinEra(5); setMinGap(1); setMinScore(70); setSeed(null) })}
-            {preset('ERA 6+, xERA 3.5 or lower, Shape 90+', () => { setLens('any'); setMinEra(6); setMaxXera(3.5); setMinScore(90); setSeed(null) })}
-            {preset('Elite shape, ugly ERA', () => { setLens('any'); setMinEra(5); setMinScore(90); setSeed(null) })}
-          </div>
-
+          <div style={{ fontSize: 12.5, color: '#5b5347', margin: '0 0 12px' }}>{L.blurb}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
             <button type="button" onClick={surprise} disabled={!board || total === 0} style={{ minHeight: 46, padding: '0 22px', borderRadius: 4, border: 'none', background: C.orange, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit', opacity: !board || total === 0 ? 0.4 : 1 }}>Surprise me</button>
             <button type="button" onClick={() => setSeed(Math.floor(Math.random() * 1e9))} disabled={!board || total === 0} style={{ ...pill(seed != null), minHeight: 46, opacity: !board || total === 0 ? 0.4 : 1 }}>↻ Shuffle six</button>
