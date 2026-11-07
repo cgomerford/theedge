@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 // Starts the existing Stripe checkout (POST /api/stripe/checkout) and sends the browser to Stripe. Pro itself is granted
 // only by the Stripe webhook after payment, never here. Shown to signed-in people without Pro only.
-export default function ProCheckoutButton({ children, interval = 'year', variant = 'solid' }: { children: React.ReactNode; interval?: 'year' | 'month'; variant?: 'solid' | 'outline' }) {
+export default function ProCheckoutButton({ children, variant = 'solid', expect }: { children: React.ReactNode; variant?: 'solid' | 'outline'; /** the plan the label shows; if the offer has moved on, checkout refuses (409) and the page reloads rather than charge a different price */ expect?: 'founding' | 'standard' }) {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -12,12 +12,13 @@ export default function ProCheckoutButton({ children, interval = 'year', variant
     setBusy(true)
     setFailed(false)
     try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval }) })
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(expect ? { expect } : {}) })
       const json = (await res.json().catch(() => ({}))) as { url?: string }
       if (res.ok && json.url) {
         window.location.href = json.url
         return
       }
+      if (res.status === 409 && (json as { error?: string }).error === 'price_changed') { window.location.reload(); return }
       setFailed(true)
     } catch {
       setFailed(true)

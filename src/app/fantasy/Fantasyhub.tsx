@@ -740,9 +740,9 @@ export default function FantasyHub({
         {!isPro && (
           <section className="rounded-2xl bg-[#1A1A1A] p-6 sm:p-8 mb-4">
             <div className="font-mono text-[10px] uppercase tracking-widest text-[#FDE047] font-bold mb-2">
-              ⊕ Pro · £4/mo founding
+              ⊕ Pro · Founding 100
             </div>
-            <h2 className="font-serif text-2xl text-white mb-2">You&apos;re seeing the free three. The rest is £4.</h2>
+            <h2 className="font-serif text-2xl text-white mb-2">You&apos;re seeing the free three. The rest is Pro.</h2>
             <p className="font-serif text-stone-400 text-[14px] max-w-2xl mb-5">
               Every grab, start, dump and buy. Who&apos;s throwing twice. Who your league just added. The AA kids. Plus dump your roster in and we&apos;ll tell you who to sit.
             </p>

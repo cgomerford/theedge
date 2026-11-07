@@ -1228,7 +1228,7 @@ export default function EdgeIndicatorV6(props: EdgeIndicatorV6Props) {
 
           {!isPro && (
             <div style={{ margin: '4px 0 14px', background: '#1A1A1A', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: '#FDE047', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', marginBottom: 5 }}>⊕ Pro · £4/mo founding rate</div>
+              <div style={{ fontSize: 10, color: '#FDE047', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '.06em', marginBottom: 5 }}>⊕ Pro · Founding 100</div>
               <div style={{ fontSize: 12, color: 'rgba(250,248,243,.8)', lineHeight: 1.5, marginBottom: 8 }}>
                 Full drill-down on every factor — every stat behind the bars.
               </div>

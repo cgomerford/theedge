@@ -1,6 +1,5 @@
-import { FOUNDING } from '@/lib/pricing'
 import type { ViewerTier } from '@/lib/require-pro-types'
-import ProCheckoutButton from './ProCheckoutButton'
+import ProUnlockButton from './ProUnlockButton'
 import CreateAccountButton from './CreateAccountButton'
 import OpenLookButton from './OpenLookButton'
 import LabAnonLine from './LabAnonLine'
@@ -17,7 +16,6 @@ export const FREE_LOOK_NOTE = 'Your free deep look for today. Pro opens every on
 export const OPEN_LINE = 'Open your free deep look for today'
 export const USED_LINE = 'Your free deep look today is used.'
 export const ANON_LINE = 'Create a free account to open one full look a day.'
-export const UNLOCK_LABEL = `Unlock with Founding Pro, £${FOUNDING.price}/yr`
 export const SIGNUP_LABEL = 'Create account'
 
 export type Openable = { feature: string; entityId: string }
@@ -35,7 +33,7 @@ export function ProGateRow({ tier, source, openable, noButton, lockedLine, who }
       ) : tier === 'member' ? (
         <>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#1A1A1A' }}>{lockedLine ?? USED_LINE}</span>
-          <ProCheckoutButton>{UNLOCK_LABEL}</ProCheckoutButton>
+          <ProUnlockButton />
         </>
       ) : (
         <>

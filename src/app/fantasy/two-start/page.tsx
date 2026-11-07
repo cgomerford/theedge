@@ -97,7 +97,7 @@ export default async function TwoStartPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-yellow-300 font-bold mb-2">
-                  ⊕ Pro Tier · £4/mo · Founding 100
+                  ⊕ Pro Tier · Founding 100
                 </div>
                 <h3 className="font-serif font-light text-2xl text-white leading-tight mb-2">
                   Get next week&apos;s 2-start preview.

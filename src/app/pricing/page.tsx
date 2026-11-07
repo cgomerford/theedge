@@ -4,7 +4,8 @@ import CreateAccountButton from '@/components/pro/CreateAccountButton'
 import ManageSubscriptionButton from '@/components/pro/ManageSubscriptionButton'
 import { BreadcrumbSchema } from '@/components/StructuredData'
 import { getViewerTier } from '@/lib/require-pro'
-import { FOUNDING, MONTHLY, formatPrice, FREE_FOLLOW_LIMITS, SHOW_PRICE_SIGNED_OUT_ON_PRICING } from '@/lib/pricing'
+import { FOUNDING, STANDARD, FOUNDING_LIMIT, formatPrice, formatPriceLong, FREE_FOLLOW_LIMITS, SHOW_PRICE_SIGNED_OUT_ON_PRICING } from '@/lib/pricing'
+import { getOffer } from '@/lib/pro-offer-server'
 import { pageMeta } from '@/lib/seo'
 
 // Who sees what:
@@ -15,7 +16,7 @@ import { pageMeta } from '@/lib/seo'
 
 export const metadata = pageMeta({
   title: 'Pricing',
-  description: `Front-office-style breakdowns for fans. Built on public game data. Free account, or Founding Pro at ${formatPrice(FOUNDING).replace('/yr', ' a year')}.`,
+  description: `Front-office-style breakdowns for fans. Built on public game data. Free account, or Pro at ${formatPriceLong(FOUNDING)} for founding members (${formatPriceLong(STANDARD)} after).`,
   path: '/pricing',
 })
 
@@ -47,7 +48,9 @@ const OPENS: { name: string; shows: string; why: string }[] = [
 
 const FAQ: { q: string; a: string }[] = [
   { q: 'Can I cancel anytime?', a: 'Yes, from your account page. You keep Pro until the end of the period you paid for.' },
-  { q: 'What does Founding mean?', a: `The first 100 subscribers pay ${formatPrice(FOUNDING).replace('/yr', ' a year')} or ${formatPrice(MONTHLY).replace('/mo', ' a month')}, and keep that price as long as they stay subscribed.` },
+  { q: 'What does Founding mean?', a: `The first ${FOUNDING_LIMIT} subscribers pay ${formatPriceLong(FOUNDING)} and keep that price as long as they stay continuously subscribed. After that, annual Pro is ${formatPriceLong(STANDARD)}. Pro is billed in US dollars.` },
+  { q: 'I already subscribe. Does anything change for me?', a: 'No. Your current plan, price and renewal terms stay exactly as they are.' },
+  { q: 'Is there a monthly plan?', a: 'No. Pro is billed once a year, in US dollars.' },
   { q: 'What happens in the off-season?', a: 'The labs, player pages and your own page run on the full 2026 season, so you can look back at any player or pitcher. Game-day pages return in spring.' },
   { q: 'Where does the data come from?', a: 'Built on public game data. Independent, not affiliated with MLB.' },
   { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
@@ -63,6 +66,9 @@ const MUTED = '#8a8275'
 export default async function PricingPage() {
   const tier = await getViewerTier()
   const showPrice = tier !== 'anon' || SHOW_PRICE_SIGNED_OUT_ON_PRICING
+  const offer = tier !== 'pro' && showPrice ? await getOffer() : null   // what checkout would charge a new annual subscriber right now
+  const closed = offer?.founding === 'closed'
+  const annualPlan = offer?.annual.plan ?? null
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -123,7 +129,7 @@ export default async function PricingPage() {
 
         {/* e) price block */}
         <section aria-labelledby="price-h" style={{ borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '20px 0', marginBottom: 40 }}>
-          <h2 id="price-h" style={H2}>Founding Pro</h2>
+          <h2 id="price-h" style={H2}>{closed ? 'Pro' : 'Founding Pro'}</h2>
           {tier === 'pro' ? (
             <div style={{ display: 'grid', gap: 10 }}>
               <span style={{ fontSize: 18, fontWeight: 800 }}>{"You're on Pro"}</span>
@@ -131,13 +137,24 @@ export default async function PricingPage() {
             </div>
           ) : showPrice ? (
             <>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>Founding Pro: {formatPrice(FOUNDING).replace('/yr', ' a year')}.</div>
-              <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>For the first 100 subscribers. Your price stays while you stay subscribed.</p>
-              <p style={{ margin: '4px 0 14px', fontSize: 15, color: '#5b5347' }}>Or {formatPrice(MONTHLY).replace('/mo', ' a month')}.</p>
+              {closed ? (
+                <>
+                  <div style={{ fontSize: 28, fontWeight: 800 }}>Pro: {formatPriceLong(STANDARD)}.</div>
+                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>Billed in US dollars. Founding Pro, {formatPriceLong(FOUNDING)}, closed after the first {FOUNDING_LIMIT} subscribers; founders keep that price while they stay continuously subscribed.</p>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 28, fontWeight: 800 }}>Founding Pro: {formatPriceLong(FOUNDING)}.</div>
+                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>For the first {FOUNDING_LIMIT} subscribers, billed in US dollars. Your price stays while you stay continuously subscribed.</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 15, color: '#5b5347' }}>After that, Pro is {formatPriceLong(STANDARD)}.</p>
+                </>
+              )}
+              <div style={{ height: 10 }} />
               {tier === 'member' ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  <ProCheckoutButton interval="year">{`Founding Pro, ${formatPrice(FOUNDING)}`}</ProCheckoutButton>
-                  <ProCheckoutButton interval="month" variant="outline">{`Monthly, ${formatPrice(MONTHLY)}`}</ProCheckoutButton>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                  {annualPlan
+                    ? <ProCheckoutButton expect={annualPlan}>{annualPlan === 'founding' ? `Founding Pro, ${formatPrice(FOUNDING)}` : `Pro, ${formatPrice(STANDARD)}`}</ProCheckoutButton>
+                    : <span style={{ fontSize: 14, color: '#5b5347' }}>Annual checkout is not open right now.</span>}
                 </div>
               ) : (
                 <CreateAccountButton source="pricing" label="Create an account to upgrade" accent />

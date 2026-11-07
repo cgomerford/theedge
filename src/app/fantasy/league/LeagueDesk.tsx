@@ -597,7 +597,7 @@ export default function LeagueDesk({ isPro }: { isPro: boolean }) {
                 href="/pricing"
                 className="inline-block font-mono text-[11px] uppercase tracking-widest bg-[#FDE047] text-stone-900 px-5 py-3 font-bold hover:bg-yellow-200"
               >
-                Unlock Pro · £4/mo →
+                See Pro pricing →
               </Link>
             </section>
           )}

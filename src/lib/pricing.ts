@@ -7,22 +7,24 @@ import { FREE_LIMITS } from '@/lib/follows/config'
 //   signed in, no Pro -> the price shows on /pricing and inside the one ProGate on a page
 //   Pro               -> no prices and no upgrade prompts
 
-export const FOUNDING = { label: 'Founding', price: 40, currency: 'GBP', interval: 'year' } as const
-export const MONTHLY = { price: 4, currency: 'GBP', interval: 'month' } as const
+/** The first this-many subscribers get the Founding price and keep it while they stay continuously subscribed. */
+export const FOUNDING_LIMIT = 100
 
-type Money = { price: number; currency: string; interval: 'year' | 'month' }
+// Pro is sold annually, in US dollars. Founding is the first FOUNDING_LIMIT subscribers; Standard applies once founding closes.
+// There is no monthly plan: a monthly USD price has not been decided, so none is offered or shown.
+export const FOUNDING = { label: 'Founding', price: 45, currency: 'USD', interval: 'year' } as const
+export const STANDARD = { label: 'Standard', price: 60, currency: 'USD', interval: 'year' } as const
 
-const SYMBOL: Record<string, string> = { GBP: '£', USD: '$', EUR: '€' }
-const SHORT: Record<Money['interval'], string> = { year: 'yr', month: 'mo' }
+type Money = { price: number; currency: 'USD'; interval: 'year' }
 
-/** formatPrice(FOUNDING) -> "£40/yr"; formatPrice(MONTHLY) -> "£4/mo" */
+/** formatPrice(FOUNDING) -> "US$45/yr" */
 export function formatPrice(p: Money): string {
-  return `${SYMBOL[p.currency] ?? ''}${p.price}/${SHORT[p.interval]}`
+  return `US$${p.price}/yr`
 }
 
-/** "£40/yr Founding, then £4/mo" (shown only to signed-in people without Pro) */
-export function foundingThenMonthly(): string {
-  return `${formatPrice(FOUNDING)} ${FOUNDING.label}, then ${formatPrice(MONTHLY)}`
+/** formatPriceLong(FOUNDING) -> "US$45 a year" */
+export function formatPriceLong(p: Money): string {
+  return `US$${p.price} a year`
 }
 
 /** What a free account can follow. The one place the limits live. */

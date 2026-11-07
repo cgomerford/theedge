@@ -63,7 +63,7 @@ export default function ProGate({
             href="/pricing"
             className="inline-block font-mono text-xs uppercase tracking-widest bg-stone-900 text-white px-6 py-3 hover:bg-stone-800 transition rounded"
           >
-            Unlock Pro · £4/mo →
+            See Pro pricing →
           </Link>
 
           <p className="text-[10px] text-stone-400 mt-3 font-mono">
