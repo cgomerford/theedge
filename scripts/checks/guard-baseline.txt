@@ -126,3 +126,6 @@ fetch	src/components/pitch-shape/ShapeGraphicsStudio.tsx
 fetch	src/components/pitch-shape/LevelBar.tsx
 fetch	src/components/pitch-shape/MilbPitcherCard.tsx
 fetch	src/components/pitch-shape/LevelsCompared.tsx
+fetch	src/lib/milb-shape/game-log.ts
+fetch	src/components/pitching-lab/LabLevelBar.tsx
+fetch	src/components/pitch-shape/PitcherShapeLevels.tsx

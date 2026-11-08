@@ -9,14 +9,14 @@
 // Shape is physical, so it is compared directly. Misses are measured within each level, against that level's own hitters, parks and strike zone, so they are shown
 // side by side and are not put on one scale. Nothing here predicts anything.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { C } from '@/components/team/ui'
 import type { LevelsCompared as Data, MoverSet, Pair } from '@/lib/milb-shape/compare-server'
 import type { LevelSummary, Mover, Shape } from '@/lib/milb-shape/compare'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { MIN_WINDOW_SWINGS } from './finder-math'
-import { makeGrid, stats } from './heatGrid'
+import { makeGrid, stats, type Grid } from './heatGrid'
 import { log } from '@/lib/log'
 
 const ORANGE_TEXT = '#B83A0E'
@@ -60,6 +60,7 @@ function useCells(level: Level, type: string, hand: string, skip: boolean) {
 }
 
 const sgn = (x: number, d = 1) => { const r = Number(x.toFixed(d)); return r === 0 ? (0).toFixed(d) : `${r > 0 ? '+' : '−'}${Math.abs(r).toFixed(d)}` }
+const pc = (x: number | null | undefined, d = 0) => (x == null ? '—' : `${(x * 100).toFixed(d)}%`)
 const th: React.CSSProperties = { textAlign: 'left', fontSize: 10, letterSpacing: '.1em', fontWeight: 800, color: C.mute, textTransform: 'uppercase', padding: '8px 10px', borderBottom: `1px solid ${C.line}`, whiteSpace: 'nowrap' }
 const td: React.CSSProperties = { padding: '8px 10px', borderBottom: `1px solid ${C.soft}`, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', verticalAlign: 'top' }
 
@@ -174,6 +175,116 @@ function Spot({ type, hand, place, radius, lc }: { type: string; hand: string; p
   )
 }
 
+
+// ---- the three maps side by side --------------------------------------------------------------------------------------------------------------------
+
+type Metric = 'swing' | 'whiff'
+const HALF = 12
+// One absolute colour scale per measure, shared by all three maps, so a darker map really is a level where hitters swung more (or missed more).
+const RANGE: Record<Metric, [number, number]> = { swing: [0.25, 0.65], whiff: [0.08, 0.40] }
+const METRIC_LABEL: Record<Metric, string> = { swing: 'Swings per pitch', whiff: 'Whiffs per swing' }
+const MIN_PITCHES_WINDOW = 60
+function ramp(t: number): [number, number, number] {
+  const a: [number, number, number] = [244, 238, 227], b: [number, number, number] = [255, 138, 80], c: [number, number, number] = [168, 48, 14]
+  const k = Math.max(0, Math.min(1, t))
+  const [p, q, u] = k < 0.5 ? [a, b, k / 0.5] : [b, c, (k - 0.5) / 0.5]
+  return [Math.round(p[0] + (q[0] - p[0]) * u), Math.round(p[1] + (q[1] - p[1]) * u), Math.round(p[2] + (q[2] - p[2]) * u)]
+}
+/** The measure in a window of half-width r10 (tenths of an inch) around a point, or null when the window holds too little to show. */
+export function windowRate(g: Grid, metric: Metric, hb: number, ivb: number, r10: number, minSwings: number): { rate: number | null; pitches: number; swings: number } {
+  const s = stats(g, Math.round(hb * 10), Math.round(ivb * 10), r10)
+  const rate = metric === 'swing' ? (s.pitches >= MIN_PITCHES_WINDOW ? s.swings / s.pitches : null) : (s.swings >= minSwings ? s.whiffs / s.swings : null)
+  return { rate, pitches: s.pitches, swings: s.swings }
+}
+
+function MapCanvas({ grid, c0, r10, metric, level, place, hover, onHover, minSwings }: {
+  grid: Grid; c0: { hb: number; ivb: number }; r10: number; metric: Metric; level: Level; place: { hb: number; ivb: number } | null
+  hover: { hb: number; ivb: number } | null; onHover: (h: { hb: number; ivb: number } | null) => void; minSwings: number
+}) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const N = 2 * HALF * 10 + 1
+  useEffect(() => {
+    const cv = ref.current
+    if (!cv) return
+    cv.width = N; cv.height = N
+    const ctx = cv.getContext('2d')
+    if (!ctx) return
+    const img = ctx.createImageData(N, N)
+    const [lo, hi] = RANGE[metric]
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const hb = c0.hb - HALF + x / 10, ivb = c0.ivb + HALF - y / 10
+      const r = windowRate(grid, metric, hb, ivb, r10, minSwings).rate
+      const rgb: [number, number, number] = r == null ? [237, 232, 220] : ramp((r - lo) / (hi - lo))
+      const o = (y * N + x) * 4
+      img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255
+    }
+    ctx.putImageData(img, 0, 0)
+  }, [grid, c0.hb, c0.ivb, r10, metric, minSwings, N])
+  const toPct = (hb: number, ivb: number) => ({ left: `${((hb - (c0.hb - HALF)) / (2 * HALF)) * 100}%`, top: `${((c0.ivb + HALF - ivb) / (2 * HALF)) * 100}%` })
+  return (
+    <div style={{ position: 'relative', aspectRatio: '1 / 1', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden', cursor: 'crosshair', background: '#EDE8DC' }}
+      onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); onHover({ hb: c0.hb - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb: c0.ivb + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF }) }}
+      onMouseLeave={() => onHover(null)}>
+      <canvas ref={ref} role="img" aria-label={`${LEVEL_LABEL[level]} movement map coloured by ${METRIC_LABEL[metric].toLowerCase()}`} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
+      {place && <span aria-hidden style={{ position: 'absolute', ...toPct(place.hb, place.ivb), width: 14, height: 14, marginLeft: -7, marginTop: -7, border: `2px dashed ${C.ink}`, background: 'rgba(255,255,255,.25)' }} />}
+      {hover && <span aria-hidden style={{ position: 'absolute', ...toPct(hover.hb, hover.ivb), width: 12, height: 12, marginLeft: -6, marginTop: -6, borderRadius: '50%', border: `2px solid ${C.ink}`, background: 'rgba(255,255,255,.5)' }} />}
+    </div>
+  )
+}
+
+function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: string; place: { hb: number; ivb: number } | null; radius: number; lc: string }) {
+  const m = useCells('mlb', type, hand, false), a = useCells('aaa', type, hand, false), f = useCells('fsl', type, hand, false)
+  const [metric, setMetric] = useState<Metric>('swing')
+  const [hover, setHover] = useState<{ hb: number; ivb: number } | null>(null)
+  const r10 = Math.round(radius * 10)
+  const levels = useMemo(() => ([['mlb', m], ['aaa', a], ['fsl', f]] as const).filter((x): x is readonly [Level, MovementCellsPayload] => !!x[1]).map(([level, p]) => ({ level, p, grid: makeGrid(p, 'latest'), tot: p.seasons.find(s => s.season === p.latest)?.league ?? { pitches: 0, swings: 0, whiffs: 0 } })), [m, a, f])
+  if (m === undefined || a === undefined || f === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading the three maps…</p>
+  if (levels.length < 2) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Fewer than two levels have a map for this pitch yet.</p>
+  const c0 = { hb: levels[0].p.hb0, ivb: levels[0].p.ivb0 }
+  const [lo, hi] = RANGE[metric]
+  const swingPct = (t: { pitches: number; swings: number }) => (t.pitches ? t.swings / t.pitches : null)
+  return (
+    <div>
+      <Chips2 label="Measure" value={metric} onChange={v => setMetric(v as Metric)} options={[{ id: 'swing', text: 'Swings per pitch' }, { id: 'whiff', text: 'Whiffs per swing' }]} />
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${levels.length}, minmax(0, 1fr))`, gap: 12 }} className="lc-maps">
+        {levels.map(l => {
+          const here = hover ? windowRate(l.grid, metric, hover.hb, hover.ivb, r10, MIN_SW) : null
+          return (
+            <div key={l.level} style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}><Dot level={l.level} />{LEVEL_LABEL[l.level]}</div>
+              <MapCanvas grid={l.grid} c0={c0} r10={r10} metric={metric} level={l.level} place={place} hover={hover} onHover={setHover} minSwings={MIN_SW} />
+              <div style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.45 }}>
+                <b>{metric === 'swing' ? pc(swingPct(l.tot), 1) : l.tot.swings ? pc(l.tot.whiffs / l.tot.swings, 1) : '—'}</b> <span style={{ color: C.mute }}>{metric === 'swing' ? 'of all pitches drew a swing' : 'of swings missed'} ({l.tot.pitches.toLocaleString()} pitches)</span>
+                {hover && <div style={{ color: '#3a352c' }}>{here && here.rate != null ? <><b>{pc(here.rate, 1)}</b> at the pointer <span style={{ color: C.mute }}>({here.pitches.toLocaleString()} pitches, {here.swings.toLocaleString()} swings)</span></> : <span style={{ color: C.mute }}>Pointer: too few {lc}s here to show</span>}</div>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <style>{'@media(max-width:760px){.lc-maps{grid-template-columns:1fr !important}}'}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '10px 0 4px', fontSize: 12.5, fontWeight: 700 }}>
+        <span>{pc(lo)}</span>
+        <span aria-hidden style={{ flex: 1, minWidth: 140, maxWidth: 340, height: 12, borderRadius: 3, background: `linear-gradient(90deg, rgb(244,238,227), rgb(255,138,80) 50%, rgb(168,48,14))` }} />
+        <span>{pc(hi)}</span>
+        <span style={{ color: C.mute, fontWeight: 500 }}>{METRIC_LABEL[metric]}: one scale on all three maps</span>
+      </div>
+      <div style={{ fontSize: 12, color: C.mute, lineHeight: 1.5 }}>Each point of a map is a way a {lc} can move (right is more run toward the pitcher’s arm side, up is more ride), read over every {lc} within ±{radius} in. A grey area has too few pitches ({MIN_PITCHES_WINDOW} for swings per pitch, {MIN_SW} swings for whiffs per swing). Hover one map and the same spot is read on the others.</div>
+    </div>
+  )
+}
+const MIN_SW = MIN_WINDOW_SWINGS
+
+function Chips2({ options, value, onChange, label }: { options: { id: string; text: string }[]; value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <div role="group" aria-label={label} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
+      {options.map(o => (
+        <button key={o.id} type="button" aria-pressed={o.id === value} onClick={() => onChange(o.id)}
+          style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${o.id === value ? C.ink : C.line}`, background: o.id === value ? C.ink : '#fff', color: o.id === value ? C.cream : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{o.text}</button>
+      ))}
+    </div>
+  )
+}
+
 export default function LevelsCompared({ data, active, type, hand, pitchName, place, radius }: {
   data: Data | null | undefined; active: Level; type: string; hand: 'R' | 'L'; pitchName: string; place: { hb: number; ivb: number } | null; radius: number
 }) {
@@ -194,6 +305,8 @@ export default function LevelsCompared({ data, active, type, hand, pitchName, pl
               <>
                 <div style={head}>Average shape by level</div>
                 <Averages levels={data.levels} active={active} lc={lc} />
+                <div style={head}>The three maps side by side</div>
+                <SideBySide type={type} hand={hand} place={place} radius={radius} lc={lc} />
                 <div style={head}>The same pitchers at two levels</div>
                 <Movers sets={data.movers} lc={lc} />
                 <div style={head}>The spot you chose, at each level</div>

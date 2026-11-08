@@ -6,13 +6,15 @@
 // per-pitch log. (The older SequenceExplorer.tsx is no longer used here.)
 
 import SequenceLab from '@/components/pitching-lab/SequenceLab'
+import { useParams } from 'next/navigation'
 import { usePitchingLabData } from '@/lib/pitching-lab-context'
 
 export default function SequencingPage() {
-  const { data, failed } = usePitchingLabData()
+  const { data } = usePitchingLabData()
+  // the pitcher id comes from the address, so a pitcher who has only pitched in the minors opens too (the MLB season data above may not exist for him)
+  const params = useParams()
+  const id = data?.id ?? Number(params.playerId)
+  if (!Number.isInteger(id) || id <= 0) return null
 
-  if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this pitcher&apos;s data right now.</div>
-  if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
-
-  return <SequenceLab id={data.id} role="pitcher" />
+  return <SequenceLab id={id} role="pitcher" />
 }

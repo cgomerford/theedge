@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPitcherPitchLog } from '@/lib/pitcher-pitch-log'
 import { canReadDeepData } from '@/lib/deep-look'
 import { aggToArr, aggregate } from '@/lib/zone-stats'
+import { parseLevel } from '@/lib/milb-shape/levels'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
   const range = searchParams.get('range') === 'career' ? 'career' : 'season'
   if (!playerId) return NextResponse.json({ error: 'playerId required' }, { status: 400 })
 
-  const log = await getPitcherPitchLog(playerId, season, range)
+  const level = parseLevel(searchParams.get('level'))   // MLB unless asked for Triple-A or the Florida State League
+  const log = await getPitcherPitchLog(playerId, season, range, level)
   if (!log) return NextResponse.json({ error: 'no data' }, { status: 404 })
   // summary=faced: every hitter this pitcher has faced in the range, with pitches and plate appearances, and no pitch rows (small).
   if (searchParams.get('summary') === 'faced') {

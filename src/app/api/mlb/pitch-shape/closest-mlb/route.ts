@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const ex = bins.length ? explainShape(bins, shape) : null
   return NextResponse.json({
     closest: closest.map(c => ({ ...c, mlb: own.get(c.pitcherId) ?? null })), season,
-    movement: movement ? movement.shape : null,
+    movement: movement ? movement.shape : null, mlbAvgWhiff: movement ? movement.leagueWhiff : null,
     speed: ex ? { typicalVelo: ex.typicalVelo, veloDiff: ex.veloDiff, all: ex.all, atSpeed: ex.atSpeed, whiffEffect: ex.whiffEffect.speed, contactEffect: ex.contactEffect.speed } : null,
   })
 }

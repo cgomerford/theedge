@@ -18,6 +18,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import LabPlayerHeader from '@/components/labs/LabPlayerHeader'
 import { MLB_TEAMS } from '@/lib/teams'
 import { PitchingLabProvider, usePitchingLabData } from '@/lib/pitching-lab-context'
+import LabLevelBar from '@/components/pitching-lab/LabLevelBar'
 
 const TABS = [
   { seg: '',          label: 'Overview'         },
@@ -27,6 +28,7 @@ const TABS = [
   { seg: 'shape',     label: 'Shape'            },
   { seg: 'stuff',     label: 'Stuff'            },
   { seg: 'sequencing',label: 'Sequencing'       },
+  { seg: 'levels',    label: 'Levels'           },
   { seg: 'h2h',       label: 'H2H'              },
   { seg: 'trends',    label: 'Trends'           },
 ]
@@ -59,8 +61,12 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
   )
 }
 
+/** The tabs that read a level: they show the Pitching Lab's level selector. */
+const LEVEL_TABS = ['location', 'sequencing', 'levels']
+
 export default function PitcherLabLayout({ children, playerName, followSlot }: { children: React.ReactNode; playerName: string; followSlot?: React.ReactNode }) {
   const params = useParams()
+  const pathname = usePathname()
   const playerId = Number(params.playerId)
 
   return (
@@ -70,6 +76,7 @@ export default function PitcherLabLayout({ children, playerName, followSlot }: {
       <PitchingLabProvider key={playerId} pitcherId={playerId}>
         <ShellHeader playerId={playerId} playerName={playerName} followSlot={followSlot} />
         <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-8">
+          {LEVEL_TABS.some(t => pathname.endsWith(`/${t}`)) && <LabLevelBar playerId={playerId} />}
           {children}
         </div>
       </PitchingLabProvider>

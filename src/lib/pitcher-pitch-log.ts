@@ -40,6 +40,9 @@
 // against the raw CSV rather than the narrower TS parsers already
 // written). One raw per-pitch fetch, four consumers.
 
+import { getMilbGames } from '@/lib/milb-shape/game-log'
+import { isMilb, type Level } from '@/lib/milb-shape/levels'
+
 const SEASON_FALLBACK = new Date().getFullYear()
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const HIT_EVENTS = new Set(['single', 'double', 'triple', 'home_run'])
@@ -140,8 +143,16 @@ async function resolveBatters(ids: number[]): Promise<{ names: Record<number, st
 // any "career" pull, regardless of how much earlier a pitcher debuted.
 const STATCAST_FIRST_SEASON = 2015
 
-export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALLBACK, range: 'season' | 'career' = 'season'): Promise<PitcherPitchLog | null> {
-  const isCareer = range === 'career'
+/**
+ * One pitcher's season (or career) of pitches. `level` is MLB by default and unchanged; 'aaa' and 'fsl' read Baseball Savant's minor-league CSV for the same pitcher and keep only the
+ * games the MLB Stats API places at that level (a pitcher's Triple-A and Single-A games arrive together), as a season only. Exact repeat rows are dropped at every level: Savant
+ * lists some balls in play twice, which would double count them in every location and sequencing figure.
+ */
+export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALLBACK, range: 'season' | 'career' = 'season', level: Level = 'mlb'): Promise<PitcherPitchLog | null> {
+  const milb = isMilb(level)
+  const games = milb ? await getMilbGames(pitcherId, season, level) : null
+  if (milb && (games == null || games.size === 0)) return null
+  const isCareer = milb ? false : range === 'career'
   const fromYear = isCareer ? STATCAST_FIRST_SEASON : season
   const toYear = season
   const hfSea = isCareer
@@ -149,8 +160,8 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
     : `${season}%7C`
 
   const url = [
-    'https://baseballsavant.mlb.com/statcast_search/csv',
-    `?all=true&hfGT=R%7C&hfSea=${hfSea}&player_type=pitcher`,
+    milb ? 'https://baseballsavant.mlb.com/statcast-search-minors/csv' : 'https://baseballsavant.mlb.com/statcast_search/csv',
+    `?all=true&hfGT=R%7C&hfSea=${hfSea}&player_type=pitcher${milb ? `&minors=true&hfLevel=${level === 'aaa' ? 'AAA' : 'A'}%7C` : ''}`,
     `&pitchers_lookup%5B%5D=${pitcherId}`,
     `&game_date_gt=${fromYear}-01-01&game_date_lt=${toYear}-12-31`,
     '&min_pitches=0&min_results=0&group_by=name&sort_col=pitches',
@@ -196,6 +207,7 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
   const pitches: RawPitch[] = []
   const pitchNames: Record<string, string> = {}
   const batterIds = new Set<number>()
+  const seen = new Set<string>()
 
   for (let i = 1; i < lines.length; i++) {
     const cells = parseCSVLine(lines[i]).map(c => c.replace(/^"|"$/g, ''))
@@ -204,6 +216,9 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
     const plateX = Number(cells[iPlateX])
     const plateZ = Number(cells[iPlateZ])
     if (!date || !pitchType || Number.isNaN(plateX) || Number.isNaN(plateZ)) continue
+    if (games && !games.has(Number(cells[iGamePk]))) continue   // a minor-league level keeps only the games the Stats API places there
+    const ident = iGamePk !== -1 && iAtBat !== -1 && iPitchNum !== -1 ? `${cells[iGamePk]}:${cells[iAtBat]}:${cells[iPitchNum]}` : null
+    if (ident) { if (seen.has(ident)) continue; seen.add(ident) }   // an exact repeat of the same pitch
     if (iPitchName !== -1 && cells[iPitchName] && !pitchNames[pitchType]) pitchNames[pitchType] = cells[iPitchName]
 
     const velo = iVelo !== -1 ? Number(cells[iVelo]) : NaN

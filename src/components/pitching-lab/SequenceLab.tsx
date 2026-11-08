@@ -20,6 +20,7 @@ import { MIN_SAMPLE } from '@/lib/min-sample'
 import type { PitcherPitchLog, RawPitch } from '@/lib/pitcher-pitch-log'
 import { SmoothHeatmap } from './ArsenalExtras'
 import { Scene, TransparentScene, buildPaths, type PitchPath } from './PitchFlight'
+import { useShapeView } from '@/components/pitch-shape/shapeLevel'
 import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
 
@@ -179,6 +180,7 @@ const pc = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`
 
 export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role?: LabRole }) {
   const season = new Date().getFullYear()
+  const level = useShapeView().level   // MLB unless the Pitching Lab's level selector says Triple-A or the Florida State League
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   const [hist, setHist] = useState<string[]>([])
   const [stepRes, setStepRes] = useState<(Cat | 'any')[]>([])
@@ -200,9 +202,9 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
 
   useEffect(() => {
     let off = false
-    fetchLabLog(role, id, season).then(l => { if (!off) setLog(l ?? 'error') })
+    fetchLabLog(role, id, season, role === 'pitcher' && level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
-  }, [role, id, season])
+  }, [role, id, season, level])
 
   const abs = useMemo(() => {
     if (!log || log === 'error') return []

@@ -15,6 +15,10 @@ import type { Closest } from '@/lib/milb-shape/closest'
 import type { MlbLite } from '@/lib/pitch-shape/results'
 import { Headshot, TeamBadge } from '@/components/front-office/pitching/Avatar'
 import { teamOf } from '@/lib/milb-shape/teams'
+import { translate } from '@/lib/milb-shape/translate'
+import TranslationBanner from './TranslationBanner'
+import PitcherShapeLevels from './PitcherShapeLevels'
+import type { BoardRow } from '@/lib/pitch-shape/results'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import { log } from '@/lib/log'
 
@@ -24,6 +28,7 @@ type ClosestResp = {
   closest: (Closest & { mlb: MlbLite | null })[]; season: number
   /** MLB pitches that move like his (any speed): results on the MLB scale */
   movement: MlbLite | null
+  mlbAvgWhiff?: number | null
   /** the same movement at his speed against every speed, and the typical speed for it */
   speed: { typicalVelo: number | null; veloDiff: number | null; all: Rate; atSpeed: Rate; whiffEffect: number | null; contactEffect: number | null } | null
 }
@@ -72,11 +77,19 @@ function useClosest(p: MilbPitcher, type: string, hand: string, armAngle: boolea
   return got?.key === key ? got.v : undefined
 }
 
-export default function MilbPitcherCard({ p, level, season, type, hand, pitchName, armAngle, leagueDiag, onClear }: {
-  p: MilbPitcher; level: Level; season: number | null; type: string; hand: 'R' | 'L'; pitchName: string; armAngle: boolean; leagueDiag?: Diag | null; onClear: () => void
+export default function MilbPitcherCard({ p, level, season, type, hand, pitchName, armAngle, leagueDiag, row, levelAvgWhiff, onClear }: {
+  p: MilbPitcher; level: Level; season: number | null; type: string; hand: 'R' | 'L'; pitchName: string; armAngle: boolean; leagueDiag?: Diag | null
+  /** his row on this level's board (his shape's results at the level), and the level's average whiffs per swing, for the does-it-carry-to-MLB flag */
+  row?: BoardRow | null; levelAvgWhiff?: number | null; onClear: () => void
 }) {
   const closest = useClosest(p, type, hand, armAngle)
   const club = teamOf(level, p.teamAbbr)
+  // the same flag the list shows, now with his speed against MLB pitches that move like his
+  const carry = row && closest ? translate({
+    levelLabel: LEVEL_LABEL[level], level: { saved: row.shape.saved, whiff: row.shape.whiff, pitches: row.shape.pitches }, levelAvgWhiff: levelAvgWhiff ?? null,
+    mlb: closest.movement ? { saved: closest.movement.saved, whiff: closest.movement.whiff, pitches: closest.movement.pitches } : null, mlbAvgWhiff: closest.mlbAvgWhiff ?? null,
+    speed: closest.speed ? { veloDiff: closest.speed.veloDiff, atSpeedWhiff: closest.speed.atSpeed.whiff, allWhiff: closest.speed.all.whiff, swings: closest.speed.atSpeed.swings } : null,
+  }) : row?.translation ?? null
   const levels = useLevels(p.pitcherId)
   const here = levels?.find(l => l.level === level)?.repertoire ?? null
   const total = here ? here.rows.reduce((s, r) => s + r.nPitches, 0) : 0
@@ -112,6 +125,8 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
         <button type="button" onClick={onClear} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>
       </div>
 
+      <TranslationBanner t={carry} levelLabel={LEVEL_LABEL[level]} />
+
       <div style={{ display: 'flex', gap: '12px 24px', flexWrap: 'wrap', margin: '14px 0' }}>
         <div style={stat}><span style={k}>Velocity</span><span style={v}>{p.velo.toFixed(1)} mph</span></div>
         <div style={stat}><span style={k}>Ride</span><span style={v}>{p.ivb.toFixed(1)} in</span></div>
@@ -139,6 +154,13 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
           <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>Damage on contact is xwOBA on balls in play ({d.nBbe.toLocaleString()} here, {GATE.bbe} needed); lower is better for the pitcher. Variation is how much his own {lc}s vary. All of it is measured at {LEVEL_LABEL[level]} only.</div>
         </div>
       )}
+
+      <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12, marginBottom: 12 }}>
+        <div className="pv-k" style={{ color: ORANGE_TEXT }}>His shape at each level</div>
+        <p style={{ margin: '2px 0 8px', fontSize: 12.5, color: '#5b5347', lineHeight: 1.5 }}>The same pitcher’s movement at MLB and the minors, pitch by pitch. A difference here is a change in his pitch.</p>
+        <PitcherShapeLevels pitcherId={p.pitcherId} initialType={type} />
+        <a href={`/mlb/lab/pitching-lab/${p.pitcherId}/levels`} style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 700, color: ORANGE_TEXT }}>Compare his location, sequencing and results across levels in the Pitching Lab →</a>
+      </div>
 
       {levels === undefined ? <div style={{ fontSize: 13, color: C.mute, marginBottom: 12 }}>Loading his other pitches and levels…</div> : levels && (
         <>

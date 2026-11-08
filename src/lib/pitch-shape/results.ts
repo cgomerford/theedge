@@ -9,6 +9,8 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase'
 import { milbDb } from '@/lib/milb-shape/dev-db'
 import { isMilb, type Level } from '@/lib/milb-shape/levels'
+import { LEVEL_LABEL } from '@/lib/milb-shape/levels'
+import { translate, type Translation } from '@/lib/milb-shape/translate'
 import { logOnce } from '@/lib/log'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
@@ -121,6 +123,8 @@ export type BoardRow = {
   /** 1 to 99: where the shape's runs saved per 100 ranks among the shapes pitchers throw for this pitch type and hand */
   score: number | null
   gap: number | null; verdict: Verdict | null
+  /** minor-league boards only: does this shape's success at his level carry to MLB, from what MLB pitches with the same movement have produced (null for MLB rows and when either side is too thin) */
+  translation?: Translation | null
 }
 export type Board = { type: string; hand: Hand; season: number; league: Measures; rows: BoardRow[]; /** sorted runs saved of every scored shape, for placing any spot on the map */ dist: number[] }
 
@@ -337,7 +341,7 @@ const lite = (m: Measures, saved: number | null): MlbLite => ({ pitches: m.pitch
  * What MLB pitches of this type and hand shaped like (hb, ivb) have produced (all seasons added up, +/-1 in, any speed and arm angle), with the league's runs allowed per 100 for
  * the type. Used to show a minor-league pitch's closest MLB shape: it describes MLB pitches, and is never applied to the minor-league pitcher as his result. null when empty.
  */
-export async function getMlbShapeMeasures(type: string, hand: Hand, hb: number, ivb: number): Promise<{ shape: MlbLite; leagueRuns100: number | null } | null> {
+async function mlbGrid(type: string, hand: Hand) {
   const k = `${type}|${hand}`
   let hit = gridCache.get(k)
   if (!hit || Date.now() - hit.at > TTL_MS) {
@@ -347,8 +351,14 @@ export async function getMlbShapeMeasures(type: string, hand: Hand, hb: number, 
     hit = { at: Date.now(), grid: makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all'), league: measuresOf(leagueSums(rows)) }
     gridCache.set(k, hit)
   }
+  return hit
+}
+
+export async function getMlbShapeMeasures(type: string, hand: Hand, hb: number, ivb: number): Promise<{ shape: MlbLite; leagueRuns100: number | null; leagueWhiff: number | null } | null> {
+  const hit = await mlbGrid(type, hand)
+  if (!hit) return null
   const m = measuresOf(windowSums(hit.grid, Math.round(hb * 10), Math.round(ivb * 10), 10))
-  return { shape: lite(m, runsSaved(m, hit.league)), leagueRuns100: hit.league.runs100 }
+  return { shape: lite(m, runsSaved(m, hit.league)), leagueRuns100: hit.league.runs100, leagueWhiff: hit.league.whiff }
 }
 
 /** Several MLB pitchers' own results on one pitch type this season, against the MLB league's runs per 100. Pitchers without a row are left out. */
@@ -401,8 +411,10 @@ export async function getMilbBoard(level: Level, season: number, type: string, h
   })
   const savedOf = (m: Measures) => runsSaved(m, league)
   const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
+  const mlbSide = await mlbGrid(type, hand)   // MLB pitches with the same movement, to flag a shape that works here but has not worked there
   const out: BoardRow[] = list.map(({ p, hb, ivb, sm, smRaw, om, omRaw }) => {
     const shapeSaved = savedOf(sm)
+    const mm = mlbSide ? measuresOf(windowSums(mlbSide.grid, Math.round(hb * 10), Math.round(ivb * 10), 10)) : null
     const ownSaved = om && om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
     const small = om != null && om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
     const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
@@ -413,6 +425,10 @@ export async function getMilbBoard(level: Level, season: number, type: string, h
       shapeRaw: { ...smRaw, saved: runsSaved(smRaw, league) }, ownRaw: { ...omRaw, saved: runsSaved(omRaw, league) },
       overall: null, profile: null, stats: null, owned: null, role: null,
       small, score: shapeSaved == null ? null : percentile(dist, shapeSaved), gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
+      translation: translate({
+        levelLabel: LEVEL_LABEL[level], level: { saved: shapeSaved, whiff: sm.whiff, pitches: sm.pitches }, levelAvgWhiff: league.whiff,
+        mlb: mm && mlbSide ? { saved: runsSaved(mm, mlbSide.league), whiff: mm.whiff, pitches: mm.pitches } : null, mlbAvgWhiff: mlbSide?.league.whiff ?? null,
+      }),
     }
   })
   return { type, hand, season, league, rows: out, dist }

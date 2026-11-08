@@ -34,6 +34,7 @@ import { TeamBadge } from '@/components/front-office/pitching/Avatar'
 import { teamOf } from '@/lib/milb-shape/teams'
 import { LEVEL_LABEL, isMilb, type Level } from '@/lib/milb-shape/levels'
 import { buildMilbWhy } from '@/lib/milb-shape/why'
+import TranslationBanner, { TranslationChip } from './TranslationBanner'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 
 export const BLUE = ['#E8EEF4', '#C6D4E3', '#9DB3CB', '#6F8BAC', '#456A90']
@@ -324,6 +325,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score{milb ? ` · ${LEVEL_LABEL[level]}` : ''}</span></div>
           </div>
         </div>
+        {milb && <TranslationBanner t={sel.translation} levelLabel={LEVEL_LABEL[level]} />}
         <div style={{ margin: '10px 0 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <a href="#dial-in" style={{ ...pill(false), display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: C.ink }}>Dial in his shape ↓</a>
         </div>
@@ -651,7 +653,7 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={headshot(r.pitcherId)} alt="" width={40} height={40} loading="lazy" style={{ width: 40, height: 40, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom', background: C.soft, borderRadius: '50%' }} />
               <b style={{ fontSize: 14.5 }}>{r.name}</b>
-              <span style={{ color: C.mute, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{(() => { const t = teamOf(level, r.teamAbbr); return t ? <TeamBadge id={t.id} size={20} disc={false} /> : null })()}{r.teamAbbr} · {r.pitches.toLocaleString()} pitches</span>{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
+              <span style={{ color: C.mute, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{(() => { const t = teamOf(level, r.teamAbbr); return t ? <TeamBadge id={t.id} size={20} disc={false} /> : null })()}{r.teamAbbr} · {r.pitches.toLocaleString()} pitches</span>{isMilb(level) && <TranslationChip t={r.translation} />}{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
               <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 14 }}>{r.score ?? '—'}</b></span>
               <span style={{ fontWeight: 800, fontSize: 13, color: r.verdict === 'ahead' ? C.good : r.verdict === 'behind' ? C.bad : C.ink }}>{r.gap != null ? `${signed(r.gap)} /100` : ''}</span>
             </div>

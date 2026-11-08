@@ -6,13 +6,15 @@
 // season's per-pitch log. (The older zone-table view, LocationLab.tsx, is no longer used here.)
 
 import LocationExplorer from '@/components/pitching-lab/LocationExplorer'
+import { useParams } from 'next/navigation'
 import { usePitchingLabData } from '@/lib/pitching-lab-context'
 
 export default function LocationLabPage() {
-  const { data, failed } = usePitchingLabData()
+  const { data } = usePitchingLabData()
+  // the pitcher id comes from the address, so a pitcher who has only pitched in the minors opens too (the MLB season data above may not exist for him)
+  const params = useParams()
+  const id = data?.id ?? Number(params.playerId)
+  if (!Number.isInteger(id) || id <= 0) return null
 
-  if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this pitcher&apos;s data right now.</div>
-  if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
-
-  return <LocationExplorer id={data.id} role="pitcher" />
+  return <LocationExplorer id={id} role="pitcher" />
 }

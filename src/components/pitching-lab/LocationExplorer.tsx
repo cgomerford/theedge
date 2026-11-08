@@ -18,6 +18,7 @@ import { SmoothHeatmap } from './ArsenalExtras'
 import SpinBall, { SpinBallStyles } from '@/components/home/SpinBall'
 import { buildPaths } from './PitchFlight'
 import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
+import { useShapeView } from '@/components/pitch-shape/shapeLevel'
 
 export const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
 export const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
@@ -99,12 +100,13 @@ export default function LocationExplorer({ id, role = 'pitcher' }: { id: number;
   const [zone, setZone] = useState('all')
   const season = new Date().getFullYear()
   const cellMin = MIN_SAMPLE.zoneCellPitches
+  const level = useShapeView().level   // MLB unless the Pitching Lab's level selector says Triple-A or the Florida State League
 
   useEffect(() => {
     let off = false
-    fetchLabLog(role, id, season).then(l => { if (!off) setLog(l ?? 'error') })
+    fetchLabLog(role, id, season, role === 'pitcher' && level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
-  }, [role, id, season])
+  }, [role, id, season, level])
 
   const types = useMemo(() => {
     if (!log || log === 'error') return []

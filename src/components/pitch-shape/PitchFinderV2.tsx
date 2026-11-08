@@ -388,6 +388,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     return best
   }, [hover, showDots, focus, shownDots, group]) // eslint-disable-line react-hooks/exhaustive-deps
   const focusDot = focus != null ? ratedDots.find(d => d.pitcherId === focus) ?? null : null
+  // a pitcher with 100 to 299 pitches is on the level's board but not a dot on the map: his board row stands in, so his card still opens
+  const milbRowAsDot = useMemo(() => {
+    const r = !mlb && focus != null && !focusDot ? board?.rows.find(x => x.pitcherId === focus) ?? null : null
+    return r && r.velo != null && r.slot != null ? { pitcherId: r.pitcherId, name: r.name, teamAbbr: r.teamAbbr, nPitches: r.pitches, velo: r.velo, ivb: r.ivb, hb: r.hb, slot: r.slot, nSwings: r.ownRaw.n.swings, nWhiffs: r.ownRaw.whiff == null ? 0 : Math.round(r.ownRaw.whiff * r.ownRaw.n.swings), diag: undefined } : null
+  }, [mlb, focus, focusDot, board])
   const focusT = focusDot && focusPts ? { name: focusDot.name, sample: focusPts.length, points: focusPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
   const flightSpeed = useMemo(() => {
@@ -754,8 +759,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <div style={{ marginTop: 14 }}><ShapePlayerDetail level={level} diag={focusDot?.diag ?? null} leagueDiag={leagueAll} board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={payload && grid && leagueRate != null ? { payload, span, leagueRate, points: focusPts ?? [] } : null} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
-      {!locked && payload && grid && place && focus != null && !mlb && focusDot && (
-        <div id="pf2-more" style={{ marginTop: 14 }}><MilbPitcherCard p={focusDot} level={level} season={payload.latest} type={type} hand={hand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} leagueDiag={leagueAll} onClear={() => setFocus(null)} /></div>
+      {!locked && payload && grid && place && focus != null && !mlb && (focusDot ?? milbRowAsDot) && (
+        <div id="pf2-more" style={{ marginTop: 14 }}><MilbPitcherCard p={(focusDot ?? milbRowAsDot) as NonNullable<typeof focusDot>} level={level} season={payload.latest} type={type} hand={hand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} leagueDiag={leagueAll} row={board?.rows.find(r => r.pitcherId === focus) ?? null} levelAvgWhiff={board?.league.whiff ?? null} onClear={() => setFocus(null)} /></div>
       )}
 
       {!locked && payload && grid && place && (
