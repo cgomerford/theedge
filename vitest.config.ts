@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/components/admin/story/**/*.test.ts', 'src/components/admin/stat-line/**/*.test.ts', 'src/components/admin/story-v5/**/*.test.ts', 'src/lib/graphics/**/*.test.ts', 'src/lib/sequencing-lab/**/*.test.ts', 'src/lib/stuff-lab/**/*.test.ts', 'src/lib/rotation/**/*.test.ts', 'src/lib/milb-shape/**/*.test.ts', 'src/lib/pitcher-pitch-log.level.test.ts', 'src/app/api/mlb/pitch-shape/**/*.test.ts',
+    include: ['src/components/admin/story/**/*.test.ts', 'src/components/admin/stat-line/**/*.test.ts', 'src/components/admin/story-v5/**/*.test.ts', 'src/lib/graphics/**/*.test.ts', 'src/lib/sequencing-lab/**/*.test.ts', 'src/lib/stuff-lab/**/*.test.ts', 'src/lib/rotation/**/*.test.ts', 'src/lib/milb-shape/**/*.test.ts', 'src/lib/contact-shape/**/*.test.ts', 'src/lib/pitcher-pitch-log.level.test.ts', 'src/app/api/mlb/pitch-shape/**/*.test.ts',
       'src/lib/follows/**/*.test.ts',
       'src/lib/article-checks.test.ts',
       'src/lib/comments.test.ts',

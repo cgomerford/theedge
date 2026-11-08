@@ -8,10 +8,13 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { C } from '@/components/team/ui'
-import { STAT_INFO, type StatKey } from '@/lib/pitch-shape/stat-info'
+import { STAT_INFO, type StatInfo, type StatKey } from '@/lib/pitch-shape/stat-info'
 
-export default function InfoTip({ k }: { k: StatKey }) {
-  const info = STAT_INFO[k] as { title: string; what: string; read?: string; caution?: string }
+/** The hover for a stat from the shared definitions. */
+export default function InfoTip({ k }: { k: StatKey }) { return <Tip info={STAT_INFO[k] as StatInfo} /> }
+
+/** The hover for any definition (other labs pass their own text). */
+export function Tip({ info }: { info: StatInfo }) {
   const id = useId()
   const btn = useRef<HTMLButtonElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number; above: boolean } | null>(null)
