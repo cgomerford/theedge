@@ -18,6 +18,7 @@ import { teamOf } from '@/lib/milb-shape/teams'
 import { translate } from '@/lib/milb-shape/translate'
 import TranslationBanner from './TranslationBanner'
 import PitcherShapeLevels from './PitcherShapeLevels'
+import RunsSavedExplainer from './RunsSavedExplainer'
 import type { BoardRow } from '@/lib/pitch-shape/results'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import { log } from '@/lib/log'
@@ -250,6 +251,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
                   </tbody>
                 </table>
               </div>
+              <RunsSavedExplainer level="mlb" compact />
               <div style={{ fontSize: 12, color: C.mute, marginTop: 6, lineHeight: 1.5 }}>“vs his” is the MLB pitcher’s speed minus his. Each MLB pitcher’s results are his own {closest.season} {lc} against MLB hitters; runs saved per 100 is the MLB average minus his. Whiff rates need {GATE.swings} swings and runs per 100 need 300 pitches. They show what that pitch has done in MLB, not what his would do.</div>
             </>
           )}

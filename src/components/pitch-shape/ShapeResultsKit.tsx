@@ -35,6 +35,7 @@ import { teamOf } from '@/lib/milb-shape/teams'
 import { LEVEL_LABEL, isMilb, type Level } from '@/lib/milb-shape/levels'
 import { buildMilbWhy } from '@/lib/milb-shape/why'
 import TranslationBanner, { TranslationChip } from './TranslationBanner'
+import RunsSavedExplainer from './RunsSavedExplainer'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 
 export const BLUE = ['#E8EEF4', '#C6D4E3', '#9DB3CB', '#6F8BAC', '#456A90']
@@ -62,7 +63,7 @@ export function colourFor(g: number): [number, number, number] {
 
 const k: React.CSSProperties = { fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: C.mute, textTransform: 'uppercase' }
 
-export function ResultsLegend({ metric, lc }: { metric: Metric; lc: string }) {
+export function ResultsLegend({ metric, lc, level = 'mlb' }: { metric: Metric; lc: string; level?: Level }) {
   return (
     <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, flexWrap: 'wrap' }}>
@@ -71,12 +72,13 @@ export function ResultsLegend({ metric, lc }: { metric: Metric; lc: string }) {
         <span>Better</span>
       </div>
       <div style={{ color: '#5b5347', marginTop: 6, lineHeight: 1.5 }}>{metric.blurb}. {metric.up ? 'Higher is better for the pitcher.' : 'Lower is better for the pitcher.'} The middle colour is the league average for {lc}s; white means the window is too thin to show.</div>
+      {metric.id === 'saved' && <RunsSavedExplainer level={level} compact />}
     </div>
   )
 }
 
 /** Shape Score and the measures at one spot, set against the league's. */
-export function ResultsReadout({ here, league, saved, score, lc, radius, spanLabel }: { here: Measures; league: Measures; saved: number | null; score: number | null; lc: string; radius: number; spanLabel: string }) {
+export function ResultsReadout({ here, league, saved, score, lc, radius, spanLabel, level = 'mlb' }: { here: Measures; league: Measures; saved: number | null; score: number | null; lc: string; radius: number; spanLabel: string; level?: Level }) {
   const rows: [string, string, string][] = [
     ['Runs allowed per 100', here.runs100 == null ? '—' : here.runs100.toFixed(2), league.runs100 == null ? '—' : league.runs100.toFixed(2)],
     ['wOBA', here.woba == null ? '—' : d3(here.woba), league.woba == null ? '—' : d3(league.woba)],
@@ -92,7 +94,8 @@ export function ResultsReadout({ here, league, saved, score, lc, radius, spanLab
         <b style={{ fontSize: 38, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{score ?? '—'}</b>
         <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score (1 to 99){score == null ? ` · needs ${GATE.rvPitches}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+      <RunsSavedExplainer level={level} compact example={saved} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums', marginTop: 8 }}>
         <span style={k}>Measure</span><span style={{ ...k, textAlign: 'right' }}>Here</span><span style={{ ...k, textAlign: 'right' }}>League</span>
         {rows.map(([a, b, c]) => <div key={a} style={{ display: 'contents' }}><span style={{ color: '#5b5347' }}>{a}</span><b style={{ textAlign: 'right' }}>{b}</b><span style={{ textAlign: 'right', color: C.mute }}>{c}</span></div>)}
       </div>
@@ -497,6 +500,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             <tr><td style={{ padding: '7px 4px', color: '#5b5347' }}>League sample at his shape</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{shapeR.pitches.toLocaleString()} {milb ? ` ${LEVEL_LABEL[level]} pitches (${season ?? ''})` : ' league pitches (2024 on)'} · {shapeR.n.pa.toLocaleString()} plate appearances · {shapeR.n.swings.toLocaleString()} swings</td></tr>
           </tbody>
         </table>
+        <RunsSavedExplainer level={level} compact example={shapeG.saved} />
         {note && <p style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5, margin: '10px 0 0', background: C.soft, borderRadius: 4, padding: '8px 10px' }}>{note}</p>}
 
           </div>
@@ -647,7 +651,8 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
       <p style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, margin: '2px 0 10px' }}>
         {widened ? `${inside.length === 0 ? 'No pitcher averages' : `Only ${inside.length} pitcher${inside.length === 1 ? ' averages' : 's average'}`} a ${lc} within ±${radius} in of this spot, so these are the ${near.length} nearest.` : `${inside.length} pitchers average a ${lc} within ±${radius} in of this spot.`} Outperforming means his own results beat what pitches shaped like his have produced; underperforming means they trail it. The shape word says how good the shape itself is. Click a pitcher for his shape numbers and his overall numbers, with where they rank.
       </p>
-      <div role="group" aria-label="Pitchers at this shape" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+      <RunsSavedExplainer level={level} compact />
+      <div role="group" aria-label="Pitchers at this shape" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 10px' }}>
         {tabs.map(t => <button key={t.id} type="button" style={pill(tab === t.id)} onClick={() => { setTab(t.id); setAll(false) }}>{t.label}</button>)}
       </div>
       {shown.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', padding: '6px 0' }}>None here with enough pitches to compare.</div> : shown.map(({ r, rd }) => {

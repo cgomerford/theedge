@@ -651,7 +651,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: C.mute, margin: '2px 0 8px', paddingLeft: 26 }}><span>↑ RIDE (INDUCED VERTICAL BREAK, IN)</span><span>RUN (ARM-SIDE BREAK, IN) →</span></div>
 
-            {metric && <div style={{ marginBottom: 10 }}>{rGrid ? <ResultsLegend metric={metric} lc={lc} /> : <div style={{ fontSize: 13, color: '#5b5347', padding: '8px 2px' }}>{resPayload === undefined ? 'Loading what these shapes have produced…' : 'What these shapes have produced isn’t built for this pitch yet; it fills after the weekly shape-results job runs.'}</div>}</div>}
+            {metric && <div style={{ marginBottom: 10 }}>{rGrid ? <ResultsLegend metric={metric} lc={lc} level={level} /> : <div style={{ fontSize: 13, color: '#5b5347', padding: '8px 2px' }}>{resPayload === undefined ? 'Loading what these shapes have produced…' : 'What these shapes have produced isn’t built for this pitch yet; it fills after the weekly shape-results job runs.'}</div>}</div>}
             <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', fontSize: 13 }}>
               {!metric && <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, flexWrap: 'wrap' }}>
                 <span>Fewer misses than average</span>
@@ -759,7 +759,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 {rGrid && rLeague && (() => {
                   const here = measuresOf(windowSums(rGrid, Math.round(place.hb * 10), Math.round(place.ivb * 10), r10)), saved = runsSaved(here, rLeague)
                   const score = saved != null && board && board.dist.length ? percentile(board.dist, saved) : null
-                  return <ResultsReadout here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
+                  return <ResultsReadout level={level} here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
                 })()}
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>

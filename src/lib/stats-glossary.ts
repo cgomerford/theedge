@@ -309,6 +309,17 @@ export const GLOSSARY_STATS: GlossaryStat[] = [
     usedIn: ['Pitch run-value by count grid'],
   },
   {
+    slug: 'runs-saved',
+    category: 'statcast',
+    name: 'Runs saved per 100 pitches',
+    shortDef: 'How many runs a group of pitches has kept off the board, per 100 of them, compared with the average pitch of that type. Higher is better for the pitcher; zero is average.',
+    detail: 'Sum the run expectancy change of every pitch in the group (a pitch shape in the Pitch Shape Lab, or one pitcher\'s own pitches of a type), divide by the number of pitches, and multiply by 100: that is the runs allowed per 100 pitches. Runs saved is the league average for that pitch type minus the group\'s. +1.00 means one run fewer than average for every 100 pitches (over a 3,000-pitch season, about 30 runs, around three wins, as simple arithmetic to show the scale); -1.00 means one more. For a shape it covers every pitch of the type that moves like it; for a pitcher, his own pitches. A pitcher\'s own number is set against his shape\'s to say whether his results are ahead of, behind or in line with what the shape has produced. At Triple-A and the Florida State League it is measured against that level\'s average, hitters and parks, so it is not on the MLB scale.',
+    trust: 'It folds in everything that happened on those pitches (location, sequencing, the hitters faced, defense and luck), not only movement, and it needs 300 pitches before the Pitch Shape Lab shows it. It describes what already happened and is not a forecast.',
+    visual: 'none',
+    seeAlso: ['run-value'],
+    usedIn: ['Pitch Shape Lab: results map, Shape Score, pitchers at a shape'],
+  },
+  {
     slug: 'hits-allowed',
     category: 'statcast',
     name: 'Hits allowed (by count)',
