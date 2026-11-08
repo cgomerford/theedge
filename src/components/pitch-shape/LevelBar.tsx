@@ -87,7 +87,7 @@ export default function LevelBar() {
       </div>
       <CoverageBadge level={view.level} caps={caps} />
       {minor && <span style={{ fontSize: 12.5, color: '#5b5347', flexBasis: '100%', lineHeight: 1.5 }}>
-        Results here are measured at {LEVEL_LABEL[view.level]} only. The Shape Score, run values, ahead-or-behind-his-shape verdicts and ESPN ownership use major-league outcomes, so they stay on MLB. Colour and “ahead or behind” on this level compare a pitcher with other {LEVEL_LABEL[view.level]} pitches that move like his.
+        Results here are measured at {LEVEL_LABEL[view.level]} only. Runs per 100, wOBA, xwOBA, ahead-or-behind-his-shape verdicts and the shape rank are worked out from {LEVEL_LABEL[view.level]} pitches, so they are not on the MLB scale. ESPN ownership, the MLB season line and the roster filters stay on MLB.
       </span>}
     </div>
   )

@@ -7,6 +7,8 @@ import 'server-only'
 // Data functions return null / [] on failure with a logged reason; an empty table is an empty state, never a guess.
 
 import { createAdminClient } from '@/lib/supabase'
+import { milbDb } from '@/lib/milb-shape/dev-db'
+import { isMilb, type Level } from '@/lib/milb-shape/levels'
 import { logOnce } from '@/lib/log'
 import { MLB_TEAMS } from '@/lib/teams'
 import {
@@ -25,22 +27,28 @@ type Row = { at: number; cells: number[] }
 const rowCache = new Map<string, Row>()
 
 /** Every season's full cell array for one pitch type and hand (large, so cached per process for an hour). */
-async function loadRows(type: string, hand: Hand): Promise<Map<number, number[]> | null> {
+async function loadRows(type: string, hand: Hand, level: Level = 'mlb', season?: number): Promise<Map<number, number[]> | null> {
   const thisYear = new Date().getFullYear()
+  const milb = isMilb(level)
   const years: number[] = []
-  for (let y = FIRST_SEASON; y <= thisYear; y++) years.push(y)
+  if (milb) years.push(season ?? thisYear)   // a minor-league level is one season
+  else for (let y = FIRST_SEASON; y <= thisYear; y++) years.push(y)
+  // the cache key carries the level for minor leagues; MLB keeps its own
+  const ck = (y: number | string) => (milb ? `${level}|${y}|${type}|${hand}` : `${y}|${type}|${hand}`)
   const out = new Map<number, number[]>()
   const missing: number[] = []
   for (const y of years) {
-    const hit = rowCache.get(`${y}|${type}|${hand}`)
+    const hit = rowCache.get(ck(y))
     if (hit && Date.now() - hit.at <= TTL_MS) out.set(y, hit.cells); else missing.push(y)
   }
   if (missing.length) {
-    const { data, error } = await createAdminClient().from('pitch_shape_results').select('span,cells')
-      .in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', type).eq('p_throws', hand)
+    const sel = milb
+      ? (await milbDb()).from('pitch_shape_results_milb').select('span,cells').eq('level', level).in('span', missing.map(String))
+      : createAdminClient().from('pitch_shape_results').select('span,cells').in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA)
+    const { data, error } = await sel.eq('pitch_type', type).eq('p_throws', hand)
     if (error) { logOnce('loadRows:Supabase error', 'getResultsPayload', 'Supabase error', error.message); return null }
     for (const d of (data ?? []) as unknown as { span: string; cells: number[] }[]) {
-      rowCache.set(`${d.span}|${type}|${hand}`, { at: Date.now(), cells: d.cells })
+      rowCache.set(ck(d.span), { at: Date.now(), cells: d.cells })
       out.set(Number(d.span), d.cells)
     }
   }
@@ -69,8 +77,8 @@ function crop(rows: Map<number, number[]>, hb0: number, ivb0: number, half: numb
 }
 
 /** League outcomes around the league's own average movement for one pitch type and hand, cropped to the window the map draws. null = no rows yet (empty state). */
-export async function getResultsPayload(type: string, hand: Hand, half = 12, margin = 2.5): Promise<ResultsPayload | null> {
-  const rows = await loadRows(type, hand)
+export async function getResultsPayload(type: string, hand: Hand, half = 12, margin = 2.5, level: Level = 'mlb', season?: number): Promise<ResultsPayload | null> {
+  const rows = await loadRows(type, hand, level, season)
   if (!rows) return null
   const [hb0, ivb0] = centre(rows)
   return crop(rows, hb0, ivb0, half, margin)
@@ -260,4 +268,152 @@ async function getSeasonStats(season: number): Promise<Map<number, SeasonStat> |
   }
   statsCache.set(season, { at: Date.now(), map })
   return map
+}
+
+
+export type MilbVsShape = {
+  level: Level; season: number; type: string; hand: Hand; pitcherId: number
+  /** the level's own average runs allowed per 100 pitches of this type and hand */
+  leagueRuns100: number | null
+  /** his own pitch at this level, and pitches shaped like it at this level (+/-1 in); every measure is null under its sample gate */
+  own: Measures & { saved: number | null }
+  shape: Measures & { saved: number | null }
+  ownRaw: Measures & { saved: number | null }
+  shapeRaw: Measures & { saved: number | null }
+  /** level-only: ahead of, level with, or behind the pitches shaped like his at this level */
+  gap: number | null; verdict: Verdict | null
+  /** 1 to 99: where this shape's runs saved per 100 ranks among the shapes pitchers throw at THIS level (never an MLB percentile); null under the gates */
+  score: number | null
+  /** pitchers at this level with this pitch that the score ranks */
+  ranked: number
+  small: boolean
+}
+
+/**
+ * A minor-league pitcher's own results on one pitch against what pitches shaped like it have produced at the SAME level and season, plus where that shape ranks among
+ * the level's shapes. Nothing from MLB is read. null when the level's results tables hold nothing for the pitch (empty state).
+ */
+export async function getMilbVsShape(level: Level, season: number, type: string, hand: Hand, pitcherId: number): Promise<MilbVsShape | null> {
+  if (!isMilb(level) || !Number.isInteger(pitcherId)) return null
+  const rows = await loadRows(type, hand, level, season)
+  if (!rows) return null
+  const [hb0, ivb0] = centre(rows)
+  const grid = makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all')
+  const league = measuresOf(leagueSums(rows))
+  const supa = await milbDb()
+  const [shapes, owns] = await Promise.all([
+    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,n_pitches,hb,ivb').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
+    supa.from('pitch_shape_results_pitcher_milb').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).eq('pitcher_id', pitcherId).maybeSingle(),
+  ])
+  if (shapes.error) { logOnce('getMilbVsShape:shapes', 'getMilbVsShape', 'Supabase error', shapes.error.message); return null }
+  if (owns.error) { logOnce('getMilbVsShape:owns', 'getMilbVsShape', 'Supabase error', owns.error.message); return null }
+  const list = (shapes.data ?? []) as unknown as { pitcher_id: number; n_pitches: number; hb: string | number; ivb: string | number }[]
+  const mine = list.find(x => x.pitcher_id === pitcherId)
+  if (!mine) return null
+  const savedOf = (m: Measures) => runsSaved(m, league)
+  const dist = list.map(p => savedOf(measuresOf(windowSums(grid, Math.round(Number(p.hb) * 10), Math.round(Number(p.ivb) * 10), 10)))).filter((v): v is number => v != null).sort((a, b) => a - b)
+  const ssum = windowSums(grid, Math.round(Number(mine.hb) * 10), Math.round(Number(mine.ivb) * 10), 10)
+  const sm = measuresOf(ssum), smRaw = measuresOf(ssum, false)
+  type Own = { n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
+  const o = owns.data as unknown as Own | null
+  const osum = o ? pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) }) : null
+  const om = osum ? measuresOf(osum) : measuresOf(zeroSums()), omRaw = osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false)
+  const shapeSaved = savedOf(sm)
+  const small = om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
+  const ownSaved = om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
+  const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
+  return {
+    level, season, type, hand, pitcherId, leagueRuns100: league.runs100,
+    own: { ...om, saved: ownSaved }, shape: { ...sm, saved: shapeSaved }, ownRaw: { ...omRaw, saved: runsSaved(omRaw, league) }, shapeRaw: { ...smRaw, saved: runsSaved(smRaw, league) },
+    gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null, score: shapeSaved == null ? null : percentile(dist, shapeSaved), ranked: dist.length, small,
+  }
+}
+
+
+export type MlbLite = { pitches: number; whiff: number | null; saved: number | null; woba: number | null; xwoba: number | null; swings: number; rvPitches: number }
+const lite = (m: Measures, saved: number | null): MlbLite => ({ pitches: m.pitches, whiff: m.whiff, saved, woba: m.woba, xwoba: m.xwoba, swings: m.n.swings, rvPitches: m.n.rv })
+
+/**
+ * What MLB pitches of this type and hand shaped like (hb, ivb) have produced (all seasons added up, +/-1 in, any speed and arm angle), with the league's runs allowed per 100 for
+ * the type. Used to show a minor-league pitch's closest MLB shape: it describes MLB pitches, and is never applied to the minor-league pitcher as his result. null when empty.
+ */
+export async function getMlbShapeMeasures(type: string, hand: Hand, hb: number, ivb: number): Promise<{ shape: MlbLite; leagueRuns100: number | null } | null> {
+  const k = `${type}|${hand}`
+  let hit = gridCache.get(k)
+  if (!hit || Date.now() - hit.at > TTL_MS) {
+    const rows = await loadRows(type, hand)
+    if (!rows) return null
+    const [hb0, ivb0] = centre(rows)
+    hit = { at: Date.now(), grid: makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all'), league: measuresOf(leagueSums(rows)) }
+    gridCache.set(k, hit)
+  }
+  const m = measuresOf(windowSums(hit.grid, Math.round(hb * 10), Math.round(ivb * 10), 10))
+  return { shape: lite(m, runsSaved(m, hit.league)), leagueRuns100: hit.league.runs100 }
+}
+
+/** Several MLB pitchers' own results on one pitch type this season, against the MLB league's runs per 100. Pitchers without a row are left out. */
+export async function getMlbPitcherResults(type: string, hand: Hand, season: number, ids: number[]): Promise<Map<number, MlbLite>> {
+  const out = new Map<number, MlbLite>()
+  if (ids.length === 0) return out
+  const rows = await loadRows(type, hand)
+  if (!rows) return out
+  const league = measuresOf(leagueSums(rows))
+  const { data, error } = await createAdminClient().from('pitch_shape_results_pitcher').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum')
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).in('pitcher_id', ids)
+  if (error) { logOnce('getMlbPitcherResults', 'getMlbPitcherResults', 'Supabase error', error.message); return out }
+  type R = { pitcher_id: number; n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
+  for (const r of (data ?? []) as unknown as R[]) {
+    const m = measuresOf(pitcherSums({ ...r, rv: Number(r.rv), woba_den: Number(r.woba_den), woba_sum: Number(r.woba_sum), xwoba_sum: Number(r.xwoba_sum) }), false)
+    out.set(r.pitcher_id, lite(m, runsSaved(m, league)))
+  }
+  return out
+}
+
+
+/**
+ * The Shape Score board for one minor-league level: every pitcher with 100+ pitches of the type at that level and season, what pitches shaped like his have produced AT THAT LEVEL
+ * (+/-1 in), and his own results, with a level-only Shape Score (his shape's runs saved per 100 ranked among that level's shapes). The same BoardRow as the MLB board; what only
+ * MLB has (season line, ERA and xERA, ESPN ownership, role, All-Star history, whole-season ranks) is null. null = the level's outcome tables hold nothing for the pitch yet.
+ */
+export async function getMilbBoard(level: Level, season: number, type: string, hand: Hand): Promise<Board | null> {
+  if (!isMilb(level)) return null
+  const rows = await loadRows(type, hand, level, season)
+  if (!rows) return null
+  const [hb0, ivb0] = centre(rows)
+  const grid = makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all')
+  const league = measuresOf(leagueSums(rows))
+  const supa = await milbDb()
+  const [shapes, owns] = await Promise.all([
+    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,pitcher_name,team_abbr,n_pitches,hb,ivb,sd_hb,sd_ivb,velo,slot').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
+    supa.from('pitch_shape_results_pitcher_milb').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).limit(1000),
+  ])
+  if (shapes.error) { logOnce('getMilbBoard:shapes', 'getMilbBoard', 'Supabase error', shapes.error.message); return null }
+  if (owns.error) { logOnce('getMilbBoard:owns', 'getMilbBoard', 'Supabase error', owns.error.message); return null }
+  type Own = { pitcher_id: number; n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
+  const ownBy = new Map(((owns.data ?? []) as unknown as Own[]).map(o => [o.pitcher_id, o]))
+  type Sh = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; hb: string | number; ivb: string | number; sd_hb: string | number | null; sd_ivb: string | number | null; velo: string | number | null; slot: string | number | null }
+  const list = ((shapes.data ?? []) as unknown as Sh[]).map(p => {
+    const hb = Number(p.hb), ivb = Number(p.ivb)
+    const ssum = windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
+    const o = ownBy.get(p.pitcher_id)
+    const osum = o ? pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) }) : null
+    return { p, hb, ivb, sm: measuresOf(ssum), smRaw: measuresOf(ssum, false), om: osum ? measuresOf(osum) : null, omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
+  })
+  const savedOf = (m: Measures) => runsSaved(m, league)
+  const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
+  const out: BoardRow[] = list.map(({ p, hb, ivb, sm, smRaw, om, omRaw }) => {
+    const shapeSaved = savedOf(sm)
+    const ownSaved = om && om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
+    const small = om != null && om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
+    const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
+    return {
+      pitcherId: p.pitcher_id, name: p.pitcher_name, teamAbbr: p.team_abbr ?? '', pitches: p.n_pitches, hb, ivb,
+      sdHb: p.sd_hb == null ? null : Number(p.sd_hb), sdIvb: p.sd_ivb == null ? null : Number(p.sd_ivb), velo: p.velo == null ? null : Number(p.velo), slot: p.slot == null ? null : Number(p.slot),
+      shape: { ...sm, saved: shapeSaved }, own: { ...(om ?? measuresOf(zeroSums())), saved: ownSaved },
+      shapeRaw: { ...smRaw, saved: runsSaved(smRaw, league) }, ownRaw: { ...omRaw, saved: runsSaved(omRaw, league) },
+      overall: null, profile: null, stats: null, owned: null, role: null,
+      small, score: shapeSaved == null ? null : percentile(dist, shapeSaved), gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,
+    }
+  })
+  return { type, hand, season, league, rows: out, dist }
 }

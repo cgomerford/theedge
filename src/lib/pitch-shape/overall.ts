@@ -7,6 +7,8 @@ import 'server-only'
 // (player_percentiles, Pro-trimmed on the server) and his season line from the MLB Stats API (workload). Returns null on failure with a logged reason; nothing is guessed.
 
 import { createAdminClient } from '@/lib/supabase'
+import { milbDb } from '@/lib/milb-shape/dev-db'
+import { isMilb, type Level } from '@/lib/milb-shape/levels'
 import { logOnce } from '@/lib/log'
 import { getPercentileBlocks, type PctBlock } from '@/lib/follows/percentiles'
 import { measuresOf, pitcherSums, zeroSums, type Measures, type Sums } from './results-math'
@@ -17,22 +19,24 @@ const MIN_PITCHES = 500            // a pitcher needs this many pitches in the s
 const TTL_MS = 60 * 60 * 1000
 
 type Raw = { season: number; pitcher_id: number; pitch_type: string; n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
-const cached = new Map<number, { at: number; rows: Raw[] }>()
+const cached = new Map<string, { at: number; rows: Raw[] }>()
 
-async function loadSeason(season: number): Promise<Raw[] | null> {
-  const hit = cached.get(season)
+/** One season's pitcher rows: MLB as always, or a minor-league level's own table (the cache key carries the level, so the two never share an entry). */
+async function loadSeason(season: number, level: Level = 'mlb'): Promise<Raw[] | null> {
+  const ck = isMilb(level) ? `${level}|${season}` : String(season)
+  const hit = cached.get(ck)
   if (hit && Date.now() - hit.at <= TTL_MS) return hit.rows
-  const supa = createAdminClient()
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
   const rows: Raw[] = []
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supa.from('pitch_shape_results_pitcher')
-      .select('season,pitcher_id,pitch_type,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum')
+    const base = isMilb(level) ? supa.from('pitch_shape_results_pitcher_milb').select('season,pitcher_id,pitch_type,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('level', level) : supa.from('pitch_shape_results_pitcher').select('season,pitcher_id,pitch_type,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum')
+    const { data, error } = await base
       .eq('season', season).order('pitcher_id').order('pitch_type').range(from, from + 999)
     if (error) { logOnce('overall:load', 'getPitcherOverall', 'Supabase error', error.message); return null }
     rows.push(...((data ?? []) as unknown as Raw[]))
     if ((data ?? []).length < 1000) break
   }
-  cached.set(season, { at: Date.now(), rows })
+  cached.set(ck, { at: Date.now(), rows })
   return rows
 }
 
@@ -64,8 +68,8 @@ const METRIC: { id: OverallRank['id']; label: string; up: boolean; fmt: OverallR
   { id: 'whiff', label: 'Whiffs per swing', up: true, fmt: 'pct', get: m => m.whiff },
 ]
 
-export async function getPitcherOverall(pitcherId: number, season: number, isPro: boolean): Promise<Overall | null> {
-  const all = await loadSeason(season)
+export async function getPitcherOverall(pitcherId: number, season: number, isPro: boolean, level: Level = 'mlb'): Promise<Overall | null> {
+  const all = await loadSeason(season, level)
   if (!all) return null
   const mine = all.filter(r => r.pitcher_id === pitcherId)
   if (mine.length === 0) return null
@@ -89,8 +93,9 @@ export async function getPitcherOverall(pitcherId: number, season: number, isPro
     const m = measuresOf(toSums(r), false)
     return { pitchType: r.pitch_type, name: PITCH_NAMES[r.pitch_type], pitches: r.n_pitches, share: total ? r.n_pitches / total : 0, woba: m.woba, xwoba: m.xwoba, whiff: m.whiff, runs100: m.runs100 }
   })
-  const workload = await getWorkload(pitcherId, season)   // separate await: the percentile block needs his batters faced
-  const blocks = await getPercentileBlocks([{ id: pitcherId, isPitcher: true, n: workload?.bf ?? 0 }], season, isPro)
+  // innings, ERA and Savant percentiles are MLB season lines: a minor-league view carries none of them (null, never a stand-in)
+  const workload = isMilb(level) ? null : await getWorkload(pitcherId, season)   // separate await: the percentile block needs his batters faced
+  const blocks = isMilb(level) ? new Map<number, PctBlock>() : await getPercentileBlocks([{ id: pitcherId, isPitcher: true, n: workload?.bf ?? 0 }], season, isPro)
   const block: PctBlock | undefined = blocks.get(pitcherId)
   return {
     pitcherId, season, pitches: total, measures, ranked, ranks, byPitch, workload,

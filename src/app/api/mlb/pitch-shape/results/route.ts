@@ -6,11 +6,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
 import { getResultsPayload } from '@/lib/pitch-shape/results'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
+import { isMilb, parseLevel } from '@/lib/milb-shape/levels'
+import { resolveSeason } from '@/lib/milb-shape/server'
 
 export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams
   const type = sp.get('type') ?? '', hand = sp.get('hand'), half = Number(sp.get('half') ?? 12)
   if (!(type in PITCH_NAMES) || (hand !== 'R' && hand !== 'L') || !Number.isFinite(half) || half < 3 || half > 15) return NextResponse.json({ error: 'Bad type, hand or half' }, { status: 400 })
   if (!(FREE_SANDBOX_TYPES as readonly string[]).includes(type) && !(await isProViewer())) return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
-  return NextResponse.json({ payload: await getResultsPayload(type, hand as Hand, half) })
+  const level = parseLevel(sp.get('level'))
+  if (!isMilb(level)) return NextResponse.json({ payload: await getResultsPayload(type, hand as Hand, half) })
+  return NextResponse.json({ payload: await getResultsPayload(type, hand as Hand, half, 2.5, level, await resolveSeason(level, sp.get('season'))) })
 }

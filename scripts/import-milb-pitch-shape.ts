@@ -101,6 +101,8 @@ async function main(): Promise<number> {
         pitch_shape_cells_milb: [...keep('pitch_shape_cells_milb'), ...t.cells],
         pitch_shape_pitcher_milb: [...keep('pitch_shape_pitcher_milb'), ...t.pitchers],
         pitch_shape_milb_coverage: [...keep('pitch_shape_milb_coverage'), ...t.coverage],
+        pitch_shape_results_milb: [...keep('pitch_shape_results_milb'), ...t.results],
+        pitch_shape_results_pitcher_milb: [...keep('pitch_shape_results_pitcher_milb'), ...t.resultsPitchers],
         pitch_shape_milb_runs: [...keep('pitch_shape_milb_runs'), { level, season, source: SOURCE, fetched_at: plan.fetchedAt, complete: plan.complete, first_date: plan.firstDate, last_date: plan.lastDate, summary: runSummary(plan), updated_at: now }],
       }
       fs.mkdirSync(path.dirname(file), { recursive: true })

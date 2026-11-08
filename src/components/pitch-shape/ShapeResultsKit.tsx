@@ -30,6 +30,11 @@ import { GATE, LEVEL_RUNS, resultsVsShape, runsSaved, type Measures } from '@/li
 import { useRoster } from './useRoster'
 import { RAMP } from './parts'
 import { hexToRgb } from './heatGrid'
+import { TeamBadge } from '@/components/front-office/pitching/Avatar'
+import { teamOf } from '@/lib/milb-shape/teams'
+import { LEVEL_LABEL, isMilb, type Level } from '@/lib/milb-shape/levels'
+import { buildMilbWhy } from '@/lib/milb-shape/why'
+import type { Diag } from '@/lib/pitch-shape/diagnostics'
 
 export const BLUE = ['#E8EEF4', '#C6D4E3', '#9DB3CB', '#6F8BAC', '#456A90']
 export const NEUTRAL: [number, number, number] = [236, 233, 224]   // the league average
@@ -203,7 +208,8 @@ function clue(r: BoardRow): string | null {
 const PITCH_LABEL = PITCH_NAMES
 
 /** One pitcher's full read, full width under the map row: his season numbers and where they rank, his shape (with the window widened by his own spread), and what the league has produced at that shape. */
-export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, pitchType, season, exportMap, lc, onSelect, onOpen, headshot }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'pitchType' | 'season' | 'exportMap' | 'lc' | 'onSelect' | 'onOpen' | 'headshot'>) {
+export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, pitchType, season, exportMap, lc, onSelect, onOpen, headshot, level = 'mlb', diag, leagueDiag }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'pitchType' | 'season' | 'exportMap' | 'lc' | 'onSelect' | 'onOpen' | 'headshot' | 'level' | 'diag' | 'leagueDiag'>) {
+  const milb = isMilb(level)   // a minor-league read: the MLB-only pieces (season line, ESPN, the pitch-by-pitch breakdown) give way to what that level stores
   const [wide, setWide] = useState<'in1' | 'sd05' | 'sd1' | 'sd2'>('in1')   // how wide the shape window is: a fixed inch, or his own spread times 0.5, 1 or 2
   const [exportOpen, setExportOpen] = useState(false)
   const [exportSize, setExportSize] = useState<'landscape' | 'portrait'>('landscape')
@@ -218,7 +224,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
   const rx10 = mult == null || sel?.sdHb == null ? 10 : clampT(sel.sdHb * mult), ry10 = mult == null || sel?.sdIvb == null ? 10 : clampT(sel.sdIvb * mult)
   const selId = sel?.pitcherId ?? null
   useEffect(() => {
-    if (selId == null || season == null) { setWhy(undefined); return }
+    if (selId == null || season == null || milb) { setWhy(undefined); return }   // the pitch-by-pitch breakdown is MLB only
     let live = true
     setWhy(undefined)
     fetch(`/api/mlb/pitch-shape/why?id=${selId}&season=${season}&type=${pitchType}&halfHb=${rx10 / 10}&halfIvb=${ry10 / 10}`)
@@ -226,7 +232,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
       .then(w => { if (live) setWhy(w) })
       .catch(e => { log.error('ShapePlayerDetail', 'why fetch failed', e instanceof Error ? e.message : e); if (live) setWhy(null) })
     return () => { live = false }
-  }, [selId, season, pitchType, rx10, ry10])
+  }, [selId, season, pitchType, rx10, ry10, milb])
   if (!sel) return null
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
   const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }
@@ -261,7 +267,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
     const whyLoaded = why !== undefined && why !== 'locked' && why !== null && !('needsSql' in why) ? why : null
     const built = whyLoaded ? buildWhy(sel, lc, whyLoaded, bins, diagnosis) : null
     const firstSentences = (t: string, n2: number) => t.split(/(?<=[.!?])\s+(?=[A-Z])/).slice(0, n2).join(' ').trim()
-    const exportData: ExportData | null = exportMap ? {
+    const exportData: ExportData | null = exportMap && !milb ? {
       name: sel.name, team: sel.teamAbbr, hand: board?.hand ?? 'R', pitchName: (PITCH_LABEL[pitchType] ?? pitchType), season: season ?? new Date().getFullYear(),
       score: sel.score, shapeWord: sw?.word ?? null, verdict,
       headline: built?.lead ? firstSentences(built.lead, 2) : firstSentences(headline, 2),
@@ -294,8 +300,18 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={headshot(sel.pitcherId)} alt="" width={64} height={64} style={{ width: 64, height: 64, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
           <div style={{ flex: 1, minWidth: 160 }}>
-            <Link href={`/mlb/players/${sel.pitcherId}`} style={{ fontWeight: 800, fontSize: 20, color: '#B83A0E', textDecoration: 'none' }}>{sel.name} · {sel.teamAbbr}</Link>
-            <div style={{ fontSize: 12.5, color: '#5b5347' }}>His {lc}: {sel.ivb.toFixed(1)} in of ride, {sel.hb.toFixed(1)} in of run · {sel.pitches.toLocaleString()} pitches this season</div>
+            {(() => {
+              const club = teamOf(level, sel.teamAbbr)
+              const nm = { fontWeight: 800, fontSize: 20, color: '#B83A0E', textDecoration: 'none' } as const
+              return (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {milb ? <span style={nm}>{sel.name}</span> : <Link href={`/mlb/players/${sel.pitcherId}`} style={nm}>{sel.name}</Link>}
+                  {club && <TeamBadge id={club.id} size={30} disc={false} />}<span style={{ fontWeight: 800, fontSize: 18, color: '#B83A0E' }}>{sel.teamAbbr}</span>
+                  {milb && club?.parentId != null && <span title="Parent club" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.mute }}>parent <TeamBadge id={club.parentId} size={22} disc={false} /></span>}
+                </span>
+              )
+            })()}
+            <div style={{ fontSize: 12.5, color: '#5b5347' }}>His {lc}: {sel.ivb.toFixed(1)} in of ride, {sel.hb.toFixed(1)} in of run · {sel.pitches.toLocaleString()} pitches this season{milb ? ` at ${LEVEL_LABEL[level]}` : ''}</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 5 }}>
               {sw && <span style={{ background: sw.bg, color: sw.fg, fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>{sw.word}</span>}
               {sel.small && <span style={{ background: '#FFF4CC', color: '#7A5B00', fontWeight: 800, fontSize: 11.5, borderRadius: 3, padding: '2px 8px' }}>Small sample · {sel.ownRaw.n.rv.toLocaleString()} {lc}s</span>}
@@ -304,8 +320,8 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             </div>
           </div>
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <Star id={sel.pitcherId} name={sel.name} />
-            <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score</span></div>
+            {!milb && <Star id={sel.pitcherId} name={sel.name} />}
+            <div style={{ textAlign: 'center' }}><b style={{ fontSize: 30, lineHeight: 1, display: 'block' }}>{sel.score ?? '—'}</b><span style={k}>Shape Score{milb ? ` · ${LEVEL_LABEL[level]}` : ''}</span></div>
           </div>
         </div>
         <div style={{ margin: '10px 0 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -476,15 +492,22 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
               </tr>
             ))}
             <tr style={{ borderBottom: `1px solid ${C.line}` }}><td style={{ padding: '7px 4px', color: '#5b5347' }}>Sample behind it</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{sel.ownRaw.pitches.toLocaleString()} pitches · {sel.ownRaw.n.pa.toLocaleString()} plate appearances · {sel.ownRaw.n.ab.toLocaleString()} at-bats · {sel.ownRaw.n.swings.toLocaleString()} swings</td></tr>
-            <tr><td style={{ padding: '7px 4px', color: '#5b5347' }}>League sample at his shape</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{shapeR.pitches.toLocaleString()} league pitches (2024 on) · {shapeR.n.pa.toLocaleString()} plate appearances · {shapeR.n.swings.toLocaleString()} swings</td></tr>
+            <tr><td style={{ padding: '7px 4px', color: '#5b5347' }}>League sample at his shape</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{shapeR.pitches.toLocaleString()} {milb ? ` ${LEVEL_LABEL[level]} pitches (${season ?? ''})` : ' league pitches (2024 on)'} · {shapeR.n.pa.toLocaleString()} plate appearances · {shapeR.n.swings.toLocaleString()} swings</td></tr>
           </tbody>
         </table>
         {note && <p style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5, margin: '10px 0 0', background: C.soft, borderRadius: 4, padding: '8px 10px' }}>{note}</p>}
 
           </div>
         </div>
-        <WhySection sel={sel} lc={lc} why={why} bins={bins} verdictGap={gap} diagnosis={diagnosis} sec={sec} pill={pill} />
+        {milb ? <MilbWhySection sel={sel} lc={lc} level={level} bins={bins} diag={diag} leagueDiag={leagueDiag} verdictGap={gap} sec={sec} /> : <WhySection sel={sel} lc={lc} why={why} bins={bins} verdictGap={gap} diagnosis={diagnosis} sec={sec} pill={pill} />}
 
+        {milb ? (
+          <>
+            <div style={{ ...sec, marginTop: 22 }}>5 · Across his whole arsenal</div>
+            <div style={{ fontSize: 13, color: '#5b5347', lineHeight: 1.5 }}>The check by pitch, batter side, count and times through the order uses MLB situation data and is MLB only. His other pitches at {LEVEL_LABEL[level]}, each with its own results, are listed in the card below.</div>
+          </>
+        ) : (
+          <>
         <div style={{ ...sec, marginTop: 22 }}>5 · Across his whole arsenal: another pitch, a situation, or sequencing</div>
         {diagnosis === 'locked' ? (
           <div style={{ background: C.soft, borderRadius: 6, padding: 14 }}>
@@ -545,10 +568,13 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             </>
           )}
 
-        <div style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>“League at his shape” is what league {lc}s inside the window have produced, all seasons since 2024 added up; outperforming or underperforming compares his own results with that, and describes what has happened. Location, sequencing, deception, defense and luck are not in the shape. Green is better for the pitcher than his shape by more than the usual noise, red is worse.</div>
+          </>
+        )}
+
+        <div style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>“League at his shape” is what league {lc}s inside the window have produced, {milb ? `${season ?? ''} at ${LEVEL_LABEL[level]}` : 'all seasons since 2024 added up'}; outperforming or underperforming compares his own results with that, and describes what has happened. Location, sequencing, deception, defense and luck are not in the shape. Green is better for the pitcher than his shape by more than the usual noise, red is worse.</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
-          <FollowIsland kind="player" refId={String(sel.pitcherId)} name={sel.name} />
-          <button type="button" onClick={() => onOpen(sel.pitcherId, sel.name)} style={{ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Open all his pitches →</button>
+          {!milb && <FollowIsland kind="player" refId={String(sel.pitcherId)} name={sel.name} />}
+          {!milb && <button type="button" onClick={() => onOpen(sel.pitcherId, sel.name)} style={{ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Open all his pitches →</button>}
         </div>
       </div>
     )
@@ -575,13 +601,18 @@ export type PanelProps = {
   onSelect: (id: number | null) => void
   onOpen: (id: number, name: string) => void
   headshot: (id: number) => string
+  /** the level being read: MLB (the default, unchanged) or a minor-league level, whose board, shape and results are all that level's own */
+  level?: Level
+  /** the chosen pitcher's location and contact rates at this level, and the level's, for the location row of the reasons (minor-league levels only) */
+  diag?: Diag | null
+  leagueDiag?: Diag | null
 }
 
 /**
  * The pitchers whose average shape sits in the chosen spot, split into performing, not performing and in line with what their shape has produced, with the stats
  * that explain it flagged on each row. Click a pitcher for his full read. Pitchers are those inside the spot's box; with fewer than 6 it takes the nearest 8 and says so.
  */
-export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect }: PanelProps) {
+export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect, level = 'mlb', headshot }: PanelProps) {
   const [tab, setTab] = useState<'ahead' | 'behind' | 'level'>('behind')
   const [all, setAll] = useState(false)
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
@@ -616,8 +647,11 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
       {shown.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', padding: '6px 0' }}>None here with enough pitches to compare.</div> : shown.map(({ r, rd }) => {
         return (
           <button key={r.pitcherId} type="button" onClick={() => { onSelect(r.pitcherId); document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#fff', border: 0, borderTop: `1px solid ${C.line}`, padding: '10px 6px', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44, ...(r.pitcherId === selectedId ? { background: '#FFF1EA' } : null) }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <b style={{ fontSize: 14.5 }}>{r.name}</b><span style={{ color: C.mute, fontSize: 12.5 }}>{r.teamAbbr} · {r.pitches.toLocaleString()} pitches</span>{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={headshot(r.pitcherId)} alt="" width={40} height={40} loading="lazy" style={{ width: 40, height: 40, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom', background: C.soft, borderRadius: '50%' }} />
+              <b style={{ fontSize: 14.5 }}>{r.name}</b>
+              <span style={{ color: C.mute, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{(() => { const t = teamOf(level, r.teamAbbr); return t ? <TeamBadge id={t.id} size={20} disc={false} /> : null })()}{r.teamAbbr} · {r.pitches.toLocaleString()} pitches</span>{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
               <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 14 }}>{r.score ?? '—'}</b></span>
               <span style={{ fontWeight: 800, fontSize: 13, color: r.verdict === 'ahead' ? C.good : r.verdict === 'behind' ? C.bad : C.ink }}>{r.gap != null ? `${signed(r.gap)} /100` : ''}</span>
             </div>
@@ -906,6 +940,29 @@ function ZoneGrids({ factor }: { factor: Factor }) {
       {grid(s => s.league, 'League, same shape', s => s.league)}
       <div style={{ fontSize: 12, color: '#5b5347', maxWidth: 240, lineHeight: 1.5, alignSelf: 'center' }}>The middle nine squares are the strike zone; the four corners are the pitches outside it (upper and lower, left and right). Orange squares are where he throws it more than league pitches of the same shape do; blue-grey, less.</div>
     </div>
+  )
+}
+
+/** The reasons for a minor-league pitcher, from what that level stores (speed, arm angle, location, defense and luck); the pitch-by-pitch ones are listed as not measured. */
+function MilbWhySection({ sel, lc, level, bins, diag, leagueDiag, verdictGap, sec }: { sel: BoardRow; lc: string; level: Level; bins: ShapeBin[] | null | undefined; diag: Diag | null | undefined; leagueDiag: Diag | null | undefined; verdictGap: number | null; sec: React.CSSProperties }) {
+  const label = LEVEL_LABEL[level]
+  const { rows, lead, hurting, allowedMore } = buildMilbWhy(sel, lc, label, bins, diag, leagueDiag, verdictGap)
+  return (
+    <>
+      <div id="psd-why" style={{ ...sec, marginTop: 22 }}>4 · Why aren’t the results there? Speed, arm angle, location, defense and luck at {label}</div>
+      <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, marginBottom: 8 }}>Set against {label} {lc}s with a similar shape and against that level’s own rates. Platoon, extension and sequencing are not measured at {label}, so they show no read. Each factor is read on its own, so they overlap a little and should not be totalled.</div>
+      {lead && <div style={{ background: hurting.length && allowedMore != null && allowedMore > 0 ? '#FBE6E1' : '#F1EEE6', borderRadius: 4, padding: '9px 12px', fontSize: 14, lineHeight: 1.5, color: '#3a352c', marginBottom: 10 }}><b>{lead}</b></div>}
+      <div style={{ display: 'grid', gap: 0 }}>
+        {rows.map(r => (
+          <div key={r.id} className="psd-why" style={{ display: 'grid', gridTemplateColumns: '150px 118px minmax(0,1fr)', gap: '4px 14px', padding: '9px 0', borderTop: `1px solid ${C.line}`, alignItems: 'start' }}>
+            <div><b style={{ fontSize: 13.5 }}>{r.label}</b><div><span style={{ display: 'inline-block', marginTop: 3, background: STATUS[r.status].bg, color: STATUS[r.status].fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 7px' }}>{STATUS[r.status].word}</span></div></div>
+            <div style={{ fontSize: 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1.35 }}>{r.number}</div>
+            <div style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5 }}>{r.text}</div>
+          </div>
+        ))}
+      </div>
+      <style>{'@media(max-width:760px){.psd-why{grid-template-columns:1fr !important}}'}</style>
+    </>
   )
 }
 

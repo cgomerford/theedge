@@ -14,7 +14,6 @@ type Row = Record<string, unknown>
 type Tables = Record<string, Row[]>
 
 const FILE = path.join(process.cwd(), '.dev-cache', 'milb-shape', 'tables.json')
-let mode: 'real' | 'dev' | undefined
 let tables: Tables | null = null
 let probedAt = 0   // when the real tables were last checked, so a dev server notices once they exist
 let loadedAt = 0   // the file's modified time when it was read, so a fresh preview file is picked up without restarting
@@ -45,26 +44,27 @@ function devClient(t: Tables) {
   }
 }
 
-/** The client the minor-league readers use: Supabase, or in `next dev` with the tables missing, the local JSON file. */
+const TABLES = ['pitch_shape_bins_milb', 'pitch_shape_cells_milb', 'pitch_shape_pitcher_milb', 'pitch_shape_milb_coverage', 'pitch_shape_milb_runs', 'pitch_shape_results_milb', 'pitch_shape_results_pitcher_milb']
+let missing = new Set<string>()   // tables that are in the preview file but not yet in Supabase
+
+/**
+ * The client the minor-league readers use: Supabase, or, in `next dev` only, the local preview file for any table Supabase does not have yet (so the outcomes tables can be tried
+ * before their migration is run, while everything already loaded keeps coming from the real database). Re-checked every 30 seconds, so it stops the moment a table exists.
+ */
 export async function milbDb(): Promise<ReturnType<typeof createAdminClient>> {
   const real = createAdminClient()
-  if (process.env.NODE_ENV !== 'development') return real
-  if (mode === 'dev' && Date.now() - probedAt > 30_000) mode = undefined
-  if (mode === undefined) {
+  if (process.env.NODE_ENV !== 'development' || !fs.existsSync(FILE)) return real
+  if (Date.now() - probedAt > 30_000) {
     probedAt = Date.now()
-    mode = 'real'
-    if (fs.existsSync(FILE)) {
-      const probe = await real.from('pitch_shape_cells_milb').select('level').limit(1)
-      if (probe.error) {
-        try { tables = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Tables; mode = 'dev' } catch { mode = 'real' }
-      }
-    }
+    const gone = new Set<string>()
+    await Promise.all(TABLES.map(async t => { const r = await real.from(t).select('level').limit(1); if (r.error) gone.add(t) }))
+    missing = gone
   }
-  if (mode === 'dev') {
-    try {
-      const m = fs.statSync(FILE).mtimeMs
-      if (m !== loadedAt) { tables = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Tables; loadedAt = m }
-    } catch { /* keep what was loaded */ }
-  }
-  return mode === 'dev' && tables ? (devClient(tables) as unknown as ReturnType<typeof createAdminClient>) : real
+  if (missing.size === 0) return real
+  try {
+    const m = fs.statSync(FILE).mtimeMs
+    if (!tables || m !== loadedAt) { tables = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Tables; loadedAt = m }
+  } catch { return real }
+  const dev = devClient(tables as Tables)
+  return { from: (t: string) => (missing.has(t) ? dev.from(t) : real.from(t)) } as unknown as ReturnType<typeof createAdminClient>
 }

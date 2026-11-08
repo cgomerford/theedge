@@ -46,6 +46,30 @@ describe('bins and cells use the MLB builders\' definitions', () => {
   })
 })
 
+describe('results use the MLB results builder\'s definitions', () => {
+  it('sums runs, wOBA, xwOBA, average and slugging per 0.1 in cell, in the fourteen-number layout', () => {
+    const a = feed([
+      row({ game: 1001, ab: 1, pn: 1, description: 'ball', delta_run_exp: 0.05 }),
+      row({ game: 1001, ab: 2, pn: 1, description: 'hit_into_play', events: 'double', woba_value: 1.27, woba_denom: 1, estimated_woba_using_speedangle: 0.6, delta_run_exp: 0.8 }),
+      row({ game: 1001, ab: 3, pn: 1, description: 'swinging_strike', events: 'strikeout', woba_value: 0, woba_denom: 1, delta_run_exp: -0.3 }),
+      row({ game: 1001, ab: 4, pn: 1, description: 'ball', events: 'walk', woba_value: 0.7, woba_denom: 1, delta_run_exp: 0.2 }),
+      row({ game: 1001, ab: 5, pn: 1, description: 'ball', delta_run_exp: '' }),
+    ])
+    const c = a.resultsCellRows()[0]
+    expect(c).toMatchObject({ level: 'aaa', span: '2026', pitch_type: 'FF', p_throws: 'R', n_pitches: 5 })
+    // hb10, ivb10, pitches, swings, whiffs, rv_n, rv*1000, pa, ab, hits, tb, woba_den, woba_sum*1000, xwoba_sum*1000
+    expect(c.cells).toEqual([84, 156, 5, 2, 1, 4, 750, 3, 2, 1, 2, 3, 1970, 1300])   // xwOBA: the double's 0.6, the strikeout's 0, the walk falls back to its wOBA 0.7
+  })
+  it('a pitcher\'s own row, with the same minimum as the pitcher table', () => {
+    const rows = Array.from({ length: 52 }, (_, i) => row({ game: 1001, ab: i + 1, pn: 1, description: i % 4 === 0 ? 'swinging_strike' : 'ball', delta_run_exp: i % 2 ? 0.1 : -0.1 }))
+    const p = feed(rows).resultsPitcherRows()
+    expect(p).toHaveLength(1)
+    expect(p[0]).toMatchObject({ level: 'aaa', season: 2026, pitcher_id: 100, pitch_type: 'FF', p_throws: 'R', n_pitches: 52, n_swings: 13, n_whiffs: 13, rv_n: 52 })
+    expect(p[0].rv).toBeCloseTo(0, 6)
+    expect(feed(rows.slice(0, 40)).resultsPitcherRows()).toEqual([])
+  })
+})
+
 describe('arm angle is never invented', () => {
   it('a pitch with no arm angle goes to slot bin -1, is in the cells, and is not in any pitcher row', () => {
     const a = feed(Array.from({ length: 60 }, (_, i) => row({ game: 1001, ab: i + 1, pn: 1, arm_angle: '' })))

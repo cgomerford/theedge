@@ -7,7 +7,7 @@
 // A rerun builds the same plan from the same (cached) responses, so its upserts overwrite identical rows and add nothing. A failure part-way through fetching leaves the
 // response cache behind, so the next run picks up from there; a failure part-way through writing is repaired by running the write again.
 
-import { Aggregator, type BinRow, type CellsRow, type CoverageRow, type PitcherRow } from './aggregate'
+import { Aggregator, type BinRow, type CellsRow, type CoverageRow, type PitcherRow, type ResultsCellsRow, type ResultsPitcherRow } from './aggregate'
 import { capabilitiesFrom, type Capabilities } from './capability'
 import { SPORT_ID, type MilbLevel } from './levels'
 import { addGames, emptyRejects, filterRows, makeRegistry, mergeRejects, type ApiGame, type ApiTeam, type Registry, type Rejects } from './league'
@@ -101,15 +101,15 @@ export function runSummary(p: Plan) {
 
 const monthName = (m: number) => ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m] ?? String(m)
 
-export type Tables = { bins: BinRow[]; cells: CellsRow[]; pitchers: PitcherRow[]; coverage: CoverageRow[] }
-export const tablesOf = (p: Plan): Tables => ({ bins: p.agg.binRows(), cells: p.agg.cellRows(), pitchers: p.agg.pitcherRows(), coverage: p.agg.coverageRows() })
+export type Tables = { bins: BinRow[]; cells: CellsRow[]; pitchers: PitcherRow[]; coverage: CoverageRow[]; results: ResultsCellsRow[]; resultsPitchers: ResultsPitcherRow[] }
+export const tablesOf = (p: Plan): Tables => ({ bins: p.agg.binRows(), cells: p.agg.cellRows(), pitchers: p.agg.pitcherRows(), coverage: p.agg.coverageRows(), results: p.agg.resultsCellRows(), resultsPitchers: p.agg.resultsPitcherRows() })
 
 /** Rough storage estimate: JSON bytes of every row, which is close to what Postgres holds (before index overhead). */
 export function estimate(t: Tables) {
   const mb = (x: unknown[]) => x.reduce<number>((n, r) => n + JSON.stringify(r).length, 0) / 1e6
-  const rows = { bins: t.bins.length, cells: t.cells.length, pitchers: t.pitchers.length, coverage: t.coverage.length }
-  const size = { bins: mb(t.bins), cells: mb(t.cells), pitchers: mb(t.pitchers), coverage: mb(t.coverage) }
-  return { rows, size, totalRows: rows.bins + rows.cells + rows.pitchers + rows.coverage, totalMb: size.bins + size.cells + size.pitchers + size.coverage }
+  const rows = { bins: t.bins.length, cells: t.cells.length, pitchers: t.pitchers.length, coverage: t.coverage.length, results: t.results.length, resultsPitchers: t.resultsPitchers.length }
+  const size = { bins: mb(t.bins), cells: mb(t.cells), pitchers: mb(t.pitchers), coverage: mb(t.coverage), results: mb(t.results), resultsPitchers: mb(t.resultsPitchers) }
+  return { rows, size, totalRows: Object.values(rows).reduce((a, b) => a + b, 0), totalMb: Object.values(size).reduce((a, b) => a + b, 0) }
 }
 
 export function report(p: Plan): string {
@@ -136,7 +136,7 @@ export function report(p: Plan): string {
   L.push(`truncated chunks (split): ${p.fetch.truncatedChunks.length}${p.fetch.truncatedChunks.length ? ' ' + p.fetch.truncatedChunks.map(c => `${c.start}..${c.end}`).join(', ') : ''}`)
   L.push(`GAPS (incomplete coverage): ${p.fetch.gaps.length}${p.fetch.gaps.map(g => `\n   ${g.start}..${g.end}: ${g.reason}`).join('')}`)
   if (p.registryNotes.length) L.push('notes: ' + p.registryNotes.join(' | '))
-  L.push(`planned storage: bins ${est.rows.bins} rows (${est.size.bins.toFixed(2)} MB), cells ${est.rows.cells} (${est.size.cells.toFixed(2)} MB), pitchers ${est.rows.pitchers} (${est.size.pitchers.toFixed(2)} MB), coverage ${est.rows.coverage} (${est.size.coverage.toFixed(2)} MB)  =>  ${est.totalRows} rows, about ${est.totalMb.toFixed(1)} MB as JSON`)
+  L.push(`planned storage: bins ${est.rows.bins} rows (${est.size.bins.toFixed(2)} MB), cells ${est.rows.cells} (${est.size.cells.toFixed(2)} MB), pitchers ${est.rows.pitchers} (${est.size.pitchers.toFixed(2)} MB), coverage ${est.rows.coverage} (${est.size.coverage.toFixed(2)} MB), results ${est.rows.results} (${est.size.results.toFixed(2)} MB), pitcher results ${est.rows.resultsPitchers} (${est.size.resultsPitchers.toFixed(2)} MB)  =>  ${est.totalRows} rows, about ${est.totalMb.toFixed(1)} MB as JSON`)
   const c = capsOf(p)
   L.push(`capabilities: coverage ${c.coverage}; axes ${JSON.stringify(c.axes)}; arm angle on ${c.armAngleShare == null ? 'n/a' : (c.armAngleShare * 100).toFixed(1) + '%'}; contact data ${c.outcomes.contact ? 'yes' : 'pending'}`)
   return L.join('\n')
@@ -161,6 +161,11 @@ export async function writePlan(p: Plan, db: Db, now = new Date().toISOString())
   await db.deleteStale('pitch_shape_cells_milb', { ...at, span: String(p.season) }, now)
   for (const part of chunked(stamp(t.pitchers), 500)) await db.upsert('pitch_shape_pitcher_milb', part, 'level,season,pitcher_id,pitch_type')
   await db.deleteStale('pitch_shape_pitcher_milb', { ...at, season: p.season }, now)
+  // outcomes (migration 20261110100000): written only when the plan has them, in the same replace-as-a-unit way
+  for (const part of chunked(stamp(t.results), 20)) await db.upsert('pitch_shape_results_milb', part, 'level,span,pitch_type,p_throws')
+  await db.deleteStale('pitch_shape_results_milb', { ...at, span: String(p.season) }, now)
+  for (const part of chunked(stamp(t.resultsPitchers), 500)) await db.upsert('pitch_shape_results_pitcher_milb', part, 'level,season,pitcher_id,pitch_type')
+  await db.deleteStale('pitch_shape_results_pitcher_milb', { ...at, season: p.season }, now)
   for (const part of chunked(stamp(t.coverage), 500)) await db.upsert('pitch_shape_milb_coverage', part, 'level,season,month,park')
   await db.deleteStale('pitch_shape_milb_coverage', { ...at, season: p.season }, now)
   await db.upsert('pitch_shape_milb_runs', [{

@@ -6,10 +6,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
 import { getPitcherOverall } from '@/lib/pitch-shape/overall'
+import { isMilb, parseLevel } from '@/lib/milb-shape/levels'
+import { resolveSeason } from '@/lib/milb-shape/server'
 
 export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams
   const id = Number(sp.get('id')), season = Number(sp.get('season') ?? new Date().getFullYear())
-  if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(season) || season < 2024 || season > new Date().getFullYear() + 1) return NextResponse.json({ error: 'Bad id or season' }, { status: 400 })
-  return NextResponse.json({ overall: await getPitcherOverall(id, season, await isProViewer()) })
+  if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(season) || season < 2021 || season > new Date().getFullYear() + 1) return NextResponse.json({ error: 'Bad id or season' }, { status: 400 })
+  const level = parseLevel(sp.get('level'))
+  if (!isMilb(level)) return NextResponse.json({ overall: await getPitcherOverall(id, season, await isProViewer()) })
+  return NextResponse.json({ overall: await getPitcherOverall(id, await resolveSeason(level, sp.get('season')), await isProViewer(), level) })
 }

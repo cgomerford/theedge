@@ -6,14 +6,19 @@ vi.mock('@/lib/require-pro', () => ({ isProViewer: () => isPro() }))
 vi.mock('@/lib/deep-look', () => ({ requireDeepLook: async () => null }))
 
 const data = {
-  getLeagueBins: vi.fn(async () => []), getMovementCells: vi.fn(async () => ({ seasons: [], latest: 2026 })), getPitcherDots: vi.fn(async () => ({ dots: [], league: {} })),
+  getLeagueBins: vi.fn(async () => []), getPitcherRepertoire: vi.fn(async () => ({ pitcherId: 1, name: 'X', teamAbbr: '', hand: 'R', season: 2026, rows: [{ pitchType: 'FF' }], lockedTypes: 0 })), getMovementCells: vi.fn(async () => ({ seasons: [], latest: 2026 })), getPitcherDots: vi.fn(async () => ({ dots: [], league: {} })),
   getPitcherPoints: vi.fn(async () => []), getThrowersDetailed: vi.fn(async () => ({ throwers: [], league: {} })), searchPitchers: vi.fn(async () => []),
 }
 vi.mock('@/lib/pitch-shape/data', () => data)
+const results = { getResultsPayload: vi.fn(async () => null), getMilbBoard: vi.fn(async () => null), getShapeBoard: vi.fn(async () => null), getMilbVsShape: vi.fn(async () => null), getMlbShapeMeasures: vi.fn(async () => null), getMlbPitcherResults: vi.fn(async () => new Map()) }
+vi.mock('@/lib/pitch-shape/results', () => results)
+vi.mock('@/lib/pitch-shape/overall', () => ({ getPitcherOverall: vi.fn(async () => null) }))
+vi.mock('@/lib/milb-shape/compare-server', () => ({ getLevelsCompared: vi.fn(async () => ({ levels: [], movers: [] })) }))
 const caps = { level: 'aaa', season: 2026, coverage: 'full', axes: { velo: true, ride: true, run: true, armAngle: true }, types: { FF: { pitches: 900, armAngle: true }, SL: { pitches: 500, armAngle: false } } }
 vi.mock('@/lib/milb-shape/server', () => ({
   getCapabilities: async (level: string, season: number) => (level === 'mlb' ? { level: 'mlb', season, coverage: 'full' } : { ...caps, level, season }),
   resolveSeason: async (_l: string, raw: string | null) => (raw ? Number(raw) : 2026),
+  latestMilbSeason: async () => 2026,
 }))
 
 const req = (path: string) => new NextRequest(`http://localhost/api/mlb/pitch-shape/${path}`)
@@ -98,6 +103,39 @@ describe('the Pro boundary holds at every level, server-side', () => {
   it('pitcher search never returns Pro pitch types to a free viewer at a minor level: it asks the reader for free types only', async () => {
     await (await import('./pitchers/route')).GET(req('pitchers?q=early&level=aaa'))
     expect((data.searchPitchers.mock.calls[0] as unknown as unknown[])[1]).toBe(false)
+  })
+})
+
+describe('outcomes at a minor-league level', () => {
+  it('results and board: MLB (no level) keeps its readers; a minor level reads its own table for its season', async () => {
+    await (await import('./results/route')).GET(req('results?type=FF&hand=R&half=12'))
+    expect(results.getResultsPayload).toHaveBeenCalledWith('FF', 'R', 12)
+    await (await import('./results/route')).GET(req('results?type=FF&hand=R&half=12&level=aaa&season=2026'))
+    expect(results.getResultsPayload).toHaveBeenLastCalledWith('FF', 'R', 12, 2.5, 'aaa', 2026)
+    await (await import('./board/route')).GET(req('board?type=FF&hand=R'))
+    expect(results.getShapeBoard).toHaveBeenCalledWith('FF', 'R')
+    await (await import('./board/route')).GET(req('board?type=FF&hand=R&level=fsl'))
+    expect(results.getMilbBoard).toHaveBeenCalledWith('fsl', 2026, 'FF', 'R')
+  })
+  it('milb-vs-shape is refused for MLB and for a free viewer on a Pro pitch type, and answers a minor level', async () => {
+    const { GET } = await import('./milb-vs-shape/route')
+    expect((await GET(req('milb-vs-shape?level=mlb&type=FF&hand=R&pitcher=5'))).status).toBe(400)
+    expect((await GET(req('milb-vs-shape?level=aaa&type=CH&hand=R&pitcher=5'))).status).toBe(403)
+    expect((await GET(req('milb-vs-shape?level=aaa&type=FF&hand=R&pitcher=5'))).status).toBe(200)
+    expect(results.getMilbVsShape).toHaveBeenCalledWith('aaa', 2026, 'FF', 'R', 5)
+  })
+  it('levels-compared and pitcher-levels apply the Pro rule server-side', async () => {
+    const lc = await import('./levels-compared/route')
+    expect((await lc.GET(req('levels-compared?type=CH&hand=R'))).status).toBe(403)
+    expect((await lc.GET(req('levels-compared?type=FF&hand=R'))).status).toBe(200)
+    isPro.mockResolvedValue(true)
+    expect((await lc.GET(req('levels-compared?type=CH&hand=R'))).status).toBe(200)
+    const pl = await import('./pitcher-levels/route')
+    await pl.GET(req('pitcher-levels?id=77'))
+    expect(data.getPitcherRepertoire).toHaveBeenCalledWith(77, expect.any(Number), true, 'aaa')   // Pro viewer: every type
+    isPro.mockResolvedValue(false)
+    await pl.GET(req('pitcher-levels?id=77'))
+    expect(data.getPitcherRepertoire).toHaveBeenLastCalledWith(77, expect.any(Number), false, 'fsl')   // free viewer: the free types only
   })
 })
 

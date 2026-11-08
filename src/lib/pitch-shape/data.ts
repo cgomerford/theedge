@@ -531,11 +531,11 @@ export type Repertoire = { pitcherId: number; name: string; teamAbbr: string; ha
  * Every pitch type one pitcher threw that season (50+ pitches, as the writer keeps), with his own results and diagnostics. A viewer who is not Pro only gets the free
  * pitch types (four-seam and sweeper); the rest are counted in lockedTypes and never sent. null when he has no rows (empty state).
  */
-export async function getPitcherRepertoire(pitcherId: number, season: number, proTypes: boolean): Promise<Repertoire | null> {
+export async function getPitcherRepertoire(pitcherId: number, season: number, proTypes: boolean, level: Level = 'mlb'): Promise<Repertoire | null> {
   if (!Number.isInteger(pitcherId) || pitcherId <= 0) return null
-  const supa = createAdminClient()
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
   const cols = 'pitcher_id,pitcher_name,team_abbr,p_throws,pitch_type,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
-  const ask = (c: string) => supa.from('pitch_shape_pitcher').select(c).eq('pitcher_id', pitcherId).eq('season', season).order('n_pitches', { ascending: false }).limit(20)
+  const ask = (c: string) => pitcherScope(supa, level, c).eq('pitcher_id', pitcherId).eq('season', season).order('n_pitches', { ascending: false }).limit(20)
   let { data, error } = await ask(cols + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
   if (error) { logOnce('getPitcherRepertoire:' + 'Supabase error', 'getPitcherRepertoire', 'Supabase error', error.message); return null }

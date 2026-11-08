@@ -1,13 +1,17 @@
 // src/app/api/mlb/pitch-shape/closest-mlb/route.ts
 //
 // "Closest MLB shape" for a minor-league pitch: the three major-league pitchers whose average pitch of this type is nearest on physical shape (speed, ride, run, arm angle).
-// Physical shape only: nothing about results is read or returned (see src/lib/milb-shape/closest.ts). Same access rule as the other shape routes: four-seam and sweeper are
+// Which MLB pitchers are nearest on physical shape (speed, ride, run, arm angle: see src/lib/milb-shape/closest.ts), and what MLB pitches of that shape have produced, with the
+// speed comparison: the nearest are picked on shape alone, then each one's MLB results and the MLB results for the movement (and for his speed against the typical speed for it)
+// are attached. These are MLB results for MLB pitches; they are shown beside the minor-league pitch and never counted as his. Same access rule as the other shape routes: four-seam and sweeper are
 // free, every other pitch type is Pro and refused here, server-side. Reads pitch_shape_pitcher (MLB); never Savant.
 //   ?type=FF&hand=R&velo=94&ivb=16&hb=9&slot=45[&season=2026]
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
-import { getPitcherDots } from '@/lib/pitch-shape/data'
+import { getLeagueBins, getPitcherDots } from '@/lib/pitch-shape/data'
+import { getMlbPitcherResults, getMlbShapeMeasures } from '@/lib/pitch-shape/results'
+import { explainShape } from '@/lib/pitch-shape/explain'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
 import { closestShapes } from '@/lib/milb-shape/closest'
 
@@ -24,5 +28,15 @@ export async function GET(req: NextRequest) {
   }
   const { dots } = await getPitcherDots(type, hand as Hand, season, 'mlb')
   const closest = closestShapes({ velo, ivb, hb, slot }, dots.map(d => ({ pitcherId: d.pitcherId, name: d.name, teamAbbr: d.teamAbbr, nPitches: d.nPitches, velo: d.velo, ivb: d.ivb, hb: d.hb, slot: d.slot })), 3)
-  return NextResponse.json({ closest, season })
+  // what those pitches have done in MLB: the movement window (any speed), the same movement at his speed against every speed, and each nearest pitcher's own results
+  const shape = { velo, ivb, hb, slot }
+  const [movement, bins, own] = await Promise.all([
+    getMlbShapeMeasures(type, hand as Hand, hb, ivb), getLeagueBins(type, hand as Hand), getMlbPitcherResults(type, hand as Hand, season, closest.map(c => c.pitcherId)),
+  ])
+  const ex = bins.length ? explainShape(bins, shape) : null
+  return NextResponse.json({
+    closest: closest.map(c => ({ ...c, mlb: own.get(c.pitcherId) ?? null })), season,
+    movement: movement ? movement.shape : null,
+    speed: ex ? { typicalVelo: ex.typicalVelo, veloDiff: ex.veloDiff, all: ex.all, atSpeed: ex.atSpeed, whiffEffect: ex.whiffEffect.speed, contactEffect: ex.contactEffect.speed } : null,
+  })
 }

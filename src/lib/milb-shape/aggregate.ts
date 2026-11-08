@@ -20,6 +20,9 @@ export const PITCH_TYPES = new Set(['FF', 'SI', 'FC', 'SL', 'ST', 'CU', 'KC', 'C
 export const SWING = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'hit_into_play', 'foul_bunt', 'missed_bunt'])
 export const WHIFF = new Set(['swinging_strike', 'swinging_strike_blocked', 'missed_bunt'])
 const BALLS = new Set(['ball', 'blocked_ball'])
+const HIT_BASES: Record<string, number> = { single: 1, double: 2, triple: 3, home_run: 4 }
+const AB_EVENTS = new Set([...Object.keys(HIT_BASES), 'field_out', 'strikeout', 'strikeout_double_play', 'double_play', 'grounded_into_double_play', 'force_out', 'fielders_choice', 'fielders_choice_out', 'field_error', 'triple_play', 'other_out'])
+const RS = 12   // the summable fields per pitch below
 export const MIN_PITCHES = 50
 export const N_POINTS = 60
 export const NO_SLOT = -1
@@ -37,6 +40,13 @@ export type PitcherRow = {
   points: { hb: number; ivb: number }[]
   counts: { label: string; swings: number; whiffs: number }[]
   batter_sides: { label: string; bbe: number; xwoba_sum: number }[]
+}
+/** League outcomes at 0.1 in on the movement map: FOURTEEN numbers per cell, exactly as pitch_shape_results (see results-math.ts): hb10, ivb10, pitches, swings, whiffs, rv_n, rv*1000, pa, ab, hits, tb, woba_den, woba_sum*1000, xwoba_sum*1000. */
+export type ResultsCellsRow = { level: MilbLevel; span: string; pitch_type: string; p_throws: string; n_pitches: number; cells: number[] }
+/** One pitcher's own outcomes on one pitch type (real units), as pitch_shape_results_pitcher. */
+export type ResultsPitcherRow = {
+  level: MilbLevel; season: number; pitcher_id: number; pitch_type: string; p_throws: string
+  n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: number; pa: number; ab: number; hits: number; tb: number; woba_den: number; woba_sum: number; xwoba_sum: number
 }
 export type CoverageRow = { level: MilbLevel; season: number; month: number; park: string; games: number; pitches: number; tracked: number }
 
@@ -90,6 +100,9 @@ export class Aggregator {
   private bins = new Map<string, BinRow>()
   private cells = new Map<string, { n: number; sw: number; wh: number; byCell: Map<string, [number, number, number, number, number]> }>()
   private pit = new Map<string, PitcherAcc & { id: number; type: string }>()
+  /** results per pitch type and hand per 0.1 in cell, and per pitcher: [pitches, swings, whiffs, rv_n, rv, pa, ab, hits, tb, woba_den, woba_sum, xwoba_sum] */
+  private resCells = new Map<string, Map<string, { hb10: number; ivb10: number; s: number[] }>>()
+  private resPit = new Map<string, { id: number; type: string; hands: Map<string, number>; s: number[] }>()
   private cov = new Map<string, { month: number; park: string; games: Set<number>; pitches: number; tracked: number }>()
   readonly summary: Summary = { rows: 0, duplicates: 0, keyConflicts: 0, usable: 0, withSlot: 0, nulls: {}, bbe: 0, bbeNulls: {}, perType: {} }
 
@@ -144,6 +157,26 @@ export class Aggregator {
     cell.byCell.set(`${h10},${i10}`, cc)
     cell.n++; cell.sw += swing; cell.wh += whiff
     this.cells.set(ck, cell)
+
+    // results (the same sums the MLB results builder takes: run value, wOBA, xwOBA, average and slugging)
+    const den = (n(row.woba_denom) ?? 0) > 0 ? (n(row.woba_denom) as number) : 0
+    const woba = den > 0 ? n(row.woba_value) ?? 0 : 0
+    const xwo = den > 0 ? (xw ?? n(row.woba_value) ?? 0) : 0
+    const ev = typeof row.events === 'string' ? row.events : ''
+    const rvv = n(row.delta_run_exp)
+    const sums = [1, swing, whiff, rvv != null ? 1 : 0, rvv ?? 0, den > 0 ? 1 : 0, AB_EVENTS.has(ev) ? 1 : 0, ev in HIT_BASES ? 1 : 0, HIT_BASES[ev] ?? 0, den, woba, xwo]
+    const rc = this.resCells.get(ck) ?? new Map(); this.resCells.set(ck, rc)
+    const rk = `${h10},${i10}`
+    const re = rc.get(rk) ?? { hb10: h10, ivb10: i10, s: new Array(RS).fill(0) }
+    for (let i = 0; i < RS; i++) re.s[i] += sums[i]
+    rc.set(rk, re)
+    if (present(row.pitcher)) {
+      const pk2 = `${Number(row.pitcher)}|${p.pitchType}`
+      const rp = this.resPit.get(pk2) ?? { id: Number(row.pitcher), type: p.pitchType, hands: new Map(), s: new Array(RS).fill(0) }
+      for (let i = 0; i < RS; i++) rp.s[i] += sums[i]
+      bump(rp.hands, p.hand)
+      this.resPit.set(pk2, rp)
+    }
 
     // bins (slot -1 when no arm angle)
     const slotBin = p.slot == null ? NO_SLOT : Math.min(9, Math.max(0, Math.floor(p.slot / 10)))
@@ -227,6 +260,32 @@ export class Aggregator {
       })
     }
     return out.sort((a, b) => a.pitcher_id - b.pitcher_id || a.pitch_type.localeCompare(b.pitch_type))
+  }
+
+  resultsCellRows(): ResultsCellsRow[] {
+    const out: ResultsCellsRow[] = []
+    for (const [k, cells] of this.resCells) {
+      const [pitch_type, p_throws] = k.split('|')
+      const flat: number[] = []
+      let nP = 0
+      for (const c of [...cells.values()].sort((a, b) => a.hb10 - b.hb10 || a.ivb10 - b.ivb10)) {
+        const s = c.s
+        nP += s[0]
+        flat.push(c.hb10, c.ivb10, s[0], s[1], s[2], s[3], Math.round(s[4] * 1000), s[5], s[6], s[7], s[8], Math.round(s[9]), Math.round(s[10] * 1000), Math.round(s[11] * 1000))
+      }
+      out.push({ level: this.level, span: String(this.season), pitch_type, p_throws, n_pitches: nP, cells: flat })
+    }
+    return out
+  }
+
+  resultsPitcherRows(): ResultsPitcherRow[] {
+    const out: ResultsPitcherRow[] = []
+    for (const a of this.resPit.values()) {
+      const s = a.s
+      if (s[0] < MIN_PITCHES) continue   // the same minimum as the pitcher table: the board never lists a pitcher the map does not
+      out.push({ level: this.level, season: this.season, pitcher_id: a.id, pitch_type: a.type, p_throws: mode(a.hands) ?? 'R', n_pitches: s[0], n_swings: s[1], n_whiffs: s[2], rv_n: s[3], rv: r(s[4], 3), pa: s[5], ab: s[6], hits: s[7], tb: s[8], woba_den: r(s[9], 3), woba_sum: r(s[10], 3), xwoba_sum: r(s[11], 3) })
+    }
+    return out.sort((x, y) => x.pitcher_id - y.pitcher_id || x.pitch_type.localeCompare(y.pitch_type))
   }
 
   coverageRows(): CoverageRow[] {

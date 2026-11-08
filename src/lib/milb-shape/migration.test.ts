@@ -30,6 +30,20 @@ describe('the migration draft', () => {
   })
 })
 
+describe('the outcomes migration draft (part 2)', () => {
+  const M2 = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261110100000_pitch_shape_milb_results.sql'), 'utf8')
+  const c2 = M2.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+  const T2 = ['pitch_shape_results_milb', 'pitch_shape_results_pitcher_milb']
+  it('is additive and private: new tables only, RLS on, no policy, level limited to Triple-A and the Florida State League', () => {
+    expect(c2).not.toMatch(/\b(drop|delete|truncate|update|grant|revoke)\b/i)
+    expect(c2).not.toMatch(/create policy/i)
+    for (const t of T2) { expect(c2).toMatch(new RegExp(`create table if not exists ${t}\\b`)); expect(c2).toMatch(new RegExp(`alter table ${t} enable row level security`)) }
+    expect((c2.match(/check \(level in \('aaa', 'fsl'\)\)/g) ?? []).length).toBe(2)
+    expect(c2).toMatch(/primary key \(level, span, pitch_type, p_throws\)/)
+    expect(c2).toMatch(/primary key \(level, season, pitcher_id, pitch_type\)/)
+  })
+})
+
 describe('secrets', () => {
   const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]))
   it('no component or client module mentions a service key or reads a server-only variable', () => {
