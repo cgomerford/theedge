@@ -36,6 +36,7 @@ import { LEVEL_LABEL, isMilb, type Level } from '@/lib/milb-shape/levels'
 import { buildMilbWhy } from '@/lib/milb-shape/why'
 import TranslationBanner, { TranslationChip } from './TranslationBanner'
 import RunsSavedExplainer from './RunsSavedExplainer'
+import InfoTip, { Lab } from './InfoTip'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
 
 export const BLUE = ['#E8EEF4', '#C6D4E3', '#9DB3CB', '#6F8BAC', '#456A90']
@@ -71,7 +72,7 @@ export function ResultsLegend({ metric, lc, level = 'mlb' }: { metric: Metric; l
         <span style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden' }}>{[...BLUE].reverse().map(c => <span key={c} style={{ width: 22, height: 12, background: c }} />)}<span style={{ width: 22, height: 12, background: `rgb(${NEUTRAL.join(',')})` }} />{RAMP.slice(1).map(c => <span key={c} style={{ width: 22, height: 12, background: c }} />)}</span>
         <span>Better</span>
       </div>
-      <div style={{ color: '#5b5347', marginTop: 6, lineHeight: 1.5 }}>{metric.blurb}. {metric.up ? 'Higher is better for the pitcher.' : 'Lower is better for the pitcher.'} The middle colour is the league average for {lc}s; white means the window is too thin to show.</div>
+      <div style={{ color: '#5b5347', marginTop: 6, lineHeight: 1.5 }}><b>{metric.label}</b><InfoTip k={metric.id === 'saved' ? 'runsSaved' : metric.id} />: {metric.blurb}. {metric.up ? 'Higher is better for the pitcher.' : 'Lower is better for the pitcher.'} The middle colour is the league average for {lc}s; white means the window is too thin to show.</div>
       {metric.id === 'saved' && <RunsSavedExplainer level={level} compact />}
     </div>
   )
@@ -92,12 +93,12 @@ export function ResultsReadout({ here, league, saved, score, lc, radius, spanLab
       <div className="pv-k" style={{ color: '#B83A0E' }}>What this shape has produced</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '4px 0 8px', flexWrap: 'wrap' }}>
         <b style={{ fontSize: 38, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{score ?? '—'}</b>
-        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score (1 to 99){score == null ? ` · needs ${GATE.rvPitches}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
+        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score<InfoTip k="shapeScore" /> (1 to 99){score == null ? ` · needs ${GATE.rvPitches}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
       </div>
       <RunsSavedExplainer level={level} compact example={saved} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums', marginTop: 8 }}>
         <span style={k}>Measure</span><span style={{ ...k, textAlign: 'right' }}>Here</span><span style={{ ...k, textAlign: 'right' }}>League</span>
-        {rows.map(([a, b, c]) => <div key={a} style={{ display: 'contents' }}><span style={{ color: '#5b5347' }}>{a}</span><b style={{ textAlign: 'right' }}>{b}</b><span style={{ textAlign: 'right', color: C.mute }}>{c}</span></div>)}
+        {rows.map(([a, b, c]) => <div key={a} style={{ display: 'contents' }}><span style={{ color: '#5b5347' }}><Lab t={a} /></span><b style={{ textAlign: 'right' }}>{b}</b><span style={{ textAlign: 'right', color: C.mute }}>{c}</span></div>)}
       </div>
       <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>League {lc}s within ±{radius} in, {spanLabel}: {here.pitches.toLocaleString()} pitches, {here.n.pa.toLocaleString()} plate appearances ended on them, {here.n.ab.toLocaleString()} at-bats, {here.n.swings.toLocaleString()} swings.</div>
     </div>
@@ -117,7 +118,7 @@ export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | nu
   const shown = all ? rows : rows.slice(0, 12)
   return (
     <section id="shape-score" style={{ marginTop: 30, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
-      <div className="pv-k" style={{ color: '#B83A0E' }}>Shape Score</div>
+      <div className="pv-k" style={{ color: '#B83A0E' }}>Shape Score<InfoTip k="shapeScore" /></div>
       <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(22px,3.4vw,30px)', letterSpacing: '-.02em', lineHeight: 1.1 }}>Who throws a shape that saves runs, and who is not getting them?</h2>
       <p style={{ color: '#5b5347', fontSize: 14, margin: '0 0 12px', maxWidth: 780, lineHeight: 1.5 }}>
         Each pitcher’s average {lc} is a point on the map. His Shape Score (1 to 99) ranks the runs per 100 pitches that league {hand === 'R' ? 'right' : 'left'}-handed {lc}s shaped like his have saved, against the other shapes pitchers throw. Beside it, what his own {lc} has done this season. “Underperforming” means his results are more than {LEVEL_RUNS} runs per 100 pitches worse than his shape has produced; “outperforming” means better. It describes what has happened, not a forecast, and it uses movement only: speed and arm angle are not in it.
@@ -132,7 +133,7 @@ export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | nu
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums', minWidth: 780 }}>
               <thead>
-                <tr>{['Pitcher', 'Pitches', 'Shape Score', 'Shape runs saved / 100', 'His runs saved / 100', 'Gap', 'wOBA: shape · his', 'xwOBA: shape · his'].map((h, i) => <th key={h} style={{ ...k, textAlign: i === 0 ? 'left' : 'right', padding: '6px 8px', borderBottom: `2px solid ${C.ink}` }}>{h}</th>)}</tr>
+                <tr>{['Pitcher', 'Pitches', 'Shape Score', 'Shape runs saved / 100', 'His runs saved / 100', 'Gap', 'wOBA: shape · his', 'xwOBA: shape · his'].map((h, i) => <th key={h} style={{ ...k, textAlign: i === 0 ? 'left' : 'right', padding: '6px 8px', borderBottom: `2px solid ${C.ink}` }}><Lab t={h} /></th>)}</tr>
               </thead>
               <tbody>
                 {shown.map(r => (
@@ -295,7 +296,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
         setExportError(e instanceof Error ? e.message : 'Export failed')
       } finally { setExportBusy(false) }
     }
-    const th = (h: string, i: number) => <th key={h} style={{ ...k, textAlign: i === 0 ? 'left' : 'right', padding: '5px 4px', borderBottom: `2px solid ${C.ink}` }}>{h}</th>
+    const th = (h: string, i: number) => <th key={h} style={{ ...k, textAlign: i === 0 ? 'left' : 'right', padding: '5px 4px', borderBottom: `2px solid ${C.ink}` }}><Lab t={h} /></th>
     const fmtRank = (r: OverallRank) => (r.value == null ? '—' : r.fmt === 'runs' ? r.value.toFixed(2) : r.fmt === 'pct' ? `${(r.value * 100).toFixed(1)}%` : d3(r.value))
     return (
       <div style={card} id="pf2-detail">
@@ -397,7 +398,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             <div style={{ margin: '12px 0 0' }}>
               <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>Fantasy line · {overall?.season ?? season ?? ''}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 6 }}>
-                {tiles.map(t => <div key={t.label} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={{ ...k, color: C.mute }}>{t.label}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{t.v}</b>{t.sub && <div style={{ fontSize: 10.5, color: C.faint }}>{t.sub}</div>}</div>)}
+                {tiles.map(t => <div key={t.label} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={{ ...k, color: C.mute }}><Lab t={t.label} /></div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{t.v}</b>{t.sub && <div style={{ fontSize: 10.5, color: C.faint }}>{t.sub}</div>}</div>)}
               </div>
               {runsOver != null && Math.abs(runsOver) >= 1 && eraShift != null && era != null && (
                 <div style={{ background: C.soft, borderRadius: 6, padding: '8px 10px', marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: '#3a352c' }}>
@@ -424,7 +425,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
                 <tbody>
                   {overall.ranks.map(r => (
                     <tr key={r.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-                      <td style={{ padding: '7px 4px', fontWeight: 700 }}>{r.label}</td>
+                      <td style={{ padding: '7px 4px', fontWeight: 700 }}><Lab t={r.label} /></td>
                       <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800 }}>{fmtRank(r)}</td>
                       <td style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{r.rank == null ? '—' : `${ordinal(r.rank)} of ${r.of}`}</td>
                       <td style={{ padding: '7px 4px', width: '34%' }}>
@@ -475,7 +476,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
         <div style={sec}>2 · His {lc} shape</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: 6 }}>
           {([['Velocity', sel.velo == null ? '—' : `${sel.velo.toFixed(1)} mph`], ['Ride', `${sel.ivb.toFixed(1)} in`], ['Run', `${sel.hb.toFixed(1)} in`], ['Arm angle', sel.slot == null ? '—' : `${sel.slot.toFixed(0)}°`], ['Ride variation (SD)', sel.sdIvb == null ? '—' : `±${sel.sdIvb.toFixed(1)} in`], ['Run variation (SD)', sel.sdHb == null ? '—' : `±${sel.sdHb.toFixed(1)} in`]] as [string, string][]).map(([a, b]) => (
-            <div key={a} style={{ background: C.soft, borderRadius: 6, padding: '6px 8px' }}><div style={{ ...k, fontSize: 9 }}>{a}</div><b style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{b}</b></div>
+            <div key={a} style={{ background: C.soft, borderRadius: 6, padding: '6px 8px' }}><div style={{ ...k, fontSize: 9 }}><Lab t={a} /></div><b style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{b}</b></div>
           ))}
         </div>
         <div role="group" aria-label="How wide the shape window is" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
@@ -490,7 +491,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           <tbody>
             {rd.map(x => (
               <tr key={x.stat.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-                <td style={{ padding: '7px 4px', fontWeight: 700 }}>{x.stat.label}{x.thin && <span style={{ color: C.faint, fontWeight: 600 }}> · thin sample</span>}</td>
+                <td style={{ padding: '7px 4px', fontWeight: 700 }}><Lab t={x.stat.label} />{x.thin && <span style={{ color: C.faint, fontWeight: 600 }}> · thin sample</span>}</td>
                 <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800 }}>{x.stat.fmt(x.own)}</td>
                 <td style={{ padding: '7px 4px', textAlign: 'right', color: C.mute }}>{x.stat.fmt(x.shape)}</td>
                 <td style={{ padding: '7px 4px', textAlign: 'right' }}><span style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontWeight: 800, borderRadius: 3, padding: '2px 7px' }}>{x.stat.diff(x.d)}</span></td>
@@ -820,7 +821,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches
               <select style={selectStyle} value={selVal(minGap)} onChange={e => setMinGap(num(e.target.value))} aria-label="ERA above xERA by at least">
                 <option value="">Any</option>{GAP_MIN.map(v => <option key={v} value={v}>{v.toFixed(1)}+</option>)}
               </select></label>
-            <label style={field}><span className="pv-k">Shape Score</span>
+            <label style={field}><span className="pv-k">Shape Score<InfoTip k="shapeScore" /></span>
               <select style={selectStyle} value={selVal(minScore)} onChange={e => setMinScore(num(e.target.value))} aria-label="Shape Score at least">
                 <option value="">Any</option>{SCORE_MIN.map(v => <option key={v} value={v}>{v}+</option>)}
               </select></label>

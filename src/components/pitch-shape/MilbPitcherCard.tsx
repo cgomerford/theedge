@@ -19,6 +19,7 @@ import { translate } from '@/lib/milb-shape/translate'
 import TranslationBanner from './TranslationBanner'
 import PitcherShapeLevels from './PitcherShapeLevels'
 import RunsSavedExplainer from './RunsSavedExplainer'
+import InfoTip, { Lab } from './InfoTip'
 import type { BoardRow } from '@/lib/pitch-shape/results'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import { log } from '@/lib/log'
@@ -130,10 +131,10 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
       <TranslationBanner t={carry} levelLabel={LEVEL_LABEL[level]} />
 
       <div style={{ display: 'flex', gap: '12px 24px', flexWrap: 'wrap', margin: '14px 0' }}>
-        <div style={stat}><span style={k}>Velocity</span><span style={v}>{p.velo.toFixed(1)} mph</span></div>
-        <div style={stat}><span style={k}>Ride</span><span style={v}>{p.ivb.toFixed(1)} in</span></div>
-        <div style={stat}><span style={k}>Run</span><span style={v}>{p.hb.toFixed(1)} in</span></div>
-        <div style={stat}><span style={k}>Arm angle</span><span style={armAngle ? v : { ...v, color: C.mute }}>{armAngle ? `${Math.round(p.slot)}°` : 'pending'}</span></div>
+        <div style={stat}><span style={k}><Lab t="Velocity" /></span><span style={v}>{p.velo.toFixed(1)} mph</span></div>
+        <div style={stat}><span style={k}><Lab t="Ride" /></span><span style={v}>{p.ivb.toFixed(1)} in</span></div>
+        <div style={stat}><span style={k}><Lab t="Run" /></span><span style={v}>{p.hb.toFixed(1)} in</span></div>
+        <div style={stat}><span style={k}><Lab t="Arm angle" /></span><span style={armAngle ? v : { ...v, color: C.mute }}>{armAngle ? `${Math.round(p.slot)}°` : 'pending'}</span></div>
         <div style={stat}>
           <span style={k}>Whiffs per swing</span>
           {whiff != null ? <span style={v}>{(whiff * 100).toFixed(1)}%</span> : <span style={{ ...v, color: C.mute }}>pending</span>}
@@ -171,7 +172,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
               <div className="pv-k" style={{ color: ORANGE_TEXT }}>All his pitches at {LEVEL_LABEL[level]}</div>
               <div style={{ overflowX: 'auto', marginTop: 6 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 600 }}>
-                  <thead><tr><th style={th}>Pitch</th><th style={th}>Share</th><th style={th}>Velocity</th><th style={th}>Ride</th><th style={th}>Run</th><th style={th}>Arm</th><th style={th}>Whiffs / swing</th><th style={th}>Zone</th><th style={th}>Chase</th></tr></thead>
+                  <thead><tr><th style={th}><Lab t="Pitch" /></th><th style={th}><Lab t="Share" /></th><th style={th}><Lab t="Velocity" /></th><th style={th}><Lab t="Ride" /></th><th style={th}><Lab t="Run" /></th><th style={th}><Lab t="Arm" /></th><th style={th}><Lab t="Whiffs / swing" /></th><th style={th}><Lab t="Zone" /></th><th style={th}><Lab t="Chase" /></th></tr></thead>
                   <tbody>
                     {here.rows.map(r => (
                       <tr key={r.pitchType} style={{ background: r.pitchType === type ? '#FFF3EA' : undefined }}>
@@ -193,7 +194,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
               <div className="pv-k" style={{ color: ORANGE_TEXT }}>His {lc} at every level he has thrown it</div>
               <div style={{ overflowX: 'auto', marginTop: 6 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 520 }}>
-                  <thead><tr><th style={th}>Level</th><th style={th}>Pitches</th><th style={th}>Velocity</th><th style={th}>Ride</th><th style={th}>Run</th><th style={th}>Arm angle</th><th style={th}>Whiffs / swing</th></tr></thead>
+                  <thead><tr><th style={th}><Lab t="Level" /></th><th style={th}><Lab t="Pitches" /></th><th style={th}><Lab t="Velocity" /></th><th style={th}><Lab t="Ride" /></th><th style={th}><Lab t="Run" /></th><th style={th}><Lab t="Arm angle" /></th><th style={th}><Lab t="Whiffs / swing" /></th></tr></thead>
                   <tbody>
                     {thisPitch.map(t => (
                       <tr key={t.level} style={{ background: t.level === level ? '#FFF3EA' : undefined }}>
@@ -212,7 +213,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
       )}
 
       <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
-        <div className="pv-k" style={{ color: ORANGE_TEXT }}>Closest MLB shape</div>
+        <div className="pv-k" style={{ color: ORANGE_TEXT }}>Closest MLB shape<InfoTip k="closest" /></div>
         <p style={{ margin: '2px 0 8px', fontSize: 12.5, color: '#5b5347', lineHeight: 1.5 }}>Major-league {lc}s nearest to this one on physical shape alone: speed, ride, run{armAngle ? ' and arm angle' : ''}. Below is what MLB pitches of this shape have done, and how speed changes it. These are MLB results for MLB pitches, shown for comparison; none of them is counted as his.</p>
         {closest === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Finding the closest MLB shapes…</div>
           : closest === null || closest.closest.length === 0 ? <div style={{ fontSize: 13, color: C.mute }}>No major-league {lc}s to compare with yet.</div>
@@ -231,7 +232,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
               )}
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
-                  <thead><tr><th style={th}>MLB pitcher</th><th style={th}>Velocity</th><th style={th}>vs his</th><th style={th}>Ride</th><th style={th}>Run</th>{armAngle && <th style={th}>Arm</th>}<th style={th}>Pitches</th><th style={th}>Whiffs / swing</th><th style={th}>Runs saved / 100</th><th style={th}>wOBA</th><th style={th}>xwOBA</th></tr></thead>
+                  <thead><tr><th style={th}><Lab t="MLB pitcher" /></th><th style={th}><Lab t="Velocity" /></th><th style={th}><Lab t="vs his" /></th><th style={th}><Lab t="Ride" /></th><th style={th}><Lab t="Run" /></th>{armAngle && <th style={th}><Lab t="Arm" /></th>}<th style={th}><Lab t="Pitches" /></th><th style={th}><Lab t="Whiffs / swing" /></th><th style={th}><Lab t="Runs saved / 100" /></th><th style={th}><Lab t="wOBA" /></th><th style={th}><Lab t="xwOBA" /></th></tr></thead>
                   <tbody>
                     {closest.closest.map(c => {
                       const tm = teamOf('mlb', c.teamAbbr)

@@ -39,6 +39,7 @@ import { onShapePop, replaceShapeParams, useShapeView } from './shapeLevel'
 import { useLevelCaps } from './LevelBar'
 import MilbPitcherCard from './MilbPitcherCard'
 import LevelsCompared, { LEVEL_COLOUR, useLevelsCompared } from './LevelsCompared'
+import InfoTip from './InfoTip'
 import RefinePanel, { NO_SHAPE_REFINE, shapeRefined, usePitcherStatuses, type ShapeRefine } from './RefinePanel'
 import { NO_REFINE, isRefined, passes, statusChips, type Refine } from '@/lib/milb-shape/status-math'
 import { LEVEL_LABEL, LEVEL_SHORT } from '@/lib/milb-shape/levels'
@@ -525,13 +526,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             {METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </label>
-        <label style={fLabel}><span className="pv-k">League pitches</span>
+        <label style={fLabel}><span className="pv-k">League pitches<InfoTip k="leaguePitches" /></span>
           <select value={span} onChange={e => setSpan(e.target.value as Span)} style={fSelect} aria-label="Which seasons of league pitches">
             <option value="latest">{latest} only</option>
             {payload && payload.seasons.length > 1 && <option value="all">{payload.seasons[0].season}–{latest}</option>}
           </select>
         </label>
-        <label style={fLabel}><span className="pv-k">Window</span>
+        <label style={fLabel}><span className="pv-k">Window<InfoTip k="window" /></span>
           <select value={radius} onChange={e => setRadius(Number(e.target.value) as (typeof RADII)[number])} style={fSelect} aria-label="Size of the window around each box">
             {RADII.map(r => <option key={r} value={r}>±{r} in</option>)}
           </select>

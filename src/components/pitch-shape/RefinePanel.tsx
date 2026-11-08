@@ -13,6 +13,7 @@ import { LEVEL_LABEL, type Level } from '@/lib/milb-shape/levels'
 import { NO_REFINE, isRefined, type PitcherStatus, type Refine } from '@/lib/milb-shape/status-math'
 import type { TranslationStatus } from '@/lib/milb-shape/translate'
 import { log } from '@/lib/log'
+import InfoTip from './InfoTip'
 
 const ORANGE_TEXT = '#B83A0E'
 export type ShapeRefine = { carry: 'any' | TranslationStatus; verdict: 'any' | 'ahead' | 'behind' | 'level'; rankMin: number }
@@ -80,12 +81,12 @@ export default function RefinePanel({ level, refine, setRefine, shape, setShape,
         {statuses === undefined && <p style={{ fontSize: 13, color: C.mute, margin: '0 0 8px' }}>Loading each pitcher’s record (age, MLB time, trades)…</p>}
         {statuses === null && <p role="alert" style={{ fontSize: 13, color: '#A8391F', margin: '0 0 8px' }}>The career records could not be loaded right now, so the record-based choices are off. The shape choices still work.</p>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', alignItems: 'flex-end' }}>
-          <label style={lab}><span className="pv-k">MLB career</span>
+          <label style={lab}><span className="pv-k">MLB career<InfoTip k="mlbCareer" /></span>
             <select value={refine.mlb} onChange={e => set({ mlb: e.target.value as Refine['mlb'] })} style={sel} disabled={!statuses}>
               <option value="any">Any</option><option value="never">Has never pitched in MLB</option><option value="before">Pitched in MLB before this season only</option>
               <option value="this-season">Pitched in MLB this season</option><option value="sent-down">Pitched in MLB this season, then sent down</option>
             </select></label>
-          <label style={lab}><span className="pv-k">His MLB results this season</span>
+          <label style={lab}><span className="pv-k">His MLB results this season<InfoTip k="mlbResults" /></span>
             <select value={refine.results} onChange={e => set({ results: e.target.value as Refine['results'] })} style={sel} disabled={!statuses}>
               <option value="any">Any</option><option value="struggled">Struggled (0.3+ runs per 100 worse than the MLB average)</option><option value="good">Pitched well (0.3+ better)</option><option value="thin">Too few MLB pitches to judge (under 150)</option>
             </select></label>
@@ -103,15 +104,15 @@ export default function RefinePanel({ level, refine, setRefine, shape, setShape,
               <span aria-hidden>to</span>
               <input type="number" inputMode="numeric" min={15} max={60} placeholder="to" value={refine.ageMax ?? ''} onChange={e => set({ ageMax: num(e.target.value) })} aria-label="Oldest age" style={{ ...sel, minWidth: 0, width: 72 }} disabled={!statuses} />
             </span></div>
-          <label style={lab}><span className="pv-k">Does the shape carry to MLB?</span>
+          <label style={lab}><span className="pv-k">Does the shape carry to MLB?<InfoTip k="carry" /></span>
             <select value={shape.carry} onChange={e => setShape({ ...shape, carry: e.target.value as ShapeRefine['carry'] })} style={sel}>
               <option value="any">Any</option><option value="minors-only">Works here, not in MLB</option><option value="holds">Works here and in MLB</option><option value="mlb-better">Works better in MLB</option><option value="neither">Works at neither</option>
             </select></label>
-          <label style={lab}><span className="pv-k">His results against his shape</span>
+          <label style={lab}><span className="pv-k">His results against his shape<InfoTip k="gap" /></span>
             <select value={shape.verdict} onChange={e => setShape({ ...shape, verdict: e.target.value as ShapeRefine['verdict'] })} style={sel}>
               <option value="any">Any</option><option value="ahead">Outperforming his shape</option><option value="behind">Underperforming his shape</option><option value="level">In line with it</option>
             </select></label>
-          <label style={lab}><span className="pv-k">Shape rank at {label}, at least <b style={{ color: C.ink }}>{shape.rankMin || 'any'}</b></span>
+          <label style={lab}><span className="pv-k">Shape rank at {label}, at least <b style={{ color: C.ink }}>{shape.rankMin || 'any'}</b><InfoTip k="shapeRank" /></span>
             <input type="range" min={0} max={95} step={5} value={shape.rankMin} onChange={e => setShape({ ...shape, rankMin: Number(e.target.value) })} aria-label="Shape rank at least" style={{ minWidth: 170, minHeight: 40 }} /></label>
         </div>
         <p style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, margin: '10px 0 0', maxWidth: 900 }}>
