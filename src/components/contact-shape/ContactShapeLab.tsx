@@ -93,8 +93,8 @@ export default function ContactShapeLab({ initial }: { initial: InitialView }) {
     for (let e = e0; e < e1; e++) for (let a = a0; a < a1; a++) { const c = g[e]?.[a]; if (!c) continue; n += c.n; hits += c.hits; xs += c.xSum; xn += c.xN }
     return { n, hits, x: xn > 0 ? xs / xn : null }
   }
-  const zoneStats = zone && A ? { mine: zoneCells(aG, zone), lg: zoneCells(leagueG, zone), tot: aBalls.length, ltot: leagueG.flat().reduce((s, c) => s + c.n, 0) } : null
-  const hc = cell ? { mine: aG[cell.e][cell.a], lg: leagueG[cell.e][cell.a] } : null
+  const zoneStats = zone && A ? { mine: zoneCells(aG, zone), league: zoneCells(leagueG, zone), tot: aBalls.length, ltot: leagueG.flat().reduce((s, c) => s + c.n, 0) } : null
+  const hc = cell ? { mine: aG[cell.e][cell.a], league: leagueG[cell.e][cell.a] } : null
 
   const save = async () => {
     if (!cardRef.current || !A) return
@@ -183,7 +183,7 @@ export default function ContactShapeLab({ initial }: { initial: InitialView }) {
                   <>
                     <b>{evLabel(cell!.e)}, {laLabel(cell!.a)}</b><Tip info={CONTACT_INFO.sample} /><br />
                     {A.name.split(' ').slice(-1)[0]}: {hc.mine.n} ball{hc.mine.n === 1 ? '' : 's'}{hc.mine.n >= MIN_CELL ? ` · ${pct(cellHit(hc.mine), 0)} hits · xwOBA ${d3(cellX(hc.mine))}` : ' · too few to read'}<br />
-                    League: {hc.lg.n.toLocaleString()} balls · {hc.lg.n >= MIN_CELL ? `${pct(cellHit(hc.lg), 0)} hits · xwOBA ${d3(cellX(hc.lg))}` : 'too few to read'}
+                    League: {hc.league.n.toLocaleString()} balls · {hc.league.n >= MIN_CELL ? `${pct(cellHit(hc.league), 0)} hits · xwOBA ${d3(cellX(hc.league))}` : 'too few to read'}
                   </>
                 ) : <span style={{ color: C.mute }}>Touch or hover a box to read it: how many balls, how often they fell for a hit, and what the league’s balls there produced.</span>}
               </div>
@@ -231,9 +231,9 @@ export default function ContactShapeLab({ initial }: { initial: InitialView }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                 {[
                   ['His balls in the box', `${zoneStats.mine.n}`, `${pct(zoneStats.mine.n / zoneStats.tot)} of his ${zoneStats.tot}`],
-                  ['League balls in the box', pct(zoneStats.lg.n / zoneStats.ltot), 'of all league batted balls'],
-                  ['His hit rate there', zoneStats.mine.n >= MIN_CELL ? pct(zoneStats.mine.hits / zoneStats.mine.n, 0) : '—', zoneStats.lg.n ? `league ${pct(zoneStats.lg.hits / zoneStats.lg.n, 0)}` : ''],
-                  ['His xwOBA there', zoneStats.mine.n >= MIN_CELL ? d3(zoneStats.mine.x) : '—', `league ${d3(zoneStats.lg.x)}`],
+                  ['League balls in the box', pct(zoneStats.league.n / zoneStats.ltot), 'of all league batted balls'],
+                  ['His hit rate there', zoneStats.mine.n >= MIN_CELL ? pct(zoneStats.mine.hits / zoneStats.mine.n, 0) : '—', zoneStats.league.n ? `league ${pct(zoneStats.league.hits / zoneStats.league.n, 0)}` : ''],
+                  ['His xwOBA there', zoneStats.mine.n >= MIN_CELL ? d3(zoneStats.mine.x) : '—', `league ${d3(zoneStats.league.x)}`],
                 ].map(([a, b, c]) => <div key={a} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={k}>{a}</div><b style={{ fontSize: 24, fontVariantNumeric: 'tabular-nums' }}>{b}</b><div style={{ fontSize: 11.5, color: C.faint }}>{c}</div></div>)}
                 <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 12, color: C.faint }}>The box is drawn on the map above. {aBalls.filter(b => inZone(b, zone!)).length} of his balls are inside it by exact speed and angle; the boxes are counted in whole map squares ({GRID.evStep} mph by {GRID.laStep}°).</p>
               </div>
