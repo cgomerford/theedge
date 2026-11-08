@@ -608,13 +608,16 @@ export type PanelProps = {
   /** the chosen pitcher's location and contact rates at this level, and the level's, for the location row of the reasons (minor-league levels only) */
   diag?: Diag | null
   leagueDiag?: Diag | null
+  /** the pitchers the page is showing after its filters (null = everyone), and short career facts for a row (minor-league views) */
+  only?: Set<number> | null
+  chipsFor?: (id: number) => string[]
 }
 
 /**
  * The pitchers whose average shape sits in the chosen spot, split into performing, not performing and in line with what their shape has produced, with the stats
  * that explain it flagged on each row. Click a pitcher for his full read. Pitchers are those inside the spot's box; with fewer than 6 it takes the nearest 8 and says so.
  */
-export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect, level = 'mlb', headshot }: PanelProps) {
+export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect, level = 'mlb', headshot, only, chipsFor }: PanelProps) {
   const [tab, setTab] = useState<'ahead' | 'behind' | 'level'>('behind')
   const [all, setAll] = useState(false)
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
@@ -622,8 +625,9 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
   if (!board) return <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, fontSize: 13, color: '#5b5347' }}>Pitcher results aren’t built for this pitch yet. They fill after the weekly shape-results job runs.</div>
 
   const dist = (r: BoardRow) => Math.hypot(r.hb - hb, r.ivb - ivb)
-  const inside = board.rows.filter(r => Math.abs(r.hb - hb) <= radius && Math.abs(r.ivb - ivb) <= radius)
-  const near = inside.length >= 6 ? inside : [...board.rows].sort((a, b) => dist(a) - dist(b)).slice(0, 8)
+  const pool = only ? board.rows.filter(r => only.has(r.pitcherId)) : board.rows   // the page's filters (minor-league Refine) narrow who can appear here
+  const inside = pool.filter(r => Math.abs(r.hb - hb) <= radius && Math.abs(r.ivb - ivb) <= radius)
+  const near = inside.length >= 6 ? inside : [...pool].sort((a, b) => dist(a) - dist(b)).slice(0, 8)
   const widened = inside.length < 6
   const cohort = near.map(r => ({ r, rd: reads(r) }))
   const group = (v: 'ahead' | 'behind' | 'level') => cohort.filter(c => c.r.verdict === v).sort((a, b) => (v === 'ahead' ? (b.r.gap ?? 0) - (a.r.gap ?? 0) : v === 'behind' ? (a.r.gap ?? 0) - (b.r.gap ?? 0) : b.r.pitches - a.r.pitches))
@@ -657,6 +661,7 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
               <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 14 }}>{r.score ?? '—'}</b></span>
               <span style={{ fontWeight: 800, fontSize: 13, color: r.verdict === 'ahead' ? C.good : r.verdict === 'behind' ? C.bad : C.ink }}>{r.gap != null ? `${signed(r.gap)} /100` : ''}</span>
             </div>
+            {chipsFor && (() => { const c = chipsFor(r.pitcherId); return c.length ? <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>{c.map(t => <span key={t} style={{ background: C.soft, color: '#5b5347', fontWeight: 600, fontSize: 11.5, borderRadius: 3, padding: '2px 7px' }}>{t}</span>)}</div> : null })()}
             {r.gap != null && <div style={{ fontSize: 13, lineHeight: 1.4, marginTop: 4, color: r.verdict === 'ahead' ? '#13694F' : r.verdict === 'behind' ? '#A8391F' : '#5b5347', fontWeight: 700 }}>{r.verdict === 'level' ? `His ${lc} results are in line with what pitches shaped like his have produced.` : `His ${lc} results are ${Math.abs(r.gap).toFixed(2)} runs per 100 pitches ${r.verdict === 'ahead' ? 'better' : 'worse'} than pitches shaped like his have produced.`}</div>}
             {(() => {
               const want = ['saved', 'woba', 'xwoba', 'whiff'].map(id => rd.find(x => x.stat.id === id)).filter((x): x is Read => !!x)

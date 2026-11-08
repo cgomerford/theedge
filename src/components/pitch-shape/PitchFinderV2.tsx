@@ -39,6 +39,8 @@ import { onShapePop, replaceShapeParams, useShapeView } from './shapeLevel'
 import { useLevelCaps } from './LevelBar'
 import MilbPitcherCard from './MilbPitcherCard'
 import LevelsCompared, { LEVEL_COLOUR, useLevelsCompared } from './LevelsCompared'
+import RefinePanel, { NO_SHAPE_REFINE, shapeRefined, usePitcherStatuses, type ShapeRefine } from './RefinePanel'
+import { NO_REFINE, isRefined, passes, statusChips, type Refine } from '@/lib/milb-shape/status-math'
 import { LEVEL_LABEL, LEVEL_SHORT } from '@/lib/milb-shape/levels'
 import { parseShapeUrl } from '@/lib/milb-shape/url'
 import { BLANK, METRICS, FindPitcher, ResultsLegend, ResultsReadout, ShapePlayerDetail, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
@@ -120,6 +122,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [pinned, setPinned] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // a legend entry clicked, so it stays on for touch screens
   const [group, setGroup] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // the legend entry hovered or pinned: its pitchers are named and picked out on the map
   const [mapIds, setMapIds] = useState<Set<number> | null>(null)   // pitchers passing the finder's filters; null = show everyone
+  const [refine, setRefine] = useState<Refine>(NO_REFINE)   // minor-league views: who has made the jump, was sent down, was traded, struggled in MLB
+  const [shapeRefine, setShapeRefine] = useState<ShapeRefine>(NO_SHAPE_REFINE)
   const [team, setTeam] = useState('')   // a club's abbreviation: only its pitchers are drawn, each with his name; '' = everyone
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
@@ -131,6 +135,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | 'locked' | undefined>(undefined)   // where the chosen pitcher is leaking; 'locked' when the viewer is not Pro
   const [overall, setOverall] = useState<Overall | null | undefined>(null)   // the chosen pitcher's whole-season numbers and ranks; undefined while loading
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const statuses = usePitcherStatuses(level, type, hand, mlb || (!isPro && !lookLeft && !isFree(type)))
   const cmpData = useLevelsCompared(type, hand, !isPro && !lookLeft && !isFree(type))
   const focusRef = useRef<number | null>(null)
   useEffect(() => { focusRef.current = focus })   // read by the level-change effect below, which runs after this one
@@ -149,6 +154,8 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       if (u.window) setSpan(u.window)
       if (u.radius) setRadius(u.radius)
       if (u.pitch && u.pitch in PITCH_NAMES) setType(u.pitch)
+      setRefine({ mlb: u.rmlb ?? 'any', results: u.rres ?? 'any', moves: u.rmov ?? 'any', ageMin: u.rmin ?? null, ageMax: u.rmax ?? null, org: u.rorg ?? null })
+      setShapeRefine({ carry: u.rcarry ?? 'any', verdict: u.rver ?? 'any', rankMin: u.rrank ?? 0 })
     }
     apply(parseShapeUrl(window.location.search))
     setUrlReady(true)   // eslint-disable-line react-hooks/set-state-in-effect -- writing the address waits for the first read, so a shared link is never overwritten by the defaults
@@ -156,8 +163,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   }, [])
   useEffect(() => {
     if (!urlReady) return
-    replaceShapeParams({ pitch: type, hand, window: span === 'latest' ? undefined : span, radius: radius === 1 ? undefined : radius })
-  }, [urlReady, type, hand, span, radius])
+    replaceShapeParams({
+      pitch: type, hand, window: span === 'latest' ? undefined : span, radius: radius === 1 ? undefined : radius,
+      rmlb: refine.mlb === 'any' ? undefined : refine.mlb, rres: refine.results === 'any' ? undefined : refine.results, rmov: refine.moves === 'any' ? undefined : refine.moves,
+      rmin: refine.ageMin ?? undefined, rmax: refine.ageMax ?? undefined, rorg: refine.org ?? undefined,
+      rcarry: shapeRefine.carry === 'any' ? undefined : shapeRefine.carry, rver: shapeRefine.verdict === 'any' ? undefined : shapeRefine.verdict, rrank: shapeRefine.rankMin > 0 ? shapeRefine.rankMin : undefined,
+    })
+  }, [urlReady, type, hand, span, radius, refine, shapeRefine])
 
   // a level switch: a team that does not exist at the new level, the finder's filters and any message from the last level are cleared; the pitch moves to one this level has
   useEffect(() => {
@@ -377,7 +389,30 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     if (!d || !caps?.axes.armAngle) return
     setSelectedShape({ id: d.pitcherId, name: d.name, team: d.teamAbbr, pitchType: type, hand, shape: { velo: d.velo, ivb: d.ivb, hb: d.hb, slot: d.slot }, ownWhiff: d.nSwings >= 150 ? d.nWhiffs / d.nSwings : null, ownSwings: d.nSwings })
   }, [mlb, focus, dots, type, hand, caps])
-  const shownDots = useMemo(() => ratedDots.filter(d => (!teamOn || d.teamAbbr === teamOn) && (!mapIds || mapIds.has(d.pitcherId))), [ratedDots, teamOn, mapIds])
+  // who passes the Refine choices (minor-league levels): the record-based choices need his status, the shape choices need his row on the level's board. A pitcher missing what a choice needs does not pass it.
+  const refined = !mlb && (isRefined(refine) || shapeRefined(shapeRefine))
+  const universe = useMemo(() => { const ids = new Set<number>(); board?.rows.forEach(r => ids.add(r.pitcherId)); dots.forEach(d => ids.add(d.pitcherId)); return ids }, [board, dots])
+  const refineIds = useMemo(() => {
+    if (!refined) return null
+    const rowOf = new Map((board?.rows ?? []).map(r => [r.pitcherId, r]))
+    const out = new Set<number>()
+    for (const id of universe) {
+      const st = statuses ? statuses.statuses.get(id) : undefined
+      if (isRefined(refine) && !passes(st, refine, statuses?.season ?? new Date().getFullYear(), statuses?.leagueRuns100 ?? null, statuses?.asOf ?? new Date().toISOString().slice(0, 10))) continue
+      if (shapeRefined(shapeRefine)) {
+        const r = rowOf.get(id)
+        if (!r) continue
+        if (shapeRefine.carry !== 'any' && r.translation?.status !== shapeRefine.carry) continue
+        if (shapeRefine.verdict !== 'any' && r.verdict !== shapeRefine.verdict) continue
+        if (shapeRefine.rankMin > 0 && (r.score == null || r.score < shapeRefine.rankMin)) continue
+      }
+      out.add(id)
+    }
+    return out
+  }, [refined, refine, shapeRefine, universe, statuses, board])
+  const idFilter = mlb ? mapIds : refineIds   // the pitchers the map and list show: the finder's filters at MLB, the Refine choices at a minor-league level
+  const chipsFor = useMemo(() => (statuses ? (id: number) => statusChips(statuses.statuses.get(id), statuses.season, statuses.leagueRuns100, statuses.asOf) : undefined), [statuses])
+  const shownDots = useMemo(() => ratedDots.filter(d => (!teamOn || d.teamAbbr === teamOn) && (!idFilter || idFilter.has(d.pitcherId))), [ratedDots, teamOn, idFilter])
   const inGroup = (d: { verdict: string | null }, g: typeof group) => g === 'none' ? d.verdict == null : d.verdict === g
   const groupDots = useMemo(() => (group && focus == null ? shownDots.filter(d => inGroup(d, group)).sort((a, b) => b.nPitches - a.nPitches) : []), [shownDots, group, focus]) // eslint-disable-line react-hooks/exhaustive-deps
   // the pitcher under the pointer, if one is close enough: his name is shown instead of the cell read
@@ -510,6 +545,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <button type="button" onClick={() => { setMeasure('whiff'); setSpan('latest'); setRadius(1); setHand('R'); setPlace(null); setFocus(null); setTeam('') }} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }}>Reset</button>
       </div>
 
+      {!mlb && !locked && (
+        <RefinePanel level={level} refine={refine} setRefine={setRefine} shape={shapeRefine} setShape={setShapeRefine} statuses={statuses} lc={lc}
+          matched={refineIds ? refineIds.size : universe.size} total={universe.size} />
+      )}
+
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
         : payload === null || !grid || leagueRate == null ? <Empty>{mlb ? <>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</> : caps && caps.coverage === 'none' ? <>No {LEVEL_LABEL[level]} data is loaded yet.</> : <>{LEVEL_LABEL[level]} has no {hand === 'L' ? 'left' : 'right'}-handed {lc} map in the data yet.</>}</Empty>
@@ -550,7 +590,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   const hb = payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb = payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF
                   if (showDots) {   // a click close to a pitcher's dot chooses him; anywhere else chooses a place
                     let best: (typeof ratedDots)[number] | null = null, bd = teamOn ? 1.6 : 0.9
-                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; if (mapIds && focus == null && !mapIds.has(d.pitcherId)) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
+                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; if (idFilter && focus == null && !idFilter.has(d.pitcherId)) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
                   setShowAll(false); setFocus(null); setSide('shape'); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
@@ -561,7 +601,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {focusT && focusT.points.map((p, i) => { const b = toBox(p[0], p[1]), inside = inBox(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={inside ? C.orange : C.ink} fillOpacity={inside ? 1 : 0.6} stroke={inside ? C.ink : 'none'} strokeWidth={N / 700} /> })}
                   {focusT && (() => { const b = toBox(focusT.hb, focusT.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
                   {shown && (() => { const b = toBox(shown.hb, shown.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
-                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : (!teamOn || d.teamAbbr === teamOn) && (!mapIds || mapIds.has(d.pitcherId))).map(d => {   // with a pitcher chosen, only he stays on the map
+                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : (!teamOn || d.teamAbbr === teamOn) && (!idFilter || idFilter.has(d.pitcherId))).map(d => {   // with a pitcher chosen, only he stays on the map
                     const b = toBox(d.hb, d.ivb), on = focus === d.pitcherId
                     const dim = group != null && focus == null && !inGroup(d, group), hit = group != null && focus == null && inGroup(d, group)
                     const fill = d.verdict === 'ahead' ? C.orange : d.verdict === 'behind' ? '#5E7A99' : d.verdict === 'level' ? '#fff' : 'none'
@@ -623,7 +663,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
                 <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
                 <button type="button" aria-pressed={showLevels} disabled={!cmpData || cmpData.levels.length === 0} onClick={() => setShowLevels(v => !v)} title="Draw the average pitch at MLB, Triple-A and the Florida State League" style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showLevels ? C.ink : C.line}`, background: showLevels ? C.ink : '#fff', color: showLevels ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: cmpData && cmpData.levels.length ? 1 : 0.5 }}>{showLevels ? 'Level averages: on' : 'Level averages: off'}</button>
-                {mapIds && showDots && <span style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE_TEXT }}>Showing {ratedDots.filter(d => mapIds.has(d.pitcherId) && (!teamOn || d.teamAbbr === teamOn)).length} of {ratedDots.length} pitchers that pass the filters</span>}
+                {idFilter && showDots && <span style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE_TEXT }}>Showing {ratedDots.filter(d => idFilter.has(d.pitcherId) && (!teamOn || d.teamAbbr === teamOn)).length} of {ratedDots.length} pitchers that pass the filters</span>}
                 {teamOn && teamDots.length > 0 && <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <b>{teamOn} {lc} throwers:</b>
                   {teamDots.map(d => <button key={d.pitcherId} type="button" onClick={() => setFocus(f => (f === d.pitcherId ? null : d.pitcherId))} style={{ minHeight: 34, padding: '0 10px', borderRadius: 4, border: `1px solid ${focus === d.pitcherId ? C.ink : C.line}`, background: focus === d.pitcherId ? C.ink : '#fff', color: focus === d.pitcherId ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{d.name}</button>)}
@@ -725,7 +765,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
-            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel level={level} board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel level={level} only={idFilter} chipsFor={chipsFor} board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
             {place && (
               <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
@@ -760,7 +800,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       )}
 
       {!locked && payload && grid && place && focus != null && !mlb && (focusDot ?? milbRowAsDot) && (
-        <div id="pf2-more" style={{ marginTop: 14 }}><MilbPitcherCard p={(focusDot ?? milbRowAsDot) as NonNullable<typeof focusDot>} level={level} season={payload.latest} type={type} hand={hand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} leagueDiag={leagueAll} row={board?.rows.find(r => r.pitcherId === focus) ?? null} levelAvgWhiff={board?.league.whiff ?? null} onClear={() => setFocus(null)} /></div>
+        <div id="pf2-more" style={{ marginTop: 14 }}><MilbPitcherCard p={(focusDot ?? milbRowAsDot) as NonNullable<typeof focusDot>} level={level} season={payload.latest} type={type} hand={hand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} leagueDiag={leagueAll} row={board?.rows.find(r => r.pitcherId === focus) ?? null} levelAvgWhiff={board?.league.whiff ?? null} chips={chipsFor ? chipsFor(focus) : []} onClear={() => setFocus(null)} /></div>
       )}
 
       {!locked && payload && grid && place && (

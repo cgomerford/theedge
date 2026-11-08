@@ -131,3 +131,19 @@ export async function getOverallLines(season: number): Promise<Map<number, Overa
   }
   return out
 }
+
+
+/** Every pitcher's pitches and run value for one season, all pitch types together (the cached season pass the overall ranks use), plus the league's runs allowed per 100 pitches. null on failure. */
+export async function getSeasonPitcherLines(season: number): Promise<{ by: Map<number, { pitches: number; rvN: number; rv: number }>; leagueRuns100: number | null } | null> {
+  const all = await loadSeason(season)
+  if (!all) return null
+  const by = new Map<number, { pitches: number; rvN: number; rv: number }>()
+  let rvN = 0, rv = 0
+  for (const r of all) {
+    const e = by.get(r.pitcher_id) ?? { pitches: 0, rvN: 0, rv: 0 }
+    e.pitches += r.n_pitches; e.rvN += r.rv_n; e.rv += Number(r.rv)
+    by.set(r.pitcher_id, e)
+    rvN += r.rv_n; rv += Number(r.rv)
+  }
+  return { by, leagueRuns100: rvN > 0 ? (rv / rvN) * 100 : null }
+}

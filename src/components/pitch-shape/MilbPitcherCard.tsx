@@ -77,10 +77,10 @@ function useClosest(p: MilbPitcher, type: string, hand: string, armAngle: boolea
   return got?.key === key ? got.v : undefined
 }
 
-export default function MilbPitcherCard({ p, level, season, type, hand, pitchName, armAngle, leagueDiag, row, levelAvgWhiff, onClear }: {
+export default function MilbPitcherCard({ p, level, season, type, hand, pitchName, armAngle, leagueDiag, row, levelAvgWhiff, chips, onClear }: {
   p: MilbPitcher; level: Level; season: number | null; type: string; hand: 'R' | 'L'; pitchName: string; armAngle: boolean; leagueDiag?: Diag | null
   /** his row on this level's board (his shape's results at the level), and the level's average whiffs per swing, for the does-it-carry-to-MLB flag */
-  row?: BoardRow | null; levelAvgWhiff?: number | null; onClear: () => void
+  row?: BoardRow | null; levelAvgWhiff?: number | null; chips?: string[]; onClear: () => void
 }) {
   const closest = useClosest(p, type, hand, armAngle)
   const club = teamOf(level, p.teamAbbr)
@@ -120,6 +120,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
               {club && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 14, color: C.mute }}><TeamBadge id={club.id} size={30} disc={false} />{p.teamAbbr}{club.parentId != null && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Parent club">· <TeamBadge id={club.parentId} size={22} disc={false} /></span>}</span>}
             </div>
             <div style={{ fontSize: 13.5, color: '#5b5347' }}>His {hand === 'L' ? 'left' : 'right'}-handed {lc}, {p.nPitches.toLocaleString()} pitches with tracking at this level.</div>
+            {chips && chips.length > 0 && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>{chips.map(t => <span key={t} style={{ background: C.soft, color: '#5b5347', fontWeight: 600, fontSize: 12, borderRadius: 3, padding: '2px 8px' }}>{t}</span>)}</div>}
           </div>
         </div>
         <button type="button" onClick={onClear} style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>

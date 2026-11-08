@@ -19,6 +19,14 @@ describe('parseShapeUrl', () => {
   })
 })
 
+describe('the Refine choices in the address', () => {
+  it('round-trip, and anything unrecognised is dropped', () => {
+    const view = { level: 'aaa', rmlb: 'never', rres: 'struggled', rmov: 'traded-12', rcarry: 'minors-only', rver: 'behind', rrank: 70, rmin: 22, rmax: 27, rorg: 133 } as const
+    expect(parseShapeUrl(applyShapeUrl('', view))).toEqual(view)
+    expect(parseShapeUrl('?rmlb=maybe&rres=bad&rmov=x&rcarry=y&rver=z&rrank=3&rmin=2&rmax=99&rorg=5')).toEqual({})
+  })
+})
+
 describe('applyShapeUrl: reload, share and back/forward', () => {
   it('writes a view and reads the same view back (a reload or a shared link restores it)', () => {
     const view = { level: 'fsl', season: 2026, pitch: 'FF', hand: 'L', v: 93.5, ride: 14.2, run: 11, arm: 38 } as const

@@ -14,6 +14,9 @@ export type ShapeUrl = {
   level?: Level; season?: number
   pitch?: string; hand?: 'R' | 'L'; window?: 'latest' | 'all'; radius?: 0.5 | 1 | 2
   spitch?: string; shand?: 'R' | 'L'; v?: number; ride?: number; run?: number; arm?: number
+  /** the minor-league Refine choices */
+  rmlb?: 'never' | 'before' | 'this-season' | 'sent-down'; rres?: 'struggled' | 'good' | 'thin'; rmov?: 'traded-12' | 'traded-season' | 'not-traded'
+  rcarry?: 'minors-only' | 'holds' | 'mlb-better' | 'neither'; rver?: 'ahead' | 'behind' | 'level'; rrank?: number; rmin?: number; rmax?: number; rorg?: number
 }
 
 const PITCH = /^[A-Z]{2}$/
@@ -41,6 +44,16 @@ export function parseShapeUrl(search: string): ShapeUrl {
   const ride = num(p.get('ride'), -40, 60); if (ride != null) out.ride = ride
   const run = num(p.get('run'), -40, 60); if (run != null) out.run = run
   const arm = num(p.get('arm'), 0, 100); if (arm != null) out.arm = arm
+  const pick = <T extends string>(k: string, ok: readonly T[]): T | undefined => { const x = p.get(k); return x && (ok as readonly string[]).includes(x) ? (x as T) : undefined }
+  const rmlb = pick('rmlb', ['never', 'before', 'this-season', 'sent-down'] as const); if (rmlb) out.rmlb = rmlb
+  const rres = pick('rres', ['struggled', 'good', 'thin'] as const); if (rres) out.rres = rres
+  const rmov = pick('rmov', ['traded-12', 'traded-season', 'not-traded'] as const); if (rmov) out.rmov = rmov
+  const rcarry = pick('rcarry', ['minors-only', 'holds', 'mlb-better', 'neither'] as const); if (rcarry) out.rcarry = rcarry
+  const rver = pick('rver', ['ahead', 'behind', 'level'] as const); if (rver) out.rver = rver
+  const rrank = num(p.get('rrank'), 5, 95); if (rrank != null && Number.isInteger(rrank)) out.rrank = rrank
+  const rmin = num(p.get('rmin'), 15, 60); if (rmin != null && Number.isInteger(rmin)) out.rmin = rmin
+  const rmax = num(p.get('rmax'), 15, 60); if (rmax != null && Number.isInteger(rmax)) out.rmax = rmax
+  const rorg = num(p.get('rorg'), 100, 999); if (rorg != null && Number.isInteger(rorg)) out.rorg = rorg
   return out
 }
 
