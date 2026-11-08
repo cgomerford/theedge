@@ -44,6 +44,11 @@ export const LABS_MENU: LabsMenuItem[] = [
     blurb: 'How a team\'s analytics department grades a pitch before the results come in: Stuff, Command and Overall on a 100 scale, the arsenal and how each pitch moves.',
   },
   {
+    label: 'Rotation Lab', href: '/mlb/lab/rotation', status: 'new',
+    tabs: ['Rotation', 'Signal board', 'Pitcher detail', 'Around the league'],
+    blurb: 'Any club\'s rotation as a dashboard: fastball speed, pitch counts, rest and arm slot for each starter, with the signals that point to fatigue.',
+  },
+  {
     label: 'Sequencing Lab', href: '/mlb/lab/sequencing', status: 'new',
     tabs: ['Compare pitchers', 'Pitcher', 'League', 'Second Look', 'Game Plan Card'],
     blurb: 'Compare how every pitcher sequences: what he throws after each pitch, in each count and with two strikes, and where he goes.',

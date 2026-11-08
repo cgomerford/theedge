@@ -1,0 +1,28 @@
+name: rotation-board
+
+# Single writer of rotation_apps and rotation_pitchers (scripts/build_rotation_board.py). The Rotation Lab reads them.
+# Re-pulls the last 4 finished days of Baseball Savant pitch data (Savant corrects recent data) and the MLB Stats API 40-man rosters (injured list); depends on nothing else.
+# 09:45 UTC daily, after the overnight Statcast loads have settled. Python crons live only in GitHub Actions, so there is no vercel.json entry.
+# First fill of a season: run scripts/build_rotation_board.py --parquet models/data/pitches_<season>.parquet locally.
+
+on:
+  schedule:
+    - cron: '45 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-rotation-board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pandas numpy requests supabase python-dotenv
+      - name: Build rotation board
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/build_rotation_board.py --days 4 --wait 0
