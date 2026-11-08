@@ -35,6 +35,11 @@ import {
 } from './finder-math'
 import { log } from '@/lib/log'
 import { setSelectedShape } from './shapeSelection'
+import { onShapePop, replaceShapeParams, useShapeView } from './shapeLevel'
+import { useLevelCaps } from './LevelBar'
+import MilbPitcherCard from './MilbPitcherCard'
+import { LEVEL_LABEL } from '@/lib/milb-shape/levels'
+import { parseShapeUrl } from '@/lib/milb-shape/url'
 import { BLANK, METRICS, FindPitcher, ResultsLegend, ResultsReadout, ShapePlayerDetail, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
 import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, windowSumsRect, type ResultsPayload } from '@/lib/pitch-shape/results-math'
 import type { Board } from '@/lib/pitch-shape/results'
@@ -43,6 +48,7 @@ import type { ShapeBin } from '@/lib/pitch-shape/model'
 import type { DiagnosisResult } from '@/lib/pitch-shape/diagnosis'
 
 const HALF = 12
+const MILB_ORDER = ['FF', 'ST', 'SL', 'SI', 'FC', 'CH', 'CU', 'KC', 'FS', 'SV']
 const RADII = [0.5, 1, 2] as const
 const ORANGE_TEXT = '#B83A0E'   // small orange text that passes contrast
 // The animation uses a typical release point for the hand (only the movement, speed and where it crosses come from the chosen spot).
@@ -85,7 +91,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [hand, setHand] = useState<Hand>('R')
   const [span, setSpan] = useState<Span>('latest')
   const [radius, setRadius] = useState<(typeof RADII)[number]>(1)
-  const key = `${type}|${hand}`
+  // the shared level (MLB, Triple-A or Florida State League): one value for the map, filters, pitcher panel and sandbox. MLB is the default and behaves exactly as before.
+  const lv = useShapeView()
+  const level = lv.level, mlb = level === 'mlb'
+  const lq = mlb ? '' : `&level=${level}${lv.season != null ? `&season=${lv.season}` : ''}`
+  const caps = useLevelCaps(level, lv.season)
+  const types = useMemo(() => (mlb ? pitchTypes : MILB_ORDER.filter(t => (caps?.types[t]?.pitches ?? 0) >= 300)), [mlb, pitchTypes, caps])
+  const key = mlb ? `${type}|${hand}` : `${level}|${lv.season ?? ''}|${type}|${hand}`
   const [payload, setPayload] = useState<MovementCellsPayload | null | undefined>(cache.get(key))   // undefined = loading
   const [place, setPlace] = useState<Place | null>(null)
   const [hover, setHover] = useState<{ hb: number; ivb: number; x: number; y: number } | null>(null)
@@ -117,17 +129,58 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | 'locked' | undefined>(undefined)   // where the chosen pitcher is leaking; 'locked' when the viewer is not Pro
   const [overall, setOverall] = useState<Overall | null | undefined>(null)   // the chosen pitcher's whole-season numbers and ranks; undefined while loading
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const focusRef = useRef<number | null>(null)
+  useEffect(() => { focusRef.current = focus })   // read by the level-change effect below, which runs after this one
+  const prevLevel = useRef(level)
+  const carry = useRef<number | null>(null)   // the pitcher chosen when the level changed: kept if he has pitches at the new level
+  const [carryMsg, setCarryMsg] = useState('')
+  const [urlReady, setUrlReady] = useState(false)
   const locked = !isPro && !lookLeft && !isFree(type)
   const name = PITCH_NAMES[type] ?? type
   const lc = name.toLowerCase()
 
+  // the address is the starting point for pitch, hand, window and window size; Back and Forward restore them (the level has its own store, shapeLevel.ts)
   useEffect(() => {
+    const apply = (u: ReturnType<typeof parseShapeUrl>) => {
+      if (u.hand) setHand(u.hand)
+      if (u.window) setSpan(u.window)
+      if (u.radius) setRadius(u.radius)
+      if (u.pitch && u.pitch in PITCH_NAMES) setType(u.pitch)
+    }
+    apply(parseShapeUrl(window.location.search))
+    setUrlReady(true)   // eslint-disable-line react-hooks/set-state-in-effect -- writing the address waits for the first read, so a shared link is never overwritten by the defaults
+    return onShapePop(apply)
+  }, [])
+  useEffect(() => {
+    if (!urlReady) return
+    replaceShapeParams({ pitch: type, hand, window: span === 'latest' ? undefined : span, radius: radius === 1 ? undefined : radius })
+  }, [urlReady, type, hand, span, radius])
+
+  // a level switch: a team that does not exist at the new level, the finder's filters and any message from the last level are cleared; the pitch moves to one this level has
+  useEffect(() => {
+    setTeam(''); setMapIds(null); setCarryMsg(''); setSelectedShape(null)   // eslint-disable-line react-hooks/set-state-in-effect -- a level switch clears what belonged to the last level
+    if (!mlb) { setMeasure('whiff'); setSide('shape') }
+  }, [level]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!mlb && caps && types.length > 0 && !types.includes(type)) setType(types.find(isFree) ?? types[0])   // eslint-disable-line react-hooks/set-state-in-effect -- the level's own pitch types decide which pitch is shown
+  }, [mlb, caps, types, type])
+
+  const consumeCarry = (ds: PitcherDot[]) => {
+    const id = carry.current
+    carry.current = null
+    if (id == null) return
+    if (ds.some(d => d.pitcherId === id)) setFocus(id)
+    else setCarryMsg(`The pitcher you had selected has no ${lc} data at ${LEVEL_LABEL[level]}, so the selection was cleared.`)
+  }
+
+  useEffect(() => {
+    if (prevLevel.current !== level) { prevLevel.current = level; carry.current = focusRef.current }
     setPlace(null); setThrowers(null); setShown(null); setShownMsg(''); setShowAll(false); setFocus(null); setFocusPts(null); setDots([]); setTabPitcher(null); setView('map')
     if (locked) { setPayload(null); return }
     if (cache.has(key)) { setPayload(cache.get(key)); return }
     setPayload(undefined)
     let live = true
-    fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}`)
+    fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}${lq}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cache.set(key, j.payload); if (live) setPayload(j.payload) })
       .catch(e => { log.error('PitchFinderV2', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setPayload(null) })
@@ -136,7 +189,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
   // what these shapes have produced (runs saved, wOBA, xwOBA, average, slugging) and the Shape Score board: separate tables, so the whiff map never waits on them
   useEffect(() => {
-    if (locked) { setResPayload(null); setBoard(null); return }
+    if (locked || !mlb) { setResPayload(null); setBoard(null); return }   // run values, the Shape Score board and ESPN ownership are major-league only
     let live = true
     const load = <T,>(url: string, store: Map<string, T | null>, ck: string, pick: (j: never) => T | null, set: (v: T | null | undefined) => void) => {
       if (store.has(ck)) { set(store.get(ck) ?? null); return }
@@ -147,11 +200,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     load(`/api/mlb/pitch-shape/results?type=${type}&hand=${hand}&half=${HALF}`, resCache, key, (j: { payload: ResultsPayload | null }) => j.payload, setResPayload)
     load(`/api/mlb/pitch-shape/board?type=${type}&hand=${hand}`, boardCache, `${key}|${BOARD_V}`, (j: { board: Board | null }) => j.board, setBoard)
     return () => { live = false }
-  }, [key, type, hand, locked])
+  }, [key, type, hand, locked, mlb])
 
   // the chosen pitcher's overall numbers and where they rank (all his pitch types, this season)
   useEffect(() => {
-    if (focus == null || locked || !payload) { setOverall(null); return }
+    if (focus == null || locked || !payload || !mlb) { setOverall(null); return }
     let live = true
     setOverall(undefined)
     fetch(`/api/mlb/pitch-shape/pitcher-overall?id=${focus}&season=${payload.latest}`)
@@ -159,11 +212,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       .then((j: { overall: Overall | null }) => { if (live) setOverall(j.overall) })
       .catch(e => { log.error('PitchFinderV2', 'overall fetch failed', e instanceof Error ? e.message : e); if (live) setOverall(null) })
     return () => { live = false }
-  }, [focus, payload, locked])
+  }, [focus, payload, locked, mlb])
 
   // where the chosen pitcher is leaking (Pro): which pitch, situation and process measure
   useEffect(() => {
-    if (focus == null || locked || !payload) { setDiagnosis(undefined); return }
+    if (focus == null || locked || !payload || !mlb) { setDiagnosis(undefined); return }
     let live = true
     setDiagnosis(undefined)
     fetch(`/api/mlb/pitch-shape/diagnosis?id=${focus}&season=${payload.latest}`)
@@ -171,11 +224,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       .then(d => { if (live) setDiagnosis(d) })
       .catch(e => { log.error('PitchFinderV2', 'diagnosis fetch failed', e instanceof Error ? e.message : e); if (live) setDiagnosis(null) })
     return () => { live = false }
-  }, [focus, payload, locked])
+  }, [focus, payload, locked, mlb])
 
   // speed and arm-angle bins, only once a pitcher is chosen
   useEffect(() => {
-    if (focus == null || locked) { setShapeBins(null); return }
+    if (focus == null || locked || !mlb) { setShapeBins(null); return }
     if (shapeBinsCache.has(key)) { setShapeBins(shapeBinsCache.get(key) ?? null); return }
     let live = true
     setShapeBins(undefined)
@@ -184,7 +237,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       .then((j: { bins?: ShapeBin[] }) => { const b = j.bins ?? null; shapeBinsCache.set(key, b); if (live) setShapeBins(b) })
       .catch(e => { log.error('PitchFinderV2', 'bins fetch failed', e instanceof Error ? e.message : e); if (live) setShapeBins(null) })
     return () => { live = false }
-  }, [focus, key, type, hand, locked])
+  }, [focus, key, type, hand, locked, mlb])
 
   const grids = useMemo(() => (payload ? { latest: makeGrid(payload, 'latest'), all: makeGrid(payload, 'all') } : null), [payload])
   const grid = grids ? grids[span] : null
@@ -216,12 +269,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   useEffect(() => {
     if (!payload || locked) { setDots([]); return }
     let live = true
-    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}`)
+    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}${lq}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j: { dots: PitcherDot[]; league?: Diag }) => { if (live) { setDots(j.dots ?? []); if (j.league) setLeagueAll(j.league) } })
+      .then((j: { dots: PitcherDot[]; league?: Diag }) => { if (live) { setDots(j.dots ?? []); if (j.league) setLeagueAll(j.league); consumeCarry(j.dots ?? []) } })
       .catch(e => { log.error('PitchFinderV2', 'pitcher dots fetch failed', e instanceof Error ? e.message : e); if (live) setDots([]) })
     return () => { live = false }
-  }, [payload, type, hand, locked])
+  }, [payload, type, hand, locked, lq]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // the chosen pitcher's sampled pitches (from the list when he is in it, else fetched)
   useEffect(() => {
@@ -229,12 +282,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     const inList = throwers?.find(t => t.pitcherId === focus)
     if (inList) { setFocusPts(inList.points); return }
     let live = true
-    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}&pitcher=${focus}`)
+    fetch(`/api/mlb/pitch-shape/pitcher-dots?type=${type}&hand=${hand}&season=${payload.latest}&pitcher=${focus}${lq}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { points: [number, number][] }) => { if (live) setFocusPts(j.points ?? []) })
       .catch(e => { log.error('PitchFinderV2', 'pitcher points fetch failed', e instanceof Error ? e.message : e); if (live) setFocusPts([]) })
     return () => { live = false }
-  }, [focus, payload, type, hand, throwers])
+  }, [focus, payload, type, hand, throwers, lq])
 
   // choose the top spot when a map arrives, so the right-hand column is never empty
   useEffect(() => {
@@ -247,12 +300,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     if (!place || !payload || locked) { setThrowers(null); return }
     setThrowers(undefined)
     let live = true
-    fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${place.hb.toFixed(1)}&ivb=${place.ivb.toFixed(1)}&radius=${radius}&season=${latest}`)
+    fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${place.hb.toFixed(1)}&ivb=${place.ivb.toFixed(1)}&radius=${radius}&season=${latest}${lq}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { throwers: ApiThrower[]; league?: Diag }) => { if (live) { setThrowers(j.throwers); setLeague(j.league ?? null) } })
       .catch(e => { log.error('PitchFinderV2', 'throwers fetch failed', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
     return () => { live = false }
-  }, [place, payload, type, hand, latest, locked, radius])
+  }, [place, payload, type, hand, latest, locked, radius, lq])
 
   // draw the map: one box per 0.1 in, coloured from the league rate
   useEffect(() => {
@@ -314,6 +367,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     if (!r || r.velo == null || r.slot == null) return
     setSelectedShape({ id: r.pitcherId, name: r.name, team: r.teamAbbr, pitchType: type, hand, shape: { velo: r.velo, ivb: r.ivb, hb: r.hb, slot: r.slot }, ownWhiff: r.ownRaw.whiff, ownSwings: r.ownRaw.n.swings })
   }, [focus, board, type, hand])
+  // a minor-league pitcher chosen on the map loads his own shape into Dial in a shape (the MLB pitcher does it through the Shape Score board above)
+  useEffect(() => {
+    if (mlb || focus == null) return
+    const d = dots.find(x => x.pitcherId === focus)
+    if (!d || !caps?.axes.armAngle) return
+    setSelectedShape({ id: d.pitcherId, name: d.name, team: d.teamAbbr, pitchType: type, hand, shape: { velo: d.velo, ivb: d.ivb, hb: d.hb, slot: d.slot }, ownWhiff: d.nSwings >= 150 ? d.nWhiffs / d.nSwings : null, ownSwings: d.nSwings })
+  }, [mlb, focus, dots, type, hand, caps])
   const shownDots = useMemo(() => ratedDots.filter(d => (!teamOn || d.teamAbbr === teamOn) && (!mapIds || mapIds.has(d.pitcherId))), [ratedDots, teamOn, mapIds])
   const inGroup = (d: { verdict: string | null }, g: typeof group) => g === 'none' ? d.verdict == null : d.verdict === g
   const groupDots = useMemo(() => (group && focus == null ? shownDots.filter(d => inGroup(d, group)).sort((a, b) => b.nPitches - a.nPitches) : []), [shownDots, group, focus]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -344,13 +404,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     if (term.length < 2) { setHits([]); return }
     let live = true
     const t = setTimeout(() => {
-      fetch(`/api/mlb/pitch-shape/pitchers?q=${encodeURIComponent(term)}`)
+      fetch(`/api/mlb/pitch-shape/pitchers?q=${encodeURIComponent(term)}${lq}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((j: { pitchers: PitcherHit[] }) => { if (live) setHits(j.pitchers ?? []) })
         .catch(e => { log.error('PitchFinderV2', 'pitcher search failed', e instanceof Error ? e.message : e); if (live) setHits([]) })
     }, 250)
     return () => { live = false; clearTimeout(t) }
-  }, [q])
+  }, [q, lq])
   const pickPitcher = (h: PitcherHit) => {
     const p = h.pitches.find(x => x.pitchType === type)
     setQ(''); setHits([])
@@ -379,7 +439,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         Which {lc}s make hitters miss, and who throws them?
       </h1>
       <p style={{ fontSize: 14.5, lineHeight: 1.5, color: '#5b5347', maxWidth: 1000, margin: '0 0 12px' }}>
-        Every {hand === 'L' ? 'left' : 'right'}-handed {lc} from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. {measure === 'whiff' ? 'Darker orange means hitters missed more often when they swung. ' : 'Colour shows what pitches shaped like that spot have produced: orange better for the pitcher than the league average, blue worse. '}Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging, and the Shape Score ranks every shape. It shows what has happened, not a forecast.{' '}
+        Every {hand === 'L' ? 'left' : 'right'}-handed {lc} {mlb ? '' : `at ${LEVEL_LABEL[level]} `}from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. {measure === 'whiff' ? 'Darker orange means hitters missed more often when they swung. ' : 'Colour shows what pitches shaped like that spot have produced: orange better for the pitcher than the league average, blue worse. '}{mlb ? 'Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging, and the Shape Score ranks every shape. ' : `Misses are measured at ${LEVEL_LABEL[level]} only. `}It shows what has happened, not a forecast.{' '}
         <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
       </p>
 
@@ -407,7 +467,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       <div className="pf2-filters" role="group" aria-label="Filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', alignItems: 'flex-end', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 14px', margin: '0 0 12px' }}>
         <label style={fLabel}><span className="pv-k">Pitch</span>
           <select value={type} onChange={e => setType(e.target.value)} style={fSelect} aria-label="Pitch type">
-            {pitchTypes.map(t => { const lockedT = !isPro && !lookLeft && !isFree(t); return <option key={t} value={t} disabled={lockedT}>{PITCH_NAMES[t] ?? t}{lockedT ? ' (Pro)' : ''}</option> })}
+            {types.map(t => { const lockedT = !isPro && !lookLeft && !isFree(t); return <option key={t} value={t} disabled={lockedT}>{PITCH_NAMES[t] ?? t}{lockedT ? ' (Pro)' : ''}</option> })}
           </select>
         </label>
         <div style={fLabel}><span className="pv-k">Thrown by</span>
@@ -419,7 +479,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <label style={fLabel}><span className="pv-k">Colour by</span>
           <select value={measure} onChange={e => setMeasure(e.target.value as 'whiff' | MetricId)} style={fSelect} aria-label="Colour the map by">
             <option value="whiff">Whiffs per swing</option>
-            {METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            {mlb && METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </label>
         <label style={fLabel}><span className="pv-k">League pitches</span>
@@ -444,11 +504,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
       {locked ? <div><Empty>The {lc} map: four-seam and sweeper are free.</Empty><UpgradePrompt source="pitch_shape" /></div>
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
-        : payload === null || !grid || leagueRate == null ? <Empty>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</Empty>
+        : payload === null || !grid || leagueRate == null ? <Empty>{mlb ? <>The 0.1-inch league map isn’t built for {hand === 'L' ? 'left' : 'right'}-handed {lc}s yet.</> : caps && caps.coverage === 'none' ? <>No {LEVEL_LABEL[level]} data is loaded yet.</> : <>{LEVEL_LABEL[level]} has no {hand === 'L' ? 'left' : 'right'}-handed {lc} map in the data yet.</>}</Empty>
         : (
         <div className="pf2-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1fr)', gap: 20, alignItems: 'start', marginTop: 8 }}>
           <div>
             <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.4, margin: '0 0 8px' }}><b style={{ color: C.ink }}>↑ More ride:</b> the ball drops less than the hitter expects. <b style={{ color: C.ink }}>→ More run:</b> it moves further toward the pitcher’s arm side.</div>
+            {carryMsg && <div role="status" style={{ background: C.soft, border: `1px solid ${C.line}`, borderRadius: 6, padding: '9px 12px', fontSize: 13.5, color: '#3a352c', marginBottom: 10 }}>{carryMsg}</div>}
             {focus != null ? (() => {
               const fr = board?.rows.find(r => r.pitcherId === focus) ?? null
               const nm = fr?.name ?? focusDot?.name ?? 'this pitcher', tm = fr?.teamAbbr ?? focusDot?.teamAbbr ?? ''
@@ -456,7 +517,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               return (
                 <div role="status" aria-live="polite" style={{ display: 'flex', gap: '8px 12px', alignItems: 'center', flexWrap: 'wrap', background: '#E3F3EC', border: '1px solid #b9dfcd', color: C.ink, borderRadius: 6, padding: '11px 14px', fontSize: 13.5, marginBottom: 10 }}>
                   <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#13694F', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flex: 'none' }}>✓</span>
-                  <span style={{ flex: '1 1 260px' }}><b>You have selected {nm}{tm ? ` (${tm})` : ''}.</b> Only his {lc}s are on the map, his full read is below, and his shape is loaded into Dial in a shape.</span>
+                  <span style={{ flex: '1 1 260px' }}><b>You have selected {nm}{tm ? ` (${tm})` : ''}.</b> Only his {lc}s are on the map, his {mlb ? 'full read' : `${LEVEL_LABEL[level]} read and the closest MLB shape`} {mlb ? 'is' : 'are'} below, and his shape is loaded into Dial in a shape.</span>
                   <a href="#pf2-detail" style={btn}>See his read ↓</a>
                   <a href="#dial-in" style={btn}>Dial in his shape ↓</a>
                   <button type="button" onClick={() => setFocus(null)} style={btn}>Clear</button>
@@ -612,10 +673,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
 
           <div>
             <div role="tablist" aria-label="Side panel" style={{ display: 'flex', gap: 6, margin: '0 0 10px' }}>
-              <button role="tab" aria-selected={side === 'find'} type="button" onClick={() => setSide('find')} style={tabStyle(side === 'find')}>Find a pitcher</button>
+              {mlb && <button role="tab" aria-selected={side === 'find'} type="button" onClick={() => setSide('find')} style={tabStyle(side === 'find')}>Find a pitcher</button>}
               <button role="tab" aria-selected={side === 'shape'} type="button" onClick={() => setSide('shape')} style={tabStyle(side === 'shape')}>This shape{place ? '' : ' (click the map)'}</button>
             </div>
-            <div style={{ display: side === 'find' ? undefined : 'none' }}>
+            <div style={{ display: side === 'find' && mlb ? undefined : 'none' }}>
               <FindPitcher board={board} lc={lc} hand={hand} team={teamOn} onMatches={setMapIds} headshot={id => headshotCutoutUrl(id, 240)} onPick={r => { setShowAll(false); setPlace({ hb: Math.round(r.hb * 10) / 10, ivb: Math.round(r.ivb * 10) / 10, spot: null }); setFocus(r.pitcherId); if (typeof document !== 'undefined') setTimeout(() => document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150) }} />
             </div>
             <div style={{ display: side === 'shape' ? undefined : 'none' }}>
@@ -652,7 +713,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 
-            {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
+            {place && mlb && <div style={{ marginBottom: 14 }}><ShapePlayersPanel board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
             {place && (
               <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 16px' }}>
@@ -682,7 +743,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         </div>
       )}
 
-      {!locked && payload && grid && place && focus != null && (
+      {!locked && payload && grid && place && focus != null && !mlb && focusDot && (
+        <div id="pf2-detail" style={{ marginTop: 14 }}><MilbPitcherCard p={focusDot} level={level} season={payload.latest} type={type} hand={hand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} onClear={() => setFocus(null)} /></div>
+      )}
+
+      {!locked && payload && grid && place && focus != null && mlb && (
         <div style={{ marginTop: 14 }}><ShapePlayerDetail board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={payload && grid && leagueRate != null ? { payload, span, leagueRate, points: focusPts ?? [] } : null} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
@@ -691,12 +756,12 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
           : (league ?? leagueAll) ? (
             <details style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
               <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 32 }}>More on who throws here: location, contact and call clues, and the most ahead and behind across the map</summary>
-              <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={openPitcher} shownId={focus} across={across} />
+              <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={mlb ? openPitcher : (id: number) => showOnMap(id)} shownId={focus} across={across} />
             </details>)
           : null
       )}
 
-      {!locked && payload && grid && (
+      {!locked && payload && grid && mlb && (
         <details style={{ marginTop: 14, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
           <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 32 }}>Every pitcher: the Shape Score board for {lc}s</summary>
           <ShapeScoreBoard board={board} lc={lc} hand={hand} onShow={showOnMap} />

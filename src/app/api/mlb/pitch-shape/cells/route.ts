@@ -11,6 +11,8 @@ import { isProViewer } from '@/lib/require-pro'
 import { requireDeepLook } from '@/lib/deep-look'
 import { getMovementCells } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
+import { parseLevel, isMilb } from '@/lib/milb-shape/levels'
+import { resolveSeason } from '@/lib/milb-shape/server'
 
 export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams
@@ -30,6 +32,8 @@ export async function GET(req: NextRequest) {
     const denied = league ? Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 }) : await requireDeepLook('pitch_shape', sp.get('pitcherId'))
     if (denied) return denied
   }
-  const payload = await getMovementCells(type, hand as Hand, hb, ivb, half)
-  return NextResponse.json({ payload })
+  const level = parseLevel(sp.get('level'))
+  if (!isMilb(level)) return NextResponse.json({ payload: await getMovementCells(type, hand as Hand, hb, ivb, half) })
+  const season = await resolveSeason(level, sp.get('season'))
+  return NextResponse.json({ payload: await getMovementCells(type, hand as Hand, hb, ivb, half, 2.5, level, season), level, season })
 }

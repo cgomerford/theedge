@@ -26,6 +26,8 @@ import {
 
 import { LOC_COLS, type LocationPayload, type LocationWindow } from './location'
 import { logOnce } from '@/lib/log'
+import { isMilb, type Level } from '@/lib/milb-shape/levels'
+import { milbDb } from '@/lib/milb-shape/dev-db'
 
 export const LEAGUE_SPAN = '2024-2026'
 export const LEAGUE_COORD_ERA = '2026'
@@ -53,22 +55,25 @@ const BIN_TTL_MS = 60 * 60 * 1000
 const binCache = new Map<string, { at: number; bins: ShapeBin[] }>()
 
 /** League bins for one pitch type + hand. [] on error or when the table has no rows yet. */
-export async function getLeagueBins(pitchType: string, hand: Hand): Promise<ShapeBin[]> {
-  const ck = `${pitchType}|${hand}`
+export async function getLeagueBins(pitchType: string, hand: Hand, level: Level = 'mlb', season?: number, opts: { arm?: boolean } = {}): Promise<ShapeBin[]> {
+  const milb = isMilb(level)
+  const arm = opts.arm !== false   // a minor-league cohort with no arm angle is read on three axes: all slot bins collapse into one
+  const yr = String(season ?? new Date().getFullYear())
+  // MLB keeps its original cache key; every minor-league key carries the level, season and axis mode, so the two can never share an entry
+  const ck = milb ? `${level}|${yr}|${pitchType}|${hand}|${arm ? '4' : '3'}` : `${pitchType}|${hand}`
   const hit = binCache.get(ck)
   if (hit && Date.now() - hit.at < BIN_TTL_MS) return hit.bins
 
-  const supa = createAdminClient()
-  const page = (from: number) =>
-    supa
-      .from('pitch_shape_bins')
-      .select(BIN_COLS, from === 0 ? { count: 'exact' } : undefined)
-      .eq('span', LEAGUE_SPAN)
-      .eq('coord_era', LEAGUE_COORD_ERA)
-      .eq('pitch_type', pitchType)
-      .eq('p_throws', hand)
+  const supa = milb ? await milbDb() : createAdminClient()
+  const page = (from: number) => {
+    const base = milb
+      ? supa.from('pitch_shape_bins_milb').select(BIN_COLS, from === 0 ? { count: 'exact' } : undefined).eq('level', level).eq('span', yr)
+      : supa.from('pitch_shape_bins').select(BIN_COLS, from === 0 ? { count: 'exact' } : undefined).eq('span', LEAGUE_SPAN).eq('coord_era', LEAGUE_COORD_ERA)
+    const q = base.eq('pitch_type', pitchType).eq('p_throws', hand)
+    return (milb && arm ? q.gte('slot_bin', 0) : q)
       .order('velo_bin').order('ivb_bin').order('hb_bin').order('slot_bin')
       .range(from, from + PAGE - 1)
+  }
 
   // Page 1 also returns the total row count, so the remaining pages can be fetched in parallel.
   const first = await page(0)
@@ -90,13 +95,33 @@ export async function getLeagueBins(pitchType: string, hand: Hand): Promise<Shap
       for (const row of (r.data ?? []) as unknown as BinRow[]) out.push(toBin(row))
     }
   }
-  if (out.length > 0) binCache.set(ck, { at: Date.now(), bins: out })
-  return out
+  const result = milb && !arm ? collapseSlot(out) : out
+  if (result.length > 0) binCache.set(ck, { at: Date.now(), bins: result })
+  return result
+}
+
+/** Sum every arm-angle band into one (slotBin 0), for a cohort whose pitches carry no arm angle. The sandbox then holds arm angle still and says it is pending. */
+export function collapseSlot(bins: ShapeBin[]): ShapeBin[] {
+  const by = new Map<string, ShapeBin>()
+  for (const b of bins) {
+    const k = `${b.veloBin}|${b.ivbBin}|${b.hbBin}`
+    const a = by.get(k)
+    if (!a) { by.set(k, { ...b, slotBin: 0 }); continue }
+    a.pitches += b.pitches; a.swings += b.swings; a.whiffs += b.whiffs; a.calledStrikes += b.calledStrikes; a.csw += b.csw
+    a.bbe += b.bbe; a.xwobaConSum += b.xwobaConSum; a.hardHit += b.hardHit; a.gb += b.gb
+  }
+  return [...by.values()]
 }
 
 /** Pitch types that have league rows, FF first. [] until the writer has run. */
-export async function getAvailablePitchTypes(): Promise<string[]> {
-  const supa = createAdminClient()
+export async function getAvailablePitchTypes(level: Level = 'mlb', season?: number): Promise<string[]> {
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
+  if (isMilb(level)) {
+    const { data, error } = await supa.from('pitch_shape_cells_milb').select('pitch_type,n_pitches').eq('level', level).eq('span', String(season ?? new Date().getFullYear())).gt('n_pitches', 0)
+    if (error) { logOnce('getAvailablePitchTypes:milb', 'getAvailablePitchTypes', 'Supabase error', error.message); return [] }
+    const have = new Set(((data ?? []) as unknown as { pitch_type: string }[]).map(r => r.pitch_type))
+    return ['FF', 'ST', 'SL', 'SI', 'FC', 'CH', 'CU', 'KC', 'FS', 'SV'].filter(t => have.has(t))
+  }
   // One tiny query per known pitch type (head-only count) — avoids paging the whole table.
   const known = Object.keys(PITCH_NAMES)
   const counts = await Promise.all(known.map(async t => {
@@ -314,30 +339,35 @@ const cellsCache = new Map<string, CellsRow>()
  * (empty state). Each full row is large (tens of thousands of cells), so it is cached per process for an hour and only
  * the window leaves.
  */
-export async function getMovementCells(type: string, hand: Hand, hb0In: number | null, ivb0In: number | null, half: number, margin = 2.5): Promise<MovementCellsPayload | null> {
+export async function getMovementCells(type: string, hand: Hand, hb0In: number | null, ivb0In: number | null, half: number, margin = 2.5, level: Level = 'mlb', season?: number): Promise<MovementCellsPayload | null> {
   const thisYear = new Date().getFullYear()
+  const milb = isMilb(level)
   const years: number[] = []
-  for (let y = MAP_FIRST_SEASON; y <= thisYear; y++) years.push(y)
+  if (milb) years.push(season ?? thisYear)   // a minor-league level shows one season: the one asked for
+  else for (let y = MAP_FIRST_SEASON; y <= thisYear; y++) years.push(y)
+  // the cache key carries the level and season for minor leagues; MLB keeps its original key
+  const ckey = (y: number | string) => (milb ? `${level}|${y}|${type}|${hand}` : `${y}|${LEAGUE_COORD_ERA}|${type}|${hand}`)
   const rows = new Map<number, CellsRow>()
   const missing: number[] = []
   for (const y of years) {
-    const hit = cellsCache.get(`${y}|${LEAGUE_COORD_ERA}|${type}|${hand}`)
+    const hit = cellsCache.get(ckey(y))
     if (hit && Date.now() - hit.at <= CELLS_TTL_MS) rows.set(y, hit); else missing.push(y)
   }
   if (missing.length) {
-    const supa = createAdminClient()
-    const { data, error } = await supa
-      .from('pitch_shape_cells').select('span,n_pitches,n_swings,n_whiffs,cells')
-      .in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA).eq('pitch_type', type).eq('p_throws', hand)
+    const supa = milb ? await milbDb() : createAdminClient()
+    const sel = milb
+      ? supa.from('pitch_shape_cells_milb').select('span,n_pitches,n_swings,n_whiffs,cells').eq('level', level).in('span', missing.map(String))
+      : supa.from('pitch_shape_cells').select('span,n_pitches,n_swings,n_whiffs,cells').in('span', missing.map(String)).eq('coord_era', LEAGUE_COORD_ERA)
+    const { data, error } = await sel.eq('pitch_type', type).eq('p_throws', hand)
     if (error) { logOnce('getMovementCells:' + 'Supabase error', 'getMovementCells', 'Supabase error', error.message); return null }
     for (const d of (data ?? []) as unknown as { span: string; n_pitches: number; n_swings: number; n_whiffs: number; cells: number[] }[]) {
       const row = { at: Date.now(), n_pitches: d.n_pitches, n_swings: d.n_swings, n_whiffs: d.n_whiffs, cells: d.cells }
-      cellsCache.set(`${d.span}|${LEAGUE_COORD_ERA}|${type}|${hand}`, row)
+      cellsCache.set(ckey(d.span), row)
       rows.set(Number(d.span), row)
     }
   }
   const have = [...rows.keys()].sort((x, y) => x - y)
-  if (have.length === 0) return getPooledMovementCells(type, hand, hb0In, ivb0In, half, margin)
+  if (have.length === 0) return milb ? null : getPooledMovementCells(type, hand, hb0In, ivb0In, half, margin)
   // null centre = the league's own average movement for this type and hand (the main lab page's map is league-wide)
   const [hb0, ivb0] = hb0In != null && ivb0In != null ? [hb0In, ivb0In] : leagueCenter([...rows.values()])
   const lo = (c: number) => Math.round((c - half - margin) * 10), hi = (c: number) => Math.round((c + half + margin) * 10)
@@ -416,6 +446,11 @@ const MIN_IN_SPOT = 3   // fewer than 3 of 60 sampled pitches in the window is n
  * up to 60 of each pitcher's pitches kept in pitch_shape_pitcher (min 300 pitches of the type that season). Most in the
  * spot first. [] on error / none. The sample is random, so shares are approximate.
  */
+/** The per-pitcher table for a level: the MLB table as it always was, or the minor-league table filtered to that level (a row of one level can never be read as another). */
+function pitcherScope(supa: ReturnType<typeof createAdminClient>, level: Level, cols: string) {
+  return isMilb(level) ? supa.from('pitch_shape_pitcher_milb').select(cols).eq('level', level) : supa.from('pitch_shape_pitcher').select(cols)
+}
+
 const THROWER_BASE_COLS = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,points,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
 const THROWER_DIAG_COLS = ',n_loc,n_zone,n_heart,n_ooz,n_chase,n_bbe,xwoba_con_sum,n_bbe_w,woba_con_sum'
 
@@ -429,11 +464,9 @@ export async function getThrowers(type: string, hand: Hand, hb: number, ivb: num
  * Same as getThrowers, plus each pitcher's diagnostics and the league figures to set them against. The diagnostic columns come from
  * supabase/migrations/20261031100000_pitch_shape_pitcher_diagnostics.sql; until that is applied the select without them is used, so nothing else breaks.
  */
-export async function getThrowersDetailed(type: string, hand: Hand, hb: number, ivb: number, radius: number, season: number, limit = 40): Promise<ThrowersResult> {
-  const supa = createAdminClient()
-  const ask = (cols: string) => supa
-    .from('pitch_shape_pitcher')
-    .select(cols)
+export async function getThrowersDetailed(type: string, hand: Hand, hb: number, ivb: number, radius: number, season: number, limit = 40, level: Level = 'mlb'): Promise<ThrowersResult> {
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
+  const ask = (cols: string) => pitcherScope(supa, level, cols)
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES)
     .limit(1000)
   let { data, error } = await ask(THROWER_BASE_COLS + THROWER_DIAG_COLS)
@@ -471,10 +504,10 @@ export type PitcherDot = {
  * layer of dots on the map (each dot a pitcher, coloured by whether he is ahead of or behind what his own shape usually gets). [] on error. Same table, same fallback as
  * getThrowersDetailed when the diagnostic columns are not applied yet.
  */
-export async function getPitcherDots(type: string, hand: Hand, season: number): Promise<{ dots: PitcherDot[]; league: Diag }> {
-  const supa = createAdminClient()
+export async function getPitcherDots(type: string, hand: Hand, season: number, level: Level = 'mlb'): Promise<{ dots: PitcherDot[]; league: Diag }> {
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
   const cols = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
-  const ask = (c: string) => supa.from('pitch_shape_pitcher').select(c)
+  const ask = (c: string) => pitcherScope(supa, level, c)
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES).limit(1000)
   let { data, error } = await ask(cols + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
@@ -518,8 +551,8 @@ export async function getPitcherRepertoire(pitcherId: number, season: number, pr
 }
 
 /** One pitcher's sampled pitches (up to 60) as [hb, ivb], for drawing his dots. [] when he has none. */
-export async function getPitcherPoints(type: string, hand: Hand, season: number, pitcherId: number): Promise<[number, number][]> {
-  const { data, error } = await createAdminClient().from('pitch_shape_pitcher').select('points')
+export async function getPitcherPoints(type: string, hand: Hand, season: number, pitcherId: number, level: Level = 'mlb'): Promise<[number, number][]> {
+  const { data, error } = await pitcherScope(isMilb(level) ? await milbDb() : createAdminClient(), level, 'points')
     .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).eq('pitcher_id', pitcherId).maybeSingle()
   if (error) { logOnce('getPitcherPoints:' + 'Supabase error', 'getPitcherPoints', 'Supabase error', error.message); return [] }
   const pts = ((data as unknown as { points: { hb: number; ivb: number }[] | null } | null)?.points ?? [])
@@ -603,14 +636,12 @@ export async function getShapeLabData(pitcherId: number): Promise<ShapeLabData |
 const accentTolerant = (term: string) => term.replace(/[aeiouncAEIOUNC]/g, '_')
 const plain = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-export async function searchPitchers(q: string, proTypes: boolean): Promise<PitcherHit[]> {
+export async function searchPitchers(q: string, proTypes: boolean, level: Level = 'mlb', season?: number): Promise<PitcherHit[]> {
   const term = q.replace(/[%_,()*\\]/g, ' ').trim().slice(0, 40)
   if (term.length < 2) return []
-  const supa = createAdminClient()
-  const minSeason = new Date().getFullYear() - 1
-  let query = supa
-    .from('pitch_shape_pitcher')
-    .select('season,pitcher_id,pitch_type,pitcher_name,team_abbr,p_throws,n_pitches,velo,ivb,hb,slot')
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
+  const minSeason = isMilb(level) ? season ?? new Date().getFullYear() : new Date().getFullYear() - 1
+  let query = pitcherScope(supa, level, 'season,pitcher_id,pitch_type,pitcher_name,team_abbr,p_throws,n_pitches,velo,ivb,hb,slot')
     .ilike('pitcher_name', `%${accentTolerant(term)}%`)
     .gte('season', minSeason)
     .order('season', { ascending: false })

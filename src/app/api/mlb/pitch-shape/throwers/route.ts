@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isProViewer } from '@/lib/require-pro'
 import { getThrowersDetailed } from '@/lib/pitch-shape/data'
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand } from '@/lib/pitch-shape/model'
+import { parseLevel, isMilb } from '@/lib/milb-shape/levels'
+import { resolveSeason } from '@/lib/milb-shape/server'
 
 export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams
@@ -21,6 +23,8 @@ export async function GET(req: NextRequest) {
   if (!(FREE_SANDBOX_TYPES as readonly string[]).includes(type) && !(await isProViewer())) {
     return NextResponse.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
   }
-  const { throwers, league } = await getThrowersDetailed(type, hand as Hand, hb, ivb, radius, season)
+  const level = parseLevel(sp.get('level'))
+  const yr = isMilb(level) ? await resolveSeason(level, sp.get('season')) : season
+  const { throwers, league } = await getThrowersDetailed(type, hand as Hand, hb, ivb, radius, yr, 40, level)
   return NextResponse.json({ throwers, league })
 }

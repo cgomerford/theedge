@@ -11,6 +11,7 @@ import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import SandboxClient from '@/components/pitch-shape/SandboxClient'
 import PitchFinderV2 from '@/components/pitch-shape/PitchFinderV2'
+import LevelBar from '@/components/pitch-shape/LevelBar'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -39,6 +40,7 @@ export default async function ShapeSandboxPage() {
           ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
           : (
             <>
+              <LevelBar />
               <PitchFinderV2 isPro={isPro} pitchTypes={pitchTypes} />
               <div id="dial-in" style={{ margin: '44px 0 10px', borderTop: '1px solid #e7e2d8', paddingTop: 14, scrollMarginTop: 70 }}>
                 <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> 02 · DIAL IN A SHAPE</div>

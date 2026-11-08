@@ -26,6 +26,10 @@ import { MAP_BG, boxColour } from './finder-math'
 import { SHAPE_CSS } from './parts'
 import { log } from '@/lib/log'
 import { useSelectedShape } from './shapeSelection'
+import { onShapePop, replaceShapeParams, useShapeView } from './shapeLevel'
+import { CoverageBadge, useLevelCaps } from './LevelBar'
+import { LEVEL_LABEL } from '@/lib/milb-shape/levels'
+import { parseShapeUrl } from '@/lib/milb-shape/url'
 
 const ORANGE_TEXT = '#B83A0E'
 const HALF = 12
@@ -64,6 +68,14 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
   const locked = (t: string) => !isPro && !lookLeft && !isFree(t)
   const [type, setType] = useState(pitchTypes[0] ?? 'FF')
   const [hand, setHand] = useState<Hand>('R')
+  // the shared level (see shapeLevel.ts). MLB is the default and behaves exactly as before; a minor-league level reads its own cohorts and only the axes it has measured.
+  const lv = useShapeView()
+  const level = lv.level, mlb = level === 'mlb'
+  const lq = mlb ? '' : `&level=${level}${lv.season != null ? `&season=${lv.season}` : ''}`
+  const caps = useLevelCaps(level, lv.season)
+  const types = useMemo(() => (mlb ? pitchTypes : ['FF', 'ST', 'SL', 'SI', 'FC', 'CH', 'CU', 'KC', 'FS', 'SV'].filter(t => (caps?.types[t]?.pitches ?? 0) >= 300)), [mlb, pitchTypes, caps])
+  /** arm angle is a real axis for this cohort; when it is not, the sandbox falls back to three axes and says so (never a made-up arm angle) */
+  const armOK = mlb || (caps ? caps.types[type]?.armAngle ?? caps.axes.armAngle : true)
   const [loaded, setLoaded] = useState<{ key: string; bins: ShapeBin[] | null } | null>(null)
   const [A, setA] = useState<Shape | null>(null)
   const [from, setFrom] = useState<string | null>(null)
@@ -112,7 +124,40 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     setQ(''); setHits(null)
   }
 
-  const key = `${type}|${hand}`
+  const key = mlb ? `${type}|${hand}` : `${level}|${lv.season ?? ''}|${type}|${hand}`
+  // the address is the starting point for this pitch, hand and the four sliders; Back and Forward restore them
+  const [urlReady, setUrlReady] = useState(false)
+  const cur = useRef({ type, hand })
+  useEffect(() => { cur.current = { type, hand } })
+  useEffect(() => {
+    const apply = (u: ReturnType<typeof parseShapeUrl>) => {
+      const nt = u.spitch && u.spitch in PITCH_NAMES ? u.spitch : cur.current.type, nh = u.shand ?? cur.current.hand
+      const shape = u.v != null && u.ride != null && u.run != null && u.arm != null ? { velo: u.v, ivb: u.ride, hb: u.run, slot: u.arm } : null
+      if (shape) { if (nt !== cur.current.type || nh !== cur.current.hand) pending.current = shape; else setA(shape) }
+      if (nt !== cur.current.type) setType(nt)
+      if (nh !== cur.current.hand) setHand(nh)
+    }
+    apply(parseShapeUrl(window.location.search))
+    setUrlReady(true)   // eslint-disable-line react-hooks/set-state-in-effect -- writing the address waits for the first read, so a shared link is never overwritten by the defaults
+    return onShapePop(apply)
+  }, [])
+  useEffect(() => {
+    if (!urlReady || !A) return
+    const t = setTimeout(() => replaceShapeParams({ spitch: type, shand: hand, v: A.velo, ride: A.ivb, run: A.hb, arm: armOK ? A.slot : undefined }), 250)
+    return () => clearTimeout(t)
+  }, [urlReady, A, type, hand, armOK])
+  // a level switch keeps the sliders where they are (clamped to what the new cohort supports) and reads the new level's bins fresh
+  const prevLevel = useRef(level)
+  const clampNext = useRef(false)
+  useEffect(() => {
+    if (prevLevel.current === level) return
+    prevLevel.current = level
+    if (A) { pending.current = A; clampNext.current = true }
+    setBase(null); setFrom(null); lastSel.current = ''
+  }, [level]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!mlb && caps && types.length > 0 && !types.includes(type)) setType(types.find(isFree) ?? types[0])   // eslint-disable-line react-hooks/set-state-in-effect -- the level's own pitch types decide which pitch is shown
+  }, [mlb, caps, types, type])
   useEffect(() => {
     if (locked(type)) return
     let cancelled = false
@@ -120,8 +165,15 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
       if (cancelled) return
       const ok = rows && rows.length > 0 ? rows : null
       setLoaded({ key, bins: ok })
-      const start = pending.current ?? (ok ? typicalShape(ok) : null)
+      let start = pending.current ?? (ok ? typicalShape(ok) : null)
       pending.current = null
+      if (start && ok && clampNext.current) {
+        clampNext.current = false
+        const c = typicalShape(ok), next = { ...start }
+        if (c) { for (const k of ['velo', 'ivb', 'hb', 'slot'] as const) { const [lo, hi] = sliderRange(k, c); next[k] = Math.min(hi, Math.max(lo, next[k])) } }
+        start = next
+      }
+      if (start && !armOK) start = { ...start, slot: 5 }   // three-axis cohort: arm angle is held still in the lowest band (slot bin 0) and shown as pending
       if (start) setA(start)
     }).catch(() => { if (!cancelled) setLoaded({ key, bins: null }) })
     return () => { cancelled = true }
@@ -165,16 +217,16 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
   // the same league map the lab page draws, for "where it sits"
   useEffect(() => {
     if (locked(type)) { setCells(null); return }
-    const k = `${type}|${hand}`
+    const k = mlb ? `${type}|${hand}` : `${level}|${lv.season ?? ''}|${type}|${hand}`
     if (cellsCache.has(k)) { setCells(cellsCache.get(k)); return }
     setCells(undefined)
     let live = true
-    fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}`)
+    fetch(`/api/mlb/pitch-shape/cells?type=${type}&hand=${hand}&center=league&half=${HALF}${lq}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j: { payload: MovementCellsPayload | null }) => { cellsCache.set(k, j.payload); if (live) setCells(j.payload) })
       .catch(e => { log.error('ShapeSandboxV2', 'cells fetch failed', e instanceof Error ? e.message : e); if (live) setCells(null) })
     return () => { live = false }
-  }, [type, hand]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [type, hand, level, lv.season]) // eslint-disable-line react-hooks/exhaustive-deps
   const grid = useMemo(() => (cells ? makeGrid(cells, 'latest') : null), [cells])
   const N = grid ? 2 * grid.h10 + 1 : 0
   const lw = grid && grid.swings > 0 ? grid.whiffs / grid.swings : null
@@ -199,13 +251,13 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     if (!A || !cells || locked(type)) { setNear(null); return }
     let live = true
     const t = setTimeout(() => {
-      fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${A.hb.toFixed(1)}&ivb=${A.ivb.toFixed(1)}&radius=3&season=${cells.latest}`)
+      fetch(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${hand}&hb=${A.hb.toFixed(1)}&ivb=${A.ivb.toFixed(1)}&radius=3&season=${cells.latest}${lq}`)
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((j: { throwers: Thrower[] }) => { if (live) setNear(j.throwers) })
         .catch(e => { log.error('ShapeSandboxV2', 'nearby pitchers fetch failed', e instanceof Error ? e.message : e); if (live) setNear(null) })
     }, 300)
     return () => { live = false; clearTimeout(t) }
-  }, [A, cells, type, hand]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [A, cells, type, hand, lq]) // eslint-disable-line react-hooks/exhaustive-deps
   const nearest = useMemo(() => {
     if (!A || !near) return []
     const sd = { velo: 1.6, ivb: 2.4, hb: 2.4, slot: 9 }
@@ -283,7 +335,7 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
     )
   }
 
-  const headLine = A ? `THIS SHAPE · ${A.velo.toFixed(1)} MPH · ${A.ivb.toFixed(1)} IN RIDE · ${A.hb.toFixed(1)} IN RUN · ${Math.round(A.slot)}°` : ''
+  const headLine = A ? `THIS SHAPE · ${A.velo.toFixed(1)} MPH · ${A.ivb.toFixed(1)} IN RIDE · ${A.hb.toFixed(1)} IN RUN · ${armOK ? `${Math.round(A.slot)}°` : 'ARM ANGLE PENDING'}` : ''
   const gw = L && L.whiff.value != null ? good('whiff', L.whiff.value) : null
   const gg = L && L.gb.value != null ? good('gb', L.gb.value) : null
   const ring = grid && A ? { x: A.hb * 10 - (grid.gx0 + grid.m10) + 0.5, y: N - (A.ivb * 10 - (grid.gy0 + grid.m10) + 0.5) } : null
@@ -296,8 +348,9 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
       <div className="ps2-grid">
         <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }}>
           <div className="pv-k">Build a pitch</div>
+          <div style={{ margin: '6px 0 2px' }}><CoverageBadge level={level} caps={caps} compact /></div>
           <div className="pv-row" style={{ marginTop: 6 }}>
-            {pitchTypes.map(t => <button key={t} type="button" className={`pv-pill${t === type ? ' on' : ''}`} style={{ minHeight: 44, fontSize: 14, opacity: locked(t) ? 0.6 : 1 }} onClick={() => { setType(t); setFrom(null) }}>{PITCH_NAMES[t] ?? t}{locked(t) && <small style={{ marginLeft: 5, fontSize: 10, fontWeight: 800, color: ORANGE_TEXT }}>PRO</small>}</button>)}
+            {types.map(t => <button key={t} type="button" className={`pv-pill${t === type ? ' on' : ''}`} style={{ minHeight: 44, fontSize: 14, opacity: locked(t) ? 0.6 : 1 }} onClick={() => { setType(t); setFrom(null) }}>{PITCH_NAMES[t] ?? t}{locked(t) && <small style={{ marginLeft: 5, fontSize: 10, fontWeight: 800, color: ORANGE_TEXT }}>PRO</small>}</button>)}
             {(['R', 'L'] as Hand[]).map(h => <button key={h} type="button" className={`pv-pill${h === hand ? ' on' : ''}`} style={{ minHeight: 44, fontSize: 14 }} onClick={() => setHand(h)}>{h === 'R' ? 'Right' : 'Left'}</button>)}
           </div>
           <label htmlFor="ps2-pitcher" style={{ display: 'block', fontWeight: 800, fontSize: 14, marginTop: 10 }}>Start from a real pitcher</label>
@@ -321,6 +374,13 @@ export default function ShapeSandboxV2({ isPro, lookLeft = false, pitchTypes, lo
           {A && center && index && SLIDERS.map(s => {
             const [lo, hi] = sliderRange(s.k, center)
             const b = bands[s.k], out = !b || A[s.k] < b[0] - 1e-9 || A[s.k] > b[1] + 1e-9
+            const off = s.k === 'slot' && !armOK   // arm angle is not measured for this cohort: the slider is off and says pending, never 0
+            if (off) return (
+              <div key={s.k} style={{ marginTop: 16, opacity: 0.85 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, letterSpacing: '.12em', fontWeight: 800, textTransform: 'uppercase', color: C.mute }}>{s.label}<b style={{ fontSize: 20, letterSpacing: 0, color: C.mute }}>pending</b></div>
+                <div role="status" style={{ fontSize: 12.5, color: '#5b5347', marginTop: 4, lineHeight: 1.45 }}>Arm angle pending for this cohort: {caps?.pending.armAngle ?? `${LEVEL_LABEL[level]} pitches carry no measured arm angle.`} The other three settings are used, and nothing is estimated.</div>
+              </div>
+            )
             return (
               <div key={s.k} className={out ? 'ps2-out' : ''} style={{ marginTop: 16 }}>
                 <label htmlFor={`ps2-${s.k}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 11, letterSpacing: '.12em', fontWeight: 800, textTransform: 'uppercase', color: C.mute }}>{s.label}<b style={{ fontSize: 20, letterSpacing: 0, color: C.ink }}>{A[s.k].toFixed(s.digits)} {s.unit}</b></label>

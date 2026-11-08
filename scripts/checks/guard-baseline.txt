@@ -123,3 +123,5 @@ fetch	src/lib/fielding-bible.ts
 fetch	src/components/me/dashboard/Dashboard.tsx
 fetch	src/components/me/dashboard/useLeagueData.ts
 fetch	src/components/pitch-shape/ShapeGraphicsStudio.tsx
+fetch	src/components/pitch-shape/LevelBar.tsx
+fetch	src/components/pitch-shape/MilbPitcherCard.tsx

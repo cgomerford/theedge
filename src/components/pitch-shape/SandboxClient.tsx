@@ -7,10 +7,14 @@ import type { LoadBins, SearchPitchers } from './ShapeSandbox'
 import ShapeSandboxV2 from './ShapeSandboxV2'
 import type { PitcherHit, ShapeBin } from '@/lib/pitch-shape/model'
 import { log } from '@/lib/log'
+import { getShapeView } from './shapeLevel'
+
+/** the shared level as query parameters: nothing for MLB (the unchanged default), else level and any season asked for */
+const levelQuery = () => { const v = getShapeView(); return v.level === 'mlb' ? '' : `&level=${v.level}${v.season != null ? `&season=${v.season}` : ''}` }
 
 const loadBins: LoadBins = async (pitchType, hand) => {
   try {
-    const res = await fetch(`/api/mlb/pitch-shape/bins?type=${pitchType}&hand=${hand}`)
+    const res = await fetch(`/api/mlb/pitch-shape/bins?type=${pitchType}&hand=${hand}${levelQuery()}`)
     if (!res.ok) return null
     const json = (await res.json()) as { bins?: ShapeBin[] }
     return json.bins ?? null
@@ -22,7 +26,7 @@ const loadBins: LoadBins = async (pitchType, hand) => {
 
 const searchPitchers: SearchPitchers = async q => {
   try {
-    const res = await fetch(`/api/mlb/pitch-shape/pitchers?q=${encodeURIComponent(q)}`)
+    const res = await fetch(`/api/mlb/pitch-shape/pitchers?q=${encodeURIComponent(q)}${levelQuery()}`)
     if (!res.ok) return []
     const json = (await res.json()) as { pitchers?: PitcherHit[] }
     return json.pitchers ?? []
