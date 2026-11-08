@@ -16,6 +16,7 @@ type Tables = Record<string, Row[]>
 const FILE = path.join(process.cwd(), '.dev-cache', 'milb-shape', 'tables.json')
 let mode: 'real' | 'dev' | undefined
 let tables: Tables | null = null
+let probedAt = 0   // when the real tables were last checked, so a dev server notices once they exist
 let loadedAt = 0   // the file's modified time when it was read, so a fresh preview file is picked up without restarting
 
 const cmp = (a: unknown, b: unknown) => (typeof a === 'number' || typeof b === 'number' ? Number(a) - Number(b) : String(a).localeCompare(String(b)))
@@ -48,7 +49,9 @@ function devClient(t: Tables) {
 export async function milbDb(): Promise<ReturnType<typeof createAdminClient>> {
   const real = createAdminClient()
   if (process.env.NODE_ENV !== 'development') return real
+  if (mode === 'dev' && Date.now() - probedAt > 30_000) mode = undefined
   if (mode === undefined) {
+    probedAt = Date.now()
     mode = 'real'
     if (fs.existsSync(FILE)) {
       const probe = await real.from('pitch_shape_cells_milb').select('level').limit(1)
