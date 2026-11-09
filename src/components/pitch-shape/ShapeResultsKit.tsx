@@ -694,7 +694,7 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
         )
       })}
       {list.length > 6 && <button type="button" style={{ ...pill(false), marginTop: 8 }} onClick={() => setAll(a => !a)}>{all ? 'Show fewer' : `Show all ${list.length}`}</button>}
-      {few.length > 0 && effTab !== 'all' && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 8 }}>{few.length} more here ({few.slice(0, 3).map(c => c.r.name).join(', ')}{few.length > 3 ? '…' : ''}) have no results to set against their shape (too few pitches, or this level has no run value). Open Everyone to see them.</div>}
+      {few.length > 0 && effTab !== 'all' && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 8 }}>{few.length} more here ({few.slice(0, 3).map(c => c.r.name).join(', ')}{few.length > 3 ? '…' : ''}) have no results to set against their shape (too few pitches, or this level has no runs-saved figure). Open Everyone to see them.</div>}
     </div>
   )
 }
