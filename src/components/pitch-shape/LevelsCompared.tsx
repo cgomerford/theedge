@@ -181,14 +181,16 @@ function Spot({ type, hand, place, radius, lc }: { type: string; hand: string; p
 
 type Metric = 'swing' | 'whiff'
 const HALF = 12
-// One absolute colour scale per measure, shared by every map, so a darker map really is a level where hitters swung more (or missed more).
-const RANGE: Record<Metric, [number, number]> = { swing: [0.25, 0.65], whiff: [0.08, 0.40] }
+// One absolute colour scale per measure, shared by every map, so a redder map really is a level where hitters swung more (or missed more) and a bluer one fewer.
+const RANGE: Record<Metric, [number, number]> = { swing: [0.32, 0.58], whiff: [0.12, 0.36] }
 const METRIC_LABEL: Record<Metric, string> = { swing: 'Swings per pitch', whiff: 'Whiffs per swing' }
 const MIN_PITCHES_WINDOW = 60
+// Blue (least) through a pale middle to red (most): the progression between levels reads at a glance, which one orange scale did not show.
+const RAMP_LOW: [number, number, number] = [49, 104, 178], RAMP_MID: [number, number, number] = [248, 244, 238], RAMP_HIGH: [number, number, number] = [190, 38, 24]
+const rgbCss = (c: [number, number, number]) => `rgb(${c[0]},${c[1]},${c[2]})`
 function ramp(t: number): [number, number, number] {
-  const a: [number, number, number] = [244, 238, 227], b: [number, number, number] = [255, 138, 80], c: [number, number, number] = [168, 48, 14]
   const k = Math.max(0, Math.min(1, t))
-  const [p, q, u] = k < 0.5 ? [a, b, k / 0.5] : [b, c, (k - 0.5) / 0.5]
+  const [p, q, u] = k < 0.5 ? [RAMP_LOW, RAMP_MID, k / 0.5] : [RAMP_MID, RAMP_HIGH, (k - 0.5) / 0.5]
   return [Math.round(p[0] + (q[0] - p[0]) * u), Math.round(p[1] + (q[1] - p[1]) * u), Math.round(p[2] + (q[2] - p[2]) * u)]
 }
 /** The measure in a window of half-width r10 (tenths of an inch) around a point, or null when the window holds too little to show. */
@@ -265,7 +267,7 @@ function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: str
       <style>{'@media(max-width:760px){.lc-maps{grid-template-columns:1fr !important}}'}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '10px 0 4px', fontSize: 12.5, fontWeight: 700 }}>
         <span>{pc(lo)}</span>
-        <span aria-hidden style={{ flex: 1, minWidth: 140, maxWidth: 340, height: 12, borderRadius: 3, background: `linear-gradient(90deg, rgb(244,238,227), rgb(255,138,80) 50%, rgb(168,48,14))` }} />
+        <span aria-hidden style={{ flex: 1, minWidth: 140, maxWidth: 340, height: 12, borderRadius: 3, background: `linear-gradient(90deg, ${rgbCss(RAMP_LOW)}, ${rgbCss(RAMP_MID)} 50%, ${rgbCss(RAMP_HIGH)})` }} />
         <span>{pc(hi)}</span>
         <span style={{ color: C.mute, fontWeight: 500 }}>{METRIC_LABEL[metric]}: one scale on every map</span>
       </div>
