@@ -35,9 +35,12 @@ export function divergingColour(rate: number, leagueRate: number): [number, numb
 }
 
 /** The colour of one map box, or null when its window is under the gate (left blank, never estimated). Thin windows are faded toward the background. */
-export function boxColour(swings: number, whiffs: number, leagueRate: number, minSwings = MIN_WINDOW_SWINGS, strongSwings = STRONG_SWINGS): [number, number, number] | null {
+/** Shrink a thin window's whiff rate toward the league rate, as if it carried `prior` extra swings at the league rate (0 = no smoothing). */
+export const shrunkRate = (swings: number, whiffs: number, leagueRate: number, prior: number) => (prior > 0 ? (whiffs + prior * leagueRate) / (swings + prior) : whiffs / swings)
+
+export function boxColour(swings: number, whiffs: number, leagueRate: number, minSwings = MIN_WINDOW_SWINGS, strongSwings = STRONG_SWINGS, prior = 0): [number, number, number] | null {
   if (swings < minSwings || swings <= 0) return null
-  const c = divergingColour(whiffs / swings, leagueRate)
+  const c = divergingColour(shrunkRate(swings, whiffs, leagueRate, prior), leagueRate)
   return swings < strongSwings ? mix(MAP_BG, c, 0.45) : c
 }
 

@@ -30,7 +30,7 @@ import { FlightPlayer, SpeedToggle } from '@/components/pitching-lab/PitchFlight
 import { buildFlight } from '@/lib/sequencing-lab/flight'
 import { makeGrid, stats, type Grid, type Span } from './heatGrid'
 import {
-  ABOUT_LEVEL_PTS, MAP_BG, SPOT_MIN_SWINGS,
+  ABOUT_LEVEL_PTS, MAP_BG, SPOT_MIN_SWINGS, shrunkRate,
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
@@ -71,12 +71,12 @@ const boardCache = new Map<string, Board | null>()
 const shapeBinsCache = new Map<string, ShapeBin[] | null>()
 
 /** The most effective places: highest miss rate with 200+ swings in the window, at least 4 in apart. */
-function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4, minSwings = SPOT_MIN_SWINGS): Spot[] {
+function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4, minSwings = SPOT_MIN_SWINGS, prior = 0, leagueRate = 0): Spot[] {
   const found: Spot[] = []
   const lo = g.m10, hi = g.size - g.m10
   for (let y = lo; y < hi; y += 5) for (let x = lo; x < hi; x += 5) {
     const s = stats(g, g.gx0 + x, g.gy0 + y, r10)
-    if (s.swings >= minSwings && s.swings > 0) found.push({ hb: (g.gx0 + x) / 10, ivb: (g.gy0 + y) / 10, rate: s.whiffs / s.swings, swings: s.swings })
+    if (s.swings >= minSwings && s.swings > 0) found.push({ hb: (g.gx0 + x) / 10, ivb: (g.gy0 + y) / 10, rate: shrunkRate(s.swings, s.whiffs, leagueRate, prior), swings: s.swings })
   }
   found.sort((a, b) => b.rate - a.rate)
   const out: Spot[] = []
@@ -277,7 +277,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const r10 = Math.round(radius * 10)
   const leagueRate = grid && grid.swings > 0 ? grid.whiffs / grid.swings : null
   const latest = payload?.latest ?? new Date().getFullYear()
-  const spots = useMemo(() => (grid ? topSpots(grid, Math.max(r10, 10), 3, 4, lim.spotSwings) : []), [grid, r10, lim.spotSwings])
+  const spots = useMemo(() => (grid ? topSpots(grid, Math.max(r10, 10), 3, 4, lim.spotSwings, lim.priorSwings, grid.swings > 0 ? grid.whiffs / grid.swings : 0) : []), [grid, r10, lim.spotSwings, lim.priorSwings])
   const ms = useMemo(() => {
     const se = payload ? (span === 'latest' ? payload.seasons.filter(s => s.season === payload.latest) : payload.seasons) : []
     return movementStats(se.flatMap(s => s.cells))
@@ -342,7 +342,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         rgb = v == null ? BLANK : colourFor(((metric.up ? 1 : -1) * (v - ref)) / metric.span)
       } else {
         const s = stats(grid, grid.gx0 + grid.m10 + xx, grid.gy0 + grid.m10 + yy, r10)
-        rgb = boxColour(s.swings, s.whiffs, leagueRate, lim.windowSwings, lim.strongSwings) ?? MAP_BG
+        rgb = boxColour(s.swings, s.whiffs, leagueRate, lim.windowSwings, lim.strongSwings, lim.priorSwings) ?? MAP_BG
       }
       const o = ((N - 1 - yy) * N + xx) * 4
       img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255
@@ -680,7 +680,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {groupDots.length === 0 ? 'nobody in view.' : groupDots.slice(0, 60).map((d, i) => <span key={d.pitcherId}>{i ? ', ' : ''}<button type="button" onClick={() => setFocus(d.pitcherId)} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: ORANGE_TEXT, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>{d.name}</button> <span style={{ color: C.mute }}>{d.teamAbbr}</span></span>)}{groupDots.length > 60 ? ` and ${groupDots.length - 60} more` : ''}
                 </div>
               )}
-              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Hover a dot for his name and click it to see him; hover or click a colour above to name everyone in that group. Faded squares = thinner sample ({lim.windowSwings}–{lim.strongSwings} swings) · blank = {lim.gated ? <>under {lim.windowSwings}, not estimated</> : <>no swing recorded</>}</div>
+              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Hover a dot for his name and click it to see him; hover or click a colour above to name everyone in that group. Faded squares = thinner sample ({lim.windowSwings}–{lim.strongSwings} swings) · blank = {lim.gated ? <>under {lim.windowSwings}, not estimated</> : <>no swing recorded; a square with few swings is pulled toward the league average, so one swing cannot paint it red or blue</>}</div>
             </div>
 
             {place && (
@@ -830,7 +830,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         <style>{'@media(max-width:800px){.pf2-foot{grid-template-columns:1fr !important}}'}</style>
         <div><b style={{ color: C.ink }}>What a square means.</b> Every league {lc} within ±{radius} inch of that square’s movement: of the swings at them, the share that missed. It is a movement shape, not a place in the zone.</div>
         <div><b style={{ color: C.ink }}>What it can’t tell you.</b> Command, deception and sequencing aren’t in the map. It describes what pitches like this have done; it doesn’t predict.</div>
-        <div><b style={{ color: C.ink }}>Why some squares are blank.</b> {lim.gated ? <>Under {lim.windowSwings} swings is too few to trust, so we leave it empty rather than guess.</> : <>A square is blank only where no swing has been recorded at all; a short season has no sample minimum, so every other square shows, thin ones faded.</>}</div>
+        <div><b style={{ color: C.ink }}>Why some squares are blank.</b> {lim.gated ? <>Under {lim.windowSwings} swings is too few to trust, so we leave it empty rather than guess.</> : <>A square is blank only where no swing has been recorded at all; a short season has only a small minimum (30 pitches for a pitcher to be listed), so every other square shows, thin ones faded and pulled toward the average.</>}</div>
       </div>
       </div>
     </div>

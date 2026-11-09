@@ -60,11 +60,11 @@ describe('Spring Training filter', () => {
   })
 })
 
-describe('no sample minimums at the exhibition levels', () => {
+describe('a small 30-pitch minimum at the exhibition levels', () => {
   it('limits: MLB and the minors keep their gates; the two exhibition levels have none', () => {
     expect(limitsFor('mlb')).toMatchObject({ gated: true, comparePitches: 300, boardPitches: 100, windowSwings: 40 })
     expect(limitsFor('aaa').gated).toBe(true)
-    for (const l of ['afl', 'st'] as const) expect(limitsFor(l)).toMatchObject({ gated: false, comparePitches: 1, boardPitches: 1, ownPitches: 1, windowSwings: 1, ownSwings: 1, spotSwings: 15 })
+    for (const l of ['afl', 'st'] as const) expect(limitsFor(l)).toMatchObject({ gated: false, comparePitches: 30, boardPitches: 30, ownPitches: 30, windowSwings: 1, ownSwings: 1, spotSwings: 15, priorSwings: 30 })
     expect(isExhibition('st')).toBe(true); expect(isExhibition('fsl')).toBe(false)
     expect(isLevel('afl') && isLevel('st')).toBe(true); expect(parseLevel('spring')).toBe('mlb')
   })

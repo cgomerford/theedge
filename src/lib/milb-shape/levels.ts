@@ -12,8 +12,8 @@
 export type Level = 'mlb' | 'aaa' | 'fsl' | 'afl' | 'st'
 export type MilbLevel = Exclude<Level, 'mlb'>
 /**
- * The two exhibition levels: the Arizona Fall League and Spring Training. They are short (a few weeks of games), so they carry NO sample-size minimums: every pitcher and every pitch
- * that was tracked is kept and shown, labelled by its sample instead of being hidden. Spring Training has no arm angle in Savant's data and the Arizona Fall League has no arm angle,
+ * The two exhibition levels: the Arizona Fall League and Spring Training. They are short (a few weeks of games), so they carry only a small minimum (30 pitches for a pitcher to be listed, see limits.ts):
+ * every tracked pitch is kept in the tables and every map square is shown, labelled by its sample instead of being hidden. Spring Training has no arm angle in Savant's data and the Arizona Fall League has no arm angle,
  * run value or expected stats (its pitches come from the game feed), so those are pending there, never filled in.
  */
 export type ExhibitionLevel = 'afl' | 'st'
