@@ -30,7 +30,7 @@ import { FlightPlayer, SpeedToggle } from '@/components/pitching-lab/PitchFlight
 import { buildFlight } from '@/lib/sequencing-lab/flight'
 import { makeGrid, stats, type Grid, type Span } from './heatGrid'
 import {
-  ABOUT_LEVEL_PTS, MAP_BG, MIN_WINDOW_SWINGS, SPOT_MIN_SWINGS, STRONG_SWINGS,
+  ABOUT_LEVEL_PTS, MAP_BG, SPOT_MIN_SWINGS,
   boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
@@ -680,7 +680,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {groupDots.length === 0 ? 'nobody in view.' : groupDots.slice(0, 60).map((d, i) => <span key={d.pitcherId}>{i ? ', ' : ''}<button type="button" onClick={() => setFocus(d.pitcherId)} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: ORANGE_TEXT, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>{d.name}</button> <span style={{ color: C.mute }}>{d.teamAbbr}</span></span>)}{groupDots.length > 60 ? ` and ${groupDots.length - 60} more` : ''}
                 </div>
               )}
-              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Hover a dot for his name and click it to see him; hover or click a colour above to name everyone in that group. Faded squares = thinner sample ({MIN_WINDOW_SWINGS}–{STRONG_SWINGS} swings) · blank = under {MIN_WINDOW_SWINGS}, not estimated</div>
+              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Hover a dot for his name and click it to see him; hover or click a colour above to name everyone in that group. Faded squares = thinner sample ({lim.windowSwings}–{lim.strongSwings} swings) · blank = {lim.gated ? <>under {lim.windowSwings}, not estimated</> : <>no swing recorded</>}</div>
             </div>
 
             {place && (
@@ -763,7 +763,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   const score = saved != null && board && board.dist.length ? percentile(board.dist, saved) : null
                   return <ResultsReadout level={level} here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
                 })()}
-                <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= STRONG_SWINGS ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
+                <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= lim.strongSwings ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
               </div>
             ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
 

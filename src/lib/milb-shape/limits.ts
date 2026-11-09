@@ -27,6 +27,7 @@ export type Limits = {
 }
 
 const STANDARD: Limits = { gated: true, comparePitches: 300, boardPitches: 100, ownPitches: 300, windowSwings: 40, strongSwings: 100, spotSwings: 200, ownSwings: 100 }
-const NONE: Limits = { gated: false, comparePitches: 1, boardPitches: 1, ownPitches: 1, windowSwings: 1, strongSwings: 1, spotSwings: 1, ownSwings: 1 }
+// spotSwings is not a display minimum: it only decides which squares are RANKED as the numbered "best spots", so a square with one swing that missed does not become spot 1 (every square still shows).
+const NONE: Limits = { gated: false, comparePitches: 1, boardPitches: 1, ownPitches: 1, windowSwings: 1, strongSwings: 1, spotSwings: 15, ownSwings: 1 }
 
 export const limitsFor = (level: Level): Limits => (isExhibition(level) ? NONE : STANDARD)

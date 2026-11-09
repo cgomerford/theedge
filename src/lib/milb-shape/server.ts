@@ -10,7 +10,7 @@ import { logOnce } from '@/lib/log'
 import { MLB_CAPS, NO_CAPS, type Capabilities } from './capability'
 import { isMilb, parseSeason, type Level } from './levels'
 
-const TTL = 10 * 60 * 1000
+const TTL = 10 * 60 * 1000   // ten minutes: a level loaded a moment ago can take that long to appear
 const caps = new Map<string, { at: number; v: Capabilities }>()
 const latest = new Map<string, { at: number; v: number | null }>()
 
