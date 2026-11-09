@@ -489,12 +489,10 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       <style>{'.pf2-root .pv-pill{border-radius:4px}@media(max-width:960px){.pf2-grid{grid-template-columns:1fr !important}} .pf2-pill{min-height:44px;padding:0 16px;font-size:14px}'}</style>
 
       <div className="pv-k">⊕ MLB · Lab · Pitch shape</div>
-      <h1 style={{ margin: '4px 0 8px', fontWeight: 800, fontSize: 'clamp(24px,3.2vw,34px)', lineHeight: 1.1, letterSpacing: '-.02em', maxWidth: 1100 }}>
-        Which {lc}s make hitters miss, and who throws them?
-      </h1>
-      <p style={{ fontSize: 14.5, lineHeight: 1.5, color: '#5b5347', maxWidth: 1000, margin: '0 0 12px' }}>
-        Every {handWord(hand)} {lc} {mlb ? '' : `at ${LEVEL_LABEL[level]} `}from {span === 'latest' ? latest : `${payload?.seasons[0]?.season ?? latest}–${latest}`}, placed by how it moves. {measure === 'whiff' ? 'Darker orange means hitters missed more often when they swung. ' : 'Colour shows what pitches shaped like that spot have produced: orange better for the pitcher than the league average, blue worse. '}{mlb ? 'Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging, and the Shape Score ranks every shape. ' : `Switch “Colour by” to see runs saved, wOBA, xwOBA, average and slugging; every figure is measured at ${LEVEL_LABEL[level]} only. `}It shows what has happened, not a forecast.{' '}
-        <Link href="/mlb/lab/pitch-map" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How this works</Link>
+      {/* the heading and the long explanation moved to the guide page; the heading stays for screen readers and search */}
+      <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Pitch Shape Lab: which {lc}s make hitters miss, and who throws them</h1>
+      <p style={{ fontSize: 13.5, margin: '2px 0 12px' }}>
+        <Link href="/mlb/lab/pitch-shape/guide" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How to read the Pitch Shape Lab, with pictures and recordings</Link>
       </p>
 
       <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 16px', marginBottom: 12, display: view === 'map' ? undefined : 'none' }}>

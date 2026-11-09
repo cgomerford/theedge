@@ -31,6 +31,7 @@ const STATIC_PATHS: { path: string; changeFrequency: Entry['changeFrequency']; p
   { path: '/mlb/stats', changeFrequency: 'daily', priority: 0.8 },
   { path: '/mlb/ask', changeFrequency: 'weekly', priority: 0.6 },
   { path: '/mlb/glossary', changeFrequency: 'monthly', priority: 0.5 },
+  { path: '/mlb/lab/pitch-shape/guide', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/articles', changeFrequency: 'daily', priority: 0.6 },
   { path: '/how-it-works', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/why-edge', changeFrequency: 'monthly', priority: 0.5 },

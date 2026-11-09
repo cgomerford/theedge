@@ -72,7 +72,7 @@ export default function RefinePanel({ level, refine, setRefine, shape, setShape,
       <div style={{ padding: '4px 0 12px' }}>
         <div role="group" aria-label="Starting points" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>
           {PRESETS.map(p => (
-            <button key={p.id} type="button" title={p.why} onClick={() => { setRefine(p.refine); setShape(p.shape) }}
+            <button key={p.id} type="button" title={p.why} onClick={() => { setRefine(p.refine); setShape(level === 'afl' ? { ...p.shape, rankMin: 0, verdict: 'any' } : p.shape) }}   // the Arizona Fall League has no run value, so no shape rank or verdict to filter on
               style={{ minHeight: 38, padding: '0 12px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', color: C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{p.text}</button>
           ))}
           <button type="button" onClick={() => { setRefine(NO_REFINE); setShape(NO_SHAPE_REFINE) }} disabled={!active}
