@@ -16,6 +16,8 @@ import { COUNT_LABEL, COUNT_STATES, GRID, MIN, nextShares, profileOf, type Level
 import { useLevelUse } from './LabLevelBar'
 import { LEVEL_COLOUR } from '@/components/pitch-shape/LevelsCompared'
 import { PITCH_NAMES } from '@/lib/pitch-shape/model'
+import { monthLabel, shapeTimeline } from '@/lib/milb-shape/timeline'
+import InfoTip from '@/components/pitch-shape/InfoTip'
 
 const ORANGE_TEXT = '#B83A0E'
 const SEASON = new Date().getFullYear()
@@ -29,7 +31,7 @@ const nameOf = (t: string, names: Record<string, string>) => names[t] ?? PITCH_N
 
 type Loaded = { level: Level; log: PitcherPitchLog; profile: LevelProfile }
 
-function Section({ n, title, note, children }: { n: number; title: string; note?: string; children: React.ReactNode }) {
+function Section({ n, title, note, children }: { n: number | string; title: string; note?: string; children: React.ReactNode }) {
   return (
     <section style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 20, marginTop: 14 }}>
       <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: ORANGE_TEXT, textTransform: 'uppercase' }}>{n} · {title}</div>
@@ -273,6 +275,64 @@ function ResultsSection({ loaded, names }: { loaded: Loaded[]; names: Record<str
   )
 }
 
+// ---- 1b · shape over the season ---------------------------------------------------------------------------------------------------------------------
+
+function TimelineSection({ loaded, names }: { loaded: Loaded[]; names: Record<string, string> }) {
+  const types = useMemo(() => [...new Set(loaded.flatMap(l => l.profile.types.filter(t => t.n >= MIN.pitches).map(t => t.type)))], [loaded])
+  const [type, setType] = useState('')
+  const t = type && types.includes(type) ? type : [...types].sort((a, b) => (loaded.reduce((n, l) => n + (l.profile.types.find(x => x.type === b)?.n ?? 0), 0)) - (loaded.reduce((n, l) => n + (l.profile.types.find(x => x.type === a)?.n ?? 0), 0)))[0]
+  const pts = useMemo(() => (t ? shapeTimeline(loaded.map(l => ({ level: l.level, throws: l.log.throws, pitches: l.log.pitches })), t) : []), [loaded, t])
+  if (!t) return null
+  const W = 560, H = 380, pad = 40
+  const xs = pts.map(p => p.run), ys = pts.map(p => p.ride)
+  const lo = (v: number[]) => Math.floor(Math.min(...v) - 1.5), hi = (v: number[]) => Math.ceil(Math.max(...v) + 1.5)
+  const x0 = lo(xs), x1 = hi(xs), y0 = lo(ys), y1 = hi(ys)
+  const X = (v: number) => pad + ((v - x0) / (x1 - x0 || 1)) * (W - pad - 12), Y = (v: number) => H - pad - ((v - y0) / (y1 - y0 || 1)) * (H - pad - 12)
+  const first = pts[0], last = pts[pts.length - 1]
+  const solid = pts.filter(p => !p.thin)
+  const a = solid[0], b = solid[solid.length - 1]
+  const dv = a && b && a.velo != null && b.velo != null ? b.velo - a.velo : null
+  return (
+    <Section n="1b" title="How his shape changed through the season" note="Each point is the average of his pitch in one month at one level, joined in date order. A hollow point is a thin month (under 50 pitches of it). A step from the Triple-A colour to the MLB colour is the promotion.">
+      <Chips label="Pitch" value={t} onChange={setType} options={types.map(x => ({ id: x, text: names[x] ?? PITCH_NAMES[x] ?? x }))} />
+      {pts.length < 2 ? <p style={{ fontSize: 13.5, color: C.mute, margin: 0 }}>Not enough months of this pitch to show a path (needs two months with 15+ pitches each).</p> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18, alignItems: 'start' }}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Month-by-month movement of the pitch across levels" style={{ width: '100%', maxWidth: 620, height: 'auto', background: '#EDE8DC', borderRadius: 6 }}>
+            <text x={W / 2} y={H - 10} fontSize="11" fill={C.mute} textAnchor="middle">RUN (ARM-SIDE BREAK, in) →</text>
+            <text x={8} y={18} fontSize="11" fill={C.mute}>↑ RIDE (in)</text>
+            {[x0, x1].map((v, i) => <text key={i} x={X(v)} y={H - 24} fontSize="10.5" fill={C.mute} textAnchor={i ? 'end' : 'start'}>{v}</text>)}
+            {[y0, y1].map((v, i) => <text key={i} x={pad - 6} y={Y(v) + 4} fontSize="10.5" fill={C.mute} textAnchor="end">{v}</text>)}
+            {pts.slice(1).map((p, i) => <line key={i} x1={X(pts[i].run)} y1={Y(pts[i].ride)} x2={X(p.run)} y2={Y(p.ride)} stroke={LEVEL_COLOUR[p.level]} strokeWidth={2} strokeOpacity={0.7} strokeDasharray={pts[i].level !== p.level ? '5 4' : undefined} />)}
+            {pts.map((p, i) => (
+              <g key={i}>
+                <circle cx={X(p.run)} cy={Y(p.ride)} r={7 + Math.min(5, p.n / 80)} fill={p.thin ? '#EDE8DC' : LEVEL_COLOUR[p.level]} stroke={LEVEL_COLOUR[p.level]} strokeWidth={2} />
+                <text x={X(p.run)} y={Y(p.ride) - 12} fontSize="10.5" fontWeight={800} fill={C.ink} textAnchor="middle">{monthLabel(p.month)}</text>
+              </g>
+            ))}
+          </svg>
+          <div>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12.5, marginBottom: 8 }}>{loaded.map(l => <span key={l.level}><Dot level={l.level} />{LEVEL_LABEL[l.level]}</span>)}</div>
+            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+              <thead><tr><th style={th}>Month</th><th style={th}>Level</th><th style={{ ...th, textAlign: 'right' }}>Pitches</th><th style={{ ...th, textAlign: 'right' }}>Velocity<InfoTip k="velo" /></th><th style={{ ...th, textAlign: 'right' }}>Ride<InfoTip k="ride" /></th><th style={{ ...th, textAlign: 'right' }}>Run<InfoTip k="run" /></th></tr></thead>
+              <tbody>{pts.map((p, i) => (
+                <tr key={i} style={{ opacity: p.thin ? 0.7 : 1 }}>
+                  <td style={td}>{monthLabel(p.month)}</td><td style={td}><Dot level={p.level} />{LEVEL_SHORT[p.level]}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{p.n}{p.thin ? ' (thin)' : ''}</td><td style={{ ...td, textAlign: 'right' }}>{f1(p.velo)}</td><td style={{ ...td, textAlign: 'right' }}>{f1(p.ride)}</td><td style={{ ...td, textAlign: 'right' }}>{f1(p.run)}</td>
+                </tr>))}</tbody>
+            </table>
+            {a && b && a !== b && (
+              <p style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, margin: '10px 0 0', background: C.soft, borderRadius: 4, padding: '8px 10px' }}>
+                From {monthLabel(a.month)} ({LEVEL_SHORT[a.level]}) to {monthLabel(b.month)} ({LEVEL_SHORT[b.level]}), counting months of 50+ pitches: speed {dv == null ? 'not recorded' : `${sg(dv)} mph`}, ride {sg(b.ride - a.ride)} in, run {sg(b.run - a.run)} in.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      <p style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>Source: Baseball Savant pitch tracking at each level, {SEASON}. Describes what he threw; movement is measured the same way at every level.</p>
+    </Section>
+  )
+}
+
 export default function LevelsLab({ id }: { id: number }) {
   const use = useLevelUse(id)
   const [loaded, setLoaded] = useState<{ id: number; v: Loaded[] | 'error' } | null>(null)
@@ -296,6 +356,7 @@ export default function LevelsLab({ id }: { id: number }) {
       <h2 style={{ margin: '4px 0 6px', fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-.02em' }}>How his pitching changes from one level to the next</h2>
       <p style={{ margin: '0 0 6px', fontSize: 14, color: '#5b5347', maxWidth: 900, lineHeight: 1.5 }}>{data.map(d => `${d.profile.pitches.toLocaleString()} pitches at ${LEVEL_LABEL[d.level]}`).join(' · ')}, {SEASON}. Shape, mix, location and sequencing compare directly; hitters’ results are each level’s own.</p>
       <ShapeSection loaded={data} names={names} />
+      <TimelineSection loaded={data} names={names} />
       <UsageSection loaded={data} names={names} />
       <LocationSection loaded={data} names={names} />
       <SequencingSection loaded={data} names={names} />
