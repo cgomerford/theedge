@@ -20,7 +20,7 @@ import { makeGrid, stats, type Grid } from './heatGrid'
 import { log } from '@/lib/log'
 
 const ORANGE_TEXT = '#B83A0E'
-export const LEVEL_COLOUR: Record<Level, string> = { mlb: '#1A1A1A', aaa: '#FF5722', fsl: '#5E7A99' }
+export const LEVEL_COLOUR: Record<Level, string> = { mlb: '#1A1A1A', aaa: '#FF5722', fsl: '#5E7A99', afl: '#8A6D3B', st: '#3E8E6A' }
 const dataCache = new Map<string, Data | null>()
 const cellsCache = new Map<string, MovementCellsPayload | null>()
 
@@ -237,7 +237,7 @@ function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: str
   const [metric, setMetric] = useState<Metric>('swing')
   const [hover, setHover] = useState<{ hb: number; ivb: number } | null>(null)
   const r10 = Math.round(radius * 10)
-  const levels = useMemo(() => ([['mlb', m], ['aaa', a], ['fsl', f]] as const).filter((x): x is readonly [Level, MovementCellsPayload] => !!x[1]).map(([level, p]) => ({ level, p, grid: makeGrid(p, 'latest'), tot: p.seasons.find(s => s.season === p.latest)?.league ?? { pitches: 0, swings: 0, whiffs: 0 } })), [m, a, f])
+  const levels = useMemo(() => ([['mlb', m], ['aaa', a], ['fsl', f]] as [Level, MovementCellsPayload | null | undefined][]).filter((x): x is [Level, MovementCellsPayload] => !!x[1]).map(([level, p]) => ({ level, p, grid: makeGrid(p, 'latest'), tot: p.seasons.find(s => s.season === p.latest)?.league ?? { pitches: 0, swings: 0, whiffs: 0 } })), [m, a, f])
   if (m === undefined || a === undefined || f === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading the three maps…</p>
   if (levels.length < 2) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Fewer than two levels have a map for this pitch yet.</p>
   const c0 = { hb: levels[0].p.hb0, ivb: levels[0].p.ivb0 }

@@ -12,9 +12,14 @@ import { capabilitiesFrom, type Capabilities } from './capability'
 import { SPORT_ID, type MilbLevel } from './levels'
 import { addGames, emptyRejects, filterRows, makeRegistry, mergeRejects, type ApiGame, type ApiTeam, type Registry, type Rejects } from './league'
 import { fetchRange, type ChunkCache, type FetchReport, type Fetcher } from './savant'
+import { buildAfl, buildSpring } from './exhibition'
 
 const STATS = 'https://statsapi.mlb.com/api/v1'
 export const SOURCE = 'Baseball Savant statcast-search-minors CSV (minors=true), leagues and games verified against the MLB Stats API'
+const SOURCE_ST = 'Baseball Savant statcast_search CSV (game type S), games verified against the MLB Stats API spring schedule (major-league clubs only)'
+const SOURCE_AFL = 'MLB Stats API game feed (league 119); the Arizona Fall League is not on Baseball Savant'
+/** The source line stored with a level's run record. */
+export const sourceOf = (level: MilbLevel) => (level === 'st' ? SOURCE_ST : level === 'afl' ? SOURCE_AFL : SOURCE)
 
 export type Deps = {
   fetcher: Fetcher
@@ -64,6 +69,16 @@ export async function loadRegistry(deps: Deps, level: MilbLevel, season: number,
 }
 
 export async function buildPlan(o: PlanOpts, deps: Deps): Promise<Plan> {
+  if (o.level === 'st' || o.level === 'afl') {
+    // Spring Training and the Arizona Fall League have their own sources (exhibition.ts) and no sample-size minimums.
+    const r = o.level === 'st'
+      ? await buildSpring({ season: o.season, start: o.start, end: o.end, chunkDays: o.chunkDays, cap: o.cap }, deps)
+      : await buildAfl({ season: o.season, start: o.start, end: o.end }, deps)
+    return {
+      level: o.level, season: o.season, agg: r.agg, fetch: r.fetch, rejects: r.rejects, registryNotes: r.notes, firstDate: r.firstDate, lastDate: r.lastDate, complete: r.complete,
+      rangeStart: o.start ?? r.firstDate ?? '', rangeEnd: o.end ?? r.lastDate ?? '', gamesInSchedule: r.gamesInSchedule, fetchedAt: new Date().toISOString(),
+    }
+  }
   const start = o.start ?? `${o.season}-03-01`, end = o.end ?? `${o.season}-11-15`
   const { reg, games } = await loadRegistry(deps, o.level, o.season, start, end)
   const levelGames = [...reg.games.values()].filter(g => g.level === o.level).map(g => g.date).filter(Boolean).sort()
@@ -169,6 +184,6 @@ export async function writePlan(p: Plan, db: Db, now = new Date().toISOString())
   for (const part of chunked(stamp(t.coverage), 500)) await db.upsert('pitch_shape_milb_coverage', part, 'level,season,month,park')
   await db.deleteStale('pitch_shape_milb_coverage', { ...at, season: p.season }, now)
   await db.upsert('pitch_shape_milb_runs', [{
-    level: p.level, season: p.season, source: SOURCE, fetched_at: p.fetchedAt, complete: p.complete, first_date: p.firstDate, last_date: p.lastDate, summary: runSummary(p), updated_at: now,
+    level: p.level, season: p.season, source: sourceOf(p.level), fetched_at: p.fetchedAt, complete: p.complete, first_date: p.firstDate, last_date: p.lastDate, summary: runSummary(p), updated_at: now,
   }], 'level,season')
 }

@@ -54,14 +54,15 @@ describe('applyShapeUrl: reload, share and back/forward', () => {
 
 describe('level selector keyboard (a radio group)', () => {
   it('arrows move and wrap, Home and End jump, other keys do nothing', () => {
-    expect(LEVELS).toEqual(['mlb', 'aaa', 'fsl'])
+    expect(LEVELS).toEqual(['mlb', 'aaa', 'fsl', 'afl', 'st'])
     expect(levelAfterKey(LEVELS, 'mlb', 'ArrowRight')).toBe('aaa')
     expect(levelAfterKey(LEVELS, 'aaa', 'ArrowDown')).toBe('fsl')
-    expect(levelAfterKey(LEVELS, 'fsl', 'ArrowRight')).toBe('mlb')
-    expect(levelAfterKey(LEVELS, 'mlb', 'ArrowLeft')).toBe('fsl')
+    expect(levelAfterKey(LEVELS, 'fsl', 'ArrowRight')).toBe('afl')
+    expect(levelAfterKey(LEVELS, 'st', 'ArrowRight')).toBe('mlb')
+    expect(levelAfterKey(LEVELS, 'mlb', 'ArrowLeft')).toBe('st')
     expect(levelAfterKey(LEVELS, 'aaa', 'ArrowUp')).toBe('mlb')
     expect(levelAfterKey(LEVELS, 'aaa', 'Home')).toBe('mlb')
-    expect(levelAfterKey(LEVELS, 'aaa', 'End')).toBe('fsl')
+    expect(levelAfterKey(LEVELS, 'aaa', 'End')).toBe('st')
     expect(levelAfterKey(LEVELS, 'aaa', 'Tab')).toBeNull()
     expect(levelAfterKey(LEVELS, 'aaa', 'a')).toBeNull()
   })

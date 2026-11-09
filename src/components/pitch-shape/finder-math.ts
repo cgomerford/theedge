@@ -35,10 +35,10 @@ export function divergingColour(rate: number, leagueRate: number): [number, numb
 }
 
 /** The colour of one map box, or null when its window is under the gate (left blank, never estimated). Thin windows are faded toward the background. */
-export function boxColour(swings: number, whiffs: number, leagueRate: number): [number, number, number] | null {
-  if (swings < MIN_WINDOW_SWINGS) return null
+export function boxColour(swings: number, whiffs: number, leagueRate: number, minSwings = MIN_WINDOW_SWINGS, strongSwings = STRONG_SWINGS): [number, number, number] | null {
+  if (swings < minSwings || swings <= 0) return null
   const c = divergingColour(whiffs / swings, leagueRate)
-  return swings < STRONG_SWINGS ? mix(MAP_BG, c, 0.45) : c
+  return swings < strongSwings ? mix(MAP_BG, c, 0.45) : c
 }
 
 export type MovementStats = { meanHb: number; meanIvb: number; sdHb: number; sdIvb: number }
@@ -184,9 +184,9 @@ export type DotRated<T extends DotIn> = T & { own: number | null; shapeRate: num
  * Each pitcher against the league's rate for pitches that move like HIS average (rateAt gives that rate, or null when the window is thin). Ahead means he gets more
  * misses than his shape usually gets, behind fewer, level within ABOUT_LEVEL_PTS. A pitcher with under MIN_OWN_SWINGS swings of his own has no verdict.
  */
-export function rateDots<T extends DotIn>(dots: T[], rateAt: (hb: number, ivb: number) => number | null): DotRated<T>[] {
+export function rateDots<T extends DotIn>(dots: T[], rateAt: (hb: number, ivb: number) => number | null, minOwnSwings = MIN_OWN_SWINGS): DotRated<T>[] {
   return dots.map(d => {
-    const own = d.nSwings >= MIN_OWN_SWINGS ? d.nWhiffs / d.nSwings : null
+    const own = d.nSwings >= Math.max(1, minOwnSwings) ? d.nWhiffs / d.nSwings : null
     const shapeRate = rateAt(d.hb, d.ivb)
     return { ...d, own, shapeRate, ...verdictOf(own, shapeRate) }
   })

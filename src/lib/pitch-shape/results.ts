@@ -8,6 +8,7 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase'
 import { milbDb } from '@/lib/milb-shape/dev-db'
+import { limitsFor } from '@/lib/milb-shape/limits'
 import { isMilb, type Level } from '@/lib/milb-shape/levels'
 import { LEVEL_LABEL } from '@/lib/milb-shape/levels'
 import { translate, type Translation } from '@/lib/milb-shape/translate'
@@ -301,12 +302,13 @@ export async function getMilbVsShape(level: Level, season: number, type: string,
   if (!isMilb(level) || !Number.isInteger(pitcherId)) return null
   const rows = await loadRows(type, hand, level, season)
   if (!rows) return null
+  const lim = limitsFor(level), g = lim.gated
   const [hb0, ivb0] = centre(rows)
   const grid = makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all')
-  const league = measuresOf(leagueSums(rows))
+  const league = measuresOf(leagueSums(rows), g)
   const supa = await milbDb()
   const [shapes, owns] = await Promise.all([
-    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,n_pitches,hb,ivb').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
+    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,n_pitches,hb,ivb').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', lim.boardPitches).limit(1000),
     supa.from('pitch_shape_results_pitcher_milb').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).eq('pitcher_id', pitcherId).maybeSingle(),
   ])
   if (shapes.error) { logOnce('getMilbVsShape:shapes', 'getMilbVsShape', 'Supabase error', shapes.error.message); return null }
@@ -315,16 +317,16 @@ export async function getMilbVsShape(level: Level, season: number, type: string,
   const mine = list.find(x => x.pitcher_id === pitcherId)
   if (!mine) return null
   const savedOf = (m: Measures) => runsSaved(m, league)
-  const dist = list.map(p => savedOf(measuresOf(windowSums(grid, Math.round(Number(p.hb) * 10), Math.round(Number(p.ivb) * 10), 10)))).filter((v): v is number => v != null).sort((a, b) => a - b)
+  const dist = list.map(p => savedOf(measuresOf(windowSums(grid, Math.round(Number(p.hb) * 10), Math.round(Number(p.ivb) * 10), 10), g))).filter((v): v is number => v != null).sort((a, b) => a - b)
   const ssum = windowSums(grid, Math.round(Number(mine.hb) * 10), Math.round(Number(mine.ivb) * 10), 10)
-  const sm = measuresOf(ssum), smRaw = measuresOf(ssum, false)
+  const sm = measuresOf(ssum, g), smRaw = measuresOf(ssum, false)
   type Own = { n_pitches: number; n_swings: number; n_whiffs: number; rv_n: number; rv: string | number; pa: number; ab: number; hits: number; tb: number; woba_den: string | number; woba_sum: string | number; xwoba_sum: string | number }
   const o = owns.data as unknown as Own | null
   const osum = o ? pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) }) : null
-  const om = osum ? measuresOf(osum) : measuresOf(zeroSums()), omRaw = osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false)
+  const om = osum ? measuresOf(osum, g) : measuresOf(zeroSums(), g), omRaw = osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false)
   const shapeSaved = savedOf(sm)
-  const small = om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
-  const ownSaved = om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
+  const small = om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < lim.ownPitches
+  const ownSaved = om.n.rv >= lim.ownPitches ? savedOf(om) : null
   const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
   return {
     level, season, type, hand, pitcherId, leagueRuns100: league.runs100,
@@ -389,12 +391,13 @@ export async function getMilbBoard(level: Level, season: number, type: string, h
   if (!isMilb(level)) return null
   const rows = await loadRows(type, hand, level, season)
   if (!rows) return null
+  const lim = limitsFor(level), g = lim.gated
   const [hb0, ivb0] = centre(rows)
   const grid = makeResultsGrid(crop(rows, hb0, ivb0, 16, 1), 'all')
-  const league = measuresOf(leagueSums(rows))
+  const league = measuresOf(leagueSums(rows), g)
   const supa = await milbDb()
   const [shapes, owns] = await Promise.all([
-    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,pitcher_name,team_abbr,n_pitches,hb,ivb,sd_hb,sd_ivb,velo,slot').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', BOARD_MIN_PITCHES).limit(1000),
+    supa.from('pitch_shape_pitcher_milb').select('pitcher_id,pitcher_name,team_abbr,n_pitches,hb,ivb,sd_hb,sd_ivb,velo,slot').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', lim.boardPitches).limit(1000),
     supa.from('pitch_shape_results_pitcher_milb').select('pitcher_id,n_pitches,n_swings,n_whiffs,rv_n,rv,pa,ab,hits,tb,woba_den,woba_sum,xwoba_sum').eq('level', level).eq('season', season).eq('pitch_type', type).eq('p_throws', hand).limit(1000),
   ])
   if (shapes.error) { logOnce('getMilbBoard:shapes', 'getMilbBoard', 'Supabase error', shapes.error.message); return null }
@@ -407,21 +410,21 @@ export async function getMilbBoard(level: Level, season: number, type: string, h
     const ssum = windowSums(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
     const o = ownBy.get(p.pitcher_id)
     const osum = o ? pitcherSums({ ...o, rv: Number(o.rv), woba_den: Number(o.woba_den), woba_sum: Number(o.woba_sum), xwoba_sum: Number(o.xwoba_sum) }) : null
-    return { p, hb, ivb, sm: measuresOf(ssum), smRaw: measuresOf(ssum, false), om: osum ? measuresOf(osum) : null, omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
+    return { p, hb, ivb, sm: measuresOf(ssum, g), smRaw: measuresOf(ssum, false), om: osum ? measuresOf(osum, g) : null, omRaw: osum ? measuresOf(osum, false) : measuresOf(zeroSums(), false) }
   })
   const savedOf = (m: Measures) => runsSaved(m, league)
   const dist = list.map(r => savedOf(r.sm)).filter((v): v is number => v != null).sort((a, b) => a - b)
   const mlbSide = await mlbGrid(type, hand)   // MLB pitches with the same movement, to flag a shape that works here but has not worked there
   const out: BoardRow[] = list.map(({ p, hb, ivb, sm, smRaw, om, omRaw }) => {
     const shapeSaved = savedOf(sm)
-    const mm = mlbSide ? measuresOf(windowSums(mlbSide.grid, Math.round(hb * 10), Math.round(ivb * 10), 10)) : null
-    const ownSaved = om && om.n.rv >= MIN_OWN_PITCHES ? savedOf(om) : null
-    const small = om != null && om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < MIN_OWN_PITCHES
+    const mm = mlbSide ? measuresOf(windowSums(mlbSide.grid, Math.round(hb * 10), Math.round(ivb * 10), 10)) : null   // the MLB side keeps MLB's own gate
+    const ownSaved = om && om.n.rv >= lim.ownPitches ? savedOf(om) : null
+    const small = om != null && om.n.rv >= SMALL_MIN_PITCHES && om.n.rv < lim.ownPitches
     const cmp = resultsVsShape(small ? runsSaved(omRaw, league) : ownSaved, shapeSaved)
     return {
       pitcherId: p.pitcher_id, name: p.pitcher_name, teamAbbr: p.team_abbr ?? '', pitches: p.n_pitches, hb, ivb,
       sdHb: p.sd_hb == null ? null : Number(p.sd_hb), sdIvb: p.sd_ivb == null ? null : Number(p.sd_ivb), velo: p.velo == null ? null : Number(p.velo), slot: p.slot == null ? null : Number(p.slot),
-      shape: { ...sm, saved: shapeSaved }, own: { ...(om ?? measuresOf(zeroSums())), saved: ownSaved },
+      shape: { ...sm, saved: shapeSaved }, own: { ...(om ?? measuresOf(zeroSums(), g)), saved: ownSaved },
       shapeRaw: { ...smRaw, saved: runsSaved(smRaw, league) }, ownRaw: { ...omRaw, saved: runsSaved(omRaw, league) },
       overall: null, profile: null, stats: null, owned: null, role: null,
       small, score: shapeSaved == null ? null : percentile(dist, shapeSaved), gap: cmp?.gap ?? null, verdict: cmp?.verdict ?? null,

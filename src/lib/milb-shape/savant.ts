@@ -16,14 +16,23 @@ import crypto from 'node:crypto'
 import type { MilbLevel } from './levels'
 
 export const SAVANT_CAP = 25000
-const LEVEL_FILTER: Record<MilbLevel, string> = { aaa: 'AAA', fsl: 'A' }
+const LEVEL_FILTER: Record<'aaa' | 'fsl', string> = { aaa: 'AAA', fsl: 'A' }
 
 export type Chunk = { start: string; end: string }
 export type Fetcher = (url: string) => Promise<{ status: number; text: string }>
 export type ChunkCache = { get(key: string): Promise<string | null>; set(key: string, text: string): Promise<void> }
 
-export const savantUrl = (c: Chunk, season: number, level: MilbLevel) =>
-  `https://baseballsavant.mlb.com/statcast-search-minors/csv?all=true&hfGT=R%7C&hfSea=${season}%7C&game_date_gt=${c.start}&game_date_lt=${c.end}&type=details&player_type=pitcher&minors=true&hfLevel=${LEVEL_FILTER[level]}%7C`
+/**
+ * The Savant request for one chunk. Triple-A and the Florida State League use the minor-league endpoint (minors=true, regular season). Spring Training is the major-league
+ * endpoint with game type S (curl-verified 2026-03-05: about 4,550 pitches a day, speed and movement on 99%, no arm angle). The Arizona Fall League is not on Savant at all:
+ * its pitches come from the MLB Stats API game feed (see exhibition.ts), so asking for its Savant URL is a bug and throws.
+ */
+export function savantUrl(c: Chunk, season: number, level: MilbLevel): string {
+  if (level === 'afl') throw new Error('[savantUrl] the Arizona Fall League is not on Savant; it is read from the game feed')
+  const common = `all=true&hfSea=${season}%7C&game_date_gt=${c.start}&game_date_lt=${c.end}&type=details&player_type=pitcher`
+  if (level === 'st') return `https://baseballsavant.mlb.com/statcast_search/csv?${common}&hfGT=S%7C`
+  return `https://baseballsavant.mlb.com/statcast-search-minors/csv?${common.replace('all=true&', 'all=true&hfGT=R%7C&')}&minors=true&hfLevel=${LEVEL_FILTER[level]}%7C`
+}
 
 /** Parse CSV text (BOM-safe, quoted fields, embedded commas and newlines) to row objects keyed by header. */
 export function parseCsv(text: string): Record<string, string>[] {

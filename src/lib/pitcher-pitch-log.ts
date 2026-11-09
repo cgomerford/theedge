@@ -149,6 +149,9 @@ const STATCAST_FIRST_SEASON = 2015
  * lists some balls in play twice, which would double count them in every location and sequencing figure.
  */
 export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALLBACK, range: 'season' | 'career' = 'season', level: Level = 'mlb'): Promise<PitcherPitchLog | null> {
+  // Per-pitch logs exist for MLB, Triple-A and the Florida State League only. Spring Training and the Arizona Fall League are in the shape tables, not here, and asking Savant for a
+  // Single-A log under their name would show the wrong league, so they answer nothing.
+  if (level === 'afl' || level === 'st') return null
   const milb = isMilb(level)
   const games = milb ? await getMilbGames(pitcherId, season, level) : null
   if (milb && (games == null || games.size === 0)) return null

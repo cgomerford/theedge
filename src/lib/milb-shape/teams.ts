@@ -59,14 +59,16 @@ export const MILB_TEAMS: Record<'aaa' | 'fsl', MilbTeam[]> = {
 }
 
 const byLevel = (level: 'aaa' | 'fsl') => new Map(MILB_TEAMS[level].map(x => [x.abbr, x]))
-const maps = { aaa: byLevel('aaa'), fsl: byLevel('fsl') }
+const maps: Record<'aaa' | 'fsl', Map<string, MilbTeam>> = { aaa: byLevel('aaa'), fsl: byLevel('fsl') }
 const ALIAS: Record<string, string> = { AZ: 'ARI' }   // Savant says AZ; our team list says ARI
 
 /** The club for an abbreviation at a level (MLB uses the main team list). null when unknown. */
 export function teamOf(level: Level, abbr: string | null | undefined): { id: number; name: string; parentId: number | null } | null {
   if (!abbr) return null
   const a = abbr.toUpperCase()
-  if (level === 'mlb') { const m = MLB_TEAMS.find(x => x.abbrev === (ALIAS[a] ?? a)); return m ? { id: m.id, name: m.name, parentId: null } : null }
+  // Spring Training is the major-league clubs' own games, so it uses the main team list; the Arizona Fall League has no club list here, so no badge is drawn for it
+  if (level === 'mlb' || level === 'st') { const m = MLB_TEAMS.find(x => x.abbrev === (ALIAS[a] ?? a)); return m ? { id: m.id, name: m.name, parentId: null } : null }
+  if (level === 'afl') return null
   const m = maps[level].get(a)
   return m ? { id: m.id, name: m.name, parentId: m.parentId } : null
 }

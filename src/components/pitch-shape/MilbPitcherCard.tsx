@@ -22,6 +22,7 @@ import RunsSavedExplainer from './RunsSavedExplainer'
 import InfoTip, { Lab } from './InfoTip'
 import type { BoardRow } from '@/lib/pitch-shape/results'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
+import { limitsFor } from '@/lib/milb-shape/limits'
 import { log } from '@/lib/log'
 
 const ORANGE_TEXT = '#B83A0E'
@@ -106,7 +107,8 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
     </div>
   )
   const lc = pitchName.toLowerCase()
-  const whiff = p.nSwings >= GATE.swings ? p.nWhiffs / p.nSwings : null
+  const swingMin = limitsFor(level).gated ? GATE.swings : 1, bbeMin = limitsFor(level).gated ? GATE.bbe : 1   // no sample minimums at Spring Training and the Arizona Fall League
+  const whiff = p.nSwings >= swingMin ? p.nWhiffs / p.nSwings : null
   const stat: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 96 }
   const k: React.CSSProperties = { fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: C.mute, textTransform: 'uppercase' }
   const v: React.CSSProperties = { fontWeight: 800, fontSize: 20, letterSpacing: '-.01em', fontVariantNumeric: 'tabular-nums' }
@@ -138,7 +140,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
         <div style={stat}>
           <span style={k}>Whiffs per swing</span>
           {whiff != null ? <span style={v}>{(whiff * 100).toFixed(1)}%</span> : <span style={{ ...v, color: C.mute }}>pending</span>}
-          <span style={{ fontSize: 11.5, color: C.mute }}>{p.nWhiffs.toLocaleString()} of {p.nSwings.toLocaleString()} swings{whiff == null ? `, under ${GATE.swings} needed` : ''}</span>
+          <span style={{ fontSize: 11.5, color: C.mute }}>{p.nWhiffs.toLocaleString()} of {p.nSwings.toLocaleString()} swings{whiff == null ? `, under ${swingMin} needed` : ''}</span>
         </div>
       </div>
       {!armAngle && <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#5b5347' }}>Arm angle is pending at this level for this pitch, so it is left out of the shape and never estimated.</p>}
@@ -150,11 +152,11 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
             {tile('In the zone', pc(d.zonePct), ld ? pc(ld.zonePct) : null)}
             {tile('Down the middle', pc(d.heartPct), ld ? pc(ld.heartPct) : null)}
             {tile('Chase rate', pc(d.chasePct), ld ? pc(ld.chasePct) : null)}
-            {tile('Damage on contact', d.nBbe >= GATE.bbe ? w3(d.xwobaCon) : 'pending', ld && d.nBbe >= GATE.bbe ? w3(ld.xwobaCon) : null)}
+            {tile('Damage on contact', d.nBbe >= bbeMin ? w3(d.xwobaCon) : 'pending', ld && d.nBbe >= bbeMin ? w3(ld.xwobaCon) : null)}
             {tile('Ride variation', d.sdIvb == null ? '—' : `±${d.sdIvb.toFixed(1)} in`, ld && ld.sdIvb != null ? `±${ld.sdIvb.toFixed(1)}` : null)}
             {tile('Run variation', d.sdHb == null ? '—' : `±${d.sdHb.toFixed(1)} in`, ld && ld.sdHb != null ? `±${ld.sdHb.toFixed(1)}` : null)}
           </div>
-          <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>Damage on contact is xwOBA on balls in play ({d.nBbe.toLocaleString()} here, {GATE.bbe} needed); lower is better for the pitcher. Variation is how much his own {lc}s vary. All of it is measured at {LEVEL_LABEL[level]} only.</div>
+          <div style={{ fontSize: 12, color: C.mute, marginTop: 6 }}>Damage on contact is xwOBA on balls in play ({d.nBbe.toLocaleString()} here, {bbeMin} needed); lower is better for the pitcher. Variation is how much his own {lc}s vary. All of it is measured at {LEVEL_LABEL[level]} only.</div>
         </div>
       )}
 
@@ -179,7 +181,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
                         <td style={{ ...td, fontWeight: 700 }}>{PITCH_NAMES[r.pitchType] ?? r.pitchType}</td>
                         <td style={td}>{total ? pc(r.nPitches / total, 0) : '—'}<span style={{ color: C.mute, fontSize: 11.5 }}> {r.nPitches.toLocaleString()}</span></td>
                         <td style={td}>{r.velo.toFixed(1)}</td><td style={td}>{r.ivb.toFixed(1)}</td><td style={td}>{r.hb.toFixed(1)}</td><td style={td}>{Math.round(r.slot)}°</td>
-                        <td style={td}>{r.nSwings >= GATE.swings ? pc(r.nWhiffs / r.nSwings) : <span style={{ color: C.mute }}>pending</span>}</td>
+                        <td style={td}>{r.nSwings >= swingMin ? pc(r.nWhiffs / r.nSwings) : <span style={{ color: C.mute }}>pending</span>}</td>
                         <td style={td}>{pc(r.diag.zonePct, 0)}</td><td style={td}>{pc(r.diag.chasePct, 0)}</td>
                       </tr>
                     ))}
@@ -200,7 +202,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
                       <tr key={t.level} style={{ background: t.level === level ? '#FFF3EA' : undefined }}>
                         <td style={{ ...td, fontWeight: 800 }}>{LEVEL_LABEL[t.level]}</td><td style={td}>{t.r.nPitches.toLocaleString()}</td>
                         <td style={td}>{t.r.velo.toFixed(1)}</td><td style={td}>{t.r.ivb.toFixed(1)}</td><td style={td}>{t.r.hb.toFixed(1)}</td><td style={td}>{Math.round(t.r.slot)}°</td>
-                        <td style={td}>{t.r.nSwings >= GATE.swings ? pc(t.r.nWhiffs / t.r.nSwings) : <span style={{ color: C.mute }}>pending</span>}</td>
+                        <td style={td}>{t.r.nSwings >= swingMin ? pc(t.r.nWhiffs / t.r.nSwings) : <span style={{ color: C.mute }}>pending</span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -243,7 +245,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
                           <td style={{ ...td, fontWeight: 700, color: Math.abs(c.velo - p.velo) < 0.05 ? C.mute : '#3a352c' }}>{sg(c.velo - p.velo)}</td>
                           <td style={td}>{c.ivb.toFixed(1)}</td><td style={td}>{c.hb.toFixed(1)}</td>{armAngle && <td style={td}>{Math.round(c.slot)}°</td>}
                           <td style={td}>{c.mlb ? c.mlb.pitches.toLocaleString() : '—'}</td>
-                          <td style={td}>{c.mlb && c.mlb.whiff != null && c.mlb.swings >= GATE.swings ? pc(c.mlb.whiff) : <span style={{ color: C.mute }}>pending</span>}</td>
+                          <td style={td}>{c.mlb && c.mlb.whiff != null && c.mlb.swings >= swingMin ? pc(c.mlb.whiff) : <span style={{ color: C.mute }}>pending</span>}</td>
                           <td style={td}>{c.mlb && c.mlb.saved != null && c.mlb.rvPitches >= 300 ? sg(c.mlb.saved, 2) : <span style={{ color: C.mute }}>pending</span>}</td>
                           <td style={td}>{c.mlb && c.mlb.woba != null ? w3(c.mlb.woba) : '—'}</td><td style={td}>{c.mlb && c.mlb.xwoba != null ? w3(c.mlb.xwoba) : '—'}</td>
                         </tr>
@@ -253,7 +255,7 @@ export default function MilbPitcherCard({ p, level, season, type, hand, pitchNam
                 </table>
               </div>
               <RunsSavedExplainer level="mlb" compact />
-              <div style={{ fontSize: 12, color: C.mute, marginTop: 6, lineHeight: 1.5 }}>“vs his” is the MLB pitcher’s speed minus his. Each MLB pitcher’s results are his own {closest.season} {lc} against MLB hitters; runs saved per 100 is the MLB average minus his. Whiff rates need {GATE.swings} swings and runs per 100 need 300 pitches. They show what that pitch has done in MLB, not what his would do.</div>
+              <div style={{ fontSize: 12, color: C.mute, marginTop: 6, lineHeight: 1.5 }}>“vs his” is the MLB pitcher’s speed minus his. Each MLB pitcher’s results are his own {closest.season} {lc} against MLB hitters; runs saved per 100 is the MLB average minus his. Whiff rates need {swingMin} swings and runs per 100 need 300 pitches. They show what that pitch has done in MLB, not what his would do.</div>
             </>
           )}
       </div>

@@ -33,6 +33,8 @@ import { hexToRgb } from './heatGrid'
 import { TeamBadge } from '@/components/front-office/pitching/Avatar'
 import { teamOf } from '@/lib/milb-shape/teams'
 import { LEVEL_LABEL, isMilb, type Level } from '@/lib/milb-shape/levels'
+import { limitsFor } from '@/lib/milb-shape/limits'
+import { useShapeView } from './shapeLevel'
 import { buildMilbWhy } from '@/lib/milb-shape/why'
 import TranslationBanner, { TranslationChip } from './TranslationBanner'
 import RunsSavedExplainer from './RunsSavedExplainer'
@@ -93,7 +95,7 @@ export function ResultsReadout({ here, league, saved, score, lc, radius, spanLab
       <div className="pv-k" style={{ color: '#B83A0E' }}>What this shape has produced</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '4px 0 8px', flexWrap: 'wrap' }}>
         <b style={{ fontSize: 38, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{score ?? '—'}</b>
-        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score<InfoTip k="shapeScore" /> (1 to 99){score == null ? ` · needs ${GATE.rvPitches}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
+        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score<InfoTip k="shapeScore" /> (1 to 99){score == null ? ` · needs ${limitsFor(level).gated ? GATE.rvPitches : 1}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
       </div>
       <RunsSavedExplainer level={level} compact example={saved} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums', marginTop: 8 }}>
@@ -109,6 +111,7 @@ const tabText = { behind: 'Underperforming their shape', ahead: 'Outperforming t
 
 /** The Shape Score board: pitchers whose own results trail or beat what their shape has produced, and the top scores. */
 export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; onShow?: (id: number) => void }) {
+  const lim = limitsFor(useShapeView().level)
   const [tab, setTab] = useState<'behind' | 'ahead' | 'top'>('behind')
   const [all, setAll] = useState(false)
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
@@ -128,7 +131,7 @@ export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | nu
       </div>
       {board === undefined ? <div style={{ padding: 20, color: C.mute, fontSize: 13 }}>Loading the board…</div>
         : !board ? <Empty>No pitchers are scored for this pitch yet. This fills after the weekly shape-results job runs.</Empty>
-        : rows.length === 0 ? <Empty>No pitcher fits this view with enough pitches ({GATE.rvPitches}+ of his own, and a shape window with {GATE.rvPitches}+ league pitches).</Empty>
+        : rows.length === 0 ? <Empty>{lim.gated ? <>No pitcher fits this view with enough pitches ({GATE.rvPitches}+ of his own, and a shape window with {GATE.rvPitches}+ league pitches).</> : <>No pitcher fits this view.</>}</Empty>
         : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums', minWidth: 780 }}>
@@ -156,7 +159,7 @@ export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | nu
           </div>
         )}
       <p style={{ fontSize: 11.5, color: C.faint, lineHeight: 1.5, margin: '10px 0 0' }}>
-        Runs saved per 100 pitches is the change in run expectancy Statcast records on each pitch (delta_run_exp, the batting side’s runs, summed over every pitch) for the league’s {lc}s minus the window’s, so higher is better for the pitcher. wOBA, xwOBA, average and slugging count the plate appearances and at-bats that ended on the pitch. A measure shows only with {GATE.rvPitches}+ pitches (run expectancy), {GATE.ab}+ at-bats (average, slugging), {GATE.den}+ plate appearances (wOBA, xwOBA) or {GATE.swings}+ swings (whiffs) in the window. The board pools every season for the shape and uses the latest season for his own results; it lists pitchers with 200+ {lc}s and compares his own results only with {GATE.rvPitches}+ of them. Location, sequencing, deception, defense and park are not in it. Source: Baseball Savant / Statcast, regular season. Independent, not affiliated with MLB.
+        Runs saved per 100 pitches is the change in run expectancy Statcast records on each pitch (delta_run_exp, the batting side’s runs, summed over every pitch) for the league’s {lc}s minus the window’s, so higher is better for the pitcher. wOBA, xwOBA, average and slugging count the plate appearances and at-bats that ended on the pitch. {lim.gated ? <>A measure shows only with {GATE.rvPitches}+ pitches (run expectancy), {GATE.ab}+ at-bats (average, slugging), {GATE.den}+ plate appearances (wOBA, xwOBA) or {GATE.swings}+ swings (whiffs) in the window. The board pools every season for the shape and uses the latest season for his own results; it lists pitchers with 200+ {lc}s and compares his own results only with {GATE.rvPitches}+ of them.</> : <>This level is a few weeks of games, so there are no sample minimums: every tracked pitch and every pitcher is listed, and a measure is blank only where nothing was recorded. Read each figure with its sample beside it. A measure the source does not carry (arm angle, run values or xwOBA at some levels) is shown as pending.</>} Location, sequencing, deception, defense and park are not in it. Source: Baseball Savant / Statcast, regular season. Independent, not affiliated with MLB.
       </p>
     </section>
   )
@@ -204,7 +207,7 @@ const toneCol = { good: { bg: '#E3F3EC', fg: '#13694F' }, bad: { bg: '#FBE6E1', 
 /** The contact-quality clue: results against contact quality, as the older ahead/behind cards say it. */
 function clue(r: BoardRow): string | null {
   const w = r.own.woba, x = r.own.xwoba
-  if (w == null || x == null || r.own.n.pa < GATE.den) return null
+  if (w == null || x == null) return null   // own.woba is already null under the level's sample rule
   if (x - w >= 0.03) return `Results (wOBA ${d3(w)}) are better than the contact quality he allowed (xwOBA ${d3(x)}), which can point to defense or luck helping.`
   if (w - x >= 0.03) return `Results (wOBA ${d3(w)}) are worse than the contact quality he allowed (xwOBA ${d3(x)}), which can point to defense or luck hurting.`
   return null
@@ -257,7 +260,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
       ? `Overall, his xwOBA against ranks ${ordinal(rx.rank ?? 0)} of ${rx.of} but his wOBA against ranks ${ordinal(rw.rank ?? 0)}: the contact quality he allowed is ${rx.pct > rw.pct ? 'better' : 'worse'} than the results he got, which can point to defense or luck.` : null
     const strong = (sel.score ?? 0) >= 67, weak = sel.score != null && sel.score <= 33
     const headline = verdict == null
-      ? `Too few of his own ${lc}s (${GATE.rvPitches}+ needed) to set his results against his shape; the numbers below are shown with their sample.`
+      ? `Too few of his own ${lc}s (${limitsFor(level).gated ? GATE.rvPitches : 1}+ needed) to set his results against his shape; the numbers below are shown with their sample.`
       : verdict === 'ahead'
         ? (weak ? `Outperforming a weak shape: his ${lc} results are better than pitches shaped like his have produced (${signed(gap ?? 0)} runs per 100 pitches). League ${lc}s with this shape have saved ${shapeG.saved == null ? '' : signed(shapeG.saved)} runs per 100, so the shape does not explain his results; location, sequencing, deception, defense and luck are not in it.`
           : strong ? `A strong shape and results better still (${signed(gap ?? 0)} runs per 100 pitches vs the shape): the results and the shape point the same way.`
@@ -330,9 +333,6 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           </div>
         </div>
         {milb && <TranslationBanner t={sel.translation} levelLabel={LEVEL_LABEL[level]} />}
-        <div style={{ margin: '10px 0 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href="#dial-in" style={{ ...pill(false), display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: C.ink }}>Dial in his shape ↓</a>
-        </div>
         {exportData && (
           <div style={{ margin: '10px 0 0' }}>
             <button type="button" onClick={() => setExportOpen(o => !o)} aria-expanded={exportOpen} style={{ ...pill(exportOpen), minHeight: 40 }}>{exportOpen ? 'Close export' : 'Export for X'}</button>

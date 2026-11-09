@@ -47,7 +47,7 @@ export function buildTeams(aaa: ApiTeam[], singleA: ApiTeam[]): { teams: Map<num
   const same = (a: readonly number[], b: readonly number[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join()
   if (!same(fsl, EXPECTED_LEAGUES.fsl)) notes.push(`Florida State League id from the API is ${fsl[0]}, levels.ts expected ${EXPECTED_LEAGUES.fsl.join(',')}; using the API's`)
   if (!same(aaaLeagues, EXPECTED_LEAGUES.aaa)) notes.push(`Triple-A league ids from the API are ${aaaLeagues.join(',')}, levels.ts expected ${EXPECTED_LEAGUES.aaa.join(',')}; using the API's`)
-  return { teams, leagues: { aaa: aaaLeagues, fsl }, notes }
+  return { teams, leagues: { aaa: aaaLeagues, fsl, afl: [], st: [] }, notes }
 }
 
 /** Add schedule games to a registry's game map. Spring training and postseason games are left out (the Lab is regular season). */
@@ -90,7 +90,7 @@ export type Row = { game_pk?: unknown; home_team?: unknown }
  * most home_team values are major-league clubs, or a third or more of the games are unknown to the schedule.
  */
 export function filterRows<T extends Row>(rows: T[], reg: Registry, want: MilbLevel): { rows: T[]; rejects: Rejects } {
-  const rejects: Rejects = { kept: { aaa: 0, fsl: 0 }, otherLeague: {}, unresolved: 0, mismatch: 0, quarantinedGames: [] }
+  const rejects: Rejects = emptyRejects()
   if (rows.length === 0) return { rows: [], rejects }
   let mlbHome = 0
   const pks = new Set<number>(), unknown = new Set<number>()
@@ -125,8 +125,8 @@ export function mergeRejects(a: Rejects, b: Rejects): Rejects {
   const other: Record<string, number> = { ...a.otherLeague }
   for (const [k, v] of Object.entries(b.otherLeague)) other[k] = (other[k] ?? 0) + v
   return {
-    kept: { aaa: a.kept.aaa + b.kept.aaa, fsl: a.kept.fsl + b.kept.fsl }, otherLeague: other, unresolved: a.unresolved + b.unresolved, mismatch: a.mismatch + b.mismatch,
+    kept: { aaa: a.kept.aaa + b.kept.aaa, fsl: a.kept.fsl + b.kept.fsl, afl: a.kept.afl + b.kept.afl, st: a.kept.st + b.kept.st }, otherLeague: other, unresolved: a.unresolved + b.unresolved, mismatch: a.mismatch + b.mismatch,
     quarantinedGames: [...new Set([...a.quarantinedGames, ...b.quarantinedGames])].sort((x, y) => x - y),
   }
 }
-export const emptyRejects = (): Rejects => ({ kept: { aaa: 0, fsl: 0 }, otherLeague: {}, unresolved: 0, mismatch: 0, quarantinedGames: [] })
+export const emptyRejects = (): Rejects => ({ kept: { aaa: 0, fsl: 0, afl: 0, st: 0 }, otherLeague: {}, unresolved: 0, mismatch: 0, quarantinedGames: [] })

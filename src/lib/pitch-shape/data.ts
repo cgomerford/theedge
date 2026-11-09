@@ -27,6 +27,7 @@ import {
 import { LOC_COLS, type LocationPayload, type LocationWindow } from './location'
 import { logOnce } from '@/lib/log'
 import { isMilb, type Level } from '@/lib/milb-shape/levels'
+import { limitsFor } from '@/lib/milb-shape/limits'
 import { milbDb } from '@/lib/milb-shape/dev-db'
 
 export const LEAGUE_SPAN = '2024-2026'
@@ -467,7 +468,7 @@ export async function getThrowers(type: string, hand: Hand, hb: number, ivb: num
 export async function getThrowersDetailed(type: string, hand: Hand, hb: number, ivb: number, radius: number, season: number, limit = 40, level: Level = 'mlb'): Promise<ThrowersResult> {
   const supa = isMilb(level) ? await milbDb() : createAdminClient()
   const ask = (cols: string) => pitcherScope(supa, level, cols)
-    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES)
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', limitsFor(level).comparePitches)
     .limit(1000)
   let { data, error } = await ask(THROWER_BASE_COLS + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(THROWER_BASE_COLS))
@@ -508,7 +509,7 @@ export async function getPitcherDots(type: string, hand: Hand, season: number, l
   const supa = isMilb(level) ? await milbDb() : createAdminClient()
   const cols = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,sd_hb,sd_ivb,n_taken,n_gift,n_miss,batter_sides'
   const ask = (c: string) => pitcherScope(supa, level, c)
-    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', MIN_COMPARE_PITCHES).limit(1000)
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', limitsFor(level).comparePitches).limit(1000)
   let { data, error } = await ask(cols + THROWER_DIAG_COLS)
   if (error && /column|does not exist/i.test(error.message)) ({ data, error } = await ask(cols))
   if (error) { logOnce('getPitcherDots:' + 'Supabase error', 'getPitcherDots', 'Supabase error', error.message); return { dots: [], league: leagueOf([]) } }

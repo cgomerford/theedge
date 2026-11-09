@@ -1,0 +1,32 @@
+// src/lib/milb-shape/limits.ts
+//
+// The sample-size rules of the Pitch Shape Lab, per level, in one place. MLB, Triple-A and the Florida State League keep the rules the Lab has always had (a season is long, so a
+// small sample is noise and is left out or marked thin). Spring Training and the Arizona Fall League are a few weeks of games, so they carry NO minimums: every tracked pitch,
+// every pitcher and every square on the map is shown, and a figure is blank only when there is nothing at all behind it (zero swings, zero pitches), never because it is "too few".
+// The server readers and the client both ask here, so a level cannot be gated one way on the map and another way in the list.
+
+import { isExhibition, type Level } from './levels'
+
+export type Limits = {
+  /** false: every measure shows from whatever sample there is (measuresOf(x, false)) */
+  gated: boolean
+  /** pitches of a type a pitcher needs to be listed on the map and in "who throws it" */
+  comparePitches: number
+  /** pitches a pitcher needs to be listed on the Shape Score board */
+  boardPitches: number
+  /** pitches of his own needed before his runs saved are compared with his shape's (below it: shown, flagged thin) */
+  ownPitches: number
+  /** swings a map square or window needs before it has a whiff rate */
+  windowSwings: number
+  /** swings at which a square is drawn at full strength (below it: faded) */
+  strongSwings: number
+  /** swings in a window for a numbered "best spot" */
+  spotSwings: number
+  /** swings of his own before he is called ahead of or behind his shape */
+  ownSwings: number
+}
+
+const STANDARD: Limits = { gated: true, comparePitches: 300, boardPitches: 100, ownPitches: 300, windowSwings: 40, strongSwings: 100, spotSwings: 200, ownSwings: 100 }
+const NONE: Limits = { gated: false, comparePitches: 1, boardPitches: 1, ownPitches: 1, windowSwings: 1, strongSwings: 1, spotSwings: 1, ownSwings: 1 }
+
+export const limitsFor = (level: Level): Limits => (isExhibition(level) ? NONE : STANDARD)

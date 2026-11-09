@@ -135,7 +135,7 @@ describe('outcomes at a minor-league level', () => {
     expect(data.getPitcherRepertoire).toHaveBeenCalledWith(77, expect.any(Number), true, 'aaa')   // Pro viewer: every type
     isPro.mockResolvedValue(false)
     await pl.GET(req('pitcher-levels?id=77'))
-    expect(data.getPitcherRepertoire).toHaveBeenLastCalledWith(77, expect.any(Number), false, 'fsl')   // free viewer: the free types only
+    for (const lv of ['fsl', 'afl', 'st']) expect(data.getPitcherRepertoire).toHaveBeenCalledWith(77, expect.any(Number), false, lv)   // free viewer: the free types only, at every level incl. the two exhibition levels
   })
 })
 

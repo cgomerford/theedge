@@ -14,7 +14,7 @@
 // their own identity, so it is random-looking but identical on every run, whatever order the rows arrive in.
 
 import { fromCsv, halfUp, type CsvPitch } from './normalise'
-import type { MilbLevel } from './levels'
+import { isExhibition, type MilbLevel } from './levels'
 
 export const PITCH_TYPES = new Set(['FF', 'SI', 'FC', 'SL', 'ST', 'CU', 'KC', 'CH', 'FS', 'SV'])
 export const SWING = new Set(['swinging_strike', 'swinging_strike_blocked', 'foul', 'foul_tip', 'hit_into_play', 'foul_bunt', 'missed_bunt'])
@@ -34,7 +34,8 @@ export type BinRow = {
 export type CellsRow = { level: MilbLevel; span: string; pitch_type: string; p_throws: string; n_pitches: number; n_swings: number; n_whiffs: number; cells: number[] }
 export type PitcherRow = {
   level: MilbLevel; season: number; pitcher_id: number; pitch_type: string; pitcher_name: string; team_abbr: string | null; p_throws: string; n_pitches: number
-  velo: number; ivb: number; hb: number; slot: number; sd_hb: number; sd_ivb: number; n_swings: number; n_whiffs: number
+  /** arm angle in degrees, or null when the level has none (Spring Training and the Arizona Fall League): pending, never estimated */
+  velo: number; ivb: number; hb: number; slot: number | null; sd_hb: number; sd_ivb: number; n_swings: number; n_whiffs: number
   n_taken: number; n_gift: number; n_miss: number; n_loc: number; n_zone: number; n_heart: number; n_ooz: number; n_chase: number
   n_bbe: number; xwoba_con_sum: number; n_bbe_w: number; woba_con_sum: number
   points: { hb: number; ivb: number }[]
@@ -76,7 +77,7 @@ const r = (x: number, d: number) => { const p = 10 ** d; return Math.round(x * p
 
 type PitcherAcc = {
   names: Map<string, number>; teams: Map<string, number>; hands: Map<string, number>
-  n: number; sHb: number; sHb2: number; sIvb: number; sIvb2: number; sVelo: number; sSlot: number
+  n: number; sHb: number; sHb2: number; sIvb: number; sIvb2: number; sVelo: number; sSlot: number; nSlot: number
   swings: number; whiffs: number; taken: number; gift: number; miss: number; loc: number; zone: number; heart: number; ooz: number; chase: number
   bbe: number; xw: number; bbeW: number; wobaCon: number
   states: Record<string, { swings: number; whiffs: number }>; stands: Record<string, { bbe: number; xw: number }>
@@ -106,7 +107,12 @@ export class Aggregator {
   private cov = new Map<string, { month: number; park: string; games: Set<number>; pitches: number; tracked: number }>()
   readonly summary: Summary = { rows: 0, duplicates: 0, keyConflicts: 0, usable: 0, withSlot: 0, nulls: {}, bbe: 0, bbeNulls: {}, perType: {} }
 
+  /** Arizona Fall League and Spring Training: no sample-size minimums, and no arm angle needed to keep a pitcher */
+  private readonly exhibition: boolean
+  private readonly minPitches: number
   constructor(readonly level: MilbLevel, readonly season: number) {
+    this.exhibition = isExhibition(level)
+    this.minPitches = this.exhibition ? 1 : MIN_PITCHES
     for (const f of NULL_FIELDS) this.summary.nulls[f] = 0
     for (const f of BBE_FIELDS) this.summary.bbeNulls[f] = 0
   }
@@ -190,20 +196,20 @@ export class Aggregator {
     b.n_pitches++; b.n_swings += swing; b.n_whiffs += whiff; b.n_called_strikes += called; b.n_csw += whiff | called
     b.n_bbe += bbe; b.xwoba_con_sum += xwv; b.n_hard_hit += hard; b.n_gb += gb
 
-    // pitcher (MLB's builder needs an arm angle here too)
-    if (p.slot != null && present(row.pitcher)) {
+    // pitcher (MLB's builder needs an arm angle here too; the two exhibition levels have none, so they keep the pitcher without one)
+    if ((p.slot != null || this.exhibition) && present(row.pitcher)) {
       const pid = Number(row.pitcher)
       const pk = `${pid}|${p.pitchType}`
       let a = this.pit.get(pk)
       if (!a) {
-        a = { id: pid, type: p.pitchType, names: new Map(), teams: new Map(), hands: new Map(), n: 0, sHb: 0, sHb2: 0, sIvb: 0, sIvb2: 0, sVelo: 0, sSlot: 0, swings: 0, whiffs: 0, taken: 0, gift: 0, miss: 0, loc: 0, zone: 0, heart: 0, ooz: 0, chase: 0, bbe: 0, xw: 0, bbeW: 0, wobaCon: 0, states: {}, stands: {}, sample: [] }
+        a = { id: pid, type: p.pitchType, names: new Map(), teams: new Map(), hands: new Map(), n: 0, sHb: 0, sHb2: 0, sIvb: 0, sIvb2: 0, sVelo: 0, sSlot: 0, nSlot: 0, swings: 0, whiffs: 0, taken: 0, gift: 0, miss: 0, loc: 0, zone: 0, heart: 0, ooz: 0, chase: 0, bbe: 0, xw: 0, bbeW: 0, wobaCon: 0, states: {}, stands: {}, sample: [] }
         this.pit.set(pk, a)
       }
       const z = n(row.zone)
       const woba = n(row.woba_value)
       bump(a.names, String(row.player_name ?? '')); bump(a.hands, p.hand)
       bump(a.teams, String(row.inning_topbot === 'Top' ? row.home_team : row.away_team ?? ''))
-      a.n++; a.sHb += p.hb; a.sHb2 += p.hb * p.hb; a.sIvb += p.ivb; a.sIvb2 += p.ivb * p.ivb; a.sVelo += p.velo; a.sSlot += p.slot
+      a.n++; a.sHb += p.hb; a.sHb2 += p.hb * p.hb; a.sIvb += p.ivb; a.sIvb2 += p.ivb * p.ivb; a.sVelo += p.velo; if (p.slot != null) { a.sSlot += p.slot; a.nSlot++ }
       a.swings += swing; a.whiffs += whiff
       a.taken += (BALLS.has(desc) || desc === 'called_strike') && z != null ? 1 : 0
       a.gift += desc === 'called_strike' && z != null && z >= 11 ? 1 : 0
@@ -245,13 +251,13 @@ export class Aggregator {
   pitcherRows(): PitcherRow[] {
     const out: PitcherRow[] = []
     for (const a of this.pit.values()) {
-      if (a.n < MIN_PITCHES) continue
+      if (a.n < this.minPitches) continue
       const mHb = a.sHb / a.n, mIvb = a.sIvb / a.n
       const sd = (s2: number, m: number) => Math.sqrt(Math.max(0, s2 / a.n - m * m))
       const pts = [...a.sample].sort((x, y) => x.h - y.h).slice(0, N_POINTS)
       out.push({
         level: this.level, season: this.season, pitcher_id: a.id, pitch_type: a.type, pitcher_name: cleanName(mode(a.names)), team_abbr: mode(a.teams) || null, p_throws: mode(a.hands) ?? 'R',
-        n_pitches: a.n, velo: r(a.sVelo / a.n, 2), ivb: r(mIvb, 2), hb: r(mHb, 2), slot: r(a.sSlot / a.n, 1), sd_hb: r(sd(a.sHb2, mHb), 2), sd_ivb: r(sd(a.sIvb2, mIvb), 2),
+        n_pitches: a.n, velo: r(a.sVelo / a.n, 2), ivb: r(mIvb, 2), hb: r(mHb, 2), slot: a.nSlot > 0 ? r(a.sSlot / a.nSlot, 1) : null, sd_hb: r(sd(a.sHb2, mHb), 2), sd_ivb: r(sd(a.sIvb2, mIvb), 2),
         n_swings: a.swings, n_whiffs: a.whiffs, n_taken: a.taken, n_gift: a.gift, n_miss: a.miss, n_loc: a.loc, n_zone: a.zone, n_heart: a.heart, n_ooz: a.ooz, n_chase: a.chase,
         n_bbe: a.bbe, xwoba_con_sum: r(a.xw, 4), n_bbe_w: a.bbeW, woba_con_sum: r(a.wobaCon, 4),
         points: pts.map(q => ({ hb: r(q.hb, 1), ivb: r(q.ivb, 1) })),
@@ -282,7 +288,7 @@ export class Aggregator {
     const out: ResultsPitcherRow[] = []
     for (const a of this.resPit.values()) {
       const s = a.s
-      if (s[0] < MIN_PITCHES) continue   // the same minimum as the pitcher table: the board never lists a pitcher the map does not
+      if (s[0] < this.minPitches) continue   // the same minimum as the pitcher table: the board never lists a pitcher the map does not
       out.push({ level: this.level, season: this.season, pitcher_id: a.id, pitch_type: a.type, p_throws: mode(a.hands) ?? 'R', n_pitches: s[0], n_swings: s[1], n_whiffs: s[2], rv_n: s[3], rv: r(s[4], 3), pa: s[5], ab: s[6], hits: s[7], tb: s[8], woba_den: r(s[9], 3), woba_sum: r(s[10], 3), xwoba_sum: r(s[11], 3) })
     }
     return out.sort((x, y) => x.pitcher_id - y.pitcher_id || x.pitch_type.localeCompare(y.pitch_type))

@@ -1,6 +1,6 @@
 // scripts/import-milb-pitch-shape.ts
 //
-// One-off importer for the Pitch Shape Lab's minor-league levels: Triple-A (aaa) and the Florida State League (fsl). No cron. The logic is in src/lib/milb-shape/importer.ts.
+// One-off importer for the Pitch Shape Lab's minor-league levels: Triple-A (aaa), the Florida State League (fsl), Spring Training (st) and the Arizona Fall League (afl). No cron. The logic is in src/lib/milb-shape/importer.ts.
 //
 // TABLE OWNERSHIP (single writer): this script writes pitch_shape_bins_milb, pitch_shape_cells_milb, pitch_shape_pitcher_milb, pitch_shape_milb_coverage and
 // pitch_shape_milb_runs, and nothing else does. It never touches an MLB table.
@@ -8,6 +8,8 @@
 //   DRY RUN (the default; writes nothing, never connects to Supabase):
 //     npx tsx scripts/import-milb-pitch-shape.ts --season=2026 --level=aaa --start=2026-08-01 --end=2026-08-01
 //     npx tsx scripts/import-milb-pitch-shape.ts --season=2026 --level=fsl                  # the whole season: counts, null rates, gaps, size
+//     npx tsx scripts/import-milb-pitch-shape.ts --season=2026 --level=st                   # Spring Training (Savant game type S, major-league clubs only)
+//     npx tsx scripts/import-milb-pitch-shape.ts --season=2026 --level=afl                  # Arizona Fall League (from the MLB Stats API game feed)
 //   WRITE (idempotent; resumable; refuses without the project ref):
 //     npx tsx scripts/import-milb-pitch-shape.ts --write --confirm-project=<ref> --season=2026 --level=aaa
 //   LOCAL PREVIEW (writes a file, never Supabase; read by the Lab in `next dev` only while the real tables are missing):
@@ -20,7 +22,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { assertWriteTarget, EXPECTED_PROJECT_REF, WriteRefusedError } from '../src/lib/milb-shape/guard'
-import { buildPlan, report, runSummary, tablesOf, SOURCE, writePlan, type Db, type Deps } from '../src/lib/milb-shape/importer'
+import { buildPlan, report, runSummary, sourceOf, tablesOf, writePlan, type Db, type Deps } from '../src/lib/milb-shape/importer'
 import { isMilb, parseLevel, type MilbLevel } from '../src/lib/milb-shape/levels'
 import { fileCache, type Fetcher } from '../src/lib/milb-shape/savant'
 
@@ -51,9 +53,9 @@ async function main(): Promise<number> {
   const write = arg('write') === 'true'
   const season = Number(arg('season') ?? new Date().getFullYear())
   const wanted = arg('level')
-  if (write && !wanted) { console.error('--write needs --level=aaa or --level=fsl'); return 2 }
+  if (write && !wanted) { console.error('--write needs --level=aaa, fsl, st or afl'); return 2 }
   const levels: MilbLevel[] = wanted ? [parseLevel(wanted)].filter(isMilb) : ['aaa', 'fsl']
-  if (wanted && levels.length === 0) { console.error(`--level must be aaa or fsl (got ${wanted})`); return 2 }
+  if (wanted && levels.length === 0) { console.error(`--level must be aaa, fsl, st or afl (got ${wanted})`); return 2 }
 
   let db: Db | null = null
   if (write) {
@@ -103,7 +105,7 @@ async function main(): Promise<number> {
         pitch_shape_milb_coverage: [...keep('pitch_shape_milb_coverage'), ...t.coverage],
         pitch_shape_results_milb: [...keep('pitch_shape_results_milb'), ...t.results],
         pitch_shape_results_pitcher_milb: [...keep('pitch_shape_results_pitcher_milb'), ...t.resultsPitchers],
-        pitch_shape_milb_runs: [...keep('pitch_shape_milb_runs'), { level, season, source: SOURCE, fetched_at: plan.fetchedAt, complete: plan.complete, first_date: plan.firstDate, last_date: plan.lastDate, summary: runSummary(plan), updated_at: now }],
+        pitch_shape_milb_runs: [...keep('pitch_shape_milb_runs'), { level, season, source: sourceOf(level), fetched_at: plan.fetchedAt, complete: plan.complete, first_date: plan.firstDate, last_date: plan.lastDate, summary: runSummary(plan), updated_at: now }],
       }
       fs.mkdirSync(path.dirname(file), { recursive: true })
       fs.writeFileSync(file, JSON.stringify(out))
