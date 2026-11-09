@@ -2,7 +2,7 @@
 
 // src/components/pitch-shape/LevelsCompared.tsx
 //
-// How one pitch type's shapes compare across MLB, Triple-A and the Florida State League. Three views, all of the same pitch type and hand:
+// How one pitch type's shapes compare across MLB, Triple-A, the Florida State League, the Arizona Fall League and Spring Training. Three views, all of the same pitch type and hand:
 //   1. each level's average shape (speed, ride, run, arm angle) and how the pitchers at that level differ from each other;
 //   2. the same pitchers at two levels: who threw 150+ of the pitch at both, and how his pitch moved between them (a real change in one arm's pitch);
 //   3. the spot chosen on the map, at each level: how common that shape is there and how often hitters missed it.
@@ -75,7 +75,7 @@ function Averages({ levels, active, lc }: { levels: LevelSummary[]; active: Leve
         <thead><tr><th style={th}>Level</th><th style={th}>Pitchers</th><th style={th}>Pitches</th><th style={th}>Velocity</th><th style={th}>Ride</th><th style={th}>Run</th><th style={th}>Arm angle</th><th style={th}>Whiffs per swing</th></tr></thead>
         <tbody>
           {levels.map(l => {
-            const d = mlb && l.level !== 'mlb' ? { velo: l.mean.velo - mlb.mean.velo, ivb: l.mean.ivb - mlb.mean.ivb, hb: l.mean.hb - mlb.mean.hb, slot: l.mean.slot - mlb.mean.slot } : null
+            const d = mlb && l.level !== 'mlb' ? { velo: l.mean.velo - mlb.mean.velo, ivb: l.mean.ivb - mlb.mean.ivb, hb: l.mean.hb - mlb.mean.hb, slot: l.slotKnown ? l.mean.slot - mlb.mean.slot : null } : null
             return (
               <tr key={l.level} style={{ background: l.level === active ? '#FFF3EA' : undefined }}>
                 <td style={{ ...td, fontWeight: 800 }}><Dot level={l.level} />{LEVEL_LABEL[l.level]}<div style={{ fontSize: 11.5, fontWeight: 500, color: C.mute }}>{l.season}</div></td>
@@ -84,14 +84,14 @@ function Averages({ levels, active, lc }: { levels: LevelSummary[]; active: Leve
                 <td style={td}><b>{l.mean.velo.toFixed(1)}</b> mph<div style={{ fontSize: 11.5, color: C.mute }}>varies ±{l.spread.velo.toFixed(1)}</div>{d && delta(d.velo, 1)}</td>
                 <td style={td}><b>{l.mean.ivb.toFixed(1)}</b> in<div style={{ fontSize: 11.5, color: C.mute }}>varies ±{l.spread.ivb.toFixed(1)}</div>{d && delta(d.ivb, 1)}</td>
                 <td style={td}><b>{l.mean.hb.toFixed(1)}</b> in<div style={{ fontSize: 11.5, color: C.mute }}>varies ±{l.spread.hb.toFixed(1)}</div>{d && delta(d.hb, 1)}</td>
-                <td style={td}><b>{Math.round(l.mean.slot)}</b>°<div style={{ fontSize: 11.5, color: C.mute }}>varies ±{l.spread.slot.toFixed(0)}</div>{d && delta(d.slot, 0)}</td>
+                <td style={td}>{l.slotKnown ? <><b>{Math.round(l.mean.slot)}</b>°<div style={{ fontSize: 11.5, color: C.mute }}>varies ±{l.spread.slot.toFixed(0)}</div>{d && d.slot != null && delta(d.slot, 0)}</> : <span style={{ color: C.mute }}>pending</span>}</td>
                 <td style={td}>{l.swings >= 150 ? <b>{((l.whiffs / l.swings) * 100).toFixed(1)}%</b> : 'pending'}<div style={{ fontSize: 11.5, color: C.mute }}>{l.whiffs.toLocaleString()} of {l.swings.toLocaleString()}</div></td>
               </tr>
             )
           })}
         </tbody>
       </table>
-      <div style={{ fontSize: 12, color: C.mute, margin: '6px 2px 0', lineHeight: 1.5 }}>Average shape of every {lc}, weighted by pitches. The small figure under a Triple-A or Florida State League row is how far it sits from MLB. Variation is how much pitchers at that level differ from each other.</div>
+      <div style={{ fontSize: 12, color: C.mute, margin: '6px 2px 0', lineHeight: 1.5 }}>Average shape of every {lc}, weighted by pitches. The small figure under a minor-league or exhibition row is how far it sits from MLB. Spring Training and the Arizona Fall League list a pitcher from 30 pitches and have no arm angle, so that column is pending for them. Variation is how much pitchers at that level differ from each other.</div>
     </div>
   )
 }
@@ -294,11 +294,11 @@ export default function LevelsCompared({ data, active, type, hand, pitchName, pl
   return (
     <section aria-label="How shapes compare across levels" style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
       <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', minHeight: 32 }}>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>{open ? '▾' : '▸'} How {hand === 'L' ? 'left' : 'right'}-handed {lc}s compare across MLB, Triple-A and the Florida State League</span>
+        <span style={{ fontWeight: 800, fontSize: 16 }}>{open ? '▾' : '▸'} How {hand === 'L' ? 'left' : 'right'}-handed {lc}s compare across MLB, Triple-A, the Florida State League, the Arizona Fall League and Spring Training</span>
       </button>
       {open && (
         <div>
-          <p style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, margin: '6px 0 4px', maxWidth: 900 }}>The same pitch, three levels. Shape is physical, so it is compared directly. Misses are measured within each level and are shown side by side, not on one scale.</p>
+          <p style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, margin: '6px 0 4px', maxWidth: 900 }}>The same pitch, every level we hold. Shape is physical, so it is compared directly. Misses are measured within each level and are shown side by side, not on one scale.</p>
           {data === undefined ? <p style={{ fontSize: 13, color: C.mute }}>Loading the levels…</p>
             : data === null || data.levels.length === 0 ? <p style={{ fontSize: 13, color: C.mute }}>The level comparison could not be loaded.</p>
             : (

@@ -10,6 +10,7 @@ import { milbDb } from './dev-db'
 import { meanDelta, movers, summarise, type LevelSummary, type Mover, type PRow, type Shape } from './compare'
 import { latestMilbSeason } from './server'
 import type { Level, MilbLevel } from './levels'
+import { limitsFor } from './limits'
 
 const COLS = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs'
 const TTL = 30 * 60 * 1000
@@ -33,14 +34,17 @@ async function rowsFor(level: Level, type: string, hand: string): Promise<{ seas
     rows.push(...page)
     if (page.length < 1000) break
   }
-  return rows.length ? { season, rows } : null
+  // the exhibition levels list a pitcher from 30 pitches (limits.ts); the other levels keep every row the importer wrote
+  const lim = limitsFor(level)
+  const kept = lim.gated ? rows : rows.filter(r => Number(r.n_pitches) >= lim.comparePitches)
+  return kept.length ? { season, rows: kept } : null
 }
 
 export async function getLevelsCompared(type: string, hand: string): Promise<LevelsCompared> {
   const key = `${type}|${hand}`
   const hit = cache.get(key)
   if (hit && Date.now() - hit.at < TTL) return hit.v
-  const lv: Level[] = ['mlb', 'aaa', 'fsl']
+  const lv: Level[] = ['mlb', 'aaa', 'fsl', 'afl', 'st']
   const got = await Promise.all(lv.map(l => rowsFor(l, type, hand)))
   const by = new Map<Level, { season: number; rows: PRow[] }>()
   lv.forEach((l, i) => { const g = got[i]; if (g) by.set(l, g) })

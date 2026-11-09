@@ -11,11 +11,13 @@
 
 import type { Level } from './levels'
 
-export type PRow = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; velo: number; ivb: number; hb: number; slot: number; n_swings: number; n_whiffs: number }
+export type PRow = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; velo: number; ivb: number; hb: number; slot: number | null; n_swings: number; n_whiffs: number }
 export type Shape = { velo: number; ivb: number; hb: number; slot: number }
 export type LevelSummary = {
   level: Level; season: number
   pitchers: number; pitches: number
+  /** false when the level has no arm angle (Spring Training, Arizona Fall League): mean.slot and spread.slot are then 0 and must be shown as pending */
+  slotKnown: boolean
   mean: Shape
   /** pitch-weighted spread of pitcher averages */
   spread: Shape
@@ -33,16 +35,21 @@ const KEYS = ['velo', 'ivb', 'hb', 'slot'] as const
 const num = (x: unknown) => Number(x)
 
 export function summarise(level: Level, season: number, rows: PRow[]): LevelSummary | null {
-  const use = rows.filter(r => num(r.n_pitches) > 0 && [r.velo, r.ivb, r.hb, r.slot].every(v => Number.isFinite(num(v))))
+  // speed and movement are needed for a pitcher to count; an arm angle is not (it is null at the exhibition levels), so the arm-angle average is taken over the pitchers that have one
+  const use = rows.filter(r => num(r.n_pitches) > 0 && [r.velo, r.ivb, r.hb].every(v => v != null && Number.isFinite(num(v))))
   const total = use.reduce((s, r) => s + num(r.n_pitches), 0)
   if (use.length === 0 || total === 0) return null
   const mean = {} as Shape, spread = {} as Shape
+  const withSlot = use.filter(r => r.slot != null && Number.isFinite(num(r.slot)))
+  const slotTotal = withSlot.reduce((s, r) => s + num(r.n_pitches), 0)
   for (const k of KEYS) {
-    const m = use.reduce((s, r) => s + num(r[k]) * num(r.n_pitches), 0) / total
+    const src = k === 'slot' ? withSlot : use, tot = k === 'slot' ? slotTotal : total
+    if (tot === 0) { mean[k] = 0; spread[k] = 0; continue }
+    const m = src.reduce((s, r) => s + num(r[k]) * num(r.n_pitches), 0) / tot
     mean[k] = m
-    spread[k] = Math.sqrt(use.reduce((s, r) => s + (num(r[k]) - m) ** 2 * num(r.n_pitches), 0) / total)
+    spread[k] = Math.sqrt(src.reduce((s, r) => s + (num(r[k]) - m) ** 2 * num(r.n_pitches), 0) / tot)
   }
-  return { level, season, pitchers: use.length, pitches: total, mean, spread, swings: use.reduce((s, r) => s + num(r.n_swings), 0), whiffs: use.reduce((s, r) => s + num(r.n_whiffs), 0) }
+  return { level, season, pitchers: use.length, pitches: total, slotKnown: slotTotal > 0, mean, spread, swings: use.reduce((s, r) => s + num(r.n_swings), 0), whiffs: use.reduce((s, r) => s + num(r.n_whiffs), 0) }
 }
 
 /** high minus base for each axis. */
