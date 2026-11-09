@@ -1,7 +1,7 @@
 // POST /api/stripe/webhook — the ONLY place Pro is granted or revoked from a payment.
 //
 // TABLE OWNERSHIP (single-writer rule): on a Stripe event this route is the sole writer of
-//   subscribers.is_pro, stripe_customer_id, stripe_subscription_id, pro_plan, pro_status, pro_updated_at.
+//   subscribers.is_pro, stripe_customer_id, stripe_subscription_id, pro_plan, pro_status, pro_updated_at, referral_code, referral_recorded_at.
 //
 // Point a Stripe webhook endpoint at https://<your-domain>/api/stripe/webhook and subscribe it to:
 //   checkout.session.completed · customer.subscription.updated · customer.subscription.deleted
@@ -12,6 +12,8 @@
 //   • checkout.session.completed → find the subscriber (metadata id → customer id → email), or
 //     create a verified one from the payment email, then is_pro = true;
 //   • subscription updated/deleted → is_pro follows the Stripe status (active/trialing/past_due = on);
+//   • never switches Pro OFF for a subscriber with no stripe_customer_id (free/manual Pro is not Stripe's to take away);
+//   • referral: the code from checkout metadata is saved once, only while referral_code is empty (first code wins);
 //   • idempotent: replays set the same values;
 //   • if the billing columns don't exist yet (scripts/sql/add_stripe_columns.sql not run) it STILL flips
 //     is_pro — a paying customer is never locked out — and logs a loud error;
@@ -23,6 +25,7 @@ import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase'
 import { getStripe, PRO_STATUSES } from '@/lib/stripe'
 import { log } from '@/lib/log'
+import { cleanRef } from '@/lib/referral'
 
 export const runtime = 'nodejs'
 
@@ -42,6 +45,16 @@ async function applyPatch(subscriberId: string, patch: Patch): Promise<void> {
     return
   }
   throw new Error(error.message)
+}
+
+/** Saves the referral code on the subscriber once. Never overwrites, never blocks Pro: a failure here is logged and the grant stands. */
+async function recordReferral(subscriberId: string, raw: unknown): Promise<void> {
+  const ref = cleanRef(raw)
+  if (!ref) return
+  const { error } = await createAdminClient().from('subscribers')
+    .update({ referral_code: ref.toUpperCase(), referral_recorded_at: new Date().toISOString() })
+    .eq('id', subscriberId).is('referral_code', null)
+  if (error) log.error('stripe/webhook', 'referral not recorded (run scripts/sql/add_referral_columns.sql?)', error.message)
 }
 
 async function findSubscriberId(opts: { subscriberId?: string; customerId?: string; email?: string | null }): Promise<string | null> {
@@ -80,12 +93,24 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     is_pro: true, pro_status: 'active', pro_plan: session.metadata?.plan === 'founding' ? 'founding' : 'standard',
     stripe_customer_id: idOf(session.customer), stripe_subscription_id: idOf(session.subscription), pro_updated_at: new Date().toISOString(),
   })
+  await recordReferral(id, session.metadata?.ref)
 }
 
 async function onSubscriptionChanged(sub: Stripe.Subscription) {
   const id = await findSubscriberId({ subscriberId: sub.metadata?.subscriber_id, customerId: idOf(sub.customer) })
   if (!id) { log.error('stripe/webhook', 'subscription event for an unknown customer', idOf(sub.customer)); return }
-  await applyPatch(id, { is_pro: PRO_STATUSES.has(sub.status), pro_status: sub.status, stripe_subscription_id: sub.id, pro_updated_at: new Date().toISOString() })
+  const on = PRO_STATUSES.has(sub.status)
+  if (!on) {
+    // Turning Pro off is only for people Stripe has billed. A free/manual Pro subscriber has no customer id and is left alone.
+    const { data: row, error } = await createAdminClient().from('subscribers').select('stripe_customer_id').eq('id', id).maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!(row as { stripe_customer_id: string | null } | null)?.stripe_customer_id) {
+      log.error('stripe/webhook', 'not switching Pro off: subscriber has no stripe_customer_id', id)
+      return
+    }
+  }
+  await applyPatch(id, { is_pro: on, pro_status: sub.status, stripe_subscription_id: sub.id, pro_updated_at: new Date().toISOString() })
+  await recordReferral(id, sub.metadata?.ref)
 }
 
 export async function POST(req: NextRequest) {

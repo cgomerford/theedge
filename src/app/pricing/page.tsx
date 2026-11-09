@@ -55,7 +55,7 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'Where does the data come from?', a: 'Built on public game data. Independent, not affiliated with MLB.' },
   { q: 'Is this for betting?', a: "No. It's information about how players and pitchers perform. Nothing more." },
   { q: 'Can I get a refund?', a: `If something is not right with your subscription, email cgomerford@gmail.com and we will look at it. You can cancel at any time from your page, and Pro stays open until the end of the period you have paid for.` },
-  { q: 'Do I need an account to buy?', a: 'Yes. Create a free account first, then upgrade from inside it, so Pro is attached to you.' },
+  { q: 'Do I need an account to buy?', a: 'Yes, but you can do both in one go. Choose Pro account when you sign up: we email you a sign-in link, and it opens secure checkout. Or create a free account first and upgrade later.' },
   { q: "What's free forever?", a: 'The scout report summary and recap, following players and teams, the free Batting Lab tabs, live games, the stats leaderboards and dropdown search, ten Ask the stats questions a day, the stats graphs and one full deep look a day.' },
   { q: 'How do the Ask the stats lookups work?', a: 'Each new question you type uses one lookup: 10 a day with an account, 5 without one, unlimited on Pro. Changing seasons or filters on the same question within 15 minutes is free, and so is the dropdown search. The count resets at midnight UK time.' },
 ]
@@ -63,7 +63,8 @@ const FAQ: { q: string; a: string }[] = [
 const H2: React.CSSProperties = { margin: '0 0 6px', fontSize: 13, fontWeight: 800, letterSpacing: '.12em', color: '#FF5722', textTransform: 'uppercase' }
 const MUTED = '#8a8275'
 
-export default async function PricingPage() {
+export default async function PricingPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const cancelled = (await searchParams).checkout === 'cancelled'
   const tier = await getViewerTier()
   const showPrice = tier !== 'anon' || SHOW_PRICE_SIGNED_OUT_ON_PRICING
   const offer = tier !== 'pro' && showPrice ? await getOffer() : null   // what checkout would charge a new subscriber right now
@@ -78,6 +79,7 @@ export default async function PricingPage() {
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 16px 80px' }}>
         <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(32px, 5vw, 46px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>Baseball, read like a front office.</h1>
         <p style={{ margin: '0 0 28px', fontSize: 17, color: '#5b5347' }}>Front-office-style breakdowns for fans. Built on public game data.</p>
+        {cancelled && <p role="status" style={{ margin: '0 0 24px', padding: '12px 14px', background: '#fff', border: '1px solid #e7e2d8', fontSize: 15 }}>Checkout was cancelled and nothing was charged. Your free account is ready, and you can upgrade whenever you like.</p>}
 
         {/* b) free account first */}
         <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px 20px', borderTop: '1px solid #e7e2d8', borderBottom: '1px solid #e7e2d8', padding: '16px 0', marginBottom: 36 }}>

@@ -1,11 +1,13 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
-import EmailSignupForm from '@/components/signup/EmailSignupForm'
+import PlanChoice from '@/components/signup/PlanChoice'
 import { SIGNUP_BENEFITS, SIGNUP_HEADLINE, SIGNUP_KICKER, SIGNUP_SENT, SIGNUP_SUBHEAD } from '@/components/signup/copy'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { ATTRIBUTION_KEYS, readAttribution, safeReturnPath } from '@/lib/attribution'
 import { noindex } from '@/lib/seo'
+import { getOffer } from '@/lib/pro-offer-server'
+import { FOUNDING, FOUNDING_MONTHLY, STANDARD, STANDARD_MONTHLY, formatPrice } from '@/lib/pricing'
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -42,7 +44,16 @@ export default async function SignupPage({ searchParams }: Props) {
   const attribution = readAttribution(first)
   const returnTo = attribution.return_to ?? (await refererPath())
 
-  if (await getCurrentSubscriber()) redirect(returnTo ?? '/me')
+  // /signup?plan=pro&interval=month pre-selects Pro (links from emails, X posts, the pricing page).
+  const wantsPro = first('plan') === 'pro'
+  const interval = first('interval') === 'month' ? 'month' : 'year'
+  const viewer = await getCurrentSubscriber()
+  if (viewer) redirect(wantsPro && !viewer.is_pro ? `/pricing/start?interval=${interval}` : returnTo ?? '/me')
+  const offers = await getOffer()   // what checkout would charge a new subscriber right now; null plan = not available, so Pro is not offered
+  const offer = {
+    year: offers.annual.plan ? formatPrice(offers.annual.plan === 'founding' ? FOUNDING : STANDARD) : null,
+    month: offers.monthly.plan ? formatPrice(offers.monthly.plan === 'founding' ? FOUNDING_MONTHLY : STANDARD_MONTHLY) : null,
+  }
 
   const source = attribution.source ?? 'signup_page'
   const extra = Object.fromEntries(ATTRIBUTION_KEYS.filter(k => k !== 'source').map(k => [k, attribution[k]]))
@@ -79,7 +90,7 @@ export default async function SignupPage({ searchParams }: Props) {
               </div>
             ) : (
               <>
-                <EmailSignupForm source={source} returnTo={returnTo} extra={extra} />
+                <PlanChoice source={source} returnTo={returnTo} extra={extra} initialPlan={wantsPro ? 'pro' : 'free'} initialInterval={interval} offer={offer} />
                 {error && ERRORS[error] && <p role="alert" style={{ margin: '12px 0 0', fontSize: 14, color: '#b42318' }}>{ERRORS[error]}</p>}
               </>
             )}
