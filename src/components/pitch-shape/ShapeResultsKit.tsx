@@ -110,7 +110,7 @@ export function ResultsReadout({ here, league, saved, score, lc, radius, spanLab
 const tabText = { behind: 'Underperforming their shape', ahead: 'Outperforming their shape', top: 'Top Shape Scores' } as const
 
 /** The Shape Score board: pitchers whose own results trail or beat what their shape has produced, and the top scores. */
-export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; onShow?: (id: number) => void }) {
+export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L' | 'B'; onShow?: (id: number) => void }) {
   const lim = limitsFor(useShapeView().level)
   const [tab, setTab] = useState<'behind' | 'ahead' | 'top'>('behind')
   const [all, setAll] = useState(false)
@@ -124,7 +124,7 @@ export function ShapeScoreBoard({ board, lc, hand, onShow }: { board: Board | nu
       <div className="pv-k" style={{ color: '#B83A0E' }}>Shape Score<InfoTip k="shapeScore" /></div>
       <h2 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(22px,3.4vw,30px)', letterSpacing: '-.02em', lineHeight: 1.1 }}>Who throws a shape that saves runs, and who is not getting them?</h2>
       <p style={{ color: '#5b5347', fontSize: 14, margin: '0 0 12px', maxWidth: 780, lineHeight: 1.5 }}>
-        Each pitcher’s average {lc} is a point on the map. His Shape Score (1 to 99) ranks the runs per 100 pitches that league {hand === 'R' ? 'right' : 'left'}-handed {lc}s shaped like his have saved, against the other shapes pitchers throw. Beside it, what his own {lc} has done this season. “Underperforming” means his results are more than {LEVEL_RUNS} runs per 100 pitches worse than his shape has produced; “outperforming” means better. It describes what has happened, not a forecast, and it uses movement only: speed and arm angle are not in it.
+        Each pitcher’s average {lc} is a point on the map. His Shape Score (1 to 99) ranks the runs per 100 pitches that league {hand === 'B' ? 'left- and right-handed' : hand === 'R' ? 'right-handed' : 'left-handed'} {lc}s shaped like his have saved, against the other shapes pitchers throw. Beside it, what his own {lc} has done this season. “Underperforming” means his results are more than {LEVEL_RUNS} runs per 100 pitches worse than his shape has produced; “outperforming” means better. It describes what has happened, not a forecast, and it uses movement only: speed and arm angle are not in it.
       </p>
       <div role="group" aria-label="Board view" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         {(['behind', 'ahead', 'top'] as const).map(t => <button key={t} type="button" style={pill(t === tab)} onClick={() => { setTab(t); setAll(false) }}>{tabText[t]}</button>)}
@@ -745,7 +745,7 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * explain, or anyone), then either see the best matches or shuffle a random six, or let it pick one at random. Cards carry a headshot and the numbers that matter; clicking one opens his full read.
  * Established names (All-Stars, award winners, full-time veterans) are hidden unless asked for; small samples are kept and tagged.
  */
-export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string; /** the pitchers that pass every filter here, for the map to show only them; null = the map shows everyone */ onMatches: (ids: Set<number> | null) => void }) {
+export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L' | 'B'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string; /** the pitchers that pass every filter here, for the map to show only them; null = the map shows everyone */ onMatches: (ids: Set<number> | null) => void }) {
   const finderLim = limitsFor(useShapeView().level)
   const [lens, setLens] = useState<LensId>(finderLim.gated ? 'hidden' : 'any')
   useEffect(() => { setLens(finderLim.gated ? 'hidden' : 'any') }, [finderLim.gated])   // the exhibition levels have no results to ahead/behind lenses on, so they open on Anyone
@@ -803,7 +803,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches
     <section id="pf2-find" style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '14px 16px', margin: '4px 0 14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <b style={{ fontSize: 18 }}>Find me a pitcher</b>
-        <span style={{ fontSize: 13, color: '#5b5347' }}>{hand === 'R' ? 'Right' : 'Left'}-handed {lc}s. Set what you want, then shuffle or let it choose.</span>
+        <span style={{ fontSize: 13, color: '#5b5347' }}>{hand === 'B' ? 'Left- and right-handed' : hand === 'R' ? 'Right-handed' : 'Left-handed'} {lc}s. Set what you want, then shuffle or let it choose.</span>
         <button type="button" onClick={() => setOpen(o => !o)} style={{ ...pill(false), marginLeft: 'auto', minHeight: 36 }}>{open ? 'Hide' : 'Show'}</button>
       </div>
       {open && (

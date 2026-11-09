@@ -16,6 +16,7 @@ import type { LevelSummary, Mover, Shape } from '@/lib/milb-shape/compare'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { MIN_WINDOW_SWINGS } from './finder-math'
+import { limitsFor } from '@/lib/milb-shape/limits'
 import { makeGrid, stats, type Grid } from './heatGrid'
 import { log } from '@/lib/log'
 
@@ -139,20 +140,20 @@ function Movers({ sets, lc }: { sets: MoverSet[]; lc: string }) {
 }
 
 function Spot({ type, hand, place, radius, lc }: { type: string; hand: string; place: { hb: number; ivb: number }; radius: number; lc: string }) {
-  const m = useCells('mlb', type, hand, false), a = useCells('aaa', type, hand, false), f = useCells('fsl', type, hand, false)
+  const m = useCells('mlb', type, hand, false), a = useCells('aaa', type, hand, false), f = useCells('fsl', type, hand, false), x = useCells('afl', type, hand, false), y = useCells('st', type, hand, false)
   const rows = useMemo(() => {
     const out: { level: Level; share: number | null; pitches: number; swings: number; rate: number | null; avg: number | null; total: number }[] = []
     const r10 = Math.round(radius * 10)
-    for (const [level, p] of [['mlb', m], ['aaa', a], ['fsl', f]] as const) {
+    for (const [level, p] of [['mlb', m], ['aaa', a], ['fsl', f], ['afl', x], ['st', y]] as [Level, MovementCellsPayload | null | undefined][]) {
       if (!p) continue
       const g = makeGrid(p, 'latest')
       const s = stats(g, Math.round(place.hb * 10), Math.round(place.ivb * 10), r10)
       const total = p.seasons.find(x => x.season === p.latest)?.league.pitches ?? 0
-      out.push({ level, pitches: s.pitches, share: total > 0 ? s.pitches / total : null, swings: s.swings, rate: s.swings >= MIN_WINDOW_SWINGS ? s.whiffs / s.swings : null, avg: g.swings > 0 ? g.whiffs / g.swings : null, total })
+      out.push({ level, pitches: s.pitches, share: total > 0 ? s.pitches / total : null, swings: s.swings, rate: s.swings >= limitsFor(level).windowSwings && s.swings > 0 ? s.whiffs / s.swings : null, avg: g.swings > 0 ? g.whiffs / g.swings : null, total })
     }
     return out
-  }, [m, a, f, place.hb, place.ivb, radius])
-  if (m === undefined || a === undefined || f === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading each level’s map…</p>
+  }, [m, a, f, x, y, place.hb, place.ivb, radius])
+  if (m === undefined || a === undefined || f === undefined || x === undefined || y === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading each level’s map…</p>
   if (rows.length === 0) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>No league maps for this pitch yet.</p>
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -180,7 +181,7 @@ function Spot({ type, hand, place, radius, lc }: { type: string; hand: string; p
 
 type Metric = 'swing' | 'whiff'
 const HALF = 12
-// One absolute colour scale per measure, shared by all three maps, so a darker map really is a level where hitters swung more (or missed more).
+// One absolute colour scale per measure, shared by every map, so a darker map really is a level where hitters swung more (or missed more).
 const RANGE: Record<Metric, [number, number]> = { swing: [0.25, 0.65], whiff: [0.08, 0.40] }
 const METRIC_LABEL: Record<Metric, string> = { swing: 'Swings per pitch', whiff: 'Whiffs per swing' }
 const MIN_PITCHES_WINDOW = 60
@@ -233,12 +234,12 @@ function MapCanvas({ grid, c0, r10, metric, level, place, hover, onHover, minSwi
 }
 
 function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: string; place: { hb: number; ivb: number } | null; radius: number; lc: string }) {
-  const m = useCells('mlb', type, hand, false), a = useCells('aaa', type, hand, false), f = useCells('fsl', type, hand, false)
+  const m = useCells('mlb', type, hand, false), a = useCells('aaa', type, hand, false), f = useCells('fsl', type, hand, false), x = useCells('afl', type, hand, false), y = useCells('st', type, hand, false)
   const [metric, setMetric] = useState<Metric>('swing')
   const [hover, setHover] = useState<{ hb: number; ivb: number } | null>(null)
   const r10 = Math.round(radius * 10)
-  const levels = useMemo(() => ([['mlb', m], ['aaa', a], ['fsl', f]] as [Level, MovementCellsPayload | null | undefined][]).filter((x): x is [Level, MovementCellsPayload] => !!x[1]).map(([level, p]) => ({ level, p, grid: makeGrid(p, 'latest'), tot: p.seasons.find(s => s.season === p.latest)?.league ?? { pitches: 0, swings: 0, whiffs: 0 } })), [m, a, f])
-  if (m === undefined || a === undefined || f === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading the three maps…</p>
+  const levels = useMemo(() => ([['mlb', m], ['aaa', a], ['fsl', f], ['afl', x], ['st', y]] as [Level, MovementCellsPayload | null | undefined][]).filter((x): x is [Level, MovementCellsPayload] => !!x[1]).map(([level, p]) => ({ level, p, grid: makeGrid(p, 'latest'), tot: p.seasons.find(s => s.season === p.latest)?.league ?? { pitches: 0, swings: 0, whiffs: 0 } })), [m, a, f, x, y])
+  if (m === undefined || a === undefined || f === undefined || x === undefined || y === undefined) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Loading the maps…</p>
   if (levels.length < 2) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Fewer than two levels have a map for this pitch yet.</p>
   const c0 = { hb: levels[0].p.hb0, ivb: levels[0].p.ivb0 }
   const [lo, hi] = RANGE[metric]
@@ -248,11 +249,11 @@ function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: str
       <Chips2 label="Measure" value={metric} onChange={v => setMetric(v as Metric)} options={[{ id: 'swing', text: 'Swings per pitch' }, { id: 'whiff', text: 'Whiffs per swing' }]} />
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${levels.length}, minmax(0, 1fr))`, gap: 12 }} className="lc-maps">
         {levels.map(l => {
-          const here = hover ? windowRate(l.grid, metric, hover.hb, hover.ivb, r10, MIN_SW) : null
+          const here = hover ? windowRate(l.grid, metric, hover.hb, hover.ivb, r10, limitsFor(l.level).gated ? MIN_SW : 10) : null
           return (
             <div key={l.level} style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}><Dot level={l.level} />{LEVEL_LABEL[l.level]}</div>
-              <MapCanvas grid={l.grid} c0={c0} r10={r10} metric={metric} level={l.level} place={place} hover={hover} onHover={setHover} minSwings={MIN_SW} />
+              <MapCanvas grid={l.grid} c0={c0} r10={r10} metric={metric} level={l.level} place={place} hover={hover} onHover={setHover} minSwings={limitsFor(l.level).gated ? MIN_SW : 10} />
               <div style={{ fontSize: 12.5, marginTop: 5, lineHeight: 1.45 }}>
                 <b>{metric === 'swing' ? pc(swingPct(l.tot), 1) : l.tot.swings ? pc(l.tot.whiffs / l.tot.swings, 1) : '—'}</b> <span style={{ color: C.mute }}>{metric === 'swing' ? 'of all pitches drew a swing' : 'of swings missed'} ({l.tot.pitches.toLocaleString()} pitches)</span>
                 {hover && <div style={{ color: '#3a352c' }}>{here && here.rate != null ? <><b>{pc(here.rate, 1)}</b> at the pointer <span style={{ color: C.mute }}>({here.pitches.toLocaleString()} pitches, {here.swings.toLocaleString()} swings)</span></> : <span style={{ color: C.mute }}>Pointer: too few {lc}s here to show</span>}</div>}
@@ -266,7 +267,7 @@ function SideBySide({ type, hand, place, radius, lc }: { type: string; hand: str
         <span>{pc(lo)}</span>
         <span aria-hidden style={{ flex: 1, minWidth: 140, maxWidth: 340, height: 12, borderRadius: 3, background: `linear-gradient(90deg, rgb(244,238,227), rgb(255,138,80) 50%, rgb(168,48,14))` }} />
         <span>{pc(hi)}</span>
-        <span style={{ color: C.mute, fontWeight: 500 }}>{METRIC_LABEL[metric]}: one scale on all three maps</span>
+        <span style={{ color: C.mute, fontWeight: 500 }}>{METRIC_LABEL[metric]}: one scale on every map</span>
       </div>
       <div style={{ fontSize: 12, color: C.mute, lineHeight: 1.5 }}>Each point of a map is a way a {lc} can move (right is more run toward the pitcher’s arm side, up is more ride), read over every {lc} within ±{radius} in. A grey area has too few pitches ({MIN_PITCHES_WINDOW} for swings per pitch, {MIN_SW} swings for whiffs per swing). Hover one map and the same spot is read on the others.</div>
     </div>
@@ -305,7 +306,7 @@ export default function LevelsCompared({ data, active, type, hand, pitchName, pl
               <>
                 <div style={head}>Average shape by level</div>
                 <Averages levels={data.levels} active={active} lc={lc} />
-                <div style={head}>The three maps side by side</div>
+                <div style={head}>The maps side by side</div>
                 <SideBySide type={type} hand={hand} place={place} radius={radius} lc={lc} />
                 <div style={head}>The same pitchers at two levels</div>
                 <Movers sets={data.movers} lc={lc} />

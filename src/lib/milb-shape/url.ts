@@ -12,7 +12,7 @@ import { DEFAULT_LEVEL, isLevel, type Level } from './levels'
 
 export type ShapeUrl = {
   level?: Level; season?: number
-  pitch?: string; hand?: 'R' | 'L'; window?: 'latest' | 'all'; radius?: 0.5 | 1 | 2
+  pitch?: string; hand?: 'R' | 'L' | 'B'; window?: 'latest' | 'all'; radius?: 0.5 | 1 | 2
   spitch?: string; shand?: 'R' | 'L'; v?: number; ride?: number; run?: number; arm?: number
   /** the minor-league Refine choices */
   rmlb?: 'never' | 'before' | 'this-season' | 'sent-down'; rres?: 'struggled' | 'good' | 'thin'; rmov?: 'traded-12' | 'traded-season' | 'not-traded'
@@ -26,6 +26,8 @@ const num = (x: string | null, lo: number, hi: number): number | undefined => {
   return Number.isFinite(n) && n >= lo && n <= hi ? n : undefined
 }
 const hand = (x: string | null) => (x === 'R' || x === 'L' ? x : undefined)
+/** The map's hand: right, left, or B for both together (the sandbox's shand stays a single hand: a pitch is thrown by one arm). */
+const viewHand = (x: string | null) => (x === 'R' || x === 'L' || x === 'B' ? x : undefined)
 
 export function parseShapeUrl(search: string): ShapeUrl {
   const p = new URLSearchParams(search)
@@ -35,7 +37,7 @@ export function parseShapeUrl(search: string): ShapeUrl {
   const season = num(p.get('season'), 2021, 2100)
   if (season != null && Number.isInteger(season)) out.season = season
   const pitch = p.get('pitch'); if (pitch && PITCH.test(pitch)) out.pitch = pitch
-  const h = hand(p.get('hand')); if (h) out.hand = h
+  const h = viewHand(p.get('hand')); if (h) out.hand = h
   const w = p.get('window'); if (w === 'latest' || w === 'all') out.window = w
   const r = num(p.get('radius'), 0.4, 2.1); if (r === 0.5 || r === 1 || r === 2) out.radius = r
   const sp = p.get('spitch'); if (sp && PITCH.test(sp)) out.spitch = sp

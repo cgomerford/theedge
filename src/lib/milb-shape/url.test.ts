@@ -67,3 +67,9 @@ describe('level selector keyboard (a radio group)', () => {
     expect(levelAfterKey(LEVELS, 'aaa', 'a')).toBeNull()
   })
 })
+
+describe('both hands', () => {
+  it('the map accepts hand=B (left and right together); the sandbox hand stays a single arm', () => {
+    expect(parseShapeUrl('?hand=B&shand=B')).toEqual({ hand: 'B' })
+  })
+})
