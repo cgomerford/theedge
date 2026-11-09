@@ -623,7 +623,7 @@ export type PanelProps = {
  * that explain it flagged on each row. Click a pitcher for his full read. Pitchers are those inside the spot's box; with fewer than 6 it takes the nearest 8 and says so.
  */
 export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect, level = 'mlb', headshot, only, chipsFor }: PanelProps) {
-  const [tab, setTab] = useState<'ahead' | 'behind' | 'level'>('behind')
+  const [tab, setTab] = useState<'all' | 'ahead' | 'behind' | 'level'>('behind')
   const [all, setAll] = useState(false)
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
   if (board === undefined) return <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, fontSize: 13, color: C.mute }}>Finding the pitchers at this shape…</div>
@@ -641,10 +641,12 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 
   const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }
 
-  const list = group(tab)
+  // a level with no run value (the Arizona Fall League) has no verdicts at all, so list everyone at the shape rather than three empty tabs
+  const effTab = cohort.length > 0 && few.length === cohort.length ? 'all' : tab
+  const list = effTab === 'all' ? [...cohort].sort((a, b) => b.r.pitches - a.r.pitches) : group(effTab)
   const shown = all ? list : list.slice(0, 6)
-  const tabs: { id: 'ahead' | 'behind' | 'level'; label: string }[] = [
-    { id: 'behind', label: `Underperforming (${group('behind').length})` }, { id: 'ahead', label: `Outperforming (${group('ahead').length})` }, { id: 'level', label: `In line (${group('level').length})` },
+  const tabs: { id: 'all' | 'ahead' | 'behind' | 'level'; label: string }[] = [
+    { id: 'all', label: `Everyone (${cohort.length})` }, { id: 'behind', label: `Underperforming (${group('behind').length})` }, { id: 'ahead', label: `Outperforming (${group('ahead').length})` }, { id: 'level', label: `In line (${group('level').length})` },
   ]
   return (
     <div style={card} id="pf2-panel">
@@ -654,7 +656,7 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
       </p>
       <RunsSavedExplainer level={level} compact />
       <div role="group" aria-label="Pitchers at this shape" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 10px' }}>
-        {tabs.map(t => <button key={t.id} type="button" style={pill(tab === t.id)} onClick={() => { setTab(t.id); setAll(false) }}>{t.label}</button>)}
+        {tabs.map(t => <button key={t.id} type="button" style={pill(effTab === t.id)} onClick={() => { setTab(t.id); setAll(false) }}>{t.label}</button>)}
       </div>
       {shown.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', padding: '6px 0' }}>None here with enough pitches to compare.</div> : shown.map(({ r, rd }) => {
         return (
@@ -692,7 +694,7 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
         )
       })}
       {list.length > 6 && <button type="button" style={{ ...pill(false), marginTop: 8 }} onClick={() => setAll(a => !a)}>{all ? 'Show fewer' : `Show all ${list.length}`}</button>}
-      {few.length > 0 && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 8 }}>{few.length} more here ({few.slice(0, 3).map(c => c.r.name).join(', ')}{few.length > 3 ? '…' : ''}) have too few pitches to compare.</div>}
+      {few.length > 0 && effTab !== 'all' && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 8 }}>{few.length} more here ({few.slice(0, 3).map(c => c.r.name).join(', ')}{few.length > 3 ? '…' : ''}) have no results to set against their shape (too few pitches, or this level has no run value). Open Everyone to see them.</div>}
     </div>
   )
 }
@@ -744,7 +746,9 @@ const num = (v: string) => (v === '' ? null : Number(v))
  * Established names (All-Stars, award winners, full-time veterans) are hidden unless asked for; small samples are kept and tagged.
  */
 export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches }: { board: Board | null | undefined; lc: string; hand: 'R' | 'L'; headshot: (id: number) => string; onPick: (r: BoardRow) => void; /** the club chosen in the map's Team picker; '' = all teams */ team: string; /** the pitchers that pass every filter here, for the map to show only them; null = the map shows everyone */ onMatches: (ids: Set<number> | null) => void }) {
-  const [lens, setLens] = useState<LensId>('hidden')
+  const finderLim = limitsFor(useShapeView().level)
+  const [lens, setLens] = useState<LensId>(finderLim.gated ? 'hidden' : 'any')
+  useEffect(() => { setLens(finderLim.gated ? 'hidden' : 'any') }, [finderLim.gated])   // the exhibition levels have no results to ahead/behind lenses on, so they open on Anyone
   const [open, setOpen] = useState(true)
   const [known, setKnown] = useState(false)    // include All-Stars, award winners and full-time veterans
   const [small, setSmall] = useState(true)     // include pitchers whose own sample is under the usual minimum
@@ -774,7 +778,7 @@ export function FindPitcher({ board, lc, hand, headshot, onPick, team, onMatches
   const rows = allRows.filter(passes)
   const mine = allRows.filter(r => roster.ids.includes(r.pitcherId))
   const [mapToo, setMapToo] = useState(true)   // the filters also decide which pitchers the map shows
-  const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore }
+  const base = { includeKnown: known, includeSmall: small, minEra, maxXera, minEraGap: minGap, minScore, includeUnscored: !finderLim.gated }
   const found = findPitchers(rows, lens, { ...base, limit: 6, seed })
   const total = findPitchers(rows, lens, { ...base, limit: 9999 }).length
   const hiddenKnown = known ? 0 : findPitchers(rows, lens, { ...base, includeKnown: true, limit: 9999 }).length - total

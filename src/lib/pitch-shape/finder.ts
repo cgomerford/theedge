@@ -41,7 +41,7 @@ const weighted = (r: FinderRow) => (r.gap ?? 0) * reliability(r)
 
 export type Lens = { id: LensId; label: string; blurb: string; test: (r: FinderRow) => boolean; sort: (a: FinderRow, b: FinderRow) => number }
 export const LENSES: Lens[] = [
-  { id: 'any', label: 'Anyone', blurb: 'Every pitcher with a Shape Score, highest first. Use the filters to narrow it.', test: r => r.score != null, sort: (a, b) => (b.score ?? 0) - (a.score ?? 0) },
+  { id: 'any', label: 'Anyone', blurb: 'Every pitcher with a Shape Score, highest first. Use the filters to narrow it.', test: r => r.score != null, sort: (a, b) => (b.score ?? -1) - (a.score ?? -1) || b.pitches - a.pitches },
   { id: 'hidden', label: 'Strong shape, results trail it', blurb: 'The shape has saved runs for league pitchers, his own results have not kept up. Most behind first, with small samples counted for less.',
     test: r => (r.score ?? 0) >= STRONG_SCORE && r.verdict === 'behind', sort: (a, b) => weighted(a) - weighted(b) },
   { id: 'quiet', label: 'Strong shape, quiet line', blurb: 'A strong shape on a pitcher with a small role or a middling overall line, so little has been said about it. Highest Shape Score first.',
@@ -82,11 +82,11 @@ export function shuffled<T>(xs: T[], seed: number): T[] {
   return out
 }
 
-export type FindOptions = NumberFilters & { limit?: number; /** keep All-Stars, award winners and full-time veterans (default: hide them) */ includeKnown?: boolean; /** keep pitchers whose own sample is under the usual minimum (default: keep them) */ includeSmall?: boolean; /** a number: show a random sample of the matches for that seed instead of the best first */ seed?: number | null }
+export type FindOptions = NumberFilters & { /** list pitchers that have no Shape Score (a level with no run value, such as the Arizona Fall League) under the Anyone lens, most pitches first */ includeUnscored?: boolean; limit?: number; /** keep All-Stars, award winners and full-time veterans (default: hide them) */ includeKnown?: boolean; /** keep pitchers whose own sample is under the usual minimum (default: keep them) */ includeSmall?: boolean; /** a number: show a random sample of the matches for that seed instead of the best first */ seed?: number | null }
 
 export function findPitchers<T extends FinderRow>(rows: T[], id: LensId, opts: FindOptions | number = {}): T[] {
   const o: FindOptions = typeof opts === 'number' ? { limit: opts } : opts
   const lens = LENSES.find(l => l.id === id) ?? LENSES[0]
-  const pool = rows.filter(r => lens.test(r) && (o.includeKnown || !isEstablished(r)) && (o.includeSmall !== false || !r.small) && passesNumbers(r, o))
+  const pool = rows.filter(r => (lens.test(r) || (o.includeUnscored === true && lens.id === 'any')) && (o.includeKnown || !isEstablished(r)) && (o.includeSmall !== false || !r.small) && passesNumbers(r, o))
   return (o.seed != null ? shuffled(pool, o.seed) : pool.sort(lens.sort)).slice(0, o.limit ?? 6)
 }
