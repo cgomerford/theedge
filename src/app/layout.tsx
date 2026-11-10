@@ -6,6 +6,7 @@ import CookieConsent from "@/components/CookieConsent";
 import SiteFooter from '@/components/SiteFooter'
 import DevViewSwitcher from '@/components/dev/DevViewSwitcher'
 import SignupModal from '@/components/signup/SignupModal'
+import ReferralCapture from '@/components/ReferralCapture'
 import { SiteSchema } from '@/components/StructuredData'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
 
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={redhat.variable}>
       <body className="antialiased">
         <GoogleAnalytics />
+        <ReferralCapture />
         <SiteSchema />
         {children}
         <SiteFooter />

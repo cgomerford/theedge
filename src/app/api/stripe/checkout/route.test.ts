@@ -3,11 +3,12 @@ import type { NextRequest } from 'next/server'
 
 const create = vi.fn(async () => ({ url: 'https://checkout.stripe.test/s_1' }))
 const sessionArg = () => (create.mock.calls as unknown as unknown[][])[0][0] as { line_items: { price: string }[]; metadata: Record<string, string>; subscription_data: { metadata: Record<string, string> } }
+const list = vi.fn()
 const getOffer = vi.fn()
 const getCurrentSubscriber = vi.fn()
 
 vi.mock('@/lib/stripe', () => ({
-  getStripe: () => ({ checkout: { sessions: { create } } }),
+  getStripe: () => ({ checkout: { sessions: { create } }, promotionCodes: { list } }),
   priceFor: (interval: string, founding: boolean) => `price_${interval}_${founding ? 'founding' : 'standard'}`,
 }))
 vi.mock('@/lib/pro-offer-server', () => ({ getOffer: () => getOffer() }))
@@ -16,7 +17,7 @@ vi.mock('@/lib/log', () => ({ log: { error: vi.fn(), warn: vi.fn(), info: vi.fn(
 
 import { POST } from './route'
 
-const req = (body: unknown) => ({ json: async () => body, nextUrl: { origin: 'https://x9.test' } }) as unknown as NextRequest
+const req = (body: unknown, cookie?: string) => ({ json: async () => body, nextUrl: { origin: 'https://x9.test' }, headers: new Headers(cookie ? { cookie } : {}) }) as unknown as NextRequest
 const AMOUNT = { year: { founding: 45, standard: 60 }, month: { founding: 4.5, standard: 8 } }
 const offer = (plan: 'founding' | 'standard') => ({
   founding: plan === 'founding' ? 'open' : 'closed',
@@ -25,7 +26,7 @@ const offer = (plan: 'founding' | 'standard') => ({
 })
 const unavailable = (reason: string) => ({ founding: 'open', annual: { plan: null, reason }, monthly: { plan: null, reason } })
 
-beforeEach(() => { create.mockClear(); getOffer.mockReset(); getCurrentSubscriber.mockReset(); getCurrentSubscriber.mockResolvedValue(null) })
+beforeEach(() => { list.mockReset(); list.mockResolvedValue({ data: [] }); create.mockClear(); getOffer.mockReset(); getCurrentSubscriber.mockReset(); getCurrentSubscriber.mockResolvedValue(null) })
 
 describe('POST /api/stripe/checkout, yearly', () => {
   it('founding open: charges the founding yearly USD price, tagged usd/year', async () => {
@@ -87,5 +88,45 @@ describe('POST /api/stripe/checkout, refusals', () => {
     getOffer.mockResolvedValue({ ...offer('founding'), monthly: { plan: null, reason: 'usd_price_not_configured' } })
     expect((await POST(req({ interval: 'month' }))).status).toBe(503)
     expect((await POST(req({ interval: 'year' }))).status).toBe(200)
+  })
+})
+
+describe('POST /api/stripe/checkout, referral codes', () => {
+  const arg = () => sessionArg() as unknown as Record<string, unknown>
+  it('a valid code (body) is applied as a discount, never together with allow_promotion_codes, and tagged in metadata', async () => {
+    getOffer.mockResolvedValue(offer('standard')); list.mockResolvedValue({ data: [{ id: 'promo_1' }] })
+    await POST(req({ interval: 'year', ref: 'FRIEND' }))
+    expect(list).toHaveBeenCalledWith({ code: 'FRIEND', active: true, limit: 1 })
+    expect(arg().discounts).toEqual([{ promotion_code: 'promo_1' }])
+    expect(arg()).not.toHaveProperty('allow_promotion_codes')
+    expect(sessionArg().metadata.ref).toBe('FRIEND')
+    expect(sessionArg().subscription_data.metadata.ref).toBe('FRIEND')
+  })
+  it('falls back to the edge_ref cookie when the body has no code', async () => {
+    getOffer.mockResolvedValue(offer('standard')); list.mockResolvedValue({ data: [{ id: 'promo_2' }] })
+    await POST(req({}, 'a=1; edge_ref=COOKIECODE'))
+    expect(list).toHaveBeenCalledWith({ code: 'COOKIECODE', active: true, limit: 1 })
+    expect(sessionArg().metadata.ref).toBe('COOKIECODE')
+  })
+  it('an unknown code gives the normal promotion-code box and no discount', async () => {
+    getOffer.mockResolvedValue(offer('standard'))
+    await POST(req({ ref: 'NOPE' }))
+    expect(arg().allow_promotion_codes).toBe(true)
+    expect(arg()).not.toHaveProperty('discounts')
+  })
+  it('no code at all: no Stripe lookup, normal box, no ref in metadata, cancel returns to /pricing?checkout=cancelled', async () => {
+    getOffer.mockResolvedValue(offer('standard'))
+    await POST(req({}))
+    expect(list).not.toHaveBeenCalled()
+    expect(arg().allow_promotion_codes).toBe(true)
+    expect(sessionArg().metadata).not.toHaveProperty('ref')
+    expect(arg().cancel_url).toBe('https://x9.test/pricing?checkout=cancelled')
+    expect(arg().success_url).toContain('https://x9.test/pricing/success')
+  })
+  it('a failed Stripe lookup still lets checkout go ahead', async () => {
+    getOffer.mockResolvedValue(offer('standard')); list.mockRejectedValue(new Error('down'))
+    const res = await POST(req({ ref: 'FRIEND' }))
+    expect(res.status).toBe(200)
+    expect(arg().allow_promotion_codes).toBe(true)
   })
 })

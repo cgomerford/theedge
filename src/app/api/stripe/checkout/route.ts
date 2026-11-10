@@ -1,4 +1,4 @@
-// POST /api/stripe/checkout  { interval?: 'year' | 'month', expect?: 'founding' | 'standard' }  →  { url }
+// POST /api/stripe/checkout  { interval?: 'year' | 'month', expect?: 'founding' | 'standard', ref?: string }  →  { url }
 //
 // Starts a Stripe Checkout subscription for Pro, in US dollars: yearly (default) or monthly. Founding while spots remain
 // (US$45/yr, US$4.50/mo), Standard after (US$60/yr, US$8/mo). Works signed-in or signed-out:
@@ -11,6 +11,9 @@
 // The price is the *_USD Stripe price, checked against Stripe (active, USD, right period, exact amount) before a session is made; if it is
 // missing or wrong the answer is 503, never a different amount.
 // `expect` is the plan the page showed; if the offer has moved on (founding just filled) the answer is 409 and nothing is charged.
+// Referral: `ref` (body first, then the edge_ref cookie) is checked against Stripe's active promotion codes. A real code is applied as a
+// discount; otherwise the checkout page shows the normal "add promotion code" box. The two are never sent together (Stripe rejects it).
+// The code is also stored in the session and subscription metadata; the webhook records it on the subscriber.
 // Existing subscriptions are untouched: nothing here reads, changes or reprices a subscription that already exists.
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -18,6 +21,7 @@ import { getCurrentSubscriber } from '@/lib/auth'
 import { getStripe, priceFor, type Interval } from '@/lib/stripe'
 import { getOffer } from '@/lib/pro-offer-server'
 import { log } from '@/lib/log'
+import { cleanRef, refFromCookieHeader } from '@/lib/referral'
 
 export const runtime = 'nodejs'
 
@@ -27,10 +31,12 @@ export async function POST(req: NextRequest) {
 
   let interval: Interval = 'year'
   let expect: string | null = null
+  let bodyRef: string | null = null
   try {
     const body = await req.json()
     if (body?.interval === 'month') interval = 'month'
     if (body?.expect === 'founding' || body?.expect === 'standard') expect = body.expect
+    bodyRef = cleanRef(body?.ref)
   } catch { /* no body: yearly */ }
 
   const subscriber = await getCurrentSubscriber()
@@ -48,13 +54,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const origin = req.nextUrl.origin
-    const meta: Record<string, string> = { plan, interval, currency: 'usd', ...(subscriber ? { subscriber_id: subscriber.id } : {}) }
+    const ref = bodyRef ?? refFromCookieHeader(req.headers?.get?.('cookie'))
+    // A promotion code that Stripe does not know (or that is switched off) is simply ignored: no discount, normal checkout.
+    let promotionCodeId: string | null = null
+    if (ref) {
+      try {
+        const found = await stripe.promotionCodes.list({ code: ref, active: true, limit: 1 })
+        promotionCodeId = found.data[0]?.id ?? null
+      } catch (err) {
+        log.error('stripe/checkout', 'promotion code lookup failed', err instanceof Error ? err.message : err)
+      }
+    }
+    const meta: Record<string, string> = { plan, interval, currency: 'usd', ...(ref ? { ref } : {}), ...(subscriber ? { subscriber_id: subscriber.id } : {}) }
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
       success_url: `${origin}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/pricing`,
-      allow_promotion_codes: true,
+      cancel_url: `${origin}/pricing?checkout=cancelled`,
+      ...(promotionCodeId ? { discounts: [{ promotion_code: promotionCodeId }] } : { allow_promotion_codes: true }),
       billing_address_collection: 'auto',
       ...(subscriber ? { customer_email: subscriber.email, client_reference_id: subscriber.id } : {}),
       metadata: meta,
