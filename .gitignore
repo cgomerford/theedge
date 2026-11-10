@@ -50,3 +50,9 @@ models/scratch/
 models/venv/
 story-v5-out/
 .dev-cache/
+
+# Large local data folders (not part of the app; thousands of files)
+/data/
+/confirm/
+/x9lab_cache/
+/x9lab_output/
