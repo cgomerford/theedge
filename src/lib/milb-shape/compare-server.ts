@@ -9,14 +9,15 @@ import { logOnce } from '@/lib/log'
 import { milbDb } from './dev-db'
 import { meanDelta, movers, summarise, type LevelSummary, type Mover, type PRow, type Shape } from './compare'
 import { latestMilbSeason } from './server'
-import type { Level, MilbLevel } from './levels'
+import type { Level } from './levels'
 import { limitsFor } from './limits'
 
 const COLS = 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs'
 const TTL = 30 * 60 * 1000
 const cache = new Map<string, { at: number; v: LevelsCompared }>()
 
-export type Pair = 'aaa-mlb' | 'fsl-aaa' | 'fsl-mlb'
+/** any two levels, lower first (Florida State League, Arizona Fall League, Triple-A, Spring Training, MLB): the pitchers who threw this pitch at both */
+export type Pair = `${Level}-${Level}`
 export type MoverSet = { pair: Pair; low: Level; high: Level; count: number; mean: (Shape & { n: number }) | null; list: Mover[] }
 export type LevelsCompared = { levels: LevelSummary[]; movers: MoverSet[] }
 
@@ -49,13 +50,16 @@ export async function getLevelsCompared(type: string, hand: string): Promise<Lev
   const by = new Map<Level, { season: number; rows: PRow[] }>()
   lv.forEach((l, i) => { const g = got[i]; if (g) by.set(l, g) })
   const levels = lv.map(l => { const g = by.get(l); return g ? summarise(l, g.season, g.rows) : null }).filter((x): x is LevelSummary => x != null)
-  const pairs: [Pair, MilbLevel | 'mlb', Level][] = [['aaa-mlb', 'aaa', 'mlb'], ['fsl-aaa', 'fsl', 'aaa'], ['fsl-mlb', 'fsl', 'mlb']]
+  const ORDER: Level[] = ['fsl', 'afl', 'aaa', 'st', 'mlb']   // lowest to highest
   const ms: MoverSet[] = []
-  for (const [pair, low, high] of pairs) {
+  for (let i = 0; i < ORDER.length; i++) for (let j = i + 1; j < ORDER.length; j++) {
+    const low = ORDER[i], high = ORDER[j]
     const a = by.get(low), b = by.get(high)
     if (!a || !b) continue
-    const list = movers({ level: low, rows: a.rows }, { level: high, rows: b.rows })
-    ms.push({ pair, low, high, count: list.length, mean: meanDelta(list), list: list.slice(0, 12) })
+    // a short exhibition stay (Arizona Fall League, Spring Training) has fewer pitches of one type than a season, so it needs a lower bar than the 150 the full levels use
+    const min = limitsFor(low).gated && limitsFor(high).gated ? 150 : 50
+    const list = movers({ level: low, rows: a.rows }, { level: high, rows: b.rows }, min)
+    ms.push({ pair: `${low}-${high}`, low, high, count: list.length, mean: meanDelta(list), list: list.slice(0, 40) })
   }
   const v = { levels, movers: ms }
   cache.set(key, { at: Date.now(), v })

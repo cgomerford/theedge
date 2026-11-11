@@ -59,7 +59,7 @@ export function CoverageBadge({ level, caps, compact = false }: { level: Level; 
   )
 }
 
-export default function LevelBar() {
+export default function LevelBar({ trailing }: { /** controls that share the row with the level buttons (the Lab's views and its guide link) */ trailing?: React.ReactNode }) {
   const view = useShapeView()
   const caps = useLevelCaps(view.level, view.season)
   const refs = useRef<Partial<Record<Level, HTMLButtonElement | null>>>({})
@@ -72,23 +72,22 @@ export default function LevelBar() {
   }
   const minor = view.level !== 'mlb'
   return (
-    <div className="pf2-levelbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'center', margin: '0 0 12px' }}>
+    <div className="pf2-levelbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center', margin: '0 0 8px' }}>
       <span id="pf2-level-label" className="pv-k" style={{ color: ORANGE_TEXT }}>Level</span>
       <div role="radiogroup" aria-labelledby="pf2-level-label" onKeyDown={onKey} style={{ display: 'inline-flex', flexWrap: 'wrap' }}>
         {LEVELS.map((l, i) => {
           const on = view.level === l
           return (
             <button key={l} ref={el => { refs.current[l] = el }} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} onClick={() => setShapeLevel(l)}
-              style={{ minHeight: 44, padding: '0 16px', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', marginLeft: i ? -1 : 0, borderRadius: i === 0 ? '4px 0 0 4px' : i === LEVELS.length - 1 ? '0 4px 4px 0' : 0 }}>
+              style={{ minHeight: 40, padding: '0 14px', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', marginLeft: i ? -1 : 0, borderRadius: i === 0 ? '4px 0 0 4px' : i === LEVELS.length - 1 ? '0 4px 4px 0' : 0 }}>
               {LEVEL_LABEL[l]}
             </button>
           )
         })}
       </div>
       <CoverageBadge level={view.level} caps={caps} />
-      {minor && <span style={{ fontSize: 12.5, color: '#5b5347', flexBasis: '100%', lineHeight: 1.5 }}>
-        Results here are measured at {LEVEL_LABEL[view.level]} only. Runs per 100, wOBA, xwOBA, ahead-or-behind-his-shape verdicts and the shape rank are worked out from {LEVEL_LABEL[view.level]} pitches, so they are not on the MLB scale. ESPN ownership, the MLB season line and the roster filters stay on MLB.
-      </span>}
+      {trailing && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{trailing}</div>}
+      {minor && <span style={{ fontSize: 12, color: '#5b5347', flexBasis: '100%', lineHeight: 1.4 }}>Measured at {LEVEL_LABEL[view.level]} only: runs, wOBA, xwOBA, verdicts and the shape rank are not on the MLB scale. ESPN ownership and the MLB season line stay on MLB.</span>}
     </div>
   )
 }

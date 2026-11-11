@@ -11,8 +11,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { C } from '@/components/team/ui'
-import type { LevelsCompared as Data, MoverSet, Pair } from '@/lib/milb-shape/compare-server'
-import type { LevelSummary, Mover, Shape } from '@/lib/milb-shape/compare'
+import type { LevelsCompared as Data, MoverSet } from '@/lib/milb-shape/compare-server'
+import type { LevelSummary } from '@/lib/milb-shape/compare'
 import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
 import { MIN_WINDOW_SWINGS } from './finder-math'
@@ -97,44 +97,89 @@ function Averages({ levels, active, lc }: { levels: LevelSummary[]; active: Leve
   )
 }
 
-const PAIR_LABEL: Record<Pair, string> = { 'aaa-mlb': 'Triple-A to MLB', 'fsl-aaa': 'Florida State League to Triple-A', 'fsl-mlb': 'Florida State League to MLB' }
+/** lowest to highest, so a comparison always reads from the lower level up */
+const ORDER: Level[] = ['fsl', 'afl', 'aaa', 'st', 'mlb']
 
-function MoverRow({ m }: { m: Mover }) {
-  const cell = (s: Shape) => `${s.velo.toFixed(1)} mph · ${s.ivb.toFixed(1)} ride · ${s.hb.toFixed(1)} run`
-  return (
-    <li style={{ background: C.soft, borderRadius: 6, padding: '9px 12px', display: 'grid', gap: 3 }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <b style={{ fontSize: 14 }}>{m.name}</b>
-        <span style={{ fontSize: 12, color: C.mute }}>{m.low.pitches.toLocaleString()} pitches at {LEVEL_SHORT[m.low.level]}, {m.high.pitches.toLocaleString()} at {LEVEL_SHORT[m.high.level]}</span>
-      </div>
-      <div style={{ fontSize: 13, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}><Dot level={m.low.level} />{cell(m.low.shape)}</div>
-      <div style={{ fontSize: 13, color: '#3a352c', fontVariantNumeric: 'tabular-nums' }}><Dot level={m.high.level} />{cell(m.high.shape)} <b style={{ marginLeft: 6, color: ORANGE_TEXT }}>{sgn(m.delta.velo)} mph, {sgn(m.delta.ivb)} ride, {sgn(m.delta.hb)} run</b></div>
-    </li>
-  )
-}
+type Sort = 'change' | 'pitches' | 'speed'
+const SORTS: [Sort, string][] = [['change', 'Biggest change in shape'], ['speed', 'Biggest change in speed'], ['pitches', 'Most pitches']]
 
+/** Same pitcher, same pitch, two levels: one row each, the lower level and the higher level side by side, then what changed. Pick any two levels. */
 function Movers({ sets, lc }: { sets: MoverSet[]; lc: string }) {
-  const [pair, setPair] = useState<Pair | null>(null)
-  const usable = sets.filter(s => s.count > 0)
-  const cur = usable.find(s => s.pair === pair) ?? usable[0]
-  if (!cur) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>No pitcher has thrown 150 or more {lc}s at two of these levels in the loaded seasons yet.</p>
-  const m = cur.mean
+  const [from, setFrom] = useState<Level | null>(null)
+  const [to, setTo] = useState<Level | null>(null)
+  const [sort, setSort] = useState<Sort>('change')
+  const [all, setAll] = useState(false)
+  const levelsHere = ORDER.filter(l => sets.some(s => s.low === l || s.high === l))   // only levels that have a pair to show
+  if (levelsHere.length < 2) return <p style={{ fontSize: 13, color: C.mute, margin: 0 }}>Two levels are needed to compare the same pitchers, and fewer than two are loaded for this pitch.</p>
+  // the default is the pair with the most pitchers; the pickers then move it
+  const best = [...sets].sort((a, b) => b.count - a.count)[0]
+  const f0 = from ?? best?.low ?? levelsHere[0], t0 = to ?? best?.high ?? levelsHere[levelsHere.length - 1]
+  const [lo, hi] = ORDER.indexOf(f0) <= ORDER.indexOf(t0) ? [f0, t0] : [t0, f0]
+  const cur = lo === hi ? undefined : sets.find(s => s.low === lo && s.high === hi)
+  const pill = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' })
+  const kk: React.CSSProperties = { fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: C.mute, textTransform: 'uppercase', minWidth: 42 }
+  const sel = (value: Level, setter: (l: Level) => void) => (
+    <div role="group" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {levelsHere.map(l => <button key={l} type="button" aria-pressed={value === l} onClick={() => { setter(l); setAll(false) }} style={pill(value === l)}>{LEVEL_LABEL[l]}</button>)}
+    </div>
+  )
+  const list = cur ? [...cur.list].sort((a, b) => sort === 'pitches' ? Math.min(b.low.pitches, b.high.pitches) - Math.min(a.low.pitches, a.high.pitches) : sort === 'speed' ? Math.abs(b.delta.velo) - Math.abs(a.delta.velo) : Math.hypot(b.delta.ivb, b.delta.hb) - Math.hypot(a.delta.ivb, a.delta.hb)) : []
+  const shown = all ? list : list.slice(0, 8)
+  const m = cur?.mean
+  const th: React.CSSProperties = { textAlign: 'right', fontSize: 10, letterSpacing: '.08em', fontWeight: 800, color: C.mute, textTransform: 'uppercase', padding: '6px 8px', borderBottom: `1px solid ${C.line}`, whiteSpace: 'nowrap' }
+  const td: React.CSSProperties = { padding: '7px 8px', borderBottom: `1px solid ${C.soft}`, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
+  const chg = (v: number, d = 1, unit = '') => <span style={{ fontWeight: 800, color: Math.abs(v) < (d === 1 ? 0.5 : 0.5) ? C.mute : '#3a352c' }}>{sgn(v)}{unit}</span>
   return (
     <div>
-      <div role="group" aria-label="Which two levels" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
-        {usable.map(s => (
-          <button key={s.pair} type="button" aria-pressed={s.pair === cur.pair} onClick={() => setPair(s.pair)}
-            style={{ minHeight: 40, padding: '0 12px', borderRadius: 4, border: `1px solid ${s.pair === cur.pair ? C.ink : C.line}`, background: s.pair === cur.pair ? C.ink : '#fff', color: s.pair === cur.pair ? C.cream : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {PAIR_LABEL[s.pair]} ({s.count})
-          </button>
-        ))}
+      <p style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, margin: '0 0 8px' }}>Pitchers who threw the same pitch at two levels. It is the same arm, so any difference is a change in the pitch, not a different pitcher. Choose the two levels to compare.</p>
+      <div style={{ display: 'grid', gap: 6, margin: '0 0 10px' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={kk}>From</span>{sel(lo, l => { setFrom(l); setTo(hi === l ? null : hi) })}</div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={kk}>To</span>{sel(hi, l => { setTo(l); setFrom(lo === l ? null : lo) })}</div>
       </div>
-      {m && cur.count >= 3 && (
-        <p style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.55, margin: '0 0 8px' }}>
-          Across <b>{cur.count} pitchers</b> who threw the {lc} at both levels, the {LEVEL_LABEL[cur.high]} version averaged <b>{sgn(m.velo)} mph</b>, <b>{sgn(m.ivb)} in of ride</b> and <b>{sgn(m.hb)} in of run</b> compared with the {LEVEL_LABEL[cur.low]} version. This is the same arm, so it is a change in the pitch, not a different pitcher.
-        </p>
+      {!cur ? (
+        <p style={{ fontSize: 13.5, color: '#5b5347', margin: 0 }}>{lo === hi ? 'Choose two different levels.' : `No pitcher has thrown enough ${lc}s at both ${LEVEL_LABEL[lo]} and ${LEVEL_LABEL[hi]} in the loaded seasons to compare.`}</p>
+      ) : (
+        <>
+          {m && cur.count >= 3 && (
+            <p style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.55, margin: '0 0 8px' }}>
+              <b>{cur.count} pitchers</b> threw the {lc} at both {LEVEL_LABEL[lo]} and {LEVEL_LABEL[hi]}. On average the {LEVEL_LABEL[hi]} version was <b>{sgn(m.velo)} mph</b> in speed, <b>{sgn(m.ivb)} in</b> in ride and <b>{sgn(m.hb)} in</b> in run compared with the {LEVEL_LABEL[lo]} version.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 8px' }}>
+            <span style={kk}>Sort</span>
+            {SORTS.map(([id, label]) => <button key={id} type="button" aria-pressed={sort === id} onClick={() => setSort(id)} style={pill(sort === id)}>{label}</button>)}
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>Pitcher</th>
+                  <th style={{ ...th, textAlign: 'center', borderLeft: `1px solid ${C.line}`, color: LEVEL_COLOUR[lo] }} colSpan={4}>{LEVEL_LABEL[lo]}</th>
+                  <th style={{ ...th, textAlign: 'center', borderLeft: `1px solid ${C.line}`, color: LEVEL_COLOUR[hi] }} colSpan={4}>{LEVEL_LABEL[hi]}</th>
+                  <th style={{ ...th, textAlign: 'center', borderLeft: `1px solid ${C.line}`, color: ORANGE_TEXT }} colSpan={3}>Change, {LEVEL_SHORT[lo]} to {LEVEL_SHORT[hi]}</th>
+                </tr>
+                <tr>
+                  {['Pitches', 'Speed', 'Ride', 'Run'].map((h, i) => <th key={`a${h}`} style={{ ...th, borderLeft: i === 0 ? `1px solid ${C.line}` : undefined }}>{h}</th>)}
+                  {['Pitches', 'Speed', 'Ride', 'Run'].map((h, i) => <th key={`b${h}`} style={{ ...th, borderLeft: i === 0 ? `1px solid ${C.line}` : undefined }}>{h}</th>)}
+                  {['Speed', 'Ride', 'Run'].map((h, i) => <th key={`c${h}`} style={{ ...th, borderLeft: i === 0 ? `1px solid ${C.line}` : undefined }}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(x => (
+                  <tr key={x.pitcherId}>
+                    <td style={{ ...td, textAlign: 'left', fontWeight: 800 }}>{x.name}</td>
+                    <td style={{ ...td, borderLeft: `1px solid ${C.soft}`, color: C.mute }}>{x.low.pitches.toLocaleString()}</td><td style={td}>{x.low.shape.velo.toFixed(1)}</td><td style={td}>{x.low.shape.ivb.toFixed(1)}</td><td style={td}>{x.low.shape.hb.toFixed(1)}</td>
+                    <td style={{ ...td, borderLeft: `1px solid ${C.soft}`, color: C.mute }}>{x.high.pitches.toLocaleString()}</td><td style={td}>{x.high.shape.velo.toFixed(1)}</td><td style={td}>{x.high.shape.ivb.toFixed(1)}</td><td style={td}>{x.high.shape.hb.toFixed(1)}</td>
+                    <td style={{ ...td, borderLeft: `1px solid ${C.soft}` }}>{chg(x.delta.velo)}</td><td style={td}>{chg(x.delta.ivb)}</td><td style={td}>{chg(x.delta.hb)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ fontSize: 12, color: C.mute, marginTop: 6, lineHeight: 1.5 }}>Speed in mph; ride and run in inches. Each pitcher needs {limitsFor(lo).gated && limitsFor(hi).gated ? '150' : '50'}+ {lc}s at both levels. Showing {shown.length} of {cur.count}{cur.count > cur.list.length ? ` (the ${cur.list.length} with the most pitches are loaded)` : ''}.
+            {list.length > 8 && <button type="button" onClick={() => setAll(a => !a)} style={{ ...pill(false), minHeight: 32, marginLeft: 8 }}>{all ? 'Show fewer' : `Show ${list.length}`}</button>}</div>
+        </>
       )}
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>{cur.list.slice(0, 6).map(x => <MoverRow key={x.pitcherId} m={x} />)}</ol>
     </div>
   )
 }
@@ -308,7 +353,7 @@ export default function LevelsCompared({ data, active, type, hand, pitchName, pl
               <>
                 <div style={head}>Average shape by level</div>
                 <Averages levels={data.levels} active={active} lc={lc} />
-                <div style={head}>The maps side by side</div>
+                <div style={head}>The pitch movement dialed in</div>
                 <SideBySide type={type} hand={hand} place={place} radius={radius} lc={lc} />
                 <div style={head}>The same pitchers at two levels</div>
                 <Movers sets={data.movers} lc={lc} />

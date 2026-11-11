@@ -124,7 +124,8 @@ fetch	src/components/me/dashboard/Dashboard.tsx
 fetch	src/components/me/dashboard/useLeagueData.ts
 fetch	src/components/pitch-shape/ShapeGraphicsStudio.tsx
 fetch	src/components/pitch-shape/LevelBar.tsx
-fetch	src/components/pitch-shape/MilbPitcherCard.tsx
+fetch	src/components/pitch-shape/ClosestMlb.tsx
+fetch	src/components/pitch-shape/usePitcherLevels.ts
 fetch	src/components/pitch-shape/LevelsCompared.tsx
 fetch	src/lib/milb-shape/game-log.ts
 fetch	src/components/pitching-lab/LabLevelBar.tsx
@@ -132,3 +133,5 @@ fetch	src/components/pitch-shape/PitcherShapeLevels.tsx
 fetch	src/components/pitch-shape/RefinePanel.tsx
 fetch	src/lib/milb-shape/status-server.ts
 fetch	src/components/pro/StartCheckout.tsx
+fetch	src/components/pitch-shape/ShapeChanges.tsx
+logos	src/lib/mlb-assets.ts

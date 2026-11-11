@@ -40,6 +40,16 @@ import TranslationBanner, { TranslationChip } from './TranslationBanner'
 import RunsSavedExplainer from './RunsSavedExplainer'
 import InfoTip, { Lab } from './InfoTip'
 import type { Diag } from '@/lib/pitch-shape/diagnostics'
+import AcrossLevels, { type LevelAvg } from './AcrossLevels'
+import ClosestMlb from './ClosestMlb'
+import ShapeMap from './ShapeMap'
+import DamageAndFip from './DamageAndFip'
+import PitchStatLine from './PitchStatLine'
+import { PitcherSeasonChanges } from './ShapeChanges'
+import PlayerPhoto from './PlayerPhoto'
+import { usePitcherLog } from './usePitcherLog'
+import { movementPoints } from '@/lib/pitch-shape/pitch-line'
+import { ABOUT_LEVEL_PTS } from './finder-math'
 
 export const BLUE = ['#E8EEF4', '#C6D4E3', '#9DB3CB', '#6F8BAC', '#456A90']
 export const NEUTRAL: [number, number, number] = [236, 233, 224]   // the league average
@@ -80,29 +90,46 @@ export function ResultsLegend({ metric, lc, level = 'mlb' }: { metric: Metric; l
   )
 }
 
-/** Shape Score and the measures at one spot, set against the league's. */
-export function ResultsReadout({ here, league, saved, score, lc, radius, spanLabel, level = 'mlb' }: { here: Measures; league: Measures; saved: number | null; score: number | null; lc: string; radius: number; spanLabel: string; level?: Level }) {
-  const rows: [string, string, string][] = [
-    ['Runs allowed per 100', here.runs100 == null ? '—' : here.runs100.toFixed(2), league.runs100 == null ? '—' : league.runs100.toFixed(2)],
-    ['wOBA', here.woba == null ? '—' : d3(here.woba), league.woba == null ? '—' : d3(league.woba)],
-    ['xwOBA', here.xwoba == null ? '—' : d3(here.xwoba), league.xwoba == null ? '—' : d3(league.xwoba)],
-    ['Batting average', here.avg == null ? '—' : d3(here.avg), league.avg == null ? '—' : d3(league.avg)],
-    ['Slugging', here.slg == null ? '—' : d3(here.slg), league.slg == null ? '—' : d3(league.slg)],
-    ['Whiffs per swing', pct1(here.whiff), pct1(league.whiff)],
+/** The results at one spot against the level's overall average: Shape Score, then each measure with the gap (green better for the pitcher, red worse). */
+export function ResultsReadout({ here, league, saved, score, lc, radius, spanLabel, level = 'mlb', flush = false }: { here: Measures; league: Measures; saved: number | null; score: number | null; lc: string; radius: number; spanLabel: string; level?: Level; /** no rule above it: it is the first thing in its card */ flush?: boolean }) {
+  type R = { label: string; a: number | null; b: number | null; fmt: (v: number) => string; diff: (d: number) => string; up: boolean; band: number }
+  const r2s = (v: number) => v.toFixed(2)
+  const rows: R[] = [
+    { label: 'Whiffs per swing', a: here.whiff, b: league.whiff, fmt: v => `${(v * 100).toFixed(1)}%`, diff: d => `${d >= 0 ? '+' : '−'}${Math.abs(d * 100).toFixed(1)} pts`, up: true, band: 0.03 },
+    { label: 'Runs allowed per 100', a: here.runs100, b: league.runs100, fmt: r2s, diff: d => signed(d), up: false, band: 0.4 },
+    { label: 'wOBA', a: here.woba, b: league.woba, fmt: d3, diff: d => signed(d, 3).replace('0.', '.'), up: false, band: 0.03 },
+    { label: 'xwOBA', a: here.xwoba, b: league.xwoba, fmt: d3, diff: d => signed(d, 3).replace('0.', '.'), up: false, band: 0.03 },
+    { label: 'Batting average', a: here.avg, b: league.avg, fmt: d3, diff: d => signed(d, 3).replace('0.', '.'), up: false, band: 0.025 },
+    { label: 'Slugging', a: here.slg, b: league.slg, fmt: d3, diff: d => signed(d, 3).replace('0.', '.'), up: false, band: 0.05 },
   ]
+  const lvl = LEVEL_LABEL[level]
+  const gated = limitsFor(level).gated
+  const thin = gated && here.n.swings < 40   // too few swings to say a gap is real: shown, not coloured
+  const small = !gated && here.n.swings < 100   // no minimum at this level: the numbers stay, marked with an asterisk
   return (
-    <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 12, paddingTop: 12 }}>
-      <div className="pv-k" style={{ color: '#B83A0E' }}>What this shape has produced</div>
+    <div style={flush ? undefined : { borderTop: `1px solid ${C.line}`, marginTop: 12, paddingTop: 12 }}>
+      <div className="pv-k" style={{ color: '#B83A0E' }}>This shape’s results against the {lvl} average</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '4px 0 8px', flexWrap: 'wrap' }}>
         <b style={{ fontSize: 38, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{score ?? '—'}</b>
-        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score<InfoTip k="shapeScore" /> (1 to 99){score == null ? ` · needs ${limitsFor(level).gated ? GATE.rvPitches : limitsFor(level).ownPitches}+ pitches in the window` : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
+        <span style={{ fontSize: 13, color: '#5b5347' }}>Shape Score<InfoTip k="shapeScore" /> (1 to 99){score == null ? (gated ? ` · needs ${GATE.rvPitches}+ pitches in the window` : saved == null ? ' · no run values at this level, so no score' : ' · too few pitchers at this level to rank it') : saved != null ? ` · ${signed(saved)} runs saved per 100 pitches` : ''}</span>
       </div>
-      <RunsSavedExplainer level={level} compact example={saved} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '4px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums', marginTop: 8 }}>
-        <span style={k}>Measure</span><span style={{ ...k, textAlign: 'right' }}>Here</span><span style={{ ...k, textAlign: 'right' }}>League</span>
-        {rows.map(([a, b, c]) => <div key={a} style={{ display: 'contents' }}><span style={{ color: '#5b5347' }}><Lab t={a} /></span><b style={{ textAlign: 'right' }}>{b}</b><span style={{ textAlign: 'right', color: C.mute }}>{c}</span></div>)}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '5px 14px', fontSize: 13, fontVariantNumeric: 'tabular-nums', alignItems: 'center' }}>
+        <span style={k}>Measure</span><span style={{ ...k, textAlign: 'right' }}>This shape</span><span style={{ ...k, textAlign: 'right' }}>{lvl} avg</span><span style={{ ...k, textAlign: 'right' }}>Gap{small ? '*' : ''}</span>
+        {rows.map(x => {
+          const d = x.a != null && x.b != null ? x.a - x.b : null
+          const z = d == null ? 0 : ((x.up ? 1 : -1) * d) / x.band
+          const tone = d == null || thin ? 'level' : z > 1 ? 'good' : z < -1 ? 'bad' : 'level'
+          return (
+            <div key={x.label} style={{ display: 'contents' }}>
+              <span style={{ color: '#5b5347' }}><Lab t={x.label} /></span>
+              <b style={{ textAlign: 'right' }}>{x.a == null ? '—' : x.fmt(x.a)}</b>
+              <span style={{ textAlign: 'right', color: C.mute }}>{x.b == null ? '—' : x.fmt(x.b)}</span>
+              <span style={{ textAlign: 'right' }}>{d == null ? <span style={{ color: C.faint }}>—</span> : <span style={{ background: toneCol[tone].bg, color: toneCol[tone].fg, fontWeight: 800, borderRadius: 3, padding: '2px 7px' }}>{x.diff(d)}</span>}</span>
+            </div>
+          )
+        })}
       </div>
-      <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>League {lc}s within ±{radius} in, {spanLabel}: {here.pitches.toLocaleString()} pitches, {here.n.pa.toLocaleString()} plate appearances ended on them, {here.n.ab.toLocaleString()} at-bats, {here.n.swings.toLocaleString()} swings.</div>
+      <div style={{ fontSize: 11, color: C.faint, marginTop: 6, lineHeight: 1.5 }}>League {lc}s within ±{radius} in, {spanLabel}: {here.pitches.toLocaleString()} pitches, {here.n.pa.toLocaleString()} plate appearances ended on them, {here.n.ab.toLocaleString()} at-bats, {here.n.swings.toLocaleString()} swings. {small ? `* A small sample (${here.n.swings.toLocaleString()} swings): the gaps are hard to judge. ` : null}{thin ? 'Under 40 swings behind it, so the gaps are shown but not coloured. ' : small ? '' : 'Green is better for the pitcher than the average by more than the usual noise, red is worse. '}<RunsSavedExplainer level={level} compact example={saved} /></div>
     </div>
   )
 }
@@ -216,7 +243,7 @@ function clue(r: BoardRow): string | null {
 const PITCH_LABEL = PITCH_NAMES
 
 /** One pitcher's full read, full width under the map row: his season numbers and where they rank, his shape (with the window widened by his own spread), and what the league has produced at that shape. */
-export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, pitchType, season, exportMap, lc, onSelect, onOpen, headshot, level = 'mlb', diag, leagueDiag }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'pitchType' | 'season' | 'exportMap' | 'lc' | 'onSelect' | 'onOpen' | 'headshot' | 'level' | 'diag' | 'leagueDiag'>) {
+export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, diagnosis, pitchType, season, exportMap, lc, onSelect, onOpen, headshot, level = 'mlb', diag, leagueDiag, dialed, levelAvg, focusHand }: Pick<PanelProps, 'board' | 'selectedId' | 'overall' | 'shapeAt' | 'bins' | 'diagnosis' | 'pitchType' | 'season' | 'exportMap' | 'lc' | 'onSelect' | 'onOpen' | 'headshot' | 'level' | 'diag' | 'leagueDiag' | 'dialed' | 'levelAvg' | 'focusHand'>) {
   const milb = isMilb(level)   // a minor-league read: the MLB-only pieces (season line, ESPN, the pitch-by-pitch breakdown) give way to what that level stores
   const [wide, setWide] = useState<'in1' | 'sd05' | 'sd1' | 'sd2'>('in1')   // how wide the shape window is: a fixed inch, or his own spread times 0.5, 1 or 2
   const [exportOpen, setExportOpen] = useState(false)
@@ -241,7 +268,10 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
       .catch(e => { log.error('ShapePlayerDetail', 'why fetch failed', e instanceof Error ? e.message : e); if (live) setWhy(null) })
     return () => { live = false }
   }, [selId, season, pitchType, rx10, ry10, milb])
+  const fullLog = usePitcherLog(selId, season, level)   // every pitch he threw, for the movement map (null at levels that keep no pitch log)
   if (!sel) return null
+  const allPts = fullLog ? movementPoints(fullLog.pitches, pitchType, fullLog.throws) : null
+  const closestInput = milb && sel.velo != null && sel.slot != null ? { pitcherId: sel.pitcherId, velo: sel.velo, ivb: sel.ivb, hb: sel.hb, slot: sel.slot } : null
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
   const card: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16 }
     const win = shapeAt ? shapeAt(sel.hb, sel.ivb, rx10, ry10) : null
@@ -259,8 +289,13 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
     const overallNote = rw?.pct != null && rx?.pct != null && Math.abs(rx.pct - rw.pct) >= 25
       ? `Overall, his xwOBA against ranks ${ordinal(rx.rank ?? 0)} of ${rx.of} but his wOBA against ranks ${ordinal(rw.rank ?? 0)}: the contact quality he allowed is ${rx.pct > rw.pct ? 'better' : 'worse'} than the results he got, which can point to defense or luck.` : null
     const strong = (sel.score ?? 0) >= 67, weak = sel.score != null && sel.score <= 33
+    const noMinimum = !limitsFor(level).gated   // Arizona Fall League and Spring Training keep no sample minimum: the numbers are shown, and a small sample is marked with an asterisk
+    const smallSample = noMinimum && sel.ownRaw.n.swings < 100
+    const wh = rd.find(x => x.stat.id === 'whiff')
     const headline = verdict == null
-      ? `Too few of his own ${lc}s (${limitsFor(level).gated ? GATE.rvPitches : limitsFor(level).ownPitches}+ needed) to set his results against his shape; the numbers below are shown with their sample.`
+      ? (noMinimum
+        ? (wh ? `Results so far${smallSample ? '*' : ''}: his ${lc}s get ${wh.stat.fmt(wh.own)} whiffs per swing against ${wh.stat.fmt(wh.shape)} for pitches shaped like his (${wh.stat.diff(wh.d)}).${smallSample ? ` * A small sample (${sel.ownRaw.n.swings.toLocaleString()} swings), so results are hard to judge.` : ''}` : `Results so far${smallSample ? '*' : ''}: there are no swings at his ${lc} to set against his shape yet. * Results are hard to judge on a small sample.`)
+        : `Too few of his own ${lc}s (${GATE.rvPitches}+ needed) to set his results against his shape; the numbers below are shown with their sample.`)
       : verdict === 'ahead'
         ? (weak ? `Outperforming a weak shape: his ${lc} results are better than pitches shaped like his have produced (${signed(gap ?? 0)} runs per 100 pitches). League ${lc}s with this shape have saved ${shapeG.saved == null ? '' : signed(shapeG.saved)} runs per 100, so the shape does not explain his results; location, sequencing, deception, defense and luck are not in it.`
           : strong ? `A strong shape and results better still (${signed(gap ?? 0)} runs per 100 pitches vs the shape): the results and the shape point the same way.`
@@ -271,6 +306,22 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           : `Underperforming his shape: his ${lc} results trail what pitches shaped like his have produced (${signed(gap ?? 0)} runs per 100 pitches).`)
         : `His ${lc} results line up with what pitches shaped like his have produced.`
     const sec: React.CSSProperties = { ...k, margin: '16px 0 6px', color: '#B83A0E' }
+    // what nearby movements have produced: the league's pitches within a small step of his average, priced the same way as his own shape (runs saved per 100 pitches, enough pitches to count)
+    const dial = (() => {
+      if (!shapeAt) return null
+      const base = shapeAt(sel.hb, sel.ivb, 10, 10)?.gated.saved ?? null
+      if (base == null) return null
+      const cand: { dh: number; di: number; dist: number; saved: number; pitches: number }[] = []
+      for (let dh = -30; dh <= 30; dh += 5) for (let di = -30; di <= 30; di += 5) {
+        if (dh === 0 && di === 0) continue
+        const m = shapeAt(sel.hb + dh / 10, sel.ivb + di / 10, 10, 10)
+        if (m?.gated.saved != null) cand.push({ dh: dh / 10, di: di / 10, dist: Math.hypot(dh, di) / 10, saved: m.gated.saved, pitches: m.raw.pitches })
+      }
+      const best = (d: number) => cand.filter(c => c.dist <= d && c.saved > base + 0.1).sort((a, b) => b.saved - a.saved)[0] ?? null
+      const all = [1, 2, 3].map(d => ({ d, c: best(d) }))
+      const rows = all.filter((r, i) => i === 0 || r.c !== all[i - 1].c)   // a wider step that finds the same shape adds nothing
+      return { base, rows: rows.length ? rows : [all[0]], all }
+    })()
     // X export: what the card says, from what the page already computed
     const whyLoaded = why !== undefined && why !== 'locked' && why !== null && !('needsSql' in why) ? why : null
     const built = whyLoaded ? buildWhy(sel, lc, whyLoaded, bins, diagnosis) : null
@@ -305,8 +356,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
       <div style={card} id="pf2-detail">
         <button type="button" onClick={() => { onSelect(null); document.getElementById('pf2-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }} style={{ ...pill(false), marginBottom: 10 }}>← Back to the pitchers at this shape</button>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={headshot(sel.pitcherId)} alt="" width={64} height={64} style={{ width: 64, height: 64, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom' }} />
+          <PlayerPhoto id={sel.pitcherId} size={64} minor={milb} round={false} />
           <div style={{ flex: 1, minWidth: 160 }}>
             {(() => {
               const club = teamOf(level, sel.teamAbbr)
@@ -333,41 +383,148 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           </div>
         </div>
         {milb && <TranslationBanner t={sel.translation} levelLabel={LEVEL_LABEL[level]} />}
-        {exportData && (
-          <div style={{ margin: '10px 0 0' }}>
-            <button type="button" onClick={() => setExportOpen(o => !o)} aria-expanded={exportOpen} style={{ ...pill(exportOpen), minHeight: 40 }}>{exportOpen ? 'Close export' : 'Export for X'}</button>
-            {exportOpen && (
-              <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12, marginTop: 8, background: '#FAF8F3' }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-                  <button type="button" style={pill(exportSize === 'landscape')} onClick={() => setExportSize('landscape')}>16:9 · 2400×1350</button>
-                  <button type="button" style={pill(exportSize === 'portrait')} onClick={() => setExportSize('portrait')}>4:5 · 1080×1350</button>
-                  <button type="button" disabled={exportBusy} onClick={() => void downloadPng()} style={{ minHeight: 40, padding: '0 16px', borderRadius: 4, border: 'none', background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: exportBusy ? 0.5 : 1 }}>{exportBusy ? 'Exporting…' : 'Download PNG'}</button>
-                  {why === undefined && <span style={{ fontSize: 12, color: C.mute }}>The “why” boxes fill in once the breakdown loads.</span>}
-                </div>
-                <div style={{ width: '100%', maxWidth: 620, aspectRatio: exportSize === 'landscape' ? '16 / 9' : '4 / 5', overflow: 'hidden', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff', position: 'relative' }}>
-                  <div style={{ transformOrigin: 'top left', transform: `scale(${620 / (exportSize === 'landscape' ? 1200 : 1080)})`, position: 'absolute', top: 0, left: 0 }}>
-                    <div ref={cardRef}><ShapeExportCard key={exportSize} d={exportData} size={exportSize} /></div>
-                  </div>
-                </div>
-                {exportError && <div role="alert" style={{ fontSize: 12.5, color: '#A8391F', marginTop: 6 }}>{exportError}</div>}
-                <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>A picture of this pitcher’s read for a post: the map, his Shape Score, his results against his shape and the reasons. It carries the x9Lab footer and handle, and says what has happened, not what comes next.</div>
-              </div>
-            )}
+        <div style={{ margin: '8px 0 0', borderLeft: `4px solid ${verdict === 'ahead' ? '#13694F' : verdict === 'behind' ? '#A8391F' : C.line}`, background: C.soft, borderRadius: 4, padding: '7px 12px' }}>
+        <p style={{ lineHeight: 1.5, color: '#3a352c', margin: 0, fontSize: 13.5 }}>{headline}{verdict && better.length ? <> Better than the league at his shape on {better.join(', ')}.</> : null}{verdict && worse.length ? <> Worse on {worse.join(', ')}.</> : null}</p>
+
+        </div>
+        {season != null && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ ...sec, margin: '0 0 2px' }}>His {lc}: the full stat line on the pitch</div>
+            <PitchStatLine pitcherId={sel.pitcherId} season={season} level={level} pitchType={pitchType} pitchName={PITCH_LABEL[pitchType] ?? pitchType} era={overall?.workload?.era ?? sel.stats?.era ?? null} fip={sel.stats?.fip ?? null} xera={sel.stats?.xera ?? null} ip={sel.stats?.ip ?? overall?.workload?.ip ?? null} />
           </div>
         )}
+        <div className="psd-cols" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '0 28px', alignItems: 'start', marginTop: 4 }}>
+          <style>{'@media(max-width:900px){.psd-cols{grid-template-columns:1fr !important}}'}</style>
+          <div>
+        <div style={sec}>1 · His average {lc}, and what dialing it in could change</div>
         {(() => {
-          // the reason flag: what the breakdown below found, said first. Only when his results trail his shape (or the breakdown found nothing to blame).
-          if (why === 'locked' || verdict !== 'behind' || !built || built.gap == null || built.gap < EFFECT_NOTICE) return null
-          const names = built.hurting.map(r => r.label)
+          // his average, what that shape has produced, and what a small step in ride and run has produced: the possible improvement, as a difference
+          const own = sel.own.saved ?? sel.ownRaw.saved ?? null
+          const best = dial ? (dial.all[1].c ?? dial.all[0].c ?? dial.all[2].c) : null
+          const pick = best ? dial?.all.find(r => r.c === best) : null
+          const gain = best && dial ? best.saved - dial.base : null
           return (
-            <div style={{ margin: '12px 0 0', border: '1.5px solid #A8391F', background: '#FBE6E1', borderRadius: 6, padding: '10px 12px' }}>
-              <div style={{ ...k, color: '#A8391F' }}>Why the results are not there</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0 4px' }}>
-                {names.length ? names.map(n => <span key={n} style={{ background: '#A8391F', color: '#fff', fontWeight: 800, fontSize: 12.5, borderRadius: 3, padding: '3px 9px' }}>{n}</span>)
-                  : <span style={{ background: C.ink, color: C.cream, fontWeight: 800, fontSize: 12.5, borderRadius: 3, padding: '3px 9px' }}>Not platoon, speed, extension, angle, location or sequencing</span>}
+            <div style={{ background: C.soft, borderRadius: 6, padding: '10px 12px', margin: '0 0 10px' }}>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: '#3a352c' }}>
+                <b>His average {lc}</b> is <b>{sel.ivb.toFixed(1)} in of ride</b> and <b>{sel.hb.toFixed(1)} in of run</b>{sel.velo != null ? <> at <b>{sel.velo.toFixed(1)} mph</b></> : null}.
+                {dial ? <> Pitches shaped like that have produced <b>{signed(dial.base)}</b> runs saved per 100 pitches{own != null ? <>; his own have produced <b>{signed(own)}</b></> : null}.</> : null}
+              </p>
+              {best && gain != null && pick ? (
+                <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.55, color: '#3a352c' }}>
+                  <b>Dialed in within {pick.d} in:</b> {[best.di !== 0 ? `${Math.abs(best.di).toFixed(1)} in ${best.di > 0 ? 'more' : 'less'} ride` : '', best.dh !== 0 ? `${Math.abs(best.dh).toFixed(1)} in ${best.dh > 0 ? 'more' : 'less'} run` : ''].filter(Boolean).join(' and ')} puts it at <b>{(sel.ivb + best.di).toFixed(1)} / {(sel.hb + best.dh).toFixed(1)}</b>, where pitches have produced <b style={{ color: '#13694F' }}>{signed(best.saved)}</b> per 100. That is a difference of <b style={{ color: '#13694F' }}>{signed(gain)} runs per 100 pitches</b> against where he sits now.
+                </p>
+              ) : dial ? <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.55, color: '#3a352c' }}>Within 3 in of his average, no shape has produced more than his own, so there is no small step to point to.</p> : null}
+              <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4, lineHeight: 1.5 }}>What other pitchers’ pitches did at those movements ({milb ? LEVEL_LABEL[level] : 'MLB since 2024'}, ±1 in window). It does not say he can throw that movement or that his results would follow.{dialed ? ` You clicked ${dialed.ivb.toFixed(1)} / ${dialed.hb.toFixed(1)} on the map.` : ''}</div>
+            </div>
+          )
+        })()}
+        {exportMap && (
+          <div style={{ maxWidth: 430, margin: '0 0 10px' }}>
+            <ShapeMap label={`His ${lc}s on the movement map: his sampled pitches, his average, the league window and the movement you dialed in`}
+              dots={(allPts && allPts.length ? allPts : exportMap.points).map(pt => ({ hb: pt[0], ivb: pt[1], color: C.ink, opacity: 0.4 }))}
+              rings={[{ hb: sel.hb, ivb: sel.ivb, color: C.orange, label: 'His average', strong: true }]}
+              box={{ hb: sel.hb, ivb: sel.ivb, rx: rx10 / 10, ry: ry10 / 10 }}
+              marks={(() => { const c = dial ? (dial.all[1].c ?? dial.all[0].c ?? dial.all[2].c) : null; return c ? [{ hb: sel.hb + c.dh, ivb: sel.ivb + c.di, label: 'Dialed in', color: '#2F6DB5' }] : [] })()} />
+            {(() => {
+              const all = !!(allPts && allPts.length)
+              const pts2 = all ? (allPts as [number, number][]) : exportMap.points
+              const inside = pts2.filter(q => Math.abs(q[0] - sel.hb) <= rx10 / 10 && Math.abs(q[1] - sel.ivb) <= ry10 / 10).length
+              const stepOn = !!dial?.all.some(r => r.c)
+              return (
+                <div style={{ fontSize: 12.5, color: '#5b5347', marginTop: 6, lineHeight: 1.55 }}>
+                  <b style={{ color: C.ink }}>Why the dots?</b> Each dot is one of his {lc}s{all ? ` (all ${pts2.length.toLocaleString()} with tracked movement)` : fullLog === null ? ` (a stored sample of up to 60: ${LEVEL_LABEL[level]} keeps no pitch-by-pitch log)` : ' (a sample while the full log loads)'}, placed by how it moved. They show how <i>consistent</i> the pitch is: a tight clump means he repeats it, a wide scatter means it moves around from pitch to pitch{sel.sdIvb != null && sel.sdHb != null ? ` (his own variation is ±${sel.sdIvb.toFixed(1)} in of ride and ±${sel.sdHb.toFixed(1)} in of run)` : ''}.
+                  {pts2.length > 0 ? ` ${inside} of the ${pts2.length.toLocaleString()} dots fall inside the dashed box, the window of league pitches his results are compared with.` : ''}
+                  {stepOn ? ' The blue cross is the small step that has produced the most.' : ''}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
+          </div>
+          <div>
+        <div style={sec}>2 · Does his shape get results, and do his own match it?</div>
+        {(() => {
+          // is the shape itself above the level's average? Pitches shaped like his against the average pitch of this level (misses per swing), then his own
+          const lg = board?.league.whiff ?? null, sw2 = shapeG.whiff ?? shapeR.whiff ?? null, own = sel.own.whiff ?? sel.ownRaw.whiff ?? null
+          if (lg == null || sw2 == null) return null
+          const d = (sw2 - lg) * 100, word = d >= ABOUT_LEVEL_PTS ? 'above' : d <= -ABOUT_LEVEL_PTS ? 'below' : 'about the same as'
+          const tile2 = (label: string, v: number, sub: string, hi?: boolean) => <div key={label} style={{ background: hi ? '#FFF1EA' : C.soft, borderRadius: 6, padding: '7px 10px', flex: '1 1 120px' }}><div style={{ ...k, fontSize: 9 }}>{label}</div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{(v * 100).toFixed(1)}%</b><div style={{ fontSize: 11, color: C.mute }}>{sub}</div></div>
+          return (
+            <div style={{ margin: '0 0 12px' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {tile2(`${LEVEL_LABEL[level]} average`, lg, 'whiffs per swing, every pitcher')}
+                {tile2('Pitches shaped like his', sw2, `${shapeR.n.swings.toLocaleString()} swings`, true)}
+                {own != null && tile2('His own', own, `${sel.ownRaw.n.swings.toLocaleString()} swings`)}
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#3a352c' }}>{built.lead}</div>
-              <a href="#psd-why" style={{ fontSize: 12.5, fontWeight: 700, color: '#B83A0E' }}>See the numbers behind it</a>
+              <p style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, margin: '8px 0 0' }}>Pitches shaped like his get <b>{word}</b> the {LEVEL_LABEL[level]} average for misses per swing{word === 'about the same as' ? '' : ` (${signed(d, 1)} pts)`}. {sel.score != null ? `That makes it a ${sel.score >= 67 ? 'strong' : sel.score <= 33 ? 'weak' : 'middling'} shape on runs saved (Shape Score ${sel.score}).` : ''}</p>
+            </div>
+          )
+        })()}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+          <thead><tr>{['Stat', 'His', 'League at his shape', 'Gap'].map(th)}</tr></thead>
+          <tbody>
+            {rd.map(x => (
+              <tr key={x.stat.id} style={{ borderBottom: `1px solid ${C.line}` }}>
+                <td style={{ padding: '7px 4px', fontWeight: 700 }}><Lab t={x.stat.label} />{x.thin && <span style={{ color: C.faint, fontWeight: 600 }}> · thin sample</span>}{smallSample && <span style={{ color: C.faint }}> *</span>}</td>
+                <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800 }}>{x.stat.fmt(x.own)}</td>
+                <td style={{ padding: '7px 4px', textAlign: 'right', color: C.mute }}>{x.stat.fmt(x.shape)}</td>
+                <td style={{ padding: '7px 4px', textAlign: 'right' }}><span style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontWeight: 800, borderRadius: 3, padding: '2px 7px' }}>{x.stat.diff(x.d)}</span></td>
+              </tr>
+            ))}
+            <tr style={{ borderBottom: `1px solid ${C.line}` }}><td style={{ padding: '7px 4px', color: '#5b5347' }}>Sample behind it</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{sel.ownRaw.pitches.toLocaleString()} pitches · {sel.ownRaw.n.pa.toLocaleString()} plate appearances · {sel.ownRaw.n.ab.toLocaleString()} at-bats · {sel.ownRaw.n.swings.toLocaleString()} swings</td></tr>
+            <tr><td style={{ padding: '7px 4px', color: '#5b5347' }}>League sample at his shape</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{shapeR.pitches.toLocaleString()} {milb ? ` ${LEVEL_LABEL[level]} pitches (${season ?? ''})` : ' league pitches (2024 on)'} · {shapeR.n.pa.toLocaleString()} plate appearances · {shapeR.n.swings.toLocaleString()} swings</td></tr>
+          </tbody>
+        </table>
+        {smallSample && <div style={{ fontSize: 12, color: '#7A5B00', margin: '6px 0 0' }}>* A small sample ({sel.ownRaw.n.swings.toLocaleString()} swings, {sel.ownRaw.n.ab.toLocaleString()} at-bats): his results are hard to judge.</div>}
+        <RunsSavedExplainer level={level} compact example={shapeG.saved} />
+        {note && <p style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5, margin: '10px 0 0', background: C.soft, borderRadius: 4, padding: '8px 10px' }}>{note}</p>}
+
+            <div style={{ ...sec, margin: '18px 0 6px' }}>His shape numbers, and the league window</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: 6 }}>
+          {([['Velocity', sel.velo == null ? '—' : `${sel.velo.toFixed(1)} mph`], ['Ride', `${sel.ivb.toFixed(1)} in`], ['Run', `${sel.hb.toFixed(1)} in`], ['Arm angle', sel.slot == null ? '—' : `${sel.slot.toFixed(0)}°`], ['Ride variation (SD)', sel.sdIvb == null ? '—' : `±${sel.sdIvb.toFixed(1)} in`], ['Run variation (SD)', sel.sdHb == null ? '—' : `±${sel.sdHb.toFixed(1)} in`]] as [string, string][]).map(([a, b]) => (
+            <div key={a} style={{ background: C.soft, borderRadius: 6, padding: '6px 8px' }}><div style={{ ...k, fontSize: 9 }}><Lab t={a} /></div><b style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{b}</b></div>
+          ))}
+        </div>
+        <div role="group" aria-label="How wide the shape window is" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+          <span style={k}>League window</span>
+          {([['in1', '±1 in'], ['sd05', '±½ SD'], ['sd1', '±1 SD'], ['sd2', '±2 SD']] as const).map(([id, text]) => <button key={id} type="button" disabled={id !== 'in1' && (sel.sdHb == null || sel.sdIvb == null)} style={pill(wide === id)} onClick={() => setWide(id)}>{text}</button>)}
+        </div>
+        <div style={{ fontSize: 12, color: '#5b5347', margin: '6px 0 0', lineHeight: 1.5 }}>Widening the window by how much his own pitches vary takes in league {lc}s that move a little less like his, for a bigger sample. The box is ±{(rx10 / 10).toFixed(1)} in of run by ±{(ry10 / 10).toFixed(1)} in of ride around his average.</div>
+          </div>
+        </div>
+        <div style={{ ...sec, marginTop: 22 }}>3 · His {lc} at each level: has the shape changed, and did it beat the level’s average?</div>
+        {!milb && season != null && (
+          <div style={{ margin: '14px 0 0' }}>
+            <div style={{ ...sec, margin: '0 0 6px', color: C.mute }}>Through this season</div>
+            <PitcherSeasonChanges pitcherId={sel.pitcherId} season={season} pitchType={pitchType} pitchName={PITCH_LABEL[pitchType] ?? pitchType} />
+          </div>
+        )}
+        <AcrossLevels pitcherId={sel.pitcherId} type={pitchType} pitchName={PITCH_LABEL[pitchType] ?? pitchType} level={level} levelAvg={levelAvg ?? {}} />
+        {milb ? <MilbWhySection sel={sel} lc={lc} level={level} bins={bins} diag={diag} leagueDiag={leagueDiag} verdictGap={gap} sec={sec} /> : <WhySection sel={sel} lc={lc} why={why} bins={bins} verdictGap={gap} diagnosis={diagnosis} sec={sec} pill={pill} />}
+        {!milb && season != null && (sel.stats || overall?.workload) && (
+          <div style={{ marginTop: 22 }}>
+            <div style={{ ...sec, margin: '0 0 6px' }}>Also: did this pitch inflate his ERA? Judged on FIP</div>
+            <DamageAndFip pitcherId={sel.pitcherId} season={season} pitchType={pitchType} pitchName={PITCH_LABEL[pitchType] ?? pitchType} era={overall?.workload?.era ?? sel.stats?.era ?? null} fip={sel.stats?.fip ?? null} xera={sel.stats?.xera ?? null} ip={sel.stats?.ip ?? overall?.workload?.ip ?? null} />
+          </div>
+        )}
+        {dial && (() => {
+          const { base, rows } = dial
+          const move = (c: { dh: number; di: number }) => [c.di !== 0 ? `${Math.abs(c.di).toFixed(1)} in ${c.di > 0 ? 'more' : 'less'} ride` : '', c.dh !== 0 ? `${Math.abs(c.dh).toFixed(1)} in ${c.dh > 0 ? 'more' : 'less'} run` : ''].filter(Boolean).join(', ')
+          return (
+            <div style={{ marginTop: 22 }}>
+              <div style={{ ...sec, margin: '0 0 6px' }}>5 · Dialing the pitch: what a slightly different movement has produced</div>
+              <p style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.55, margin: '0 0 8px' }}>Ride and run change with grip, release height, arm angle and spin. Pitching groups test small changes and look at what pitches with the new movement have already done. Here are the league’s {lc}s within a few inches of his own, priced the same way as his: runs saved per 100 pitches, with his shape at <b>{signed(base)}</b>.</p>
+              <div style={{ fontSize: 12, color: C.faint, margin: '6px 0 0', lineHeight: 1.5 }}>This is what other pitchers’ pitches have done at those movements, in {milb ? LEVEL_LABEL[level] : 'MLB since 2024'}. It does not say he can throw that movement, or that his own results would follow: location, speed and sequencing travel with the pitcher, not the shape.</div>
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13.5, minHeight: 32 }}>How teams use shape to find pitchers, and to build them</summary>
+                <div style={{ display: 'grid', gap: 8, fontSize: 13.5, lineHeight: 1.6, color: '#3a352c', marginTop: 4 }}>
+                  <div><b>What a shape is.</b> Ride (how much less the pitch drops than gravity says it should) and run (how far it moves toward the arm side), with speed and arm angle, set most of how a pitch behaves. Pitches that move alike draw similar swings and misses, so the league’s record at a shape is a fair yardstick for any pitch that moves that way.</div>
+                  <div><b>Finding pitchers.</b> Set a pitcher’s results against what his shape has produced. A strong shape with results trailing points to something other than movement holding him back (location, sequencing, defense, luck): a pitcher worth a closer look. A weak shape with good results says the movement is not what is carrying him. The Refine filters (never pitched in MLB, works here but not in MLB, traded) ask that same question across a whole level.</div>
+                  <div><b>Building a pitch.</b> Because shape is physical, it can be changed on purpose: a grip or release change moves ride and run, and speed adds or takes away from what a movement is worth. The table above is the first look a development group takes: what has the nearest movement done, and how far is it to get there.</div>
+                  <div style={{ fontSize: 12.5, color: '#5b5347' }}>Everything on this page describes what has happened. <a href="/mlb/lab/pitch-shape/guide" style={{ color: '#B83A0E', fontWeight: 700 }}>The guide</a> walks through each part with pictures.</div>
+                </div>
+              </details>
             </div>
           )
         })()}
@@ -395,8 +552,8 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           const runsOver = gap != null && nPitch > 0 ? (-gap / 100) * nPitch : null
           const eraShift = runsOver != null && wl && wl.ip >= 20 ? (runsOver * 9) / wl.ip : null
           return (
-            <div style={{ margin: '12px 0 0' }}>
-              <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>Fantasy line · {overall?.season ?? season ?? ''}</div>
+            <div style={{ marginTop: 22 }}>
+              <div style={{ ...k, color: '#B83A0E', marginBottom: 6 }}>For fantasy managers · {overall?.season ?? season ?? ''}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 6 }}>
                 {tiles.map(t => <div key={t.label} style={{ background: C.soft, borderRadius: 6, padding: '8px 10px' }}><div style={{ ...k, color: C.mute }}><Lab t={t.label} /></div><b style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{t.v}</b>{t.sub && <div style={{ fontSize: 10.5, color: C.faint }}>{t.sub}</div>}</div>)}
               </div>
@@ -406,15 +563,43 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
                 </div>
               )}
               {eg != null && Math.abs(eg) >= 0.4 && <div style={{ fontSize: 12.5, color: '#3a352c', lineHeight: 1.5, marginTop: 6 }}>His ERA is {Math.abs(eg).toFixed(2)} runs {eg > 0 ? 'higher' : 'lower'} than his xERA, so the contact he has allowed has been {eg > 0 ? 'better' : 'worse'} than his results. {kp != null && bp != null && kp - bp >= 0.15 ? `He strikes out ${((kp - bp) * 100).toFixed(0)} points more batters than he walks.` : ''}</div>}
+              <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6, color: '#3a352c' }}>
+                <li>The shape is the part of a pitcher’s results that tends to hold from one stretch to the next; ERA, wins and strand rate move with defense, park and luck. Fantasy points come from those, so the shape and FIP are the steadier things to read.</li>
+                {sel.score != null && <li>Shape Score <b>{sel.score}</b> ({sw?.word.toLowerCase() ?? 'average shape'}){sel.owned != null ? <>, rostered in <b>{fmtOwned(sel.owned)}</b> of ESPN leagues{sel.score >= 67 && sel.owned < 30 ? ': a strong shape that few managers hold' : sel.score <= 33 && sel.owned >= 50 ? ': widely held on a weak shape' : ''}</> : null}.</li>}
+                {verdict === 'behind' && (strong) && <li>His results trail a strong shape by {Math.abs(gap ?? 0).toFixed(2)} runs per 100 pitches. The reasons in section 4 and the FIP line above are what to read before judging his ERA.</li>}
+                {verdict === 'ahead' && weak && <li>His results are better than a weak shape has produced, so the movement does not explain them; location, sequencing, defense or luck are doing the work.</li>}
+                {verdict === 'level' && <li>His results match what his shape has produced, so there is no gap between the two to explain.</li>}
+              </ul>
             </div>
           )
         })()}
-        <p style={{ fontSize: 13.5, lineHeight: 1.5, color: '#3a352c', margin: '12px 0 0' }}>{headline}{verdict && better.length ? <> Better than the league at his shape on {better.join(', ')}.</> : null}{verdict && worse.length ? <> Worse on {worse.join(', ')}.</> : null}</p>
-
-        <div className="psd-cols" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '0 28px', alignItems: 'start' }}>
-          <style>{'@media(max-width:900px){.psd-cols{grid-template-columns:1fr !important}}'}</style>
-          <div>
-        <div style={sec}>1 · His season: every pitch he threw, {overall?.season ?? 'this season'}</div>
+        {milb && closestInput && <div style={{ marginTop: 22 }}><ClosestMlb p={closestInput} level={level} type={pitchType} hand={focusHand ?? 'R'} pitchName={PITCH_LABEL[pitchType] ?? pitchType} armAngle={sel.slot != null} /></div>}
+        <details style={{ marginTop: 22, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 15, minHeight: 32 }}>More on his season: ranks, arsenal, fantasy line and where he leaks{exportData ? ', and export for X' : ''}</summary>
+        {exportData && (
+          <div style={{ margin: '10px 0 0' }}>
+            <button type="button" onClick={() => setExportOpen(o => !o)} aria-expanded={exportOpen} style={{ ...pill(exportOpen), minHeight: 40 }}>{exportOpen ? 'Close export' : 'Export for X'}</button>
+            {exportOpen && (
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: 6, padding: 12, marginTop: 8, background: '#FAF8F3' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+                  <button type="button" style={pill(exportSize === 'landscape')} onClick={() => setExportSize('landscape')}>16:9 · 2400×1350</button>
+                  <button type="button" style={pill(exportSize === 'portrait')} onClick={() => setExportSize('portrait')}>4:5 · 1080×1350</button>
+                  <button type="button" disabled={exportBusy} onClick={() => void downloadPng()} style={{ minHeight: 40, padding: '0 16px', borderRadius: 4, border: 'none', background: C.orange, color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: exportBusy ? 0.5 : 1 }}>{exportBusy ? 'Exporting…' : 'Download PNG'}</button>
+                  {why === undefined && <span style={{ fontSize: 12, color: C.mute }}>The “why” boxes fill in once the breakdown loads.</span>}
+                </div>
+                <div style={{ width: '100%', maxWidth: 620, aspectRatio: exportSize === 'landscape' ? '16 / 9' : '4 / 5', overflow: 'hidden', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff', position: 'relative' }}>
+                  <div style={{ transformOrigin: 'top left', transform: `scale(${620 / (exportSize === 'landscape' ? 1200 : 1080)})`, position: 'absolute', top: 0, left: 0 }}>
+                    <div ref={cardRef}><ShapeExportCard key={exportSize} d={exportData} size={exportSize} /></div>
+                  </div>
+                </div>
+                {exportError && <div role="alert" style={{ fontSize: 12.5, color: '#A8391F', marginTop: 6 }}>{exportError}</div>}
+                <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>A picture of this pitcher’s read for a post: the map, his Shape Score, his results against his shape and the reasons. It carries the x9Lab footer and handle, and says what has happened, not what comes next.</div>
+              </div>
+            )}
+          </div>
+        )}
+          <div style={{ marginTop: 6 }}>
+        <div style={sec}>His season: every pitch he threw, {overall?.season ?? 'this season'}</div>
         {overall === undefined ? <div style={{ fontSize: 13, color: C.mute }}>Loading his overall numbers…</div>
           : overall === null ? <div style={{ fontSize: 13, color: '#5b5347' }}>No overall numbers on record for him yet.</div>
           : (
@@ -472,50 +657,15 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
             </>
           )}
           </div>
-          <div>
-        <div style={sec}>2 · His {lc} shape</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(86px, 1fr))', gap: 6 }}>
-          {([['Velocity', sel.velo == null ? '—' : `${sel.velo.toFixed(1)} mph`], ['Ride', `${sel.ivb.toFixed(1)} in`], ['Run', `${sel.hb.toFixed(1)} in`], ['Arm angle', sel.slot == null ? '—' : `${sel.slot.toFixed(0)}°`], ['Ride variation (SD)', sel.sdIvb == null ? '—' : `±${sel.sdIvb.toFixed(1)} in`], ['Run variation (SD)', sel.sdHb == null ? '—' : `±${sel.sdHb.toFixed(1)} in`]] as [string, string][]).map(([a, b]) => (
-            <div key={a} style={{ background: C.soft, borderRadius: 6, padding: '6px 8px' }}><div style={{ ...k, fontSize: 9 }}><Lab t={a} /></div><b style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{b}</b></div>
-          ))}
-        </div>
-        <div role="group" aria-label="How wide the shape window is" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
-          <span style={k}>League window</span>
-          {([['in1', '±1 in'], ['sd05', '±½ SD'], ['sd1', '±1 SD'], ['sd2', '±2 SD']] as const).map(([id, text]) => <button key={id} type="button" disabled={id !== 'in1' && (sel.sdHb == null || sel.sdIvb == null)} style={pill(wide === id)} onClick={() => setWide(id)}>{text}</button>)}
-        </div>
-        <div style={{ fontSize: 12, color: '#5b5347', margin: '6px 0 0', lineHeight: 1.5 }}>Widening the window by how much his own pitches vary takes in league {lc}s that move a little less like his, for a bigger sample. The box is ±{(rx10 / 10).toFixed(1)} in of run by ±{(ry10 / 10).toFixed(1)} in of ride around his average.</div>
-
-        <div style={sec}>3 · His {lc} against the league’s {lc}s at his shape</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-          <thead><tr>{['Stat', 'His', 'League at his shape', 'Gap'].map(th)}</tr></thead>
-          <tbody>
-            {rd.map(x => (
-              <tr key={x.stat.id} style={{ borderBottom: `1px solid ${C.line}` }}>
-                <td style={{ padding: '7px 4px', fontWeight: 700 }}><Lab t={x.stat.label} />{x.thin && <span style={{ color: C.faint, fontWeight: 600 }}> · thin sample</span>}</td>
-                <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 800 }}>{x.stat.fmt(x.own)}</td>
-                <td style={{ padding: '7px 4px', textAlign: 'right', color: C.mute }}>{x.stat.fmt(x.shape)}</td>
-                <td style={{ padding: '7px 4px', textAlign: 'right' }}><span style={{ background: toneCol[x.tone].bg, color: toneCol[x.tone].fg, fontWeight: 800, borderRadius: 3, padding: '2px 7px' }}>{x.stat.diff(x.d)}</span></td>
-              </tr>
-            ))}
-            <tr style={{ borderBottom: `1px solid ${C.line}` }}><td style={{ padding: '7px 4px', color: '#5b5347' }}>Sample behind it</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{sel.ownRaw.pitches.toLocaleString()} pitches · {sel.ownRaw.n.pa.toLocaleString()} plate appearances · {sel.ownRaw.n.ab.toLocaleString()} at-bats · {sel.ownRaw.n.swings.toLocaleString()} swings</td></tr>
-            <tr><td style={{ padding: '7px 4px', color: '#5b5347' }}>League sample at his shape</td><td colSpan={3} style={{ padding: '7px 4px', textAlign: 'right', color: '#5b5347' }}>{shapeR.pitches.toLocaleString()} {milb ? ` ${LEVEL_LABEL[level]} pitches (${season ?? ''})` : ' league pitches (2024 on)'} · {shapeR.n.pa.toLocaleString()} plate appearances · {shapeR.n.swings.toLocaleString()} swings</td></tr>
-          </tbody>
-        </table>
-        <RunsSavedExplainer level={level} compact example={shapeG.saved} />
-        {note && <p style={{ fontSize: 13, color: '#3a352c', lineHeight: 1.5, margin: '10px 0 0', background: C.soft, borderRadius: 4, padding: '8px 10px' }}>{note}</p>}
-
-          </div>
-        </div>
-        {milb ? <MilbWhySection sel={sel} lc={lc} level={level} bins={bins} diag={diag} leagueDiag={leagueDiag} verdictGap={gap} sec={sec} /> : <WhySection sel={sel} lc={lc} why={why} bins={bins} verdictGap={gap} diagnosis={diagnosis} sec={sec} pill={pill} />}
 
         {milb ? (
           <>
-            <div style={{ ...sec, marginTop: 22 }}>5 · Across his whole arsenal</div>
+            <div style={{ ...sec, marginTop: 22 }}>Across his whole arsenal</div>
             <div style={{ fontSize: 13, color: '#5b5347', lineHeight: 1.5 }}>The check by pitch, batter side, count and times through the order uses MLB situation data and is MLB only. His other pitches at {LEVEL_LABEL[level]}, each with its own results, are listed in the card below.</div>
           </>
         ) : (
           <>
-        <div style={{ ...sec, marginTop: 22 }}>5 · Across his whole arsenal: another pitch, a situation, or sequencing</div>
+        <div style={{ ...sec, marginTop: 22 }}>Across his whole arsenal: another pitch, a situation, or sequencing</div>
         {diagnosis === 'locked' ? (
           <div style={{ background: C.soft, borderRadius: 6, padding: 14 }}>
             <div style={{ fontSize: 13.5, color: '#3a352c', lineHeight: 1.5, marginBottom: 8 }}>For a pitcher whose shape has produced more than his results show: which pitch is losing, which batters, counts and times through the order cost him, and whether first-pitch strikes, the zone, chase or repeating pitches point to sequencing.</div>
@@ -578,6 +728,7 @@ export function ShapePlayerDetail({ board, selectedId, overall, shapeAt, bins, d
           </>
         )}
 
+        </details>
         <div style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>“League at his shape” is what league {lc}s inside the window have produced, {milb ? `${season ?? ''} at ${LEVEL_LABEL[level]}` : 'all seasons since 2024 added up'}; outperforming or underperforming compares his own results with that, and describes what has happened. Location, sequencing, deception, defense and luck are not in the shape. Green is better for the pitcher than his shape by more than the usual noise, red is worse.</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
           {!milb && <FollowIsland kind="player" refId={String(sel.pitcherId)} name={sel.name} />}
@@ -616,6 +767,12 @@ export type PanelProps = {
   /** the pitchers the page is showing after its filters (null = everyone), and short career facts for a row (minor-league views) */
   only?: Set<number> | null
   chipsFor?: (id: number) => string[]
+  /** the movement dialed in on the map, so the pitcher's own average can be set against it */
+  dialed?: { hb: number; ivb: number } | null
+  /** each level's average for this pitch and hand (whiffs per swing and shape), for his row at each level */
+  levelAvg?: Partial<Record<Level, LevelAvg>>
+  /** the hand of the pitcher chosen */
+  focusHand?: 'R' | 'L'
 }
 
 /**
@@ -625,6 +782,7 @@ export type PanelProps = {
 export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSelect, level = 'mlb', headshot, only, chipsFor }: PanelProps) {
   const [tab, setTab] = useState<'all' | 'ahead' | 'behind' | 'level'>('behind')
   const [all, setAll] = useState(false)
+  const [byVelo, setByVelo] = useState(false)   // list the fastest first, instead of the biggest gap first
   const pill = (on: boolean): React.CSSProperties => ({ minHeight: 38, padding: '0 11px', borderRadius: 4, border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' })
   if (board === undefined) return <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, fontSize: 13, color: C.mute }}>Finding the pitchers at this shape…</div>
   if (!board) return <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, fontSize: 13, color: '#5b5347' }}>Pitcher results aren’t built for this pitch yet. They fill after the weekly shape-results job runs.</div>
@@ -643,29 +801,57 @@ export function ShapePlayersPanel({ board, hb, ivb, radius, lc, selectedId, onSe
 
   // a level with no run value (the Arizona Fall League) has no verdicts at all, so list everyone at the shape rather than three empty tabs
   const effTab = cohort.length > 0 && few.length === cohort.length ? 'all' : tab
-  const list = effTab === 'all' ? [...cohort].sort((a, b) => b.r.pitches - a.r.pitches) : group(effTab)
+  const listBase = effTab === 'all' ? [...cohort].sort((a, b) => b.r.pitches - a.r.pitches) : group(effTab)
+  const list = byVelo ? [...listBase].sort((a, b) => (b.r.velo ?? -1) - (a.r.velo ?? -1)) : listBase
+  // average speed of each group (weighted by pitches thrown): do the pitchers getting the shape's results throw harder or softer than the ones who are not?
+  const avgVelo = (cs: typeof cohort) => { const w = cs.filter(c => c.r.velo != null); const n = w.reduce((t, c) => t + c.r.pitches, 0); return n > 0 ? w.reduce((t, c) => t + (c.r.velo as number) * c.r.pitches, 0) / n : null }
+  const veloGroups = ([['Outperforming', group('ahead'), '#13694F'], ['In line', group('level'), '#5b5347'], ['Underperforming', group('behind'), '#A8391F']] as const).map(([label, g, col]) => ({ label, n: g.length, v: avgVelo(g), col })).filter(x => x.n > 0 && x.v != null)
   const shown = all ? list : list.slice(0, 6)
   const tabs: { id: 'all' | 'ahead' | 'behind' | 'level'; label: string }[] = [
     { id: 'all', label: `Everyone (${cohort.length})` }, { id: 'behind', label: `Underperforming (${group('behind').length})` }, { id: 'ahead', label: `Outperforming (${group('ahead').length})` }, { id: 'level', label: `In line (${group('level').length})` },
   ]
   return (
     <div style={card} id="pf2-panel">
-      <div className="pv-k" style={{ color: '#B83A0E' }}>Pitchers at this shape</div>
-      <p style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, margin: '2px 0 10px' }}>
-        {widened ? `${inside.length === 0 ? 'No pitcher averages' : `Only ${inside.length} pitcher${inside.length === 1 ? ' averages' : 's average'}`} a ${lc} within ±${radius} in of this spot, so these are the ${near.length} nearest.` : `${inside.length} pitchers average a ${lc} within ±${radius} in of this spot.`} Outperforming means his own results beat what pitches shaped like his have produced; underperforming means they trail it. The shape word says how good the shape itself is. Click a pitcher for his shape numbers and his overall numbers, with where they rank.
+      <div className="pv-k" style={{ color: '#B83A0E' }}>Who throws this shape, and how they are doing</div>
+      <p style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.5, margin: '2px 0 8px' }}>
+        {widened ? `${inside.length === 0 ? 'No pitcher averages' : `Only ${inside.length} pitcher${inside.length === 1 ? ' averages' : 's average'}`} a ${lc} within ±${radius} in of this spot, so these are the ${near.length} nearest.` : `${inside.length} pitchers average a ${lc} within ±${radius} in of this spot.`} Outperforming means his own results beat what pitches shaped like his have produced; underperforming means they trail it. Click a pitcher for his overview.
       </p>
-      <RunsSavedExplainer level={level} compact />
+      {(() => {
+        // the group as one: their average shape and speed, and their results together against what the shape has produced
+        const rs = cohort.map(c => c.r)
+        const wavg = (f: (r: BoardRow) => number | null, w: (r: BoardRow) => number) => { const xs = rs.filter(r => f(r) != null && w(r) > 0); const n = xs.reduce((t2, r) => t2 + w(r), 0); return n > 0 ? xs.reduce((t2, r) => t2 + (f(r) as number) * w(r), 0) / n : null }
+        const velo = wavg(r => r.velo, r => r.pitches), ride = wavg(r => r.ivb, r => r.pitches), run = wavg(r => r.hb, r => r.pitches)
+        const own = wavg(r => r.ownRaw.whiff, r => r.ownRaw.n.swings), shp = wavg(r => r.shapeRaw.whiff, r => r.ownRaw.n.swings)
+        const swings = rs.reduce((t2, r) => t2 + r.ownRaw.n.swings, 0)
+        if (rs.length === 0) return null
+        const cell = (label: string, v: React.ReactNode, sub?: string) => <div style={{ background: C.soft, borderRadius: 6, padding: '7px 10px', flex: '1 1 110px' }}><div style={{ ...k, fontSize: 9 }}>{label}</div><b style={{ fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>{v}</b>{sub && <div style={{ fontSize: 11, color: C.mute }}>{sub}</div>}</div>
+        return (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 8px' }}>
+            {cell('Pitchers', rs.length, `${group('ahead').length} outperforming · ${group('level').length} in line · ${group('behind').length} under`)}
+            {cell('Average speed', velo == null ? '—' : `${velo.toFixed(1)} mph`)}
+            {cell('Average shape', ride == null || run == null ? '—' : `${ride.toFixed(1)} / ${run.toFixed(1)}`, 'ride / run, in')}
+            {own != null && cell('Their whiffs per swing', `${(own * 100).toFixed(1)}%`, shp != null ? `shape produced ${(shp * 100).toFixed(1)}% · ${swings.toLocaleString()} swings` : `${swings.toLocaleString()} swings`)}
+          </div>
+        )
+      })()}
+      {veloGroups.length >= 2 && (
+        <div style={{ background: C.soft, borderRadius: 6, padding: '8px 10px', margin: '8px 0 0', fontSize: 13, lineHeight: 1.5, color: '#3a352c' }}>
+          <b>Average speed at this shape:</b>{' '}
+          {veloGroups.map((x, i) => <span key={x.label}>{i ? ' · ' : ''}<span style={{ color: x.col, fontWeight: 800 }}>{x.label}</span> {(x.v as number).toFixed(1)} mph ({x.n})</span>)}
+          <span style={{ color: '#5b5347' }}> Same shape, so the speed difference is part of why some get its results and some do not.</span>
+        </div>
+      )}
       <div role="group" aria-label="Pitchers at this shape" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 10px' }}>
         {tabs.map(t => <button key={t.id} type="button" style={pill(effTab === t.id)} onClick={() => { setTab(t.id); setAll(false) }}>{t.label}</button>)}
+        <button type="button" aria-pressed={byVelo} style={{ ...pill(byVelo), marginLeft: 'auto' }} onClick={() => setByVelo(v => !v)}>{byVelo ? 'Fastest first' : 'Sort by speed'}</button>
       </div>
       {shown.length === 0 ? <div style={{ fontSize: 13, color: '#5b5347', padding: '6px 0' }}>None here with enough pitches to compare.</div> : shown.map(({ r, rd }) => {
         return (
           <button key={r.pitcherId} type="button" onClick={() => { onSelect(r.pitcherId); document.getElementById('pf2-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#fff', border: 0, borderTop: `1px solid ${C.line}`, padding: '10px 6px', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44, ...(r.pitcherId === selectedId ? { background: '#FFF1EA' } : null) }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={headshot(r.pitcherId)} alt="" width={40} height={40} loading="lazy" style={{ width: 40, height: 40, flex: 'none', objectFit: 'contain', objectPosition: 'center bottom', background: C.soft, borderRadius: '50%' }} />
+              <PlayerPhoto id={r.pitcherId} size={40} minor={isMilb(level)} />
               <b style={{ fontSize: 14.5 }}>{r.name}</b>
-              <span style={{ color: C.mute, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{(() => { const t = teamOf(level, r.teamAbbr); return t ? <TeamBadge id={t.id} size={20} disc={false} /> : null })()}{r.teamAbbr} · {r.pitches.toLocaleString()} pitches</span>{isMilb(level) && <TranslationChip t={r.translation} />}{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
+              <span style={{ color: C.mute, fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{(() => { const t = teamOf(level, r.teamAbbr); return t ? <TeamBadge id={t.id} size={20} disc={false} /> : null })()}{r.teamAbbr} · {r.pitches.toLocaleString()} pitches{r.velo != null ? ` · ${r.velo.toFixed(1)} mph` : ''}</span>{isMilb(level) && <TranslationChip t={r.translation} />}{(() => { const w = shapeWord(r.score); return w ? <span style={{ background: w.bg, color: w.fg, fontWeight: 800, fontSize: 11, borderRadius: 3, padding: '1px 6px' }}>{w.word}</span> : null })()}
               <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#5b5347' }}>Shape Score <b style={{ color: C.ink, fontSize: 14 }}>{r.score ?? '—'}</b></span>
               <span style={{ fontWeight: 800, fontSize: 13, color: r.verdict === 'ahead' ? C.good : r.verdict === 'behind' ? C.bad : C.ink }}>{r.gap != null ? `${signed(r.gap)} /100` : ''}</span>
             </div>

@@ -74,6 +74,17 @@ export function headshotCutoutUrl(playerId: number, widthPx = 640): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:silo:current.png/w_${widthPx},q_auto:best/v1/people/${playerId}/headshot/silo/current`
 }
 
+/**
+ * Headshot URLs to try, best first, with NO generic default image: a player with no photo at one address is a 404 there, so a page can fall through to the next address instead of showing MLB's
+ * grey silhouette as if it were his picture. MLB-level players have the transparent cutout; many minor-league players do not, but have the standard headshot or the MiLB photo, so their order
+ * leads with those. (Checked against live responses: Triple-A and Spring Training pitchers all have the cutout; Florida State League and Arizona Fall League pitchers mostly do not.)
+ */
+export function headshotChain(playerId: number, widthPx = 240, minor = false): string[] {
+  const base = `https://img.mlbstatic.com/mlb-photos/image/upload/w_${widthPx},q_auto:best/v1/people/${playerId}/headshot`
+  const silo = `${base}/silo/current`, standard = `${base}/67/current`, milb = `${base}/milb/current`
+  return minor ? [standard, milb, silo] : [silo, standard, milb]
+}
+
 export function headshotUrl(playerId: number, widthPx = 40): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_${widthPx},q_auto:best/v1/people/${playerId}/headshot/67/current`
 }

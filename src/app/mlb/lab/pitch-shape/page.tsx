@@ -9,7 +9,6 @@ import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import MLBSubNav from '@/components/MLBSubNav'
 import PitchFinderV2 from '@/components/pitch-shape/PitchFinderV2'
-import LevelBar from '@/components/pitch-shape/LevelBar'
 import { Empty } from '@/components/team/ui'
 import { isProViewer } from '@/lib/require-pro'
 import { getCurrentSubscriber } from '@/lib/auth'
@@ -38,7 +37,6 @@ export default async function ShapeSandboxPage() {
           ? <Empty>League shape data isn’t built yet. Check back after the next nightly refresh.</Empty>
           : (
             <>
-              <LevelBar />
               <PitchFinderV2 isPro={isPro} pitchTypes={pitchTypes} />
             </>
           )}

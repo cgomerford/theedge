@@ -27,11 +27,14 @@ export default function TranslationBanner({ t, levelLabel }: { t: Translation | 
   if (!t) return null
   const tone = TONE[t.status]
   return (
-    <div role="note" style={{ border: `1.5px solid ${tone.edge}`, background: tone.bg, borderRadius: 6, padding: '10px 12px', margin: '12px 0' }}>
-      <div style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: tone.fg, textTransform: 'uppercase' }}>Does this shape carry from {levelLabel} to MLB?</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.45, margin: '4px 0' }}>{t.headline}</div>
-      {t.reasons.length > 0 && <ul style={{ margin: '0 0 0 18px', padding: 0, fontSize: 13, lineHeight: 1.5, color: '#3a352c' }}>{t.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
+    <details role="note" style={{ border: `1.5px solid ${tone.edge}`, background: tone.bg, borderRadius: 6, padding: '6px 12px', margin: '8px 0' }}>
+      <summary style={{ cursor: 'pointer', display: 'flex', gap: '2px 12px', alignItems: 'baseline', flexWrap: 'wrap', minHeight: 30 }}>
+        <span style={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: tone.fg, textTransform: 'uppercase' }}>Carry from {levelLabel} to MLB?</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.4 }}>{t.headline}</span>
+        <span style={{ fontSize: 11.5, color: '#5b5347' }}>(the numbers)</span>
+      </summary>
+      {t.reasons.length > 0 && <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: 13, lineHeight: 1.5, color: '#3a352c' }}>{t.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
       <div style={{ fontSize: 11.5, color: '#5b5347', marginTop: 6, lineHeight: 1.45 }}>This compares what has already happened: pitches shaped like his at {levelLabel} against MLB pitches with the same movement. It is not a forecast of how he would pitch in MLB: command, deception and sequencing stay his own.</div>
-    </div>
+    </details>
   )
 }

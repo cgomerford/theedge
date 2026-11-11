@@ -10,6 +10,7 @@ export default defineConfig({
       'src/lib/article-checks.test.ts',
       'src/lib/comments.test.ts',
       'src/lib/referral.test.ts',
+      'src/lib/mlb-assets.test.ts',
       'src/lib/log.test.ts',
       'src/lib/content-plan-core.test.ts',
       'src/lib/content-plan.test.ts',

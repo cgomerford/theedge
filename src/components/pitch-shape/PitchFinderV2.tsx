@@ -21,7 +21,6 @@ import type { MovementCellsPayload, PitcherDot, Thrower as ApiThrower } from '@/
 import { FREE_SANDBOX_TYPES, PITCH_NAMES, type Hand, type PitcherHit } from '@/lib/pitch-shape/model'
 import { PV_CSS } from './pvCss'
 import LocationPanel from './LocationPanel'
-import ShapeResultsSection, { type ResultRow } from './ShapeResultsSection'
 import FollowIsland from '@/components/signup/FollowIsland'
 import PitcherTab from './PitcherTab'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
@@ -31,7 +30,7 @@ import { buildFlight } from '@/lib/sequencing-lab/flight'
 import { makeGrid, stats, type Grid, type Span } from './heatGrid'
 import {
   ABOUT_LEVEL_PTS, MAP_BG, SPOT_MIN_SWINGS, shrunkRate,
-  boxColour, extremes, movementStats, nameSpot, rateDots, rateThrowers, splitThrowers, toneLine, toneOf,
+  boxColour, movementStats, nameSpot, rateDots, toneLine, toneOf,
 } from './finder-math'
 import { log } from '@/lib/log'
 import { limitsFor } from '@/lib/milb-shape/limits'
@@ -39,12 +38,17 @@ import { handsOf, handWord, mergeBoards, mergeCells, mergeResults, mergeThrowers
 import { setSelectedShape } from './shapeSelection'
 import { onShapePop, replaceShapeParams, useShapeView } from './shapeLevel'
 import { useLevelCaps } from './LevelBar'
-import MilbPitcherCard from './MilbPitcherCard'
+import type { LevelAvg } from './AcrossLevels'
+import { placeLabels } from './labelLayout'
+import ShapeChanges from './ShapeChanges'
+import LevelBar from './LevelBar'
+import { usePitcherLog } from './usePitcherLog'
+import { movementPoints } from '@/lib/pitch-shape/pitch-line'
 import LevelsCompared, { LEVEL_COLOUR, useLevelsCompared } from './LevelsCompared'
 import InfoTip from './InfoTip'
 import RefinePanel, { NO_SHAPE_REFINE, shapeRefined, usePitcherStatuses, type ShapeRefine } from './RefinePanel'
 import { NO_REFINE, isRefined, passes, statusChips, type Refine } from '@/lib/milb-shape/status-math'
-import { LEVEL_LABEL, LEVEL_SHORT } from '@/lib/milb-shape/levels'
+import { LEVEL_LABEL, LEVEL_SHORT, type Level } from '@/lib/milb-shape/levels'
 import { parseShapeUrl } from '@/lib/milb-shape/url'
 import { BLANK, METRICS, FindPitcher, ResultsLegend, ResultsReadout, ShapePlayerDetail, ShapePlayersPanel, ShapeScoreBoard, colourFor, type MetricId } from './ShapeResultsKit'
 import { makeResultsGrid, measuresOf, percentile, runsSaved, windowSums, windowSumsRect, type ResultsPayload } from '@/lib/pitch-shape/results-math'
@@ -60,7 +64,7 @@ const ORANGE_TEXT = '#B83A0E'   // small orange text that passes contrast
 // The animation uses a typical release point for the hand (only the movement, speed and where it crosses come from the chosen spot).
 const RELEASE = { R: { x: -1.9, z: 5.9, ext: 6.3 }, L: { x: 1.9, z: 5.9, ext: 6.3 } } as const
 const TYPICAL_MPH: Record<string, number> = { FF: 94.5, SI: 94, FC: 89, SL: 86, ST: 82, SV: 81, CU: 79, KC: 80, CH: 86, FS: 85 }
-const SPOT = { fill: '#fff', ink: '#B83A0E' }   // numbered spot markers: white with orange text, orange when chosen (no yellow, no black)
+
 type Spot = { hb: number; ivb: number; rate: number; swings: number }
 type Place = { hb: number; ivb: number; spot: number | null }
 
@@ -112,7 +116,6 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [place, setPlace] = useState<Place | null>(null)
   const [hover, setHover] = useState<{ hb: number; ivb: number; x: number; y: number } | null>(null)
   const [throwers, setThrowers] = useState<ApiThrower[] | null | undefined>(null)
-  const [league, setLeague] = useState<Diag | null>(null)
   const [leagueAll, setLeagueAll] = useState<Diag | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [q, setQ] = useState('')
@@ -123,18 +126,16 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const [slow, setSlow] = useState(6)
   const [focus, setFocus] = useState<number | null>(null)   // the chosen pitcher: his sampled pitches drawn as dots, a ring at his average
   const [dots, setDots] = useState<HDot[]>([])
-  const [showDots, setShowDots] = useState(true)
   const [showLevels, setShowLevels] = useState(false)   // draw each level's average pitch as a ring on the map
-  const [side, setSide] = useState<'find' | 'shape'>('find')   // the right-hand panel: the finder, or what the chosen shape has produced
-  const [pinned, setPinned] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // a legend entry clicked, so it stays on for touch screens
-  const [group, setGroup] = useState<'ahead' | 'behind' | 'level' | 'none' | null>(null)   // the legend entry hovered or pinned: its pitchers are named and picked out on the map
+  const [side, setSide] = useState<'find' | 'shape'>('shape')   // the right-hand panel: the finder, or what the chosen shape has produced
   const [mapIds, setMapIds] = useState<Set<number> | null>(null)   // pitchers passing the finder's filters; null = show everyone
   const [refine, setRefine] = useState<Refine>(NO_REFINE)   // minor-league views: who has made the jump, was sent down, was traded, struggled in MLB
   const [shapeRefine, setShapeRefine] = useState<ShapeRefine>(NO_SHAPE_REFINE)
   const [team, setTeam] = useState('')   // a club's abbreviation: only its pitchers are drawn, each with his name; '' = everyone
   const [focusPts, setFocusPts] = useState<[number, number][] | null>(null)
   const [tabPitcher, setTabPitcher] = useState<{ id: number; name: string } | null>(null)   // the pitcher tab, once one is opened
-  const [view, setView] = useState<'map' | 'pitcher'>('map')
+  const [view, setView] = useState<'map' | 'pitcher' | 'changes'>('map')
+  const [readOpen, setReadOpen] = useState(false)   // the three-line map explainer, opened from the top row
   const [measure, setMeasure] = useState<'whiff' | MetricId>('whiff')   // what colours the map: whiffs per swing, or what the shape has produced
   const [resPayload, setResPayload] = useState<ResultsPayload | null | undefined>(resCache.get(key))
   const [board, setBoard] = useState<Board | null | undefined>(boardCache.get(`${key}|${BOARD_V}`))
@@ -328,7 +329,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     setThrowers(undefined)
     let live = true
     Promise.all(hands.map(h => getJ<{ throwers: ApiThrower[]; league?: Diag }>(`/api/mlb/pitch-shape/throwers?type=${type}&hand=${h}&hb=${place.hb.toFixed(1)}&ivb=${place.ivb.toFixed(1)}&radius=${radius}&season=${latest}${lq}`)))
-      .then(js => { if (live) { setThrowers(js.length === 2 ? mergeThrowers(js[0].throwers, js[1].throwers) : js[0].throwers); setLeague(js[0].league ?? null) } })
+      .then(js => { if (live) { setThrowers(js.length === 2 ? mergeThrowers(js[0].throwers, js[1].throwers) : js[0].throwers) } })
       .catch(e => { log.error('PitchFinderV2', 'throwers fetch failed', e instanceof Error ? e.message : e); if (live) setThrowers(null) })
     return () => { live = false }
   }, [place, payload, type, hand, latest, locked, radius, lq])
@@ -369,8 +370,6 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   const tone = diffPts != null ? toneOf(diffPts) : null
   const spotName = place && ms ? nameSpot(type, name, place.hb, place.ivb, ms) : null
 
-  const rated: ResultRow[] = useMemo(() => (throwers ? rateThrowers(throwers, placeRate).map(r => ({ ...r, diag: throwers.find(t => t.pitcherId === r.pitcherId)!.diag })) : []), [throwers, placeRate])
-  const split = useMemo(() => splitThrowers(rated), [rated])
   const openPitcher = (id: number, nm: string) => { setTabPitcher({ id, name: nm }); setView('pitcher'); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const showOnMap = (id: number) => { setFocus(f => (f === id ? null : id)); if (typeof document !== 'undefined') document.getElementById('pf2-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
   const ratedDots = useMemo(() => rateDots(dots.map(d => ({ ...d })), (hb, ivb) => {
@@ -378,15 +377,15 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
     const s2 = stats(grid, Math.round(hb * 10), Math.round(ivb * 10), 10)
     return s2.swings >= lim.windowSwings && s2.swings > 0 ? s2.whiffs / s2.swings : null
   }, lim.ownSwings), [dots, grid, lim.windowSwings, lim.ownSwings])
-  const across = useMemo(() => {
-    const e = extremes(ratedDots, 6)
-    const row = (r: (typeof ratedDots)[number]): ResultRow => ({ pitcherId: r.pitcherId, name: r.name, teamAbbr: r.teamAbbr, nPitches: r.nPitches, nSwings: r.nSwings, nWhiffs: r.nWhiffs, estPitches: r.nPitches, share: 1, own: r.own, gapPts: r.gapPts, verdict: r.verdict, diag: r.diag, shapeRate: r.shapeRate })
-    return { ahead: e.ahead.map(row), behind: e.behind.map(row) }
-  }, [ratedDots])
   const teams = useMemo(() => Array.from(new Set(ratedDots.map(d => d.teamAbbr).filter(Boolean))).sort(), [ratedDots])
   const teamOn = team && teams.includes(team) ? team : ''
   const teamDots = useMemo(() => teamOn ? ratedDots.filter(d => d.teamAbbr === teamOn).sort((a, b) => b.nPitches - a.nPitches) : [], [ratedDots, teamOn])
-  const surname = (n: string) => n.replace(/\s+(Jr\.?|Sr\.?|II|III)$/, '').split(' ').slice(-1)[0]
+  const teamLabels = useMemo(() => {
+    if (!grid || teamDots.length === 0) return []
+    const toB = (hb: number, ivb: number) => ({ x: hb * 10 - (grid.gx0 + grid.m10) + 0.5, y: N - (ivb * 10 - (grid.gy0 + grid.m10) + 0.5) })
+    const surname = (n: string) => n.replace(/\s+(Jr\.?|Sr\.?|II|III)$/, '').split(' ').slice(-1)[0]
+    return placeLabels(teamDots.map(d => ({ id: d.pitcherId, ...toB(d.hb, d.ivb), text: surname(d.name) })), { fs: N / 44, r: N / 70, x0: 0, y0: 0, x1: N, y1: N })
+  }, [grid, teamDots, N])
   // the chosen pitcher's own shape goes to "Dial in a shape" below, so its sliders start from it
   useEffect(() => {
     const r = board && focus != null ? board.rows.find(x => x.pitcherId === focus) ?? null : null
@@ -423,23 +422,16 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   }, [refined, refine, shapeRefine, universe, statuses, board])
   const idFilter = mlb ? mapIds : refineIds   // the pitchers the map and list show: the finder's filters at MLB, the Refine choices at a minor-league level
   const chipsFor = useMemo(() => (statuses ? (id: number) => statusChips(statuses.statuses.get(id), statuses.season, statuses.leagueRuns100, statuses.asOf) : undefined), [statuses])
-  const shownDots = useMemo(() => ratedDots.filter(d => (!teamOn || d.teamAbbr === teamOn) && (!idFilter || idFilter.has(d.pitcherId))), [ratedDots, teamOn, idFilter])
-  const inGroup = (d: { verdict: string | null }, g: typeof group) => g === 'none' ? d.verdict == null : d.verdict === g
-  const groupDots = useMemo(() => (group && focus == null ? shownDots.filter(d => inGroup(d, group)).sort((a, b) => b.nPitches - a.nPitches) : []), [shownDots, group, focus]) // eslint-disable-line react-hooks/exhaustive-deps
-  // the pitcher under the pointer, if one is close enough: his name is shown instead of the cell read
-  const hoverDot = useMemo(() => {
-    if (!hover || !showDots || focus != null) return null
-    let best: (typeof shownDots)[number] | null = null, bd = 0.9
-    for (const d of shownDots) { if (group && !inGroup(d, group)) continue; const dd = Math.hypot(d.hb - hover.hb, d.ivb - hover.ivb); if (dd < bd) { bd = dd; best = d } }
-    return best
-  }, [hover, showDots, focus, shownDots, group]) // eslint-disable-line react-hooks/exhaustive-deps
+  // each level's average for the pitch and the chosen pitcher's hand, so his row at every level is set against that level's own average
+  const levelAvg = useMemo(() => {
+    const d = focusHand === 'L' ? cmpL : cmpR
+    return Object.fromEntries((d?.levels ?? []).map(l => [l.level, { whiff: l.swings > 0 ? l.whiffs / l.swings : null, velo: l.mean.velo, ivb: l.mean.ivb, hb: l.mean.hb, slotKnown: l.slotKnown }])) as Partial<Record<Level, LevelAvg>>
+  }, [focusHand, cmpL, cmpR])
   const focusDot = focus != null ? ratedDots.find(d => d.pitcherId === focus) ?? null : null
-  // a pitcher with 100 to 299 pitches is on the level's board but not a dot on the map: his board row stands in, so his card still opens
-  const milbRowAsDot = useMemo(() => {
-    const r = !mlb && focus != null && !focusDot ? board?.rows.find(x => x.pitcherId === focus) ?? null : null
-    return r && r.velo != null && r.slot != null ? { pitcherId: r.pitcherId, name: r.name, teamAbbr: r.teamAbbr, nPitches: r.pitches, velo: r.velo, ivb: r.ivb, hb: r.hb, slot: r.slot, nSwings: r.ownRaw.n.swings, nWhiffs: r.ownRaw.whiff == null ? 0 : Math.round(r.ownRaw.whiff * r.ownRaw.n.swings), diag: undefined } : null
-  }, [mlb, focus, focusDot, board])
-  const focusT = focusDot && focusPts ? { name: focusDot.name, sample: focusPts.length, points: focusPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
+  const focusLog = usePitcherLog(focus, payload?.latest ?? null, level)   // every pitch he threw: the dots are all of them, not the stored sample
+  const focusAll = focusLog ? movementPoints(focusLog.pitches, type, focusLog.throws) : null
+  const focusAllPts = focusAll && focusAll.length ? focusAll : focusPts
+  const focusT = focusDot && focusAllPts ? { name: focusDot.name, sample: focusAllPts.length, points: focusAllPts, hb: focusDot.hb, ivb: focusDot.ivb, velo: focusDot.velo } : null
   // speed for the animation: the average of the pitchers who throw this shape (weighted by how many land here), else a typical speed for the pitch
   const flightSpeed = useMemo(() => {
     const w = (throwers ?? []).reduce((s, t) => s + t.estPitches, 0)
@@ -488,35 +480,37 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       <style>{PV_CSS}</style>
       <style>{'.pf2-root .pv-pill{border-radius:4px}@media(max-width:960px){.pf2-grid{grid-template-columns:1fr !important}} .pf2-pill{min-height:44px;padding:0 16px;font-size:14px}'}</style>
 
-      <div className="pv-k">⊕ MLB · Lab · Pitch shape</div>
       {/* the heading and the long explanation moved to the guide page; the heading stays for screen readers and search */}
       <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Pitch Shape Lab: which {lc}s make hitters miss, and who throws them</h1>
-      <p style={{ fontSize: 13.5, margin: '2px 0 12px' }}>
-        <Link href="/mlb/lab/pitch-shape/guide" style={{ color: ORANGE_TEXT, fontWeight: 700 }}>How to read the Pitch Shape Lab, with pictures and recordings</Link>
-      </p>
 
-      <details style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '2px 16px', marginBottom: 12, display: view === 'map' ? undefined : 'none' }}>
-        <summary className="pv-k" style={{ cursor: 'pointer', minHeight: 28 }}>How to read this map</summary>
-        <div className="pf2-read" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, marginTop: 6 }}>
-          <style>{'@media(max-width:800px){.pf2-read{grid-template-columns:1fr !important}}'}</style>
-          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>1 · The squares are not the strike zone.</b> Each square is a way a pitch can <i>move</i>: further right means more run toward the pitcher’s arm side, higher means more ride. Where the pitch crosses the plate is the separate plate view on the right.</div>
-          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>2 · The colour is how often hitters miss.</b> For every {lc} that moves like that square, orange means more swings missed than the league average, blue-grey fewer. Blank means too few swings to say.</div>
-          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>3 · Choose a red area.</b> That movement is the most effective shape. Below it are the pitchers who throw it: those getting the results the shape usually gets, and those who are not, which suggests something other than the shape is holding them back.</div>
-        </div>
-      </details>
-
-      {tabPitcher && <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '0 0 12px' }}>
+      <LevelBar trailing={<>
+        <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button role="tab" aria-selected={view === 'map'} type="button" onClick={() => setView('map')} style={tabStyle(view === 'map')}>League map</button>
+        <button role="tab" aria-selected={view === 'changes'} type="button" onClick={() => setView('changes')} style={tabStyle(view === 'changes')}>What changed</button>
         {tabPitcher && (
           <span style={{ display: 'inline-flex', gap: 0 }}>
             <button role="tab" aria-selected={view === 'pitcher'} type="button" onClick={() => setView('pitcher')} style={{ ...tabStyle(view === 'pitcher'), borderRadius: '4px 0 0 4px' }}>{tabPitcher.name}</button>
             <button type="button" aria-label={`Close the ${tabPitcher.name} tab`} onClick={() => { setTabPitcher(null); setView('map') }} style={{ ...tabStyle(false), borderRadius: '0 4px 4px 0', borderLeft: 0, minWidth: 44 }}>×</button>
           </span>
         )}
-      </div>}
+        </div>
+        {view === 'map' && <button type="button" aria-expanded={readOpen} onClick={() => setReadOpen(o => !o)} style={{ ...tabStyle(false), minHeight: 40, fontSize: 13 }}>{readOpen ? 'Hide how to read' : 'How to read'}</button>}
+        <Link href="/mlb/lab/pitch-shape/guide" style={{ color: ORANGE_TEXT, fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>Guide →</Link>
+      </>} />
+      {view === 'map' && readOpen && (
+        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 14px', marginBottom: 8 }}>
+        <div className="pf2-read" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16, margin: '2px 0 10px' }}>
+          <style>{'@media(max-width:800px){.pf2-read{grid-template-columns:1fr !important}}'}</style>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>1 · The squares are not the strike zone.</b> Each square is a way a pitch can <i>move</i>: further right means more run toward the pitcher’s arm side, higher means more ride. Where the pitch crosses the plate is the separate plate view on the right.</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>2 · The colour is how often hitters miss.</b> For every {lc} that moves like that square, orange means more swings missed than the league average, blue-grey fewer. Blank means too few swings to say.</div>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: '#3a352c' }}><b>3 · Choose a red area.</b> That movement is the most effective shape. Below it are the pitchers who throw it: those getting the results the shape usually gets, and those who are not, which suggests something other than the shape is holding them back.</div>
+        </div>
+        </div>
+      )}
+      {view === 'changes' && <ShapeChanges season={latest} onOpen={openPitcher} />}
       {view === 'pitcher' && tabPitcher && <PitcherTab pitcherId={tabPitcher.id} season={latest} isPro={isPro} onClose={() => setView('map')} />}
       <div style={{ display: view === 'map' ? undefined : 'none' }}>
-      <div className="pf2-filters" role="group" aria-label="Filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', alignItems: 'flex-end', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '10px 14px', margin: '0 0 12px' }}>
+      <div className="pf2-filters" role="group" aria-label="Filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', alignItems: 'flex-end', background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '8px 12px', margin: '0 0 8px' }}>
         <label style={fLabel}><span className="pv-k">Pitch</span>
           <select value={type} onChange={e => setType(e.target.value)} style={fSelect} aria-label="Pitch type">
             {types.map(t => { const lockedT = !isPro && !lookLeft && !isFree(t); return <option key={t} value={t} disabled={lockedT}>{PITCH_NAMES[t] ?? t}{lockedT ? ' (Pro)' : ''}</option> })}
@@ -547,7 +541,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
           </select>
         </label>
         <label style={fLabel}><span className="pv-k">Team</span>
-          <select value={teamOn} onChange={e => { setTeam(e.target.value); setFocus(null); setShowDots(true) }} style={fSelect} aria-label="Show every pitcher for one team on the map">
+          <select value={teamOn} onChange={e => { setTeam(e.target.value); setFocus(null) }} style={fSelect} aria-label="Show every pitcher for one team on the map">
             <option value="">All teams</option>
             {teams.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -564,28 +558,69 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
         : payload === undefined ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Loading the league map…</div>
         : payload === null || !grid || leagueRate == null ? <Empty>{mlb ? <>The 0.1-inch league map isn’t built for {handWord(hand)} {lc}s yet.</> : caps && caps.coverage === 'none' ? <>No {LEVEL_LABEL[level]} data is loaded yet.</> : <>{LEVEL_LABEL[level]} has no {handWord(hand)} {lc} map in the data yet.</>}</Empty>
         : (
-        <div className="pf2-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1fr)', gap: 20, alignItems: 'start', marginTop: 8 }}>
-          <div>
-            <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.4, margin: '0 0 8px' }}><b style={{ color: C.ink }}>↑ More ride:</b> the ball drops less than the hitter expects. <b style={{ color: C.ink }}>→ More run:</b> it moves further toward the pitcher’s arm side.</div>
-            {carryMsg && <div role="status" style={{ background: C.soft, border: `1px solid ${C.line}`, borderRadius: 6, padding: '9px 12px', fontSize: 13.5, color: '#3a352c', marginBottom: 10 }}>{carryMsg}</div>}
-            {focus != null ? (() => {
+        <>
+        <div id="pf2-selected" role="status" aria-live="polite" style={{ background: '#fff', color: C.ink, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.orange}`, borderRadius: 8, padding: '12px 16px', margin: '4px 0 10px', display: 'flex', flexWrap: 'wrap', gap: '8px 22px', alignItems: 'center' }}>
+          {(() => {
+            const k2: React.CSSProperties = { fontSize: 10.5, letterSpacing: '.14em', fontWeight: 800, textTransform: 'uppercase', color: ORANGE_TEXT }
+            const big: React.CSSProperties = { fontWeight: 800, fontSize: 22, letterSpacing: '-.01em', lineHeight: 1.1 }
+            const num: React.CSSProperties = { fontWeight: 800, fontSize: 17, fontVariantNumeric: 'tabular-nums' }
+            const sub: React.CSSProperties = { fontSize: 12.5, color: '#5b5347', lineHeight: 1.4 }
+            const bt: React.CSSProperties = { minHeight: 38, padding: '0 14px', borderRadius: 4, border: `1px solid ${C.line}`, background: '#fff', color: C.ink, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }
+            if (focus != null) {
               const fr = board?.rows.find(r => r.pitcherId === focus) ?? null
               const nm = fr?.name ?? focusDot?.name ?? 'this pitcher', tm = fr?.teamAbbr ?? focusDot?.teamAbbr ?? ''
-              const btn: React.CSSProperties = { minHeight: 36, padding: '0 12px', borderRadius: 4, border: '1px solid #13694F', background: '#fff', color: '#13694F', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }
+              const v = fr?.velo ?? focusDot?.velo ?? null, ride = fr?.ivb ?? focusDot?.ivb ?? null, run = fr?.hb ?? focusDot?.hb ?? null
               return (
-                <div role="status" aria-live="polite" style={{ display: 'flex', gap: '8px 12px', alignItems: 'center', flexWrap: 'wrap', background: '#E3F3EC', border: '1px solid #b9dfcd', color: C.ink, borderRadius: 6, padding: '11px 14px', fontSize: 13.5, marginBottom: 10 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#13694F', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13, flex: 'none' }}>✓</span>
-                  <span style={{ flex: '1 1 260px' }}><b>You have selected {nm}{tm ? ` (${tm})` : ''}.</b> Only his {lc}s are on the map, his {mlb ? 'full read' : `${LEVEL_LABEL[level]} read and the closest MLB shape`} {mlb ? 'is' : 'are'} below.</span>
-                  <a href="#pf2-detail" style={btn}>See his read ↓</a>
-                  <button type="button" onClick={() => setFocus(null)} style={btn}>Clear</button>
-                </div>
+                <>
+                  <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                    <div style={k2}>Pitcher selected · his {lc}</div>
+                    <div style={big}>{nm}{tm ? <span style={{ fontWeight: 600, color: C.mute, fontSize: 16 }}> · {tm}</span> : null}</div>
+                    <div style={sub}>Only his {lc}s are on the map. His full read is below.</div>
+                  </div>
+                  {ride != null && run != null && (
+                    <div style={{ display: 'flex', gap: 18 }}>
+                      <div><div style={k2}>Ride</div><div style={num}>{ride.toFixed(1)} in</div></div>
+                      <div><div style={k2}>Run</div><div style={num}>{run.toFixed(1)} in</div></div>
+                      {v != null && <div><div style={k2}>Speed</div><div style={num}>{v.toFixed(1)} mph</div></div>}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <a href="#pf2-detail" style={bt}>See his read ↓</a>
+                    <button type="button" onClick={() => setFocus(null)} style={bt}>Clear</button>
+                  </div>
+                </>
               )
-            })() : (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: '#FFF1EA', border: '1px solid #f3dccf', color: C.ink, borderRadius: 6, padding: '11px 14px', fontSize: 13.5, marginBottom: 10 }}>
-              <span style={{ width: 22, height: 22, borderRadius: '50%', background: C.orange, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12, flex: 'none' }}>1</span>
-              <span><b>Start here:</b> click a numbered spot, or any red area, to see what makes it work and who throws a pitch like it.</span>
-            </div>
-            )}
+            }
+            if (place && spotName) {
+              return (
+                <>
+                  <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                    <div style={k2}>Shape selected</div>
+                    <div style={{ ...big, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>{spotName.name}{tone && <span style={{ fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: tone === 'red' ? '#FFE4D6' : tone === 'blue' ? '#E3EAF2' : C.soft, color: tone === 'red' ? ORANGE_TEXT : tone === 'blue' ? '#3F5F86' : '#5b5347' }}>{tone === 'red' ? 'HIGH-MISS SHAPE' : tone === 'blue' ? 'LOW-MISS SHAPE' : 'ORDINARY SHAPE'}</span>}</div>
+                    <div style={sub}>{spotName.why}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                    <div><div style={k2}>Ride</div><div style={num}>{place.ivb.toFixed(1)} in</div></div>
+                    <div><div style={k2}>Run</div><div style={num}>{place.hb.toFixed(1)} in</div></div>
+                    <div><div style={k2}>Window</div><div style={num}>±{radius} in</div></div>
+                    {placeRate != null && <div><div style={k2}>Hitters miss</div><div style={num}>{(placeRate * 100).toFixed(1)}%{diffPts != null ? <span style={{ fontSize: 12.5, fontWeight: 700, color: '#5b5347' }}> {pts(diffPts)} vs avg</span> : null}</div></div>}
+                  </div>
+                </>
+              )
+            }
+            return (
+              <div style={{ flex: '1 1 260px' }}>
+                <div style={k2}>No shape selected yet</div>
+                <div style={{ ...big, fontSize: 18 }}>Click anywhere on the map to dial in a pitch movement</div>
+                <div style={sub}>You get its results, and who throws it, over- and under-performing.</div>
+              </div>
+            )
+          })()}
+        </div>
+        <div className="pf2-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,1fr)', gap: 16, alignItems: 'start', marginTop: 4 }}>
+          <div>
+            <div style={{ fontSize: 12.5, color: '#5b5347', lineHeight: 1.4, margin: '0 0 6px' }}><b style={{ color: C.ink }}>↑ More ride:</b> the ball drops less than the hitter expects. <b style={{ color: C.ink }}>→ More run:</b> it moves further toward the pitcher’s arm side. Click anywhere to change the shape.</div>
+            {carryMsg && <div role="status" style={{ background: C.soft, border: `1px solid ${C.line}`, borderRadius: 6, padding: '9px 12px', fontSize: 13.5, color: '#3a352c', marginBottom: 10 }}>{carryMsg}</div>}
 
             <div style={{ display: 'grid', gridTemplateColumns: '26px minmax(0,1fr)', gridTemplateRows: 'auto 22px', maxWidth: 'max(420px, min(100%, calc(100vh - 160px)))', margin: '0 auto' }}>
               <div style={{ position: 'relative' }}>
@@ -597,9 +632,9 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                 onClick={e => {
                   const r = e.currentTarget.getBoundingClientRect()
                   const hb = payload.hb0 - HALF + ((e.clientX - r.left) / r.width) * 2 * HALF, ivb = payload.ivb0 + HALF - ((e.clientY - r.top) / r.height) * 2 * HALF
-                  if (showDots) {   // a click close to a pitcher's dot chooses him; anywhere else chooses a place
-                    let best: (typeof ratedDots)[number] | null = null, bd = teamOn ? 1.6 : 0.9
-                    for (const d of ratedDots) { if (focus != null && d.pitcherId !== focus) continue; if (teamOn && focus == null && d.teamAbbr !== teamOn) continue; if (idFilter && focus == null && !idFilter.has(d.pitcherId)) continue; const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
+                  if (teamOn && focus == null) {   // with a team chosen, a click close to one of his pitchers picks that pitcher; anywhere else dials in a movement
+                    let best: (typeof teamDots)[number] | null = null, bd = 1.6
+                    for (const d of teamDots) { const dd = Math.hypot(d.hb - hb, d.ivb - ivb); if (dd < bd) { bd = dd; best = d } }
                     if (best) { setFocus(best.pitcherId); return }
                   }
                   setShowAll(false); setFocus(null); setSide('shape'); setPlace({ hb: Math.round(hb * 10) / 10, ivb: Math.round(ivb * 10) / 10, spot: null })
@@ -610,45 +645,21 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   {focusT && focusT.points.map((p, i) => { const b = toBox(p[0], p[1]), inside = inBox(p[0], p[1]); return <circle key={i} cx={b.x} cy={b.y} r={N / 120} fill={inside ? C.orange : C.ink} fillOpacity={inside ? 1 : 0.6} stroke={inside ? C.ink : 'none'} strokeWidth={N / 700} /> })}
                   {focusT && (() => { const b = toBox(focusT.hb, focusT.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
                   {shown && (() => { const b = toBox(shown.hb, shown.ivb); return <circle cx={b.x} cy={b.y} r={N / 38} fill="none" stroke={C.ink} strokeWidth={N / 130} /> })()}
-                  {showDots && ratedDots.filter(d => focus != null ? d.pitcherId === focus : (!teamOn || d.teamAbbr === teamOn) && (!idFilter || idFilter.has(d.pitcherId))).map(d => {   // with a pitcher chosen, only he stays on the map
-                    const b = toBox(d.hb, d.ivb), on = focus === d.pitcherId
-                    const dim = group != null && focus == null && !inGroup(d, group), hit = group != null && focus == null && inGroup(d, group)
-                    const fill = d.verdict === 'ahead' ? C.orange : d.verdict === 'behind' ? '#5E7A99' : d.verdict === 'level' ? '#fff' : 'none'
-                    const big = teamOn && focus == null
-                    return (
-                      <g key={d.pitcherId} opacity={dim ? 0.12 : 1}>
-                        <circle cx={b.x} cy={b.y} r={on ? N / 70 : big || hit ? N / 75 : N / 110} fill={fill} stroke={on ? C.ink : d.verdict ? C.ink : C.mute} strokeWidth={on ? N / 150 : big ? N / 200 : N / 330} strokeOpacity={d.verdict ? 0.9 : 0.5} />
-                        {(big || (hit && groupDots.length <= 30)) && <text x={b.x} y={b.y - N / 55} textAnchor="middle" fontSize={N / 42} fontWeight={800} fill={C.ink} stroke="#EDE8DC" strokeWidth={N / 170} paintOrder="stroke">{surname(d.name)}</text>}
-                      </g>
-                    )
-                  })}
+                  {teamOn && focus == null && teamLabels.map(l => { const d = teamDots.find(x => x.pitcherId === l.id); if (!d) return null; const b = toBox(d.hb, d.ivb); return l.leader ? <line key={`l${l.id}`} x1={b.x} y1={b.y} x2={l.x} y2={l.y - N / 120} stroke={C.ink} strokeWidth={N / 600} strokeOpacity={0.55} /> : null })}
+                  {teamOn && focus == null && teamDots.map(d => { const b = toBox(d.hb, d.ivb); return <circle key={d.pitcherId} cx={b.x} cy={b.y} r={N / 70} fill={C.orange} fillOpacity={0.92} stroke={C.ink} strokeWidth={N / 220} /> })}
+                  {teamOn && focus == null && teamLabels.map(l => <text key={`t${l.id}`} x={l.x} y={l.y} textAnchor={l.anchor} fontSize={N / 44} fontWeight={800} fill={C.ink} stroke="#EDE8DC" strokeWidth={N / 190} paintOrder="stroke">{l.text}</text>)}
                   {showLevels && (hand === 'B' ? (['R', 'L'] as const) : ([hand] as const)).flatMap(h => { const cd = h === 'R' ? cmpR : cmpL; return (cd ? cd.levels : []).map(l => ({ l, h })) }).map(({ l, h }) => { const b = toBox(l.mean.hb, l.mean.ivb); return (
                     <g key={`${l.level}${h}`}><circle cx={b.x} cy={b.y} r={N / 42} fill={LEVEL_COLOUR[l.level]} fillOpacity={0.18} stroke={LEVEL_COLOUR[l.level]} strokeWidth={N / 110} strokeDasharray={hand === 'B' && h === 'L' ? `${N / 90} ${N / 140}` : undefined} />
                       <text x={b.x} y={b.y - N / 34} textAnchor="middle" fontSize={N / 40} fontWeight={800} fill={LEVEL_COLOUR[l.level]} stroke="#EDE8DC" strokeWidth={N / 190} paintOrder="stroke">{LEVEL_SHORT[l.level]}{hand === 'B' ? ` ${h}` : ''}</text></g>) })}
-                  {spots.map((s, i) => {
-                    const b = toBox(s.hb, s.ivb), on = place?.spot === i
-                    return (
-                      <g key={i}>
-                        <circle cx={b.x} cy={b.y} r={N / 30} fill={on ? SPOT.ink : SPOT.fill} stroke={on ? '#fff' : SPOT.ink} strokeWidth={N / 110} />
-                        <text x={b.x} y={b.y + N / 95} textAnchor="middle" fontSize={N / 26} fontWeight={800} fill={on ? '#fff' : SPOT.ink}>{i + 1}</text>
-                      </g>
-                    )
-                  })}
                 </svg>
-                {spots.map((s, i) => { const b = toBox(s.hb, s.ivb); return <button key={i} type="button" aria-label={`Spot ${i + 1}: ${(s.rate * 100).toFixed(0)}% of swings miss`} onClick={e => { e.stopPropagation(); setShowAll(false); setFocus(null); setSide('shape'); setPlace({ hb: Math.round(s.hb * 10) / 10, ivb: Math.round(s.ivb * 10) / 10, spot: i }) }} style={{ position: 'absolute', left: `${(b.x / N) * 100}%`, top: `${(b.y / N) * 100}%`, width: 44, height: 44, transform: 'translate(-50%,-50%)', background: 'transparent', border: 0, cursor: 'pointer' }} /> })}
-                {hoverDot && hover && (
-                  <div style={{ position: 'absolute', left: hover.x + 12, top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12.5, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined, zIndex: 3 }}>
-                    <b>{hoverDot.name}</b> · {hoverDot.teamAbbr} · {hoverDot.verdict === 'ahead' ? 'ahead of his own shape' : hoverDot.verdict === 'behind' ? 'behind his shape' : hoverDot.verdict === 'level' ? 'about level' : 'too few swings'}
-                  </div>
-                )}
-                {!hoverDot && hover && metric && rGrid && rLeague && (() => {
+                {hover && metric && rGrid && rLeague && (() => {
                   const m = measuresOf(windowSums(rGrid, Math.round(hover.hb * 10), Math.round(hover.ivb * 10), r10), lim.gated), v = metric.get(m, rLeague)
                   return (
                     <div style={{ position: 'absolute', left: Math.min(hover.x + 12, 9999), top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined }}>
                       {v == null ? `${m.pitches.toLocaleString()} pitches · too few to show ${metric.label.toLowerCase()}` : `${metric.label}: ${metric.fmt(v)} · ${m.pitches.toLocaleString()} pitches`}
                     </div>)
                 })()}
-                {!hoverDot && hover && !metric && (() => { const w = win(hover.hb, hover.ivb); return w ? (
+                {hover && !metric && (() => { const w = win(hover.hb, hover.ivb); return w ? (
                   <div style={{ position: 'absolute', left: Math.min(hover.x + 12, 9999), top: hover.y + 12, background: C.ink, color: '#fff', fontSize: 12, padding: '6px 9px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap', transform: hover.x > 260 ? 'translateX(-110%)' : undefined }}>
                     {w.rate != null ? `${(w.rate * 100).toFixed(1)}% of ${w.swings.toLocaleString()} swings miss · ${w.swings >= lim.strongSwings ? 'strong' : 'thin'} sample` : `${w.swings} swings · ${w.swings === 0 ? 'none here' : `under ${lim.windowSwings}`}, not estimated`}
                   </div>) : null })()}
@@ -670,24 +681,13 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
               {!metric && <div style={{ color: '#5b5347', marginTop: 6 }}>League average: <b style={{ color: C.ink }}>{(leagueRate * 100).toFixed(1)}%</b> of swings miss</div>}
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: 12.5, color: '#3a352c' }}>
                 {focus != null && <button type="button" onClick={() => setFocus(null)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1.5px solid ${C.orange}`, background: '#fff7f3', color: ORANGE_TEXT, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Clear selected pitcher</button>}
-                <button type="button" aria-pressed={showDots} onClick={() => setShowDots(v => !v)} style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showDots ? C.ink : C.line}`, background: showDots ? C.ink : '#fff', color: showDots ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{showDots ? 'Pitchers: on' : 'Pitchers: off'}</button>
                 <button type="button" aria-pressed={showLevels} disabled={!cmpData || cmpData.levels.length === 0} onClick={() => setShowLevels(v => !v)} title="Draw the average pitch at every level we hold" style={{ minHeight: 44, padding: '0 12px', borderRadius: 4, border: `1px solid ${showLevels ? C.ink : C.line}`, background: showLevels ? C.ink : '#fff', color: showLevels ? '#fff' : C.ink, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', opacity: cmpData && cmpData.levels.length ? 1 : 0.5 }}>{showLevels ? 'Level averages: on' : 'Level averages: off'}</button>
-                {idFilter && showDots && <span style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE_TEXT }}>Showing {ratedDots.filter(d => idFilter.has(d.pitcherId) && (!teamOn || d.teamAbbr === teamOn)).length} of {ratedDots.length} pitchers that pass the filters</span>}
                 {teamOn && teamDots.length > 0 && <div style={{ flexBasis: '100%', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <b>{teamOn} {lc} throwers:</b>
+                  <b>{teamOn} {lc} throwers, each dot is his average movement on the map:</b>
                   {teamDots.map(d => <button key={d.pitcherId} type="button" onClick={() => setFocus(f => (f === d.pitcherId ? null : d.pitcherId))} style={{ minHeight: 34, padding: '0 10px', borderRadius: 4, border: `1px solid ${focus === d.pitcherId ? C.ink : C.line}`, background: focus === d.pitcherId ? C.ink : '#fff', color: focus === d.pitcherId ? C.cream : C.ink, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{d.name}</button>)}
                 </div>}
-                {([['ahead', C.orange, 'ahead of his own shape', C.ink], ['behind', '#5E7A99', 'behind it', C.ink], ['level', '#fff', 'about level', C.ink], ['none', 'transparent', 'too few swings', C.mute]] as const).map(([g, bg, label, edge]) => (
-                  <button key={g} type="button" aria-pressed={pinned === g} onMouseEnter={() => setGroup(g)} onMouseLeave={() => setGroup(pinned)} onFocus={() => setGroup(g)} onBlur={() => setGroup(pinned)} onClick={() => { const next = pinned === g ? null : g; setPinned(next); setGroup(next) }} title={`Show the pitchers who are ${label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: group === g ? C.soft : 'none', border: `1px solid ${group === g ? C.ink : 'transparent'}`, borderRadius: 4, padding: '4px 7px', minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, color: '#3a352c' }}><i style={{ width: 11, height: 11, borderRadius: '50%', background: bg, border: `1px solid ${edge}`, display: 'inline-block' }} />{label}</button>
-                ))}
               </div>
-              {group && focus == null && (
-                <div style={{ marginTop: 8, padding: '8px 10px', background: C.soft, borderRadius: 6, fontSize: 13, lineHeight: 1.6 }}>
-                  <b>{group === 'ahead' ? 'Ahead of his own shape' : group === 'behind' ? 'Behind his shape' : group === 'level' ? 'About level' : 'Too few swings'} ({groupDots.length}):</b>{' '}
-                  {groupDots.length === 0 ? 'nobody in view.' : groupDots.slice(0, 60).map((d, i) => <span key={d.pitcherId}>{i ? ', ' : ''}<button type="button" onClick={() => setFocus(d.pitcherId)} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: ORANGE_TEXT, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>{d.name}</button> <span style={{ color: C.mute }}>{d.teamAbbr}</span></span>)}{groupDots.length > 60 ? ` and ${groupDots.length - 60} more` : ''}
-                </div>
-              )}
-              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Each dot is one pitcher at his average {lc}. Hover a dot for his name and click it to see him; hover or click a colour above to name everyone in that group. Faded squares = thinner sample ({lim.windowSwings}–{lim.strongSwings} swings) · blank = {lim.gated ? <>under {lim.windowSwings}, not estimated</> : <>no swing recorded; a square with few swings is pulled toward the league average, so one swing cannot paint it red or blue</>}</div>
+              <div style={{ color: '#5b5347', marginTop: 4, fontSize: 12.5 }}>Faded squares = thinner sample ({lim.windowSwings}–{lim.strongSwings} swings) · blank = {lim.gated ? <>under {lim.windowSwings}, not estimated</> : <>no swing recorded; a square with few swings is pulled toward the league average, so one swing cannot paint it red or blue</>}</div>
             </div>
 
             {place && (
@@ -701,11 +701,11 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
                   <>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
                       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><circle cx="7" cy="8" r="3.2" fill={C.orange} stroke={C.ink} strokeWidth="1" /><circle cx="15" cy="14" r="3.2" fill={C.ink} fillOpacity=".6" /></svg>
-                      <span><b>Each dot is one of {focusT.name}’s {lc}s</b> (we plot {focusT.sample}), placed by how that pitch moved. <b style={{ color: ORANGE_TEXT }}>Orange</b> dots moved inside the dashed box, like the pitch you picked ({focusT.points.filter(p => inBox(p[0], p[1])).length} of {focusT.sample}). <b>Dark</b> dots moved differently. A tight cluster means he throws it the same way every time; a wide scatter means it moves around.</span>
+                      <span><b>Each dot is one of {focusT.name}’s {lc}s</b> (all {focusT.sample.toLocaleString()} with tracked movement), placed by how that pitch moved. <b style={{ color: ORANGE_TEXT }}>Orange</b> dots moved inside the dashed box, like the pitch you picked ({focusT.points.filter(p => inBox(p[0], p[1])).length} of {focusT.sample}). <b>Dark</b> dots moved differently. A tight cluster means he throws it the same way every time; a wide scatter means it moves around.</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
                       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden style={{ flex: 'none', marginTop: 1 }}><circle cx="11" cy="11" r="7" fill="none" stroke={C.ink} strokeWidth="2" /></svg>
-                      <span><b>The ring</b> marks his average {lc}: {focusT.ivb.toFixed(1)} in of ride (how much it rises against gravity), {focusT.hb.toFixed(1)} in of run (sideways toward his arm side), at {focusT.velo.toFixed(1)} mph. We plot at most 60 pitches per pitcher, so the counts are a sample, not every pitch.</span>
+                      <span><b>The ring</b> marks his average {lc}: {focusT.ivb.toFixed(1)} in of ride (how much it rises against gravity), {focusT.hb.toFixed(1)} in of run (sideways toward his arm side), at {focusT.velo.toFixed(1)} mph.</span>
                     </div>
                   </>
                 ) : (
@@ -743,36 +743,18 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             <div style={{ display: side === 'shape' ? undefined : 'none' }}>
             {place && placeStats && spotName ? (
               <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14 }}>
-                <div className="pv-k" style={{ color: ORANGE_TEXT }}>{place.spot != null ? `Spot ${place.spot + 1} of ${spots.length} · where ${lc}s work best` : 'The place you chose'}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '4px 0 6px' }}>
-                  <span style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', lineHeight: 1.05 }}>{spotName.name}</span>
-                  {tone && <span style={{ fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: tone === 'red' ? '#FFE4D6' : tone === 'blue' ? '#E3EAF2' : C.soft, color: tone === 'red' ? ORANGE_TEXT : C.ink }}>{tone === 'red' ? 'HIGH-MISS SHAPE' : tone === 'blue' ? 'LOW-MISS SHAPE' : 'ORDINARY SHAPE'}</span>}
-                </div>
-                <p style={{ fontSize: 14, color: '#5b5347', lineHeight: 1.5, margin: '0 0 6px' }}>{spotName.why}</p>
-                {tone && <p style={{ fontSize: 14, color: '#3a352c', lineHeight: 1.5, margin: '0 0 8px', fontWeight: 600 }}>{toneLine(tone, name)}</p>}
-                {placeRate == null ? <p style={{ fontSize: 13.5, color: '#5b5347' }}>{lim.gated ? <>Under {lim.windowSwings} swings of league {lc}s move like this, so no rate is shown.</> : <>No swing at league {lc}s that move like this has been recorded, so no rate is shown.</>} Choose a coloured square.</p> : (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 800, fontSize: 44, letterSpacing: '-.03em', lineHeight: 1 }}>{(placeRate * 100).toFixed(1)}%</span>
-                      <span style={{ fontSize: 14, color: '#5b5347' }}>of swings miss · <b style={{ color: C.ink }}>{pts(diffPts ?? 0)}</b> vs average</span>
-                    </div>
-                    <div style={{ position: 'relative', height: 8, background: C.soft, borderRadius: 4, margin: '18px 0 10px' }} aria-hidden>
-                      <span style={{ position: 'absolute', left: `${barPos(leagueRate)}%`, top: -6, width: 2, height: 20, background: C.ink }}><em style={{ position: 'absolute', top: -16, left: -14, fontStyle: 'normal', fontSize: 10.5, fontWeight: 700, color: '#5b5347', whiteSpace: 'nowrap' }}>avg {(leagueRate * 100).toFixed(1)}%</em></span>
-                      <span style={{ position: 'absolute', left: `${barPos(placeRate)}%`, top: -6, width: 20, height: 20, marginLeft: -10, borderRadius: '50%', border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(26,26,26,.25)', background: C.orange }} />
-                    </div>
-                  </>
-                )}
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13.5, fontWeight: 700 }}>
-                  <span>Ride {place.ivb.toFixed(1)} in</span><span>Run {place.hb.toFixed(1)} in</span><span>{placeStats.swings.toLocaleString()} swings within ±{radius} in</span>
-                </div>
-                {rGrid && rLeague && (() => {
+                {rGrid && rLeague ? (() => {
                   const here = measuresOf(windowSums(rGrid, Math.round(place.hb * 10), Math.round(place.ivb * 10), r10), lim.gated), saved = runsSaved(here, rLeague)
                   const score = saved != null && board && board.dist.length ? percentile(board.dist, saved) : null
-                  return <ResultsReadout level={level} here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
-                })()}
-                <span style={{ display: 'inline-block', marginTop: 10, fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= lim.strongSwings ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
+                  return <ResultsReadout flush level={level} here={here} league={rLeague} saved={saved} score={score} lc={lc} radius={radius} spanLabel={span === 'latest' ? String(latest) : `${payload.seasons[0].season}–${latest}`} />
+                })() : <div style={{ fontSize: 13, color: '#5b5347' }}>{resPayload === undefined ? 'Loading what this shape has produced…' : 'What these shapes have produced isn’t built for this pitch yet; it fills after the weekly shape-results job runs.'}</div>}
+                {placeRate == null && <p style={{ fontSize: 13.5, color: '#5b5347', margin: '10px 0 0' }}>{lim.gated ? <>Under {lim.windowSwings} swings of league {lc}s move like this, so no rate is shown.</> : <>No swing at league {lc}s that move like this has been recorded, so no rate is shown.</>} Choose a coloured square.</p>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 10, fontSize: 12.5, color: '#5b5347' }}>
+                  <span style={{ fontSize: 10.5, letterSpacing: '.1em', fontWeight: 800, padding: '4px 8px', borderRadius: 3, background: placeStats.swings >= SPOT_MIN_SWINGS ? '#FFE4D6' : C.soft, color: placeStats.swings >= SPOT_MIN_SWINGS ? ORANGE_TEXT : C.ink }}>{placeStats.swings >= SPOT_MIN_SWINGS ? 'STRONG SAMPLE' : placeStats.swings >= lim.strongSwings ? 'MODERATE SAMPLE' : 'THIN SAMPLE'}</span>
+                  <span>{placeStats.swings.toLocaleString()} swings within ±{radius} in of this movement</span>
+                </div>
               </div>
-            ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click a gold spot or any square to see what that movement is worth and who throws it.</div>}
+            ) : <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 16, marginBottom: 14, fontSize: 14, color: '#5b5347' }}>Click anywhere on the map to dial in a pitch movement and see what it is worth and who throws it.</div>}
 
             {place && <div style={{ marginBottom: 14 }}><ShapePlayersPanel level={level} only={idFilter} chipsFor={chipsFor} board={board} hb={place.hb} ivb={place.ivb} radius={radius} lc={lc} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={null} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>}
 
@@ -803,25 +785,14 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {!locked && payload && grid && place && focus != null && (
-        <div style={{ marginTop: 14 }}><ShapePlayerDetail level={level} diag={focusDot?.diag ?? null} leagueDiag={leagueAll} board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={payload && grid && leagueRate != null ? { payload, span, leagueRate, points: focusPts ?? [] } : null} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
+        <div style={{ marginTop: 14 }}><ShapePlayerDetail level={level} dialed={place ? { hb: place.hb, ivb: place.ivb } : null} levelAvg={levelAvg} focusHand={focusHand} diag={focusDot?.diag ?? null} leagueDiag={leagueAll} board={board} selectedId={focus} overall={overall} shapeAt={shapeAt} bins={shapeBins} diagnosis={diagnosis} pitchType={type} season={payload?.latest ?? null} exportMap={payload && grid && leagueRate != null ? { payload, span, leagueRate, points: focusPts ?? [] } : null} lc={lc} onSelect={setFocus} onOpen={openPitcher} headshot={id => headshotCutoutUrl(id, 240)} /></div>
       )}
 
-      {!locked && payload && grid && place && focus != null && !mlb && (focusDot ?? milbRowAsDot) && (
-        <div id="pf2-more" style={{ marginTop: 14 }}><MilbPitcherCard p={(focusDot ?? milbRowAsDot) as NonNullable<typeof focusDot>} level={level} season={payload.latest} type={type} hand={focusHand} pitchName={name} armAngle={caps?.types[type]?.armAngle ?? caps?.axes.armAngle ?? false} leagueDiag={leagueAll} row={board?.rows.find(r => r.pitcherId === focus) ?? null} levelAvgWhiff={board?.league.whiff ?? null} chips={chipsFor ? chipsFor(focus) : []} onClear={() => setFocus(null)} /></div>
-      )}
 
-      {!locked && payload && grid && place && (
-        throwers === undefined && dots.length === 0 ? <div style={{ padding: 24, color: C.mute, fontSize: 13 }}>Finding pitchers…</div>
-          : (league ?? leagueAll) ? (
-            <details style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 16, minHeight: 32 }}>More on who throws here: location, contact and call clues, and the most ahead and behind across the map</summary>
-              <ShapeResultsSection split={split} league={(league ?? leagueAll) as Diag} placeRate={placeRate} lc={lc} pitchName={name} latest={latest} onShow={showOnMap} onOpen={mlb ? openPitcher : (id: number) => showOnMap(id)} shownId={focus} across={across} />
-            </details>)
-          : null
-      )}
 
       {!locked && payload && grid && (
         <>{(hand === 'B' ? (['R', 'L'] as const) : ([hand] as const)).map(h => <LevelsCompared key={h} data={h === 'R' ? cmpR : cmpL} active={level} type={type} hand={h} pitchName={name} place={place ? { hb: place.hb, ivb: place.ivb } : null} radius={radius} />)}</>
@@ -845,7 +816,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
   )
 }
 
-const fLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }
+const fLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }
 const fSelect: React.CSSProperties = { minHeight: 40, minWidth: 150, border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', padding: '0 10px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: C.ink, cursor: 'pointer' }
 const fSeg = (on: boolean, first: boolean): React.CSSProperties => ({ minHeight: 40, minWidth: 64, padding: '0 14px', border: `1px solid ${on ? C.ink : C.line}`, background: on ? C.ink : '#fff', color: on ? '#FAF8F3' : C.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', borderRadius: first ? '4px 0 0 4px' : '0 4px 4px 0', marginLeft: first ? 0 : -1 })
-const tabStyle = (on: boolean): React.CSSProperties => ({ minHeight: 44, padding: '0 16px', borderRadius: 4, border: `1px solid ${on ? '#1A1A1A' : '#e7e2d8'}`, background: on ? '#1A1A1A' : '#fff', color: on ? '#FAF8F3' : '#1A1A1A', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' })
+const tabStyle = (on: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 16px', borderRadius: 4, border: `1px solid ${on ? '#1A1A1A' : '#e7e2d8'}`, background: on ? '#1A1A1A' : '#fff', color: on ? '#FAF8F3' : '#1A1A1A', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' })
