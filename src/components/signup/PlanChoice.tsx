@@ -2,14 +2,17 @@
 
 import { useState } from 'react'
 import EmailSignupForm from './EmailSignupForm'
+import { proStartPath } from '@/lib/referral'
 
 // "Free account" or "Pro account" in front of the normal email form. Both use the SAME magic-link signup. Choosing Pro only changes where
 // the emailed link lands afterwards (/pricing/start, which opens Stripe checkout). Prices come from the server (what checkout charges now).
 type Offer = { year: string | null; month: string | null }
 
-export default function PlanChoice({ source, returnTo, extra, initialPlan, initialInterval, offer }: {
+export default function PlanChoice({ source, returnTo, extra, initialPlan, initialInterval, offer, refCode }: {
   source: string; returnTo?: string; extra?: Record<string, string | undefined>
   initialPlan: 'free' | 'pro'; initialInterval: 'year' | 'month'; offer: Offer
+  /** a referral code to carry inside the emailed link, so it survives the link being opened in another browser */
+  refCode?: string | null
 }) {
   const proAvailable = !!(offer.year || offer.month)
   const [plan, setPlan] = useState<'free' | 'pro'>(proAvailable ? initialPlan : 'free')
@@ -35,7 +38,7 @@ export default function PlanChoice({ source, returnTo, extra, initialPlan, initi
           <p style={{ margin: '8px 0 0', fontSize: 13, color: '#8a8275' }}>We email you a sign-in link; clicking it opens secure checkout. Leave checkout and you keep a free account.</p>
         </div>
       )}
-      <EmailSignupForm source={source} returnTo={plan === 'pro' ? `/pricing/start?interval=${interval}` : returnTo} extra={extra} buttonLabel={plan === 'pro' ? 'Email me my sign-in link' : undefined} />
+      <EmailSignupForm source={source} returnTo={plan === 'pro' ? proStartPath(interval, refCode) : returnTo} extra={extra} buttonLabel={plan === 'pro' ? 'Email me my sign-in link' : undefined} />
     </div>
   )
 }

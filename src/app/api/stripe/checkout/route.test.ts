@@ -108,6 +108,33 @@ describe('POST /api/stripe/checkout, referral codes', () => {
     expect(list).toHaveBeenCalledWith({ code: 'COOKIECODE', active: true, limit: 1 })
     expect(sessionArg().metadata.ref).toBe('COOKIECODE')
   })
+  it('a code from the emailed link beats a stale cookie from an earlier visit', async () => {
+    getOffer.mockResolvedValue(offer('standard')); list.mockResolvedValue({ data: [{ id: 'promo_link' }] })
+    await POST(req({ interval: 'month', ref: 'LINKCODE' }, 'edge_ref=STALECOOKIE'))
+    expect(list).toHaveBeenCalledWith({ code: 'LINKCODE', active: true, limit: 1 })
+    expect(arg().discounts).toEqual([{ promotion_code: 'promo_link' }])
+    expect(sessionArg().metadata.ref).toBe('LINKCODE')
+  })
+  it('an invalid code in the body is dropped, and the cookie is used instead', async () => {
+    getOffer.mockResolvedValue(offer('standard')); list.mockResolvedValue({ data: [{ id: 'promo_c' }] })
+    await POST(req({ ref: '!!!' }, 'edge_ref=COOKIECODE'))
+    expect(list).toHaveBeenCalledWith({ code: 'COOKIECODE', active: true, limit: 1 })
+    expect(sessionArg().metadata.ref).toBe('COOKIECODE')
+  })
+  it('an invalid code and no cookie: no lookup, no ref anywhere, normal promotion box', async () => {
+    getOffer.mockResolvedValue(offer('standard'))
+    await POST(req({ ref: '<>' }))
+    expect(list).not.toHaveBeenCalled()
+    expect(arg()).toHaveProperty('allow_promotion_codes', true)
+    expect(sessionArg().metadata).not.toHaveProperty('ref')
+    expect(sessionArg().subscription_data.metadata).not.toHaveProperty('ref')
+  })
+  it('a code with no matching Stripe promotion code still lands in the session and the subscription metadata (the webhook records it)', async () => {
+    getOffer.mockResolvedValue(offer('standard'))
+    await POST(req({ interval: 'month', ref: 'FRIEND10' }))
+    expect(sessionArg().metadata).toMatchObject({ ref: 'FRIEND10', interval: 'month', plan: 'standard', currency: 'usd' })
+    expect(sessionArg().subscription_data.metadata).toMatchObject({ ref: 'FRIEND10', interval: 'month' })
+  })
   it('an unknown code gives the normal promotion-code box and no discount', async () => {
     getOffer.mockResolvedValue(offer('standard'))
     await POST(req({ ref: 'NOPE' }))

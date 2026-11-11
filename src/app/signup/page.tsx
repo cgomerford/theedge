@@ -1,4 +1,4 @@
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import PlanChoice from '@/components/signup/PlanChoice'
@@ -8,6 +8,7 @@ import { ATTRIBUTION_KEYS, readAttribution, safeReturnPath } from '@/lib/attribu
 import { noindex } from '@/lib/seo'
 import { getOffer } from '@/lib/pro-offer-server'
 import { FOUNDING, FOUNDING_MONTHLY, STANDARD, STANDARD_MONTHLY, formatPrice } from '@/lib/pricing'
+import { REF_COOKIE, linkRef, proStartPath } from '@/lib/referral'
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -47,8 +48,10 @@ export default async function SignupPage({ searchParams }: Props) {
   // /signup?plan=pro&interval=month pre-selects Pro (links from emails, X posts, the pricing page).
   const wantsPro = first('plan') === 'pro'
   const interval = first('interval') === 'month' ? 'month' : 'year'
+  // The referral code: the link's own ?ref= first, else the code this browser saved earlier. It goes into the emailed link (below), because that link is often opened in a different browser.
+  const ref = linkRef(first('ref')) ?? linkRef((await cookies()).get(REF_COOKIE)?.value)
   const viewer = await getCurrentSubscriber()
-  if (viewer) redirect(wantsPro && !viewer.is_pro ? `/pricing/start?interval=${interval}` : returnTo ?? '/me')
+  if (viewer) redirect(wantsPro && !viewer.is_pro ? proStartPath(interval, ref) : returnTo ?? '/me')
   const offers = await getOffer()   // what checkout would charge a new subscriber right now; null plan = not available, so Pro is not offered
   const offer = {
     year: offers.annual.plan ? formatPrice(offers.annual.plan === 'founding' ? FOUNDING : STANDARD) : null,
@@ -90,7 +93,7 @@ export default async function SignupPage({ searchParams }: Props) {
               </div>
             ) : (
               <>
-                <PlanChoice source={source} returnTo={returnTo} extra={extra} initialPlan={wantsPro ? 'pro' : 'free'} initialInterval={interval} offer={offer} />
+                <PlanChoice source={source} returnTo={returnTo} extra={extra} initialPlan={wantsPro ? 'pro' : 'free'} initialInterval={interval} offer={offer} refCode={ref} />
                 {error && ERRORS[error] && <p role="alert" style={{ margin: '12px 0 0', fontSize: 14, color: '#b42318' }}>{ERRORS[error]}</p>}
               </>
             )}
