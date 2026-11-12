@@ -20,6 +20,8 @@
 // Location Lab's per-pitch hover can show real situational context.
 
 import { withSavantCache } from '@/lib/savant-cache'
+import { getMilbGames } from '@/lib/milb-shape/game-log'
+import { isMilb, type Level } from '@/lib/milb-shape/levels'
 
 const SEASON_FALLBACK = new Date().getFullYear()
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
@@ -40,6 +42,7 @@ export type RawBatterPitch = {
   szBot: number | null
   launchSpeed: number | null // real exit velo, only on balls in play
   launchAngle: number | null // real launch angle, only on balls in play
+  hcX: number | null; hcY: number | null; bbType: string | null // where the ball in play landed (Savant hc_x / hc_y) and its type
   batSpeed: number | null // real, only on swings
   swingLength: number | null // real feet, only on swings — Savant's own definition: sweet-spot travel distance, downswing start to contact
   isHit: boolean
@@ -113,18 +116,26 @@ function numOrNaN(s: string): number {
   return s === '' ? NaN : Number(s)
 }
 
-export async function getBatterPitchLog(batterId: number, season = SEASON_FALLBACK): Promise<BatterPitchLog | null> {
+/**
+ * A hitter's season of pitches seen. `level` is MLB by default and unchanged; 'aaa' and 'fsl' read Baseball Savant's minor-league CSV for the same hitter and keep only the games the MLB
+ * Stats API places at that level (his Triple-A and Single-A games arrive together), as a season only. Spring Training and the Arizona Fall League have no per-pitch log, so they answer nothing.
+ */
+export async function getBatterPitchLog(batterId: number, season = SEASON_FALLBACK, level: Level = 'mlb'): Promise<BatterPitchLog | null> {
+  if (level === 'afl' || level === 'st') return null
   return withSavantCache(
-    `pitch-log:v4:${batterId}:${season}`, // v4: rows also carry release, extension, flight fit and inning half (Batting Lab views)
+    level === 'mlb' ? `pitch-log:v4:${batterId}:${season}` : `pitch-log:v4:${level}:${batterId}:${season}`, // v4: rows also carry release, extension, flight fit and inning half (Batting Lab views)
     21600,
-    () => fetchBatterPitchLog(batterId, season),
+    () => fetchBatterPitchLog(batterId, season, level),
   )
 }
 
-async function fetchBatterPitchLog(batterId: number, season: number): Promise<BatterPitchLog | null> {
+async function fetchBatterPitchLog(batterId: number, season: number, level: Level): Promise<BatterPitchLog | null> {
+  const milb = isMilb(level)
+  const games = milb ? await getMilbGames(batterId, season, level, 'hitting') : null
+  if (milb && (games == null || games.size === 0)) return null
   const url = [
-    'https://baseballsavant.mlb.com/statcast_search/csv',
-    `?all=true&hfGT=R%7C&hfSea=${season}%7C&player_type=batter`,
+    milb ? 'https://baseballsavant.mlb.com/statcast-search-minors/csv' : 'https://baseballsavant.mlb.com/statcast_search/csv',
+    `?all=true&hfGT=R%7C&hfSea=${season}%7C&player_type=batter${milb ? `&minors=true&hfLevel=${level === 'aaa' ? 'AAA' : 'A'}%7C` : ''}`,
     `&batters_lookup%5B%5D=${batterId}`,
     `&game_date_gt=${season}-01-01&game_date_lt=${season}-12-31`,
     '&min_pitches=0&min_results=0&group_by=name&sort_col=pitches',
@@ -153,7 +164,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
   const iDesc = idx('description'), iEvents = idx('events')
   const iPitcher = idx('pitcher'), iPThrows = idx('p_throws')
   const iStand = idx('stand'), iSzTop = idx('sz_top'), iSzBot = idx('sz_bot')
-  const iLS = idx('launch_speed'), iLA = idx('launch_angle')
+  const iLS = idx('launch_speed'), iLA = idx('launch_angle'), iHcX = idx('hc_x'), iHcY = idx('hc_y'), iBbt = idx('bb_type')
   const iBatSpeed = idx('bat_speed'), iSwingLen = idx('swing_length')
   const iZone = idx('zone')
   const iBalls = idx('balls'), iStrikes = idx('strikes'), iInning = idx('inning')
@@ -176,6 +187,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
     const plateX = Number(cells[iPlateX])
     const plateZ = Number(cells[iPlateZ])
     if (!date || !pitchType || Number.isNaN(plateX) || Number.isNaN(plateZ)) continue
+    if (games && !games.has(Number(cells[iGamePk]))) continue   // a minor-league level keeps only the games the Stats API places there
     if (iPitchName !== -1 && cells[iPitchName] && !pitchNames[pitchType]) pitchNames[pitchType] = cells[iPitchName]
 
     const releaseSpeed = iReleaseSpeed !== -1 ? numOrNaN(cells[iReleaseSpeed]) : NaN
@@ -212,6 +224,7 @@ async function fetchBatterPitchLog(batterId: number, season: number): Promise<Ba
       szBot: Number.isNaN(szBot) ? null : szBot,
       launchSpeed: Number.isNaN(launchSpeed) ? null : launchSpeed,
       launchAngle: Number.isNaN(launchAngle) ? null : launchAngle,
+      hcX: iHcX !== -1 && Number.isFinite(numOrNaN(cells[iHcX])) ? numOrNaN(cells[iHcX]) : null, hcY: iHcY !== -1 && Number.isFinite(numOrNaN(cells[iHcY])) ? numOrNaN(cells[iHcY]) : null, bbType: iBbt !== -1 && cells[iBbt] ? cells[iBbt] : null,
       batSpeed: Number.isNaN(batSpeed) ? null : batSpeed,
       swingLength: Number.isNaN(swingLength) ? null : swingLength,
       isHit: HIT_EVENTS.has(eventsVal),

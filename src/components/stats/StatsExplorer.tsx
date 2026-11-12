@@ -548,7 +548,7 @@ export default function StatsExplorer({ isPro: viewerIsPro, isSignedIn }: { isPr
   }
 
   return (
-    <div className="tp-root" style={{ maxWidth: 1560, margin: '0 auto', padding: '16px 24px 170px', fontFamily: SANS, color: C.ink }}>
+    <div className="tp-root" style={{ maxWidth: 1800, margin: '0 auto', padding: '16px 32px 170px', fontFamily: SANS, color: C.ink }}>
       <style>{HOVER_STYLES}</style>
       <style>{QUERY_CSS}</style>
       <style>{`.tp-root b,.tp-root strong,.tp-root h1,.tp-root h2,.tp-root h3{font-variant-numeric:tabular-nums}`}</style>

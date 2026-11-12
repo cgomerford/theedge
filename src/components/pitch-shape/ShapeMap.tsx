@@ -6,15 +6,45 @@
 // (his sampled pitches as dots, his average as a ring, the league window as a dashed box, the movement dialed in as a cross) and for the same pitch at each level (one ring per level).
 // Both axes use the same inches per pixel, so a distance on the map is a true distance in movement. Plain data in, no fetching. Description only: it plots where pitches moved.
 
+import { useEffect, useState } from 'react'
 import { C } from '@/components/team/ui'
 import { placeLabels } from './labelLayout'
+import { stats, type Grid } from './heatGrid'
+import { METRICS, metricRgb, type MetricDef } from './metrics'
 
 export type MapDot = { hb: number; ivb: number; color: string; opacity?: number }
 export type MapRing = { hb: number; ivb: number; color: string; label: string; /** dashed ring: an average, not a pitcher */ dashed?: boolean; strong?: boolean }
 export type MapBox = { hb: number; ivb: number; rx: number; ry: number; color?: string }
 export type MapMark = { hb: number; ivb: number; label: string; color: string }
 
-const W = 440, ML = 38, MB = 30, MT = 10, MR = 10
+const W = 440, ML = 48, MB = 38, MT = 10, MR = 10
+
+/** The league whiff map drawn behind the markers: each cell is the whiffs per swing of the league pitches within r10 tenths of an inch of it, on the same colour rule as the main map (blank under the swing minimum). */
+export type HeatBackdrop = { grid: Grid; r10: number; /** the colour scale to use (a stretched copy from scaledDef); the fixed whiff scale when absent */ def?: MetricDef }
+const HEAT_CELLS = 96
+
+function HeatLayer({ heat, x0, y0, range, ML: left, MT: top, PW: w, PH: h }: { heat: HeatBackdrop; x0: number; y0: number; range: number; ML: number; MT: number; PW: number; PH: number }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const cv = document.createElement('canvas')
+    cv.width = HEAT_CELLS; cv.height = HEAT_CELLS
+    const ctx = cv.getContext('2d')
+    if (!ctx) return
+    const def = heat.def ?? METRICS.whiff
+    for (let iy = 0; iy < HEAT_CELLS; iy++) for (let ix = 0; ix < HEAT_CELLS; ix++) {
+      const hb = x0 + ((ix + 0.5) / HEAT_CELLS) * range, ivb = y0 + range - ((iy + 0.5) / HEAT_CELLS) * range
+      const s = stats(heat.grid, Math.round(hb * 10), Math.round(ivb * 10), heat.r10)
+      if (!(s.swings >= def.min) || !(s.swings > 0)) continue
+      const c = metricRgb(def, s.whiffs / s.swings)
+      ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`
+      ctx.fillRect(ix, iy, 1, 1)
+    }
+    setUrl(cv.toDataURL('image/png'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heat.grid, heat.r10, heat.def, x0, y0, range])
+  if (!url) return null
+  return <image href={url} x={left} y={top} width={w} height={h} preserveAspectRatio="none" style={{ imageRendering: 'pixelated' }} opacity={0.9} />
+}
 
 /** a round step (1, 2, 5, 10) giving about five ticks across the range */
 function stepFor(range: number) {
@@ -22,7 +52,9 @@ function stepFor(range: number) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p
 }
 
-export default function ShapeMap({ dots = [], rings = [], box, marks = [], lines = [], label, minRange = 8 }: {
+export default function ShapeMap({ dots = [], rings = [], box, marks = [], lines = [], label, minRange = 8, heat }: {
+  /** the league whiff map behind everything else, when given */
+  heat?: HeatBackdrop | null
   dots?: MapDot[]; rings?: MapRing[]; box?: MapBox | null; marks?: MapMark[]
   /** dashed lines joining rings, in order (a pitch moving from one level to the next) */
   lines?: [number, number][][]
@@ -48,8 +80,9 @@ export default function ShapeMap({ dots = [], rings = [], box, marks = [], lines
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ width: '100%', height: 'auto', display: 'block' }}>
       <rect x={ML} y={MT} width={PW} height={PH} rx={6} fill="#EDE8DC" stroke={C.line} />
-      {ticks(x0, x0 + range).map(v => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={MT} y2={MT + PH} stroke="#fff" strokeOpacity={0.7} /><text x={X(v)} y={MT + PH + 16} textAnchor="middle" fontSize="10.5" fill={C.mute}>{v}</text></g>)}
-      {ticks(y0, y0 + range).map(v => <g key={`y${v}`}><line x1={ML} x2={ML + PW} y1={Y(v)} y2={Y(v)} stroke="#fff" strokeOpacity={0.7} /><text x={ML - 6} y={Y(v) + 3.5} textAnchor="end" fontSize="10.5" fill={C.mute}>{v}</text></g>)}
+      {heat && <HeatLayer heat={heat} x0={x0} y0={y0} range={range} ML={ML} MT={MT} PW={PW} PH={PH} />}
+      {ticks(x0, x0 + range).map(v => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={MT} y2={MT + PH} stroke="#fff" strokeOpacity={0.7} /><text x={X(v)} y={MT + PH + 20} textAnchor="middle" fontSize="13.5" fontWeight={800} fill={C.ink}>{v > 0 ? `+${v}` : v < 0 ? `−${Math.abs(v)}` : '0'}</text></g>)}
+      {ticks(y0, y0 + range).map(v => <g key={`y${v}`}><line x1={ML} x2={ML + PW} y1={Y(v)} y2={Y(v)} stroke="#fff" strokeOpacity={0.7} /><text x={ML - 7} y={Y(v) + 4.5} textAnchor="end" fontSize="13.5" fontWeight={800} fill={C.ink}>{v}</text></g>)}
       <text x={ML + 8} y={MT + 16} fontSize="10" fontWeight={800} letterSpacing=".1em" fill={C.mute}>↑ RIDE (IN)</text>
       <text x={ML + PW - 8} y={MT + PH - 8} fontSize="10" fontWeight={800} letterSpacing=".1em" fill={C.mute} textAnchor="end">RUN (IN) →</text>
       {box && <rect x={X(box.hb - box.rx)} y={Y(box.ivb + box.ry)} width={X(box.hb + box.rx) - X(box.hb - box.rx)} height={Y(box.ivb - box.ry) - Y(box.ivb + box.ry)} fill="rgba(255,255,255,.18)" stroke={box.color ?? C.ink} strokeWidth={1.5} strokeDasharray="5 4" />}

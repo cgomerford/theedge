@@ -1,0 +1,128 @@
+{
+ "article": "trevor-rogers-changeup-sweeper-free-agency",
+ "charts": [
+  {
+   "type": "bar",
+   "title": "Trevor Rogers: ERA vs xERA by season",
+   "labels": [
+    "2021",
+    "2024",
+    "2025",
+    "2026"
+   ],
+   "series": [
+    {
+     "name": "ERA",
+     "values": [
+      2.64,
+      4.92,
+      1.81,
+      4.03
+     ]
+    },
+    {
+     "name": "xERA",
+     "values": [
+      3.35,
+      5.1,
+      3.41,
+      3.6
+     ]
+    }
+   ],
+   "yUnit": "",
+   "caption": "His 2025 ERA ran well below his xERA. In 2026 his ERA was the higher of the two.",
+   "alt": "Grouped bar chart comparing Trevor Rogers' ERA and xERA in 2021, 2024, 2025 and 2026."
+  },
+  {
+   "type": "line",
+   "title": "Rogers' four-seam to changeup speed gap (mph)",
+   "labels": [
+    "2021",
+    "2024",
+    "2025",
+    "2026"
+   ],
+   "series": [
+    {
+     "name": "Speed gap",
+     "values": [
+      9.7,
+      6.4,
+      6.8,
+      6.8
+     ]
+    }
+   ],
+   "yUnit": "mph",
+   "caption": "The changeup is about two mph closer to his fastball than it was in 2021.",
+   "alt": "Line chart showing Rogers' fastball-to-changeup speed gap falling from 9.7 mph in 2021 to 6.8 mph in 2026."
+  },
+  {
+   "type": "bar",
+   "title": "Rogers' changeup run value by season (runs)",
+   "labels": [
+    "2021",
+    "2024",
+    "2025",
+    "2026"
+   ],
+   "series": [
+    {
+     "name": "Changeup run value",
+     "values": [
+      6,
+      -4,
+      7,
+      -11
+     ]
+    }
+   ],
+   "yUnit": "runs",
+   "caption": "Positive is good for the pitcher. Only one changeup in MLB cost more runs in 2026.",
+   "alt": "Bar chart of Rogers' changeup run value: +6 in 2021, -4 in 2024, +7 in 2025 and -11 in 2026."
+  },
+  {
+   "type": "bar",
+   "title": "Rogers' 2026 pitch mix: through July vs Aug-Sep (%)",
+   "labels": [
+    "Four-seam",
+    "Changeup",
+    "Sweeper",
+    "Sinker",
+    "Cutter"
+   ],
+   "series": [
+    {
+     "name": "Through July",
+     "values": [
+      44.6,
+      22.8,
+      12.8,
+      10.1,
+      9.8
+     ]
+    },
+    {
+     "name": "Aug-Sep",
+     "values": [
+      51.5,
+      16.0,
+      16.8,
+      10.0,
+      5.6
+     ]
+    }
+   ],
+   "yUnit": "%",
+   "caption": "Over his last 10 starts he threw fewer changeups and more four-seamers and sweepers.",
+   "alt": "Grouped bar chart of Rogers' 2026 pitch usage through July compared with August and September."
+  }
+ ],
+ "markers": [
+  "[CHART: bar | Trevor Rogers: ERA vs xERA by season | labels: 2021, 2024, 2025, 2026 | ERA = 2.64, 4.92, 1.81, 4.03; xERA = 3.35, 5.10, 3.41, 3.60 | series: ERA, xERA]",
+  "[CHART: line | Rogers' four-seam to changeup speed gap (mph) | labels: 2021, 2024, 2025, 2026 | values = 9.7, 6.4, 6.8, 6.8 | series: Speed gap]",
+  "[CHART: bar | Rogers' changeup run value by season (runs) | labels: 2021, 2024, 2025, 2026 | values = 6, -4, 7, -11 | series: Changeup run value]",
+  "[CHART: bar | Rogers' 2026 pitch mix: through July vs Aug-Sep (%) | labels: Four-seam, Changeup, Sweeper, Sinker, Cutter | Through July = 44.6, 22.8, 12.8, 10.1, 9.8; Aug-Sep = 51.5, 16.0, 16.8, 10.0, 5.6 | series: Through July, Aug-Sep]"
+ ]
+}

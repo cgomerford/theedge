@@ -13,7 +13,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts'
-import { C, SANS, Card, Empty, Foot, Section, Tile } from '@/components/team/ui'
+import { C, SANS, Card, Empty, Foot, Tile } from '@/components/team/ui'
 import ProPanel from '@/components/profile/ProPanel'
 import {
   PITCH_NAMES, fmtN, indexBins, leagueAverages, lookup, pct, sgn, slotStrip, vulnerableSpots, woba,
@@ -22,10 +22,13 @@ import {
 import MovementHeat from './MovementHeat'
 import PitchView from './PitchView'
 import PitchCompare from './PitchCompare'
-import { LockedCard, MapLegend, OutcomeBars, SHAPE_CSS, SlotStrip, StatusBadge } from './parts'
+import PitcherStory from './PitcherStory'
+import { PV_CSS } from './pvCss'
+import { LockedCard, OutcomeBars, SHAPE_CSS, SlotStrip, StatusBadge } from './parts'
 
 export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: boolean }) {
   const [sel, setSel] = useState(data.pitches[0]?.pitchType ?? '')
+  const [tab, setTab] = useState('doing')
   const P = data.pitches.find(p => p.pitchType === sel) ?? data.pitches[0]
   const bins = useMemo(() => (P ? data.bins[P.pitchType] ?? [] : []), [data.bins, P])
   const index = useMemo(() => indexBins(bins), [bins])
@@ -46,16 +49,14 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
   const diffPts = L.whiff.value != null && P.own.whiff != null ? (P.own.whiff - L.whiff.value) * 100 : null
   const counts = data.counts[P.pitchType] ?? null
   const sides = data.batterSides[P.pitchType] ?? null
-  const viewMonths = data.view[P.pitchType] ?? []
   const viewSeasons = Object.keys(data.viewSeasons).map(Number).sort((x, y) => x - y)
     .map(season => ({ season, months: data.viewSeasons[String(season)]?.[P.pitchType] ?? [] })).filter(x => x.months.length > 0)
-  const MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const monthSpan = viewMonths.length ? `${MON3[viewMonths[0].month - 1]}–${MON3[viewMonths[viewMonths.length - 1].month - 1]}` : '—'
   const monthly = (data.monthly[P.pitchType] ?? null)?.filter(m => m.velo != null && m.pitches >= 50) ?? null
 
   return (
     <div>
       <style>{SHAPE_CSS}</style>
+      <style>{PV_CSS}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', borderBottom: `1px solid ${C.ink}`, paddingBottom: 10 }}>
         <div>
@@ -65,8 +66,6 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 18, flexWrap: 'wrap' }}>
           {([
             ['Pitches', fmtN(cur.n)],
-            ['Months', monthSpan],
-            ['Min. sample', '50 P'],
           ] as [string, string][]).map(([k, v]) => (
             <div key={k}><span style={{ display: 'block', fontSize: 10, letterSpacing: '.14em', fontWeight: 800, color: C.mute, textTransform: 'uppercase' }}>{k}</span><b style={{ fontSize: 15, fontWeight: 800 }}>{v}</b></div>
           ))}
@@ -82,12 +81,13 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
         ))}
       </div>
 
-      <Section id="story" num="01" title={`${name} over the years`} sub={`Release point and movement for the ${lc}, month by month, next to the results in each month. Switch to By year to see how the pitch has changed from one season to the next.`}>
-        <PitchView key={P.pitchType} seasons={viewSeasons} pitchName={name} hand={data.hand} isPro={isPro} />
-      </Section>
 
-      <Section id="question" num="02" title={`How does the ${lc} compare vs other ${lc}s?`} sub={`His ${lc} next to the three ${lc}s closest to it in shape, each pitch animated side by side, then what the results say: who gets more swings, whose calls were borderline, and what sets the pitch up.`}>
-        <PitchCompare key={P.pitchType} field={data.compare[P.pitchType] ?? []} pitchName={name} hand={data.hand} season={data.season} isPro={isPro} />
+      <PitcherStory
+        name={data.name}
+        tab={tab}
+        onTab={setTab}
+        tabs={[
+          { id: 'doing', label: `This ${lc}`, question: `How is ${data.name}’s ${lc} doing against pitches shaped like it, and how has it looked over time?`, node: (<>
         <div className="pv-k" style={{ margin: '22px 0 8px' }}>Against pitches with his exact shape</div>
         <div className="ps-tiles">
           <Tile label="Shape neighborhood whiff%" value={pct(L.whiff.value)} sub={L.whiff.value == null ? 'Not enough swings' : `n = ${fmtN(L.swings)} swings${L.reach === 2 ? ' · widened to ±2 bins' : ''}`} />
@@ -96,10 +96,18 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
           <Tile label="His results vs the shape" value={diffPts == null ? '—' : `${sgn(diffPts)} pts`} sub="his whiff% minus the neighborhood's" />
         </div>
         <Foot>Shape = velocity, induced vertical break (IVB), horizontal break (HB, arm-side positive; left-handers flipped) and arm slot. Neighborhood = the same pitch type and hand within ±1 bin of his average shape, {data.leagueSpan}.</Foot>
-      </Section>
+      
+            <div style={{ marginTop: 22 }}>
+        <PitchView key={P.pitchType} seasons={viewSeasons} pitchName={name} hand={data.hand} isPro={isPro} />
+      
+            </div>
+          </>) },
+          { id: 'else', label: 'Who else', question: `Which ${lc}s are closest to his in shape, and who gets more swings and misses?`, node: (<>
+        <PitchCompare key={P.pitchType} field={data.compare[P.pitchType] ?? []} pitchName={name} hand={data.hand} season={data.season} isPro={isPro} />
 
-      <Section id="pitch-map" num="03" title="The Pitch Map" sub="Where his pitch is grouped among every pitch of its type with a similar shape, and what batters have done against pitches shaped like it.">
-        <Card title="Where this comes from" style={{ marginBottom: 16 }}>
+          </>) },
+          { id: 'map', label: 'League map', question: `Where does his ${lc} land among every ${lc} in the league, and what does the league do against that spot?`, node: (<>
+        <details style={{ marginBottom: 14 }}><summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13.5, color: C.orange }}>Where this comes from</summary><Card title="Where this comes from" style={{ marginTop: 8 }}>
           <p style={{ color: '#3a352c', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px' }}>
             <b>A pitch is, first, a shape:</b> speed, movement, release and arm angle. Pitches with the same shape have tended to get similar results, so the fair comparison for his {lc} is every other {lc} shaped like it. That is the same core move behind Statcast’s movement leaderboard (movement judged against pitches at a similar velocity and release point), MLB.com’s pitch-similarity work, FanGraphs’ Stuff+ and SABR research that groups pitches by shape.
           </p>
@@ -107,13 +115,13 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
             Clubs keep their own pitch models private, so we only cite public work. Shape is not everything: command, deception and sequencing are not in the map. It describes what happened; it does not predict.
           </p>
           <Link href="/mlb/lab/pitch-map" style={{ color: C.orange, fontWeight: 700, fontSize: 13 }}>Read where this comes from, with the sources →</Link>
-        </Card>
-        <div className="ps-grid2">
+        </Card></details>
+        <div style={{ display: 'grid', gap: 14 }}>
           <Card title="Movement map · 0.1 in">
             <p style={{ color: '#5b5347', fontSize: 13, margin: '0 0 12px' }}>Every league {lc} by how it moves, in 0.1-inch boxes, coloured by whiffs per swing. His pitches go on top as dots, so you can see where they are grouped and what the league has done from that spot.</p>
             <MovementHeat pitchType={P.pitchType} pitchName={name} hand={data.hand} avg={{ hb: cur.hb, ivb: cur.ivb, sdHb: cur.sdHb, sdIvb: cur.sdIvb }} points={P.points} season={data.season} isPro={isPro} pitcherId={data.pitcherId} />
           </Card>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          <details style={{ minWidth: 0 }}><summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13.5, color: C.orange, marginBottom: 8 }}>More detail: outcome profile and arm-angle slots</summary><div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card title="Outcome profile">
               <p style={{ color: '#5b5347', fontSize: 13, margin: '0 0 12px' }}>Separates “the shape misses bats” from “the shape suppresses damage”. Neighborhood vs league average for {lc}s.</p>
               <OutcomeBars look={L} league={league} />
@@ -123,25 +131,11 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
               <p style={{ color: '#5b5347', fontSize: 13, margin: '0 0 12px' }}>The same shape from other arm angles. Ride reads differently from a 30° slot than a 60° slot.</p>
               <SlotStrip reads={slots} />
             </Card>
-          </div>
+          </div></details>
         </div>
-        <ProPanel
-          title="Expand: this shape by count"
-          blurb="Whiff% for the same shape when ahead, even and behind."
-          features={['Whiff% for the same shape when ahead, even and behind', 'Sample behind every split']}
-          isPro={isPro}
-        >
-          {counts ? (
-            <>
-              <table className="ps-tbl"><thead><tr><th>Count state</th><th className="r">Whiff% per swing</th><th className="r">Swings</th></tr></thead>
-                <tbody>{counts.map(c => <tr key={c.label}><td>{c.label}</td><td className="r"><b>{pct(c.whiff)}</b></td><td className="r">{fmtN(c.swings)}</td></tr>)}</tbody></table>
-              <Foot>Uses balls / strikes from the pitch rows. Same gates apply; a split under {GATE.swings} swings shows —.</Foot>
-            </>
-          ) : <Empty>Count splits aren’t built for this pitch yet.</Empty>}
-        </ProPanel>
-      </Section>
 
-      <Section id="vulnerable" num="04" title="Where they're vulnerable" sub="Shape neighborhoods where he throws this pitch and contact has been hardest (expected wOBA on contact), with the batted-ball sample behind each.">
+          </>) },
+          { id: 'vulnerable', label: 'Where he’s vulnerable', question: `Where has contact against his ${lc} been hardest?`, node: (<>
         <Card>
           {spots.length === 0 ? <Empty>Not enough of his pitches in any one movement cell to break this out.</Empty> : (
             <table className="ps-tbl">
@@ -165,9 +159,24 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
               <tbody>{sides.map(s => <tr key={s.label}><td>{s.label}</td><td className="r"><b>{woba(s.xwobaCon)}</b></td><td className="r">{fmtN(s.bbe)}</td></tr>)}</tbody></table>
           ) : <Empty>Batter-side splits aren’t built for this pitch yet.</Empty>}
         </ProPanel>
-      </Section>
-
-      <Section id="changed" num="05" title="What changed" sub="His average shape this season against last, and what the matching neighborhood produced each year.">
+      
+        <ProPanel
+          title="Expand: this shape by count"
+          blurb="Whiff% for the same shape when ahead, even and behind."
+          features={['Whiff% for the same shape when ahead, even and behind', 'Sample behind every split']}
+          isPro={isPro}
+        >
+          {counts ? (
+            <>
+              <table className="ps-tbl"><thead><tr><th>Count state</th><th className="r">Whiff% per swing</th><th className="r">Swings</th></tr></thead>
+                <tbody>{counts.map(c => <tr key={c.label}><td>{c.label}</td><td className="r"><b>{pct(c.whiff)}</b></td><td className="r">{fmtN(c.swings)}</td></tr>)}</tbody></table>
+              <Foot>Uses balls / strikes from the pitch rows. Same gates apply; a split under {GATE.swings} swings shows —.</Foot>
+            </>
+          ) : <Empty>Count splits aren’t built for this pitch yet.</Empty>}
+        </ProPanel>
+      
+          </>) },
+          { id: 'changed', label: 'What changed', question: `How has his ${lc} changed from last season to this one?`, node: (<>
         {P.prev ? (
           <>
             <div className="ps-shift">
@@ -210,9 +219,14 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
             </div>
           </>
         ) : <Empty>He didn’t throw this pitch enough in {data.prevSeason} to compare shapes.</Empty>}
-      </Section>
+      
+          </>) },
+        ]}
+      />
 
-      <Section id="method" num="06" title="Method">
+      <details style={{ marginTop: 22 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13.5, color: C.orange }}>How this is measured</summary>
+        <div style={{ marginTop: 8 }}>
         <Card>
           <p style={{ color: '#5b5347', fontSize: 13.5, margin: '6px 0' }}><b style={{ color: C.ink }}>Neighborhood lookup.</b> We take the bin his average shape falls in, plus one bin either side in velocity (1 mph), IVB (2 in) and HB (2 in) — at most 27 bins, same pitch type, hand and arm-slot band (10°). Bins closer to his shape count a little more. Rates come from summed counts, never from averaging rates.</p>
           <div className="ps-gates">
@@ -228,7 +242,10 @@ export default function ShapeLab({ data, isPro }: { data: ShapeLabData; isPro: b
           </div>
           <Foot>These describe how closely the shape description lines up with results already recorded; they say nothing about future games.</Foot>
         </Card>
-      </Section>
+      
+        </div>
+      </details>
+
     </div>
   )
 }

@@ -92,9 +92,10 @@ C = { cream: '#FAF8F3', card: '#fff', line: '#e7e2d8', soft: '#f1eee6', ink: '#1
 
 ## 3. Shape & layout
 
+- **Update (George, 2026-11-12): corners are now 6px on cards, banners, tables and buttons** (pills are 6px too, not fully round). The 14px below is the older team/player-page value and is being brought down to 6px as pages are touched.
 - **Rounded cards (14px) are used on team / player pages** — this is the documented
   exception to the old "zero border-radius" rule. New sport pages follow the team-page look.
-- Page width `max-width: 1240px`, `24px` side padding.
+- **Page width `max-width: 1800px`, `32px` side padding, on every product page and in the site header and sub-nav (George, 2026-11-12).** Pages that are mostly reading or forms (sign-up, legal, an article body) keep a narrow column. Cap paragraph lines at about 1000px so text stays readable on a wide screen.
 - Section marker: the x9 mark (`<XMark />` from `src/components/XMark.tsx`) replaces the old `§` before each section title; `⊕` before kickers.
 - **Responsive layout uses a `<style>` block with plain CSS `@media`** (`.tp-grid-2`, `.tp-grid-3`,
   `.tp-tiles`, `.tp-tiles-2`, `.tp-cards`, breakpoint 900px). Tailwind responsive classes are
@@ -154,3 +155,14 @@ Anything exported as an image follows the same fonts — **Red Hat only — 800 
 | **`next/font` in a sheet component** | `postgame/ScorecardSheet.tsx` | `Red_Hat_Display({ weight: ['800'] })` and `display.className`. |
 
 Red Hat is wider than Bebas: when swapping, cut display sizes ~15–20%, drop forced `.toUpperCase()` on long names, and **render the card and look at it** for overflow before shipping.
+
+## 9. The Pitch Shape Lab layout is the pattern for new data pages (George, 2026-11-12)
+
+The v3 Pitch Shape Lab (`/mlb/lab/pitch-shape`) is the layout to copy for data pages, NFL first:
+
+- **Two columns:** the subject banner and the tabbed content on the left, and a sticky right-hand column (about 330px) holding the search, the filters as dropdowns, and a short "How to use" card.
+- **Subject banner:** a light card with an orange bar on top, the subject's name in big type, a strip of league numbers under it, and a small marker for the subject (for a pitch, the spinning ball in the pitch's colour). A chosen player gets a banner in his club's colours with his headshot and club badge (`PitcherHero`), and the page becomes about him.
+- **Story tabs, underline style** (the site `Tabs` component): each tab opens with its one-line question ("The question"), answers it, and ends with a "Next" button. Sub-tabs for a chosen player: Overview, His shape, Who else, Over the season, Across levels, Why the results, Fantasy.
+- **Fantasy facts live only in a Fantasy tab**, never in the other tabs.
+- **Every number carries its sample and window**, thin samples are shown greyed and tagged (never hidden or invented), and colour rules are stated beside the colour key.
+- **Guide page** with real screenshots, a sticky contents column on the right, and the same width.

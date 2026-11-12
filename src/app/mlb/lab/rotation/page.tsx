@@ -41,7 +41,7 @@ export default async function RotationLabPage({ searchParams }: { searchParams: 
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Rotation Lab', path: '/mlb/lab/rotation' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Rotation Lab</div>
         <h1 style={{ margin: '4px 0 6px', fontSize: 'clamp(30px, 5vw, 46px)', fontWeight: 800, letterSpacing: '-0.02em' }}>Is the rotation holding up?</h1>
         <p style={{ margin: '0 0 18px', fontSize: 15, color: '#5b5347', maxWidth: 780 }}>Each starter&apos;s last three outings against the rest of his season: fastball speed, how he finishes an outing, pitch counts, rest and arm slot. A signal says something changed, not why.</p>

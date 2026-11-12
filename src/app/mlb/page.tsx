@@ -83,7 +83,7 @@ export default async function MLBPage() {
       <SiteHeader variant="page" />
       <MLBSubNav />
       <style>{`.ml-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0 40px;align-items:start}.ml-rail{padding-top:20px}@media (max-width:1100px){.ml-layout{grid-template-columns:minmax(0,1fr)}}`}</style>
-      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '8px 16px 60px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '8px 16px 60px' }}>
        <div className="ml-layout">
         <div style={{ minWidth: 0 }}>
         <HomeAskOrFollows>{null}</HomeAskOrFollows>

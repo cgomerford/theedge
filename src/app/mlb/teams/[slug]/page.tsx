@@ -121,7 +121,7 @@ export default async function TeamRoute({ params, searchParams }: Props) {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: team.name, path: `/mlb/teams/${slug}` }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '28px 24px 80px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '28px 32px 80px' }}>
         <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 18px' }}>
           <TeamMark id={mlbId} abbr={team.abbrev} size={52} />
           <h1 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{team.name} {season}</h1>

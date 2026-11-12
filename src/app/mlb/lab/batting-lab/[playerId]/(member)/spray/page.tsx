@@ -14,7 +14,7 @@ export default async function BattingSprayPage({ params }: { params: Promise<{ p
   const [rows, page] = await Promise.all([getLineupSpray([id]), getPlayerPageData(id)])
   const plays = rows[0]?.plays ?? []
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '8px 24px 80px' }}>
+    <div style={{ maxWidth: 1800, margin: '0 auto', padding: '8px 32px 80px' }}>
       <h1 style={{ margin: '14px 0 12px', fontWeight: 800, fontSize: 'clamp(26px,4vw,40px)', letterSpacing: '-.02em' }}>Spray chart</h1>
       <SprayView plays={plays} bats={page?.identity.batSide ?? null} />
     </div>

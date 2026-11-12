@@ -26,7 +26,7 @@ export default async function LiveStatsPage() {
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader variant="page" />
       <MLBSubNav isPro={isPro} />
-      <div style={{ maxWidth: 1560, margin: '0 auto', padding: '18px 24px 80px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '18px 32px 80px' }}>
         <nav aria-label="Breadcrumb" style={{ fontFamily: 'var(--font-redhat), system-ui, sans-serif', fontSize: 13, color: '#8a8275', marginBottom: 6 }}>
           <Link href="/mlb/stats" style={{ color: '#FF5722', textDecoration: 'none', fontWeight: 700 }}>The Stats</Link> <span aria-hidden>›</span> Live situations
         </nav>

@@ -50,13 +50,13 @@ function integralF(a: Float64Array, size: number): Float64Array {
 const win = (s: Float64Array, size: number, x0: number, y0: number, x1: number, y1: number) =>
   s[(y1 + 1) * (size + 1) + (x1 + 1)] - s[y0 * (size + 1) + (x1 + 1)] - s[(y1 + 1) * (size + 1) + x0] + s[y0 * (size + 1) + x0]
 
-export function makeResultsGrid(p: ResultsPayload, which: Span): RGrid {
+export function makeResultsGrid(p: ResultsPayload, which: Span | number): RGrid {
   const m10 = Math.round(p.margin * 10), h10 = Math.round(p.half * 10)
   const gx0 = Math.round(p.hb0 * 10) - h10 - m10, gy0 = Math.round(p.ivb0 * 10) - h10 - m10
   const size = 2 * (h10 + m10) + 1
   const A = Object.fromEntries(FIELDS.map(f => [f, new Float64Array(size * size)])) as Record<Field, Float64Array>
   const total = zeroSums()
-  const use = which === 'latest' ? p.seasons.filter(s => s.season === p.latest) : p.seasons
+  const use = which === 'all' ? p.seasons : p.seasons.filter(s => s.season === (which === 'latest' ? p.latest : which))
   for (const se of use) {
     for (let k = 0; k < se.cells.length; k += STRIDE) {
       const x = se.cells[k] - gx0, y = se.cells[k + 1] - gy0

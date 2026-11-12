@@ -522,6 +522,32 @@ export async function getPitcherDots(type: string, hand: Hand, season: number, l
   return { dots, league: leagueOf(rows) }
 }
 
+/** one pitcher's average shape, results and a sample of up to 60 of his pitches for one pitch type, kept in this server's memory for an hour (the hover panel asks for it on every move) */
+export type SampleRow = {
+  pitcherId: number; name: string; teamAbbr: string; hand: Hand
+  nPitches: number; velo: number; ivb: number; hb: number; slot: number; nSwings: number; nWhiffs: number
+  /** his sampled pitches as [run, ride] in inches */
+  points: [number, number][]
+}
+const sampleCache = new Map<string, { at: number; rows: SampleRow[] }>()
+export async function getPitcherSampleRows(type: string, hand: Hand, season: number, level: Level = 'mlb'): Promise<SampleRow[]> {
+  const key = `${level}|${season}|${type}|${hand}`
+  const hit = sampleCache.get(key)
+  if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.rows
+  const supa = isMilb(level) ? await milbDb() : createAdminClient()
+  const { data, error } = await pitcherScope(supa, level, 'pitcher_id,pitcher_name,team_abbr,n_pitches,velo,ivb,hb,slot,n_swings,n_whiffs,points')
+    .eq('season', season).eq('pitch_type', type).eq('p_throws', hand).gte('n_pitches', limitsFor(level).comparePitches).limit(1000)
+  if (error) { logOnce('getPitcherSampleRows:' + 'Supabase error', 'getPitcherSampleRows', 'Supabase error', error.message); return [] }
+  type Row = { pitcher_id: number; pitcher_name: string; team_abbr: string | null; n_pitches: number; velo: string | number; ivb: string | number; hb: string | number; slot: string | number; n_swings: number | null; n_whiffs: number | null; points: { hb: number; ivb: number }[] | null }
+  const rows: SampleRow[] = ((data ?? []) as unknown as Row[]).map(r => ({
+    pitcherId: r.pitcher_id, name: r.pitcher_name, teamAbbr: r.team_abbr ?? '', hand, nPitches: r.n_pitches,
+    velo: Number(r.velo), ivb: Number(r.ivb), hb: Number(r.hb), slot: Number(r.slot), nSwings: r.n_swings ?? 0, nWhiffs: r.n_whiffs ?? 0,
+    points: (r.points ?? []).map(p => [p.hb, p.ivb] as [number, number]),
+  }))
+  if (rows.length) sampleCache.set(key, { at: Date.now(), rows })
+  return rows
+}
+
 export type RepertoireRow = {
   pitchType: string; nPitches: number; velo: number; ivb: number; hb: number; slot: number
   nSwings: number; nWhiffs: number; diag: Diag

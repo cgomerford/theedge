@@ -61,10 +61,10 @@ export default function PitchMapAbout() {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Pitch Map', path: '/mlb/lab/pitch-map' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: C.orange }}>⊕ MLB · LAB</div>
         <h1 style={{ margin: '2px 0 6px', fontWeight: 800, fontSize: 'clamp(34px,5.6vw,52px)', letterSpacing: '-.02em', lineHeight: 1 }}>The Pitch Map</h1>
-        <p style={{ color: '#5b5347', fontSize: 16, maxWidth: 720, margin: '0 0 6px', lineHeight: 1.5 }}>
+        <p style={{ color: '#5b5347', fontSize: 16, maxWidth: 1000, margin: '0 0 6px', lineHeight: 1.5 }}>
           Where it comes from, how we build it, and what it can and cannot tell you.
         </p>
         <p style={{ fontSize: 13, margin: '0 0 8px' }}>
@@ -87,7 +87,7 @@ export default function PitchMapAbout() {
 
         <Section id="how" num="02" title="How the map is built">
           <Card>
-            <ol style={{ margin: 0, paddingLeft: 22, listStyle: 'decimal', fontSize: 14.5, lineHeight: 1.65, color: '#3a352c' }}>
+            <ol style={{ margin: 0, paddingLeft: 22, listStyle: 'decimal', fontSize: 14.5, lineHeight: 1.65, color: '#3a352c' , listStyleType: 'decimal' }}>
               <li><b>Every pitch becomes a point</b> on two axes: arm-side horizontal break and induced vertical break, in inches (left-handers flipped so arm-side is always to the right). Savant measures both for every pitch.</li>
               <li><b>The league’s pitches of that type and hand</b> fill the map. We store them in 0.1-inch boxes, one table row per season.</li>
               <li><b>Each box is coloured by whiffs per swing</b>, but one 0.1-inch box holds only about one pitch, so a box shows the rate for every league pitch within ±0.5, ±1 or ±2 inches of it. A box with under 40 swings in that window is left blank. Nothing is filled in from anywhere else.</li>
@@ -118,7 +118,7 @@ export default function PitchMapAbout() {
 
         <Section id="limits" num="04" title="What the map does not tell you">
           <Card>
-            <ul style={{ margin: 0, paddingLeft: 22, listStyle: 'disc', fontSize: 14.5, lineHeight: 1.65, color: '#3a352c' }}>
+            <ul style={{ margin: 0, paddingLeft: 22, listStyle: 'disc', fontSize: 14.5, lineHeight: 1.65, color: '#3a352c' , listStyleType: 'disc' }}>
               <li><b>Shape is not everything.</b> Command, deception, how the pitch is sequenced and a pitcher’s health are not in the map. The MLB.com piece above makes the same point.</li>
               <li><b>It is a description, not a forecast.</b> It says what pitches like this have done, not what this one will do.</li>
               <li><b>Samples can be thin.</b> That is why a box needs 40 swings in its window and why the page shows the sample behind every number.</li>

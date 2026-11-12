@@ -57,7 +57,7 @@ export default async function SecondLookPage({ searchParams }: { searchParams: P
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Sequencing Lab', path: '/mlb/lab/sequencing' }, { name: 'Second Look', path: '/mlb/lab/sequencing/second-look' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <SeqSectionNav />
         <SecondLook
           filters={filters} data={data} season={season} nameOfScope={nameOfScope} kStructure={kStructure}

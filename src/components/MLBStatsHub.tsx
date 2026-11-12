@@ -178,7 +178,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
       <div style={{
         borderBottom: '1px solid rgba(26,26,26,0.08)',
         padding: '20px 24px 16px',
-        maxWidth: 1160, margin: '0 auto',
+        maxWidth: 1800, margin: '0 auto',
       }}>
         <div style={{
           fontFamily: "'Red Hat Display', sans-serif",
@@ -205,7 +205,7 @@ export default function MLBStatsHub({ statLeaders }: Props) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '24px 24px 48px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '24px 32px 48px' }}>
 
         {/* Tab bar + column picker */}
         <div style={{

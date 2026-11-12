@@ -64,7 +64,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
       <SiteHeader variant="page" />
       <MLBSubNav />
       <style>{`@media (max-width:820px){.sc-row{grid-template-columns:minmax(0,1fr)!important}}`}</style>
-      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '28px 24px 80px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '28px 32px 80px' }}>
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Scores</div>
         <h1 style={{ margin: '4px 0 14px', fontSize: 'clamp(34px, 6vw, 56px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.02 }}>Scores</h1>
 

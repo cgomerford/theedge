@@ -6,13 +6,10 @@
 // hand, with a pitch-by-pitch replay. The same SequenceLab the Pitching Lab uses, on his side. (The older BatterSequenceExplorer is no longer used here.)
 
 import SequenceLab from '@/components/pitching-lab/SequenceLab'
-import { useBattingLabData } from '@/lib/batting-lab-context'
+import { useParams } from 'next/navigation'
 
+// The id comes from the address, not from the MLB lab data the other tabs wait for, so a hitter who has only played in the minors opens too (his pitches at the chosen level are fetched by the explorer itself).
 export default function BattingSequencingPage() {
-  const { data, failed } = useBattingLabData()
-
-  if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this batter&apos;s data right now.</div>
-  if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
-
-  return <SequenceLab id={data.id} role="batter" />
+  const id = Number(useParams().playerId)
+  return Number.isInteger(id) && id > 0 ? <SequenceLab id={id} role="batter" /> : null
 }

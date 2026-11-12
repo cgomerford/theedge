@@ -7,6 +7,8 @@
 import type { TiptapDoc } from '@/lib/articles';
 import { headshotCutoutUrl } from '@/lib/mlb-assets';
 import { parseTable, safeHttpUrl } from '@/lib/article-blocks';
+import ArticleChart from '@/components/article/ArticleChart';
+import { validateChart, type ChartBlock } from '@/lib/article-chart';
 
 // Loose node typing matches the loose TiptapDoc type in lib/articles.ts.
 interface TiptapNode {
@@ -142,6 +144,17 @@ function Node({ node }: { node: TiptapNode }) {
           {str(a.caption) ? <figcaption>{str(a.caption)}</figcaption> : null}
         </figure>
       );
+    }
+
+    case 'chartBlock': {
+      // a stored chart block: drawn only when it is complete (the writer's dialog does not save an invalid one)
+      const chart: ChartBlock = {
+        type: a.type === 'line' ? 'line' : 'bar', title: str(a.title), labels: Array.isArray(a.labels) ? (a.labels as unknown[]).map(String) : [],
+        series: Array.isArray(a.series) ? (a.series as { name?: unknown; values?: unknown }[]).map(s => ({ name: str(s.name), values: Array.isArray(s.values) ? (s.values as unknown[]).map(Number) : [] })) : [],
+        yUnit: str(a.yUnit), source: str(a.source), caption: str(a.caption), alt: str(a.alt),
+      };
+      if (validateChart(chart).length) return null;
+      return <ArticleChart chart={chart} />;
     }
 
     case 'xEmbed': {

@@ -12,6 +12,9 @@ import { useRef, useState } from 'react'
 import { headshotCutoutUrl } from '@/lib/mlb-assets'
 import { parseTable, safeHttpUrl } from '@/lib/article-blocks'
 import { uploadImage } from './upload'
+import ArticleChart from '@/components/article/ArticleChart'
+import { validateChart, type ChartBlock } from '@/lib/article-chart'
+import { ChartInsertModal } from './ChartDialogs'
 
 const small: React.CSSProperties = { border: '1px solid #e7e2d8', borderRadius: 8, padding: '6px 9px', fontSize: 13, background: '#faf8f3', width: '100%', fontFamily: 'inherit' }
 const chip = (on: boolean): React.CSSProperties => ({ fontSize: 11.5, fontWeight: 700, border: `1px solid ${on ? '#FF5722' : '#e7e2d8'}`, background: on ? '#FF5722' : '#fff', color: on ? '#fff' : '#1A1A1A', borderRadius: 999, padding: '3px 9px', cursor: 'pointer' })
@@ -272,4 +275,38 @@ export const XEmbed = Node.create({
   addNodeView() { return ReactNodeViewRenderer(XEmbedView) },
 })
 
-export const WRITER_BLOCKS = [Figure, PullQuote, StatRow, PlayerCard, DataTable, Gallery, XEmbed]
+// ---- Data chart --------------------------------------------------------------------------------------------------------------------------
+
+const chartOf = (a: Record<string, unknown>): ChartBlock => ({
+  type: a.type === 'line' ? 'line' : 'bar', title: String(a.title ?? ''), labels: Array.isArray(a.labels) ? (a.labels as unknown[]).map(String) : [],
+  series: Array.isArray(a.series) ? (a.series as { name?: unknown; values?: unknown }[]).map(x => ({ name: String(x.name ?? ''), values: Array.isArray(x.values) ? (x.values as unknown[]).map(Number) : [] })) : [],
+  yUnit: String(a.yUnit ?? ''), source: String(a.source ?? ''), caption: String(a.caption ?? ''), alt: String(a.alt ?? ''),
+})
+
+function ChartBlockView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
+  const [open, setOpen] = useState(false)
+  const chart = chartOf(node.attrs)
+  const errs = validateChart(chart)
+  return (
+    <NodeViewWrapper style={{ margin: '1.8em 0', ...frame(selected) }} data-drag-handle>
+      <div contentEditable={false}>
+        {errs.length === 0 ? <div onClick={() => setOpen(true)} style={{ cursor: 'pointer' }} title="Click to edit this chart"><ArticleChart chart={chart} /></div> : <div style={{ border: '1px dashed #FF5722', borderRadius: 6, padding: 14, fontSize: 13, color: '#A8391F' }}>This chart is incomplete: {errs.join(' ')}</div>}
+        <div style={bar}>
+          <button type="button" style={chip(false)} onClick={() => setOpen(true)}>Edit chart</button>
+          <button type="button" style={{ ...chip(false), marginLeft: 'auto' }} onClick={() => deleteNode()}>Remove chart</button>
+        </div>
+        {open && <ChartInsertModal initial={chart} onClose={() => setOpen(false)} onSave={b => { updateAttributes({ type: b.type, title: b.title, labels: b.labels, series: b.series, yUnit: b.yUnit ?? '', source: b.source ?? '', caption: b.caption ?? '', alt: b.alt }); setOpen(false) }} />}
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+export const ChartBlockNode = Node.create({
+  name: 'chartBlock', group: 'block', atom: true, draggable: true,
+  addAttributes() { return { type: { default: 'bar' }, title: { default: '' }, labels: { default: [] }, series: { default: [] }, yUnit: { default: '' }, source: { default: '' }, caption: { default: '' }, alt: { default: '' } } },
+  parseHTML() { return [{ tag: 'div[data-x9="chartBlock"]' }] },
+  renderHTML({ HTMLAttributes }) { return ['div', mergeAttributes({ 'data-x9': 'chartBlock' }, HTMLAttributes)] },
+  addNodeView() { return ReactNodeViewRenderer(ChartBlockView) },
+})
+
+export const WRITER_BLOCKS = [Figure, PullQuote, StatRow, PlayerCard, DataTable, Gallery, XEmbed, ChartBlockNode]

@@ -1,0 +1,27 @@
+name: compute-milb-stat-pool
+
+# Single writer of milb_stat_pool (scripts/compute_milb_stat_pool.py). The player page ranks a minor leaguer against his level from it.
+# Reads the MLB Stats API season stats (free, no auth); depends on nothing else. 10:15 UTC daily, after the overnight minor-league games are final.
+# Python crons live only in GitHub Actions, so there is no vercel.json entry.
+
+on:
+  schedule:
+    - cron: '15 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  compute-milb-stat-pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests supabase python-dotenv
+      - name: Build the minor-league stat pool
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/compute_milb_stat_pool.py --wait 0

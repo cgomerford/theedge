@@ -36,7 +36,7 @@ export default function FantasySubNav({ active, isPro = true }: { active?: NavKe
   const highlight = active ? (ACTIVE_ALIAS[active] ?? active) : undefined
   return (
     <div className="border-b border-stone-200/80 bg-[#FAF8F3]/90 backdrop-blur sticky top-0 z-30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6" style={{ maxWidth: 1800 }}>
         <div className="flex items-center overflow-x-auto scrollbar-hide gap-0">
           {NAV_ITEMS.map((item) => {
             const isActive = item.key === highlight

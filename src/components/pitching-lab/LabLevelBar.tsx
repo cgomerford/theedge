@@ -14,27 +14,32 @@ import { setShapeLevel, useShapeView } from '@/components/pitch-shape/shapeLevel
 import { log } from '@/lib/log'
 
 type Use = { level: Level; games: number; pitches: number }
-const cache = new Map<number, Use[] | null>()
+const cache = new Map<string, Use[] | null>()
 
-export function useLevelUse(playerId: number): Use[] | null | undefined {
+/** The levels he played at this season. `role` picks the lookup: a pitcher's games and pitches, or a hitter's games and plate appearances. */
+export function useLevelUse(playerId: number, role: 'pitcher' | 'batter' = 'pitcher'): Use[] | null | undefined {
+  const key = `${role}:${playerId}`
   const [got, setGot] = useState<{ id: number; v: Use[] | null } | null>(null)
   useEffect(() => {
-    if (cache.has(playerId)) return
+    if (cache.has(key)) return
     let live = true
-    fetch(`/api/mlb/pitching-lab-levels?playerId=${playerId}`)
+    fetch(`/api/mlb/${role === 'batter' ? 'batting' : 'pitching'}-lab-levels?playerId=${playerId}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((j: { levels: Use[] }) => { cache.set(playerId, j.levels); if (live) setGot({ id: playerId, v: j.levels }) })
-      .catch(e => { log.error('LabLevelBar', 'levels fetch failed', e instanceof Error ? e.message : e); cache.set(playerId, null); if (live) setGot({ id: playerId, v: null }) })
+      .then((j: { levels: Use[] }) => { cache.set(key, j.levels); if (live) setGot({ id: playerId, v: j.levels }) })
+      .catch(e => { log.error('LabLevelBar', 'levels fetch failed', e instanceof Error ? e.message : e); cache.set(key, null); if (live) setGot({ id: playerId, v: null }) })
     return () => { live = false }
-  }, [playerId])
-  if (cache.has(playerId)) return cache.get(playerId)
+  }, [playerId, role, key])
+  if (cache.has(key)) return cache.get(key)
   return got?.id === playerId ? got.v : undefined
 }
 
-export default function LabLevelBar({ playerId }: { playerId: number }) {
-  const use = useLevelUse(playerId)
+export default function LabLevelBar({ playerId, role = 'pitcher' }: { playerId: number; role?: 'pitcher' | 'batter' }) {
+  const use = useLevelUse(playerId, role)
   const view = useShapeView()
   const refs = useRef<Partial<Record<Level, HTMLButtonElement | null>>>({})
+  // A pitcher who never threw at MLB has no MLB log to show: with a single level there is no selector, so pick that level for the Location Lab, Sequencing and Levels, which read the shared level.
+  const only = use && use.length > 0 && !use.some(u => u.level === view.level) ? use[0].level : null
+  useEffect(() => { if (only) setShapeLevel(only) }, [only])
   if (!use || use.length < 2) return null   // one level (or unknown): nothing to choose between
   const levels = use.map(u => u.level)
   const current = levels.includes(view.level) ? view.level : levels[0]
@@ -57,7 +62,7 @@ export default function LabLevelBar({ playerId }: { playerId: number }) {
           )
         })}
       </div>
-      <span style={{ fontSize: 12.5, color: '#5b5347' }}>His pitches at the level you choose, from Baseball Savant, for the Location Lab, Sequencing and the level comparison.</span>
+      <span style={{ fontSize: 12.5, color: '#5b5347' }}>{role === 'batter' ? 'The pitches he has seen at the level you choose' : 'His pitches at the level you choose'}, from Baseball Savant, for the Location Lab, Sequencing{role === 'batter' ? '' : ' and the level comparison'}.</span>
     </div>
   )
 }

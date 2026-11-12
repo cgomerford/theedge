@@ -105,7 +105,7 @@ export default async function PostGamePage({ params, searchParams }: Props) {
       <SiteHeader variant="page" />
       <MLBSubNav />
       <div style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
-        <div style={{ maxWidth: 1360, margin: '0 auto', padding: '28px 24px 80px' }}>
+        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '28px 32px 80px' }}>
           {isFinal ? (
             <>
               <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#FF5722' }}>Postgame</div>

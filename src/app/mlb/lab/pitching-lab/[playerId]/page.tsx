@@ -7,18 +7,19 @@
 import { notFound } from 'next/navigation'
 import { getPlayerPageData } from '@/lib/player-page'
 import { getPlayerOverview } from '@/lib/player-overview'
-import { LatestGame, OverviewBody } from '@/components/player-page/PlayerOverviewView'
+import { LatestGame, OverviewBody, LevelSwitcher } from '@/components/player-page/PlayerOverviewView'
 
-export default async function PitchingLabOverview({ params }: { params: Promise<{ playerId: string }> }) {
+export default async function PitchingLabOverview({ params, searchParams }: { params: Promise<{ playerId: string }>; searchParams: Promise<{ level?: string }> }) {
   const playerId = Number((await params).playerId)
   if (!playerId) notFound()
   const data = await getPlayerPageData(playerId)
   if (!data) notFound()
-  const o = await getPlayerOverview(data)
+  const o = await getPlayerOverview(data, (await searchParams).level)
 
   return (
     <div>
       {o.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{o.seasonNote}</p> : null}
+      <LevelSwitcher o={o} basePath={`/mlb/lab/pitching-lab/${playerId}`} />
       <LatestGame o={o} />
       <OverviewBody o={o} data={data} />
     </div>

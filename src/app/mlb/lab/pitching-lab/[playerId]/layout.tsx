@@ -5,6 +5,7 @@
 // signed-out visitors get a sign-in card there, and a free account opens one full look a day, per player. The data APIs enforce the same split.
 
 import LabShell from './LabShell'
+import { getLabScope } from '@/lib/lab-scope'
 import FollowControl from '@/components/signup/FollowControl'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -27,6 +28,7 @@ export default async function PitchingLabGate({ children, params }: { children: 
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
+  const scope = await getLabScope(Number(playerId))
   const follow = <FollowControl kind="player" refId={playerId} name={person.fullName} />
-  return <LabShell playerName={person.fullName} followSlot={follow}>{children}</LabShell>
+  return <LabShell playerName={person.fullName} followSlot={follow} minorsOnly={scope.minorsOnly} hasMilbShape={scope.hasMilbShape}>{children}</LabShell>
 }

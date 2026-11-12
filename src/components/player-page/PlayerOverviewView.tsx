@@ -9,6 +9,8 @@ import ThroughDate, { formatThrough } from '@/components/data/ThroughDate'
 import { findTeamByName } from '@/lib/teams'
 import { ordinal } from '@/lib/ordinal'
 import { MIN_SAMPLE } from '@/lib/min-sample'
+import { LEVELS } from '@/lib/levels'
+import MilbVsPitchType from '@/components/player-page/MilbVsPitchType'
 import { pitchColor, pitchLabel } from '@/lib/lab/pitch-meta'
 import type { PlayerPageData } from '@/lib/player-page'
 import type { PlayerOverview, GameLine } from '@/lib/player-overview'
@@ -20,6 +22,30 @@ function pctBar(p: number) { return p >= 80 ? '#1D9E75' : p >= 60 ? '#7CC4A8' : 
 function pctText(p: number) { return p >= 60 ? '#137A5A' : p < 40 ? '#B8402B' : '#1A1A1A' }
 const Star = () => <span title="Small sample size" style={{ color: '#FF5722', fontWeight: 800 }}>*</span>
 const Note = ({ text }: { text: string }) => <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>* Small sample size: {text}. Read with caution.</div>
+
+/** Shown instead of "Pending" below MLB, where the data does not exist at all (an honest empty state, nothing estimated). */
+export function NotTracked({ what, level }: { what: string; level: string }) {
+  return <div style={{ padding: '10px 0', fontSize: 13, color: MUTE, borderTop: `1px solid ${LINE}` }}>{what} is not tracked at {level}, so there is nothing to show. Nothing is estimated in its place.</div>
+}
+
+/** Level switcher: one link per level the player has real games at, each with its latest season. Server-rendered (?level=), so a view can be shared. */
+export function LevelSwitcher({ o, basePath }: { o: PlayerOverview; basePath: string }) {
+  if (o.levels.length < 2) return null
+  return (
+    <nav aria-label="Level" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 8px', padding: '10px 0', borderBottom: `1px solid ${LINE}`, fontSize: 14 }}>
+      <b style={{ marginRight: 4 }}>Level:</b>
+      {o.levels.map(l => {
+        const on = l.key === o.level.key
+        return (
+          <Link key={l.key} href={l.key === 'mlb' ? basePath : `${basePath}?level=${l.key}`} scroll={false} aria-current={on ? 'page' : undefined}
+            style={{ padding: '3px 11px', borderRadius: 999, border: `1px solid ${on ? '#1A1A1A' : LINE}`, background: on ? '#1A1A1A' : '#fff', color: on ? '#FAF8F3' : '#1A1A1A', fontWeight: 700, textDecoration: 'none', ...num }}>
+            {l.label} <span style={{ fontWeight: 500, opacity: 0.75 }}>{l.season}</span>
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
 
 export function Section({ title, sub, children }: { title: string; sub?: ReactNode; children: ReactNode }) {
   return (
@@ -51,6 +77,7 @@ export function PlayerHeader({ data, follow }: { data: PlayerPageData; follow: R
         <h1 style={{ margin: 0, fontSize: 'clamp(30px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{p.fullName}</h1>
         <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px', fontSize: 14, color: '#5b5347', ...num }}>
           {p.currentTeam ? <Link href={`/mlb/teams/${findTeamByName(p.currentTeam.name)?.slug ?? ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit', fontWeight: 800, textDecoration: 'none' }}><TeamMark id={p.currentTeam.id} abbr={p.currentTeam.abbr} size={22} /></Link> : null}
+          {!p.currentTeam && p.currentClub ? <span style={{ fontWeight: 800 }}>{p.currentClub.name}{p.currentClub.levelLabel ? <span style={{ marginLeft: 8, padding: '1px 8px', border: '1px solid #FF5722', color: '#FF5722', fontSize: 12, borderRadius: 999 }}>{p.currentClub.levelLabel}</span> : null}</span> : null}
           <span>{p.primaryPosition.abbreviation}</span>
           <span>B/T {bt}</span>
           <span>Age {p.currentAge}</span>
@@ -84,7 +111,7 @@ export function LatestGame({ o }: { o: PlayerOverview }) {
   return (
     <div style={{ padding: '10px 0', borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}`, ...num }}>
       <span style={{ fontWeight: 800 }}>Latest game</span>{g.stage ? ` (${g.stage})` : ''}: {formatThrough(g.date)} {g.home ? 'vs' : 'at'} {g.opp}. {gameText(g, o.isPitcher)}.{' '}
-      {g.slug ? <Link href={`/mlb/${g.slug}`} style={{ color: '#FF5722', fontWeight: 800 }}>Open the game</Link> : null}
+      {g.slug || (!o.isMlb && g.gamePk) ? <Link href={g.slug ? `/mlb/${g.slug}` : `/mlb/milb/${g.gamePk}`} style={{ color: '#FF5722', fontWeight: 800 }}>Open the game</Link> : null}
     </div>
   )
 }
@@ -120,21 +147,54 @@ export function SeasonReadout({ o }: { o: PlayerOverview }) {
           </div>
         ))}
       </div>
+      {o.advanced.length ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 14px', marginTop: 18, paddingTop: 12, borderTop: `1px solid ${LINE}` }}>
+          {o.advanced.map(a => (
+            <div key={a.label} title={a.hint}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: MUTE }}>{a.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, ...num }}>{a.value}{small ? <Star /> : null}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {small ? <Note text={`under ${MIN_SAMPLE.batterPercentilePA} ${o.isPitcher ? 'batters faced' : 'plate appearances'}`} /> : null}
     </>
   )
 }
 
+import CareerTableClient, { type CareerLine } from './CareerTableClient'
+
 export function CareerTable({ o, data }: { o: PlayerOverview; data: PlayerPageData }) {
-  const careerRows = (o.isPitcher ? data.yearByYearPitching : data.yearByYearHitting)
-  const head = o.isPitcher ? ['Season', 'Team', 'W', 'L', 'ERA', 'IP', 'K', 'BB', 'WHIP'] : ['Season', 'Team', 'G', 'AVG', 'OBP', 'SLG', 'OPS', 'HR', 'RBI']
-  const rows = careerRows.map(r => [String(r.season), r.team ?? '', ...(o.isPitcher
-    ? [r.stat.wins, r.stat.losses, r.stat.era, r.stat.inningsPitched, r.stat.strikeOuts, r.stat.baseOnBalls, r.stat.whip]
-    : [r.stat.gamesPlayed, r.stat.avg, r.stat.obp, r.stat.slg, r.stat.ops, r.stat.homeRuns, r.stat.rbi]).map(v => (v == null ? '' : String(v)))])
-  return rows.length === 0 ? <div style={{ fontSize: 14, color: MUTE }}>No prior MLB seasons</div> : <Table head={head} rows={rows} leftSecond />
+  // MLB seasons plus every minor-league level, newest season first, higher level first within a season.
+  const lvlOrder = (k?: string) => LEVELS.findIndex(l => l.key === (k ?? 'mlb'))
+  const lvlLabel = (k?: string) => LEVELS.find(l => l.key === (k ?? 'mlb'))?.label ?? ''
+  const careerRows = [...(o.isPitcher ? data.yearByYearPitching : data.yearByYearHitting), ...(o.isPitcher ? data.minorsPitching : data.minorsHitting)]
+    .filter(r => Number(r.stat.gamesPlayed ?? 0) > 0 || r.level == null)
+    .sort((a, b) => Number(b.season) - Number(a.season) || lvlOrder(a.level) - lvlOrder(b.level))
+  const head = o.isPitcher ? ['Season', 'Level · Team', 'G', 'W', 'L', 'ERA', 'IP', 'K', 'BB', 'WHIP'] : ['Season', 'Level · Team', 'G', 'AVG', 'OBP', 'SLG', 'OPS', 'HR', 'RBI']
+  const cellsOf = (r: (typeof careerRows)[number]) => (o.isPitcher
+    ? [r.stat.gamesPlayed, r.stat.wins, r.stat.losses, r.stat.era, r.stat.inningsPitched, r.stat.strikeOuts, r.stat.baseOnBalls, r.stat.whip]
+    : [r.stat.gamesPlayed, r.stat.avg, r.stat.obp, r.stat.slg, r.stat.ops, r.stat.homeRuns, r.stat.rbi]).map(v => (v == null ? '' : String(v)))
+  // One line per season and level. When he changed clubs the API sends a season-total row with no club (team null) plus a row per club: the total becomes the line and the clubs its children.
+  const groups = new Map<string, typeof careerRows>()
+  for (const r of careerRows) { const g = `${r.season}-${r.level ?? 'mlb'}`; groups.set(g, [...(groups.get(g) ?? []), r]) }
+  const lines: CareerLine[] = [...groups.entries()].map(([g, rs]) => {
+    const clubs = rs.filter(r => r.team != null)
+    const total = rs.find(r => r.team == null)
+    const club = (r: (typeof rs)[number], i: number): CareerLine => ({ key: `${g}-${i}`, season: String(r.season), level: lvlLabel(r.level), teams: [{ id: r.teamId ?? null, name: r.team ?? '' }], cells: cellsOf(r), kids: [] })
+    if (total && clubs.length > 1) return { key: g, season: String(total.season), level: lvlLabel(total.level), teams: clubs.map(c => ({ id: c.teamId ?? null, name: c.team ?? '' })), cells: cellsOf(total), kids: clubs.map(club) }
+    return club(clubs[0] ?? rs[0], 0)
+  })
+  return lines.length === 0 ? <div style={{ fontSize: 14, color: MUTE }}>No prior seasons</div> : <CareerTableClient head={head} lines={lines} />
 }
 
-export function Arsenal({ o }: { o: PlayerOverview }) {
+export function Arsenal({ o, playerId }: { o: PlayerOverview; playerId: number }) {
+  // Below MLB only Triple-A and the Florida State League (Single-A) are pitch-tracked. A pitcher's arsenal is read from the stored tables; a hitter's results by pitch type load in the browser.
+  if (!o.isMlb && !o.isPitcher) {
+    if (o.level.key === 'aaa' || o.level.key === 'a') return <MilbVsPitchType playerId={playerId} level={o.level.key === 'aaa' ? 'aaa' : 'fsl'} season={o.season} levelName={o.level.name} />
+    return <NotTracked what="Results against each pitch type" level={o.level.name} />
+  }
+  if (!o.isMlb && o.isPitcher && !o.mix.length) return <NotTracked what="Pitch-by-pitch arsenal data" level={o.level.name} />
   const through = o.latest?.date ?? null
   if (o.isPitcher) {
     if (!o.mix.length) return <PendingBlock label="Arsenal" />
@@ -183,6 +243,24 @@ export function ZonesShell() {
 }
 
 export function Percentiles({ o }: { o: PlayerOverview }) {
+  if (!o.isMlb) {
+    const r = o.milbRanks
+    if (!r || !r.ranks.length) return <div style={{ padding: '10px 0', fontSize: 13, color: MUTE, borderTop: `1px solid ${LINE}` }}>Ranks at {o.level.name} need at least {o.isPitcher ? MIN_SAMPLE.pitcherPercentileBF : MIN_SAMPLE.batterPercentilePA} {o.isPitcher ? 'batters faced' : 'plate appearances'}, and are rebuilt every night from every {o.level.name} player&apos;s season. Nothing is estimated in their place.</div>
+    return (
+      <>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {r.ranks.map(s => (
+            <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '84px 1fr 112px', alignItems: 'center', gap: 10, fontSize: 14, ...num }}>
+              <span style={{ fontWeight: 700 }}>{s.label}</span>
+              <span style={{ background: '#f1eee6', height: 10, borderRadius: 5 }}><span style={{ display: 'block', height: 10, borderRadius: 5, background: pctBar(s.percentile), width: `${Math.max(s.percentile, 2)}%` }} /></span>
+              <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><span style={{ fontSize: 13, color: '#5b5347' }}>{s.value}</span> <b style={{ fontSize: 17, fontWeight: 800, color: pctText(s.percentile), display: 'inline-block', minWidth: 42 }}>{ordinal(s.percentile)}</b></span>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: MUTE, marginTop: 6 }}>Far right and green = 100th percentile (best); red is low. n {r.n.toLocaleString('en-US')} {o.isPitcher ? 'batters faced' : 'PA'}, ranked among {r.poolSize.toLocaleString('en-US')} {o.level.name} {o.isPitcher ? 'pitchers' : 'hitters'} with at least {r.minN} this season. Lower-is-better stats are flipped.</div>
+      </>
+    )
+  }
   if (!o.isPitcher) {
     if (!o.batterPercentiles.length) return <PendingBlock label="Percentile ranks (he is outside the league's top 500 in these stats)" />
     const smallB = o.lineN < MIN_SAMPLE.batterPercentilePA
@@ -265,17 +343,18 @@ export function GoDeeper({ data, current }: { data: PlayerPageData; current?: 'p
 
 /** The shared body: main column + right rail. Zones (the gate) are passed in by the player page; the lab overview leaves them to the lab tabs. */
 export function OverviewBody({ o, data }: { o: PlayerOverview; data: PlayerPageData }) {
+  const lv = o.isMlb ? '' : ` at ${o.level.name}`
   return (
     <>
       <style>{`.pl-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0 48px;align-items:start}.pl-rail{border-left:1px solid #e7e2d8;padding-left:32px}@media (max-width:1000px){.pl-layout{grid-template-columns:minmax(0,1fr)}.pl-rail{border-left:0;padding-left:0}}`}</style>
       <div className="pl-layout">
         <div style={{ minWidth: 0 }}>
-          <Section title="Last 5 games"><LastFive o={o} /></Section>
-          <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={o} /></Section>
-          <Section title="Career"><CareerTable o={o} data={data} /></Section>
+          <Section title={`Last 5 games${lv}`}><LastFive o={o} /></Section>
+          <Section title={data.identity.isPitcher ? 'Arsenal' : 'vs pitch type'}><Arsenal o={o} playerId={data.identity.id} /></Section>
+          <Section title="Career" sub={o.isMlb ? undefined : 'Every level he has played at'}><CareerTable o={o} data={data} /></Section>
         </div>
         <aside className="pl-rail" aria-label="Season summary">
-          <Section title={`${o.season} season`}><SeasonReadout o={o} /></Section>
+          <Section title={`${o.season} season${o.isMlb ? '' : ', ' + o.level.label}`}><SeasonReadout o={o} /></Section>
           <Section title="Percentiles"><Percentiles o={o} /></Section>
           <Section title="What changed" sub="Last 30 days against the season"><WhatChanged o={o} /></Section>
           <Section title="Splits"><Splits o={o} /></Section>

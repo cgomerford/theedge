@@ -19,7 +19,7 @@ export default async function BattingPlatoonPage({ params }: { params: Promise<{
   const [found, league] = await Promise.all([demoOr('platoonHitter', () => getPlatoonHitter(Number(playerId))), demoOr('platoonLeague', () => getPlatoonLeague())])
   const sides = found ? sidesOf(found.hitter) : []
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '8px 24px 100px' }}>
+    <div style={{ maxWidth: 1800, margin: '0 auto', padding: '8px 32px 100px' }}>
       <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#FF5722', marginTop: 22 }}>⊕ PLATOON</div>
       <h1 style={{ margin: '2px 0 6px', fontWeight: 800, fontSize: 'clamp(28px,4.4vw,44px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>Is the split real?</h1>
       <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 720, margin: '0 0 18px', lineHeight: 1.5 }}>

@@ -7,6 +7,7 @@
 // same split (lib/deep-look.ts), so bypassing a page does not reach it.
 
 import LabShell from './LabShell'
+import { getLabScope } from '@/lib/lab-scope'
 import FollowControl from '@/components/signup/FollowControl'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -29,6 +30,7 @@ export default async function BattingLabGate({ children, params }: { children: R
   const { playerId } = await params
   const person = await getMlbPerson(Number(playerId))
   if (!person) notFound()
+  const scope = await getLabScope(Number(playerId))
   const follow = <FollowControl kind="player" refId={playerId} name={person.fullName} />
-  return <LabShell playerName={person.fullName} followSlot={follow}>{children}</LabShell>
+  return <LabShell playerName={person.fullName} followSlot={follow} minorsOnly={scope.minorsOnly} hasMilbLog={scope.hasMilbLog}>{children}</LabShell>
 }

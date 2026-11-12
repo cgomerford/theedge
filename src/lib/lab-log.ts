@@ -20,7 +20,7 @@ function asPitch(b: RawBatterPitch): RawPitch {
     releasePosX: b.releasePosX, releasePosZ: b.releasePosZ, armAngle: b.armAngle, spinRate: b.spinRate, extension: b.extension,
     effectiveSpeed: null, traj: b.traj, pfx: b.pfxX != null && b.pfxZ != null ? [b.pfxX, b.pfxZ] : null,
     topBot: b.topBot, stand: b.pitcherThrows, woba: b.woba, xwoba: b.xwoba, wobaDen: b.wobaDen, exitVelo: b.launchSpeed,
-    launchAngle: b.launchAngle, batSpeed: b.batSpeed, swingLength: b.swingLength,
+    launchAngle: b.launchAngle, batSpeed: b.batSpeed, swingLength: b.swingLength, hcX: b.hcX, hcY: b.hcY, bbType: b.bbType,
   }
 }
 

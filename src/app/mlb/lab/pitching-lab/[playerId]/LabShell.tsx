@@ -33,11 +33,14 @@ const TABS = [
   { seg: 'trends',    label: 'Trends'           },
 ]
 
-function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; playerName: string; followSlot?: React.ReactNode }) {
+// A minor leaguer with no MLB games only gets the tabs that have data: Overview, plus the tabs that read his per-pitch log at a minor level (Location Lab, Sequencing, Levels) when the
+// minor-league pitch-shape tables hold rows for him. Arsenal, Shape, Stuff, Hot Zone Overlay, H2H and Trends read MLB-only tables, so they stay hidden.
+function ShellHeader({ playerId, playerName, followSlot, minorsOnly, hasMilbShape }: { playerId: number; playerName: string; followSlot?: React.ReactNode; minorsOnly: boolean; hasMilbShape: boolean }) {
   const { data } = usePitchingLabData()
   const pathname = usePathname()
   const base = `/mlb/lab/pitching-lab/${playerId}`
   const name = data?.name ?? playerName
+  const shown = minorsOnly ? TABS.filter(t => t.seg === '' || (hasMilbShape && LEVEL_TABS.includes(t.seg))) : TABS
   // Only what the lab data already holds; a missing part is dropped (hand, record and innings are not in it today).
 
   const team = MLB_TEAMS.find(t => t.abbrev === data?.abbr)
@@ -47,13 +50,13 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
         facts={[data?.fullStats?.era != null ? `${data.fullStats.era.toFixed(2)} ERA` : null].filter(Boolean).join(' · ')}
         followSlot={followSlot} changeHref="/mlb/lab/pitching-lab" changeLabel="Change pitcher" />
 
-      <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className="">
+      <div style={{ maxWidth: 1800, margin: '0 auto', paddingLeft: 32, paddingRight: 32 }} className="">
         <Suspense fallback={null}>
           <Tabs
             label="Pitcher lab sections"
             sticky
             activeId={TABS.map(t => (t.seg ? `${base}/${t.seg}` : base)).indexOf(pathname) >= 0 ? (TABS[TABS.map(t => (t.seg ? `${base}/${t.seg}` : base)).indexOf(pathname)].seg || 'overview') : undefined}
-            tabs={TABS.map(t => ({ id: t.seg || 'overview', label: t.label, href: t.seg ? `${base}/${t.seg}` : base }))}
+            tabs={shown.map(t => ({ id: t.seg || 'overview', label: t.label, href: t.seg ? `${base}/${t.seg}` : base }))}
           />
         </Suspense>
       </div>
@@ -64,7 +67,7 @@ function ShellHeader({ playerId, playerName, followSlot }: { playerId: number; p
 /** The tabs that read a level: they show the Pitching Lab's level selector. */
 const LEVEL_TABS = ['location', 'sequencing', 'levels']
 
-export default function PitcherLabLayout({ children, playerName, followSlot }: { children: React.ReactNode; playerName: string; followSlot?: React.ReactNode }) {
+export default function PitcherLabLayout({ children, playerName, followSlot, minorsOnly, hasMilbShape }: { children: React.ReactNode; playerName: string; followSlot?: React.ReactNode; minorsOnly: boolean; hasMilbShape: boolean }) {
   const params = useParams()
   const pathname = usePathname()
   const playerId = Number(params.playerId)
@@ -74,8 +77,8 @@ export default function PitcherLabLayout({ children, playerName, followSlot }: {
       <SiteHeader variant="page" />
       <MLBSubNav />
       <PitchingLabProvider key={playerId} pitcherId={playerId}>
-        <ShellHeader playerId={playerId} playerName={playerName} followSlot={followSlot} />
-        <div style={{ maxWidth: 1360, margin: '0 auto', paddingLeft: 24, paddingRight: 24 }} className=" py-8">
+        <ShellHeader playerId={playerId} playerName={playerName} followSlot={followSlot} minorsOnly={minorsOnly} hasMilbShape={hasMilbShape} />
+        <div style={{ maxWidth: 1800, margin: '0 auto', paddingLeft: 32, paddingRight: 32 }} className=" py-8">
           {LEVEL_TABS.some(t => pathname.endsWith(`/${t}`)) && <LabLevelBar playerId={playerId} />}
           {children}
         </div>

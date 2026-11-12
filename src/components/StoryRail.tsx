@@ -20,7 +20,7 @@ export default function StoryRail({
   if (slides.length === 0) return null
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-3" style={{ borderTop: '1px solid rgba(250,248,243,0.06)' }}>
+    <div className="max-w-6xl mx-auto px-4 py-3" style={{ maxWidth: 1800, borderTop: '1px solid rgba(250,248,243,0.06)' }}>
       <button
         onClick={() => onOpen(0)}
         className="flex items-center gap-2 rounded-sm px-4 py-2"

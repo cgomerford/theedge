@@ -10,6 +10,9 @@
 import { MLB_TEAMS } from './teams'
 import { getDraftPickDetail } from './player-draft'
 import { log } from '@/lib/log'
+import { LEVELS, type LevelKey } from '@/lib/levels'
+import { getTeamLevels } from '@/lib/team-levels'
+import { mlb } from '@/lib/mlb-cockpit.server-fetch-allowed'
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -39,6 +42,8 @@ export interface PlayerIdentity {
     abbr: string
     primaryColor: string
   } | null
+  // The club he is with right now at any level (minor-league clubs have no entry in MLB_TEAMS, so currentTeam is null for them).
+  currentClub: { name: string; level: LevelKey | null; levelLabel: string | null } | null
 }
 
 export interface PlayerDraft {
@@ -75,6 +80,8 @@ export interface PlayerTransaction {
 export interface YearByYearRow {
   season: string
   team: string | null
+  teamId?: number | null    // MLB team id (for the club logo); the season-total row of a player who changed clubs has none
+  level?: LevelKey          // set on minor-league rows (MLB rows leave it off)
   stat: Record<string, string | number>
 }
 
@@ -86,6 +93,9 @@ export interface PlayerPageData {
   transactions: PlayerTransaction[]
   yearByYearHitting: YearByYearRow[]
   yearByYearPitching: YearByYearRow[]
+  // Same shape for every level below MLB (Triple-A down to Rookie, plus Fall/Winter league). The MLB arrays above are unchanged.
+  minorsHitting: YearByYearRow[]
+  minorsPitching: YearByYearRow[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -126,6 +136,7 @@ export async function getPlayerPageData(playerId: number): Promise<PlayerPageDat
     const p = json?.people?.[0]
     if (!p) return null
 
+    const teamLevels = await getTeamLevels()
     const positionCode = p.primaryPosition?.code ?? ''
     const isPitcher = positionCode === '1' || p.primaryPosition?.abbreviation === 'P'
 
@@ -152,6 +163,11 @@ export async function getPlayerPageData(playerId: number): Promise<PlayerPageDat
       currentAge: p.birthDate ? computeAge(p.birthDate) : (p.currentAge ?? 0),
       isPitcher,
     currentTeam: teamMeta(p.currentTeam),
+      currentClub: p.currentTeam?.name ? {
+        name: p.currentTeam.name,
+        level: teamLevels.get(Number(p.currentTeam.id))?.level ?? null,
+        levelLabel: teamLevels.get(Number(p.currentTeam.id))?.label ?? null,
+      } : null,
 
     }
 
@@ -223,10 +239,31 @@ const draft: PlayerDraft | null = draftDetail ? {
         const row: YearByYearRow = {
           season: s.season,
           team: s.team?.name ?? null,
+          teamId: s.team?.id ?? null,
           stat: s.stat ?? {},
         }
         if (group === 'hitting') yearByYearHitting.push(row)
         if (group === 'pitching') yearByYearPitching.push(row)
+      }
+    }
+
+    // The year-by-year hydrate above is MLB only. Each minor level has to be asked for on its own (sportId), so that is one cached call per level.
+    const minorsHitting: YearByYearRow[] = []
+    const minorsPitching: YearByYearRow[] = []
+    const minorLevels = LEVELS.filter(l => l.sportId !== 1)
+    type MinorStats = { stats?: { group?: { displayName?: string }; splits?: { season: string; team?: { id?: number; name?: string }; stat?: Record<string, string | number> }[] }[] }
+    const minorBlocks = await Promise.all(minorLevels.map(async lvl => {
+      const r = await mlb<MinorStats>(`/people/${playerId}/stats?stats=yearByYear&group=hitting,pitching&sportId=${lvl.sportId}`, 3600)
+      if (!r) log.error('getPlayerPageData', `minor-league ${lvl.label} year-by-year failed`, playerId)
+      return { lvl, stats: r?.stats ?? [] }
+    }))
+    for (const { lvl, stats } of minorBlocks) {
+      for (const block of stats) {
+        for (const s of block.splits ?? []) {
+          const row: YearByYearRow = { season: s.season, team: s.team?.name ?? null, teamId: s.team?.id ?? null, level: lvl.key, stat: s.stat ?? {} }
+          if (block.group?.displayName === 'hitting') minorsHitting.push(row)
+          if (block.group?.displayName === 'pitching') minorsPitching.push(row)
+        }
       }
     }
 
@@ -238,6 +275,8 @@ const draft: PlayerDraft | null = draftDetail ? {
       transactions,
       yearByYearHitting,
       yearByYearPitching,
+      minorsHitting,
+      minorsPitching,
     }
   } catch (err) {
     log.error('getPlayerPageData', 'failed', err)

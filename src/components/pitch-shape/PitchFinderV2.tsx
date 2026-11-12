@@ -41,6 +41,7 @@ import { useLevelCaps } from './LevelBar'
 import type { LevelAvg } from './AcrossLevels'
 import { placeLabels } from './labelLayout'
 import ShapeChanges from './ShapeChanges'
+import V3Intro from './V3Intro'
 import LevelBar from './LevelBar'
 import { usePitcherLog } from './usePitcherLog'
 import { movementPoints } from '@/lib/pitch-shape/pitch-line'
@@ -96,7 +97,7 @@ function topSpots(g: Grid, r10: number, n = 3, minGapIn = 4, minSwings = SPOT_MI
 const pctText = (x: number | null) => (x == null ? '—' : `${(x * 100).toFixed(1)}%`)
 const pts = (d: number) => `${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1)} pts`
 
-export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[] }) {
+export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes, v3 = false }: { isPro: boolean; lookLeft?: boolean; pitchTypes: string[]; /** the v3 layout, switched on with ?v=3 */ v3?: boolean }) {
   const isFree = (t: string) => (FREE_SANDBOX_TYPES as readonly string[]).includes(t)
   const [type, setType] = useState(pitchTypes.find(isFree) ?? pitchTypes[0] ?? 'FF')
   const [hand, setHand] = useState<ViewHand>('R')   // Right, Left, or Both: both hands draw on the same map (run is arm-side positive for either arm), see bothHands.ts
@@ -483,6 +484,7 @@ export default function PitchFinderV2({ isPro, lookLeft = false, pitchTypes }: {
       {/* the heading and the long explanation moved to the guide page; the heading stays for screen readers and search */}
       <h1 style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Pitch Shape Lab: which {lc}s make hitters miss, and who throws them</h1>
 
+      {v3 && <V3Intro goal="whiff" onGoal={() => setMeasure('whiff')} lc={lc} offUrl="/mlb/lab/pitch-shape" />}
       <LevelBar trailing={<>
         <div role="tablist" aria-label="Pitch Shape Lab views" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button role="tab" aria-selected={view === 'map'} type="button" onClick={() => setView('map')} style={tabStyle(view === 'map')}>League map</button>

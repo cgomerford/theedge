@@ -479,7 +479,7 @@ export default function FantasyHub({
     <div>
       {ticker.length > 0 && <FantasyTicker pitchers={ticker} />}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8" style={{ maxWidth: 1800 }}>
         <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
           <div>
             <div className="text-[#FF5722] text-[10px] font-mono uppercase tracking-widest font-bold mb-1">

@@ -50,7 +50,7 @@ export default async function ContactLabPage({ searchParams }: { searchParams: P
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Contact Lab', path: '/mlb/lab/contact' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         {!leaders || leaders.rows.length === 0
           ? <Empty>Contact data isn’t built yet.</Empty>
           : <ContactLab leaders={leaders} selectedId={selectedId} contact={contact} swing={swing?.mine ?? null} ttoProfile={ttoProfile} ttoLeaders={ttoLeaders} ttoSeason={season} />}

@@ -27,7 +27,7 @@ export default async function ContactShapePage({ searchParams }: { searchParams:
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <div style={{ fontSize: 10, letterSpacing: '.14em', fontWeight: 700, color: '#B83A0E' }}><XMark /> MLB · LAB · CONTACT SHAPE</div>
         <h1 style={{ margin: '4px 0 6px', fontWeight: 800, fontSize: 'clamp(30px,5vw,48px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>Where does his contact land?</h1>
         <p style={{ color: '#5b5347', fontSize: 15, maxWidth: 760, margin: '0 0 16px', lineHeight: 1.5 }}>

@@ -72,7 +72,7 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
   onMouseLeave={onClose}
 >
       <div className="border-b border-stone-100 bg-white">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-center gap-8 h-12">
+        <div className="mx-auto px-4 sm:px-6 flex items-center gap-8 h-12" style={{ maxWidth: 1800 }}>
           {MLB_SUB_LINKS.map(link => (
             <Link key={link.href} href={link.href} onClick={onClose}
               className="group flex items-center gap-1.5 font-sans font-bold text-[13px] text-stone-900 hover:text-[#FF5722] transition">
@@ -86,7 +86,7 @@ function MLBMegaPanel({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+      <div className="mx-auto px-4 sm:px-6 py-8" style={{ maxWidth: 1800 }}>
         <div className="gap-x-8 gap-y-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))' }}>
           {columns.map((col, ci) => (
             <div key={ci} className="flex flex-col gap-y-3">
@@ -213,7 +213,7 @@ function MobileDrawer({ open, onClose, isLoggedIn, isPro }: {
         }}
       >
         <div style={{
-          maxWidth: 1400,
+          maxWidth: 1800,
           margin: '0 auto',
           padding: '32px 24px 48px',
           display: 'grid',
@@ -485,7 +485,7 @@ export default function SiteHeader({ variant = 'page' }: Props) {
     <>
       <style>{`
         .x9h{position:relative;z-index:50;background:#FAF8F3;border-bottom:1px solid ${LINE}}
-        .x9h-row{display:flex;align-items:center;gap:12px;height:56px;padding:0 24px;max-width:1360px;margin:0 auto}
+        .x9h-row{display:flex;align-items:center;gap:12px;height:56px;padding:0 32px;max-width:1800px;margin:0 auto}
         .x9h-wm{display:flex;align-items:center;flex-shrink:0;text-decoration:none}
         .x9h-sports,.x9h-search{display:none}
         .x9h-right{margin-left:auto;display:flex;align-items:center;gap:12px}

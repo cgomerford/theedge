@@ -1,7 +1,7 @@
 // src/app/mlb/lab/pitch-shape/guide/page.tsx
 //
-// How to read the Pitch Shape Lab: what each part shows, with pictures and short recordings of the tool itself (public/guide/pitch-shape/). Static, no data fetched. The tool's own
-// page no longer carries the long explanation, it links here. Descriptive only: nothing on this page says what will happen.
+// How to read the Pitch Shape Lab: what each part of the page shows and how to read it, in the order the page shows it (the banner and filters, then the tabs, then a pitcher's story). Static text, no data fetched.
+// Descriptive only: nothing on this page says what will happen.
 
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -13,42 +13,35 @@ import { BreadcrumbSchema } from '@/components/StructuredData'
 
 export const metadata: Metadata = pageMeta({
   title: 'How to read the Pitch Shape Lab',
-  description: 'What the Pitch Shape Lab shows and how to read it: the movement map, dialing in a movement, the pitcher overview, how teams use shape to find and build pitches, fantasy, the five levels, and left and right hands together.',
+  description: 'What the Pitch Shape Lab shows and how to read it: the banner and filters, the movement map and its colours, who throws a shape, the levels, the league average for a shape, the leaderboard, a pitcher’s story, comparing pitchers and the fantasy view.',
   path: '/mlb/lab/pitch-shape/guide',
 })
 
 const ASSETS = '/guide/pitch-shape'
-const WRAP: React.CSSProperties = { maxWidth: 980, margin: '0 auto', padding: '28px 20px 100px' }
+const WRAP: React.CSSProperties = { maxWidth: 1800, margin: '0 auto', padding: '28px 32px 100px' }
 const H2: React.CSSProperties = { margin: '44px 0 6px', fontWeight: 800, fontSize: 'clamp(22px,3.4vw,30px)', letterSpacing: '-.02em', lineHeight: 1.1, scrollMarginTop: 80 }
-const P: React.CSSProperties = { fontSize: 16, lineHeight: 1.6, color: '#3a352c', margin: '0 0 12px', maxWidth: 760 }
+const P: React.CSSProperties = { fontSize: 16, lineHeight: 1.6, color: '#3a352c', margin: '0 0 12px', maxWidth: 980 }
 const K: React.CSSProperties = { fontSize: 10.5, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: '#B83A0E' }
+const UL: React.CSSProperties = { ...P, paddingLeft: 22, listStyleType: 'disc' }
+const OL: React.CSSProperties = { ...P, paddingLeft: 22, listStyleType: 'decimal' }
+const A: React.CSSProperties = { color: '#B83A0E', fontWeight: 700 }
 
-/** A still picture of the tool, with what to look at. */
+
+/** A real screenshot of the page, full width of the column, with what to look at. */
 function Shot({ file, alt, caption, w, h }: { file: string; alt: string; caption: string; w: number; h: number }) {
   return (
-    <figure style={{ margin: '14px 0 22px' }}>
+    <figure style={{ margin: '14px 0 26px' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`${ASSETS}/${file}`} alt={alt} width={w} height={h} loading="lazy" style={{ width: '100%', maxWidth: w, height: 'auto', display: 'block', border: `1px solid ${C.line}`, borderRadius: 10, background: '#fff' }} />
-      <figcaption style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, marginTop: 8, maxWidth: Math.max(w, 560) }}>{caption}</figcaption>
-    </figure>
-  )
-}
-
-/** A short recording of the tool in use (an animated image that loops, no sound). */
-function Recording({ file, alt, caption, w, h }: { file: string; alt: string; caption: string; w: number; h: number }) {
-  return (
-    <figure style={{ margin: '14px 0 22px' }}>
-      <div style={{ ...K, margin: '0 0 6px' }}>Recording</div>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`${ASSETS}/${file}`} alt={alt} width={w} height={h} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block', border: `1px solid ${C.line}`, borderRadius: 10, background: '#fff' }} />
-      <figcaption style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, marginTop: 8 }}>{caption}</figcaption>
+      <img src={`${ASSETS}/${file}`} alt={alt} width={w} height={h} loading="lazy" style={{ width: '100%', maxWidth: 1100, height: 'auto', display: 'block', border: `1px solid ${C.line}`, borderRadius: 6, background: '#fff' }} />
+      <figcaption style={{ fontSize: 13.5, color: '#5b5347', lineHeight: 1.5, marginTop: 8, maxWidth: 980 }}>{caption}</figcaption>
     </figure>
   )
 }
 
 const TOC: [string, string][] = [
-  ['what', 'What it shows'], ['map', 'Read the map'], ['levels', 'The five levels'], ['pitcher', 'Choose a pitcher'], ['read', 'Read a pitcher'], ['changes', 'What changed'], ['teams', 'How teams use shape'], ['dial', 'Dial a pitch'], ['fantasy', 'For fantasy'],
-  ['hands', 'Left, right or both'], ['compare', 'Compare levels'], ['limits', 'What it cannot tell you'], ['terms', 'Words used here'],
+  ['start', 'Start here'], ['banner', 'The banner and filters'], ['map', 'Read the map'], ['players', 'Players'], ['levels', 'Levels'], ['average', 'League average'], ['board', 'Leaderboard'],
+  ['fantasy', 'Fantasy'], ['story', 'A pitcher’s story'], ['plate', 'The plate view'], ['compare', 'Compare pitchers'], ['dial', 'Try a different shape'], ['hands', 'Left, right or both'],
+  ['limits', 'What it cannot tell you'], ['terms', 'Words used here'],
 ]
 
 export default function PitchShapeGuidePage() {
@@ -60,31 +53,61 @@ export default function PitchShapeGuidePage() {
       <div style={WRAP}>
         <div style={K}>⊕ MLB · Lab · Pitch shape · Guide</div>
         <h1 style={{ margin: '6px 0 10px', fontWeight: 800, fontSize: 'clamp(30px,5vw,46px)', letterSpacing: '-.02em', lineHeight: 1.05 }}>How to read the Pitch Shape Lab</h1>
-        <p style={{ ...P, fontSize: 18 }}>A pitch has a shape: how fast it is, how much it rises, how far it runs toward the pitcher’s arm side, and the angle of his arm. The Lab places every pitch of one type by how it moves, shows how often hitters missed pitches that move that way, and lists who throws them. This page walks through each part, with pictures and short recordings of the tool.</p>
+        <p style={{ ...P, fontSize: 18 }}>A pitch has a shape: how fast it is, how much it rises, how far it runs toward the pitcher’s arm side, and the angle of his arm. The Lab places every pitch of one type by how it moves, shows how often hitters missed pitches that move that way, and lists who throws them. This page walks through each part in the order you meet it.</p>
         <p style={{ ...P, marginBottom: 18 }}><Link href="/mlb/lab/pitch-shape" style={{ color: '#B83A0E', fontWeight: 800 }}>Open the Pitch Shape Lab →</Link></p>
 
-        <nav aria-label="On this page" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {TOC.map(([id, label]) => <a key={id} href={`#${id}`} style={{ minHeight: 40, display: 'inline-flex', alignItems: 'center', padding: '0 12px', border: `1px solid ${C.line}`, borderRadius: 4, background: '#fff', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>{label}</a>)}
-        </nav>
+        <style>{'.pg-shell{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:40px;align-items:start;margin-top:22px}.pg-toc{position:sticky;top:16px}@media(max-width:1100px){.pg-shell{grid-template-columns:minmax(0,1fr)}.pg-toc{position:static;order:-1}}'}</style>
+        <div className="pg-shell">
+        <div style={{ minWidth: 0 }}>
 
-        <h2 id="what" style={H2}>What it shows</h2>
-        <p style={P}>Choose a pitch (four-seam by default) and the hand it is thrown with. The big square picture is a map of every way that pitch can move. Each small square is one movement, measured in inches: higher on the map means more ride, further right means more run toward the pitcher’s arm side. The colour of a square is the share of swings that missed when hitters swung at pitches moving that way.</p>
-        <p style={P}>Two things are worth keeping in mind from the first look. The squares are not the strike zone: they describe movement, not where the pitch crosses the plate. And everything is a description of what has already happened, with the sample behind it, never a forecast.</p>
-        <Shot file="map-overview.png" w={643} h={1094} alt="The Pitch Shape Lab movement map for MLB four-seams, with a blue to orange colour scale" caption="The movement map for MLB right-handed four-seams. Orange squares: hitters missed more often than the average. Blue-grey squares: fewer. Pale squares are near the average. The three numbered circles mark the shapes where the most swings missed." />
+        <h2 id="start" style={H2}>Start here</h2>
+        <p style={P}>Most visits follow three steps:</p>
+        <ol style={OL}>
+          <li><b>Choose a pitch.</b> In the panel on the right of the banner, set the level, the pitch type and which pitchers throw it (right-handed, left-handed or both).</li>
+          <li><b>Click the map.</b> Red boxes are movements that hitters miss often, blue ones rarely. A click shows what that movement has produced and who throws it.</li>
+          <li><b>Open a pitcher.</b> Search a name, click a marked pitcher on the map, or open a row in a table, and the page becomes his story, with his club’s colours, his headshot and his numbers.</li>
+        </ol>
+        <p style={P}>Two things are worth keeping in mind from the first look. The boxes are not the strike zone: they describe how a pitch moves, not where it crosses the plate. And everything is a description of what has already happened, with the sample behind it, never a forecast.</p>
+        <Shot file="v3-top.jpg" w={2100} h={1400} alt="The Pitch Shape Lab league view: a banner for the four-seam with a stat strip, the filters and how to use in a column on the right, and the story tabs below" caption="The league view. Left: the pitch banner, its league numbers and the tabs. Right: the search and filters, then How to use." />
+        <p style={P}>The top right of the page has a <b>Page design</b> switch: <b>v3 · story tabs</b> (what this guide describes) and <b>v2 · current</b> (the original single page), so the two can be compared.</p>
+
+        <h2 id="banner" style={H2}>The banner and filters</h2>
+        <p style={P}>The banner names the pitch you are looking at, with a spinning ball in the pitch’s own colour stuck to its top corner, and a strip of league numbers: how many pitches and swings are behind it, the league’s whiffs per swing, the typical speed (the middle half of pitches) and the average shape (ride and run). On the right of the banner are the search box and four dropdowns:</p>
+        <ul style={UL}>
+          <li><b>Find a pitcher.</b> Type a name to open his story.</li>
+          <li><b>View.</b> One pitch up close, every pitch type side by side, or one pitch across every level.</li>
+          <li><b>Level.</b> MLB, Triple-A, the Florida State League, the Arizona Fall League or Spring Training (see <a href="#levels" style={A}>Levels</a>).</li>
+          <li><b>Thrown by.</b> Right-handed, left-handed or both (see <a href="#hands" style={A}>Left, right or both</a>).</li>
+          <li><b>Pitch type.</b> Four-seam and sweeper are free; the other pitch types are Pro.</li>
+        </ul>
+
 
         <h2 id="map" style={H2}>Read the map</h2>
-        <ul style={{ ...P, paddingLeft: 22 }}>
-          <li><b>Axes.</b> Up is more ride (induced vertical break): the ball drops less than a hitter expects. Right is more run toward the pitcher’s arm side. Left-handed pitches are flipped so both arms share one map.</li>
-          <li><b>Colour.</b> Each square compares swings that missed with the league average for this pitch, shown under the map. Orange is above it, blue-grey below. Switch “Colour by” to see runs saved, wOBA, xwOBA, average or slugging instead.</li>
-          <li><b>Blank and faded squares.</b> A square is blank when too few swings have been recorded there to say anything. Faded squares have a thinner sample. At Spring Training and the Arizona Fall League, thin squares are also pulled toward the league average so one swing cannot colour a square.</li>
-          <li><b>Window.</b> Each square reads every pitch within a small distance of it. The Window control sets that distance (±½, ±1 or ±2 inches): larger is smoother, smaller is sharper.</li>
-          <li><b>Dialing in a movement.</b> Click anywhere on the map. A dashed box marks the movement you chose, and on the right you get what pitches shaped like it have produced and the pitchers whose average sits there. The page opens with the best-producing movement already dialed in. The Window control sets how wide the box is.</li>
+        <p style={P}>The Map tab holds the big picture: every way the pitch can move. Each box is one movement, in inches. Higher means more ride, further right means more run toward the pitcher’s arm side, and the colour is the share of swings that missed at pitches moving that way.</p>
+        <ul style={UL}>
+          <li><b>Axes.</b> Up is more ride (induced vertical break): the ball drops less than a hitter expects. Right is more run toward the arm side. Left-handed pitches are flipped so both arms share one map.</li>
+          <li><b>Colour the map by.</b> Whiffs, wOBA, xwOBA, average, slugging or runs saved, with called strikes plus whiffs, hard-hit, ground-ball rate and contact quality under More. Red is always better for the pitcher and blue is worse. The key beside the map says what each colour means in that measure’s own numbers.</li>
+          <li><b>Colour scale.</b> “Stretched to this pitch” spreads the blue-to-red range over what that pitch actually covers, so a sweeper (which misses far more bats than a fastball) is not all one colour. “Fixed league scale” keeps one scale for every pitch so pitches can be compared. A box with too few swings is left blank, never coloured.</li>
+          <li><b>Marked pitchers.</b> By default the map marks pitchers with a strong shape (Shape Score 67 or more) whose own results were below it, labelled with their ERA. Switch the set to ERA above xERA, strong shape with little attention, unusual shapes, or none. Click a name to open his story.</li>
+          <li><b>Click the map.</b> A dashed box marks the movement you chose. The panel beside the map shows what league pitches inside it have produced and who throws them. Arrow keys move the selected spot.</li>
+          <li><b>Hover panel.</b> Under the map, the shape under the cursor, what hitters did against it (with the league average beside it) and how many pitchers have it as their <i>average</i> shape. “No pitcher averages this shape” means nobody’s typical pitch is there; some pitchers may still throw it now and then, and the panel counts those separately.</li>
+          <li><b>Filters.</b> Under “Advanced filters”, narrow the map to a speed or arm-angle range and set how wide the comparison window is (±½, ±1 or ±2 inches). The season control chooses one season or all of them where the measure allows.</li>
         </ul>
-        <Recording file="map-hover.webp" w={960} h={750} alt="Recording: moving the pointer over the map shows the miss rate under it, then clicking a place dials that movement in and its results open on the right" caption="Moving over the map reads the squares under the pointer; clicking dials that movement in." />
+        <Shot file="v3-map-spot.jpg" w={1456} h={2240} alt="The Map tab with a spot chosen: the colour buttons, the colour key, the map with marked pitchers and the panel on the right with the results at that spot" caption="The Map tab with a spot chosen. The dashed box is the movement you clicked; the panel on the right shows what pitches like it have produced and who throws them." />
 
-        <h2 id="levels" style={H2}>The five levels</h2>
-        <p style={P}>The level bar above the map switches the whole page between MLB, Triple-A, the Florida State League, the Arizona Fall League and Spring Training. Each level is measured against its own hitters and its own league, never mixed into MLB’s numbers, and the badge beside the bar says what that level contains.</p>
-        <Shot file="level-bar.png" w={1244} h={56} alt="The level bar with MLB, Triple-A, Florida State League, Arizona Fall League and Spring Training, and a coverage badge for Spring Training" caption="The level bar and coverage badge. The badge gives the season, whether every day was loaded, the dates, and how many tracked pitches the level holds." />
+        <h2 id="players" style={H2}>Players</h2>
+        <p style={P}>Which pitchers have a pitch shaped like the spot you chose, or anywhere in the league. Use the lenses to surface who gets less attention than their shape suggests:</p>
+        <ul style={UL}>
+          <li><b>Everyone</b> whose <i>average</i> shape falls inside the window.</li>
+          <li><b>Strong shape, little attention.</b> Shape Score 67 or more, rostered in under 30% of ESPN leagues, no All-Star or major award.</li>
+          <li><b>Results above or below their shape.</b> His own runs saved this season were more than 0.4 per 100 above or below what league pitches with his shape produced.</li>
+        </ul>
+        <p style={P}>Narrow any lens by name, team, role, pitches thrown, speed range, how widely he is rostered or Shape Score. Every column sorts. <b>+ Compare</b> adds a pitcher to the Compare tab. This describes who gets attention; it is not a ranking of who is better.</p>
+        <Shot file="v3-players.jpg" w={1456} h={2100} alt="The Players tab: lenses, a filter bar and a table of pitchers with speed, ride, run, whiffs, Shape Score, against his shape, rostered share and a Compare button" caption="The Players tab: lenses at the top, the filter bar, then a sortable table with a Compare button on every row." />
+
+        <h2 id="levels" style={H2}>Levels</h2>
+        <p style={P}>Each level is measured against its own hitters and its own league, never mixed into MLB’s numbers. The Levels tab sets the same pitch side by side across levels (average shape by level, the same pitchers at two levels, and the spot you chose at each level). Results are never compared across levels because the hitters differ, so only shape is compared directly.</p>
+        <Shot file="v3-levels.jpg" w={1456} h={2100} alt="The Levels tab: average shape by level, the same pitchers at two levels and the spot at each level" caption="The Levels tab. Shapes are compared across levels; results are only ever read within a level." />
         <div style={{ overflowX: 'auto', margin: '6px 0 16px' }}>
           <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
             <thead><tr>{['Level', 'Where the pitches come from', 'What is pending', 'Pitchers listed from'].map(h => <th key={h} style={{ textAlign: 'left', padding: '8px 10px', borderBottom: `2px solid ${C.ink}`, fontSize: 11.5, letterSpacing: '.06em', textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
@@ -99,73 +122,67 @@ export default function PitchShapeGuidePage() {
             </tbody>
           </table>
         </div>
-        <p style={P}>“Pending” means the source does not carry the figure, so the Lab shows the word instead of a number. It is never filled in from another level.</p>
-        <Recording file="levels.webp" w={960} h={750} alt="Recording: choosing each level in turn, MLB, Triple-A, Florida State League, Arizona Fall League and Spring Training, and the map and badge changing each time" caption="Switching level redraws the map from that level’s own pitches and changes the badge. The map is smaller at the exhibition levels because they are a few weeks of games." />
+        <p style={P}>“Pending” means the source does not carry the figure, so the Lab shows the word instead of a number. It is never filled in from another level. A level shows data only once it has been loaded.</p>
 
-        <h2 id="pitcher" style={H2}>Choose a pitcher</h2>
-        <p style={P}>Below the map, “Find me a pitcher” lists real pitchers. Choose a lens (for example, strong shape with results that trail it), narrow it with the filters (ERA, xERA, Shape Score, role, years since debut, ESPN rostered), or shuffle six. Searching a name finds any pitcher at the chosen level. At the minor-league and exhibition levels, “Refine” narrows by MLB career facts: who has not made the jump, who was sent down, who was traded.</p>
-        <Shot file="finder.png" w={585} h={900} alt="Find me a pitcher: a lens selector, filters, and a row of pitcher cards each with a headshot, Shape Score, ERA, xERA and ESPN rostered percentage" caption="Each card shows a pitcher’s Shape Score, ERA, xERA, how many pitches of this type he has thrown and the share of ESPN fantasy leagues that roster him. Choosing a card puts him on the map and opens his read." />
-        <Recording file="pick-pitcher.webp" w={960} h={750} alt="Recording: choosing a pitcher card and his one overview opening, with his own pitches on the map" caption="Choosing a pitcher shows only his pitches on the map and opens his overview." />
+        <h2 id="average" style={H2}>League average</h2>
+        <p style={P}>For the spot you chose: what league pitches inside the window have produced, with the window you set (±½, ±1 or ±2 inches), the number of pitches and swings behind it, and a sample badge: <b>strong</b> (200 or more swings), <b>moderate</b> (100 to 199) or <b>thin</b> (under 100). It shows whiffs per swing, runs saved per 100 pitches, wOBA, xwOBA, average and slugging against the league average, and where those pitches cross the plate, with the strike zone outlined. A figure under its minimum sample is left blank rather than estimated.</p>
+        <Shot file="v3-average.jpg" w={1456} h={1893} alt="The League average tab: window buttons, the results table against the league average with a sample badge, and where those pitches cross the plate" caption="The League average tab for the spot you chose: the window, the sample badge, the results table and where those pitches cross the plate." />
 
-        <h2 id="read" style={H2}>Read a pitcher</h2>
-        <p style={P}>Choose a pitcher and everything about his pitch opens in one overview. It sets what his pitch has done against what pitches shaped like it have done across the league, in five parts.</p>
-        <p style={P}>At the top is <b>the full stat line on that pitch</b>: what he threw (usage, speed, spin, ride, run, extension), how hitters swung (whiffs per swing, called plus swinging strikes, chase and zone rates), what ended plate appearances on it (average, on-base, slugging, OPS, strikeout and walk rates, home runs, wOBA and xWOBA) and the contact that came back. ERA belongs to the pitcher, not a pitch, so it is shown beside the line as his season figure with FIP and xERA. Arizona Fall League and Spring Training keep no pitch-by-pitch log, so there the line is built from the numbers stored for the level.</p>
-        <ol style={{ ...P, paddingLeft: 22 }}>
-          <li><b>His shape.</b> A map of his sampled pitches with his average ringed, the league window as a dashed box and the movement you dialed in marked, with his speed, ride, run, arm angle and how much each varies pitch to pitch.</li>
-          <li><b>Does the shape get results, and do his own match it?</b> The level’s average whiffs per swing, what pitches shaped like his get, and his own, so you can see whether the shape beats the average and whether he is getting what it usually gives. Then runs saved per 100 pitches, wOBA, xwOBA, average, slugging and whiffs, his against the league at his shape. Underperforming means his own results trail the shape by more than 0.4 runs per 100; outperforming means he beats it.</li>
-          <li><b>At each level.</b> His shape at every level he has thrown the pitch at, beside that level’s average, and whether hitters missed it more or less than they missed that level’s average pitch. It says plainly whether the shape changed: the same arm, so a change is a change in the pitch.</li>
-          <li><b>Why the results are not there.</b> Platoon, speed, extension, arm angle, location, sequencing, and defense and luck, each priced against league pitches of the same shape. Some are Pro.</li>
-          <li><b>Dialing the pitch.</b> What slightly different movements have produced (see <a href="#dial" style={{ color: '#B83A0E', fontWeight: 700 }}>Dial a pitch</a>).</li>
-        </ol>
-        <p style={P}>Between parts four and five, a short block asks whether the pitch inflated his ERA. It leads with FIP, which counts only strikeouts, walks, hit batters and home runs, so it leaves out the luck in where balls in play land and when hits come; it still counts home runs. Beside it are the home runs his pitch gave up, with the runners on base, and the runs they added to his ERA. Game and inning detail is Pro. <b>Shape Score</b> (1 to 99) is where the runs saved by pitches shaped like his rank among all the shapes pitchers throw: it rates the shape, not the pitcher. A figure from few pitches is shown with a thin-sample flag, not hidden.</p>
-        <Shot file="pitcher-read.png" w={1240} h={1500} alt="A pitcher overview: his movement map, the level average against pitches shaped like his and his own results, and his shape at each level" caption="A pitcher’s overview, top half: his shape, whether it gets results, and the shape at each level." />
-        <Shot file="pitcher-why.png" w={1232} h={1500} alt="The reasons results trail the shape, then FIP beside ERA and the home runs his pitch gave up with the runs on each" caption="Further down: the reasons the results trail the shape, then FIP beside ERA and the home runs his pitch gave up, with the runs on each." />
-
-        <h2 id="changes" style={H2}>What changed</h2>
-        <p style={P}>Results are noisy and slow to settle: ERA moves with the defense and with luck on balls in play, and a whiff rate needs hundreds of swings. Shape is physics. It settles within a few outings, it does not care who was batting, and it explains why a pitch works. So a pitcher’s shape moving is an early reason to look, often before the results show it. The <b>What changed</b> view (beside League map) lists, for the season so far:</p>
-        <ul style={{ ...P, paddingLeft: 22 }}>
-          <li><b>Moved during the season.</b> Pitches whose speed, spin, ride, run, release height, release side or extension changed between a pitcher’s first full month and his latest, with the flagged moves highlighted. A full month is 50 or more pitches of that type, and the two readings are at least two months apart, so one odd month is not a trend. Flag sizes: 1 mph, 100 rpm, 1 in of ride or run, a quarter of a foot of release height, release side or extension.</li>
-          <li><b>Added or dropped.</b> A pitch at 2% of his pitches or less early in the season and 8% or more now was added; the reverse was dropped.</li>
-          <li><b>Gap to the fastball.</b> The distance in movement between his fastball and each other pitch, from the same release. A changeup that stops moving away from his sinker shows up here: the gap closes.</li>
-          <li><b>Across levels.</b> Pitches a pitcher throws at one level and not at another (from 100 pitches at one, under 50 at the other, and 300 pitches at each level), including between Spring Training and the season.</li>
+        <h2 id="board" style={H2}>Leaderboard</h2>
+        <p style={P}>Every pitcher with enough of the pitch, in column sets you can switch between: <b>Basics</b> (pitches, speed, whiffs), <b>Shape</b> (speed, ride, run, arm angle, Shape Score) and <b>Results</b> (his runs saved against what his shape produced, the gap, whiffs, wOBA and xwOBA). Filter to those above or below their shape and click any heading to sort.</p>
+        <ul style={UL}>
+          <li><b>Shape Score</b> (1 to 99) is where the runs saved by league pitches with his shape rank among all the shapes pitchers throw. It rates the shape, not the pitcher.</li>
+          <li><b>Gap</b> is his own runs saved this season minus what his shape produced. Green is above the shape by more than 0.4 runs per 100, red is below by more than that, grey is about level.</li>
+          <li>The shape side adds up every season we hold; his own results are this season’s. The leaderboard says so above the table.</li>
         </ul>
-        <Shot file="what-changed.png" w={1217} h={820} alt="The What changed view: a list of pitches whose speed, spin, ride, run, release point and extension moved between a pitcher's first and latest full month, with the flagged moves highlighted" caption="The What changed view. Each row is one pitch; the highlighted cells moved by more than the flag size between the first and the latest full month." />
-        <p style={P}>Choose any pitcher from a list and his overview has a <b>Through this season</b> block with the same readings for the pitch you are looking at. It says what changed and when. It does not say why, and it does not predict anything.</p>
+        <Shot file="v3-leaderboard.jpg" w={1456} h={2100} alt="The Leaderboard tab with Basics, Shape and Results column sets, filters and a sortable table with the gap and its colour" caption="The Leaderboard on the Results column set: every heading sorts, and the gap is coloured only beyond the 0.4 runs per 100 band." />
 
-        <h2 id="teams" style={H2}>How teams use shape</h2>
-        <p style={P}>Two things set most of how a pitch behaves: how much it rises against gravity (ride) and how far it moves toward the arm side (run), with its speed and the angle of the arm. Pitches that move alike draw similar swings and misses, so the league’s record at a shape is a fair yardstick for any pitch that moves that way. That gives a club two questions to ask.</p>
-        <ul style={{ ...P, paddingLeft: 22 }}>
-          <li><b>Who is worth a closer look?</b> Set a pitcher’s results against what his shape has produced. A strong shape with results that trail it points to something other than movement holding him back (location, sequencing, defense or luck). A weak shape with good results says the movement is not what is carrying him. The Refine filters (never pitched in MLB, works here but not in MLB, traded, struggled in MLB) ask that same question across a whole level.</li>
-          <li><b>Does the shape travel?</b> Shape is physical, so it can be set against MLB pitches that move the same way. At a minor-league level the Lab shows the closest MLB shapes and what they have produced there, with the pitcher’s speed taken into account.</li>
+        <h2 id="fantasy" style={H2}>Fantasy</h2>
+        <p style={P}>Two places carry the fantasy facts, and nothing else does. The <b>Fantasy tab</b> lists the league: how widely each pitcher is rostered, his role, innings, ERA, xERA, FIP, the gap between ERA and xERA, and his Shape Score, with lenses for rostered in few leagues, strong shape, ERA above xERA and ERA below xERA. A pitcher’s own <b>Fantasy</b> sub-tab reads his season line against the contact he allowed and lists the pitchers with the closest shape. It describes the season so far; it makes no recommendation about who to roster.</p>
+        <Shot file="v3-fantasy.jpg" w={1456} h={2100} alt="The Fantasy tab: lenses, the filter bar and a table of rostered share, role, innings, ERA, xERA, FIP and Shape Score" caption="The league Fantasy tab." />
+
+        <h2 id="story" style={H2}>A pitcher’s story</h2>
+        <p style={P}>Choose a pitcher and the page opens on his own banner (his club’s colours, headshot, club badge and key numbers), his pitches as buttons, and a “story so far” line setting his results against his shape. Then seven sub-tabs, each one question:</p>
+        <Shot file="v3-pitcher-top.jpg" w={2100} h={1400} alt="A pitcher banner in his club colours with his headshot, club badge, name, links and a stat strip" caption="The pitcher banner: his club’s colours, headshot, badge and the key numbers for the open pitch, with his pitches as buttons and a way back to the league view." />
+        <ul style={UL}>
+          <li><b>Overview.</b> His results on the open pitch against what league pitches with his shape produced, his full stat line on the pitch, and every other pitch he throws, with column sets for basics, results, plate and contact, and shape.</li>
+
+          <li><b>His shape.</b> His sampled pitches and average on the league map, the league-average ring, and the plate view (below), with his speed, ride, run, arm angle and how much each varies pitch to pitch.</li>
+          <li><b>Who else throws it.</b> The pitchers who average this shape, named, and the nearest others marked with how far their average is.</li>
+          <li><b>Over the season.</b> Month by month, how far each month’s speed, ride and run were from his own season average, and what the whiffs per swing were in those months, with the pitch and swing counts. Season to season sits underneath. Months under 50 pitches are greyed.</li>
+
+          <li><b>Across levels.</b> His shape at each level he has thrown at. The same arm, so a difference is a change in the pitch.</li>
+          <li><b>Why the results.</b> Platoon, speed, extension, arm angle, location, sequencing, and defense and luck, each measured against league pitches with his shape. It names the measured differences; it does not claim a cause.</li>
+          <li><b>Fantasy.</b> See above.</li>
         </ul>
+        <Shot file="v3-story-overview.jpg" w={1957} h={1895} alt="The Overview sub-tab: his results against his shape, the full stat line and his other pitches" caption="Overview: his results on the open pitch against his shape, his full stat line, and his other pitches with column sets for basics, results, plate and contact, and shape." />
+        <Shot file="v3-story-shape.jpg" w={1957} h={2520} alt="The His shape sub-tab: the movement map over the league heat map next to the plate view of his pitches coloured by result, then his numbers and the dial" caption="His shape: the movement map over the league heat map beside the plate view. The dots are his pitches coloured by what happened; “Only this shape” narrows them to the shape you chose." />
+        <Shot file="v3-story-who.jpg" w={1957} h={2520} alt="The Who else throws it sub-tab: the pitchers who average this shape, named, and the nearest others" caption="Who else throws it: the pitchers who average this shape are named, and the nearest others are marked with how far away their average is." />
+        <Shot file="v3-story-season.jpg" w={1957} h={2392} alt="The Over the season sub-tab: month by month deviation from his season average with whiffs per swing" caption="Over the season: each month’s speed, ride and run against his own season average, with whiffs per swing and the pitch counts." />
+        <Shot file="v3-story-levels.jpg" w={1957} h={1424} alt="The Across levels sub-tab: his shape at each level" caption="Across levels: his shape at each level he has thrown at." />
+        <Shot file="v3-story-why.jpg" w={1957} h={1950} alt="The Why the results sub-tab: measured differences from league pitches with his shape, each with a status" caption="Why the results: each measured factor against league pitches with his shape, with a plain status and the plate-location grids." />
+        <Shot file="v3-story-fantasy.jpg" w={1957} h={1194} alt="The pitcher Fantasy sub-tab: rostered share, role, ERA, xERA and FIP and the closest-shape pitchers" caption="The pitcher’s Fantasy sub-tab." />
 
-        <h2 id="dial" style={H2}>Dial a pitch</h2>
-        <p style={P}>Because shape is physical it can be changed on purpose. Grip, release height, arm angle and spin move ride and run, and speed changes what a movement is worth. The first look a pitching group takes is simple: what has the nearest movement done, and how far is it from where he is?</p>
-        <p style={P}>The last part of a pitcher’s overview does exactly that. It prices the league’s pitches within 1, 2 and 3 inches of his average, the same way as his own shape (runs saved per 100 pitches), and shows the best-producing movement in each reach and how many inches of ride and run it is away. It describes what other pitchers’ pitches have done at those movements. It does not say he can throw them, or that his own results would follow: location, speed and sequencing travel with the pitcher, not the shape.</p>
+        <h2 id="plate" style={H2}>The plate view</h2>
+        <p style={P}>Seen from behind the plate. <b>His pitches (dots)</b> draws every pitch of the type he threw that season where it crossed the plate, coloured by what happened: swing and miss, called strike, ball, foul, hit, and in play for an out. Click a result in the key to hide or show it. Switch to one batter side and “inside” and “away” read correctly. <b>Only this shape</b> narrows the dots to the pitches he threw with the shape you chose (within ±½, ±1 or ±2 inches), with his other pitches faint behind them. <b>League heat map for his shape</b> shows where league pitches with that shape crossed the plate instead. The dashed box is a standard zone; the real zone moves with each batter’s height. Dots exist for MLB, Triple-A and the Florida State League.</p>
 
-        <h2 id="fantasy" style={H2}>For fantasy</h2>
-        <p style={P}>Fantasy points come from ERA, wins, strikeouts and WHIP, which move with defense, park and luck. A pitcher’s shape and his FIP are the steadier parts. The overview carries the fantasy line (ERA, xERA, FIP, WHIP, strikeout and walk rates, innings, wins and ESPN rostered percentage) beside a plain reading of it: how strong his shape is, how widely he is rostered, and whether his results trail or beat the shape. It describes what has happened; it makes no recommendation about who to roster.</p>
+        <h2 id="compare" style={H2}>Compare pitchers</h2>
+        <p style={P}>Choose up to four pitchers with <b>+ Compare</b> or by search. Their average shapes are drawn on the league heat map behind them, and a table lines up their numbers, with each difference measured from the first pitcher. Under it, each pitcher’s plate view. The closer two rings are, the more alike the shapes; the same colour under them means hitters missed those shapes about as often.</p>
+        <Shot file="v3-compare-two.jpg" w={1957} h={2380} alt="The Compare tab: average shapes on the league heat map and a table of numbers with the plate view for each pitcher" caption="Compare: the pitchers’ average shapes on the league heat map, a table of their numbers and each pitcher’s plate view." />
+
+        <h2 id="dial" style={H2}>Try a different shape</h2>
+        <p style={P}>In a pitcher’s “His shape” tab, move ride and run away from his average (or load another pitcher’s shape) and see what league pitches at that shape have produced next to what his own shape has. It compares what other pitchers’ pitches did; it does not say he can throw the movement or that his results would change. Speed and arm angle are held as they are.</p>
 
         <h2 id="hands" style={H2}>Left, right or both</h2>
-        <p style={P}>“Thrown by” sets the arm. Run is stored arm-side positive for both arms, so a left-hander’s four-seam and a right-hander’s share one map. Choosing Both adds the two hands together square by square, lists pitchers of both arms, and shows the level comparison for each arm in turn. Each pitcher keeps his own hand and his own Shape Score, ranked among his own arm. The plate view, which depends on the arm, shows one hand at a time.</p>
-        <Recording file="both-hands.webp" w={960} h={750} alt="Recording: choosing Right, Left and then Both for Thrown by, and the map and the pitcher count changing" caption="Right, then Left, then Both. The intro line, the map and the number of matching pitchers follow the choice." />
-
-        <h2 id="compare" style={H2}>Compare levels</h2>
-        <p style={P}>Lower on the page, three views put the levels side by side.</p>
-        <ul style={{ ...P, paddingLeft: 22 }}>
-          <li><b>Average shape by level.</b> Each level’s pitch-weighted average speed, ride, run and arm angle, with how far it sits from MLB.</li>
-          <li><b>The pitch movement dialed in.</b> One blue-to-red scale on every map, so a redder map is a level where hitters swung more (or missed more) and a bluer one fewer. Hover one map and the same spot is read on the others.</li>
-          <li><b>The same pitchers at two levels.</b> Choose the lower and the higher level (any two of the five). Each pitcher is a row: his pitches, speed, ride and run at each level, then the change. It is the same arm, so a difference is a change in the pitch. Sort by the biggest change in shape, in speed, or by pitches.</li>
-        </ul>
-        <Shot file="maps-side-by-side.png" w={1244} h={430} alt="Five movement maps, MLB, Triple-A, Florida State League, Arizona Fall League and Spring Training, on one blue to red scale" caption="The same pitch at five levels on one blue-to-red scale. Misses are measured within each level, so read across the maps as where hitters behaved differently, not as one combined average." />
-        <Shot file="average-shape.png" w={1252} h={397} alt="Table of average shape by level with velocity, ride, run, arm angle and whiffs per swing, and the difference from MLB" caption="Average shape by level. The small figure under each row is the difference from MLB. Arm angle is pending at Spring Training and the Arizona Fall League." />
+        <p style={P}>“Thrown by” sets the arm. Run is stored arm-side positive for both arms, so a left-hander’s four-seam and a right-hander’s share one map. Choosing Both adds the two hands together square by square and lists pitchers of both arms. Each pitcher keeps his own hand and his own Shape Score, ranked among his own arm. The plate view depends on the arm, so it shows one hand at a time.</p>
 
         <h2 id="limits" style={H2}>What it cannot tell you</h2>
-        <ul style={{ ...P, paddingLeft: 22 }}>
+        <ul style={UL}>
           <li>It does not say what a pitcher or a pitch will do next. It describes what pitches of a shape have done.</li>
-          <li>Location, sequencing, deception, defense and ballpark are not in the shape. A pitcher whose results trail his shape may differ on any of them.</li>
+          <li>Location, sequencing, deception, defense and ballpark are not in the shape. A pitcher whose results are below his shape may differ on any of them.</li>
           <li>Levels are not on one scale: each is measured against its own hitters and parks. Compare shapes directly; compare results only within a level.</li>
-          <li>Spring Training and the Arizona Fall League are a few weeks of games and have no sample minimum, so every number is shown. A figure from a small sample carries an asterisk: results are hard to judge. Read each figure beside its sample.</li>
+          <li>Shape and month-by-month history exist for MLB 2025 and 2026 for now; league results by shape cover 2024 to 2026. Seasons before that, and start-by-start history, are not loaded, so the page shows nothing for them rather than guessing.</li>
+          <li>Spring Training and the Arizona Fall League are a few weeks of games and have no sample minimum, so every number is shown; a figure from a small sample carries a flag. Read each figure beside its sample.</li>
         </ul>
 
         <h2 id="terms" style={H2}>Words used here</h2>
@@ -176,11 +193,22 @@ export default function PitchShapeGuidePage() {
             ['Arm angle', 'The angle of the pitcher’s arm at release, in degrees. Available at MLB, Triple-A and the Florida State League.'],
             ['Whiffs per swing', 'Of the swings at a pitch, the share that missed.'],
             ['Runs saved per 100', 'League run expectancy minus the window’s, per 100 pitches. Higher is better for the pitcher.'],
-            ['Shape Score', 'A 1 to 99 rank of a shape’s runs saved among the shapes pitchers throw.'],
-            ['xwOBA', 'Expected weighted on-base average from the speed and angle of contact.'],
-            ['Window', 'How far around a square the map reads, in inches.'],
+            ['Shape Score', 'A 1 to 99 rank of a shape’s runs saved among the shapes pitchers throw. It rates the shape, not the pitcher.'],
+            ['Gap', 'His own runs saved minus what his shape produced. Above, below or in line, beyond a 0.4 runs per 100 band.'],
+            ['Average shape', 'The typical ride and run of a pitcher’s pitch over his season. A pitcher “averages” a shape when that average falls inside the window.'],
+            ['Window', 'How far around a box or spot the page reads, in inches (±½, ±1 or ±2).'],
+            ['Sample badge', 'Strong, moderate or thin: how many swings are behind a number.'],
+            ['xwOBA', 'Expected weighted on-base average from the speed and angle of contact. Lower is better for the pitcher.'],
+            ['xERA', 'The ERA a pitcher’s contact, strikeouts and walks would usually give.'],
           ].map(([t, d]) => <div key={t} style={{ display: 'contents' }}><dt style={{ fontWeight: 800 }}>{t}</dt><dd style={{ margin: 0 }}>{d}</dd></div>)}
         </dl>
+
+        </div>
+        <nav aria-label="On this page" className="pg-toc" style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: '12px 14px', display: 'grid', gap: 2 }}>
+          <div style={{ ...K, marginBottom: 4 }}>On this page</div>
+          {TOC.map(([id, label]) => <a key={id} href={`#${id}`} style={{ padding: '6px 4px', color: C.ink, textDecoration: 'none', fontWeight: 700, fontSize: 13.5, borderBottom: `1px solid ${C.soft}` }}>{label}</a>)}
+        </nav>
+        </div>
 
         <p style={{ ...P, marginTop: 36, fontSize: 13, color: '#8a8275' }}>Source: Baseball Savant / Statcast and the MLB Stats API. Built on public game data. Independent, not affiliated with MLB.</p>
       </div>

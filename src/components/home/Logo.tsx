@@ -1,4 +1,4 @@
-import { headshotCutoutUrl } from '@/lib/mlb-assets'
+import PlayerHeadshot from '@/components/ui/PlayerHeadshot'
 import { teamLogoUrl } from '@/lib/mlb'
 import TeamChip from '@/components/ui/TeamChip'
 
@@ -16,8 +16,5 @@ export function TeamMark({ id, abbr, size = 24 }: { id: number; abbr: string; si
 // Floating player portrait: the league's transparent cut-out (head and shoulders, no background, no frame), so the head is never
 // cropped. It sits on the page with nothing around it. Falls back to nothing if the picture is missing.
 export function Headshot({ id, name, size = 40 }: { id: number; name: string; size?: number }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={headshotCutoutUrl(id)} alt={name} width={size} height={size} style={{ width: size, height: size, minWidth: size, maxWidth: 'none', objectFit: 'contain', objectPosition: 'center bottom', flexShrink: 0, display: 'block' }} />
-  )
+  return <PlayerHeadshot id={id} name={name} size={size} />
 }

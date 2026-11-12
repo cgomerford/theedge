@@ -39,7 +39,7 @@ export default async function PlatoonLabPage() {
       <BreadcrumbSchema items={[{ name: 'Home', path: '/' }, { name: 'MLB', path: '/mlb' }, { name: 'Platoon Lab', path: '/mlb/lab/platoon' }]} />
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         {!league || league.single.length === 0
           ? <Empty>Platoon data isn’t built yet.</Empty>
           : <PlatoonLeague league={league} picker={(leaders?.rows ?? []).map(r => ({ id: r.id, name: r.name, team: r.team, n: r.n }))} />}

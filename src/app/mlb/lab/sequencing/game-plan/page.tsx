@@ -48,7 +48,7 @@ export default async function GamePlanIndex({ searchParams }: { searchParams: Pr
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <SeqSectionNav />
         <PageHead kicker="Sequencing Lab · Game Plan Card" title="How to read tonight's lineup" intro="Choose a game and a starter. Each card has one line per hitter in the opposing lineup, built from what has happened this season. Choose any date to open a back-dated card, built from only what was known before that day." />
         <form method="get" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'end', margin: '0 0 14px' }}>

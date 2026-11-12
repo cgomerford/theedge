@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import PlayerPhoto from '@/components/pitch-shape/PlayerPhoto'
 
 type Sport = 'MLB' | 'NFL'
 type Result = {
@@ -24,6 +25,7 @@ type Result = {
   sublabel: string
   imageUrl: string | null
   href: string
+  badge?: string
 }
 
 const mlbHeadshot = (id: string | number) =>
@@ -76,11 +78,12 @@ export default function PlayerSearch({
       const mlbResults: Result[] =
         mlb.status === 'fulfilled'
           ? (mlb.value?.people ?? []).slice(0, 5).flatMap((p: any): Result[] => {
-              const base = { sport: 'MLB' as const, type: 'player' as const, id: String(p.id), label: p.fullName ?? '—', imageUrl: mlbHeadshot(p.id) }
+              const base = { sport: 'MLB' as const, type: 'player' as const, id: String(p.id), label: p.fullName ?? '—', imageUrl: mlbHeadshot(p.id), badge: (p.levelLabel as string | null) ?? undefined }
               const pos = String(p.primaryPosition ?? '')
-              if (!labLinks) return [{ ...base, sublabel: pos ? `${pos} · MLB` : 'MLB', href: `/mlb/players/${p.id}` }]
-              const pitching = { ...base, sublabel: `${pos} · Pitching Lab`, href: `/mlb/lab/pitching-lab/${p.id}` }
-              const batting = { ...base, sublabel: `${pos} · Batting Lab`, href: `/mlb/lab/batting-lab/${p.id}` }
+              const where = [p.levelLabel, p.team].filter(Boolean).join(' · ')
+              if (!labLinks) return [{ ...base, sublabel: [pos, where || 'MLB'].filter(Boolean).join(' · '), href: `/mlb/players/${p.id}` }]
+              const pitching = { ...base, sublabel: [pos, p.levelLabel, 'Pitching Lab'].filter(Boolean).join(' · '), href: `/mlb/lab/pitching-lab/${p.id}` }
+              const batting = { ...base, sublabel: [pos, p.levelLabel, 'Batting Lab'].filter(Boolean).join(' · '), href: `/mlb/lab/batting-lab/${p.id}` }
               return pos === 'P' ? [pitching] : pos === 'TWP' || pos === 'Two-Way Player' ? [pitching, batting] : [batting]
             })
           : []
@@ -127,7 +130,7 @@ export default function PlayerSearch({
         value={query}
         onChange={(e) => { setQuery(e.target.value) }}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
-        placeholder={placeholder ?? 'Search any MLB player…'}
+        placeholder={placeholder ?? 'Search any MLB or minor-league player…'}
         aria-label="Search players"
         className={header ? 'w-full bg-white text-[#1A1A1A] border border-[#E8E4DC] rounded-sm h-9 pl-8 pr-3 text-[13px] outline-none placeholder:text-[#8A8577]' : `w-full bg-[#FAF8F3] text-[#1A1A1A] border border-[#1A1A1A] px-4 py-3 text-[13px] outline-none placeholder:text-[#8A8577] ${rounded ? 'rounded-sm' : ''}`}
       />
@@ -144,7 +147,10 @@ export default function PlayerSearch({
                 className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#F4F1EA] border-b border-[#F4F1EA] last:border-b-0"
               >
                 <span className="shrink-0 w-8 h-8 rounded-full overflow-hidden bg-[#F4F1EA] border border-[#DEDACE]">
-                  {r.imageUrl ? (
+                  {r.sport === 'MLB' ? (
+                    // Tries the cut-out, the standard photo and the MiLB photo in turn, so a minor leaguer gets his own picture rather than MLB's grey default.
+                    <PlayerPhoto id={Number(r.id)} size={32} minor={!!r.badge && r.badge !== 'MLB'} />
+                  ) : r.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={r.imageUrl}
@@ -159,7 +165,7 @@ export default function PlayerSearch({
                   <span className="block text-[10px] uppercase tracking-widest text-[#8A8577]">{r.sublabel}</span>
                 </span>
                 <span className={`ml-auto text-[9px] uppercase tracking-widest px-1.5 py-0.5 border ${r.sport === 'MLB' ? 'border-[#FF5722] text-[#FF5722]' : 'border-[#1A1A1A] text-[#1A1A1A]'}`}>
-                  {r.sport}
+                  {r.badge ?? r.sport}
                 </span>
               </Link>
             ))

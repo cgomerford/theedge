@@ -657,7 +657,7 @@ export default function FantasyDashboard({
   )
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 pb-16">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 pb-16" style={{ maxWidth: 1800 }}>
       {/* Hero */}
       <div className="py-5 border-b border-stone-900 mb-5">
         <div className="flex items-center justify-between gap-4 flex-wrap">

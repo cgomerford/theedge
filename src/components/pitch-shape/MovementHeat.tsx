@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { C, Empty, Foot } from '@/components/team/ui'
 import type { MovementCellsPayload } from '@/lib/pitch-shape/data'
-import { RAMP } from './parts'
+import { DENSITY_COLORS, HEAT_GRADIENT_CSS, HEAT_LO, HEAT_HI, heatRgb } from './heatGrid'
 import { hexToRgb, makeGrid, stats, type Grid, type Span } from './heatGrid'
 import LocationPanel from './LocationPanel'
 import { log } from '@/lib/log'
@@ -69,9 +69,8 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
 
   const N = grid ? 2 * grid.h10 + 1 : 0
   const r10 = Math.round(radius * 10)
-  // The colour scale is set from this span's league rate (a sinker's 12% and a slider's 33% both use the full ramp)
-  const lw0 = grid && grid.swings > 0 ? grid.whiffs / grid.swings : 0.25
-  const SCALE_LO = Math.max(0.02, lw0 * 0.4), SCALE_HI = lw0 * 2.2
+  // One fixed colour scale for every pitch and span (the same blue-to-red scale as the league heat map), so a colour always means the same whiffs per swing
+  const SCALE_LO = HEAT_LO, SCALE_HI = HEAT_HI
 
   useEffect(() => {
     const cv = canvasRef.current
@@ -80,7 +79,7 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
     const ctx = cv.getContext('2d')
     if (!ctx) return
     const img = ctx.createImageData(N, N)
-    const ramp = RAMP.map(hexToRgb)
+    const ramp = DENSITY_COLORS.map(hexToRgb)
     const pick = (t: number) => ramp[Math.round(Math.max(0, Math.min(1, t)) * (ramp.length - 1))]
     let maxP = 1
     if (mode === 'density') {
@@ -94,7 +93,7 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
         const s = stats(grid, grid.gx0 + grid.m10 + xx, grid.gy0 + grid.m10 + yy, r10)
         const o = ((N - 1 - yy) * N + xx) * 4   // up on screen = more ride
         let rgb: [number, number, number] | null = null
-        if (mode === 'whiff') { if (s.swings >= MIN_WINDOW_SWINGS) rgb = pick((s.whiffs / s.swings - SCALE_LO) / (SCALE_HI - SCALE_LO)) }
+        if (mode === 'whiff') { if (s.swings >= MIN_WINDOW_SWINGS) rgb = heatRgb(s.whiffs / s.swings) }
         else if (s.pitches > 0) rgb = pick(Math.sqrt(s.pitches / maxP))
         if (rgb) { img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255 }
         else { img.data[o] = 241; img.data[o + 1] = 238; img.data[o + 2] = 230; img.data[o + 3] = 255 }
@@ -132,6 +131,8 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
 
   return (
     <div>
+      <details style={{ marginBottom: 8 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13, color: C.orange }}>Map options: seasons, what the colour shows, window size and zoom</summary>
       <div className="pv-row" style={{ marginTop: 0 }}>
         <span className="pv-k">League pitches</span>
         <button type="button" className={`pv-pill${span === 'latest' ? ' on' : ''}`} onClick={() => setSpan('latest')}>{payload.pooledLabel ? latestLabel : `${latestLabel} only`}</button>
@@ -147,6 +148,7 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
         <button type="button" className={`pv-pill${wide ? '' : ' on'}`} onClick={() => setWide(false)}>Close</button>
         <button type="button" className={`pv-pill${wide ? ' on' : ''}`} onClick={() => setWide(true)}>Wider</button>
       </div>
+      </details>
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center' }}>
       <div style={{ flex: '1 1 360px', maxWidth: 440, minWidth: 0 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0,1fr)', gridTemplateRows: 'auto 22px', gap: 0 }}>
@@ -182,8 +184,8 @@ export default function MovementHeat({ pitchType, pitchName, hand, avg, points, 
 
       <div className="pv-row" style={{ fontSize: 11, color: C.mute, gap: 8 }}>
         {mode === 'whiff'
-          ? <><span>Whiffs per swing</span><span>{(SCALE_LO * 100).toFixed(0)}%</span><span style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden' }}>{RAMP.map(c => <span key={c} style={{ width: 22, height: 10, background: c }} />)}</span><span>{(SCALE_HI * 100).toFixed(0)}%</span><span>(scaled to this pitch’s {spanLabel} league rate of {(lw0 * 100).toFixed(1)}%)</span><span>blank = under {MIN_WINDOW_SWINGS} swings in the window</span></>
-          : <><span>Fewer pitches</span><span style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden' }}>{RAMP.map(c => <span key={c} style={{ width: 22, height: 10, background: c }} />)}</span><span>More pitches in the window</span></>}
+          ? <><span style={{ fontWeight: 800, color: C.ink }}>Whiffs per swing</span><span style={{ color: '#2166AC', fontWeight: 800 }}>{(SCALE_LO * 100).toFixed(0)}% or less</span><span style={{ width: 160, height: 10, background: HEAT_GRADIENT_CSS, border: `1px solid ${C.line}` }} /><span style={{ color: '#B2182B', fontWeight: 800 }}>{(SCALE_HI * 100).toFixed(0)}% or more</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 14, height: 10, background: '#f1eee6', border: `1px solid ${C.line}` }} />too few swings in the window (under {MIN_WINDOW_SWINGS})</span></>
+          : <><span>Fewer pitches</span><span style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden' }}>{DENSITY_COLORS.map(c => <span key={c} style={{ width: 22, height: 10, background: c }} />)}</span><span>More pitches in the window</span></>}
         <span>● his {season} pitches ({points.filter(p => Math.abs(p.hb - avg.hb) <= half && Math.abs(p.ivb - avg.ivb) <= half).length} of the {points.length} sampled are in view) · ┼ his average · ┄ ±1 SD</span>
       </div>
 

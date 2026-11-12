@@ -996,7 +996,7 @@ const [statcastRanks, setStatcastRanks] = useState<Record<string, number | null>
   return (
     <div className="tp-root" style={{ background: C.cream, fontFamily: SANS }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '24px 24px 80px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '24px 32px 80px' }}>
         <div style={{ marginBottom: 14, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
           <Link href="/mlb/stats" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.orange, textDecoration: 'none' }}>← All players</Link>
           {teamMeta && <Link href={`/mlb/teams/${teamMeta.slug}`} style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '.18em', textTransform: 'uppercase', color: C.ink, textDecoration: 'none' }}>{teamMeta.name} →</Link>}

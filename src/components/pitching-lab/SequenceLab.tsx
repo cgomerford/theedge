@@ -23,6 +23,8 @@ import { Scene, TransparentScene, buildPaths, type PitchPath } from './PitchFlig
 import { useShapeView } from '@/components/pitch-shape/shapeLevel'
 import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 import { Pills, kick, note, star, tile } from './LocationExplorer'
+import AtBatReplay from './AtBatReplay'
+import PitcherStory from '@/components/pitch-shape/PitcherStory'
 
 type Cat = 'ball' | 'called' | 'swing' | 'foul' | 'play' | 'hbp'
 const CATS: [Cat, string][] = [['ball', 'Ball'], ['called', 'Called strike'], ['swing', 'Swinging strike'], ['foul', 'Foul'], ['play', 'In play'], ['hbp', 'Hit by pitch']]
@@ -135,7 +137,7 @@ function SequenceStage({ steps }: { steps: Step[] }) {
         <div style={kick}>The at-bat, pitch by pitch</div>
         <div style={{ position: 'relative', marginTop: 8 }}>
           <Scene paths={[]} p={0} showPlate />
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 24, fontSize: 14, color: C.mute, background: 'rgba(250,248,243,.7)', borderRadius: 10 }}>Choose a pitch on the left and its path is drawn here, with the count and how it turned out.</div>
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center', padding: 24, fontSize: 14, color: C.mute, background: 'rgba(250,248,243,.7)', borderRadius: 10 }}>Choose a pitch on the right and its path is drawn here, with the count and how it turned out.</div>
         </div>
       </div>
     )
@@ -180,7 +182,7 @@ const pc = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`
 
 export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role?: LabRole }) {
   const season = new Date().getFullYear()
-  const level = useShapeView().level   // MLB unless the Pitching Lab's level selector says Triple-A or the Florida State League
+  const level = useShapeView().level   // MLB unless the lab's level selector (pitching or batting) says Triple-A or the Florida State League
   const [log, setLog] = useState<PitcherPitchLog | null | 'error'>(null)
   const [hist, setHist] = useState<string[]>([])
   const [stepRes, setStepRes] = useState<(Cat | 'any')[]>([])
@@ -197,12 +199,14 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
   const setChain = (types: string[]) => { setHist(types); setStepRes(r => types.map((_, i) => r[i] ?? 'any')) }
   const [where, setWhere] = useState<Where>('any')
   const [count, setCount] = useState('any')
+  const [tab, setTab] = useState('next')
+  const [replayKey, setReplayKey] = useState<string | null>(null)
   const [side, setSide] = useState<'any' | 'L' | 'R'>('any')
   const [focus, setFocus] = useState('ALL')
 
   useEffect(() => {
     let off = false
-    fetchLabLog(role, id, season, role === 'pitcher' && level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
+    fetchLabLog(role, id, season, level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
   }, [role, id, season, level])
 
@@ -262,6 +266,8 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
   const shade = (v: number) => `rgba(255,87,34,${(0.08 + Math.min(1, v) * 0.7).toFixed(2)})`
 
   const examples = [...hits].sort((a, b) => (a.ab[a.j].date < b.ab[b.j].date ? 1 : -1)).slice(0, 8)
+  const replayHit = examples.find((h, i) => { const l = h.ab[h.ab.length - 1]; return `${l.gamePk}-${l.atBatNumber}-${i}` === replayKey }) ?? null
+  const replay = replayHit ? { ab: replayHit.ab, date: replayHit.ab[replayHit.j].date, who: replayHit.ab[replayHit.j].batterId != null ? log.batterNames[replayHit.ab[replayHit.j].batterId as number] ?? null : null } : null
   const small = total < MIN_SAMPLE.arsenalPitchesPerType
   const modal = <T,>(m: Map<T, number>): T | null => { let b: T | null = null, bn = 0; for (const [k, n] of m) if (n > bn) { b = k; bn = n } return b }
   const stageSteps: Step[] = hist.map((t, q) => {
@@ -289,27 +295,12 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
 
   return (
     <div className="sq-grid">
-      <style>{`.sq-grid{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}.sq-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:6px}.sq-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:12px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A;font-family:inherit}.sq-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.sq-btn.on{border-color:#FF5722;background:#fff1ea}.sq-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}.sq-span2{grid-column:span 2}.sq-span3{grid-column:1 / -1}.sq-tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}.sq-tbl th{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a89e8c;text-align:center;padding:6px 8px;border-bottom:1px solid #e7e2d8}.sq-tbl th:first-child,.sq-tbl td:first-child{text-align:left}.sq-tbl td{text-align:center;padding:7px 8px;border-top:1px solid #fff}.sq-bar{display:grid;grid-template-columns:150px minmax(0,1fr) 92px;align-items:center;gap:10px;padding:5px 6px;border-radius:10px;cursor:pointer;border:1px solid transparent;background:none;width:100%;font-family:inherit;text-align:left}.sq-bar:hover{background:#fff1ea;border-color:#FF5722}@media (max-width:1180px){.sq-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:860px){.sq-grid{grid-template-columns:minmax(0,1fr)}.sq-side{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}.sq-btn{width:auto;white-space:nowrap}.sq-tiles{grid-template-columns:minmax(0,1fr)}.sq-span2{grid-column:auto}.sq-bar{grid-template-columns:110px minmax(0,1fr) 70px}}`}</style>
+      <style>{`.sq-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;align-items:start}.sq-side{position:sticky;top:64px;display:flex;flex-direction:column;gap:14px}.sq-pick{display:flex;flex-direction:column;gap:6px}.sq-sel{width:100%;padding:8px 10px;border-radius:6px;border:1px solid #e7e2d8;background:#fff;font-family:inherit;font-size:14px;font-weight:700;color:#1A1A1A}.sq-lab{display:block;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a8275;margin:0 0 4px}.sq-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid #e7e2d8;background:#fff;cursor:pointer;font-weight:800;font-size:14px;color:#1A1A1A;font-family:inherit}.sq-btn small{display:block;font-weight:600;font-size:12px;color:#8a8275}.sq-btn.on{border-color:#FF5722;background:#fff1ea}.sq-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}.sq-span2{grid-column:span 2}.sq-span3{grid-column:1 / -1}.sq-tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}.sq-tbl th{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a89e8c;text-align:center;padding:6px 8px;border-bottom:1px solid #e7e2d8}.sq-tbl th:first-child,.sq-tbl td:first-child{text-align:left}.sq-tbl td{text-align:center;padding:7px 8px;border-top:1px solid #fff}.sq-bar{display:grid;grid-template-columns:150px minmax(0,1fr) 92px;align-items:center;gap:10px;padding:5px 6px;border-radius:10px;cursor:pointer;border:1px solid transparent;background:none;width:100%;font-family:inherit;text-align:left}.sq-bar:hover{background:#fff1ea;border-color:#FF5722}@media (max-width:1180px){.sq-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:860px){.sq-grid{grid-template-columns:minmax(0,1fr)}.sq-side{position:static}.sq-pick{flex-direction:row;overflow-x:auto;padding-bottom:4px}.sq-btn{width:auto;white-space:nowrap}.sq-tiles{grid-template-columns:minmax(0,1fr)}.sq-span2{grid-column:auto}.sq-bar{grid-template-columns:110px minmax(0,1fr) 70px}}`}</style>
       <SpinBallStyles />
 
-      <nav className="sq-side" aria-label="The pitch just thrown">
-        <div style={{ ...kick, margin: '0 2px 2px' }}>Pitch just thrown</div>
-        <button type="button" className={`sq-btn${hist.length === 0 ? ' on' : ''}`} onClick={() => { setChain([]); setStepRes([]); setFocus('ALL'); setWhere('any') }}>
-          <span style={{ width: 14, height: 14, borderRadius: 999, background: '#1A1A1A', flexShrink: 0 }} />
-          <span>Any pitch<small>{log.pitches.length} pitches</small></span>
-        </button>
-        {types.map(t => {
-          const f = flights.find(x => x.type === t.t)
-          return (
-            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setStepRes(['any']); setFocus('ALL'); if (count === '0-0') setCount('any') }}>
-              <SpinBall code={t.t} size={30} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />
-              <span>{t.name}<small>{((t.n / log.pitches.length) * 100).toFixed(0)}% · {t.n} pitches</small></span>
-            </button>
-          )
-        })}
-      </nav>
-
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, fontFamily: SANS }}>
+        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderTop: `3px solid ${C.orange}`, borderRadius: 6, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '.14em', fontWeight: 800, color: C.orange, textTransform: 'uppercase' }}>Sequencing · {season}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: '-0.01em' }}>{hist.length === 0 ? 'Any pitch' : 'Sequence'}</h2>
           {hist.map((t, i) => (
@@ -324,15 +315,10 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
           <span style={{ fontSize: 15, color: '#5b5347' }}>{total} next pitches{small && total > 0 ? <> {star} small sample</> : ''}</span>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
-          {hist.length > 0 && <Pills items={[['any', `Any result of the ${lastName}`], ...PREV_RESULTS] as [Cat | 'any', string][]} value={res} onChange={setRes} />}
-          {hist.length > 0 && <Pills items={[['any', 'Anywhere'], ['in', 'In the zone'], ['out', 'Out of the zone']] as [Where, string][]} value={where} onChange={setWhere} />}
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginTop: 10 }}>
+            {([['Pitches in the log', log.pitches.length.toLocaleString('en-US')], ['At-bats', abs.length.toLocaleString('en-US')], ['Next pitches that match', total.toLocaleString('en-US')]] as [string, string][]).map(([k, v]) => <div key={k}><span style={{ display: 'block', fontSize: 10, letterSpacing: '.12em', fontWeight: 800, color: C.mute, textTransform: 'uppercase' }}>{k}</span><b style={{ fontSize: 22, fontVariantNumeric: 'tabular-nums' }}>{v}</b></div>)}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', alignItems: 'center' }}>
-          <Pills items={[['any', 'Any count'], ...COUNTS.filter(c => hist.length === 0 || c !== '0-0').map(c => [c, c] as [string, string])]} value={count} onChange={setCount} />
-          <Pills items={(role === 'batter' ? [['any', 'All pitchers'], ['L', 'Left-handed pitchers'], ['R', 'Right-handed pitchers']] : [['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']]) as ['any' | 'L' | 'R', string][]} value={side} onChange={setSide} />
-        </div>
-
         {total === 0 ? (
           <div style={{ fontSize: 14, color: C.mute }}>
             {(() => {
@@ -344,7 +330,8 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
             <button type="button" onClick={() => { setStepRes(hist.map(() => 'any')); setWhere('any'); setCount('any'); setSide('any') }} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: C.orange, background: 'none', border: 0, cursor: 'pointer', padding: 0 }}>Clear the filters</button>
           </div>
         ) : (
-          <div className="sq-tiles">
+          <PitcherStory name="Sequencing" tab={tab} onTab={setTab} tabs={[
+            { id: 'next', label: 'What came next', question: hist.length === 0 ? (role === 'batter' ? 'What was thrown to him, and how did it turn out?' : 'What does he throw, and how did it turn out?') : `What came after the ${hist.map(nm).join(' → ')}, and how did it turn out?`, node: (<div className="sq-tiles">
             <SequenceStage steps={stageSteps} />
             <div className="sq-span2" style={tile}>
               <div style={kick}>{role === 'batter' ? (hist.length === 0 ? 'What was thrown to him' : `What was thrown to him next, after ${hist.map(nm).join(' → ')}`) : (hist.length === 0 ? 'What he threw' : `What he threw next, after ${hist.map(nm).join(' → ')}`)}</div>
@@ -394,9 +381,11 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
               <SmoothHeatmap pitches={nextPitches} title={focus === 'ALL' ? 'Next pitches' : nm(focus)} counts={false} />
             </div>
 
-            <div className="sq-span2" style={{ ...tile, overflowX: 'auto' }}>
+          </div>) },
+            { id: 'tables', label: 'By count and result', question: 'How did the last pitch’s result and the count change what came next?', node: (<div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ ...tile, overflowX: 'auto' }}>
               <div style={kick}>How the last pitch&apos;s result changes the next one</div>
-              {hist.length === 0 ? <p style={note}>Choose a pitch on the left to see this.</p> : (
+              {hist.length === 0 ? <p style={note}>Choose a pitch on the right to see this.</p> : (
                 <table className="sq-tbl" style={{ marginTop: 6, minWidth: 520 }}>
                   <thead><tr><th>After a {lastName}…</th><th>Pitches</th>{cols.map(t => <th key={t}>{nm(t)}</th>)}</tr></thead>
                   <tbody>
@@ -413,7 +402,7 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
               <p style={note}>Each row is the share of next pitches of each type after that result. Click a row to filter the page to it.</p>
             </div>
 
-            <div className="sq-span3" style={{ ...tile, overflowX: 'auto' }}>
+            <div style={{ ...tile, overflowX: 'auto' }}>
               <div style={kick}>By count{hist.length ? ` · after ${hist.map(nm).join(' → ')}` : ''}</div>
               <table className="sq-tbl" style={{ marginTop: 6, minWidth: 560 }}>
                 <thead><tr><th>Count</th><th>Pitches</th>{cols.map(t => <th key={t}>{nm(t)}</th>)}</tr></thead>
@@ -430,15 +419,19 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
               <p style={note}>The count is the one before the next pitch. Darker is a larger share. {star} marks a count with a small sample. Click a row to filter the page to it.</p>
             </div>
 
-            <div className="sq-span3" style={tile}>
+          </div>) },
+            { id: 'abs', label: 'At-bats', question: 'Which at-bats fit this pattern, and how did they play out?', node: (<div style={{ display: 'grid', gap: 14 }}>
+            <div style={tile}>
               <div style={kick}>Recent at-bats that fit</div>
+              <p style={{ ...note, margin: '4px 0 0' }}>Choose an at-bat to replay it pitch by pitch.</p>
+              {replay && <div style={{ marginTop: 10 }}><AtBatReplay ab={replay.ab} pitchName={nm} batter={replay.who} date={replay.date} onClose={() => setReplayKey(null)} /></div>}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                 {examples.map((h, i) => {
                   const last = h.ab[h.ab.length - 1]
                   const ender = last.wobaDen != null && last.wobaDen > 0 ? (last.result ?? '').replace(/_/g, ' ') : null
                   const who = h.ab[h.j].batterId != null ? log.batterNames[h.ab[h.j].batterId as number] : null
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13 }}>
+                    <button key={i} type="button" onClick={() => setReplayKey(`${last.gamePk}-${last.atBatNumber}-${i}`)} aria-label={`Replay the at-bat on ${h.ab[h.j].date}${who ? ` against ${who}` : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', background: replayKey === `${last.gamePk}-${last.atBatNumber}-${i}` ? '#FFF3EC' : 'transparent', border: `1px solid ${replayKey === `${last.gamePk}-${last.atBatNumber}-${i}` ? C.orange : 'transparent'}`, borderRadius: 6, padding: '4px 6px' }}>
                       <span style={{ width: 150, color: C.mute }}>{h.ab[h.j].date}{who ? ` · ${who}` : ''}</span>
                       <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
                         {h.ab.map((p, q) => {
@@ -451,15 +444,55 @@ export default function SequenceLab({ id, role = 'pitcher' }: { id: number; role
                         })}
                       </span>
                       <span style={{ color: C.faint }}>{ender ? `ended: ${ender}` : ''}</span>
-                    </div>
+                      <span style={{ marginLeft: 'auto', color: C.orange, fontWeight: 800, fontSize: 12 }}>▶ Replay</span>
+                    </button>
                   )
                 })}
               </div>
               <p style={note}>Each dot is a pitch in the at-bat, coloured by type and marked with how it turned out (B ball, CS called strike, SS swinging strike, F foul, IP in play). The ringed dot is the next pitch in your selection; dots after it are faded. Hover a dot for the details.</p>
             </div>
-          </div>
+          </div>) },
+          ]} />
         )}
       </div>
+
+      <aside className="sq-side" aria-label="Pitch and filters">
+        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 12 }}>
+          <div style={{ ...kick, marginBottom: 8 }}>1 · Pitch just thrown</div>
+          <nav className="sq-pick" aria-label="The pitch just thrown">
+        <button type="button" className={`sq-btn${hist.length === 0 ? ' on' : ''}`} onClick={() => { setChain([]); setStepRes([]); setFocus('ALL'); setWhere('any') }}>
+          <span style={{ width: 14, height: 14, borderRadius: 999, background: '#1A1A1A', flexShrink: 0 }} />
+          <span>Any pitch<small>{log.pitches.length} pitches</small></span>
+        </button>
+        {types.map(t => {
+          const f = flights.find(x => x.type === t.t)
+          return (
+            <button key={t.t} type="button" className={`sq-btn${hist[0] === t.t ? ' on' : ''}`} onClick={() => { setHist([t.t]); setStepRes(['any']); setFocus('ALL'); if (count === '0-0') setCount('any') }}>
+              <SpinBall code={t.t} size={30} spin={{ rpm: f?.spin ?? null, ivb: f?.ivb ?? null, hb: f?.hb ?? null }} />
+              <span>{t.name}<small>{((t.n / log.pitches.length) * 100).toFixed(0)}% · {t.n} pitches</small></span>
+            </button>
+          )
+        })}
+                </nav>
+        </div>
+        <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 12, display: 'grid', gap: 10 }}>
+          <div style={{ ...kick }}>2 · Narrow it down</div>
+          {hist.length > 0 && <label><span className="sq-lab">Result of the {lastName}</span><select className="sq-sel" value={res} onChange={e => setRes(e.target.value as Cat | 'any')}>{[['any', `Any result of the ${lastName ?? 'pitch'}`], ...PREV_RESULTS].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>}
+          {hist.length > 0 && <label><span className="sq-lab">Where it landed</span><select className="sq-sel" value={where} onChange={e => setWhere(e.target.value as Where)}>{[['any', 'Anywhere'], ['in', 'In the zone'], ['out', 'Out of the zone']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>}
+          <label><span className="sq-lab">Count</span><select className="sq-sel" value={count} onChange={e => setCount(e.target.value)}>{[['any', 'Any count'], ...COUNTS.filter(c => hist.length === 0 || c !== '0-0').map(c => [c, c])].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+          <label><span className="sq-lab">{role === 'batter' ? 'Pitcher hand' : 'Hitter side'}</span><select className="sq-sel" value={side} onChange={e => setSide(e.target.value as 'any' | 'L' | 'R')}>{(role === 'batter' ? [['any', 'All pitchers'], ['L', 'Left-handed pitchers'], ['R', 'Right-handed pitchers']] : [['any', 'All hitters'], ['L', 'Left-handed'], ['R', 'Right-handed']]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+        </div>
+        <div style={{ background: '#FFF3EC', borderRadius: 6, padding: 12, fontSize: 13, lineHeight: 1.55, color: '#3d382f' }}>
+          <b>How to use this</b>
+          <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            <li>Choose the pitch that was just thrown.</li>
+            <li>Click a pitch in the bars to follow the chain forward.</li>
+            <li>Narrow it by result, count or side.</li>
+            <li>Open the At-bats tab and choose one to replay it.</li>
+          </ol>
+          <div style={{ marginTop: 6, color: '#5b5347' }}>This describes what has happened. It does not say what will happen next.</div>
+        </div>
+      </aside>
     </div>
   )
 }

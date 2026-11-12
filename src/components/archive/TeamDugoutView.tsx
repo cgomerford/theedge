@@ -351,7 +351,7 @@
       <div style={{
         fontFamily: "'Red Hat Display', sans-serif",
         background: '#FAF8F3',
-        maxWidth: 1520,           // ← widened
+        maxWidth: 1800,
         margin: '0 auto',
         padding: '28px 24px 72px', // ← a bit more breathing room
       }}>

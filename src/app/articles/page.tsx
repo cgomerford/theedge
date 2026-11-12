@@ -70,7 +70,7 @@ export default async function ArticlesIndexPage() {
       <SiteHeader variant="page" />
 
       <div style={{ background: '#FAF8F3', minHeight: '100vh' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 20px 80px' }}>
+        <div style={{ maxWidth: 1800, margin: '0 auto', padding: '40px 20px 80px' }}>
           {/* ── Masthead ── */}
           <div style={{ marginBottom: 32, borderBottom: '2px solid #1A1A1A', paddingBottom: 20 }}>
             <div

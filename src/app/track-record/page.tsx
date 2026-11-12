@@ -19,7 +19,7 @@ export default async function HistoricalArchivePage() {
     <main className="min-h-screen bg-[#fafaf9] font-sans">
       <SiteHeader />
 
-      <div className="max-w-6xl mx-auto px-6 py-10 md:py-16">
+      <div className="max-w-6xl mx-auto px-6 py-10 md:py-16" style={{ maxWidth: 1800 }}>
         {/* ════════════════════════════════════════════════
             HERO SECTION - Like "The Stats" / Dashboard
             ════════════════════════════════════════════════ */}

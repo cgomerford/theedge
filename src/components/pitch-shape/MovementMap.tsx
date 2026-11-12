@@ -88,14 +88,17 @@ function MapLayer({ cells, pitcher, markers, onTip }: {
   )
 }
 
-export default function MovementMap({ bins, pitcher, markers = [], ariaLabel = 'Movement map' }: {
-  bins: ShapeBin[]
+export default function MovementMap({ bins, map, pitcher, markers = [], ariaLabel = 'Movement map' }: {
+  /** raw league bins: the map is built here in the browser (the old sandbox) */
+  bins?: ShapeBin[]
+  /** or the finished map, built on the server with mapWindow() + movementCells(), so the browser is sent a few hundred cells instead of every bin */
+  map?: { win: MapWindow; cells: MapCell[] }
   pitcher?: Pick<PitcherPitchShape, 'current' | 'prev' | 'points'>
   markers?: MapMarker[]
   ariaLabel?: string
 }) {
-  const win: MapWindow | null = useMemo(() => mapWindow(bins), [bins])
-  const cells = useMemo(() => (win ? movementCells(bins, win) : []), [bins, win])
+  const win: MapWindow | null = useMemo(() => map?.win ?? (bins ? mapWindow(bins) : null), [bins, map])
+  const cells = useMemo(() => map?.cells ?? (win && bins ? movementCells(bins, win) : []), [bins, map, win])
   const [tip, setTip] = useState<Tip | null>(null)
 
   if (!win) return <p style={{ fontSize: 12, color: C.faint, fontStyle: 'italic', textAlign: 'center', padding: '22px 0', margin: 0 }}>No league sample for this pitch type yet.</p>

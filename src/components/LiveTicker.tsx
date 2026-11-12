@@ -45,7 +45,7 @@ export default async function LiveTicker() {
           than the game header below it. This ties them to the same edge
           (2026-07-13). Outer bg-stone-900 stays full-bleed on purpose —
           only the content inside needs to align, not the background. */}
-      <div className="max-w-6xl mx-auto relative">
+      <div className="max-w-6xl mx-auto relative" style={{ maxWidth: 1800 }}>
      <div className="absolute left-4 top-0 bottom-0 z-10 bg-[#1A1A1A] text-white px-4 flex items-center text-[10px] font-mono uppercase tracking-widest font-bold">
           MLB · Today
         </div>

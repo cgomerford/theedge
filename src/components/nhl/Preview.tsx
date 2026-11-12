@@ -83,7 +83,7 @@ export default function Preview({ preview, isPro }: { preview: NhlPreview; isPro
   return (
     <div className="tp-root" style={{ background: C.cream, fontFamily: SANS, minHeight: '100vh' }}>
       <style dangerouslySetInnerHTML={{ __html: NHL_CSS }} />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '24px 24px 80px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '24px 32px 80px' }}>
         {/* Hero: two-tone diagonal, away colour left / home colour right -- no logos */}
         <div style={{ borderRadius: 18, overflow: 'hidden', position: 'relative', background: `linear-gradient(100deg, ${awayColor} 0%, ${awayColor} 46%, ${homeColor} 54%, ${homeColor} 100%)` }}>
           <div style={{ padding: '22px 26px 20px' }}>

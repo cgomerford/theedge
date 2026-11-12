@@ -4,6 +4,7 @@
 // block counts the Checks tab reports. Pure functions, no Tiptap import, so server routes and the browser both use them.
 
 import type { TiptapDoc } from '@/lib/articles'
+import { chartText } from '@/lib/article-chart'
 
 export interface DocNode {
   type: string
@@ -24,6 +25,7 @@ export function docText(doc: TiptapDoc): string {
     for (const k of ['caption', 'credit', 'alt', 'text', 'line', 'name']) if (typeof a[k] === 'string' && a[k]) out.push(a[k] as string)
     if (n.type === 'statRow' && Array.isArray(a.items)) for (const it of a.items as { value?: string; label?: string; sample?: string }[]) out.push(`${it.value ?? ''} ${it.label ?? ''} ${it.sample ?? ''}`)
     if (n.type === 'dataTable' && typeof a.rows === 'string') out.push(a.rows)
+    if (n.type === 'chartBlock') out.push(chartText(a))
     if (n.type === 'gallery' && Array.isArray(a.images)) for (const im of a.images as { caption?: string; alt?: string }[]) out.push(`${im.caption ?? ''} ${im.alt ?? ''}`)
     n.content?.forEach(walk)
   }

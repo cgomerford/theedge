@@ -1,3 +1,4 @@
+import { parseLevel } from '@/lib/milb-shape/levels'
 import { NextRequest, NextResponse } from 'next/server'
 import { getBatterPitchLog, type BatterPitchLog, type RawBatterPitch } from '@/lib/batter-pitch-log'
 import { canReadDeepData } from '@/lib/deep-look'
@@ -35,7 +36,9 @@ export async function GET(req: NextRequest) {
   const pitcherId = Number(searchParams.get('pitcherId'))
   if (!full && (range === 'career' || summary || pitcherId)) return Response.json({ error: 'Pro required', upgrade: '/pricing' }, { status: 403 })
 
-  const logs = range === 'career' ? await seasons(batterId, FIRST, season) : [await getBatterPitchLog(batterId, season)].filter((x): x is BatterPitchLog => !!x)
+  // MLB unless asked for Triple-A or the Florida State League; a minor-league level is one season of that level only, never a career.
+  const level = parseLevel(searchParams.get('level'))
+  const logs = level !== 'mlb' ? [await getBatterPitchLog(batterId, season, level)].filter((x): x is BatterPitchLog => !!x) : range === 'career' ? await seasons(batterId, FIRST, season) : [await getBatterPitchLog(batterId, season)].filter((x): x is BatterPitchLog => !!x)
   if (logs.length === 0) return NextResponse.json({ error: 'no data' }, { status: 404 })
   const log = join(logs)
 

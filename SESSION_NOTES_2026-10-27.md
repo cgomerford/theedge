@@ -21,7 +21,7 @@ Read this first in a fresh session. It replaces the long chat. All work is commi
   DB changes only as SQL files George runs himself (never run create/drop SQL). No new crons/emails.
 - Brand: cream #FAF8F3, orange #FF5722, yellow #FDE047, black #1A1A1A; red = hitter does damage, sky blue #6CABDD = better for the pitcher.
 - Small samples: red `*` plus the count on hover. New wording George didn't supply goes in as `[George: wording]`.
-- Prices appear only on `/pricing` (and "Unlock with Founding Pro, £40/yr" buttons for signed-in free users).
+- Prices appear only on `/pricing` (and the unlock buttons (Founding Pro US$45/yr, Standard Pro US$60/yr) for signed-in free users).
 - Dev tools: dev view cookie `edge_dev_view=out|member|pro` (bottom-right switcher, dev only). Browser tool is flaky: use curl when needed;
   `computer wait` max 10 s. iCloud makes duplicate "... 2" dirs in `node_modules/@types` that break `tsc` (delete them); filter with `| grep -v "^.next/"`.
   Untracked `src/components/signup/EmailSignupModal.tsx` is a stale duplicate: never commit or delete it without asking.

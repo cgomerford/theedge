@@ -20,7 +20,7 @@ import { buildPaths } from './PitchFlight'
 import { fetchLabLog, onlyHand, type LabRole } from '@/lib/lab-log'
 import { useShapeView } from '@/components/pitch-shape/shapeLevel'
 
-export const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, minWidth: 0, fontFamily: SANS }
+export const tile: React.CSSProperties = { background: '#fff', border: `1px solid ${C.line}`, borderRadius: 6, padding: 14, minWidth: 0, fontFamily: SANS }
 export const kick: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '.14em', color: C.orange, textTransform: 'uppercase' }
 export const note: React.CSSProperties = { margin: '8px 0 0', fontSize: 12, color: C.mute, lineHeight: 1.5 }
 
@@ -100,11 +100,11 @@ export default function LocationExplorer({ id, role = 'pitcher' }: { id: number;
   const [zone, setZone] = useState('all')
   const season = new Date().getFullYear()
   const cellMin = MIN_SAMPLE.zoneCellPitches
-  const level = useShapeView().level   // MLB unless the Pitching Lab's level selector says Triple-A or the Florida State League
+  const level = useShapeView().level   // MLB unless the lab's level selector (pitching or batting) says Triple-A or the Florida State League
 
   useEffect(() => {
     let off = false
-    fetchLabLog(role, id, season, role === 'pitcher' && level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
+    fetchLabLog(role, id, season, level !== 'mlb' ? `&level=${level}` : '').then(l => { if (!off) setLog(l ?? 'error') })
     return () => { off = true }
   }, [role, id, season, level])
 

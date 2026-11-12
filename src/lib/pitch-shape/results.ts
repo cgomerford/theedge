@@ -87,6 +87,12 @@ export async function getResultsPayload(type: string, hand: Hand, half = 12, mar
   return crop(rows, hb0, ivb0, half, margin)
 }
 
+/** League outcomes around a chosen centre (a pitcher's own average shape) instead of the league's, for the pitcher detail: smaller than the whole map, so it is cheap to send. */
+export async function getResultsPayloadAround(type: string, hand: Hand, hb0: number, ivb0: number, half: number, margin = 0, level: Level = 'mlb', season?: number): Promise<ResultsPayload | null> {
+  const rows = await loadRows(type, hand, level, season)
+  return rows ? crop(rows, hb0, ivb0, half, margin) : null
+}
+
 const SCALED = new Set(['rv', 'w', 'x'])
 /** Every league pitch of the type and hand, summed (real units). */
 function leagueSums(rows: Map<number, number[]>, only?: number): Sums {

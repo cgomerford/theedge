@@ -8,7 +8,7 @@ export default function LabPlayerHeader({ id, name, teamId, teamAbbr, teamName, 
   followSlot?: ReactNode; changeHref: string; changeLabel: string
 }) {
   return (
-    <div style={{ maxWidth: 1360, margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+    <div style={{ maxWidth: 1800, margin: '0 auto', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
       <Headshot id={id} name={name} size={72} />
       <div style={{ minWidth: 0 }}>
         <h1 style={{ margin: 0, fontSize: 'clamp(26px, 4vw, 38px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.05 }}>{name}</h1>

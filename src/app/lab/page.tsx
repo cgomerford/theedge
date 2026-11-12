@@ -13,7 +13,7 @@ export default async function LabPage() {
     return (
       <main className="min-h-screen bg-[#FAF8F3]">
         <SiteHeader />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10" style={{ maxWidth: 1800 }}>
  
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 mb-3">Dashboard.</h1>
           <p className="font-serif italic text-stone-500 mb-8 max-w-xl">
@@ -31,7 +31,7 @@ export default async function LabPage() {
 return (
     <main className="min-h-screen bg-[#FAF8F3]">
       <SiteHeader />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10" style={{ maxWidth: 1800 }}>
         <h1 className="text-3xl sm:text-4xl font-serif font-bold text-stone-900 mb-3">Player cards.</h1>
         <p className="font-serif italic text-stone-500 mb-8 max-w-xl">
           Every stat we track, for any player, side by side. Free for everyone.

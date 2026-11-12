@@ -17,7 +17,7 @@ import MLBSubNav from '@/components/MLBSubNav'
 import ProGate from '@/components/pro/ProGate'
 import PendingBlock from '@/components/data/PendingBlock'
 import { getPlayerOverview } from '@/lib/player-overview'
-import { PlayerHeader, LatestGame, GoDeeper, OverviewBody, ZonesShell, Section } from '@/components/player-page/PlayerOverviewView'
+import { PlayerHeader, LatestGame, GoDeeper, OverviewBody, ZonesShell, Section, LevelSwitcher, NotTracked } from '@/components/player-page/PlayerOverviewView'
 import { getCurrentSubscriber } from '@/lib/auth'
 import { Suspense } from 'react'
 import StatcastTrendsSlot from '@/components/player/trends/StatcastTrendsSlot'
@@ -52,10 +52,10 @@ export default async function PlayerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ tab?: string; pro?: string }>
+  searchParams: Promise<{ tab?: string; pro?: string; level?: string }>
 }) {
   const { id } = await params
-  const { tab, pro } = await searchParams
+  const { tab, pro, level } = await searchParams
   const playerId = Number(id)
   if (!playerId) notFound()
 
@@ -71,8 +71,8 @@ export default async function PlayerPage({
   // The zones tab is the page's one gate. A free account may spend today's deep look on it (see lib/deep-look.ts).
   const gate = isPro ? { tier: 'pro' as const, freeLook: false, state: 'pro' as const } : await resolveViewer('player_trends', String(playerId))
 
-  const overview = await getPlayerOverview(data)
-  const centered: React.CSSProperties = { maxWidth: 1360, margin: '0 auto', padding: '16px 24px 72px' }
+  const overview = await getPlayerOverview(data, level)
+  const centered: React.CSSProperties = { maxWidth: 1800, margin: '0 auto', padding: '16px 32px 72px' }
 
   return (
     <main style={{ minHeight: '100vh', background: '#FAF8F3', color: '#1A1A1A' }}>
@@ -84,11 +84,12 @@ export default async function PlayerPage({
         <PlayerHeader data={data} follow={<FollowControl kind="player" refId={String(playerId)} name={data.identity.fullName} />} />
         {overview.seasonNote ? <p style={{ margin: '0 0 8px', fontSize: 14, color: '#8a8275' }}>{overview.seasonNote}</p> : null}
         <GoDeeper data={data} current="player" />
+        <LevelSwitcher o={overview} basePath={`/mlb/players/${playerId}`} />
         <LatestGame o={overview} />
         <OverviewBody o={overview} data={data} />
 
         <Section title="Zones">
-          <ProGate
+          {!overview.isMlb ? <NotTracked what="Statcast zone data" level={overview.level.name} /> : <ProGate
             feature="player_trends"
             entityId={String(playerId)}
             source="follow"
@@ -98,7 +99,7 @@ export default async function PlayerPage({
               </Suspense>
             )}
             shell={<ZonesShell />}
-          />
+          />}
         </Section>
       </div>
     </main>

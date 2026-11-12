@@ -39,7 +39,7 @@ export default async function GamePlanPage({ params, searchParams }: { params: P
     <main style={{ minHeight: '100vh', background: '#FAF8F3' }}>
       <SiteHeader variant="page" />
       <MLBSubNav />
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '22px 24px 100px' }}>
+      <div style={{ maxWidth: 1800, margin: '0 auto', padding: '22px 32px 100px' }}>
         <SeqSectionNav />
         {!pick ? (
           <Empty>The Game Plan Card for this game has not been built yet. Cards are built from the named probable starters; check back once both are announced.</Empty>

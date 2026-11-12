@@ -512,7 +512,7 @@ const batterTabs: { key: BatterSection; label: string }[] = [
   ]
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-24">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-24" style={{ maxWidth: 1800 }}>
       <Link href="/mlb/stats" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 hover:text-[#FF5722] transition-colors">← Back to Stats</Link>
 
       <div className="flex items-center gap-4 mt-4 mb-6">

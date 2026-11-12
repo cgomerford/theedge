@@ -20,6 +20,9 @@
 //   /people/search) are undocumented-API guesses based on common usage —
 //   verify against real responses if something looks off.
 
+import { getTeamLevels } from '@/lib/team-levels'
+import { SPORT_IDS } from '@/lib/levels'
+
 const MLB_API = 'https://statsapi.mlb.com/api/v1'
 const FIP_CONSTANT = 3.10 // fixed constant — a known simplification
 
@@ -384,13 +387,28 @@ export async function getRollingMetric(opts: {
   return rollingTeam(splits, window, metric as 'runs_per_game' | 'team_era' | 'errors_per_game')
 }
 
+// Search covers MLB and every minor level. Each hit also carries `active`, `team`, `level` and `levelLabel` (null when the player has no current club) so callers can badge it.
+// Two searches are merged: the plain one (finds retired players too) and one with every level named in sportIds, because the plain search silently misses some minor leaguers
+// (Gage Wood, a Double-A pitcher, only comes back when sportIds is given). Active players are listed first.
 export async function searchPeople(query: string) {
-  const res = await fetch(`${MLB_API}/people/search?names=${encodeURIComponent(query)}`, { next: { revalidate: 3600 } })
-  if (!res.ok) return []
-  const json = await res.json()
-  return (json.people ?? []).map((p: any) => ({
-    id: p.id, fullName: p.fullName, primaryPosition: p.primaryPosition?.abbreviation ?? '',
-  }))
+  const q = encodeURIComponent(query)
+  const [plain, levelled, teamLevels] = await Promise.all([
+    fetch(`${MLB_API}/people/search?names=${q}&hydrate=currentTeam`, { next: { revalidate: 3600 } }),
+    fetch(`${MLB_API}/people/search?names=${q}&sportIds=${SPORT_IDS}&hydrate=currentTeam&limit=50`, { next: { revalidate: 3600 } }),
+    getTeamLevels(),
+  ])
+  if (!plain.ok && !levelled.ok) return []
+  const raw = [...(levelled.ok ? (await levelled.json()).people ?? [] : []), ...(plain.ok ? (await plain.json()).people ?? [] : [])]
+  const seen = new Set<number>()
+  const people = raw.filter((p: any) => !seen.has(p.id) && seen.add(p.id)).map((p: any) => {
+    const lvl = p.active && p.currentTeam?.id != null ? teamLevels.get(Number(p.currentTeam.id)) : undefined
+    return {
+      id: p.id, fullName: p.fullName, primaryPosition: p.primaryPosition?.abbreviation ?? '',
+      active: !!p.active, team: p.active ? ((p.currentTeam?.name as string | undefined) ?? null) : null,
+      level: lvl?.level ?? null, levelLabel: lvl?.label ?? null,
+    }
+  })
+  return people.sort((a: { active: boolean }, b: { active: boolean }) => Number(b.active) - Number(a.active))
 }
 // ─── Player trend (L7 vs season) ───────────────────────────────────────────
 //

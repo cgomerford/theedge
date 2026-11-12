@@ -8,6 +8,7 @@ export interface SlashItem { id: string; icon: string; label: string; hint: stri
 export const SLASH_ITEMS: SlashItem[] = [
   { id: 'image', icon: '▣', label: 'Image', hint: 'Upload or paste a picture' },
   { id: 'chart', label: 'Chart', icon: '◔', hint: 'From the chart picker' },
+  { id: 'dataChart', label: 'Data chart', icon: '▥', hint: 'Bar or line from your numbers' },
   { id: 'statRow', label: 'Stat row', icon: '≡', hint: '3 numbers, each with its sample' },
   { id: 'playerCard', label: 'Player card', icon: '☺', hint: 'Headshot, team, one stat line' },
   { id: 'pullQuote', label: 'Pull quote', icon: '❝', hint: 'Large highlighted line' },

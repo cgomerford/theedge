@@ -257,7 +257,7 @@ export default function MLBLeaderboardPage({ initialBoards, categories, windows,
   const pitchingCats = categories.filter(c => c.group === 'pitching')
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-10" style={{ maxWidth: 1800 }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="mb-8">

@@ -80,6 +80,8 @@ export type RawPitch = {
   exitVelo: number | null
   // Only on a batter's pitches seen through src/lib/lab-log.ts (the Batting Lab): launch angle, bat speed and swing length, null on a pitcher's log.
   launchAngle?: number | null
+  // Where a ball in play landed (Savant hc_x / hc_y, 0 to 250 with home plate near 125, 205) and its batted-ball type; null on a pitch that was not put in play.
+  hcX?: number | null; hcY?: number | null; bbType?: string | null
   batSpeed?: number | null
   swingLength?: number | null
   // Savant's own movement against a spin-free path, feet, from the catcher's view: [pfx_x, pfx_z]. Null if missing.
@@ -202,7 +204,7 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
   const iThrows = idx('p_throws')
   const iPfxX = idx('pfx_x'), iPfxZ = idx('pfx_z')
   const iTopBot = idx('inning_topbot')
-  const iStand = idx('stand'), iWv = idx('woba_value'), iXw = idx('estimated_woba_using_speedangle'), iWd = idx('woba_denom'), iEv = idx('launch_speed')
+  const iStand = idx('stand'), iWv = idx('woba_value'), iXw = idx('estimated_woba_using_speedangle'), iWd = idx('woba_denom'), iEv = idx('launch_speed'), iHcX = idx('hc_x'), iHcY = idx('hc_y'), iBbt = idx('bb_type')
   const cellNum = (i: number, cells: string[]) => (i !== -1 && cells[i] !== '' && cells[i] !== 'null' && Number.isFinite(Number(cells[i])) ? Number(cells[i]) : null)
   let throws: 'L' | 'R' | null = null
   if (iDate === -1 || iPitchType === -1 || iPlateX === -1 || iPlateZ === -1) return null
@@ -278,7 +280,7 @@ export async function getPitcherPitchLog(pitcherId: number, season = SEASON_FALL
       traj, pfx,
       topBot: iTopBot !== -1 ? (cells[iTopBot] === 'Top' ? 'T' : cells[iTopBot] === 'Bot' ? 'B' : null) : null,
       stand: iStand !== -1 && (cells[iStand] === 'L' || cells[iStand] === 'R') ? (cells[iStand] as 'L' | 'R') : null,
-      woba: cellNum(iWv, cells), xwoba: cellNum(iXw, cells), wobaDen: cellNum(iWd, cells), exitVelo: cellNum(iEv, cells),
+      woba: cellNum(iWv, cells), xwoba: cellNum(iXw, cells), wobaDen: cellNum(iWd, cells), exitVelo: cellNum(iEv, cells), hcX: cellNum(iHcX, cells), hcY: cellNum(iHcY, cells), bbType: iBbt !== -1 && cells[iBbt] ? cells[iBbt] : null,
       effectiveSpeed: Number.isNaN(effectiveSpeed) ? null : effectiveSpeed,
     })
   }

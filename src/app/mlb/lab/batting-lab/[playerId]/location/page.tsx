@@ -6,13 +6,10 @@
 // strikes, hard-hit), built in LocationExplorer from his per-pitch log. Open to everyone. (The older swing heatmap, BatterSwingHeatmap.tsx, is no longer used here.)
 
 import LocationExplorer from '@/components/pitching-lab/LocationExplorer'
-import { useBattingLabData } from '@/lib/batting-lab-context'
+import { useParams } from 'next/navigation'
 
+// The id comes from the address, not from the MLB lab data the other tabs wait for, so a hitter who has only played in the minors opens too (his pitches at the chosen level are fetched by the explorer itself).
 export default function BattingLocationPage() {
-  const { data, failed } = useBattingLabData()
-
-  if (failed) return <div className="text-[12px] text-[#8A8577] text-center py-16">Couldn&apos;t load this batter&apos;s data right now.</div>
-  if (data === null) return <div className="text-[12px] text-[#8A8577] text-center py-16">Loading…</div>
-
-  return <LocationExplorer id={data.id} role="batter" />
+  const id = Number(useParams().playerId)
+  return Number.isInteger(id) && id > 0 ? <LocationExplorer id={id} role="batter" /> : null
 }

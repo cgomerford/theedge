@@ -12,6 +12,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import ChartPickerModal from '@/components/admin/ChartPickerModal'
+import { ChartInsertModal, ConvertMarkersModal } from './ChartDialogs'
 import { ARTICLE_CSS } from '@/components/article/article-css'
 import type { Article, ArticleLayout, TiptapDoc } from '@/lib/articles'
 import { runChecks } from '@/lib/article-checks'
@@ -68,6 +69,8 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
   const [menu, setMenu] = useState<Menu>(null)
   const [menuIndex, setMenuIndex] = useState(0)
   const [chartOpen, setChartOpen] = useState(false)
+  const [dataChartOpen, setDataChartOpen] = useState(false)
+  const [convertOpen, setConvertOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
@@ -165,6 +168,7 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
     switch (id) {
       case 'image': chain.run(); fileRef.current?.click(); break
       case 'chart': chain.run(); setChartOpen(true); break
+      case 'dataChart': chain.run(); setDataChartOpen(true); break
       case 'statRow': chain.insertContent({ type: 'statRow' }).run(); break
       case 'playerCard': chain.insertContent({ type: 'playerCard' }).run(); break
       case 'pullQuote': chain.setNode('pullQuote').run(); break
@@ -329,6 +333,8 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
             <button type="button" style={tbtn(!!editor?.isActive('heading', { level: 3 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
             <button type="button" style={tbtn(!!editor?.isActive('bulletList'))} onClick={() => editor?.chain().focus().toggleBulletList().run()}>List</button>
             <button type="button" style={tbtn(!!editor?.isActive('blockquote'))} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>Quote</button>
+            <button type="button" style={tbtn(false)} onClick={() => setDataChartOpen(true)}>Insert chart</button>
+            <button type="button" style={tbtn(false)} onClick={() => setConvertOpen(true)} title="Turn every [CHART: ...] line in the body into a chart">Convert chart markers</button>
             <button type="button" style={{ ...tbtn(false), background: C.orange, color: '#fff', borderColor: C.orange }} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setMenu(m => (m ? null : { x: r.left, y: r.bottom + 6, q: '', from: -1, to: -1 })); setMenuIndex(0) }}>+ Insert</button>
             <span style={{ flex: 1 }} />
             <button type="button" style={tbtn(false)} onClick={() => editor?.chain().focus().undo().run()}>Undo</button>
@@ -372,6 +378,8 @@ export default function ArticleWriter({ initialArticle }: { initialArticle?: Art
 
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e => { void handleFiles(e.target.files, false); e.target.value = '' }} />
       {menu && <SlashMenu x={menu.x} y={menu.y} items={items} index={menuIndex} onHover={setMenuIndex} onPick={(i: SlashItem) => runItem(i.id)} />}
+      {dataChartOpen && <ChartInsertModal initial={null} onClose={() => setDataChartOpen(false)} onSave={c => { editor?.chain().focus().insertContent({ type: 'chartBlock', attrs: { type: c.type, title: c.title, labels: c.labels, series: c.series, yUnit: c.yUnit ?? '', source: c.source ?? '', caption: c.caption ?? '', alt: c.alt } }).run(); setDataChartOpen(false) }} />}
+      {convertOpen && editor && <ConvertMarkersModal editor={editor} onClose={() => setConvertOpen(false)} />}
       {chartOpen && <ChartPickerModal onInsert={(url, o) => insertFigure(url, o?.caption ? `Pitch shape card: ${o.caption}` : 'Chart', 'x9Lab', 'wide', o)} onClose={() => setChartOpen(false)} />}
     </div>
   )
